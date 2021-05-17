@@ -23,9 +23,9 @@ data HList (l::[*]) :: * where
   HNil  :: HList '[]
   HCons :: e -> HList l -> HList (e ': l)
 
-type family Maybes (as :: [k]) :: [k] where
+type family Maybes (as :: [k]) = (bs :: [k]) | bs -> as where
   Maybes ((f :> v) : as) = (f :> Maybe v) : Maybes as
-  -- Maybes (a : as) = Maybe a : Maybes as
+  Maybes (a : as) = Maybe a : Maybes as
   Maybes '[] = '[]
 
 -- HasVar: Lookup for maybe types
@@ -38,25 +38,17 @@ type Params s = Record (Maybes s)
 type Θ =
     '[  "mu"    ':>  Double
       , "sigma" ':>  Double
+      , "y"     ':>  Double
      ]
 
 exampleParams :: Params Θ
-exampleParams = mu @= Just 5 <: sigma @= Just 2 <: emptyRecord
+exampleParams = mu @= Just 5 <: sigma @= Just 2 <: y @= Just 0 <: emptyRecord
 
 access :: Getting a (s :& Field Identity) a
        -> FreeT Dist (State (Record s)) a
 access f = do
     state <- lift get
     return (state ^. f)
-
--- normal :: (a ~ Maybe Double) => 
---           Double -> Double -> Getting a (Maybes s :& Field Identity) a 
---           -> (Getting a (Maybes s :& Field Identity) a 
---           -> FreeT Dist (State (Params s)) a) 
---           -> FreeT Dist (State (Params s)) Double
--- normal mu sigma field acc = do
---     y <- acc field
---     suspend (NormalDist mu sigma y return)
 
 normal :: (a ~ Maybe Double)
        => Double -> Double
@@ -74,11 +66,10 @@ runModelFree model = do
                     Pure v -> return v
   loop model
 
-runModelState :: State (Record  s) a -> Record  s 
-              -> (a, Record  s)
-runModelState = runState 
+runModelState :: Model s a -> Record s -> (a, Record s)
+runModelState model = runState (runModelFree model)
 
-exampleModel :: (HasVar s "mu" Double) => FreeT Dist (State (Record s)) Double
+exampleModel :: (HasVar s "mu" Double) => Model s Double
 exampleModel = do
   let r1 = 5
   x  <- normal 5 0 mu
@@ -86,8 +77,10 @@ exampleModel = do
   return (r1 + r2)
 
 linearRegression :: (HasVar s "y" Double) =>
-                    Double -> Double -> Double -> FreeT Dist (State (Record s)) Double
+                    Double -> Double -> Double -> Model s Double
 linearRegression muu sigma x = do
   y' <- normal (muu + x) sigma y
   return y'
 
+runExample :: (Double, Params Θ)
+runExample = runModelState exampleModel exampleParams
