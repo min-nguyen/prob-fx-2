@@ -7,6 +7,7 @@ import ModelFreeT
 import Dist
 import Util
 import Control.Monad
+import Control.Monad.State
 import Data.Functor
 
 -- Trivial example
@@ -46,6 +47,31 @@ hmmNSteps :: (HasVar s "y" Int)
   => Double -> Double -> Int -> (Int -> Model s Int)
 hmmNSteps transition_p observation_p n =
   foldl (>=>) return (replicate n (hmm transition_p observation_p))
+
+-- Hidden markov model (with parameter y :: Int and state monad)
+transitionModelSt :: Double -> Int -> ModelT s (State [Int]) Int
+transitionModelSt transition_p x_prev = do
+  dX <- boolToInt <$> bernoulli transition_p Nothing
+  let x = x_prev + dX
+  return (dX + x)
+
+observationModelSt :: (HasVar s "y" Int)
+  => Double -> Int -> ModelT s (State [Int]) Int
+observationModelSt observation_p x = do
+  binomial' x observation_p y
+
+hmmSt :: (HasVar s "y" Int) 
+  => Double -> Double -> Int -> ModelT s (State [Int]) Int
+hmmSt transition_p observation_p x_prev = do
+  x_n <- transitionModelSt transition_p x_prev
+  y_n <- observationModelSt observation_p x_n
+  lift $ modify (++ [y_n])
+  return x_n
+
+hmmNStepsSt :: (HasVar s "y" Int) 
+  => Double -> Double -> Int -> (Int -> ModelT s (State [Int]) Int)
+hmmNStepsSt transition_p observation_p n =
+  foldl (>=>) return (replicate n (hmmSt transition_p observation_p))
 
 -- Hidden markov model (with parameter ys :: [Int])
 transitionModel' :: Double -> Int -> Model s Int
