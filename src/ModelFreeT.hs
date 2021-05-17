@@ -1,5 +1,5 @@
 
-{-# LANGUAGE RankNTypes, GADTs, FlexibleInstances, DerivingStrategies, DataKinds, TypeOperators, TypeFamilies, FlexibleContexts, MultiParamTypeClasses, ConstraintKinds, PolyKinds, UndecidableSuperClasses, TemplateHaskell, ScopedTypeVariables, AllowAmbiguousTypes, QuantifiedConstraints, OverloadedLabels, UndecidableInstances, FunctionalDependencies #-}
+{-# LANGUAGE RankNTypes, GADTs, FlexibleInstances, DerivingStrategies, DataKinds, TypeOperators, TypeFamilies, FlexibleContexts, MultiParamTypeClasses, ConstraintKinds, PolyKinds, UndecidableSuperClasses, TemplateHaskell, ScopedTypeVariables, AllowAmbiguousTypes, QuantifiedConstraints, OverloadedLabels, UndecidableInstances, FunctionalDependencies, TypeFamilyDependencies #-}
 
 {-# LANGUAGE TypeApplications #-}
 module ModelFreeT where
@@ -25,7 +25,7 @@ data HList (l::[*]) :: * where
 
 type family Maybes (as :: [k]) :: [k] where
   Maybes ((f :> v) : as) = (f :> Maybe v) : Maybes as
-  Maybes (a : as) = Maybe a : Maybes as
+  -- Maybes (a : as) = Maybe a : Maybes as
   Maybes '[] = '[]
 
 -- HasVar: Lookup for maybe types
@@ -43,16 +43,25 @@ type Θ =
 exampleParams :: Params Θ
 exampleParams = mu @= Just 5 <: sigma @= Just 2 <: emptyRecord
 
-access :: Getting a (s :& Field Identity) a -> FreeT Dist (State (Record s)) a
+access :: Getting a (s :& Field Identity) a
+       -> FreeT Dist (State (Record s)) a
 access f = do
     state <- lift get
     return (state ^. f)
 
-normalNothing :: Double -> Double -> Model s Double
-normalNothing mu sigma = suspend (NormalDist mu sigma Nothing return)
+-- normal :: (a ~ Maybe Double) => 
+--           Double -> Double -> Getting a (Maybes s :& Field Identity) a 
+--           -> (Getting a (Maybes s :& Field Identity) a 
+--           -> FreeT Dist (State (Params s)) a) 
+--           -> FreeT Dist (State (Params s)) Double
+-- normal mu sigma field acc = do
+--     y <- acc field
+--     suspend (NormalDist mu sigma y return)
 
-normal :: (a ~ Maybe Double) => 
-          Double -> Double -> Getting a (s :& Field Identity) a -> Model s Double
+normal :: (a ~ Maybe Double)
+       => Double -> Double
+       -> Getting a (s :& Field Identity) a
+       -> FreeT Dist (State (Record s)) Double
 normal mu sigma field = do
     y <- access field
     suspend (NormalDist mu sigma y return)
@@ -65,8 +74,9 @@ runModelFree model = do
                     Pure v -> return v
   loop model
 
-runModelState :: Model s a -> Record s -> (a, Record s)
-runModelState model = runState (runModelFree model)
+runModelState :: State (Record  s) a -> Record  s 
+              -> (a, Record  s)
+runModelState = runState 
 
 exampleModel :: (HasVar s "mu" Double) => FreeT Dist (State (Record s)) Double
 exampleModel = do
@@ -75,9 +85,9 @@ exampleModel = do
   let r2 = 4
   return (r1 + r2)
 
-linearRegression :: (HasVar s "y" Double) => 
-                    Double -> Double -> Double -> Model s Double
-linearRegression mu sigma x = do
-  y' <- normal (mu + x) sigma y
+linearRegression :: (HasVar s "y" Double) =>
+                    Double -> Double -> Double -> FreeT Dist (State (Record s)) Double
+linearRegression muu sigma x = do
+  y' <- normal (muu + x) sigma y
   return y'
 

@@ -66,6 +66,17 @@
   (major1) == 2 && (major2) == 2 && (minor) <= 2)
 #endif /* MIN_VERSION_mtl */
 
+/* package mwc-random-0.15.0.1 */
+#ifndef VERSION_mwc_random
+#define VERSION_mwc_random "0.15.0.1"
+#endif /* VERSION_mwc_random */
+#ifndef MIN_VERSION_mwc_random
+#define MIN_VERSION_mwc_random(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  15 || \
+  (major1) == 0 && (major2) == 15 && (minor) <= 0)
+#endif /* MIN_VERSION_mwc_random */
+
 /* package transformers-0.5.6.2 */
 #ifndef VERSION_transformers
 #define VERSION_transformers "0.5.6.2"
