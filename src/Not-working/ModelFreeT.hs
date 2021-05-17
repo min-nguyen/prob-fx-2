@@ -61,7 +61,7 @@ access f = do
 normal :: (a ~ Maybe Double)
        => Double -> Double
        -> Getting a (Maybes s :& Field Identity) a
-       -> FreeT Dist (State (Params s)) Double
+       -> FreeT Dist (State (Record (Maybes s))) Double
 normal mu sigma field = do
     y <- access field
     suspend (NormalDist mu sigma y return)
@@ -86,7 +86,7 @@ exampleModel = do
   return (r1 + r2)
 
 linearRegression :: (HasVar s "y" Double) =>
-                    Double -> Double -> Double -> FreeT Dist (State (Params s)) Double
+                    Double -> Double -> Double -> FreeT Dist (State (Record (Maybes s))) Double
 linearRegression muu sigma x = do
   y' <- normal (muu + x) sigma y
   return y'

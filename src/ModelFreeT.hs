@@ -14,10 +14,11 @@ import Control.Lens hiding ((:>))
 import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.State
+import Control.Monad.Reader
 
 mkField "mu sigma y ys"
 
-type Model s a = FreeT Dist (State (Record s)) a
+type Model s a = FreeT Dist (Reader (Record s)) a
 
 {- Handling Accessible Model Variables -}
 data HList (l::[*]) :: * where
@@ -46,52 +47,53 @@ exampleParams :: Vars X
 exampleParams = mu @= Just 5 <: sigma @= Just 2 <: y @= Just 0 <: emptyRecord
 
 access :: Getting a (s :& Field Identity) a
-  -> FreeT Dist (State (Record s)) a
+  -> FreeT Dist (Reader (Record s)) a
 access f = do
-    state <- lift get
-    return (state ^. f)
+    env <- lift ask
+    return (env ^. f)
 
 {- Distribution functions -}
 normal :: (a ~ Maybe Double)
-  => Double -> Double -> Maybe Double -> FreeT Dist (State (Record s)) Double
+  => Double -> Double -> Maybe Double 
+  -> FreeT Dist (Reader (Record s)) Double
 normal mu sigma maybe_y = do
   suspend (NormalDist mu sigma maybe_y return)
 
 normal' :: (a ~ Maybe Double)
   => Double -> Double -> Getting a (s :& Field Identity) a
-  -> FreeT Dist (State (Record s)) Double
+  -> FreeT Dist (Reader (Record s)) Double
 normal' mu sigma field = do
   y <- access field
   suspend (NormalDist mu sigma y return)
 
 bernoulli :: (a ~ Maybe Bool)
   => Double -> Maybe Bool
-  -> FreeT Dist (State (Record s)) Bool
+  -> FreeT Dist (Reader (Record s)) Bool
 bernoulli p maybe_y = do
   suspend (BernoulliDist p maybe_y return)
 
 bernoulli' :: (a ~ Maybe Bool)
   => Double -> Getting a (s :& Field Identity) a
-  -> FreeT Dist (State (Record s)) Bool
+  -> FreeT Dist (Reader (Record s)) Bool
 bernoulli' p field = do
   y <- access field
   suspend (BernoulliDist p y return)
 
 binomial :: (a ~ Maybe Int)
   => Int -> Double -> Maybe Int
-  -> FreeT Dist (State (Record s)) Int
+  -> FreeT Dist (Reader (Record s)) Int
 binomial n p maybe_y = do
   suspend (BinomialDist n p maybe_y return)
 
 binomial' :: (a ~ Maybe Int)
   => Int -> Double -> Getting a (s :& Field Identity) a
-  -> FreeT Dist (State (Record s)) Int
+  -> FreeT Dist (Reader (Record s)) Int
 binomial' n p field = do
   y <- access field
   suspend (BinomialDist n p y return)
 
 {- Executing Models -}
-runModelFree :: Model s a -> State (Record s) a
+runModelFree :: Model s a -> Reader (Record s) a
 runModelFree model = do
   let loop v = do
           x <- runFreeT v
@@ -99,5 +101,5 @@ runModelFree model = do
                     Pure v -> return v
   loop model
 
-runModel :: Model s a -> Record s -> (a, Record s)
-runModel model = runState (runModelFree model)
+runModel :: Model s a -> Record s -> a
+runModel model = runReader (runModelFree model)
