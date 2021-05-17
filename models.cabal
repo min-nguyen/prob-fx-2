@@ -49,6 +49,8 @@ cabal-version:       >=1.10
 library
   -- Modules exported by the library.
   exposed-modules:    ModelFreeT,
+                      ModelStateT,
+                      FreeT,
                       Dist
 
   -- Modules included in this library but not exported.
@@ -64,7 +66,8 @@ library
                        vector,
                        lens,
                        transformers,
-                       mtl
+                       mtl,
+                       mwc-random
 
   -- Directories containing source files.
   hs-source-dirs:      src
