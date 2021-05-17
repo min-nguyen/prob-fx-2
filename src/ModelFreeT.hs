@@ -15,10 +15,11 @@ import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.State
 
-mkField "mu sigma y"
+mkField "mu sigma y ys"
 
 type Model s a = FreeT Dist (State (Record s)) a
 
+{- Handling Accessible Model Variables -}
 data HList (l::[*]) :: * where
   HNil  :: HList '[]
   HCons :: e -> HList l -> HList (e ': l)
@@ -45,38 +46,51 @@ exampleParams :: Vars X
 exampleParams = mu @= Just 5 <: sigma @= Just 2 <: y @= Just 0 <: emptyRecord
 
 access :: Getting a (s :& Field Identity) a
-       -> FreeT Dist (State (Record s)) a
+  -> FreeT Dist (State (Record s)) a
 access f = do
     state <- lift get
     return (state ^. f)
 
+{- Distribution functions -}
 normal :: (a ~ Maybe Double)
-       => Double -> Double
-       -> FreeT Dist (State (Record s)) Double
-normal mu sigma  = do
-  suspend (NormalDist mu sigma Nothing return)
+  => Double -> Double -> Maybe Double -> FreeT Dist (State (Record s)) Double
+normal mu sigma maybe_y = do
+  suspend (NormalDist mu sigma maybe_y return)
 
 normal' :: (a ~ Maybe Double)
-       => Double -> Double
-       -> Getting a (s :& Field Identity) a
-       -> FreeT Dist (State (Record s)) Double
+  => Double -> Double -> Getting a (s :& Field Identity) a
+  -> FreeT Dist (State (Record s)) Double
 normal' mu sigma field = do
   y <- access field
   suspend (NormalDist mu sigma y return)
 
 bernoulli :: (a ~ Maybe Bool)
-          => Double
-          -> FreeT Dist (State (Record s)) Bool
-bernoulli p = do
-  suspend (BernoulliDist p Nothing return)
+  => Double -> Maybe Bool
+  -> FreeT Dist (State (Record s)) Bool
+bernoulli p maybe_y = do
+  suspend (BernoulliDist p maybe_y return)
 
 bernoulli' :: (a ~ Maybe Bool)
-          => Double -> Getting a (s :& Field Identity) a
-          -> FreeT Dist (State (Record s)) Bool
+  => Double -> Getting a (s :& Field Identity) a
+  -> FreeT Dist (State (Record s)) Bool
 bernoulli' p field = do
   y <- access field
   suspend (BernoulliDist p y return)
 
+binomial :: (a ~ Maybe Int)
+  => Int -> Double -> Maybe Int
+  -> FreeT Dist (State (Record s)) Int
+binomial n p maybe_y = do
+  suspend (BinomialDist n p maybe_y return)
+
+binomial' :: (a ~ Maybe Int)
+  => Int -> Double -> Getting a (s :& Field Identity) a
+  -> FreeT Dist (State (Record s)) Int
+binomial' n p field = do
+  y <- access field
+  suspend (BinomialDist n p y return)
+
+{- Executing Models -}
 runModelFree :: Model s a -> State (Record s) a
 runModelFree model = do
   let loop v = do

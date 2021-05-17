@@ -20,7 +20,7 @@ data Dist a where
   -- beta           :: Dist Double
   BetaDist          :: Double -> Double -> Maybe Double -> (Double -> a) -> Dist a
   -- binomial       :: Dist [Bool]
-  BinomialDist      :: Int    -> Double -> Maybe Int -> ([Bool] -> a) -> Dist a
+  BinomialDist      :: Int    -> Double -> Maybe Int -> (Int -> a) -> Dist a
   -- bernoulli      :: Dist Bool
   BernoulliDist     :: Double -> Maybe Bool -> (Bool -> a) -> Dist a
   -- categorical    :: Dist Int
