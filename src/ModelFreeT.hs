@@ -1,11 +1,11 @@
 
 {-# LANGUAGE RankNTypes, GADTs, FlexibleInstances, DerivingStrategies, DataKinds, TypeOperators, TypeFamilies, FlexibleContexts, MultiParamTypeClasses, ConstraintKinds, PolyKinds, UndecidableSuperClasses, TemplateHaskell, ScopedTypeVariables, AllowAmbiguousTypes, QuantifiedConstraints, OverloadedLabels, UndecidableInstances, FunctionalDependencies, TypeFamilyDependencies #-}
 
-{-# LANGUAGE TypeApplications #-}
 module ModelFreeT where
 
 import Dist
 import FreeT
+import Util
 import GHC.Types
 import GHC.TypeLits
 import Data.Kind
@@ -33,15 +33,15 @@ class Lookup xs k (Maybe v) => HasVar xs k v  where
 
 instance Lookup xs k (Maybe v) => HasVar xs k v where
 
-type Params s = Record (Maybes s)
+type Vars s = Record (Maybes s)
 
-type Θ =
+type X =
     '[  "mu"    ':>  Double
       , "sigma" ':>  Double
       , "y"     ':>  Double
      ]
 
-exampleParams :: Params Θ
+exampleParams :: Vars X
 exampleParams = mu @= Just 5 <: sigma @= Just 2 <: y @= Just 0 <: emptyRecord
 
 access :: Getting a (s :& Field Identity) a
@@ -52,11 +52,30 @@ access f = do
 
 normal :: (a ~ Maybe Double)
        => Double -> Double
+       -> FreeT Dist (State (Record s)) Double
+normal mu sigma  = do
+  suspend (NormalDist mu sigma Nothing return)
+
+normal' :: (a ~ Maybe Double)
+       => Double -> Double
        -> Getting a (s :& Field Identity) a
        -> FreeT Dist (State (Record s)) Double
-normal mu sigma field = do
-    y <- access field
-    suspend (NormalDist mu sigma y return)
+normal' mu sigma field = do
+  y <- access field
+  suspend (NormalDist mu sigma y return)
+
+bernoulli :: (a ~ Maybe Bool)
+          => Double
+          -> FreeT Dist (State (Record s)) Bool
+bernoulli p = do
+  suspend (BernoulliDist p Nothing return)
+
+bernoulli' :: (a ~ Maybe Bool)
+          => Double -> Getting a (s :& Field Identity) a
+          -> FreeT Dist (State (Record s)) Bool
+bernoulli' p field = do
+  y <- access field
+  suspend (BernoulliDist p y return)
 
 runModelFree :: Model s a -> State (Record s) a
 runModelFree model = do
@@ -66,21 +85,5 @@ runModelFree model = do
                     Pure v -> return v
   loop model
 
-runModelState :: Model s a -> Record s -> (a, Record s)
-runModelState model = runState (runModelFree model)
-
-exampleModel :: (HasVar s "mu" Double) => Model s Double
-exampleModel = do
-  let r1 = 5
-  x  <- normal 5 0 mu
-  let r2 = 4
-  return (r1 + r2)
-
-linearRegression :: (HasVar s "y" Double) =>
-                    Double -> Double -> Double -> Model s Double
-linearRegression muu sigma x = do
-  y' <- normal (muu + x) sigma y
-  return y'
-
-runExample :: (Double, Params Θ)
-runExample = runModelState exampleModel exampleParams
+runModel :: Model s a -> Record s -> (a, Record s)
+runModel model = runState (runModelFree model)

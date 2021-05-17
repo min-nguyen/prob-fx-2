@@ -1,7 +1,11 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs, TypeOperators #-}
 
 module Dist where
 
+import FreeT
+import Control.Lens hiding ((:>))
+import Control.Monad.State
+import Data.Extensible hiding (wrap, Head)
 import qualified Data.Vector as V
 
 data Dist a where
