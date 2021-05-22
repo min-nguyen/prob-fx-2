@@ -77,6 +77,17 @@
   (major1) == 0 && (major2) == 14 && (minor) <= 0)
 #endif /* MIN_VERSION_mwc_random */
 
+/* package profunctors-5.6.1 */
+#ifndef VERSION_profunctors
+#define VERSION_profunctors "5.6.1"
+#endif /* VERSION_profunctors */
+#ifndef MIN_VERSION_profunctors
+#define MIN_VERSION_profunctors(major1,major2,minor) (\
+  (major1) <  5 || \
+  (major1) == 5 && (major2) <  6 || \
+  (major1) == 5 && (major2) == 6 && (minor) <= 1)
+#endif /* MIN_VERSION_profunctors */
+
 /* package transformers-0.5.6.2 */
 #ifndef VERSION_transformers
 #define VERSION_transformers "0.5.6.2"
@@ -221,10 +232,10 @@
 #endif /* MIN_TOOL_VERSION_strip */
 
 #ifndef CURRENT_PACKAGE_KEY
-#define CURRENT_PACKAGE_KEY "models-0.1.0.0-9xrFzUpcVbsBdNVpYCRf07"
+#define CURRENT_PACKAGE_KEY "models-0.1.0.0-B35vbEBWRy8BEdr6swwAR2"
 #endif /* CURRENT_PACKAGE_KEY */
 #ifndef CURRENT_COMPONENT_ID
-#define CURRENT_COMPONENT_ID "models-0.1.0.0-9xrFzUpcVbsBdNVpYCRf07"
+#define CURRENT_COMPONENT_ID "models-0.1.0.0-B35vbEBWRy8BEdr6swwAR2"
 #endif /* CURRENT_COMPONENT_ID */
 #ifndef CURRENT_PACKAGE_VERSION
 #define CURRENT_PACKAGE_VERSION "0.1.0.0"

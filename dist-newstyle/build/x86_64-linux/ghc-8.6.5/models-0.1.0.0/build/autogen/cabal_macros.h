@@ -77,6 +77,17 @@
   (major1) == 0 && (major2) == 15 && (minor) <= 0)
 #endif /* MIN_VERSION_mwc_random */
 
+/* package profunctors-5.6.2 */
+#ifndef VERSION_profunctors
+#define VERSION_profunctors "5.6.2"
+#endif /* VERSION_profunctors */
+#ifndef MIN_VERSION_profunctors
+#define MIN_VERSION_profunctors(major1,major2,minor) (\
+  (major1) <  5 || \
+  (major1) == 5 && (major2) <  6 || \
+  (major1) == 5 && (major2) == 6 && (minor) <= 2)
+#endif /* MIN_VERSION_profunctors */
+
 /* package transformers-0.5.6.2 */
 #ifndef VERSION_transformers
 #define VERSION_transformers "0.5.6.2"

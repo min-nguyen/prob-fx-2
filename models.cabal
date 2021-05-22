@@ -69,6 +69,7 @@ library
                        lens,
                        transformers,
                        mtl,
+                       profunctors,
                        mwc-random
 
   -- Directories containing source files.
