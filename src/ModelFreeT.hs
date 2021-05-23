@@ -1,11 +1,12 @@
 
-{-# LANGUAGE RankNTypes, GADTs, FlexibleInstances, DerivingStrategies, DataKinds, TypeOperators, TypeFamilies, FlexibleContexts, MultiParamTypeClasses, ConstraintKinds, PolyKinds, UndecidableSuperClasses, TemplateHaskell, ScopedTypeVariables, AllowAmbiguousTypes, QuantifiedConstraints, OverloadedLabels, UndecidableInstances, FunctionalDependencies, TypeFamilyDependencies #-}
+{-# LANGUAGE RankNTypes, GADTs, TypeApplications, FlexibleInstances, DerivingStrategies, DataKinds, TypeOperators, TypeFamilies, FlexibleContexts, MultiParamTypeClasses, ConstraintKinds, PolyKinds, UndecidableSuperClasses, TemplateHaskell, ScopedTypeVariables, AllowAmbiguousTypes, QuantifiedConstraints, OverloadedLabels, UndecidableInstances, FunctionalDependencies, TypeFamilyDependencies #-}
 
 module ModelFreeT where
 
 import Dist
 import FreeT
 import Util
+import GHC.Generics
 import GHC.Types
 import GHC.TypeLits
 import Data.Kind
@@ -16,6 +17,7 @@ import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.State
 import Control.Monad.Reader
+-- import Type.Membership.HList
 
 mkField "mu sigma y ys"
 
@@ -23,8 +25,12 @@ type ModelT s m a = FreeT Dist (ReaderT (Record (Maybes s)) m) a
 
 type Model s a = ModelT s Identity a
 
+type family Keys (as :: [Assoc k v]) :: [k] where
+  Keys ((k :> v) : as) = k : Keys as
+  Keys '[] = '[]
+
 type family Fields (as :: [Assoc k v]) :: [v] where
-  Fields ((f :> v) : as) = v : Fields as
+  Fields ((k :> v) : as) = v : Fields as
   Fields '[] = '[]
 
 {- Handling Accessible Model Variables -}
@@ -37,6 +43,9 @@ type family Maybes (as :: [k]) = (bs :: [k]) | bs -> as where
   Maybes (a : as) = Maybe a : Maybes as
   Maybes '[] = '[]
 
+type family Nothings (as :: [k]) :: [Assoc k v] where
+  Nothings (k:ks) = (k :> Nothing) : Nothings ks
+  Nothings '[] = '[]
 -- HasVar: Lookup for maybe types
 class Lookup (Maybes xs) k (Maybe v) => HasVar xs k v  where
 
@@ -50,8 +59,16 @@ type X =
       , "y"     ':>  Double
      ]
 
--- fields :: 
-f = HCons (Just 5) (HCons True HNil)
+class AllNothing (a :: [Assoc Symbol *]) where
+  allNothing :: Record a
+
+instance AllNothing '[] where
+  allNothing = emptyRecord
+
+instance AllNothing xs => AllNothing ((x ':> Maybe y) ': xs) where
+  allNothing = xlb (Proxy @x) @= Nothing <: allNothing
+
+nothingRecord = allNothing :: Vars X
 
 g :: Wrapper h => FieldName k -> Repr h v -> Field h (k ':> v)
 g k v = k @= v

@@ -55,6 +55,17 @@
   (major1) == 4 && (major2) == 19 && (minor) <= 2)
 #endif /* MIN_VERSION_lens */
 
+/* package membership-0.0.1 */
+#ifndef VERSION_membership
+#define VERSION_membership "0.0.1"
+#endif /* VERSION_membership */
+#ifndef MIN_VERSION_membership
+#define MIN_VERSION_membership(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  0 || \
+  (major1) == 0 && (major2) == 0 && (minor) <= 1)
+#endif /* MIN_VERSION_membership */
+
 /* package mtl-2.2.2 */
 #ifndef VERSION_mtl
 #define VERSION_mtl "2.2.2"

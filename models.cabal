@@ -69,6 +69,7 @@ library
                        lens,
                        transformers,
                        mtl,
+                       membership,
                        profunctors,
                        mwc-random
 

@@ -81,7 +81,8 @@ runModelState = runState
 exampleModel :: (HasVar s "mu" Double) => FreeT Dist (State (Record (Maybes s))) Double
 exampleModel = do
   let r1 = 5
-  x  <- normal 5 0 mu
+  mu' <- access mu
+  x  <- normal 5 0 mu'
   let r2 = 4
   return (r1 + r2)
 

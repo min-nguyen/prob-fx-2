@@ -11,12 +11,12 @@ import Control.Monad.State
 import Data.Functor
 
 -- Trivial example
--- exampleModel :: (HasVar s "mu" Double) => Model s Double
--- exampleModel = do
---   let r1 = 5
---   x  <- normal' 5 0 mu
---   let r2 = 4
---   return (r1 + r2)
+exampleModel :: (HasVar s "mu" Double) => Model s Double
+exampleModel = do
+  let r1 = 5
+  x  <- normal' 5 0 mu
+  let r2 = 4
+  return (r1 + r2)
 
 -- Linear regression
 linearRegression :: (HasVar s "y" Double) =>

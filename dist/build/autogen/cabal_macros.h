@@ -55,6 +55,17 @@
   (major1) == 5 && (major2) == 0 && (minor) <= 1)
 #endif /* MIN_VERSION_lens */
 
+/* package membership-0.0.1 */
+#ifndef VERSION_membership
+#define VERSION_membership "0.0.1"
+#endif /* VERSION_membership */
+#ifndef MIN_VERSION_membership
+#define MIN_VERSION_membership(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  0 || \
+  (major1) == 0 && (major2) == 0 && (minor) <= 1)
+#endif /* MIN_VERSION_membership */
+
 /* package mtl-2.2.2 */
 #ifndef VERSION_mtl
 #define VERSION_mtl "2.2.2"
@@ -232,10 +243,10 @@
 #endif /* MIN_TOOL_VERSION_strip */
 
 #ifndef CURRENT_PACKAGE_KEY
-#define CURRENT_PACKAGE_KEY "models-0.1.0.0-B35vbEBWRy8BEdr6swwAR2"
+#define CURRENT_PACKAGE_KEY "models-0.1.0.0-2ZmP6oGuaNC5urRuSZ0h1c"
 #endif /* CURRENT_PACKAGE_KEY */
 #ifndef CURRENT_COMPONENT_ID
-#define CURRENT_COMPONENT_ID "models-0.1.0.0-B35vbEBWRy8BEdr6swwAR2"
+#define CURRENT_COMPONENT_ID "models-0.1.0.0-2ZmP6oGuaNC5urRuSZ0h1c"
 #endif /* CURRENT_COMPONENT_ID */
 #ifndef CURRENT_PACKAGE_VERSION
 #define CURRENT_PACKAGE_VERSION "0.1.0.0"
