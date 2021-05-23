@@ -3,7 +3,7 @@
 
 module Example where
 
-import ModelFreeT
+import Model
 import Dist
 import Util
 import Control.Monad

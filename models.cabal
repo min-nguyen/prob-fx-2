@@ -48,8 +48,7 @@ cabal-version:       >=1.10
 
 library
   -- Modules exported by the library.
-  exposed-modules:    ModelFreeT,
-                      ModelStateT,
+  exposed-modules:    Model,
                       Example,
                       FreeT,
                       Dist,

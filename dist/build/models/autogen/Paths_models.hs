@@ -30,7 +30,7 @@ version = Version [0,1,0,0] []
 bindir, libdir, dynlibdir, datadir, libexecdir, sysconfdir :: FilePath
 
 bindir     = "/home/minh/.cabal/bin"
-libdir     = "/home/minh/.cabal/lib/x86_64-linux-ghc-8.6.5/models-0.1.0.0-B35vbEBWRy8BEdr6swwAR2-models"
+libdir     = "/home/minh/.cabal/lib/x86_64-linux-ghc-8.6.5/models-0.1.0.0-2ZmP6oGuaNC5urRuSZ0h1c-models"
 dynlibdir  = "/home/minh/.cabal/lib/x86_64-linux-ghc-8.6.5"
 datadir    = "/home/minh/.cabal/share/x86_64-linux-ghc-8.6.5/models-0.1.0.0"
 libexecdir = "/home/minh/.cabal/libexec/x86_64-linux-ghc-8.6.5/models-0.1.0.0"
