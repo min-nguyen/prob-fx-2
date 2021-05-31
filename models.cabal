@@ -55,6 +55,9 @@ library
                       Util,
                       Sample,
                       Extensible.Freer,
+                      Extensible.Example,
+                      Extensible.Reader,
+                      Extensible.Writer,
                       Inference.Basic
 
   -- Modules included in this library but not exported.
