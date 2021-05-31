@@ -4,10 +4,21 @@ module Dist where
 
 import FreeT
 import Sample
+import Util
 import Control.Lens hiding ((:>))
 import Control.Monad.State
+import Data.Maybe
 import Data.Extensible hiding (wrap, Head)
 import qualified Data.Vector as V
+import Statistics.Distribution
+import Statistics.Distribution.DiscreteUniform
+import Statistics.Distribution.Normal
+import Statistics.Distribution.Gamma
+import Statistics.Distribution.Beta
+import Statistics.Distribution.Binomial
+import Statistics.Distribution.Uniform
+import System.Random.MWC
+import qualified System.Random.MWC.Distributions as MWC
 
 data Dist a where
   -- normal         :: Dist Double
@@ -36,6 +47,81 @@ instance Functor Dist where
   fmap f (GammaDist a b y g) = GammaDist a b y (f . g)
   fmap f (BinomialDist n p y g) = BinomialDist n p y (f . g)
   fmap f (BernoulliDist p y g) = BernoulliDist p y (f . g)
+
+instance Distribution (Dist a) where
+  cumulative (NormalDist μ σ _ _) x
+    = cumulative (normalDistr μ σ) x
+  cumulative (UniformDist min max obs _) x
+    = cumulative (uniformDistr min max) x
+  cumulative (GammaDist k θ _ _) x 
+    = cumulative (gammaDistr k θ) x
+  cumulative (BetaDist α β _ _) x
+    = cumulative (betaDistr α β) x
+  cumulative (BinomialDist n p _ _) x
+    = cumulative (binomial n p) x
+  cumulative (BernoulliDist p _ _) x
+    = cumulative (binomial 1 p) x
+  cumulative (CategoricalDist ps _ _) x
+    = foldr (\(a, ap) p -> if fromIntegral a <= x then p + ap else p) 0 ps
+  cumulative (DiscreteDist ps _ _) x
+    = foldr (\(a, ap) p -> if fromIntegral a <= x then p + ap else p) 0 ps
+
+instance ContDistr (Dist a) where
+  density (NormalDist μ σ _ _)          = density (normalDistr μ σ)
+  density (UniformDist min max _ _)     = density (uniformDistr min max)
+  density (GammaDist k θ _ _)           = density (gammaDistr k θ)
+  density (BetaDist α β _ _)            = density (betaDistr α β)
+  logDensity (NormalDist μ σ _ _)       = logDensity (normalDistr μ σ)
+  logDensity (UniformDist min max _ _)  = logDensity (uniformDistr min max)
+  logDensity (GammaDist k θ _ _)        = logDensity (gammaDistr k θ)
+  logDensity (BetaDist α β _ _)         = logDensity (betaDistr α β)
+  quantile (NormalDist μ σ _ _)         = quantile (normalDistr μ σ)
+  quantile (UniformDist min max _ _)    = quantile (uniformDistr min max)
+  quantile (GammaDist k θ _ _)          = quantile (gammaDistr k θ)
+  quantile (BetaDist α β _ _)           = quantile (betaDistr α β)
+
+instance DiscreteDistr (Dist a) where
+  -- binomial: probability of `i` successful outcomes
+  probability (BinomialDist n p _ _) i            = probability (binomial n p) i
+  probability (BernoulliDist p _ _) i             = probability (binomial 1 p) i
+  probability (CategoricalDist ps _ _) i          = snd (ps V.! i)
+  probability (DiscreteDist ps _ _) i             = snd (ps !! i)
+  probability (DiscrUniformDist min max _ _) i    = probability (discreteUniformAB min max) i
+  logProbability (BinomialDist n p _ _) i         = logProbability (binomial n p) i
+  logProbability (BernoulliDist p _ _) i          = logProbability (binomial 1 p) i
+  logProbability (CategoricalDist ps _ _) i       = (log . snd) (ps V.! i)
+  logProbability (DiscreteDist ps _ _) i          = (log . snd) (ps !! i)
+  logProbability (DiscrUniformDist min max _ _) i = logProbability (discreteUniformAB min max) i
+
+
+-- handleDist :: Dist a -> a
+-- handleDist (NormalDist _ _ obs _) 
+--   = obs
+
+prob :: Dist a -> Double
+prob d@(NormalDist _ _ obs _)     
+  = density d (fromJust obs)
+prob d@(DiscrUniformDist _ _ obs _) 
+  = probability d (fromJust obs)
+prob d@(UniformDist _ _ obs _)     
+  = density d (fromJust obs)
+prob d@(GammaDist _ _ obs _)          
+  = density d (fromJust obs)
+prob d@(BetaDist _ _ obs k)           
+  = density d (fromJust obs)
+prob d@(BinomialDist _ _ obs _)       
+  = probability d (fromJust obs)
+prob d@(BernoulliDist _ obs _)        
+  = probability d (boolToInt $ fromJust obs)
+prob d@(CategoricalDist _ obs _)     
+  = probability d (fromJust obs)
+prob d@(DiscreteDist _ obs _)        
+  = probability d (fromJust obs)
+
+{- Combines logDensity and logProbability.
+   Log probability of double `x` from a distribution -}
+logProb :: Dist a -> Double
+logProb = log . prob 
 
 sample :: Dist a -> Sampler a
 sample (NormalDist μ σ obs k)  =

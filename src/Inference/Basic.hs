@@ -1,3 +1,5 @@
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Inference.Basic where
 
 import Data.Extensible
@@ -8,10 +10,17 @@ import Model
 import FreeT
 import Sample
 
-runModelFree :: Monad m => ModelT s m a -> ReaderT (MRec s) m a
-runModelFree model = do
+-- runModel :: ModelT s Sampler a -> Sampler (Reader (MRec s) a)
+runModel :: FreeT Dist (ReaderT (Record (Maybes s)) Sampler) a 
+         -> (ReaderT (Record (Maybes s)) Sampler) a
+runModel model = do
   let loop v = do
-          x <- runFreeT v
-          case x of FreeF (NormalDist mu sigma y f) -> loop (f 5)
-                    Pure v -> return v
+        x <- runFreeT v
+        case x of 
+          FreeF dist -> do
+            a  <- lift $ sample dist 
+            loop a 
+          Pure v -> return v
   loop model
+
+

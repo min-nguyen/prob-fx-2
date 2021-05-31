@@ -127,6 +127,7 @@ binomial' n p field = do
   y <- access field
   suspend (BinomialDist n p y return)
 
+-- FreeT Dist (ReaderT (Record (Maybes s)) m) a
 {- Executing Models -}
 runModelFree :: Monad m => ModelT s m a -> ReaderT (MRec s) m a
 runModelFree model = do
