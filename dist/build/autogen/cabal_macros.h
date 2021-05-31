@@ -22,6 +22,17 @@
   (major1) == 4 && (major2) == 12 && (minor) <= 0)
 #endif /* MIN_VERSION_base */
 
+/* package containers-0.6.0.1 */
+#ifndef VERSION_containers
+#define VERSION_containers "0.6.0.1"
+#endif /* VERSION_containers */
+#ifndef MIN_VERSION_containers
+#define MIN_VERSION_containers(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  6 || \
+  (major1) == 0 && (major2) == 6 && (minor) <= 0)
+#endif /* MIN_VERSION_containers */
+
 /* package extensible-0.8.2 */
 #ifndef VERSION_extensible
 #define VERSION_extensible "0.8.2"
@@ -88,6 +99,17 @@
   (major1) == 0 && (major2) == 14 && (minor) <= 0)
 #endif /* MIN_VERSION_mwc_random */
 
+/* package primitive-0.7.1.0 */
+#ifndef VERSION_primitive
+#define VERSION_primitive "0.7.1.0"
+#endif /* VERSION_primitive */
+#ifndef MIN_VERSION_primitive
+#define MIN_VERSION_primitive(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  7 || \
+  (major1) == 0 && (major2) == 7 && (minor) <= 1)
+#endif /* MIN_VERSION_primitive */
+
 /* package profunctors-5.6.1 */
 #ifndef VERSION_profunctors
 #define VERSION_profunctors "5.6.1"
@@ -98,6 +120,17 @@
   (major1) == 5 && (major2) <  6 || \
   (major1) == 5 && (major2) == 6 && (minor) <= 1)
 #endif /* MIN_VERSION_profunctors */
+
+/* package statistics-0.15.2.0 */
+#ifndef VERSION_statistics
+#define VERSION_statistics "0.15.2.0"
+#endif /* VERSION_statistics */
+#ifndef MIN_VERSION_statistics
+#define MIN_VERSION_statistics(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  15 || \
+  (major1) == 0 && (major2) == 15 && (minor) <= 2)
+#endif /* MIN_VERSION_statistics */
 
 /* package transformers-0.5.6.2 */
 #ifndef VERSION_transformers
@@ -243,10 +276,10 @@
 #endif /* MIN_TOOL_VERSION_strip */
 
 #ifndef CURRENT_PACKAGE_KEY
-#define CURRENT_PACKAGE_KEY "models-0.1.0.0-2ZmP6oGuaNC5urRuSZ0h1c"
+#define CURRENT_PACKAGE_KEY "models-0.1.0.0-68yQLQU6N6ACAnPJtYlfnQ"
 #endif /* CURRENT_PACKAGE_KEY */
 #ifndef CURRENT_COMPONENT_ID
-#define CURRENT_COMPONENT_ID "models-0.1.0.0-2ZmP6oGuaNC5urRuSZ0h1c"
+#define CURRENT_COMPONENT_ID "models-0.1.0.0-68yQLQU6N6ACAnPJtYlfnQ"
 #endif /* CURRENT_COMPONENT_ID */
 #ifndef CURRENT_PACKAGE_VERSION
 #define CURRENT_PACKAGE_VERSION "0.1.0.0"

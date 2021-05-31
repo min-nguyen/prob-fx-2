@@ -52,7 +52,9 @@ library
                       Example,
                       FreeT,
                       Dist,
-                      Util
+                      Util,
+                      Sample,
+                      Inference.Basic
 
   -- Modules included in this library but not exported.
   -- other-modules:
@@ -63,6 +65,8 @@ library
   -- Other library packages from which modules are imported.
   build-depends:       base >=4.12 && <4.13,
                        ghc-prim,
+                       primitive,
+                       containers,
                        extensible,
                        vector,
                        lens,
@@ -70,6 +74,7 @@ library
                        mtl,
                        membership,
                        profunctors,
+                       statistics,
                        mwc-random
 
   -- Directories containing source files.

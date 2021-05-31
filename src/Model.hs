@@ -11,12 +11,10 @@ import GHC.TypeLits
 import Data.Kind
 import Data.Profunctor.Unsafe
 import Data.Extensible hiding (wrap, Head)
-import Control.Lens hiding ((:>))
+import Control.Lens ( Identity, (^.), review, Getting )
 import Control.Monad
 import Control.Monad.Trans.Class
-import Control.Monad.State
 import Control.Monad.Reader
--- import Type.Membership.HList
 
 mkField "mu sigma y ys"
 
@@ -45,12 +43,13 @@ type family Maybes (as :: [k]) = (bs :: [k]) | bs -> as where
 type family Nothings (as :: [k]) :: [Assoc k v] where
   Nothings (k:ks) = (k :> Nothing) : Nothings ks
   Nothings '[] = '[]
+
 -- HasVar: Lookup for maybe types
-class Lookup (Maybes xs) k (Maybe v) => HasVar xs k v  where
+class Lookup (Maybes xs) k (Maybe v) => HasVar xs k v where
 
 instance Lookup (Maybes xs) k (Maybe v) => HasVar xs k v where
 
-type Vars s = Record (Maybes s)
+type MRec s = Record (Maybes s)
 
 type X =
     '[  "mu"    ':>  Double
@@ -67,7 +66,7 @@ instance AllNothing '[] where
 instance AllNothing xs => AllNothing ((x ':> Maybe y) ': xs) where
   allNothing = xlb (Proxy @x) @= Nothing <: allNothing
 
-nothingRecord = allNothing :: Vars X
+nothingRecord = allNothing :: MRec X
 
 g :: Wrapper h => FieldName k -> Repr h v -> Field h (k ':> v)
 g k v = k @= v
@@ -78,7 +77,7 @@ h (Field i) = i
 me :: Wrapper h => FieldName k -> Repr h v -> Field h (k ':> v)
 me _ = Field #. review _Wrapper
 
-exampleParams :: Vars X
+exampleParams :: MRec X
 exampleParams = mu @= Just 5 <: sigma @= Just 2 <: y @= Just 0 <: emptyRecord
 
 access :: Monad m
@@ -129,7 +128,7 @@ binomial' n p field = do
   suspend (BinomialDist n p y return)
 
 {- Executing Models -}
-runModelFree :: Monad m => ModelT s m a -> ReaderT (Record (Maybes s)) m a
+runModelFree :: Monad m => ModelT s m a -> ReaderT (MRec s) m a
 runModelFree model = do
   let loop v = do
           x <- runFreeT v
@@ -137,5 +136,5 @@ runModelFree model = do
                     Pure v -> return v
   loop model
 
-runModel :: Monad m => ModelT s m a -> Record (Maybes s) -> m a
+runModel :: Monad m => ModelT s m a -> MRec s -> m a
 runModel model = runReaderT (runModelFree model)

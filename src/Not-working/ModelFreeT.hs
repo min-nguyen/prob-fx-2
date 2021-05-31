@@ -78,18 +78,18 @@ runModelState :: State (Record (Maybes s)) a -> Record (Maybes s)
               -> (a, Record (Maybes s))
 runModelState = runState 
 
-exampleModel :: (HasVar s "mu" Double) => FreeT Dist (State (Record (Maybes s))) Double
-exampleModel = do
-  let r1 = 5
-  mu' <- access mu
-  x  <- normal 5 0 mu'
-  let r2 = 4
-  return (r1 + r2)
+-- exampleModel :: (HasVar s "mu" Double) => FreeT Dist (State (Record (Maybes s))) Double
+-- exampleModel = do
+--   let r1 = 5
+--   mu' <- access mu
+--   x  <- normal 5 0 mu'
+--   let r2 = 4
+--   return (r1 + r2)
 
-linearRegression :: (HasVar s "y" Double) =>
-                    Double -> Double -> Double -> FreeT Dist (State (Record (Maybes s))) Double
-linearRegression muu sigma x = do
-  y' <- normal (muu + x) sigma y
-  return y'
+-- linearRegression :: (HasVar s "y" Double) =>
+--                     Double -> Double -> Double -> FreeT Dist (State (Record (Maybes s))) Double
+-- linearRegression muu sigma x = do
+--   y' <- normal (muu + x) sigma y
+--   return y'
 
 -- run = runModelFree (linearRegression 0 0 0)

@@ -22,6 +22,17 @@
   (major1) == 4 && (major2) == 12 && (minor) <= 0)
 #endif /* MIN_VERSION_base */
 
+/* package containers-0.6.0.1 */
+#ifndef VERSION_containers
+#define VERSION_containers "0.6.0.1"
+#endif /* VERSION_containers */
+#ifndef MIN_VERSION_containers
+#define MIN_VERSION_containers(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  6 || \
+  (major1) == 0 && (major2) == 6 && (minor) <= 0)
+#endif /* MIN_VERSION_containers */
+
 /* package extensible-0.7 */
 #ifndef VERSION_extensible
 #define VERSION_extensible "0.7"
@@ -44,15 +55,15 @@
   (major1) == 0 && (major2) == 5 && (minor) <= 3)
 #endif /* MIN_VERSION_ghc_prim */
 
-/* package lens-4.19.2 */
+/* package lens-4.17.1 */
 #ifndef VERSION_lens
-#define VERSION_lens "4.19.2"
+#define VERSION_lens "4.17.1"
 #endif /* VERSION_lens */
 #ifndef MIN_VERSION_lens
 #define MIN_VERSION_lens(major1,major2,minor) (\
   (major1) <  4 || \
-  (major1) == 4 && (major2) <  19 || \
-  (major1) == 4 && (major2) == 19 && (minor) <= 2)
+  (major1) == 4 && (major2) <  17 || \
+  (major1) == 4 && (major2) == 17 && (minor) <= 1)
 #endif /* MIN_VERSION_lens */
 
 /* package membership-0.0.1 */
@@ -77,27 +88,49 @@
   (major1) == 2 && (major2) == 2 && (minor) <= 2)
 #endif /* MIN_VERSION_mtl */
 
-/* package mwc-random-0.15.0.1 */
+/* package mwc-random-0.14.0.0 */
 #ifndef VERSION_mwc_random
-#define VERSION_mwc_random "0.15.0.1"
+#define VERSION_mwc_random "0.14.0.0"
 #endif /* VERSION_mwc_random */
 #ifndef MIN_VERSION_mwc_random
 #define MIN_VERSION_mwc_random(major1,major2,minor) (\
   (major1) <  0 || \
-  (major1) == 0 && (major2) <  15 || \
-  (major1) == 0 && (major2) == 15 && (minor) <= 0)
+  (major1) == 0 && (major2) <  14 || \
+  (major1) == 0 && (major2) == 14 && (minor) <= 0)
 #endif /* MIN_VERSION_mwc_random */
 
-/* package profunctors-5.6.2 */
+/* package primitive-0.6.4.0 */
+#ifndef VERSION_primitive
+#define VERSION_primitive "0.6.4.0"
+#endif /* VERSION_primitive */
+#ifndef MIN_VERSION_primitive
+#define MIN_VERSION_primitive(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  6 || \
+  (major1) == 0 && (major2) == 6 && (minor) <= 4)
+#endif /* MIN_VERSION_primitive */
+
+/* package profunctors-5.6 */
 #ifndef VERSION_profunctors
-#define VERSION_profunctors "5.6.2"
+#define VERSION_profunctors "5.6"
 #endif /* VERSION_profunctors */
 #ifndef MIN_VERSION_profunctors
 #define MIN_VERSION_profunctors(major1,major2,minor) (\
   (major1) <  5 || \
   (major1) == 5 && (major2) <  6 || \
-  (major1) == 5 && (major2) == 6 && (minor) <= 2)
+  (major1) == 5 && (major2) == 6 && (minor) <= 0)
 #endif /* MIN_VERSION_profunctors */
+
+/* package statistics-0.15.2.0 */
+#ifndef VERSION_statistics
+#define VERSION_statistics "0.15.2.0"
+#endif /* VERSION_statistics */
+#ifndef MIN_VERSION_statistics
+#define MIN_VERSION_statistics(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  15 || \
+  (major1) == 0 && (major2) == 15 && (minor) <= 2)
+#endif /* MIN_VERSION_statistics */
 
 /* package transformers-0.5.6.2 */
 #ifndef VERSION_transformers
