@@ -32,14 +32,5 @@ runModelFree model = do
 runModel :: Show a => ModelT s Sampler a -> MRec s -> IO a
 runModel model = sampleIO . runReaderT (runModelFree model)
 
+exampleRun :: IO Double
 exampleRun = runModel (linearRegression 0 0 0) (y @= Nothing <: nil)
--- runFull :: FreeT Dist (ReaderT (MRec s) Sampler) a 
---         -> (ReaderT (MRec s) Sampler) a
--- runFull :: forall s a. (HasVar s "y" Double) => MRec s -> FreeT Dist (ReaderT (MRec s) Sampler) a -> IO a
--- runFull env = sampleIO . flip runReaderT env . runModel
- 
--- exampleEnv :: MRec LinRegrEnv
--- exampleEnv =  (y @= Nothing <: nil) 
-
--- runEx :: IO Double
--- runEx = runFull exampleEnv (linearRegression 0 0 0)
