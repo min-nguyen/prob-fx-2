@@ -28,7 +28,7 @@ type LinRegrEnv =
      ]
 
 linearRegression :: (HasVar s "y" Double) =>
-  Double -> Double -> Double -> FreeT Dist (ReaderT (MRec s) Sampler) Double
+  Double -> Double -> Double -> ModelT s Sampler Double
 linearRegression μ σ x = do
   normal' (μ + x) σ y
 
