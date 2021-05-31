@@ -13,7 +13,7 @@ import Data.Profunctor.Unsafe
 import Data.Extensible hiding (wrap, Head)
 import Control.Lens ( Identity, (^.), review, Getting )
 import Control.Monad
-import Control.Monad.Trans.Class
+import Control.Monad.Trans.Class ( MonadTrans(lift) )
 import Control.Monad.Reader
 
 mkField "mu sigma y ys"

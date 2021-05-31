@@ -22,6 +22,17 @@
   (major1) == 4 && (major2) == 12 && (minor) <= 0)
 #endif /* MIN_VERSION_base */
 
+/* package extensible-0.8.2 */
+#ifndef VERSION_extensible
+#define VERSION_extensible "0.8.2"
+#endif /* VERSION_extensible */
+#ifndef MIN_VERSION_extensible
+#define MIN_VERSION_extensible(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  8 || \
+  (major1) == 0 && (major2) == 8 && (minor) <= 2)
+#endif /* MIN_VERSION_extensible */
+
 /* package models-0.1.0.0 */
 #ifndef VERSION_models
 #define VERSION_models "0.1.0.0"

@@ -4,14 +4,18 @@
 module Example where
 
 import Model
+import FreeT
+import Control.Monad.Reader
+import Sample
 import Dist
 import Util
 import Control.Monad
 import Control.Monad.State
 import Data.Functor
+import Data.Extensible
 
 -- Trivial example
-exampleModel :: (HasVar s "mu" Double) => Model s Double
+exampleModel :: (HasVar s "mu" Double, Monad m) => ModelT s m Double
 exampleModel = do
   let r1 = 5
   x  <- normal' 5 0 mu
@@ -19,8 +23,12 @@ exampleModel = do
   return (r1 + r2)
 
 -- Linear regression
+type LinRegrEnv =     
+    '[  "y"    ':>  Double
+     ]
+
 linearRegression :: (HasVar s "y" Double) =>
-  Double -> Double -> Double -> Model s Double
+  Double -> Double -> Double -> FreeT Dist (ReaderT (MRec s) Sampler) Double
 linearRegression μ σ x = do
   normal' (μ + x) σ y
 
