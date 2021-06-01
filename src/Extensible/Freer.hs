@@ -50,12 +50,12 @@ instance TypeError ('Text "Cannot unify effect types." ':$$:
 class (FindElem t rs) => Member (t :: * -> *) (rs :: [* -> *]) where
   inj ::  t x -> Union rs x
   prj ::  Union rs x -> Maybe (t x)
-
-instance (t ~ s) => Member t '[s] where
+ 
+instance {-# OVERLAPPING #-}  (t ~ s) => Member t '[s] where
    inj x          = Union 0 x
    prj (Union _ x) = Just (unsafeCoerce x)
-
-instance (FindElem t rs) => Member t rs where
+ 
+instance {-# INCOHERENT #-}  (FindElem t rs) => Member t rs where
   inj = inj' (unP (findElem :: P t rs))
   prj = prj' (unP (findElem :: P t rs))
 
@@ -70,6 +70,19 @@ prj' n (Union n' x) | n == n'   = Just (unsafeCoerce x)
 decomp :: Union (t ': r) v -> Either (Union r v) (t v)
 decomp (Union 0 tv) = Right $ unsafeCoerce tv
 decomp (Union n rv) = Left  $ Union (n-1) rv
+
+class EQU (a :: k) (b :: k) p | a b -> p
+instance EQU a a 'True
+instance (p ~ 'False) => EQU a b p
+
+class Member t r => SetMember (tag :: k -> * -> *) (t :: * -> *) r | tag r -> t
+instance (EQU t1 t2 p, MemberU' p tag t1 (t2 ': r)) => SetMember tag t1 (t2 ': r)
+
+class Member t r =>
+      MemberU' (f::Bool) (tag :: k -> * -> *) (t :: * -> *) r | tag r -> t
+instance MemberU' 'True tag (tag e) (tag e ': r)
+instance (Member t (t' ': r), SetMember tag t r) =>
+           MemberU' 'False tag t (t' ': r)
 
 {- Eff and VE -}
 -- data Free f a = Pure a |  Free (Union f (Free f a))
@@ -94,3 +107,6 @@ instance Monad (Freer f) where
 
 run :: Freer '[] a -> a 
 run (Pure x) = x
+
+send :: Member t rs => t x -> Freer rs x
+send t = Free (inj t) Pure

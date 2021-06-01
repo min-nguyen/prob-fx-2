@@ -9,7 +9,7 @@ import Data.Extensible
 
 main :: IO ()
 main = do
-  let k = runModel (linearRegression 0 0 0) (y @= Nothing <: nil)
+  -- let k = runModel (linearRegression 0 0 0) (y @= Nothing <: nil)
   x <- Basic.runModel (linearRegression 0 1 0) (y @= Nothing <: nil)
   print x
   return ()

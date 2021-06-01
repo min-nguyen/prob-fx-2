@@ -27,8 +27,8 @@ type LinRegrEnv =
     '[  "y"    ':>  Double
      ]
 
-linearRegression :: (HasVar s "y" Double) =>
-  Double -> Double -> Double -> ModelT s Sampler Double
+linearRegression :: (HasVar s "y" Double, Monad m) =>
+  Double -> Double -> Double -> ModelT s m Double
 linearRegression μ σ x = do
   normal' (μ + x) σ y
 
