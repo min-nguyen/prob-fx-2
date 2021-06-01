@@ -13,7 +13,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-
+{-# LANGUAGE OverlappingInstances #-}
 
 module Extensible.Example where
 
@@ -36,10 +36,10 @@ type LinRegrEnv =
     '[  "y"    ':>  Double
      ]
 
-linearRegression :: (HasVar s "y" Double) =>
-  Double -> Double -> Double -> Model s rs Double
-linearRegression μ σ x = do
-  normal' (μ + x) σ y
+-- linearRegression :: 
+--   Double -> Double -> Double -> Model s rs Double
+-- linearRegression μ σ x = do
+--   normal (μ + x) σ Nothing
 
 -- linearRegression :: (KnownNat n, FindElem (Reader (Record (Maybes s))) rs,
 --  FindElem (Lift Sampler) rs, HasVar s "y" Double, 

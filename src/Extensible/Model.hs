@@ -33,29 +33,37 @@ instance Lookup (Maybes xs) k (Maybe v) => HasVar xs k v where
 
 type MRec s = Record (Maybes s)
 
-type Model s rs a = Freer (Dist ': Reader (MRec s) ': Lift Sampler ': rs) a
+-- type Model s rs a = Freer (Dist ': Reader (MRec s) ':  rs) a
 
--- type Model s rs a = 
---   (Member Dist rs,
---    Member (Reader (MRec s)) rs,
---    Member (Lift Sampler) rs) => Freer rs a
+type Model s rs a = 
+  Member Dist rs => Freer (Reader (MRec s) ': rs) a
 
+linearRegression :: HasVar s "y" Double =>
+  Double -> Double -> Double ->  Model s rs Double
+linearRegression μ σ x =  --do
+  normal (μ + x) σ Nothing
+ 
+linearRegression' :: forall rs s. HasVar s "y" Double =>
+  Double -> Double -> Double -> Model s rs Double
+linearRegression' μ σ x = do
+  x <- normal' (μ + x) σ y
+  return 5
 
-access :: forall s rs a.  
+access :: forall s rs a.
      Getting a (Maybes s :& Field Identity) a
   -> Model s rs a
 access f = do
     env :: MRec s <- get
     return $ env ^. f
 
-normal :: Double -> Double -> Maybe Double 
-       -> Model s rs Double 
+normal :: Double -> Double -> Maybe Double -> Model s rs Double
 normal mu sigma maybe_y = do
   send (NormalDist mu sigma maybe_y)
 
-normal' :: (a ~ Maybe Double)
-  => Double -> Double -> Getting a (Maybes s :& Field Identity) a
+normal' :: forall s a rs. (a ~ Maybe Double) =>
+   Double -> Double -> Getting a (Maybes s :& Field Identity) a
   -> Model s rs Double
 normal' mu sigma field = do
+  env :: MRec s <- get
   maybe_y <- access field
   send (NormalDist mu sigma maybe_y )
