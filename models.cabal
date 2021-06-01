@@ -60,6 +60,7 @@ library
                       Extensible.Writer,
                       Extensible.IO,
                       Extensible.Model,
+                      Extensible.Dist,
                       Inference.Basic
 
   -- Modules included in this library but not exported.
