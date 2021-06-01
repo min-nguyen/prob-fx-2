@@ -47,29 +47,23 @@ data Dist a where
 sample :: Dist a -> Sampler a
 sample (NormalDist μ σ obs)  =
   createSampler (sampleNormal μ σ) >>= return
--- sample (UniformDist min max obs k )  = 
---   createSampler (sampleUniform min max) >>= return . k
--- sample (DiscrUniformDist min max obs k)  = 
---   createSampler (sampleDiscreteUniform min max) >>= return . k
--- sample (GammaDist k' θ obs k)        = 
---   createSampler (sampleGamma k' θ) >>= return . k
--- sample (BetaDist α β  obs k)         = 
---   createSampler (sampleBeta α β) >>= return . k
--- sample (BinomialDist n p  obs k)     = 
---   createSampler (sampleBinomial n p) >>=  return . k . length
--- sample (BernoulliDist p obs k)      = 
---   createSampler (sampleBernoulli p) >>= return . k
--- sample (CategoricalDist ps obs k)   = 
---   createSampler (sampleCategorical (fmap snd ps)) >>= return . k
--- sample (DiscreteDist ps obs k)      = 
---   createSampler (sampleDiscrete (map snd ps)) >>= return . k
+sample (UniformDist min max obs  )  = 
+  createSampler (sampleUniform min max) >>= return 
+sample (DiscrUniformDist min max obs )  = 
+  createSampler (sampleDiscreteUniform min max) >>= return 
+sample (GammaDist k θ obs )        = 
+  createSampler (sampleGamma k θ) >>= return 
+sample (BetaDist α β  obs )         = 
+  createSampler (sampleBeta α β) >>= return 
+sample (BinomialDist n p  obs )     = 
+  createSampler (sampleBinomial n p) >>=  return .  length
+sample (BernoulliDist p obs )      = 
+  createSampler (sampleBernoulli p) >>= return 
+sample (CategoricalDist ps obs )   = 
+  createSampler (sampleCategorical (fmap snd ps)) >>= return 
+sample (DiscreteDist ps obs )      = 
+  createSampler (sampleDiscrete (map snd ps)) >>= return 
 
--- runDist :: Member Dist rs => Freer (Dist ': rs) a -> Freer (Sampler ': rs) a
--- runDist (Pure x) = return x
--- runDist (Free u q) = case prj u of
---      Just (NormalDist m sigma y) -> loop (lift (sample $ NormalDist m sigma y))
-
--- runDist :: forall rs a. Freer (Dist  ': rs) a -> Freer rs a
 runDist :: Member (Lift Sampler) rs => Freer (Dist : rs) a 
         -> Freer rs  a
 runDist m = loop m where
@@ -79,8 +73,3 @@ runDist m = loop m where
     Right d@(NormalDist m sigma y) 
       -> send (Lift (sample d)) >>= loop . k
     Left  u'  -> Free u' (loop . k)
-
-g :: Member (Lift Sampler) rs => Freer rs ()
-g = do 
-  send $ Lift (sample (NormalDist 0 0 Nothing))
-  return () 

@@ -7,6 +7,7 @@ import Util
 import Extensible.Dist
 import Extensible.Freer
 import Extensible.Reader
+import Extensible.IO
 import GHC.Generics
 import GHC.Types
 import GHC.TypeLits
@@ -32,8 +33,13 @@ instance Lookup (Maybes xs) k (Maybe v) => HasVar xs k v where
 
 type MRec s = Record (Maybes s)
 
-type Model s rs a =
-  Freer (Dist ': Reader (MRec s) ': Sampler ': rs) a
+type Model s rs a = Freer (Dist ': Reader (MRec s) ': Lift Sampler ': rs) a
+
+-- type Model s rs a = 
+--   (Member Dist rs,
+--    Member (Reader (MRec s)) rs,
+--    Member (Lift Sampler) rs) => Freer rs a
+
 
 access :: forall s rs a.  
      Getting a (Maybes s :& Field Identity) a

@@ -50,7 +50,7 @@ instance TypeError ('Text "Cannot unify effect types." ':$$:
 class (FindElem t rs) => Member (t :: * -> *) (rs :: [* -> *]) where
   inj ::  t x -> Union rs x
   prj ::  Union rs x -> Maybe (t x)
- 
+
 instance {-# OVERLAPPING #-}  (t ~ s) => Member t '[s] where
    inj x          = Union 0 x
    prj (Union _ x) = Just (unsafeCoerce x)

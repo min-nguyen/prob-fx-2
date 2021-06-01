@@ -28,8 +28,8 @@ import Unsafe.Coerce
 import Data.Kind (Constraint)
 import GHC.TypeLits
 import Data.Typeable
-import Data.Extensible hiding (Member)
-
+import Data.Extensible ( Record, Assoc((:>)) )
+import Sample
 {- Probabilistic programs -}
 
 type LinRegrEnv =     
@@ -40,6 +40,13 @@ linearRegression :: (HasVar s "y" Double) =>
   Double -> Double -> Double -> Model s rs Double
 linearRegression μ σ x = do
   normal' (μ + x) σ y
+
+-- linearRegression :: (KnownNat n, FindElem (Reader (Record (Maybes s))) rs,
+--  FindElem (Lift Sampler) rs, HasVar s "y" Double, 
+--  FindElem (Reader (Record (Maybes s))) rs) =>
+--  Double -> Double -> Double -> Freer rs Double
+-- linearRegression μ σ x = do
+--   normal' (μ + x) σ y
 
 
 {- Non probabilistic programs-}
