@@ -70,20 +70,17 @@ sample (NormalDist μ σ obs)  =
 --      Just (NormalDist m sigma y) -> loop (lift (sample $ NormalDist m sigma y))
 
 -- runDist :: forall rs a. Freer (Dist  ': rs) a -> Freer rs a
-runDist :: Freer (Dist : rs) a 
-        -> Freer (Lift Sampler ': rs)  a
-runDist  m = loop m where
-  loop :: Freer (Dist : rs) a -> Freer (Lift Sampler ': rs) a
-  -- At this point, all Reader requests have been handled
+runDist :: Member (Lift Sampler) rs => Freer (Dist : rs) a 
+        -> Freer rs  a
+runDist m = loop m where
+  loop :: Member (Lift Sampler) rs => Freer (Dist : rs) a -> Freer rs a
   loop (Pure x) = return x
-  -- Handle if Reader request, else ignore and go through the rest of the tree (by leaving the request's continuation k there to handle it, but also composing this with 'loop' so that the reader handler can then carry on afterwards).
   loop (Free u k) = case decomp u of 
     Right d@(NormalDist m sigma y) 
-      -> (send $ Lift (sample d) :: Freer (Lift Sampler ': rs) Double) >>= 
-        \x -> loop (k x) -- (send $ Lift (sample d)) >>= k
-    -- Left  u'  -> Free u' (loop . k)
+      -> send (Lift (sample d)) >>= loop . k
+    Left  u'  -> Free u' (loop . k)
 
 g :: Member (Lift Sampler) rs => Freer rs ()
 g = do 
   send $ Lift (sample (NormalDist 0 0 Nothing))
-  return ()
+  return () 
