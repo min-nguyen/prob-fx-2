@@ -59,12 +59,12 @@ type X =
      ]
 
 class AllNothing (a :: [Assoc Symbol *]) where
-  allNothing :: Record a
+  allNothing :: MRec a
 
 instance AllNothing '[] where
   allNothing = emptyRecord
 
-instance AllNothing xs => AllNothing ((x ':> Maybe y) ': xs) where
+instance AllNothing xs => AllNothing ((x ':> y) ': xs) where
   allNothing = xlb (Proxy @x) @= Nothing <: allNothing
 
 nothingRecord = allNothing :: MRec X

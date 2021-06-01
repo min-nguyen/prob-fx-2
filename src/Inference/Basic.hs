@@ -33,4 +33,4 @@ runModel :: Show a => ModelT s Sampler a -> MRec s -> IO a
 runModel model = sampleIO . runReaderT (runModelFree model)
 
 exampleRun :: IO Double
-exampleRun = runModel (linearRegression 0 0 0) (y @= Nothing <: nil)
+exampleRun = runModel (linearRegression 0 0 0) (allNothing @LinRegrEnv)
