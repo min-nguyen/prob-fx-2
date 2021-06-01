@@ -58,6 +58,8 @@ library
                       Extensible.Example,
                       Extensible.Reader,
                       Extensible.Writer,
+                      Extensible.IO,
+                      Extensible.Model,
                       Inference.Basic
 
   -- Modules included in this library but not exported.

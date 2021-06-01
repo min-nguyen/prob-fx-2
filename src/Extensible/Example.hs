@@ -20,6 +20,7 @@ module Extensible.Example where
 import Extensible.Freer
 import Extensible.Reader
 import Extensible.Writer
+import Extensible.IO
 import Control.Monad
 import Unsafe.Coerce
 import Data.Kind (Constraint)
@@ -70,6 +71,11 @@ exampleW :: forall rs. (Member (Writer String) rs)
 exampleW = do
   put "hi"
   return 5
+
+exampleIO :: forall rs. (SetMember Lift (Lift IO) rs) => Freer rs ()
+exampleIO = do
+  lift $ print "hi" 
+  return ()
 
 runEx :: (Int, String)
 runEx = (run . runWriter . runReader (5 :: Int)) example
