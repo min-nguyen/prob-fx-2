@@ -20,12 +20,29 @@ module Extensible.Example where
 import Extensible.Freer
 import Extensible.Reader
 import Extensible.Writer
+import Extensible.Model
+import Extensible.Dist
 import Extensible.IO
 import Control.Monad
 import Unsafe.Coerce
 import Data.Kind (Constraint)
 import GHC.TypeLits
 import Data.Typeable
+import Data.Extensible hiding (Member)
+
+{- Probabilistic programs -}
+
+type LinRegrEnv =     
+    '[  "y"    ':>  Double
+     ]
+
+linearRegression :: (HasVar s "y" Double) =>
+  Double -> Double -> Double -> Model s rs Double
+linearRegression μ σ x = do
+  normal' (μ + x) σ y
+
+
+{- Non probabilistic programs-}
 
 example :: (Member (Reader Int) rs, Member (Writer String) rs) 
         => Freer rs Int

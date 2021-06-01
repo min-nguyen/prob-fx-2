@@ -54,6 +54,7 @@ library
                       Dist,
                       Util,
                       Sample,
+                      Inference,
                       Extensible.Freer,
                       Extensible.Example,
                       Extensible.Reader,
@@ -61,7 +62,7 @@ library
                       Extensible.IO,
                       Extensible.Model,
                       Extensible.Dist,
-                      Inference.Basic
+                      Extensible.Inference
 
   -- Modules included in this library but not exported.
   -- other-modules:

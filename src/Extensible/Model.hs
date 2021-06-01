@@ -2,10 +2,9 @@
 
 module Extensible.Model where
 
-import Dist
-import FreeT
 import Sample
 import Util
+import Extensible.Dist
 import Extensible.Freer
 import Extensible.Reader
 import GHC.Generics
@@ -19,6 +18,7 @@ import Control.Monad
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
 -- import Control.Monad.Reader
 
+mkField "mu sigma y ys"
 
 type family Maybes (as :: [k]) = (bs :: [k]) | bs -> as where
   Maybes ((f :> v) : as) = (f :> Maybe v) : Maybes as
@@ -32,27 +32,24 @@ instance Lookup (Maybes xs) k (Maybe v) => HasVar xs k v where
 
 type MRec s = Record (Maybes s)
 
--- type ModelT s m a = Free Dist (ReaderT (Record (Maybes s)) m) a
-
--- type Model s a = ModelT s Identity a
 type Model s rs a =
   Freer (Dist ': Reader (MRec s) ': Sampler ': rs) a
 
-access :: forall s rs a. a ~ Maybe a => 
+access :: forall s rs a.  
      Getting a (Maybes s :& Field Identity) a
   -> Model s rs a
 access f = do
     env :: MRec s <- get
     return $ env ^. f
 
--- normal :: Double -> Double -> Maybe Double 
---        -> Model s rs Double 
--- normal mu sigma maybe_y = do
---   send (NormalDist mu sigma maybe_y return)
+normal :: Double -> Double -> Maybe Double 
+       -> Model s rs Double 
+normal mu sigma maybe_y = do
+  send (NormalDist mu sigma maybe_y)
 
--- normal' :: (a ~ Maybe Double, Monad m)
---   => Double -> Double -> Getting a (s :& Field Identity) a
---   -> FreeT Dist (ReaderT (Record s) m) Double
--- normal' mu sigma field = do
---   y <- access field
---   suspend (NormalDist mu sigma y return)
+normal' :: (a ~ Maybe Double)
+  => Double -> Double -> Getting a (Maybes s :& Field Identity) a
+  -> Model s rs Double
+normal' mu sigma field = do
+  maybe_y <- access field
+  send (NormalDist mu sigma maybe_y )
