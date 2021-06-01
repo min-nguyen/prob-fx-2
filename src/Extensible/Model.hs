@@ -1,5 +1,7 @@
 {-# LANGUAGE RankNTypes, GADTs, TypeApplications, FlexibleInstances, DerivingStrategies, DataKinds, TypeOperators, TypeFamilies, FlexibleContexts, MultiParamTypeClasses, ConstraintKinds, PolyKinds, UndecidableSuperClasses, TemplateHaskell, ScopedTypeVariables, AllowAmbiguousTypes, QuantifiedConstraints, OverloadedLabels, UndecidableInstances, FunctionalDependencies, TypeFamilyDependencies #-}
 
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Extensible.Model where
 
 import Sample
@@ -35,19 +37,11 @@ type MRec s = Record (Maybes s)
 
 -- type Model s rs a = Freer (Dist ': Reader (MRec s) ':  rs) a
 
+-- type Model s rs a = 
+--   Member Dist rs => Member (Reader (MRec s)) rs => Freer rs a
+
 type Model s rs a = 
   Member Dist rs => Freer (Reader (MRec s) ': rs) a
-
-linearRegression :: HasVar s "y" Double =>
-  Double -> Double -> Double ->  Model s rs Double
-linearRegression μ σ x =  --do
-  normal (μ + x) σ Nothing
- 
-linearRegression' :: forall rs s. HasVar s "y" Double =>
-  Double -> Double -> Double -> Model s rs Double
-linearRegression' μ σ x = do
-  x <- normal' (μ + x) σ y
-  return 5
 
 access :: forall s rs a.
      Getting a (Maybes s :& Field Identity) a
