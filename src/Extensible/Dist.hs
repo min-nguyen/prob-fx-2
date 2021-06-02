@@ -7,7 +7,7 @@ module Extensible.Dist where
 
 import Extensible.IO
 import Extensible.Freer
-import Extensible.Sample
+import Extensible.Sampler
 import Util
 import Control.Lens hiding ((:>))
 import Control.Monad.State
@@ -43,6 +43,14 @@ data Dist a where
   CategoricalDist   :: V.Vector (Int, Double) -> Maybe Int -> Dist Int
   -- discrete       :: Dist Int
   DiscreteDist      :: [(Int, Double)] -> Maybe Int -> Dist Int
+
+
+data Sample a where
+  Sample :: Dist a -> Sample a
+
+data Observe a where
+  Observe :: Dist a -> Observe a
+
 
 instance Distribution (Dist a) where
   cumulative (NormalDist μ σ _ ) x
@@ -100,9 +108,6 @@ hasObs d@(BernoulliDist _ obs )      = isJust obs
 hasObs d@(CategoricalDist _ obs )    = isJust obs
 hasObs d@(DiscreteDist _ obs )       = isJust obs
 
-handleDist :: Dist a -> Sampler (Either Double a)
-handleDist d = if hasObs d then return $ Left (logProb d) else Right <$> sample d
-
 prob :: Dist a -> Double
 prob d@(NormalDist _ _ obs)     
   = density d (fromJust obs)
@@ -128,6 +133,16 @@ prob d@(DiscreteDist _ obs)
 logProb :: Dist a -> Double
 logProb = log . prob 
 
+runDist :: Member (Lift Sampler) rs => Freer (Dist : rs) a 
+        -> Freer rs  a
+runDist m = loop m where
+  loop :: Member (Lift Sampler) rs => Freer (Dist : rs) a -> Freer rs a
+  loop (Pure x) = return x
+  loop (Free u k) = case decomp u of 
+    Right d@(NormalDist m sigma y) 
+      -> send (Lift (sample d)) >>= loop . k
+    Left  u'  -> Free u' (loop . k)
+  
 sample :: Dist a -> Sampler a
 sample (NormalDist μ σ obs)  =
   createSampler (sampleNormal μ σ) >>= return
@@ -148,12 +163,3 @@ sample (CategoricalDist ps obs )   =
 sample (DiscreteDist ps obs )      = 
   createSampler (sampleDiscrete (map snd ps)) >>= return 
 
-runDist :: Member (Lift Sampler) rs => Freer (Dist : rs) a 
-        -> Freer rs  a
-runDist m = loop m where
-  loop :: Member (Lift Sampler) rs => Freer (Dist : rs) a -> Freer rs a
-  loop (Pure x) = return x
-  loop (Free u k) = case decomp u of 
-    Right d@(NormalDist m sigma y) 
-      -> send (Lift (sample d)) >>= loop . k
-    Left  u'  -> Free u' (loop . k)

@@ -4,7 +4,7 @@ module Model where
 
 import Dist
 import FreeT
-import Sample
+import Sampler
 import Util
 import GHC.Generics
 import GHC.Types

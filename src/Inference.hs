@@ -13,7 +13,7 @@ import Control.Monad.Trans.Class
 import Dist
 import Model hiding (runModel, runModelFree)
 import FreeT
-import Sample
+import Sampler
 import Example
 
 -- runModel :: ModelT s Sampler a -> Sampler (Reader (MRec s) a)

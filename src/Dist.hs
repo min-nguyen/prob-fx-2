@@ -3,7 +3,7 @@
 module Dist where
 
 import FreeT
-import Sample
+import Sampler
 import Util
 import Control.Lens hiding ((:>))
 import Control.Monad.State

@@ -5,11 +5,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Extensible.Model where
 
-import Sample
 import Util
 import Extensible.Dist
 import Extensible.Freer
 import Extensible.Reader
+import Extensible.Sampler
 import Extensible.IO
 import GHC.Generics
 import GHC.Types
@@ -65,7 +65,7 @@ normal' mu sigma field = do
   maybe_y  <- access field
   send (NormalDist mu sigma maybe_y)
 
-
+{- Newtype version of model (doesn't work with examples yet) -}
 -- newtype Model env es a = Model { 
 --     runModel ::  Member Dist es => Member (Reader (MRec env)) es => (Freer es a) 
 --   } deriving (Functor)

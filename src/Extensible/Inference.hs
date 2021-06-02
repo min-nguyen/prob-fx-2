@@ -14,7 +14,7 @@ import Control.Monad.Trans.Class
 import Extensible.Dist
 import Extensible.Freer
 import Extensible.Model hiding (runModel, runModelFree)
-import Extensible.Sample
+import Extensible.Sampler
 
 -- runModelFree :: Model s rs a 
 --          -> Freer rs a

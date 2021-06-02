@@ -53,7 +53,7 @@ library
                       FreeT,
                       Dist,
                       Util,
-                      Sample,
+                      Sampler,
                       Inference,
                       Extensible.Freer,
                       Extensible.Example,
@@ -63,7 +63,7 @@ library
                       Extensible.Model,
                       Extensible.Dist,
                       Extensible.Inference,
-                      Extensible.Sample
+                      Extensible.Sampler
 
   -- Modules included in this library but not exported.
   -- other-modules:

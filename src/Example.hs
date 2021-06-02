@@ -6,7 +6,7 @@ module Example where
 import Model
 import FreeT
 import Control.Monad.Reader
-import Sample
+import Sampler
 import Dist
 import Util
 import Control.Monad

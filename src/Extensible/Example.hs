@@ -23,7 +23,7 @@ import Extensible.Writer
 import Extensible.Model
 import Extensible.Dist
 import Extensible.IO
-import Extensible.Sample
+import Extensible.Sampler
 import Control.Monad
 import Unsafe.Coerce
 import Data.Kind (Constraint)
@@ -54,7 +54,7 @@ linearRegression' μ σ x = do
 
 runLR' :: Sampler Double
 runLR' = runLift $ runDist $ runReader (y @= Nothing <: nil) (linearRegression' 0 0 0)
-
+ 
 {- Non probabilistic programs-}
 
 example :: (Member (Reader Int) rs, Member (Writer String) rs) 
