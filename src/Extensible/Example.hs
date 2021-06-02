@@ -23,13 +23,14 @@ import Extensible.Writer
 import Extensible.Model
 import Extensible.Dist
 import Extensible.IO
+import Extensible.Sample
 import Control.Monad
 import Unsafe.Coerce
 import Data.Kind (Constraint)
 import GHC.TypeLits
 import Data.Typeable
 import Data.Extensible hiding (Member)
-import Sample
+
 
 {- Probabilistic programs -}
 
@@ -44,7 +45,7 @@ linearRegression μ σ x =  --do
 
 runLR :: Sampler Double
 runLR = runLift $ runDist $ runReader (y @= Nothing <: nil) (linearRegression 0 0 0)
-
+ 
 linearRegression' :: forall rs s. HasVar s "y" Double =>
   Double -> Double -> Double -> Model s rs Double
 linearRegression' μ σ x = do

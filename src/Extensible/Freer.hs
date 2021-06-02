@@ -13,7 +13,6 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE IncoherentInstances #-}
 
 module Extensible.Freer where
 
@@ -37,7 +36,7 @@ newtype P t rs = P {unP :: Int}
 class FindElem (t :: * -> *) r where
   findElem :: P t r
 
-instance FindElem t (t ': r) where
+instance {-# INCOHERENT  #-} FindElem t (t ': r) where
   findElem = P 0
 instance  FindElem t r => FindElem t (t' ': r) where
   findElem = P $ 1 + (unP $ (findElem :: P t r))
@@ -51,7 +50,7 @@ class (FindElem t rs) => Member (t :: * -> *) (rs :: [* -> *]) where
   inj ::  t x -> Union rs x
   prj ::  Union rs x -> Maybe (t x)
 
-instance (t ~ s) => Member t '[s] where
+instance {-# INCOHERENT #-} (t ~ s) => Member t '[s] where
    inj x          = Union 0 x
    prj (Union _ x) = Just (unsafeCoerce x)
  
@@ -75,6 +74,7 @@ class EQU (a :: k) (b :: k) p | a b -> p
 instance EQU a a 'True
 instance (p ~ 'False) => EQU a b p
 
+-- | This class is used for emulating monad transformers
 class Member t r => SetMember (tag :: k -> * -> *) (t :: * -> *) r | tag r -> t
 instance (EQU t1 t2 p, MemberU' p tag t1 (t2 ': r)) => SetMember tag t1 (t2 ': r)
 
@@ -83,7 +83,7 @@ class Member t r =>
 instance MemberU' 'True tag (tag e) (tag e ': r)
 instance (Member t (t' ': r), SetMember tag t r) =>
            MemberU' 'False tag t (t' ': r)
-
+          
 {- Eff and VE -}
 -- data Free f a = Pure a |  Free (Union f (Free f a))
 

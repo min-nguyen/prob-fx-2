@@ -51,7 +51,7 @@ access :: forall s rs a.
 access f = do
     env :: MRec s <- get
     return $ env ^. f
-
+ 
 normal :: Double -> Double -> Maybe Double -> Model s rs Double
 normal mu sigma maybe_y = do
   send (NormalDist mu sigma maybe_y)
