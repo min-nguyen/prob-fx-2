@@ -35,11 +35,13 @@ instance Lookup (Maybes xs) k (Maybe v) => HasVar xs k v where
 
 type MRec s = Record (Maybes s)
 
+{- Probably too strict
 -- type Model s rs a = Freer (Dist ': Reader (MRec s) ':  rs) a
-
+-}
+{- Only works with type applications
 -- type Model s rs a = 
 --   Member Dist rs => Member (Reader (MRec s)) rs => Freer rs a
-
+-}
 type Model s rs a = 
   Member Dist rs => Freer (Reader (MRec s) ': rs) a
 
