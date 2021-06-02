@@ -42,10 +42,10 @@ linearRegression ::
   Double -> Double -> Double ->  Model s rs Double
 linearRegression μ σ x =  --do
   normal (μ + x) σ Nothing
-
+ 
 runLR :: Sampler Double
 runLR = runLift $ runDist $ runReader (y @= Nothing <: nil) (linearRegression 0 0 0)
- 
+
 linearRegression' :: forall rs s. HasVar s "y" Double =>
   Double -> Double -> Double -> Model s rs Double
 linearRegression' μ σ x = do
@@ -55,7 +55,7 @@ linearRegression' μ σ x = do
 runLR' :: Sampler Double
 runLR' = runLift $ runDist $ runReader (y @= Nothing <: nil) (linearRegression' 0 0 0)
 
-{- Non pro babilistic programs-}
+{- Non probabilistic programs-}
 
 example :: (Member (Reader Int) rs, Member (Writer String) rs) 
         => Freer rs Int

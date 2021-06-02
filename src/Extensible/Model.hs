@@ -2,6 +2,7 @@
 
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Extensible.Model where
 
 import Sample
@@ -42,8 +43,8 @@ type MRec s = Record (Maybes s)
 -- type Model s rs a = 
 --   Member Dist rs => Member (Reader (MRec s)) rs => Freer rs a
 -}
-type Model s rs a = 
-  Member Dist rs => Freer (Reader (MRec s) ': rs) a
+
+type Model env es a = Member Dist es => (Freer (Reader (MRec env) ': es) a) 
 
 access :: forall s rs a.
      Getting a (Maybes s :& Field Identity) a
@@ -51,15 +52,47 @@ access :: forall s rs a.
 access f = do
     env :: MRec s <- get
     return $ env ^. f
- 
+    
 normal :: Double -> Double -> Maybe Double -> Model s rs Double
-normal mu sigma maybe_y = do
+normal mu sigma maybe_y =  do
   send (NormalDist mu sigma maybe_y)
 
 normal' :: forall s a rs. (a ~ Maybe Double) =>
    Double -> Double -> Getting a (Maybes s :& Field Identity) a
   -> Model s rs Double
 normal' mu sigma field = do
-  env :: MRec s <- get
-  maybe_y <- access field
-  send (NormalDist mu sigma maybe_y )
+  -- env :: MRec s <- get
+  maybe_y  <- access field
+  send (NormalDist mu sigma maybe_y)
+
+
+-- newtype Model env es a = Model { 
+--     runModel ::  Member Dist es => Member (Reader (MRec env)) es => (Freer es a) 
+--   } deriving (Functor)
+
+-- instance Applicative (Model env es) where
+--   pure x = Model (pure x)
+--   (<*>) = ap
+
+-- instance Monad (Model env es) where
+--   return = pure 
+--   Model fs >>= f = Model (fs >>= (runModel . f))
+
+-- access :: forall s rs a.
+--      Getting a (Maybes s :& Field Identity) a
+--   -> Model s rs a
+-- access f = Model $ do
+--     env :: MRec s <- get
+--     return $ env ^. f
+    
+-- normal :: Double -> Double -> Maybe Double -> Model s rs Double
+-- normal mu sigma maybe_y = Model $ do
+--   send (NormalDist mu sigma maybe_y)
+
+-- normal' :: forall s a rs. (a ~ Maybe Double) =>
+--    Double -> Double -> Getting a (Maybes s :& Field Identity) a
+--   -> Model s rs Double
+-- normal' mu sigma field = Model $ do
+--   -- env :: MRec s <- get
+--   maybe_y  <- runModel $ access field
+--   send (NormalDist mu sigma maybe_y)
