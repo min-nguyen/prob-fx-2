@@ -28,7 +28,7 @@ import Unsafe.Coerce
 import Data.Kind (Constraint)
 import GHC.TypeLits
 import Data.Typeable
-import Data.Extensible ( Record, Assoc((:>)) )
+import Data.Extensible hiding (Member)
 import Sample
 
 {- Probabilistic programs -}
@@ -41,15 +41,20 @@ linearRegression ::
   Double -> Double -> Double ->  Model s rs Double
 linearRegression μ σ x =  --do
   normal (μ + x) σ Nothing
- 
+
+runLR :: Sampler Double
+runLR = runLift $ runDist $ runReader (y @= Nothing <: nil) (linearRegression 0 0 0)
+
 linearRegression' :: forall rs s. HasVar s "y" Double =>
   Double -> Double -> Double -> Model s rs Double
 linearRegression' μ σ x = do
   x <- normal' (μ + x) σ y
   return 5
 
+runLR' :: Sampler Double
+runLR' = runLift $ runDist $ runReader (y @= Nothing <: nil) (linearRegression' 0 0 0)
 
-{- Non probabilistic programs-}
+{- Non pro babilistic programs-}
 
 example :: (Member (Reader Int) rs, Member (Writer String) rs) 
         => Freer rs Int
