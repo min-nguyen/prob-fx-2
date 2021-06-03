@@ -30,8 +30,10 @@ type LinRegrEnv =
 linearRegression :: (HasVar s "y" Double, Monad m) =>
   Double -> Double -> Double -> ModelT s m Double
 linearRegression μ σ x = do
-  normal' (μ + x) σ y
-
+  a <- normal' (μ + x) σ y
+  b <- normal' (μ + x) σ y
+  return (a + b)
+  
 -- Hidden markov model (with parameter y :: Int)
 transitionModel ::  Double -> Int -> Model s Int
 transitionModel transition_p x_prev = do

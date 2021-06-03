@@ -8,6 +8,7 @@
 module Inference where
 
 import Data.Extensible
+import Data.Maybe
 import Control.Monad.Reader
 import Control.Monad.Trans.Class
 import Dist
@@ -22,10 +23,20 @@ runModelFree :: Show a => ModelT s Sampler a
 runModelFree model = do
   let loop v = do
         x <- runFreeT v
+        let handle d obs k =  
+              if   isJust obs 
+              then let p = logProb d in loop $ k (fromJust obs)
+              else do lift (sample d) >>= loop
         case x of 
-          FreeF dist -> do
-            a  <- lift $ sample dist 
-            loop a 
+          FreeF d@(NormalDist _ _ obs k) -> handle d obs k
+          FreeF d@(UniformDist _ _ obs k) -> handle d obs k
+          FreeF d@(DiscrUniformDist _ _ obs k) -> handle d obs k
+          FreeF d@(GammaDist _ _ obs k) -> handle d obs k
+          FreeF d@(BetaDist _ _ obs k) -> handle d obs k
+          FreeF d@(BinomialDist _ _ obs k) -> handle d obs k
+          FreeF d@(BernoulliDist _  obs k) -> handle d obs k
+          FreeF d@(CategoricalDist  _ obs k) -> handle d obs k
+          FreeF d@(DiscreteDist  _ obs k) -> handle d obs k
           Pure v -> return v
   loop model 
 

@@ -40,17 +40,6 @@ data Dist a where
   -- discrete       :: Dist Int
   DiscreteDist      :: [(Int, Double)] -> Maybe Int -> (Int -> a) -> Dist a
 
-hasObs :: Dist a -> Bool
-hasObs d@(NormalDist _ _ obs _)       = isJust obs
-hasObs d@(DiscrUniformDist _ _ obs _) = isJust obs
-hasObs d@(UniformDist _ _ obs _)      = isJust obs
-hasObs d@(GammaDist _ _ obs _)        = isJust obs
-hasObs d@(BetaDist _ _ obs k)         = isJust obs
-hasObs d@(BinomialDist _ _ obs _)     = isJust obs
-hasObs d@(BernoulliDist _ obs _)      = isJust obs
-hasObs d@(CategoricalDist _ obs _)    = isJust obs
-hasObs d@(DiscreteDist _ obs _)       = isJust obs
-
 instance Functor Dist where
   fmap f (NormalDist mu sigma y g) = NormalDist mu sigma y (f . g)
   fmap f (UniformDist min max y g) = UniformDist min max y (f . g)
@@ -105,9 +94,6 @@ instance DiscreteDistr (Dist a) where
   logProbability (DiscrUniformDist min max _ _) i = logProbability (discreteUniformAB min max) i
 
 {- Returns 'Either LogProb SampledValue' -}
-handleDist :: Dist a -> Sampler (Either Double a)
-handleDist d = if hasObs d then return $ Left (logProb d) else Right <$> sample d
-
 prob :: Dist a -> Double
 prob d@(NormalDist _ _ obs _)     
   = density d (fromJust obs)
@@ -134,7 +120,7 @@ logProb :: Dist a -> Double
 logProb = log . prob 
 
 sample :: Dist a -> Sampler a
-sample (NormalDist μ σ obs k)  =
+sample (NormalDist μ σ obs k)  = do
   createSampler (sampleNormal μ σ) >>= return . k
 sample (UniformDist min max obs k )  = 
   createSampler (sampleUniform min max) >>= return . k
