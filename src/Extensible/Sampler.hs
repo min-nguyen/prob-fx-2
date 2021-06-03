@@ -28,7 +28,6 @@ import qualified System.Random.MWC.Distributions as MWC.Dist
 
 import Util
 
-
 newtype Sampler a = Sampler {runSampler :: ReaderT MWC.GenIO IO a}
   deriving (Functor, Applicative, Monad)
 

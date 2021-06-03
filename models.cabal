@@ -62,8 +62,9 @@ library
                       Extensible.IO,
                       Extensible.Model,
                       Extensible.Dist,
-                      Extensible.Inference,
-                      Extensible.Sampler
+                      Extensible.Sampler,
+                      Extensible.Inference.Basic,
+                      Extensible.Inference.LW
 
   -- Modules included in this library but not exported.
   -- other-modules:

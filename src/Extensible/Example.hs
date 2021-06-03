@@ -23,6 +23,7 @@ import Extensible.Writer
 import Extensible.Model
 import Extensible.Dist
 import Extensible.IO
+import Extensible.Inference.LW
 import Extensible.Sampler
 import Control.Monad
 import Unsafe.Coerce
@@ -43,9 +44,9 @@ linearRegression ::
 linearRegression μ σ x =  --do
   normal (μ + x) σ Nothing
  
-runLR :: IO Double
+runLR :: Freer '[Observe, Sample] Double
 runLR = 
-  runSample . runObserve . runDist $ 
+  runDist $
     runReader (y @= Nothing <: nil) (linearRegression 0 1 0)
 
 linearRegression' :: forall rs s. HasVar s "y" Double =>
@@ -53,9 +54,9 @@ linearRegression' :: forall rs s. HasVar s "y" Double =>
 linearRegression' μ σ x = do
   normal' (μ + x) σ y
 
-runLR' :: IO Double
-runLR' = runSample . runObserve . runDist $ 
-          runReader (y @= Just 0.5 <: nil) (linearRegression' 0 1 0)
+runLR' :: Freer '[Observe, Sample] Double
+runLR' = runDist $ 
+          runReader (y @= Just 0.4 <: nil) (linearRegression' 0 1 0)
 
 arbitraryModel :: forall rs s. HasVar s "y" Double =>
   Double -> Double -> Double -> Model s rs Double

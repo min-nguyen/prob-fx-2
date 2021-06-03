@@ -66,26 +66,6 @@ runDist = loop 0
           else send (Sample d α) >>= loop (α + 1). k
     Left  u'  -> Free u' (loop α . k)
 
-runObserve :: Freer (Observe : rs) a -> Freer rs  a
-runObserve = loop 
-  where
-  loop :: Freer (Observe : rs) a -> Freer rs a
-  loop (Pure x) = return x
-  loop (Free u k) = case decomp u of 
-    Right (Observe d y α) 
-      -> let p = logProb d y
-         in  loop (k y) 
-    Left  u'  -> Free u' (loop . k)
-
-runSample :: Freer '[Sample] a -> IO a
-runSample = sampleIO . loop
-  where
-  loop :: Freer '[Sample] a -> Sampler a
-  loop (Pure x) = return x
-  loop (Free u k) = case prj u of
-     Just (Sample d α) -> liftS (putStrLn $ ">> : " ++ show α) >> sample d >>= loop . k
-     Nothing         -> error "Impossible: Nothing cannot occur"
- 
 {- Old version of runDist which always samples -}
 -- runDist :: Member (Lift Sampler) rs => Freer (Dist : rs) a 
 --         -> Freer rs  a
