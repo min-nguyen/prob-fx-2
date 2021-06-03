@@ -5,7 +5,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Extensible.Dist where
 
-import Extensible.IO
+-- import Extensible.IO
 import Extensible.Freer
 import Extensible.Sampler
 import Util
@@ -44,13 +44,56 @@ data Dist a where
   -- discrete       :: Dist Int
   DiscreteDist      :: [(Int, Double)] -> Maybe Int -> Dist Int
 
-
 data Sample a where
   Sample :: Dist a -> Sample a
 
 data Observe a where
-  Observe :: Dist a -> Observe a
+  Observe :: Dist a -> a -> Observe a
 
+{- Replaces Dists with Sample or Observe-}
+runDist :: (Member Sample rs, Member Observe rs) => Freer (Dist : rs) a 
+        -> Freer rs a
+runDist = loop 
+  where
+  loop :: (Member Sample rs, Member Observe rs)  => Freer (Dist : rs) a -> Freer rs a
+  loop (Pure x) = return x
+  loop (Free u k) = case decomp u of 
+    Right d@(NormalDist m sigma y) 
+      -> if hasObs d 
+          then send (Observe d (getObs d)) >>= loop . k 
+          else send (Sample d) >>= loop . k
+    Left  u'  -> Free u' (loop . k)
+
+runObserve :: Freer (Observe : rs) a -> Freer rs  a
+runObserve = loop 
+  where
+  loop :: Freer (Observe : rs) a -> Freer rs a
+  loop (Pure x) = return x
+  loop (Free u k) = case decomp u of 
+    Right (Observe d y) 
+      -> let p = logProb d y
+         in  loop (k y) 
+    Left  u'  -> Free u' (loop . k)
+
+runSample :: Freer '[Sample] a -> IO a
+runSample = sampleIO . loop
+  where
+  loop :: Freer '[Sample] a -> Sampler a
+  loop (Pure x) = return x
+  loop (Free u k) = case prj u of
+     Just (Sample d) -> sample d >>= loop . k
+     Nothing         -> error "Impossible: Nothing cannot occur"
+ 
+{- Old version of runDist which always samples -}
+-- runDist :: Member (Lift Sampler) rs => Freer (Dist : rs) a 
+--         -> Freer rs  a
+-- runDist m = loop m where
+--   loop :: Member (Lift Sampler) rs => Freer (Dist : rs) a -> Freer rs a
+--   loop (Pure x) = return x
+--   loop (Free u k) = case decomp u of 
+--     Right d@(NormalDist m sigma y) 
+--       -> send (Lift (sample d)) >>= loop . k
+--     Left  u'  -> Free u' (loop . k)
 
 instance Distribution (Dist a) where
   cumulative (NormalDist μ σ _ ) x
@@ -108,41 +151,42 @@ hasObs d@(BernoulliDist _ obs )      = isJust obs
 hasObs d@(CategoricalDist _ obs )    = isJust obs
 hasObs d@(DiscreteDist _ obs )       = isJust obs
 
-prob :: Dist a -> Double
-prob d@(NormalDist _ _ obs)     
-  = density d (fromJust obs)
-prob d@(DiscrUniformDist _ _ obs) 
-  = probability d (fromJust obs)
-prob d@(UniformDist _ _ obs)     
-  = density d (fromJust obs)
-prob d@(GammaDist _ _ obs)          
-  = density d (fromJust obs)
-prob d@(BetaDist _ _ obs)           
-  = density d (fromJust obs)
-prob d@(BinomialDist _ _ obs)       
-  = probability d (fromJust obs)
-prob d@(BernoulliDist _ obs)        
-  = probability d (boolToInt $ fromJust obs)
-prob d@(CategoricalDist _ obs)     
-  = probability d (fromJust obs)
-prob d@(DiscreteDist _ obs)        
-  = probability d (fromJust obs)
+getObs :: Dist a -> a
+getObs d@(NormalDist _ _ obs )       = fromJust obs
+getObs d@(DiscrUniformDist _ _ obs ) = fromJust obs
+getObs d@(UniformDist _ _ obs )      = fromJust obs
+getObs d@(GammaDist _ _ obs )        = fromJust obs
+getObs d@(BetaDist _ _ obs )         = fromJust obs
+getObs d@(BinomialDist _ _ obs )     = fromJust obs
+getObs d@(BernoulliDist _ obs )      = fromJust obs
+getObs d@(CategoricalDist _ obs )    = fromJust obs
+getObs d@(DiscreteDist _ obs )       = fromJust obs
+
+prob :: Dist a -> a -> Double
+prob d@NormalDist {} y
+  = density d y
+prob d@DiscrUniformDist {} y
+  = probability d y
+prob d@UniformDist {} y     
+  = density d y
+prob d@GammaDist {} y    
+  = density d y
+prob d@BetaDist {}  y         
+  = density d y
+prob d@BinomialDist {} y      
+  = probability d y
+prob d@BernoulliDist {} y       
+  = probability d (boolToInt y)
+prob d@CategoricalDist {} y    
+  = probability d y
+prob d@DiscreteDist {} y      
+  = probability d y
 
 {- Combines logDensity and logProbability.
    Log probability of double `x` from a distribution -}
-logProb :: Dist a -> Double
-logProb = log . prob 
+logProb :: Dist a -> a -> Double
+logProb d = log . prob d
 
-runDist :: Member (Lift Sampler) rs => Freer (Dist : rs) a 
-        -> Freer rs  a
-runDist m = loop m where
-  loop :: Member (Lift Sampler) rs => Freer (Dist : rs) a -> Freer rs a
-  loop (Pure x) = return x
-  loop (Free u k) = case decomp u of 
-    Right d@(NormalDist m sigma y) 
-      -> send (Lift (sample d)) >>= loop . k
-    Left  u'  -> Free u' (loop . k)
-  
 sample :: Dist a -> Sampler a
 sample (NormalDist μ σ obs)  =
   createSampler (sampleNormal μ σ) >>= return
