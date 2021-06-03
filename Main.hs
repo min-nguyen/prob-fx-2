@@ -11,9 +11,9 @@ import Data.Extensible
 main :: IO ()
 main = do
   -- let k = runModel (linearRegression 0 0 0) (y @= Nothing <: nil)
-  x <- Infer.runModel (linearRegression 0 1 0) (y @= Just 5 <: nil)
-  -- y <- Extensible.Example.runLR'
-  print x
+  -- x <- Infer.runModel (linearRegression 0 1 0) (y @= Just 5 <: nil)
+  y <- Extensible.Example.runLR'
+  print y 
   return ()
 
   

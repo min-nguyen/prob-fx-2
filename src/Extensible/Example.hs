@@ -57,6 +57,13 @@ runLR' :: IO Double
 runLR' = runSample . runObserve . runDist $ 
           runReader (y @= Just 0.5 <: nil) (linearRegression' 0 1 0)
 
+arbitraryModel :: forall rs s. HasVar s "y" Double =>
+  Double -> Double -> Double -> Model s rs Double
+arbitraryModel μ σ x = do
+  normal' (μ + x) σ y
+  replicateM 4 $ normal (μ + x) σ Nothing
+  normal' (μ + x) σ y
+
 {- Non probabilistic programs-}
 
 example :: (Member (Reader Int) rs, Member (Writer String) rs) 

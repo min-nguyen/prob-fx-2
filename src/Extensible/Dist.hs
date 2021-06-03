@@ -44,25 +44,27 @@ data Dist a where
   -- discrete       :: Dist Int
   DiscreteDist      :: [(Int, Double)] -> Maybe Int -> Dist Int
 
+type Addr = Int
+
 data Sample a where
-  Sample :: Dist a -> Sample a
+  Sample :: Dist a -> Addr -> Sample a
 
 data Observe a where
-  Observe :: Dist a -> a -> Observe a
+  Observe :: Dist a -> a -> Addr -> Observe a
 
-{- Replaces Dists with Sample or Observe-}
+{- Replaces Dists with Sample or Observe and adds address -}
 runDist :: (Member Sample rs, Member Observe rs) => Freer (Dist : rs) a 
         -> Freer rs a
-runDist = loop 
+runDist = loop 0
   where
-  loop :: (Member Sample rs, Member Observe rs)  => Freer (Dist : rs) a -> Freer rs a
-  loop (Pure x) = return x
-  loop (Free u k) = case decomp u of 
+  loop :: (Member Sample rs, Member Observe rs) => Addr -> Freer (Dist : rs) a -> Freer rs a
+  loop α (Pure x) = return x
+  loop α (Free u k) = case decomp u of 
     Right d@(NormalDist m sigma y) 
       -> if hasObs d 
-          then send (Observe d (getObs d)) >>= loop . k 
-          else send (Sample d) >>= loop . k
-    Left  u'  -> Free u' (loop . k)
+          then send (Observe d (getObs d) α) >>= loop (α + 1) . k 
+          else send (Sample d α) >>= loop (α + 1). k
+    Left  u'  -> Free u' (loop α . k)
 
 runObserve :: Freer (Observe : rs) a -> Freer rs  a
 runObserve = loop 
@@ -70,7 +72,7 @@ runObserve = loop
   loop :: Freer (Observe : rs) a -> Freer rs a
   loop (Pure x) = return x
   loop (Free u k) = case decomp u of 
-    Right (Observe d y) 
+    Right (Observe d y α) 
       -> let p = logProb d y
          in  loop (k y) 
     Left  u'  -> Free u' (loop . k)
@@ -81,7 +83,7 @@ runSample = sampleIO . loop
   loop :: Freer '[Sample] a -> Sampler a
   loop (Pure x) = return x
   loop (Free u k) = case prj u of
-     Just (Sample d) -> sample d >>= loop . k
+     Just (Sample d α) -> liftS (putStrLn $ ">> : " ++ show α) >> sample d >>= loop . k
      Nothing         -> error "Impossible: Nothing cannot occur"
  
 {- Old version of runDist which always samples -}
