@@ -8,6 +8,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Extensible.Inference.LW where
 
+import Data.Map
 import Data.Extensible
 import Control.Monad.Reader
 import Control.Monad.Trans.Class
@@ -15,6 +16,8 @@ import Extensible.Dist
 import Extensible.Freer
 import Extensible.Model hiding (runModel, runModelFree)
 import Extensible.Sampler
+
+type Conts = forall a. Map Int (Freer '[Sample] a)
 
 runLW :: Freer '[Observe, Sample] a -> IO (a, Double)
 runLW = runSample . runObserve
@@ -36,6 +39,6 @@ runSample = sampleIO . loop
   loop :: Freer '[Sample] a -> Sampler a
   loop (Pure x) = return x
   loop (Free u k) = case prj u of
-     Just (Sample d α) -> 
+    Just (Sample d α) -> 
        liftS (putStrLn $ ">> : " ++ show α) >> sample d >>= loop . k
-     Nothing         -> error "Impossible: Nothing cannot occur"
+    Nothing         -> error "Impossible: Nothing cannot occur"

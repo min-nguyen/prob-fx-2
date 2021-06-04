@@ -14,6 +14,7 @@ import Extensible.IO
 import GHC.Generics
 import GHC.Types
 import GHC.TypeLits
+import Data.Maybe
 import Data.Kind
 import Data.Profunctor.Unsafe
 import Data.Extensible hiding (wrap, Head, Member)
@@ -21,6 +22,17 @@ import Control.Lens ( Identity, (^.), review, Getting )
 import Control.Monad
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
 -- import Control.Monad.Reader
+import Statistics.Distribution
+import Statistics.Distribution.DiscreteUniform
+import Statistics.Distribution.Normal
+import Statistics.Distribution.Gamma
+import Statistics.Distribution.Beta
+import Statistics.Distribution.Binomial
+import Statistics.Distribution.Uniform
+import System.Random.MWC
+import qualified System.Random.MWC.Distributions as MWC
+import qualified Data.Vector as V
+import Unsafe.Coerce
 
 mkField "mu sigma y ys"
 
@@ -49,21 +61,43 @@ type Model env es a = Member Dist es => (Freer (Reader (MRec env) ': es) a)
 access :: forall s rs a.
      Getting a (Maybes s :& Field Identity) a
   -> Model s rs a
-access f = do
+access f =  do
     env :: MRec s <- get
     return $ env ^. f
     
-normal :: Double -> Double -> Maybe Double -> Model s rs Double
-normal mu sigma maybe_y =  do
+normal :: Member Dist rs => Double -> Double -> Maybe Double -> Model s rs Double
+normal mu sigma maybe_y = do
   send (NormalDist mu sigma maybe_y)
 
 normal' :: forall s a rs. (a ~ Maybe Double) =>
    Double -> Double -> Getting a (Maybes s :& Field Identity) a
   -> Model s rs Double
 normal' mu sigma field = do
-  -- env :: MRec s <- get
   maybe_y  <- access field
   send (NormalDist mu sigma maybe_y)
+
+bernoulli :: (a ~ Maybe Bool)
+  => Double -> Maybe Bool
+  -> Model s rs Bool
+bernoulli p maybe_y = do
+  send (BernoulliDist p maybe_y)
+
+bernoulli' :: (a ~ Maybe Bool)
+  => Double -> Getting a (Maybes s :& Field Identity) a
+  -> Model s rs Bool
+bernoulli' p field = do
+  y <- access field
+  send (BernoulliDist p y)
+
+-- data IfModel s rs a = IfModel 
+
+-- if' :: forall s rs a. Bool -> Model s rs a -> Model s rs a -> Model s rs a
+-- if' b (Free u@(Union n tx) k) m2 = 
+--   case prj u :: forall x. Maybe (Dist x) of
+--     _ -> undefined
+  
+  -- send $ IfDist b d1 d2
+
 
 {- Newtype version of model (doesn't work with examples yet) -}
 -- newtype Model env es a = Model { 

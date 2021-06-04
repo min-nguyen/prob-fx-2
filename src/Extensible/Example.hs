@@ -65,6 +65,33 @@ arbitraryModel μ σ x = do
   replicateM 4 $ normal (μ + x) σ Nothing
   normal' (μ + x) σ y
 
+ifModel :: forall rs s. Double -> Model s rs Double
+ifModel p = do
+  x1 <- bernoulli p Nothing
+  x2 <- if x1 then (normal 0 1 Nothing) else (pure 0)
+  x3 <- bernoulli p Nothing
+  return 0
+
+-- ifModel' :: Double -> Model s rs Double
+-- ifModel' p = 
+--   Free (inj $ BernoulliDist p Nothing) Pure >>= \x1 ->
+--     if x1 then Free (inj $ NormalDist 0 1 Nothing) Pure else return 0
+
+-- ifModel :: forall rs s. Double -> Model s rs Double
+-- ifModel p = do
+--   x1 <- bernoulli p Nothing
+--   x2 <- if' x1 undefined undefined
+--   x3 <- bernoulli p Nothing
+--   return 0 
+
+ifModel' :: Double -> Model s rs Double
+ifModel' p = 
+  Free (inj $ BernoulliDist p Nothing) Pure >>= \x1 ->
+    if x1 then Free (inj $ NormalDist 0 1 Nothing) Pure else return 0
+
+-- runIfModel :: Freer '[Observe, Sample] Double
+-- runIfModel = runDist $ runReader (y @= Just 0.4 <: nil) (ifModel 0.5)
+
 {- Non probabilistic programs-}
 
 example :: (Member (Reader Int) rs, Member (Writer String) rs) 

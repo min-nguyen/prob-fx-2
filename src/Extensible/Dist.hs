@@ -25,6 +25,7 @@ import System.Random.MWC
 import qualified System.Random.MWC.Distributions as MWC
 
 data Dist a where
+  -- IfDist            :: Bool -> Dist a -> Dist a -> Dist a
   -- normal         :: Dist Double
   NormalDist        :: Double -> Double -> Maybe Double -> Dist Double
   -- uniform        :: Dist Double
@@ -44,6 +45,12 @@ data Dist a where
   -- discrete       :: Dist Int
   DiscreteDist      :: [(Int, Double)] -> Maybe Int -> Dist Int
 
+instance Show a => Show (Dist a) where
+  show (NormalDist mu sigma y) = 
+    "NormalDist(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ show y ++ ")"
+  show (BernoulliDist p y) =
+    "BernoulliDist(" ++ show p ++ ", " ++ show y ++ ")"
+
 type Addr = Int
 
 data Sample a where
@@ -53,29 +60,22 @@ data Observe a where
   Observe :: Dist a -> a -> Addr -> Observe a
 
 {- Replaces Dists with Sample or Observe and adds address -}
-runDist :: (Member Sample rs, Member Observe rs) => Freer (Dist : rs) a 
+runDist :: forall rs a. (Member Sample rs, Member Observe rs) => Freer (Dist : rs) a 
         -> Freer rs a
 runDist = loop 0
   where
   loop :: (Member Sample rs, Member Observe rs) => Addr -> Freer (Dist : rs) a -> Freer rs a
   loop α (Pure x) = return x
   loop α (Free u k) = case decomp u of 
-    Right d@(NormalDist m sigma y) 
+    -- Right (IfDist b d1 d2)
+    --   -> (if b then send (Sample d1 α) else send (Sample d2 (α + 1))) 
+    --         >>= loop (α + 2) . k 
+    Right d
       -> if hasObs d 
           then send (Observe d (getObs d) α) >>= loop (α + 1) . k 
           else send (Sample d α) >>= loop (α + 1). k
     Left  u'  -> Free u' (loop α . k)
 
-{- Old version of runDist which always samples -}
--- runDist :: Member (Lift Sampler) rs => Freer (Dist : rs) a 
---         -> Freer rs  a
--- runDist m = loop m where
---   loop :: Member (Lift Sampler) rs => Freer (Dist : rs) a -> Freer rs a
---   loop (Pure x) = return x
---   loop (Free u k) = case decomp u of 
---     Right d@(NormalDist m sigma y) 
---       -> send (Lift (sample d)) >>= loop . k
---     Left  u'  -> Free u' (loop . k)
 
 instance Distribution (Dist a) where
   cumulative (NormalDist μ σ _ ) x
@@ -189,3 +189,14 @@ sample (CategoricalDist ps obs )   =
 sample (DiscreteDist ps obs )      = 
   createSampler (sampleDiscrete (map snd ps)) >>= return 
 
+
+{- Old version of runDist which always samples -}
+-- runDist :: Member (Lift Sampler) rs => Freer (Dist : rs) a 
+--         -> Freer rs  a
+-- runDist m = loop m where
+--   loop :: Member (Lift Sampler) rs => Freer (Dist : rs) a -> Freer rs a
+--   loop (Pure x) = return x
+--   loop (Free u k) = case decomp u of 
+--     Right d@(NormalDist m sigma y) 
+--       -> send (Lift (sample d)) >>= loop . k
+--     Left  u'  -> Free u' (loop . k)
