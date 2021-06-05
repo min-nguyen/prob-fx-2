@@ -166,7 +166,7 @@
 #endif /* MIN_TOOL_VERSION_strip */
 
 #ifndef CURRENT_COMPONENT_ID
-#define CURRENT_COMPONENT_ID "models-0.1.0.0-68yQLQU6N6ACAnPJtYlfnQ-models"
+#define CURRENT_COMPONENT_ID "models-0.1.0.0-FcfzuFIcvxL2QfXqZIFE7a-models"
 #endif /* CURRENT_COMPONENT_ID */
 #ifndef CURRENT_PACKAGE_VERSION
 #define CURRENT_PACKAGE_VERSION "0.1.0.0"

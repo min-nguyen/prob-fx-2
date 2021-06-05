@@ -67,9 +67,6 @@ runDist = loop 0
   loop :: (Member Sample rs, Member Observe rs) => Addr -> Freer (Dist : rs) a -> Freer rs a
   loop α (Pure x) = return x
   loop α (Free u k) = case decomp u of 
-    -- Right (IfDist b d1 d2)
-    --   -> (if b then send (Sample d1 α) else send (Sample d2 (α + 1))) 
-    --         >>= loop (α + 2) . k 
     Right d
       -> if hasObs d 
           then send (Observe d (getObs d) α) >>= loop (α + 1) . k 
