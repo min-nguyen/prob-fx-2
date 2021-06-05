@@ -21,7 +21,7 @@ import Unsafe.Coerce
 import Data.Kind (Constraint)
 import GHC.TypeLits
 import Data.Typeable
-
+import qualified Extensible.OpenSum as OpenSum
 {- Extensible effects without Typeable in Union, using Freer monad -}
 
 {- Unions -}

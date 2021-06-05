@@ -61,27 +61,34 @@ type Ⲭ = Map Addr (OpenSum Vals)
 --          in  loop (p + p') (k y) 
 --     Left  u'  -> Free u' (loop p . k)
 
-runSample :: forall a. OpenSum.Member a Vals => Addr -> Ⲭ -> Freer '[Sample] a -> IO (a, Ⲭ)
+runSample :: Addr -> Ⲭ -> Freer '[Sample] a -> IO (a, Ⲭ)
 runSample α_samp samples = sampleIO . loop samples
   where
-  loop :: forall a. OpenSum.Member a Vals => Ⲭ -> Freer '[Sample] a -> Sampler (a, Ⲭ)
+  loop :: Ⲭ -> Freer '[Sample] a -> Sampler (a, Ⲭ)
   loop samples' (Pure x) = return (x, samples')
-  loop samples' (Free u k) = case prj u of
-    Just (Sample d@NormalDist {} α) -> case lookupSample samples' d α α_samp of
-      Nothing -> do x <- sample d  
-                    loop (Map.insert α (OpenSum.inj x) samples') (k x) 
-      Just x ->  loop samples' (k x)
-    Nothing         -> error "Impossible: Nothing cannot occur"
+  loop samples' (Free u k) = do
+    case prj u of
+      Just (Sample d α) -> 
+        case d of
+          NormalDist {} -> 
+            case lookupSample samples' d α α_samp of
+              Nothing -> do x <- sample d
+                            loop (Map.insert α (OpenSum.inj x) samples') (k x) 
+              Just x ->  loop samples' (k x)
+          BernoulliDist {} -> 
+            case lookupSample samples' d α α_samp of
+              Nothing -> do x <- sample d  
+                            loop (Map.insert α (OpenSum.inj x) samples') (k x) 
+              Just x ->  loop samples' (k x)
+          BinomialDist {} -> 
+            case lookupSample samples' d α α_samp of
+              Nothing -> do x <- sample d  
+                            loop (Map.insert α (OpenSum.inj x) samples') (k x) 
+              Just x ->  loop samples' (k x)
+      Nothing         -> error "Impossible: Nothing cannot occur"
 
 -- | Lookup a sample address α's value - return Nothing if it doesn't exist or the sample address is the same as the current sample site α_samp, indicating that a new value should be sampled. 
-lookupSample :: forall a. OpenSum.Member a Vals
-  => Ⲭ -> Dist a -> Addr -> Addr -> Maybe a
-lookupSample samples _ α α_samp
+lookupSample :: OpenSum.Member a '[Int, Double, Bool] => Ⲭ -> Dist a -> Addr -> Addr -> Maybe a
+lookupSample samples  d α α_samp 
   | α == α_samp = Nothing
   | otherwise   = Map.lookup α samples >>= OpenSum.prj
-  
--- lookupOrSample :: Ⲭ -> Dist a -> Addr -> Addr -> Sampler a
--- lookupOrSample samples d@(NormalDist mu sigma y) α α_samp 
---  | α == α_samp || Map.lookup samples α = sample d
-
-  -- if α == α_samp then
