@@ -61,6 +61,7 @@ type Ⲭ = Map Addr (OpenSum Vals)
 --          in  loop (p + p') (k y) 
 --     Left  u'  -> Free u' (loop p . k)
 
+-- | ss a s
 runSample :: Addr -> Ⲭ -> Freer '[Sample] a -> IO (a, Ⲭ)
 runSample α_samp samples = sampleIO . loop samples
   where
@@ -73,6 +74,11 @@ runSample α_samp samples = sampleIO . loop samples
           NormalDist {} -> 
             case lookupSample samples' d α α_samp of
               Nothing -> do x <- sample d
+                            loop (Map.insert α (OpenSum.inj x) samples') (k x) 
+              Just x ->  loop samples' (k x)
+          UniformDist {} -> 
+            case lookupSample samples' d α α_samp of
+              Nothing -> do x <- sample d  
                             loop (Map.insert α (OpenSum.inj x) samples') (k x) 
               Just x ->  loop samples' (k x)
           BernoulliDist {} -> 

@@ -45,6 +45,27 @@ data Dist a where
   -- discrete       :: Dist Int
   DiscreteDist      :: [(Int, Double)] -> Maybe Int -> Dist Int
 
+class SimpleType a
+
+instance SimpleType Int
+instance SimpleType Bool
+instance SimpleType Double
+
+
+data WithEvidence a where
+  With :: SimpleType a => Dist a -> WithEvidence a
+
+{- Given 'pattern Patt expr <- (fun -> pat)' 
+An expression 'expr' will match against 'fun -> pat' if 'fun expr' matches against 'pat'.
+For example, (head -> x)
+-}
+-- pattern Wow :: SimpleType a => MyGadt a -> MyGadt a
+pattern DistDouble :: Dist Double
+pattern DistDouble = (NormalDist {})
+
+makeEvidence :: Dist a -> WithEvidence Double
+makeEvidence (NormalDist mu sigma y) = With (NormalDist mu sigma y)
+
 instance Show a => Show (Dist a) where
   show (NormalDist mu sigma y) = 
     "NormalDist(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ show y ++ ")"
