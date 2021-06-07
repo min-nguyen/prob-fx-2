@@ -19,8 +19,8 @@ import Example
 import Control.Monad.Trans.Identity
 
 -- runModel :: ModelT s Sampler a -> Sampler (Reader (MRec s) a)
-runModelFree :: Show a => ModelT s IdentityT a 
-         -> ReaderT (MRec s) (IdentityT Sampler) a
+runModelFree :: (MonadTrans t, Monad (t Sampler)) => ModelT s t a 
+         -> ReaderT (MRec s) (t Sampler) a
 runModelFree model = do
   let loop v = do
         x <- runFreeT v

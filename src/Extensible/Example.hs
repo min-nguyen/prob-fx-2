@@ -38,8 +38,8 @@ import Data.Extensible hiding (Member)
 sigmoid :: Double -> Double
 sigmoid x = 1 / exp((-1) * x)
 
-logisticRegression :: forall rs s. HasVar s "label" Bool =>
- Double -> Model s rs Bool
+logisticRegression :: forall rs env. HasVar env "label" Bool =>
+ Double -> Model env rs Bool
 logisticRegression x = do
   m     <- normal 0 1 
   b     <- normal 0 1  
@@ -110,46 +110,46 @@ ifModel' p =
 example :: (Member (Reader Int) rs, Member (Writer String) rs) 
         => Freer rs Int
 example = do
-  put "hi"
-  x :: Int <- get
-  put "hi"
+  tell "hi"
+  x :: Int <- ask
+  tell "hi"
   return 5
 
 prog :: (Member (Reader Int) rs, Member (Writer String) rs) 
         => Freer rs Int
-prog = Free (inj $ Put "hi") Pure >>= \() -> 
-         Free (inj Get) Pure >>= \(x :: Int) -> 
-           Free (inj $ Put (show x)) Pure >>= \() -> 
+prog = Free (inj $ Tell "hi") Pure >>= \() -> 
+         Free (inj Ask) Pure >>= \(x :: Int) -> 
+           Free (inj $ Tell (show x)) Pure >>= \() -> 
              Pure 5
 
 prog' :: (Member (Reader Int) rs, Member (Writer String) rs) => Freer rs Int
-prog' = Free (inj $ Put "hi") (Pure >=> \() -> 
-          Free (inj Get) (Pure >=> \(x :: Int) -> 
-            Free (inj $ Put (show x)) (Pure >=> \() -> 
+prog' = Free (inj $ Tell "hi") (Pure >=> \() -> 
+          Free (inj Ask) (Pure >=> \(x :: Int) -> 
+            Free (inj $ Tell (show x)) (Pure >=> \() -> 
               Pure 5)))
  
 prog'' :: (Member (Reader Int) rs, Member (Writer String) rs) => Freer rs Int
-prog'' = Free (inj $ Put "hi") (\() -> 
-          Free (inj Get) (\(x :: Int) -> 
-            Free (inj $ Put (show x)) (\() -> 
+prog'' = Free (inj $ Tell "hi") (\() -> 
+          Free (inj Ask) (\(x :: Int) -> 
+            Free (inj $ Tell (show x)) (\() -> 
               Pure 5)))
 
 example' :: forall env. Freer '[Reader env, Writer String] Int
 example' = do
-  put "hi"
-  x :: env <- get
+  tell "hi"
+  x :: env <- ask
   return 5
 
 exampleR :: forall rs . (Member (Reader Int) rs) 
         => Freer rs Int
 exampleR = do
-  x :: Int <- get
+  x :: Int <- ask
   return 5
 
 exampleW :: forall rs. (Member (Writer String) rs) 
         => Freer rs Int
 exampleW = do
-  put "hi"
+  tell "hi"
   return 5
 
 exampleIO :: forall rs. (SetMember Lift (Lift IO) rs) => Freer rs ()

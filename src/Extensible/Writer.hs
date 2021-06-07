@@ -18,10 +18,10 @@ module Extensible.Writer where
 import Extensible.Freer
 
 data Writer w a where 
-  Put :: w -> Writer w ()
+  Tell :: w -> Writer w ()
 
-put :: Member (Writer w) rs => w -> Freer rs ()
-put w = Free (inj $ Put w) Pure
+tell :: Member (Writer w) rs => w -> Freer rs ()
+tell w = Free (inj $ Tell w) Pure
 
 runWriter :: forall w rs a . Monoid w => Freer (Writer w ': rs) a -> Freer rs (a, w)
 runWriter m = loop mempty m where
@@ -30,5 +30,5 @@ runWriter m = loop mempty m where
   loop w (Pure x) = return (x, w)
   -- Handle if Writer request, else ignore and go through the rest of the tree
   loop w (Free u k) = case decomp u of
-    Right (Put w') -> loop (w `mappend` w') (k ())
+    Right (Tell w') -> loop (w `mappend` w') (k ())
     Left u'        -> Free u' (loop w . k)

@@ -59,6 +59,7 @@ library
                       Extensible.Example,
                       Extensible.Reader,
                       Extensible.Writer,
+                      Extensible.State,
                       Extensible.IO,
                       Extensible.Model,
                       Extensible.OpenSum,

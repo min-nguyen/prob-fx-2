@@ -132,7 +132,7 @@ binomial' n p field = do
 
 -- FreeT Dist (ReaderT (Record (Maybes s)) m) a
 {- Executing Models -}
-runModelFree :: MonadTrans t => ModelT s t a -> ReaderT (MRec s) (t Sampler) a
+runModelFree :: (MonadTrans t, Monad (t Sampler)) => ModelT s t a -> ReaderT (MRec s) (t Sampler) a
 runModelFree model = do
   let loop v = do
           x <- runFreeT v
@@ -140,5 +140,5 @@ runModelFree model = do
                     Pure v -> return v
   loop model
 
-runModel :: MonadTrans t => ModelT s t a -> MRec s -> t (Sampler) a
+runModel :: (MonadTrans t, Monad (t Sampler)) => ModelT s t a -> MRec s -> t (Sampler) a
 runModel model = runReaderT (runModelFree model)

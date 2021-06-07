@@ -63,7 +63,7 @@ access :: forall s rs a.
      Getting a (Maybes s :& Field Identity) a
   -> Model s rs a
 access f =  do
-    env :: MRec s <- get
+    env :: MRec s <- ask
     return $ env ^. f
     
 normal :: Member Dist rs => Double -> Double -> Model s rs Double
