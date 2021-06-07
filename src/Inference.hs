@@ -16,17 +16,18 @@ import Model hiding (runModel, runModelFree)
 import FreeT
 import Sampler
 import Example
+import Control.Monad.Trans.Identity
 
 -- runModel :: ModelT s Sampler a -> Sampler (Reader (MRec s) a)
-runModelFree :: Show a => ModelT s Sampler a 
-         -> ReaderT (MRec s) Sampler a
+runModelFree :: Show a => ModelT s IdentityT a 
+         -> ReaderT (MRec s) (IdentityT Sampler) a
 runModelFree model = do
   let loop v = do
         x <- runFreeT v
         let handle d obs k =  
               if   isJust obs 
               then let p = logProb d in loop $ k (fromJust obs)
-              else do lift (sample d) >>= loop
+              else do lift (lift (sample d)) >>= loop
         case x of 
           FreeF d@(NormalDist _ _ obs k) -> handle d obs k
           FreeF d@(UniformDist _ _ obs k) -> handle d obs k
@@ -40,8 +41,8 @@ runModelFree model = do
           Pure v -> return v
   loop model 
 
-runModel :: Show a => ModelT s Sampler a -> MRec s -> IO a
-runModel model = sampleIO . runReaderT (runModelFree model)
+runModel :: Show a => ModelT s IdentityT a -> MRec s -> IO a
+runModel model = sampleIO . runIdentityT . runReaderT (runModelFree model)
 
 exampleRun :: IO Double
 exampleRun = runModel (linearRegression 0 0 0) (allNothing @LinRegrEnv)

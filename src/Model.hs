@@ -16,12 +16,14 @@ import Control.Lens ( Identity, (^.), review, Getting )
 import Control.Monad
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
 import Control.Monad.Reader
+import Control.Monad.Trans.Identity
+
 
 mkField "mu sigma y ys"
 
-type ModelT s m a = FreeT Dist (ReaderT (Record (Maybes s)) m) a
+type ModelT s t a = FreeT Dist (ReaderT (Record (Maybes s)) (t Sampler)) a
 
-type Model s a = ModelT s Identity a
+type Model s a = ModelT s IdentityT a
 
 type family Keys (as :: [Assoc k v]) :: [k] where
   Keys ((k :> v) : as) = k : Keys as
@@ -130,7 +132,7 @@ binomial' n p field = do
 
 -- FreeT Dist (ReaderT (Record (Maybes s)) m) a
 {- Executing Models -}
-runModelFree :: Monad m => ModelT s m a -> ReaderT (MRec s) m a
+runModelFree :: MonadTrans t => ModelT s t a -> ReaderT (MRec s) (t Sampler) a
 runModelFree model = do
   let loop v = do
           x <- runFreeT v
@@ -138,5 +140,5 @@ runModelFree model = do
                     Pure v -> return v
   loop model
 
-runModel :: Monad m => ModelT s m a -> MRec s -> m a
+runModel :: MonadTrans t => ModelT s t a -> MRec s -> t (Sampler) a
 runModel model = runReaderT (runModelFree model)

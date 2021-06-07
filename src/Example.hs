@@ -15,7 +15,7 @@ import Data.Functor
 import Data.Extensible
 
 -- Trivial example
-exampleModel :: (HasVar s "mu" Double, Monad m) => ModelT s m Double
+exampleModel :: (HasVar s "mu" Double, MonadTrans t, Monad (t Sampler)) => ModelT s t Double
 exampleModel = do
   let r1 = 5
   x  <- normal' 5 0 mu
@@ -27,8 +27,8 @@ type LinRegrEnv =
     '[  "y"    ':>  Double
      ]
 
-linearRegression :: (HasVar s "y" Double, Monad m) =>
-  Double -> Double -> Double -> ModelT s m Double
+linearRegression :: (HasVar s "y" Double, MonadTrans t, Monad (t Sampler)) =>
+  Double -> Double -> Double -> ModelT s t Double
 linearRegression μ σ x = do
   a <- normal' (μ + x) σ y
   b <- normal' (μ + x) σ y
@@ -63,19 +63,19 @@ hmmNSteps transition_p observation_p n =
   foldl (>=>) return (replicate n (hmm transition_p observation_p))
 
 -- Hidden markov model (with parameter y :: Int and state monad)
-transitionModelSt :: Double -> Int -> ModelT s (State [Int]) Int
+transitionModelSt :: Double -> Int -> ModelT s (StateT [Int]) Int
 transitionModelSt transition_p x_prev = do
   dX <- boolToInt <$> bernoulli transition_p Nothing
   let x = x_prev + dX
   return (dX + x)
 
 observationModelSt :: (HasVar s "y" Int)
-  => Double -> Int -> ModelT s (State [Int]) Int
+  => Double -> Int -> ModelT s (StateT [Int]) Int
 observationModelSt observation_p x = do
   binomial' x observation_p y
 
 hmmSt :: (HasVar s "y" Int)
-  => Double -> Double -> Int -> ModelT s (State [Int]) Int
+  => Double -> Double -> Int -> ModelT s (StateT [Int]) Int
 hmmSt transition_p observation_p x_prev = do
   x_n <- transitionModelSt transition_p x_prev
   y_n <- observationModelSt observation_p x_n
@@ -83,7 +83,7 @@ hmmSt transition_p observation_p x_prev = do
   return x_n
 
 hmmNStepsSt :: (HasVar s "y" Int) 
-  => Double -> Double -> Int -> (Int -> ModelT s (State [Int]) Int)
+  => Double -> Double -> Int -> (Int -> ModelT s (StateT [Int]) Int)
 hmmNStepsSt transition_p observation_p n =
   foldl (>=>) return (replicate n (hmmSt transition_p observation_p))
 

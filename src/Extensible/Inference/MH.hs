@@ -7,6 +7,7 @@
  
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE ViewPatterns #-}
 module Extensible.Inference.MH where
 
 import Data.Functor.Identity
@@ -61,7 +62,7 @@ type Ⲭ = Map Addr (OpenSum Vals)
 --          in  loop (p + p') (k y) 
 --     Left  u'  -> Free u' (loop p . k)
 
--- | ss a s
+
 runSample :: Addr -> Ⲭ -> Freer '[Sample] a -> IO (a, Ⲭ)
 runSample α_samp samples = sampleIO . loop samples
   where
