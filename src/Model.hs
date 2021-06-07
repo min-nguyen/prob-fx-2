@@ -21,7 +21,9 @@ import Control.Monad.Trans.Identity
 
 mkField "mu sigma y ys"
 
-type ModelT s t a = FreeT Dist (ReaderT (Record (Maybes s)) (t Sampler)) a
+type ModelT s t a = 
+  (MonadTrans t, Monad (t Sampler)) => 
+  FreeT Dist (ReaderT (Record (Maybes s)) (t Sampler)) a
 
 type Model s a = ModelT s IdentityT a
 

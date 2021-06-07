@@ -41,7 +41,7 @@ runModelFree model = do
           Pure v -> return v
   loop model 
 
-runModel :: Show a => ModelT s IdentityT a -> MRec s -> IO a
+runModel :: ModelT s IdentityT a -> MRec s -> IO a
 runModel model = sampleIO . runIdentityT . runReaderT (runModelFree model)
 
 exampleRun :: IO Double

@@ -15,7 +15,7 @@ import Data.Functor
 import Data.Extensible
 
 -- Trivial example
-exampleModel :: (HasVar s "mu" Double, MonadTrans t, Monad (t Sampler)) => ModelT s t Double
+exampleModel :: (HasVar s "mu" Double) => ModelT s t Double
 exampleModel = do
   let r1 = 5
   x  <- normal' 5 0 mu
@@ -27,13 +27,13 @@ type LinRegrEnv =
     '[  "y"    ':>  Double
      ]
 
-linearRegression :: (HasVar s "y" Double, MonadTrans t, Monad (t Sampler)) =>
+linearRegression :: (HasVar s "y" Double) =>
   Double -> Double -> Double -> ModelT s t Double
 linearRegression μ σ x = do
   a <- normal' (μ + x) σ y
   b <- normal' (μ + x) σ y
   return (a + b)
-  
+   
 -- Hidden markov model (with parameter y :: Int)
 transitionModel ::  Double -> Int -> Model s Int
 transitionModel transition_p x_prev = do
