@@ -35,6 +35,19 @@ import Data.Extensible hiding (Member)
 
 {- Probabilistic programs -}
 
+sigmoid :: Double -> Double
+sigmoid x = 1 / exp((-1) * x)
+
+logisticRegression :: forall rs s. HasVar s "label" Bool =>
+ Double -> Model s rs Bool
+logisticRegression x = do
+  m     <- normal 0 1 
+  b     <- normal 0 1  
+  sigma <- gamma 1 1 
+  y     <- normal (m * x + b) sigma
+  l     <- bernoulli' (sigmoid y) label
+  return l
+
 type LinRegrEnv =     
     '[  "y"    ':>  Double
      ]
@@ -42,7 +55,7 @@ type LinRegrEnv =
 linearRegression :: 
   Double -> Double -> Double ->  Model s rs Double
 linearRegression μ σ x =  --do
-  normal (μ + x) σ Nothing
+  normal (μ + x) σ 
  
 runLR :: Freer '[Observe, Sample] Double
 runLR = 
@@ -62,14 +75,14 @@ arbitraryModel :: forall rs s. HasVar s "y" Double =>
   Double -> Double -> Double -> Model s rs Double
 arbitraryModel μ σ x = do
   normal' (μ + x) σ y
-  replicateM 4 $ normal (μ + x) σ Nothing
+  replicateM 4 $ normal (μ + x) σ 
   normal' (μ + x) σ y
 
 ifModel :: forall rs s. Double -> Model s rs Double
 ifModel p = do
-  x1 <- bernoulli p Nothing
-  x2 <- if x1 then (normal 0 1 Nothing) else (pure 0)
-  x3 <- bernoulli p Nothing
+  x1 <- bernoulli p 
+  x2 <- if x1 then normal 0 1 else pure 0
+  x3 <- bernoulli p 
   return 0
 
 -- ifModel' :: Double -> Model s rs Double

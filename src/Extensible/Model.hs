@@ -34,7 +34,7 @@ import qualified System.Random.MWC.Distributions as MWC
 import qualified Data.Vector as V
 import Unsafe.Coerce
 
-mkField "mu sigma y ys"
+mkField "mu sigma y ys label"
 
 type family Maybes (as :: [k]) = (bs :: [k]) | bs -> as where
   Maybes ((f :> v) : as) = (f :> Maybe v) : Maybes as
@@ -56,7 +56,8 @@ type MRec s = Record (Maybes s)
 --   Member Dist rs => Member (Reader (MRec s)) rs => Freer rs a
 -}
 
-type Model env es a = Member Dist es => (Freer (Reader (MRec env) ': es) a) 
+type Model env es a = 
+  Member Dist es => (Freer (Reader (MRec env) ': es) a) 
 
 access :: forall s rs a.
      Getting a (Maybes s :& Field Identity) a
@@ -65,9 +66,9 @@ access f =  do
     env :: MRec s <- get
     return $ env ^. f
     
-normal :: Member Dist rs => Double -> Double -> Maybe Double -> Model s rs Double
-normal mu sigma maybe_y = do
-  send (NormalDist mu sigma maybe_y)
+normal :: Member Dist rs => Double -> Double -> Model s rs Double
+normal mu sigma = do
+  send (NormalDist mu sigma Nothing) 
 
 normal' :: forall s a rs. (a ~ Maybe Double) =>
    Double -> Double -> Getting a (Maybes s :& Field Identity) a
@@ -77,10 +78,9 @@ normal' mu sigma field = do
   send (NormalDist mu sigma maybe_y)
 
 bernoulli :: (a ~ Maybe Bool)
-  => Double -> Maybe Bool
-  -> Model s rs Bool
-bernoulli p maybe_y = do
-  send (BernoulliDist p maybe_y)
+  => Double -> Model s rs Bool
+bernoulli p  = do
+  send (BernoulliDist p Nothing) 
 
 bernoulli' :: (a ~ Maybe Bool)
   => Double -> Getting a (Maybes s :& Field Identity) a
@@ -88,6 +88,18 @@ bernoulli' :: (a ~ Maybe Bool)
 bernoulli' p field = do
   y <- access field
   send (BernoulliDist p y)
+
+gamma :: (a ~ Maybe Double)
+  => Double -> Double -> Model s rs Double
+gamma k θ  = do
+  send (GammaDist k θ Nothing) 
+
+gamma' :: (a ~ Maybe Double)
+  => Double -> Double -> Getting a (Maybes s :& Field Identity) a
+  -> Model s rs Double
+gamma' k θ field = do
+  y <- access field
+  send (GammaDist k θ y)
 
 -- data IfModel s rs a = IfModel 
 
