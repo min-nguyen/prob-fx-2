@@ -12,10 +12,13 @@ import Unsafe.Coerce
 
 
 data OpenSum (ts :: [k]) where
-  UnsafeOpenSum :: Show t => Int -> t -> OpenSum ts
+  UnsafeOpenSum :: Int -> t -> OpenSum ts
 
-instance Show (OpenSum ts) where 
-  show (UnsafeOpenSum i t) = show t
+instance {-# INCOHERENT #-} Show t => Show (OpenSum '[t]) where 
+  show (UnsafeOpenSum i t) = show (unsafeCoerce t :: t)
+
+instance forall t ts. (Show t, Show (OpenSum ts)) => Show (OpenSum (t ': ts)) where 
+  show (UnsafeOpenSum i t) = show (unsafeCoerce t :: t)
 
 type Exp a = a -> Type
 type family Eval (e :: Exp a) :: a

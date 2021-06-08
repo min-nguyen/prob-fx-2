@@ -16,13 +16,12 @@ import Data.Functor.Identity
 import Data.Map as Map
 import Data.Kind (Type)
 import Data.Extensible hiding (Member)
-
 import Control.Monad.Trans.Class
 import Extensible.Dist
 import Extensible.Freer
 import Extensible.Model hiding (runModel, runModelFree)
 import Extensible.Sampler
-import Extensible.OpenSum (OpenSum)
+import Extensible.OpenSum as OpenSum (OpenSum(..), Member)
 import Extensible.Reader
 import qualified Extensible.OpenSum as OpenSum
 import GHC.Natural

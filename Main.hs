@@ -1,5 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes, PolyKinds #-}
 
+{-# LANGUAGE DataKinds #-}
 module Main where
 
 import Example
@@ -9,6 +10,7 @@ import qualified Inference as Infer
 import qualified Extensible.Example
 import qualified Extensible.Inference.LW as LW
 import qualified Extensible.Inference.MH as MH
+import Extensible.OpenSum as OpenSum
 import Model
 import Data.Extensible
 
@@ -19,7 +21,8 @@ main = do
   y <- LW.runLW (y @= Just 0.4 <: nil) (Extensible.Example.linearRegression' 0 1 0)
   ((x, p), samples, logps)
     <- MH.runMH (label @= Nothing <: nil) Map.empty 0 (Extensible.Example.logisticRegression (-1))
-  print ((x, p), samples, logps)
+  print $ show ((x, p), samples, logps)
+
   return ()
 
   
