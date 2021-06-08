@@ -48,6 +48,9 @@ logisticRegression x = do
   l     <- bernoulli' (sigmoid y) label
   return l
 
+runLogR :: Freer '[Observe, Sample] Bool
+runLogR = runDist $ runReader (label @= Nothing <: nil) (logisticRegression 0.3)
+
 type LinRegrEnv =     
     '[  "y"    ':>  Double
      ]

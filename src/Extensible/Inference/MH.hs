@@ -48,20 +48,19 @@ type Vals = '[Int, Double, Bool]
 
 type Ⲭ = Map Addr (OpenSum Vals)
 
--- runLW :: Freer '[Observe, Sample] a -> IO (a, Double)
--- runLW = runSample . runObserve
+runMH :: Freer '[Observe, Sample] a -> IO ((a, Double), Ⲭ)
+runMH = runSample 0 Map.empty . runObserve
 
--- runObserve :: Freer (Observe : rs) a -> Freer rs (a, Double)
--- runObserve = loop 0
---   where
---   loop :: Double -> Freer (Observe : rs) a -> Freer rs (a, Double)
---   loop p (Pure x) = return (x, p)
---   loop p (Free u k) = case decomp u of 
---     Right (Observe d y α)  
---       -> let p' = logProb d y
---          in  loop (p + p') (k y) 
---     Left  u'  -> Free u' (loop p . k)
-
+runObserve :: Freer (Observe : rs) a -> Freer rs (a, Double)
+runObserve = loop 0
+  where
+  loop :: Double -> Freer (Observe : rs) a -> Freer rs (a, Double)
+  loop p (Pure x) = return (x, p)
+  loop p (Free u k) = case decomp u of 
+    Right (Observe d y α)  
+      -> let p' = logProb d y
+         in  loop (p + p') (k y) 
+    Left  u'  -> Free u' (loop p . k)
 
 runSample :: Addr -> Ⲭ -> Freer '[Sample] a -> IO (a, Ⲭ)
 runSample α_samp samples = sampleIO . loop samples
@@ -87,7 +86,17 @@ runSample α_samp samples = sampleIO . loop samples
               Nothing -> do x <- sample d  
                             loop (Map.insert α (OpenSum.inj x) samples') (k x) 
               Just x ->  loop samples' (k x)
+          BetaDist {} -> 
+            case lookupSample samples' d α α_samp of
+              Nothing -> do x <- sample d  
+                            loop (Map.insert α (OpenSum.inj x) samples') (k x) 
+              Just x ->  loop samples' (k x)
           BinomialDist {} -> 
+            case lookupSample samples' d α α_samp of
+              Nothing -> do x <- sample d  
+                            loop (Map.insert α (OpenSum.inj x) samples') (k x) 
+              Just x ->  loop samples' (k x)
+          GammaDist {} -> 
             case lookupSample samples' d α α_samp of
               Nothing -> do x <- sample d  
                             loop (Map.insert α (OpenSum.inj x) samples') (k x) 
