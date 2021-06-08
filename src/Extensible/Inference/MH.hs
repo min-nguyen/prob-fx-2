@@ -8,6 +8,8 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Extensible.Inference.MH where
 
 import Data.Functor.Identity
@@ -27,23 +29,6 @@ import GHC.Natural
 import GHC.TypeLits (Nat)
 import qualified GHC.TypeLits as TL
 import Unsafe.Coerce
-
-data Val  where
-  VInt    :: Int -> Val 
-  VDouble :: Double -> Val 
-  VBool   :: Bool -> Val  
-
-asInt :: Val -> Maybe Int 
-asInt (VInt i) = Just i
-asInt _ = Nothing
-
-asDouble :: Val -> Maybe Double
-asDouble (VDouble d) = Just d
-asDouble _ = Nothing 
-
-asBool :: Val -> Maybe Bool
-asBool (VBool b) = Just b
-asBool _ = Nothing
 
 type Vals = '[Int, Double, Bool]
 
@@ -99,6 +84,8 @@ runSample α_samp samples logps = sampleIO . loop samples logps
           BernoulliDist {} -> 
             case lookupSample samples' d α α_samp of
               Nothing -> do x <- sample d
+                            -- liftS $ print $ "probability of sampling " ++ show x ++ " from " 
+                            --         ++ show d ++ " is " ++ show (prob d x)
                             loop (Map.insert α (OpenSum.inj x) samples') 
                                  (Map.insert α (logProb d x) logps') (k x) 
               Just x ->  loop samples' logps' (k x)
