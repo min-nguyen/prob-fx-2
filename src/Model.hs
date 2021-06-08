@@ -19,7 +19,7 @@ import Control.Monad.Reader
 import Control.Monad.Trans.Identity
 
 
-mkField "mu sigma y ys"
+mkField "mu sigma y ys label"
 
 type ModelT s t a = 
   (MonadTrans t, Monad (t Sampler)) => 

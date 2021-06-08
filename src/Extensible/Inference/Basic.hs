@@ -9,15 +9,17 @@
 module Extensible.Inference.Basic where
 
 import Data.Extensible
-import Control.Monad.Reader
 import Control.Monad.Trans.Class
 import Extensible.Dist
 import Extensible.Freer
 import Extensible.Model hiding (runModel, runModelFree)
 import Extensible.Sampler
+import Extensible.Reader
 
-runBasic :: Freer '[Observe, Sample] a -> IO a
-runBasic = runSample . runObserve
+runBasic :: MRec env 
+         -> Model env '[Dist, Observe, Sample] a
+         -> IO a 
+runBasic env = runSample . runObserve . runDist . runReader env
 
 runObserve :: Freer (Observe : rs) a -> Freer rs  a
 runObserve = loop 

@@ -13,14 +13,15 @@ module Extensible.Inference.MH where
 import Data.Functor.Identity
 import Data.Map as Map
 import Data.Kind (Type)
-import Data.Extensible
-import Control.Monad.Reader
+import Data.Extensible hiding (Member)
+
 import Control.Monad.Trans.Class
 import Extensible.Dist
 import Extensible.Freer
 import Extensible.Model hiding (runModel, runModelFree)
 import Extensible.Sampler
 import Extensible.OpenSum (OpenSum)
+import Extensible.Reader
 import qualified Extensible.OpenSum as OpenSum
 import GHC.Natural
 import GHC.TypeLits (Nat)
@@ -48,8 +49,10 @@ type Vals = '[Int, Double, Bool]
 
 type Ⲭ = Map Addr (OpenSum Vals)
 
-runMH :: Freer '[Observe, Sample] a -> IO ((a, Double), Ⲭ)
-runMH = runSample 0 Map.empty . runObserve
+runMH :: MRec env 
+      -> Freer '[Reader (Record (Maybes env)), Dist, Observe, Sample] a
+      -> IO ((a, Double), Ⲭ)
+runMH env = runSample 0 Map.empty . runObserve . runDist . runReader env
 
 runObserve :: Freer (Observe : rs) a -> Freer rs (a, Double)
 runObserve = loop 0

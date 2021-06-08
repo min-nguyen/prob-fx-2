@@ -14,9 +14,9 @@ main :: IO ()
 main = do
   -- let k = runModel (linearRegression 0 0 0) (y @= Nothing <: nil)
   -- x <- Infer.runModel (linearRegression 0 1 0) (y @= Just 5 <: nil)
-  -- y <- LW.runLW Extensible.Example.runLR
-  y <-  MH.runMH Extensible.Example.runLogR
-  print $ fst y
+  y <-  LW.runLW (y @= Just 0.4 <: nil) (Extensible.Example.linearRegression' 0 1 0)
+  z <-  MH.runMH (label @= Nothing <: nil) (Extensible.Example.logisticRegression 0.3)
+  print $ fst z
   return ()
 
   

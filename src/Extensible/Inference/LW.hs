@@ -4,13 +4,14 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE GADTs #-}
  
 {-# LANGUAGE TypeOperators #-}
 module Extensible.Inference.LW where
 
 import Data.Map
 import Data.Extensible
-import Control.Monad.Reader
+import Extensible.Reader
 import Control.Monad.Trans.Class
 import Extensible.Dist
 import Extensible.Freer
@@ -19,8 +20,10 @@ import Extensible.Sampler
 
 type Conts = forall a. Map Int (Freer '[Sample] a)
 
-runLW :: Freer '[Observe, Sample] a -> IO (a, Double)
-runLW = runSample . runObserve
+runLW :: MRec env 
+      -> Model env '[Dist, Observe, Sample] a
+      -> IO (a, Double)
+runLW env = runSample . runObserve . runDist . runReader env
 
 runObserve :: Freer (Observe : rs) a -> Freer rs (a, Double)
 runObserve = loop 0

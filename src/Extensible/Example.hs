@@ -48,9 +48,6 @@ logisticRegression x = do
   l     <- bernoulli' (sigmoid y) label
   return l
 
-runLogR :: Freer '[Observe, Sample] Bool
-runLogR = runDist $ runReader (label @= Nothing <: nil) (logisticRegression 0.3)
-
 type LinRegrEnv =     
     '[  "y"    ':>  Double
      ]
@@ -59,20 +56,11 @@ linearRegression ::
   Double -> Double -> Double ->  Model s rs Double
 linearRegression μ σ x =  --do
   normal (μ + x) σ 
- 
-runLR :: Freer '[Observe, Sample] Double
-runLR = 
-  runDist $
-    runReader (y @= Nothing <: nil) (linearRegression 0 1 0)
 
 linearRegression' :: forall rs s. HasVar s "y" Double =>
   Double -> Double -> Double -> Model s rs Double
 linearRegression' μ σ x = do
   normal' (μ + x) σ y
-
-runLR' :: Freer '[Observe, Sample] Double
-runLR' = runDist $ 
-          runReader (y @= Just 0.4 <: nil) (linearRegression' 0 1 0)
 
 arbitraryModel :: forall rs s. HasVar s "y" Double =>
   Double -> Double -> Double -> Model s rs Double
