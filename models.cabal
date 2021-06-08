@@ -111,7 +111,8 @@ executable models
   -- Other library packages from which modules are imported.
   build-depends:       base >=4.12 && <4.13,
                        extensible,
-                       models
+                       models,
+                       containers
 
 
   -- Base language which the package is written in.

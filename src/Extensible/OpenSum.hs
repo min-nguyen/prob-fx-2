@@ -12,7 +12,10 @@ import Unsafe.Coerce
 
 
 data OpenSum (ts :: [k]) where
-  UnsafeOpenSum :: Int -> t -> OpenSum ts
+  UnsafeOpenSum :: Show t => Int -> t -> OpenSum ts
+
+instance Show (OpenSum ts) where 
+  show (UnsafeOpenSum i t) = show t
 
 type Exp a = a -> Type
 type family Eval (e :: Exp a) :: a
@@ -71,7 +74,7 @@ type Member t ts = KnownNat (Eval (FindElem t ts))
 findElem :: forall t ts. Member t ts => Int
 findElem = fromIntegral $ natVal (Proxy @(Eval (FindElem t ts)))
 
-inj :: forall  t ts. Member t ts =>  t -> OpenSum ts
+inj :: forall  t ts. Member t ts => Show t => t -> OpenSum ts
 inj ft = UnsafeOpenSum (findElem @t @ts) ft
 
 prj :: forall  t ts. Member t ts => OpenSum ts -> Maybe t

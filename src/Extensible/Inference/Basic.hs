@@ -4,8 +4,9 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PolyKinds #-}
- 
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeOperators #-}
+
 module Extensible.Inference.Basic where
 
 import Data.Extensible

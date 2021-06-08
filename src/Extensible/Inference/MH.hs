@@ -47,12 +47,22 @@ asBool _ = Nothing
 
 type Vals = '[Int, Double, Bool]
 
-type Ⲭ = Map Addr (OpenSum Vals)
+type LogP = Map Addr Double
+type Ⲭ    = Map Addr (OpenSum Vals)
 
-runMH :: MRec env 
+runMHnsteps ::  MRec env 
+             -> Freer '[Reader (Record (Maybes env)), Dist, Observe, Sample] a -- ^ 
+             -> IO ((a, Double), Ⲭ, LogP)
+runMHnsteps env model = do
+  -- perform initial run of mh
+  ((x, p), samples, logps) <- runMH env Map.empty 0 model
+  -- do some acceptance ratio to see if we use samples or samples'
+  return ((x, p), samples, logps)
+
+runMH :: MRec env -> Ⲭ -> Addr 
       -> Freer '[Reader (Record (Maybes env)), Dist, Observe, Sample] a
-      -> IO ((a, Double), Ⲭ)
-runMH env = runSample 0 Map.empty . runObserve . runDist . runReader env
+      -> IO ((a, Double), Ⲭ, LogP)
+runMH env samples n = runSample n Map.empty Map.empty . runObserve . runDist . runReader env
 
 runObserve :: Freer (Observe : rs) a -> Freer rs (a, Double)
 runObserve = loop 0
@@ -65,45 +75,51 @@ runObserve = loop 0
          in  loop (p + p') (k y) 
     Left  u'  -> Free u' (loop p . k)
 
-runSample :: Addr -> Ⲭ -> Freer '[Sample] a -> IO (a, Ⲭ)
-runSample α_samp samples = sampleIO . loop samples
+runSample :: Addr -> Ⲭ -> LogP -> Freer '[Sample] a -> IO (a, Ⲭ, LogP)
+runSample α_samp samples logps = sampleIO . loop samples logps
   where
-  loop :: Ⲭ -> Freer '[Sample] a -> Sampler (a, Ⲭ)
-  loop samples' (Pure x) = return (x, samples')
-  loop samples' (Free u k) = do
+  loop :: Ⲭ -> LogP -> Freer '[Sample] a -> Sampler (a, Ⲭ, LogP)
+  loop samples' logps' (Pure x) = return (x, samples', logps')
+  loop samples' logps' (Free u k) = do
     case prj u of
       Just (Sample d α) -> 
         case d of
           NormalDist {} -> 
             case lookupSample samples' d α α_samp of
               Nothing -> do x <- sample d
-                            loop (Map.insert α (OpenSum.inj x) samples') (k x) 
-              Just x ->  loop samples' (k x)
+                            loop (Map.insert α (OpenSum.inj x) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x) 
+              Just x ->  loop samples' logps' (k x)
           UniformDist {} -> 
             case lookupSample samples' d α α_samp of
-              Nothing -> do x <- sample d  
-                            loop (Map.insert α (OpenSum.inj x) samples') (k x) 
-              Just x ->  loop samples' (k x)
+              Nothing -> do x <- sample d
+                            loop (Map.insert α (OpenSum.inj x) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x) 
+              Just x ->  loop samples' logps' (k x)
           BernoulliDist {} -> 
             case lookupSample samples' d α α_samp of
-              Nothing -> do x <- sample d  
-                            loop (Map.insert α (OpenSum.inj x) samples') (k x) 
-              Just x ->  loop samples' (k x)
+              Nothing -> do x <- sample d
+                            loop (Map.insert α (OpenSum.inj x) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x) 
+              Just x ->  loop samples' logps' (k x)
           BetaDist {} -> 
             case lookupSample samples' d α α_samp of
-              Nothing -> do x <- sample d  
-                            loop (Map.insert α (OpenSum.inj x) samples') (k x) 
-              Just x ->  loop samples' (k x)
+              Nothing -> do x <- sample d
+                            loop (Map.insert α (OpenSum.inj x) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x) 
+              Just x ->  loop samples' logps' (k x)
           BinomialDist {} -> 
             case lookupSample samples' d α α_samp of
-              Nothing -> do x <- sample d  
-                            loop (Map.insert α (OpenSum.inj x) samples') (k x) 
-              Just x ->  loop samples' (k x)
+              Nothing -> do x <- sample d
+                            loop (Map.insert α (OpenSum.inj x) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x) 
+              Just x ->  loop samples' logps' (k x)
           GammaDist {} -> 
             case lookupSample samples' d α α_samp of
-              Nothing -> do x <- sample d  
-                            loop (Map.insert α (OpenSum.inj x) samples') (k x) 
-              Just x ->  loop samples' (k x)
+              Nothing -> do x <- sample d
+                            loop (Map.insert α (OpenSum.inj x) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x) 
+              Just x ->  loop samples' logps' (k x)
       Nothing         -> error "Impossible: Nothing cannot occur"
 
 -- | Lookup a sample address α's value - return Nothing if it doesn't exist or the sample address is the same as the current sample site α_samp, indicating that a new value should be sampled. 
