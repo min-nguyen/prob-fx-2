@@ -50,6 +50,8 @@ instance Show a => Show (Dist a) where
     "NormalDist(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ show y ++ ")"
   show (BernoulliDist p y) =
     "BernoulliDist(" ++ show p ++ ", " ++ show y ++ ")"
+  show (DiscreteDist ps y) = 
+    "DiscreteDist(" ++ show ps ++ ", " ++ show y ++ ")"
 
 type Addr = Int
 

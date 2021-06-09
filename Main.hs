@@ -13,15 +13,18 @@ import qualified Extensible.Inference.MH as MH
 import Extensible.OpenSum as OpenSum
 import Model
 import Data.Extensible
+import Extensible.Sampler
 
 main :: IO ()
 main = do
   -- let k = runModel (linearRegression 0 0 0) (y @= Nothing <: nil)
   -- x <- Infer.runModel (linearRegression 0 1 0) (y @= Just 5 <: nil)
   y <- LW.runLW (y @= Just 0.4 <: nil) (Extensible.Example.linearRegression' 0 1 0)
-  ((x, p), samples, logps)
-    <- MH.runMH (label @= Just True <: nil) Map.empty 0 (Extensible.Example.logisticRegression (-1))
-  print $ show ((x, p), samples, logps)
+  (x, samples, logps)
+    <- sampleIO $ MH.runMH (label @= Just True <: nil) Map.empty Map.empty 0 (Extensible.Example.logisticRegression (-1))
+  (x, samples, logps)
+    <- sampleIO $ MH.runMHnsteps (label @= Just True <: nil) (Extensible.Example.logisticRegression (-1))
+  print $ show (x, samples, logps)
 
   return ()
 

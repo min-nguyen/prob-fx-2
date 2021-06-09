@@ -18,7 +18,10 @@ instance {-# INCOHERENT #-} Show t => Show (OpenSum '[t]) where
   show (UnsafeOpenSum i t) = show (unsafeCoerce t :: t)
 
 instance forall t ts. (Show t, Show (OpenSum ts)) => Show (OpenSum (t ': ts)) where 
-  show (UnsafeOpenSum i t) = show (unsafeCoerce t :: t)
+  show (UnsafeOpenSum i t) =
+    if i == 0
+    then show (unsafeCoerce t :: t)
+    else show (UnsafeOpenSum (i - 1) t :: OpenSum ts)
 
 type Exp a = a -> Type
 type family Eval (e :: Exp a) :: a

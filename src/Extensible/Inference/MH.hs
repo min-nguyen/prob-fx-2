@@ -10,12 +10,15 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TupleSections #-}
 module Extensible.Inference.MH where
 
 import Data.Functor.Identity
-import Data.Map as Map
+import qualified Data.Map as Map
+import Data.Map (Map)
 import Data.Kind (Type)
 import Data.Extensible hiding (Member)
+import Control.Monad
 import Control.Monad.Trans.Class
 import Extensible.Dist
 import Extensible.Freer
@@ -36,20 +39,34 @@ type Ⲭ    = Map Addr (OpenSum Vals)
 
 runMHnsteps ::  MRec env 
              -> Freer '[Reader (Record (Maybes env)), Dist, Observe, Sample] a -- ^ 
-             -> IO ((a, LogP), Ⲭ, LogP)
+             -> Sampler (a, Ⲭ, LogP)
 runMHnsteps env model = do
   -- perform initial run of mh
-  ((x, p), samples, logps) <- runMH env Map.empty 0 model
+  (x, samples, logps) <- runMH env Map.empty Map.empty 0 model
+  liftS $ print $ "First run is: " ++ show (samples, logps)
+  -- uniformly select a random sample address to update for
+  let sample_size = Map.size samples
+  α_samp <- sample $ DiscreteDist (map (,1.0/fromIntegral sample_size) (Map.keys samples)) Nothing
+  -- run mh with new sample address
+  liftS $ print $ "sample address is " ++ show α_samp
+  (x', samples', logps') <- runMH env samples logps α_samp model
+  liftS $ print $ "Second run is: " ++ show (samples', logps')
   -- do some acceptance ratio to see if we use samples or samples'
-  return ((x, p), samples, logps)
+  return (x, samples, logps)
 
-runMH :: MRec env -> Ⲭ -> Addr 
+runMH :: MRec env -> Ⲭ -> LogP -> Addr 
       -> Freer '[Reader (Record (Maybes env)), Dist, Observe, Sample] a
-      -> IO ((a, LogP), Ⲭ, LogP)
-runMH env samples n = runSample n Map.empty Map.empty . runObserve Map.empty . runDist . runReader env
+      -> Sampler (a,  Ⲭ, LogP)
+runMH env samples logps n m = do 
+  ((a, logps_obs'), samples', logps_samp') 
+    <- (runSample n samples . runObserve . runDist . runReader env) m
+  -- Merge log probability maps, with new map entries taking precedence over the map from the previous MH run
+  let logps' = logps_obs' `Map.union` logps_samp' `Map.union` logps
+  -- liftS $ print $ "samples are" ++ show samples
+  return (a, samples', logps')
 
-runObserve :: LogP -> Freer (Observe : rs) a -> Freer rs (a, LogP)
-runObserve logps = loop logps
+runObserve :: Freer (Observe : rs) a -> Freer rs (a, LogP)
+runObserve  = loop Map.empty
   where
   loop :: LogP -> Freer (Observe : rs) a -> Freer rs (a, LogP)
   loop logps' (Pure x) = return (x, logps')
@@ -59,8 +76,8 @@ runObserve logps = loop logps
          in  loop (Map.insert α p logps') (k y) 
     Left  u'  -> Free u' (loop logps' . k)
 
-runSample :: Addr -> Ⲭ -> LogP -> Freer '[Sample] a -> IO (a, Ⲭ, LogP)
-runSample α_samp samples logps = sampleIO . loop samples logps
+runSample :: Addr -> Ⲭ -> Freer '[Sample] a -> Sampler (a, Ⲭ, LogP)
+runSample α_samp samples = loop samples Map.empty
   where
   loop :: Ⲭ -> LogP -> Freer '[Sample] a -> Sampler (a, Ⲭ, LogP)
   loop samples' logps' (Pure x) = return (x, samples', logps')
@@ -71,7 +88,7 @@ runSample α_samp samples logps = sampleIO . loop samples logps
           NormalDist {} -> 
             case lookupSample samples' d α α_samp of
               Nothing -> do x <- sample d
-                            loop (Map.insert α (OpenSum.inj x) samples') 
+                            loop (Map.insert α (OpenSum.inj (x :: Double)) samples') 
                                  (Map.insert α (logProb d x) logps') (k x) 
               Just x ->  loop samples' logps' (k x)
           UniformDist {} -> 
