@@ -36,7 +36,7 @@ type Ⲭ    = Map Addr (OpenSum Vals)
 
 runMHnsteps ::  MRec env 
              -> Freer '[Reader (Record (Maybes env)), Dist, Observe, Sample] a -- ^ 
-             -> IO ((a, Double), Ⲭ, LogP)
+             -> IO ((a, LogP), Ⲭ, LogP)
 runMHnsteps env model = do
   -- perform initial run of mh
   ((x, p), samples, logps) <- runMH env Map.empty 0 model
@@ -45,19 +45,19 @@ runMHnsteps env model = do
 
 runMH :: MRec env -> Ⲭ -> Addr 
       -> Freer '[Reader (Record (Maybes env)), Dist, Observe, Sample] a
-      -> IO ((a, Double), Ⲭ, LogP)
-runMH env samples n = runSample n Map.empty Map.empty . runObserve . runDist . runReader env
+      -> IO ((a, LogP), Ⲭ, LogP)
+runMH env samples n = runSample n Map.empty Map.empty . runObserve Map.empty . runDist . runReader env
 
-runObserve :: Freer (Observe : rs) a -> Freer rs (a, Double)
-runObserve = loop 0
+runObserve :: LogP -> Freer (Observe : rs) a -> Freer rs (a, LogP)
+runObserve logps = loop logps
   where
-  loop :: Double -> Freer (Observe : rs) a -> Freer rs (a, Double)
-  loop p (Pure x) = return (x, p)
-  loop p (Free u k) = case decomp u of 
+  loop :: LogP -> Freer (Observe : rs) a -> Freer rs (a, LogP)
+  loop logps' (Pure x) = return (x, logps')
+  loop logps' (Free u k) = case decomp u of 
     Right (Observe d y α)  
-      -> let p' = logProb d y
-         in  loop (p + p') (k y) 
-    Left  u'  -> Free u' (loop p . k)
+      -> let p = logProb d y
+         in  loop (Map.insert α p logps') (k y) 
+    Left  u'  -> Free u' (loop logps' . k)
 
 runSample :: Addr -> Ⲭ -> LogP -> Freer '[Sample] a -> IO (a, Ⲭ, LogP)
 runSample α_samp samples logps = sampleIO . loop samples logps
@@ -83,8 +83,6 @@ runSample α_samp samples logps = sampleIO . loop samples logps
           BernoulliDist {} -> 
             case lookupSample samples' d α α_samp of
               Nothing -> do x <- sample d
-                            -- liftS $ print $ "probability of sampling " ++ show x ++ " from " 
-                            --         ++ show d ++ " is " ++ show (prob d x)
                             loop (Map.insert α (OpenSum.inj x) samples') 
                                  (Map.insert α (logProb d x) logps') (k x) 
               Just x ->  loop samples' logps' (k x)
