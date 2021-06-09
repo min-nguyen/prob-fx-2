@@ -52,6 +52,10 @@ instance Show a => Show (Dist a) where
     "BernoulliDist(" ++ show p ++ ", " ++ show y ++ ")"
   show (DiscreteDist ps y) = 
     "DiscreteDist(" ++ show ps ++ ", " ++ show y ++ ")"
+  show (BetaDist a b y) = 
+    "DiscreteDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ")"
+  show (GammaDist a b y) = 
+    "GammaDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ")"
 
 type Addr = Int
 
