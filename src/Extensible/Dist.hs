@@ -24,6 +24,48 @@ import Statistics.Distribution.Uniform
 import System.Random.MWC
 import qualified System.Random.MWC.Distributions as MWC
 
+
+data DistInfo where
+  NormalDistI        :: Double -> Double -> DistInfo
+  -- uniform        :: Dist Double
+  UniformDistI       :: Double -> Double -> DistInfo 
+  -- discr uniform  :: Dist Int
+  DiscrUniformDistI  :: Int    -> Int    -> DistInfo
+  -- gamma          :: Dist Double
+  GammaDistI         :: Double -> Double -> DistInfo
+  -- beta           :: Dist Double
+  BetaDistI          :: Double -> Double -> DistInfo
+  -- binomial       :: Dist [Bool]
+  BinomialDistI      :: Int    -> Double -> DistInfo
+  -- bernoulli      :: Dist Bool
+  BernoulliDistI     :: Double -> DistInfo
+  -- categorical    :: Dist Int
+  CategoricalDistI   :: V.Vector (Int, Double) -> DistInfo
+  -- discrete       :: Dist Int
+  DiscreteDistI      :: [(Int, Double)] -> DistInfo
+  deriving Eq
+
+instance Show DistInfo where
+  show (NormalDistI mu sigma ) = 
+    "NormalDist(" ++ show mu ++ ", " ++ show sigma ++ ")"
+  show (BernoulliDistI p ) =
+    "BernoulliDist(" ++ show p  ++ ")"
+  show (DiscreteDistI ps ) = 
+    "DiscreteDist(" ++ show ps ++ ")"
+  show (BetaDistI a b ) = 
+    "DiscreteDist(" ++ show a ++ ", " ++ show b ++ ")"
+  show (GammaDistI a b ) = 
+    "GammaDist(" ++ show a ++ ", " ++ show b ++ ")"
+
+toDistInfo :: Dist a -> DistInfo
+toDistInfo (NormalDist mu sigma y) = NormalDistI mu sigma
+toDistInfo (UniformDist min max y) = UniformDistI min max
+toDistInfo (DiscrUniformDist min max y) = DiscrUniformDistI min max
+toDistInfo (GammaDist a b y) = GammaDistI a b
+toDistInfo (BetaDist a b y) = BetaDistI a b
+toDistInfo (BinomialDist n p y) = BinomialDistI n p
+toDistInfo (BernoulliDist p y) = BernoulliDistI p
+
 data Dist a where
   -- IfDist            :: Bool -> Dist a -> Dist a -> Dist a
   -- normal         :: Dist Double

@@ -38,12 +38,47 @@ import Unsafe.Coerce
 type Vals = '[Int, Double, Bool]
 
 type LogP = Map Addr Double
-type Ⲭ    = Map Addr (OpenSum Vals)
+type Ⲭ    = Map Addr (DistInfo, OpenSum Vals)
+{-
+MH(x0, Ⲭ, LogP): 
+Perform initial run of MH.
+
+Repeat:
+1) Choose the sample site x0 uniformly from all possible sample addresses (keys of Ⲭ)
+
+2) let Ⲭ'    = Map.empty; 
+       LogP' = Map.empty;
+
+3)  Evaluate the program:
+
+    -# x <- sample d   
+      If 1) x == x0, or
+        2) x is not found in Ⲭ, or
+        3) x is found in Ⲭ but the distribution it was sampled from was different
+      Then 1) Newly sample x and store it in Ⲭ' (along with its distribution), and
+          2) Compute logp = logP(d, x) and store logp in LogP'
+      Else reuse the sample for x found in Ⲭ
+
+    -# observe d y
+      Compute logp = logP(d, y) and store logp in LogP'
+
+4) Compute acceptance ratio using x0, Ⲭ, Ⲭ', LogP, LogP'
+   There are 3 components:
+   i)   The relative probability of selecting the initial site x0.
+        This is |Ⲭ|/|Ⲭ'|, in other words, the size of Ⲭ over the size of Ⲭ'.
+   ii)  The new joint probability of all the variables except:
+          a) The newly sampled x0, and
+          b) Any sampled variables in Ⲭ' that aren't in Ⲭ.
+   iii) The old joint probability of all the variables except:
+          a) The newly sampled x0, and
+          b) Any sampled variables in Ⲭ that aren't in Ⲭ'.
+   Components ii) and iii) ensure that we are only comparing the probabilities of variables that they have both had to use. Variable x0 is not included in this because we want to see how it affects the probability of the rest of the program.    
+-}
 
 accept :: Addr -> Ⲭ -> Ⲭ -> LogP -> LogP -> IO Double
 accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
 {- The set of sampled variables is given by X'sampled = {x0} ∪ (dom(Ⲭ')\dom(Ⲭ)), i.e.
-   the proposal variable x0 that we resample, and also any latent variables in Ⲭ' 
+   the proposal variable x0 that we resample, and also any variables in Ⲭ' 
    that aren't in the domain of Ⲭ. Conversely, Xsampled = {x0} ∪ (dom(Ⲭ)\dom(Ⲭ')).  -}
   let _X'sampled = (Set.singleton x0) `Set.union` (Map.keysSet _Ⲭ' \\ Map.keysSet _Ⲭ)  
       _Xsampled  = (Set.singleton x0) `Set.union` (Map.keysSet _Ⲭ \\ Map.keysSet _Ⲭ')
@@ -124,55 +159,57 @@ runSample α_samp samples = loop Map.empty Map.empty
           NormalDist {} -> 
             case lookupSample samples d α α_samp of
               Nothing -> do x <- sample d
-                            liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
-                            loop (Map.insert α (OpenSum.inj (x :: Double)) samples') 
-                                 (Map.insert α (prob d x) logps') (k x) 
-              Just x ->     loop (Map.insert α (OpenSum.inj (x :: Double)) samples') 
-                                 (Map.insert α (prob d x) logps') (k x)
+                            -- liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
+                            loop (Map.insert α (toDistInfo d, OpenSum.inj (x :: Double)) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x) 
+              Just x ->     loop (Map.insert α (toDistInfo d, OpenSum.inj (x :: Double)) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x)
           UniformDist {} -> 
             case lookupSample samples d α α_samp of
               Nothing -> do x <- sample d
-                            liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
-                            loop (Map.insert α (OpenSum.inj (x :: Double)) samples') 
-                                 (Map.insert α (prob d x) logps') (k x) 
-              Just x ->     loop (Map.insert α (OpenSum.inj (x :: Double)) samples') 
-                                 (Map.insert α (prob d x) logps') (k x)
+                            -- liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
+                            loop (Map.insert α (toDistInfo d, OpenSum.inj (x :: Double)) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x) 
+              Just x ->     loop (Map.insert α (toDistInfo d, OpenSum.inj (x :: Double)) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x)
           BernoulliDist {} -> 
             case lookupSample samples d α α_samp of
               Nothing -> do x <- sample d
-                            liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
-                            loop (Map.insert α (OpenSum.inj (x :: Bool)) samples') 
-                                 (Map.insert α (prob d x) logps') (k x) 
-              Just x ->     loop (Map.insert α (OpenSum.inj (x :: Bool)) samples') 
-                                 (Map.insert α (prob d x) logps') (k x)
+                            -- liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
+                            loop (Map.insert α (toDistInfo d, OpenSum.inj (x :: Bool)) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x) 
+              Just x ->     loop (Map.insert α (toDistInfo d, OpenSum.inj (x :: Bool)) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x)
           BetaDist {} -> 
             case lookupSample samples d α α_samp of
               Nothing -> do x <- sample d
-                            liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
-                            loop (Map.insert α (OpenSum.inj (x :: Double)) samples') 
-                                 (Map.insert α (prob d x) logps') (k x) 
-              Just x ->     loop (Map.insert α (OpenSum.inj (x :: Double)) samples') 
-                                 (Map.insert α (prob d x) logps') (k x)
+                            -- liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
+                            loop (Map.insert α (toDistInfo d, OpenSum.inj (x :: Double)) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x) 
+              Just x ->     loop (Map.insert α (toDistInfo d, OpenSum.inj (x :: Double)) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x)
           BinomialDist {} -> 
             case lookupSample samples d α α_samp of
               Nothing -> do x <- sample d
-                            liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
-                            loop (Map.insert α (OpenSum.inj (x :: Int)) samples') 
-                                 (Map.insert α (prob d x) logps') (k x) 
-              Just x ->     loop (Map.insert α (OpenSum.inj (x :: Int)) samples') 
-                                 (Map.insert α (prob d x) logps') (k x)
+                            -- liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
+                            loop (Map.insert α (toDistInfo d, OpenSum.inj (x :: Int)) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x) 
+              Just x ->     loop (Map.insert α (toDistInfo d, OpenSum.inj (x :: Int)) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x)
           GammaDist {} -> 
             case lookupSample samples d α α_samp of
               Nothing -> do x <- sample d
-                            liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
-                            loop (Map.insert α (OpenSum.inj (x :: Double)) samples') 
-                                 (Map.insert α (prob d x) logps') (k x) 
-              Just x ->     loop (Map.insert α (OpenSum.inj (x :: Double)) samples') 
-                                 (Map.insert α (prob d x) logps') (k x)
+                            -- liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
+                            loop (Map.insert α (toDistInfo d, OpenSum.inj (x :: Double)) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x) 
+              Just x ->     loop (Map.insert α (toDistInfo d, OpenSum.inj (x :: Double)) samples') 
+                                 (Map.insert α (logProb d x) logps') (k x)
       Nothing         -> error "Impossible: Nothing cannot occur"
 
--- | Lookup a sample address α's value - return Nothing if it doesn't exist or the sample address is the same as the current sample site α_samp, indicating that a new value should be sampled. 
+-- | Lookup a sample address α's value - 
+-- return Nothing if: 1) it doesn't exist, 2) the sample address is the same as the current sample site α_samp, or 3) the sample we're supposed to reuse belongs to either a different distribution or the same distribution with different parameters (due to a new sampled value affecting its parameters). These all indicate that a new value should be sampled.
 lookupSample :: OpenSum.Member a '[Int, Double, Bool] => Ⲭ -> Dist a -> Addr -> Addr -> Maybe a
 lookupSample samples d α α_samp 
   | α == α_samp = Nothing
-  | otherwise   = Map.lookup α samples >>= OpenSum.prj
+  | otherwise   = Map.lookup α samples >>= \(d_info, x) -> 
+                  if toDistInfo d == d_info then OpenSum.prj x else Nothing
