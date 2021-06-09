@@ -36,7 +36,7 @@ import Data.Extensible hiding (Member)
 {- Probabilistic programs -}
 
 sigmoid :: Double -> Double
-sigmoid x = 1 / exp((-1) * x)
+sigmoid x = 1 / (1 + exp((-1) * x))
 
 logisticRegression :: forall rs env. HasVar env "label" Bool =>
  Double -> Model env rs Bool
