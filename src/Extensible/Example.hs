@@ -53,7 +53,7 @@ type LinRegrEnv =
      ]
 
 linearRegression :: 
-  Double -> Double -> Double ->  Model s rs Double
+  Double -> Double -> Double -> Model s rs Double
 linearRegression μ σ x =  --do
   normal (μ + x) σ 
 
