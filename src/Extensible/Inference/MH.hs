@@ -100,7 +100,7 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
 
   return $ exp logα''
 
-runMHnsteps ::  
+runMHnsteps ::
                 Int
              -> MRec env
              -> Freer '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a -- ^ 
@@ -134,12 +134,12 @@ runMH :: MRec env -> Ⲭ -> Addr
       -> Freer '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a
       -> Sampler (a, Ⲭ, LogP)
 runMH env samples n m = do
-  ((a, samples'), logps) <- ( runSample n samples 
-                            . runState Map.empty 
-                            . runState Map.empty 
-                            . runObserve 
-                            . transformMH 
-                            . runDist 
+  ((a, samples'), logps) <- ( runSample n samples
+                            . runState Map.empty
+                            . runState Map.empty
+                            . runObserve
+                            . transformMH
+                            . runDist
                             . runReader env) m
   return (a, samples', logps)
 
@@ -148,6 +148,15 @@ pattern Samp d α <- (prj -> Just (Sample d α))
 
 pattern Obs :: Member Observe rs => Dist x -> x -> Addr -> Union rs x
 pattern Obs d y α <- (prj -> Just (Observe d y α))
+
+pattern DistDouble :: Dist Double -> Dist x
+pattern DistDouble d <- (isDistDouble -> d)
+
+isDistDouble :: Dist x -> Dist Double
+isDistDouble d@NormalDist {} = d
+isDistDouble d@BetaDist {} = d
+isDistDouble d@GammaDist {} = d
+isDistDouble d@UniformDist {} = d
 
 transformMH :: (Member (State Ⲭ) rs, Member (State LogP) rs, Member Sample rs, Member Observe rs) => Freer rs a -> Freer rs a
 transformMH = loop
@@ -158,20 +167,23 @@ transformMH = loop
     case u of
       Samp d α
         -> case d of
-              NormalDist {}    -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >> 
-                                                modify (updateLogP α d x :: LogP -> LogP) >> 
+              DistDouble d -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x) :: Ⲭ -> Ⲭ) >>
+                                            modify (updateLogP α d (unsafeCoerce x) :: LogP -> LogP) >>
+                                            loop (k x))
+              NormalDist {}    -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >>
+                                                modify (updateLogP α d x :: LogP -> LogP) >>
                                                 loop (k x))
-              UniformDist {}   -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >> 
-                                                modify (updateLogP α d x  :: LogP -> LogP) >> 
+              UniformDist {}   -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >>
+                                                modify (updateLogP α d x  :: LogP -> LogP) >>
                                                 loop (k x))
-              GammaDist {}     -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >> 
-                                                modify (updateLogP α d x  :: LogP -> LogP) >> 
+              GammaDist {}     -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >>
+                                                modify (updateLogP α d x  :: LogP -> LogP) >>
                                                 loop (k x))
-              BernoulliDist {} -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >> 
-                                                modify (updateLogP α d x  :: LogP -> LogP) >> 
+              BernoulliDist {} -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >>
+                                                modify (updateLogP α d x  :: LogP -> LogP) >>
                                                 loop (k x))
       Obs d y α
-        -> Free u (\x -> modify (updateLogP α d y  :: LogP -> LogP) >> 
+        -> Free u (\x -> modify (updateLogP α d y  :: LogP -> LogP) >>
                                  loop (k x))
       _ -> Free u (loop . k)
 
@@ -182,13 +194,13 @@ transformMH = loop
   updateLogP α d x  = Map.insert α (logProb d x)
 
 runObserve :: Freer (Observe : rs) a -> Freer rs a
-runObserve  = loop 
+runObserve  = loop
   where
   loop :: Freer (Observe : rs) a -> Freer rs a
   loop (Pure x) = return x
   loop (Free u k) = case decomp u of
     Right (Observe d y α)
-      -> loop (k y) 
+      -> loop (k y)
     Left  u'  -> Free u' (loop . k)
 
 runSample :: Addr -> Ⲭ -> Freer '[Sample] a -> Sampler a
