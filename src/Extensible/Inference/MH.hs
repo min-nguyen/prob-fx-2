@@ -101,36 +101,39 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   -- print $ " logα'' is " ++ show (exp logα'') ++ " from " ++ show (Map.keysSet logℙ \\ _Xsampled)
   return $ exp logα''
 
-runMHnsteps ::
-                Int
-             -> MRec env
-             -> Freer '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a -- ^ 
-             -> Sampler (a, Ⲭ, LogP)
-runMHnsteps n env model = do
+mhNsteps :: Int
+  -> MRec env
+  -> Freer '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a
+  -> Sampler (a, Ⲭ, LogP)
+mhNsteps n env model = do
   -- perform initial run of mh
   (x, samples, logps) <- runMH env Map.empty 0 model
   -- liftS $ print $ "First run is: " ++ show (x, samples, logps)
   -- uniformly select a random sample address to update for
-  let loop i (x, samples, logps) = do
-        let sample_size = Map.size samples
-        α_samp <- sample $ DiscreteDist (map (,1.0/fromIntegral sample_size) (Map.keys samples)) Nothing
-        -- run mh with new sample address
-        liftS $ print $ "sample address is " ++ show α_samp
-        (x', samples', logps') <- runMH env samples α_samp model
-        -- liftS $ print $ "Second run is: " ++ show (x', samples', logps')
-        -- do some acceptance ratio to see if we use samples or samples'
-        acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
-        u <- sample (UniformDist 0 1 Nothing)
-        mhState <- if u < acceptance_ratio
-                    then do liftS $ print $ "Accepting with " ++ show acceptance_ratio ++ " > " ++ show u
-                            return (x', samples', logps')
-                    else do liftS $ print $ "Rejecting with α: " ++ show acceptance_ratio ++ " < u: " ++ show u
-                            return (x, samples, logps)
-        if i < n
-          then loop (i + 1) mhState
-          else return mhState
-  loop 0 (x, samples, logps)
+  foldr (>=>) return (replicate n (mhStep env model)) (x, samples, logps)
 
+-- | Perform one step of MH
+mhStep :: MRec env 
+  -> Freer '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a 
+  -> (a, Ⲭ, LogP) 
+  -> Sampler (a, Ⲭ, LogP)
+mhStep env model (x, samples, logps) = do
+  let sample_size = Map.size samples
+  α_samp <- sample $ DiscreteDist (map (,1.0/fromIntegral sample_size) (Map.keys samples)) Nothing
+  -- run mh with new sample address
+  liftS $ print $ "sample address is " ++ show α_samp
+  (x', samples', logps') <- runMH env samples α_samp model
+  -- liftS $ print $ "Second run is: " ++ show (x', samples', logps')
+  -- do some acceptance ratio to see if we use samples or samples'
+  acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
+  u <- sample (UniformDist 0 1 Nothing)
+  if u < acceptance_ratio
+    then do liftS $ print $ "Accepting with " ++ show acceptance_ratio ++ " > " ++ show u
+            return (x', samples', logps')
+    else do liftS $ print $ "Rejecting with α: " ++ show acceptance_ratio ++ " < u: " ++ show u
+            return (x, samples, logps)
+
+-- | Run model once under MH
 runMH :: MRec env -> Ⲭ -> Addr
       -> Freer '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a
       -> Sampler (a, Ⲭ, LogP)
@@ -144,6 +147,7 @@ runMH env samples n m = do
                             . runReader env) m
   return (a, samples', logps)
 
+-- | Insert stateful operations for Ⲭ and LogP when either Sample or Observe occur.
 transformMH :: (Member (State Ⲭ) rs, Member (State LogP) rs, Member Sample rs, Member Observe rs) => Freer rs a -> Freer rs a
 transformMH = loop
   where
@@ -168,6 +172,7 @@ transformMH = loop
                          loop (k x))
       _ -> Free u (loop . k)
 
+-- | Remove Observe occurrences from tree (log p is taken care of by transformMH)
 runObserve :: Freer (Observe : rs) a -> Freer rs a
 runObserve  = loop
   where
@@ -178,6 +183,7 @@ runObserve  = loop
       -> loop (k y)
     Left  u'  -> Free u' (loop . k)
 
+-- | Run Sample occurrences
 runSample :: Addr -> Ⲭ -> Freer '[Sample] a -> Sampler a
 runSample α_samp samples = loop
   where
@@ -201,8 +207,8 @@ runSample α_samp samples = loop
               Just x  -> (loop . k . unsafeCoerce) x
       _  -> error "Impossible: Nothing cannot occur"
 
--- | Lookup a sample address α's value - 
--- return Nothing if: 1) it doesn't exist, 2) the sample address is the same as the current sample site α_samp, or 3) the sample we're supposed to reuse belongs to either a different distribution or the same distribution with different parameters (due to a new sampled value affecting its parameters). These all indicate that a new value should be sampled.
+-- | Lookup a sample address α's value in Ⲭ.
+-- Return Nothing if: 1) it doesn't exist, 2) the sample address is the same as the current sample site α_samp, or 3) the sample we're supposed to reuse belongs to either a different distribution or the same distribution with different parameters (due to a new sampled value affecting its parameters). These all indicate that a new value should be sampled.
 lookupSample :: OpenSum.Member a '[Int, Double, Bool] => Ⲭ -> Dist a -> Addr -> Addr -> Maybe a
 lookupSample samples d α α_samp
   | α == α_samp = Nothing

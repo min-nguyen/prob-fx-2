@@ -23,7 +23,7 @@ main = do
   (x, samples, logps)
     <- sampleIO $ MH.runMH (label @= Just True <: nil) Map.empty 0 (Extensible.Example.logisticRegression (-1))
   (x, samples, logps)
-    <- sampleIOFixed $ MH.runMHnsteps 5 (label @= Just True <: nil) (Extensible.Example.logisticRegression (10))
+    <- sampleIOFixed $ MH.mhNsteps 5 (label @= Just True <: nil) (Extensible.Example.logisticRegression (10))
   putStrLn $ show x ++ "\n" ++ show samples ++ "\n" ++ show logps
 
   return ()
