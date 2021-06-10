@@ -35,10 +35,6 @@ import GHC.TypeLits (Nat)
 import qualified GHC.TypeLits as TL
 import Unsafe.Coerce
 
-type Vals = '[Int, Double, Bool]
-
-type LogP = Map Addr Double
-type Ⲭ    = Map Addr (DistInfo, OpenSum Vals)
 {-
 MH(x0, Ⲭ, LogP): 
 Perform initial run of MH.
@@ -73,57 +69,64 @@ Repeat:
           a) The newly sampled x0, and
           b) Any sampled variables in Ⲭ that aren't in Ⲭ'.
    Components ii) and iii) ensure that we are only comparing the probabilities of variables that they have both had to use. Variable x0 is not included in this because we want to see how it affects the probability of the rest of the program.    
+   The acceptance ratio is then: i) * ii) / iii)
 -}
+
+type Vals = '[Int, Double, Bool]
+
+type LogP = Map Addr Double
+type Ⲭ    = Map Addr (DistInfo, OpenSum Vals)
 
 accept :: Addr -> Ⲭ -> Ⲭ -> LogP -> LogP -> IO Double
 accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
-{- The set of sampled variables is given by X'sampled = {x0} ∪ (dom(Ⲭ')\dom(Ⲭ)), i.e.
-   the proposal variable x0 that we resample, and also any variables in Ⲭ' 
-   that aren't in the domain of Ⲭ. Conversely, Xsampled = {x0} ∪ (dom(Ⲭ)\dom(Ⲭ')).  -}
-  let _X'sampled = (Set.singleton x0) `Set.union` (Map.keysSet _Ⲭ' \\ Map.keysSet _Ⲭ)  
-      _Xsampled  = (Set.singleton x0) `Set.union` (Map.keysSet _Ⲭ \\ Map.keysSet _Ⲭ')
+
+  let _X'sampled = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ' \\ Map.keysSet _Ⲭ)  
+      _Xsampled  = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ \\ Map.keysSet _Ⲭ')
   print $ " _X'sampled is " ++ show  _X'sampled
   print $ " _Xsampled is " ++ show _Xsampled
-{- The ratio q(x0 | X'0) / q(x0 | X) accounts for the relative probability of selecting 
-   the initial site. Since x0 is chosen at random, this is the size of set X divided 
-   by the size of set X'.                       q(x0 | X') / q(x0 | X) = |X| / |X'| -}
+
   let logα       = log (fromIntegral $ Map.size _Ⲭ) - log (fromIntegral $ Map.size _Ⲭ')
-  print $ " logα is " ++ show logα
-{- The ratio p(Y', X') / q(X'|X, x0) simplifies to:   Π ℙ'(y) Π ℙ'(x)
-                                                     y∈Y'    x∈X'reused  
-   This is equivalent to  Π ℙ'(v)
-                         v∈V' \ X'sampled -}
+  -- print $ " logα is " ++ show logα
+
   let logα'      = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ')) 
                          logα (Map.keysSet logℙ' \\ _X'sampled)
-  print $ " logα' is " ++ show logα' ++ " from " ++ show (Map.keysSet logℙ' \\ _X'sampled)
-{- The ratio p(Y, X) / q(X|X, x0) simplifies to:   Π ℙ(y) Π ℙ(x)
-                                                  y∈Y    x∈Xreused  
-   This is equivalent to  Π ℙ(v)
-                         v∈V \ Xsampled.
-   To flip the ratio p(Y, X) / q(X|X, x0) to q(X|X, x0) / p(Y, X), we subtract the log form -}
+  -- print $ " logα' is " ++ show (exp logα') ++ " from " ++ show (Map.keysSet logℙ' \\ _X'sampled)
+
   let logα''     = foldl (\logα' v -> logα' - fromJust (Map.lookup v logℙ))
                          logα' (Map.keysSet logℙ \\ _Xsampled)
-  print $ " logα'' is " ++ show logα'' ++ " from " ++ show (Map.keysSet logℙ \\ _Xsampled)
+  -- print $ " logα'' is " ++ show (exp logα'') ++ " from " ++ show (Map.keysSet logℙ \\ _Xsampled)
+
   return $ exp logα''
 
-runMHnsteps ::  Show a => MRec env 
+runMHnsteps ::  Show a => 
+                Int 
+             -> MRec env
              -> Freer '[Reader (Record (Maybes env)), Dist, Observe, Sample] a -- ^ 
              -> Sampler (a, Ⲭ, LogP)
-runMHnsteps env model = do
+runMHnsteps n env model = do
   -- perform initial run of mh
   (x, samples, logps) <- runMH env Map.empty Map.empty 0 model
   liftS $ print $ "First run is: " ++ show (x, samples, logps)
   -- uniformly select a random sample address to update for
-  let sample_size = Map.size samples
-  α_samp <- sample $ DiscreteDist (map (,1.0/fromIntegral sample_size) (Map.keys samples)) Nothing
-  -- run mh with new sample address
-  liftS $ print $ "sample address is " ++ show α_samp
-  (x', samples', logps') <- runMH env samples logps α_samp model
-  liftS $ print $ "Second run is: " ++ show (x', samples', logps')
-  -- do some acceptance ratio to see if we use samples or samples'
-  acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
-  liftS $ print $ "Acceptance ratio is: " ++ show acceptance_ratio
-  return (x, samples, logps)
+  let loop i (x, samples, logps) = do
+        let sample_size = Map.size samples
+        α_samp <- sample $ DiscreteDist (map (,1.0/fromIntegral sample_size) (Map.keys samples)) Nothing
+        -- run mh with new sample address
+        liftS $ print $ "sample address is " ++ show α_samp
+        (x', samples', logps') <- runMH env samples logps α_samp model
+        liftS $ print $ "Second run is: " ++ show (x', samples', logps')
+        -- do some acceptance ratio to see if we use samples or samples'
+        acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
+        u <- sample (UniformDist 0 1 Nothing)
+        mhState <- if u < acceptance_ratio
+                    then do liftS $ print $ "Accepting with " ++ show acceptance_ratio ++ " > " ++ show u
+                            return (x', samples', logps')
+                    else do liftS $ print $ "Rejecting with α: " ++ show acceptance_ratio ++ " < u: " ++ show u
+                            return (x, samples, logps)
+        if i < n 
+          then loop (i + 1) mhState
+          else return mhState
+  loop 0 (x, samples, logps)
 
 runMH :: MRec env -> Ⲭ -> LogP -> Addr 
       -> Freer '[Reader (Record (Maybes env)), Dist, Observe, Sample] a
