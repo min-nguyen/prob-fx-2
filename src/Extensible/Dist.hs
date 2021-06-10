@@ -1,8 +1,11 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GADTs, TypeOperators #-}
-
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE TypeFamilies #-}
 module Extensible.Dist where
 
 -- import Extensible.IO
@@ -11,6 +14,7 @@ import Extensible.Sampler
 import Util
 import Control.Lens hiding ((:>))
 import Control.Monad.State
+import Data.Kind
 import Data.Maybe
 import Data.Extensible hiding (wrap, Head, Member)
 import qualified Data.Vector as V
@@ -87,6 +91,12 @@ data Dist a where
   -- discrete       :: Dist Int
   DiscreteDist      :: [(Int, Double)] -> Maybe Int -> Dist Int
 
+type family TypeParam a where
+  TypeParam (Proxy a) = a
+
+distType :: Dist a -> Proxy a
+distType NormalDist {} = Proxy @Double
+
 instance Show a => Show (Dist a) where
   show (NormalDist mu sigma y) = 
     "NormalDist(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ show y ++ ")"
@@ -120,6 +130,7 @@ runDist = loop 0
           then send (Observe d (getObs d) α) >>= loop (α + 1) . k 
           else send (Sample d α) >>= loop (α + 1). k
     Left  u'  -> Free u' (loop α . k)
+
 
 
 instance Distribution (Dist a) where
