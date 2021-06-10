@@ -102,7 +102,7 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
 runMHnsteps ::  
                 Int
              -> MRec env
-             -> Freer '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, Sample] a -- ^ 
+             -> Freer '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a -- ^ 
              -> Sampler (a, Ⲭ, LogP)
 runMHnsteps n env model = do
   -- perform initial run of mh
@@ -130,62 +130,68 @@ runMHnsteps n env model = do
   loop 0 (x, samples, logps)
 
 runMH :: MRec env -> Ⲭ -> Addr
-      -> Freer '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, Sample] a
+      -> Freer '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a
       -> Sampler (a, Ⲭ, LogP)
-runMH env samples  n m = do
-  (((a, logps_obs'), samples'), logps_samp')
-    <- (runSample n samples . runState samples . runObserve . transformMH . runDist . runReader env) m
-  -- Merge log probability maps
-  let logps' = logps_obs' `Map.union` logps_samp'
-  -- liftS $ print $ "samples are" ++ show samples
-  return (a, samples', logps')
+runMH env samples n m = do
+  ((a, samples'), logps) <- ( runSample n samples 
+                            . runState Map.empty 
+                            . runState Map.empty 
+                            . runObserve 
+                            . transformMH 
+                            . runDist 
+                            . runReader env) m
+  return (a, samples', logps)
 
-transformMH :: (Member (State Ⲭ) rs, Member Sample rs, Member Observe rs) => Freer rs a -> Freer rs a
+transformMH :: (Member (State Ⲭ) rs, Member (State LogP) rs, Member Sample rs, Member Observe rs) => Freer rs a -> Freer rs a
 transformMH = loop
   where
-  loop :: (Member (State Ⲭ) rs, Member Sample rs, Member Observe rs) => Freer rs a -> Freer rs a
+  loop :: (Member (State Ⲭ) rs, Member (State LogP) rs, Member Sample rs, Member Observe rs) => Freer rs a -> Freer rs a
   loop (Pure x) = return x
   loop (Free u k) = do
     case prj u of
       Just (Sample d α) 
         -> let 
-               updateMapⲬ :: OpenSum.Member x Vals => x -> Ⲭ -> Ⲭ
-               updateMapⲬ x = Map.insert α (toDistInfo d, OpenSum.inj x) :: Ⲭ -> Ⲭ
-               
-               updateLogP :: Dist x -> x -> LogP -> LogP
-               updateLogP d x = Map.insert α (logProb d x)
+
            in case d of
-              NormalDist {}    -> Free u (\x -> modify (updateMapⲬ x :: Ⲭ -> Ⲭ) >> loop (k x))
-              UniformDist {}   -> Free u (\x -> modify (updateMapⲬ x :: Ⲭ -> Ⲭ) >> loop (k x)) 
-              GammaDist {}     -> Free u (\x -> modify (updateMapⲬ x :: Ⲭ -> Ⲭ) >> loop (k x))
-              BernoulliDist {} -> Free u (\x -> modify (updateMapⲬ x :: Ⲭ -> Ⲭ) >> loop (k x))
+              NormalDist {}    -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >> 
+                                                modify (updateLogP α d x :: LogP -> LogP) >> 
+                                                loop (k x))
+              UniformDist {}   -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >> 
+                                                modify (updateLogP α d x  :: LogP -> LogP) >> 
+                                                loop (k x))
+              GammaDist {}     -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >> 
+                                                modify (updateLogP α d x  :: LogP -> LogP) >> 
+                                                loop (k x))
+              BernoulliDist {} -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >> 
+                                                modify (updateLogP α d x  :: LogP -> LogP) >> 
+                                                loop (k x))
       Nothing
-        -> Free u (loop . k)
-        -- case prj u of 
-        -- Just (Observe d y α) -> undefined
+        -> case prj u of
+            Just (Observe d y α) -> Free u (\x -> modify (updateLogP α d y  :: LogP -> LogP) >> 
+                                                  loop (k x))
+            Nothing -> Free u (loop . k)
 
--- let insertMap :: Addr -> Dist a -> OpenSum Vals -> Ⲭ -> Ⲭ
---     insertMap α d x samples = Map.insert α (toDistInfo d, x) samples
--- Free u (\x -> modify 
---  (insertMap α d (OpenSum.inj (unsafeCoerce x :: distType))) 
---  >> loop (k x))
+  updateMapⲬ :: OpenSum.Member x Vals => Addr -> Dist x -> x -> Ⲭ -> Ⲭ
+  updateMapⲬ α d x = Map.insert α (toDistInfo d, OpenSum.inj x) :: Ⲭ -> Ⲭ
 
-runObserve :: Freer (Observe : rs) a -> Freer rs (a, LogP)
-runObserve  = loop Map.empty
+  updateLogP :: Addr -> Dist x -> x -> LogP -> LogP
+  updateLogP α d x  = Map.insert α (logProb d x)
+
+runObserve :: Freer (Observe : rs) a -> Freer rs a
+runObserve  = loop 
   where
-  loop :: LogP -> Freer (Observe : rs) a -> Freer rs (a, LogP)
-  loop logps' (Pure x) = return (x, logps')
-  loop logps' (Free u k) = case decomp u of
+  loop :: Freer (Observe : rs) a -> Freer rs a
+  loop (Pure x) = return x
+  loop (Free u k) = case decomp u of
     Right (Observe d y α)
-      -> let p = prob d y
-         in  loop (Map.insert α p logps') (k y) 
-    Left  u'  -> Free u' (loop logps' . k)
+      -> loop (k y) 
+    Left  u'  -> Free u' (loop . k)
 
-runSample :: Addr -> Ⲭ -> Freer '[Sample] a -> Sampler (a, LogP)
+runSample :: Addr -> Ⲭ -> Freer '[Sample] a -> Sampler a
 runSample α_samp samples = loop Map.empty
   where
-  loop :: LogP -> Freer '[Sample] a -> Sampler (a, LogP)
-  loop logps' (Pure x) = return (x, logps')
+  loop :: LogP -> Freer '[Sample] a -> Sampler a
+  loop logps' (Pure x) = return x
   loop logps' (Free u k) = do
     case prj u of
       Just (Sample d α) ->
