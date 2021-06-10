@@ -10,6 +10,7 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TupleSections #-}
 module Extensible.Inference.MH where
 
@@ -142,17 +143,21 @@ runMH env samples n m = do
                             . runReader env) m
   return (a, samples', logps)
 
+pattern Samp :: Member Sample rs => Dist x -> Addr -> Union rs x
+pattern Samp d α <- (prj -> Just (Sample d α))
+
+pattern Obs :: Member Observe rs => Dist x -> x -> Addr -> Union rs x
+pattern Obs d y α <- (prj -> Just (Observe d y α))
+
 transformMH :: (Member (State Ⲭ) rs, Member (State LogP) rs, Member Sample rs, Member Observe rs) => Freer rs a -> Freer rs a
 transformMH = loop
   where
   loop :: (Member (State Ⲭ) rs, Member (State LogP) rs, Member Sample rs, Member Observe rs) => Freer rs a -> Freer rs a
   loop (Pure x) = return x
   loop (Free u k) = do
-    case prj u of
-      Just (Sample d α) 
-        -> let 
-
-           in case d of
+    case u of
+      Samp d α
+        -> case d of
               NormalDist {}    -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >> 
                                                 modify (updateLogP α d x :: LogP -> LogP) >> 
                                                 loop (k x))
@@ -165,11 +170,10 @@ transformMH = loop
               BernoulliDist {} -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >> 
                                                 modify (updateLogP α d x  :: LogP -> LogP) >> 
                                                 loop (k x))
-      Nothing
-        -> case prj u of
-            Just (Observe d y α) -> Free u (\x -> modify (updateLogP α d y  :: LogP -> LogP) >> 
-                                                  loop (k x))
-            Nothing -> Free u (loop . k)
+      Obs d y α
+        -> Free u (\x -> modify (updateLogP α d y  :: LogP -> LogP) >> 
+                                 loop (k x))
+      _ -> Free u (loop . k)
 
   updateMapⲬ :: OpenSum.Member x Vals => Addr -> Dist x -> x -> Ⲭ -> Ⲭ
   updateMapⲬ α d x = Map.insert α (toDistInfo d, OpenSum.inj x) :: Ⲭ -> Ⲭ
@@ -193,8 +197,8 @@ runSample α_samp samples = loop Map.empty
   loop :: LogP -> Freer '[Sample] a -> Sampler a
   loop logps' (Pure x) = return x
   loop logps' (Free u k) = do
-    case prj u of
-      Just (Sample d α) ->
+    case u of
+      Samp d α ->
         case d of
           NormalDist {} ->
             case lookupSample samples d α α_samp of
@@ -232,7 +236,7 @@ runSample α_samp samples = loop Map.empty
                             -- liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
                             loop (Map.insert α (logProb d x) logps') (k x)
               Just x ->     loop (Map.insert α (logProb d x) logps') (k x)
-      Nothing         -> error "Impossible: Nothing cannot occur"
+      _         -> error "Impossible: Nothing cannot occur"
 
 -- | Lookup a sample address α's value - 
 -- return Nothing if: 1) it doesn't exist, 2) the sample address is the same as the current sample site α_samp, or 3) the sample we're supposed to reuse belongs to either a different distribution or the same distribution with different parameters (due to a new sampled value affecting its parameters). These all indicate that a new value should be sampled.
