@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GADTs, TypeOperators #-}
 {-# LANGUAGE TypeApplications #-}
@@ -6,6 +7,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ViewPatterns #-}
 module Extensible.Dist where
 
 -- import Extensible.IO
@@ -91,12 +93,6 @@ data Dist a where
   -- discrete       :: Dist Int
   DiscreteDist      :: [(Int, Double)] -> Maybe Int -> Dist Int
 
-type family TypeParam a where
-  TypeParam (Proxy a) = a
-
-distType :: Dist a -> Proxy a
-distType NormalDist {} = Proxy @Double
-
 instance Show a => Show (Dist a) where
   show (NormalDist mu sigma y) = 
     "NormalDist(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ show y ++ ")"
@@ -117,6 +113,34 @@ data Sample a where
 data Observe a where
   Observe :: Dist a -> a -> Addr -> Observe a
 
+pattern Samp :: Member Sample rs => Dist x -> Addr -> Union rs x
+pattern Samp d α <- (prj -> Just (Sample d α))
+
+pattern Obs :: Member Observe rs => Dist x -> x -> Addr -> Union rs x
+pattern Obs d y α <- (prj -> Just (Observe d y α))
+
+pattern DistDouble :: Dist Double -> Dist x
+pattern DistDouble d <- (isDistDouble -> d)
+pattern DistBool :: Dist Bool -> Dist x
+pattern DistBool d <- (isDistBool -> d)
+pattern DistInt :: Dist Int -> Dist x
+pattern DistInt d <- (isDistInt -> d)
+
+isDistDouble :: Dist x -> Dist Double
+isDistDouble d@NormalDist {} = d
+isDistDouble d@BetaDist {} = d
+isDistDouble d@GammaDist {} = d
+isDistDouble d@UniformDist {} = d
+
+isDistBool :: Dist x -> Dist Bool
+isDistBool d@BernoulliDist {} = d
+
+isDistInt :: Dist x -> Dist Int
+isDistInt d@DiscrUniformDist {} = d
+isDistInt d@BinomialDist {} = d 
+isDistInt d@CategoricalDist {} = d 
+isDistInt d@DiscreteDist {} = d
+
 {- Replaces Dists with Sample or Observe and adds address -}
 runDist :: forall rs a. (Member Sample rs, Member Observe rs) => Freer (Dist : rs) a 
         -> Freer rs a
@@ -130,8 +154,6 @@ runDist = loop 0
           then send (Observe d (getObs d) α) >>= loop (α + 1) . k 
           else send (Sample d α) >>= loop (α + 1). k
     Left  u'  -> Free u' (loop α . k)
-
-
 
 instance Distribution (Dist a) where
   cumulative (NormalDist μ σ _ ) x

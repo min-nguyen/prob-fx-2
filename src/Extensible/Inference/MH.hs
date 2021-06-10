@@ -79,25 +79,26 @@ type Vals = '[Int, Double, Bool]
 type LogP = Map Addr Double
 type Ⲭ    = Map Addr (DistInfo, OpenSum Vals)
 
+updateMapⲬ :: OpenSum.Member x Vals => Addr -> Dist x -> x -> Ⲭ -> Ⲭ
+updateMapⲬ α d x = Map.insert α (toDistInfo d, OpenSum.inj x) :: Ⲭ -> Ⲭ
+
+updateLogP :: Addr -> Dist x -> x -> LogP -> LogP
+updateLogP α d x  = Map.insert α (logProb d x)
+
 accept :: Addr -> Ⲭ -> Ⲭ -> LogP -> LogP -> IO Double
 accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
-
   let _X'sampled = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ' \\ Map.keysSet _Ⲭ)
       _Xsampled  = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ \\ Map.keysSet _Ⲭ')
   -- print $ " _X'sampled is " ++ show  _X'sampled
   -- print $ " _Xsampled is " ++ show _Xsampled
-
   let logα       = log (fromIntegral $ Map.size _Ⲭ) - log (fromIntegral $ Map.size _Ⲭ')
   -- print $ " logα is " ++ show logα
-
   let logα'      = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ'))
                          logα (Map.keysSet logℙ' \\ _X'sampled)
   -- print $ " logα' is " ++ show (exp logα') ++ " from " ++ show (Map.keysSet logℙ' \\ _X'sampled)
-
   let logα''     = foldl (\logα' v -> logα' - fromJust (Map.lookup v logℙ))
                          logα' (Map.keysSet logℙ \\ _Xsampled)
   -- print $ " logα'' is " ++ show (exp logα'') ++ " from " ++ show (Map.keysSet logℙ \\ _Xsampled)
-
   return $ exp logα''
 
 runMHnsteps ::
@@ -143,21 +144,6 @@ runMH env samples n m = do
                             . runReader env) m
   return (a, samples', logps)
 
-pattern Samp :: Member Sample rs => Dist x -> Addr -> Union rs x
-pattern Samp d α <- (prj -> Just (Sample d α))
-
-pattern Obs :: Member Observe rs => Dist x -> x -> Addr -> Union rs x
-pattern Obs d y α <- (prj -> Just (Observe d y α))
-
-pattern DistDouble :: Dist Double -> Dist x
-pattern DistDouble d <- (isDistDouble -> d)
-
-isDistDouble :: Dist x -> Dist Double
-isDistDouble d@NormalDist {} = d
-isDistDouble d@BetaDist {} = d
-isDistDouble d@GammaDist {} = d
-isDistDouble d@UniformDist {} = d
-
 transformMH :: (Member (State Ⲭ) rs, Member (State LogP) rs, Member Sample rs, Member Observe rs) => Freer rs a -> Freer rs a
 transformMH = loop
   where
@@ -167,31 +153,20 @@ transformMH = loop
     case u of
       Samp d α
         -> case d of
-              DistDouble d -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x) :: Ⲭ -> Ⲭ) >>
-                                            modify (updateLogP α d (unsafeCoerce x) :: LogP -> LogP) >>
+              -- We can unsafe coerce x here, because we've inferred the type of x from the distribution's type
+              DistDouble d -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
+                                            modify (updateLogP α d (unsafeCoerce x)) >>
                                             loop (k x))
-              NormalDist {}    -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >>
-                                                modify (updateLogP α d x :: LogP -> LogP) >>
-                                                loop (k x))
-              UniformDist {}   -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >>
-                                                modify (updateLogP α d x  :: LogP -> LogP) >>
-                                                loop (k x))
-              GammaDist {}     -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >>
-                                                modify (updateLogP α d x  :: LogP -> LogP) >>
-                                                loop (k x))
-              BernoulliDist {} -> Free u (\x -> modify (updateMapⲬ α d x :: Ⲭ -> Ⲭ) >>
-                                                modify (updateLogP α d x  :: LogP -> LogP) >>
-                                                loop (k x))
+              DistBool d   -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
+                                            modify (updateLogP α d (unsafeCoerce x)) >>
+                                            loop (k x))
+              DistInt d    -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
+                                            modify (updateLogP α d (unsafeCoerce x)) >>
+                                            loop (k x))
       Obs d y α
         -> Free u (\x -> modify (updateLogP α d y  :: LogP -> LogP) >>
-                                 loop (k x))
+                         loop (k x))
       _ -> Free u (loop . k)
-
-  updateMapⲬ :: OpenSum.Member x Vals => Addr -> Dist x -> x -> Ⲭ -> Ⲭ
-  updateMapⲬ α d x = Map.insert α (toDistInfo d, OpenSum.inj x) :: Ⲭ -> Ⲭ
-
-  updateLogP :: Addr -> Dist x -> x -> LogP -> LogP
-  updateLogP α d x  = Map.insert α (logProb d x)
 
 runObserve :: Freer (Observe : rs) a -> Freer rs a
 runObserve  = loop
@@ -204,51 +179,27 @@ runObserve  = loop
     Left  u'  -> Free u' (loop . k)
 
 runSample :: Addr -> Ⲭ -> Freer '[Sample] a -> Sampler a
-runSample α_samp samples = loop Map.empty
+runSample α_samp samples = loop
   where
-  loop :: LogP -> Freer '[Sample] a -> Sampler a
-  loop logps' (Pure x) = return x
-  loop logps' (Free u k) = do
+  loop :: Freer '[Sample] a -> Sampler a
+  loop (Pure x) = return x
+  loop (Free u k) = do
     case u of
       Samp d α ->
         case d of
-          NormalDist {} ->
+          DistDouble d -> 
             case lookupSample samples d α α_samp of
-              Nothing -> do x <- sample d
-                            -- liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
-                            loop (Map.insert α (logProb d x) logps') (k x)
-              Just x ->     loop (Map.insert α (logProb d x) logps') (k x)
-          UniformDist {} ->
+              Nothing -> sample d >>= loop . k . unsafeCoerce
+              Just x  -> (loop . k . unsafeCoerce) x
+          DistBool d -> 
             case lookupSample samples d α α_samp of
-              Nothing -> do x <- sample d
-                            -- liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
-                            loop (Map.insert α (logProb d x) logps') (k x)
-              Just x ->     loop (Map.insert α (logProb d x) logps') (k x)
-          BernoulliDist {} ->
+              Nothing -> sample d >>= loop . k . unsafeCoerce
+              Just x  -> (loop . k . unsafeCoerce) x
+          DistInt d -> 
             case lookupSample samples d α α_samp of
-              Nothing -> do x <- sample d
-                            -- liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
-                            loop (Map.insert α (logProb d x) logps') (k x)
-              Just x ->     loop (Map.insert α (logProb d x) logps') (k x)
-          BetaDist {} ->
-            case lookupSample samples d α α_samp of
-              Nothing -> do x <- sample d
-                            -- liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
-                            loop (Map.insert α (logProb d x) logps') (k x)
-              Just x ->     loop (Map.insert α (logProb d x) logps') (k x)
-          BinomialDist {} ->
-            case lookupSample samples d α α_samp of
-              Nothing -> do x <- sample d
-                            -- liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
-                            loop (Map.insert α (logProb d x) logps') (k x)
-              Just x ->     loop (Map.insert α (logProb d x) logps') (k x)
-          GammaDist {} ->
-            case lookupSample samples d α α_samp of
-              Nothing -> do x <- sample d
-                            -- liftS $ print $ "prob of address " ++ show α ++ " with value " ++ show x ++ " is " ++ show (prob d x) ++ " dist: " ++ show d
-                            loop (Map.insert α (logProb d x) logps') (k x)
-              Just x ->     loop (Map.insert α (logProb d x) logps') (k x)
-      _         -> error "Impossible: Nothing cannot occur"
+              Nothing -> sample d >>= loop . k . unsafeCoerce
+              Just x  -> (loop . k . unsafeCoerce) x
+      _  -> error "Impossible: Nothing cannot occur"
 
 -- | Lookup a sample address α's value - 
 -- return Nothing if: 1) it doesn't exist, 2) the sample address is the same as the current sample site α_samp, or 3) the sample we're supposed to reuse belongs to either a different distribution or the same distribution with different parameters (due to a new sampled value affecting its parameters). These all indicate that a new value should be sampled.
