@@ -21,9 +21,9 @@ main = do
   -- x <- Infer.runModel (linearRegression 0 1 0) (y @= Just 5 <: nil)
   y <- LW.runLW (y @= Just 0.4 <: nil) (Extensible.Example.linearRegression' 0 1 0)
   (x, samples, logps)
-    <- sampleIO $ MH.runMH (label @= Just True <: nil) Map.empty Map.empty 0 (Extensible.Example.logisticRegression (-1))
+    <- sampleIO $ MH.runMH (label @= Just True <: nil) Map.empty 0 (Extensible.Example.logisticRegression (-1))
   (x, samples, logps)
-    <- sampleIO $ MH.runMHnsteps 5 (label @= Just True <: nil) (Extensible.Example.logisticRegression (10))
+    <- sampleIOFixed $ MH.runMHnsteps 5 (label @= Just True <: nil) (Extensible.Example.logisticRegression (10))
   print $ show (x, samples, logps)
 
   return ()

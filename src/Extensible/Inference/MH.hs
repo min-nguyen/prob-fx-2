@@ -105,7 +105,7 @@ runMHnsteps ::  Show a =>
              -> Sampler (a, Ⲭ, LogP)
 runMHnsteps n env model = do
   -- perform initial run of mh
-  (x, samples, logps) <- runMH env Map.empty Map.empty 0 model
+  (x, samples, logps) <- runMH env Map.empty 0 model
   liftS $ print $ "First run is: " ++ show (x, samples, logps)
   -- uniformly select a random sample address to update for
   let loop i (x, samples, logps) = do
@@ -113,7 +113,7 @@ runMHnsteps n env model = do
         α_samp <- sample $ DiscreteDist (map (,1.0/fromIntegral sample_size) (Map.keys samples)) Nothing
         -- run mh with new sample address
         liftS $ print $ "sample address is " ++ show α_samp
-        (x', samples', logps') <- runMH env samples logps α_samp model
+        (x', samples', logps') <- runMH env samples α_samp model
         liftS $ print $ "Second run is: " ++ show (x', samples', logps')
         -- do some acceptance ratio to see if we use samples or samples'
         acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
@@ -128,14 +128,14 @@ runMHnsteps n env model = do
           else return mhState
   loop 0 (x, samples, logps)
 
-runMH :: MRec env -> Ⲭ -> LogP -> Addr 
+runMH :: MRec env -> Ⲭ -> Addr 
       -> Freer '[Reader (Record (Maybes env)), Dist, Observe, Sample] a
       -> Sampler (a,  Ⲭ, LogP)
-runMH env samples logps n m = do 
+runMH env samples  n m = do 
   ((a, logps_obs'), samples', logps_samp') 
     <- (runSample n samples . runObserve . runDist . runReader env) m
-  -- Merge log probability maps, with new map entries taking precedence over the map from the previous MH run
-  let logps' = logps_obs' `Map.union` logps_samp' `Map.union` logps
+  -- Merge log probability maps
+  let logps' = logps_obs' `Map.union` logps_samp'
   -- liftS $ print $ "samples are" ++ show samples
   return (a, samples', logps')
 
