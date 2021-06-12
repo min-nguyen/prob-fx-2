@@ -57,46 +57,44 @@ type MRec s = Record (Maybes s)
 -}
 
 type Model env es a = 
-  Member Dist es => (Freer (Reader (MRec env) ': es) a) 
+  (Member Dist es, Member (Reader (MRec env)) es) => Freer es a
 
-access :: forall s rs a.
+access :: forall s es a. 
      Getting a (Maybes s :& Field Identity) a
-  -> Model s rs a
+  -> Model s es a
 access f =  do
     env :: MRec s <- ask
     return $ env ^. f
     
-normal :: Member Dist rs => Double -> Double -> Model s rs Double
+normal :: Member Dist es => Double -> Double -> Freer es Double
 normal mu sigma = do
   send (NormalDist mu sigma Nothing) 
 
-normal' :: forall s a rs. (a ~ Maybe Double) =>
+normal' :: forall s a es. (a ~ Maybe Double) => 
    Double -> Double -> Getting a (Maybes s :& Field Identity) a
-  -> Model s rs Double
+  -> Model s es Double
 normal' mu sigma field = do
   maybe_y  <- access field
   send (NormalDist mu sigma maybe_y)
 
-bernoulli :: (a ~ Maybe Bool)
-  => Double -> Model s rs Bool
+bernoulli :: Member Dist es => Double -> Freer es Bool
 bernoulli p  = do
   send (BernoulliDist p Nothing) 
 
-bernoulli' :: (a ~ Maybe Bool)
+bernoulli' :: forall s es a. (a ~ Maybe Bool)
   => Double -> Getting a (Maybes s :& Field Identity) a
-  -> Model s rs Bool
+  -> Model s es Bool
 bernoulli' p field = do
   y <- access field
   send (BernoulliDist p y)
 
-gamma :: (a ~ Maybe Double)
-  => Double -> Double -> Model s rs Double
+gamma :: Member Dist es => Double -> Double -> Freer es Double
 gamma k θ  = do
   send (GammaDist k θ Nothing) 
 
-gamma' :: (a ~ Maybe Double)
+gamma' :: forall s es a. (a ~ Maybe Double)
   => Double -> Double -> Getting a (Maybes s :& Field Identity) a
-  -> Model s rs Double
+  -> Model s es Double
 gamma' k θ field = do
   y <- access field
   send (GammaDist k θ y)

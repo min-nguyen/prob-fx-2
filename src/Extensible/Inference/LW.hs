@@ -21,7 +21,7 @@ import Extensible.Sampler
 type Conts = forall a. Map Int (Freer '[Sample] a)
 
 runLW :: MRec env 
-      -> Model env '[Dist, Observe, Sample] a
+      -> Model env '[Reader (MRec env), Dist, Observe, Sample] a
       -> IO (a, Double)
 runLW env = runSample . runObserve. runDist . runReader env
 

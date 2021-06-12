@@ -38,15 +38,14 @@ import Data.Extensible hiding (Member)
 sigmoid :: Double -> Double
 sigmoid x = 1 / (1 + exp((-1) * x))
 
-logisticRegression :: forall rs env. HasVar env "label" Bool =>
- Double -> Model env rs Bool
+logisticRegression :: forall rs s. HasVar s "label" Bool =>
+ Double -> Model s rs Bool
 logisticRegression x = do
   m     <- normal 0 1 
   b     <- normal 0 1  
   sigma <- gamma 1 1 
   y     <- normal (m * x + b) sigma
-  l     <- bernoulli' (sigmoid y) label
-  return l
+  bernoulli' @s (sigmoid y) label
 
 type LinRegrEnv =     
     '[  "y"    ':>  Double
@@ -60,14 +59,14 @@ linearRegression μ σ x =  --do
 linearRegression' :: forall rs s. HasVar s "y" Double =>
   Double -> Double -> Double -> Model s rs Double
 linearRegression' μ σ x = do
-  normal' (μ + x) σ y
+  normal' @s (μ + x) σ y
 
-arbitraryModel :: forall rs s. HasVar s "y" Double =>
-  Double -> Double -> Double -> Model s rs Double
+arbitraryModel :: forall es s. HasVar s "y" Double =>
+  Double -> Double -> Double -> Model s es Double
 arbitraryModel μ σ x = do
-  normal' (μ + x) σ y
+  normal' @s (μ + x) σ y
   replicateM 4 $ normal (μ + x) σ 
-  normal' (μ + x) σ y
+  normal' @s (μ + x) σ y
 
 ifModel :: forall rs s. Double -> Model s rs Double
 ifModel p = do

@@ -18,7 +18,7 @@ import Extensible.Sampler
 import Extensible.Reader
 
 runBasic :: MRec env 
-         -> Model env '[Dist, Observe, Sample] a
+         -> Model env '[Reader (MRec env), Dist, Observe, Sample] a
          -> IO a 
 runBasic env = runSample . runObserve . runDist . runReader env
 
