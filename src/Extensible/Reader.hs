@@ -18,12 +18,16 @@
 module Extensible.Reader where
 
 import Extensible.Freer
+import Data.Extensible hiding (Member)
 
 data Reader env a where
   Ask :: Reader env env
 
 ask :: (Member (Reader env) rs) => Freer rs env
 ask = Free (inj Ask) Pure
+
+-- ask' :: (Member (Reader env) rs) => Freer (rs ++ '[Reader env]) env
+-- ask' = Free (inj Ask) Pure
 
 runReader :: forall env rs a. env -> Freer (Reader env ': rs) a -> Freer rs a
 runReader env m = loop m where

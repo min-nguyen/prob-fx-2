@@ -63,12 +63,12 @@ linearRegression' :: forall rs s. HasVar s "y" Double =>
 linearRegression' μ σ x = do
   normal' @s (μ + x) σ y
 
-arbitraryModel :: forall es s. HasVar s "y" Double =>
-  Double -> Double -> Double -> Model s es Double
-arbitraryModel μ σ x = do
-  normal'  (μ + x) σ y
-  replicateM 4 $ normal (μ + x) σ 
-  normal'  (μ + x) σ y
+-- arbitraryModel :: forall es s. HasVar s "y" Double =>
+--   Double -> Double -> Double -> Model s es Double
+-- arbitraryModel μ σ x = do
+--   normal'  (μ + x) σ y
+--   replicateM 4 $ normal (μ + x) σ 
+--   normal'  (μ + x) σ y
 
 ifModel :: forall rs s. Double -> Model s rs Double
 ifModel p = do
