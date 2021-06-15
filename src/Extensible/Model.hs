@@ -57,47 +57,95 @@ type MRec s = Record (Maybes s)
 -}
 
 type Model env es a = 
-  (Member Dist es, Member (Reader (MRec env)) es) => Freer es a
+  (Member Dist es, Member (Reader (MRec env)) es) => 
+  Freer es a
 
-access :: forall s es a. 
+-- type Model env es a = 
+--   forall ts. (Member Dist ts, Member (Reader (MRec env)) ts) => Freer ts a
+
+
+newtype Model' env es a = 
+  Model' { runModel' :: (Member Dist es, Member (Reader (Record env)) es) => Freer es a }
+
+access :: forall ts s es a . 
+    ( Member (Reader (MRec s)) ts) =>
      Getting a (Maybes s :& Field Identity) a
-  -> Model s es a
+  -> Freer (ts) a
 access f =  do
-    env :: MRec s <- ask
+    env :: MRec s <- Free (inj Ask) Pure
     return $ env ^. f
-    
+
+access' :: forall s es . (Member (Reader (Record s)) es) =>
+   Freer es (Record s)
+access' = do
+    env :: Record s <- Free (inj Ask) Pure
+    return env
+
+normal'' :: forall s ts a . (a ~ Maybe Double) =>
+   Double -> Double -> Getting a (s :& Field Identity) a ->
+   Model' s ts Double
+normal'' mu sigma f = Model' $ do
+  env :: Record s <- access'
+  -- let maybe_y = env ^. f
+  -- maybe_y  <- access @ts field
+  send (NormalDist mu sigma Nothing)
+  return 0
+
+-- linearRegression :: forall rs s. (Lookup s "y" (Maybe Double)) =>
+  -- Double -> Double -> Double -> Model' s rs Double
+linearRegression :: (KnownNat n, FindElem (Reader (Record s)) ts, FindElem Dist ts, 
+ Lookup s "y" (Maybe Double)) =>
+ Double -> Double -> Double -> Model' s ts Double
+linearRegression μ σ x = 
+  normal'' (μ + x) σ y
+
 normal :: Member Dist es => Double -> Double -> Freer es Double
 normal mu sigma = do
   send (NormalDist mu sigma Nothing) 
 
-normal' :: forall s a es. (a ~ Maybe Double) => 
+normal' :: forall s ts  a . 
+    (a ~ Maybe Double, 
+     Member (Reader (MRec s)) ts, 
+     Member Dist ts) =>
    Double -> Double -> Getting a (Maybes s :& Field Identity) a
-  -> Model s es Double
+  -> Freer ts Double
 normal' mu sigma field = do
-  maybe_y  <- access field
+  env :: MRec s <- Free (inj Ask) Pure
+  let maybe_y = env ^. field
+  -- maybe_y  <- access @ts field
   send (NormalDist mu sigma maybe_y)
 
 bernoulli :: Member Dist es => Double -> Freer es Bool
 bernoulli p  = do
   send (BernoulliDist p Nothing) 
 
-bernoulli' :: forall s es a. (a ~ Maybe Bool)
+bernoulli' :: forall  ts s es a. (a ~ Maybe Bool) =>
+  (a ~ Maybe Bool, 
+     ts ~ (es ++ '[(Reader (MRec s))]), 
+     Member (Reader (MRec s)) ts, 
+     Member Dist ts) 
   => Double -> Getting a (Maybes s :& Field Identity) a
   -> Model s es Bool
 bernoulli' p field = do
-  y <- access field
-  send (BernoulliDist p y)
+  env :: MRec s <- Free (inj Ask) Pure
+  let maybe_y = env ^. field
+  send (BernoulliDist p maybe_y)
 
 gamma :: Member Dist es => Double -> Double -> Freer es Double
 gamma k θ  = do
   send (GammaDist k θ Nothing) 
 
-gamma' :: forall s es a. (a ~ Maybe Double)
+gamma' :: forall ts s es a. (a ~ Maybe Double) => 
+  (a ~ Maybe Double, 
+     ts ~ (es ++ '[(Reader (MRec s))]), 
+     Member (Reader (MRec s)) ts, 
+     Member Dist ts) 
   => Double -> Double -> Getting a (Maybes s :& Field Identity) a
   -> Model s es Double
 gamma' k θ field = do
-  y <- access field
-  send (GammaDist k θ y)
+  env :: MRec s <- Free (inj Ask) Pure
+  let maybe_y = env ^. field
+  send (GammaDist k θ maybe_y)
 
 -- data IfModel s rs a = IfModel 
 
