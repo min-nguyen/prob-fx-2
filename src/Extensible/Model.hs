@@ -86,9 +86,8 @@ normal'' :: forall s ts a . (a ~ Maybe Double) =>
    Model' s ts Double
 normal'' mu sigma f = Model' $ do
   env :: Record s <- access'
-  -- let maybe_y = env ^. f
-  -- maybe_y  <- access @ts field
-  send (NormalDist mu sigma Nothing)
+  let maybe_y = env ^. f
+  send (NormalDist mu sigma maybe_y)
   return 0
 
 -- linearRegression :: forall rs s. (Lookup s "y" (Maybe Double)) =>
