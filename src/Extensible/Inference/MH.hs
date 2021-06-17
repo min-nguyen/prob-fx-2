@@ -26,7 +26,7 @@ import Control.Monad
 import Control.Monad.Trans.Class
 import Extensible.Dist
 import Extensible.Freer
-import Extensible.Model hiding (runModel, runModelFree)
+import Extensible.Model hiding (runModelFree)
 import Extensible.Sampler
 import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum(..))
@@ -103,7 +103,7 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
 
 mhNsteps :: Int
   -> MRec env
-  -> Freer '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a
+  -> Model env '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a
   -> Sampler (a, Ⲭ, LogP)
 mhNsteps n env model = do
   -- perform initial run of mh
@@ -113,7 +113,7 @@ mhNsteps n env model = do
 
 -- | Perform one step of MH
 mhStep :: MRec env 
-  -> Freer '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a 
+  -> Model env '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a 
   -> (a, Ⲭ, LogP) 
   -> Sampler (a, Ⲭ, LogP)
 mhStep env model (x, samples, logps) = do
@@ -134,7 +134,7 @@ mhStep env model (x, samples, logps) = do
 
 -- | Run model once under MH
 runMH :: MRec env -> Ⲭ -> Addr
-      -> Freer '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a
+      -> Model env '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a
       -> Sampler (a, Ⲭ, LogP)
 runMH env samples n m = do
   ((a, samples'), logps) <- ( runSample n samples
@@ -143,7 +143,8 @@ runMH env samples n m = do
                             . runObserve
                             . transformMH
                             . runDist
-                            . runReader env) m
+                            . runReader env
+                            . runModel) m
   return (a, samples', logps)
 
 -- | Insert stateful operations for Ⲭ and LogP when either Sample or Observe occur.
