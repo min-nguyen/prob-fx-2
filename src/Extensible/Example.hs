@@ -23,7 +23,6 @@ import Extensible.Writer
 import Extensible.Model
 import Extensible.Dist
 import Extensible.IO
-import Extensible.Inference.LW
 import Extensible.Sampler
 import Control.Monad
 import Unsafe.Coerce

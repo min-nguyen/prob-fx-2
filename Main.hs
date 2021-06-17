@@ -18,7 +18,8 @@ import Extensible.Sampler
 
 main :: IO ()
 main = do
-  y <- Basic.runBasic (y @= Just (0.4 :: Double) <: nil) (Example.linearRegression' 0 0 0)
+  r <- Basic.runBasic (y @= Just (0.4 :: Double) <: nil) (Example.linearRegression' 0 0 0)
+  r <- LW.runLW (y @= Just (0.4 :: Double) <: nil) (Example.linearRegression 0 0 0)
     -- 
     -- (x, samples, logps)
     -- <- sampleIO $ MH.runMH (label @= Just True <: nil) Map.empty 0 (Extensible.Example.logisticRegression (-1))

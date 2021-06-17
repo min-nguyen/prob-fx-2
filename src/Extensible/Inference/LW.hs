@@ -14,14 +14,14 @@ import Data.Extensible
 import Extensible.Reader
 import Control.Monad.Trans.Class
 import Extensible.Dist
+import qualified Extensible.Example as Example
 import Extensible.Freer
 import Extensible.Model hiding (runModelFree)
 import Extensible.Sampler
 
 type Conts = forall a. Map Int (Freer '[Sample] a)
 
-runLW :: MRec env 
-      -> Model env '[Reader (MRec env), Dist, Observe, Sample] a
+runLW :: MRec env -> Model env '[Reader (MRec env), Dist, Observe, Sample] a
       -> IO (a, Double)
 runLW env = runSample . runObserve . runDist . runReader env . runModel
 

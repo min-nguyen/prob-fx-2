@@ -19,12 +19,8 @@ import Extensible.Sampler
 import Extensible.Reader
 import Extensible.Example as Example
 
-runBasic :: MRec env -> Model env '[Reader (MRec env), Dist, Observe, Sample] a -> 
-              IO a 
+runBasic :: MRec env -> Model env '[Reader (MRec env), Dist, Observe, Sample] a -> IO a 
 runBasic env m = runSample $ runObserve $ runDist $ runReader env $ runModel m
-
-g :: IO Double
-g = runBasic (y @= Just (0.4 :: Double) <: nil) (Example.linearRegression 0 0 0)
 
 runObserve :: Freer (Observe : rs) a -> Freer rs  a
 runObserve = loop 

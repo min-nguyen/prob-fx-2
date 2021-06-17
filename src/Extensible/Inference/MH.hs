@@ -109,7 +109,6 @@ mhNsteps n env model = do
   -- perform initial run of mh
   (x, samples, logps) <- runMH env Map.empty 0 model
   -- liftS $ print $ "First run is: " ++ show (x, samples, logps)
-  -- uniformly select a random sample address to update for
   foldr (>=>) return (replicate n (mhStep env model)) (x, samples, logps)
 
 -- | Perform one step of MH
