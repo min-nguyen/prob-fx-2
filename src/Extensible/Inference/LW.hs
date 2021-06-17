@@ -15,7 +15,7 @@ import Extensible.Reader
 import Control.Monad.Trans.Class
 import Extensible.Dist
 import Extensible.Freer
-import Extensible.Model hiding (runModel, runModelFree)
+import Extensible.Model hiding (runModelFree)
 import Extensible.Sampler
 
 type Conts = forall a. Map Int (Freer '[Sample] a)
@@ -23,7 +23,7 @@ type Conts = forall a. Map Int (Freer '[Sample] a)
 runLW :: MRec env 
       -> Model env '[Reader (MRec env), Dist, Observe, Sample] a
       -> IO (a, Double)
-runLW env = runSample . runObserve. runDist . runReader env
+runLW env = runSample . runObserve . runDist . runReader env . runModel
 
 runObserve :: Freer (Observe : rs) a -> Freer rs (a, Double)
 runObserve = loop 0

@@ -14,24 +14,17 @@ import Data.Extensible hiding (Member)
 import Control.Monad.Trans.Class
 import Extensible.Dist
 import Extensible.Freer
-import Extensible.Model hiding (runModel, runModelFree)
+import Extensible.Model hiding (runModelFree)
 import Extensible.Sampler
 import Extensible.Reader
 import Extensible.Example as Example
 
-run' :: forall s a. (forall rs. Model s rs a) -> MRec s -> IO ()
-run' m env = do
-  y <-  (runSample . runReader env . runObserve . runDist)
-            (m @('[Dist, Observe, Reader (MRec s), Sample]))
-  return ()
+runBasic :: MRec env -> Model env '[Reader (MRec env), Dist, Observe, Sample] a -> 
+              IO a 
+runBasic env m = runSample $ runObserve $ runDist $ runReader env $ runModel m
 
-g = run' @LinRegrEnv (Example.linearRegression @_ @LinRegrEnv 0 0 1)
-
--- runBasic :: MRec env 
---          -> Model env '[Dist, Observe, Reader (MRec env), Sample] a
---          -> IO a 
-runBasic :: env -> Freer '[Dist, Observe, Reader env, Sample] a -> IO a
-runBasic env = runSample . runReader env . runObserve . runDist
+g :: IO Double
+g = runBasic (y @= Just (0.4 :: Double) <: nil) (Example.linearRegression 0 0 0)
 
 runObserve :: Freer (Observe : rs) a -> Freer rs  a
 runObserve = loop 
