@@ -49,7 +49,7 @@ instance Lookup (Maybes xs) k (Maybe v) => HasVar xs k v where
 
 type MRec s = Record (Maybes s)
 
--- type Model env es a = 
+-- type Model env es a =
 --   forall ts. (Member Dist ts, Member (Reader (MRec env)) ts) => Freer ts a
 
 
@@ -118,10 +118,10 @@ gamma' k θ field = Model $ do
   let maybe_y = env ^. field
   send (GammaDist k θ maybe_y)
 
--- data IfModel s rs a = IfModel 
+-- data IfModel s rs a = IfModel
 
 -- if' :: forall s rs a. Bool -> Model s rs a -> Model s rs a -> Model s rs a
--- if' b (Free u@(Union n tx) k) m2 = 
+-- if' b (Free u@(Union n tx) k) m2 =
 --   case prj u :: forall x. Maybe (Dist x) of
 --     _ -> undefined
 
@@ -129,8 +129,8 @@ gamma' k θ field = Model $ do
 
 
 {- Newtype version of model (doesn't work with examples yet) -}
--- newtype Model env es a = Model { 
---     runModel ::  Member Dist es => Member (Reader (MRec env)) es => (Freer es a) 
+-- newtype Model env es a = Model {
+--     runModel ::  Member Dist es => Member (Reader (MRec env)) es => (Freer es a)
 --   } deriving (Functor)
 
 -- instance Applicative (Model env es) where
@@ -138,7 +138,7 @@ gamma' k θ field = Model $ do
 --   (<*>) = ap
 
 -- instance Monad (Model env es) where
---   return = pure 
+--   return = pure
 --   Model fs >>= f = Model (fs >>= (runModel . f))
 
 -- access :: forall s rs a.

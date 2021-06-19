@@ -17,7 +17,7 @@
 module Extensible.Writer where
 import Extensible.Freer
 
-data Writer w a where 
+data Writer w a where
   Tell :: w -> Writer w ()
 
 tell :: Member (Writer w) rs => w -> Freer rs ()

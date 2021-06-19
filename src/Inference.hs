@@ -4,7 +4,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PolyKinds #-}
- 
+
 module Inference where
 
 import Data.Extensible
@@ -19,16 +19,16 @@ import Example
 import Control.Monad.Trans.Identity
 
 -- runModel :: ModelT s Sampler a -> Sampler (Reader (MRec s) a)
-runModelFree :: (MonadTrans t, Monad (t Sampler)) => ModelT s t a 
+runModelFree :: (MonadTrans t, Monad (t Sampler)) => ModelT s t a
          -> ReaderT (MRec s) (t Sampler) a
 runModelFree model = do
   let loop v = do
         x <- runFreeT v
-        let handle d obs k =  
-              if   isJust obs 
+        let handle d obs k =
+              if   isJust obs
               then let p = logProb d in loop $ k (fromJust obs)
               else do lift (lift (sample d)) >>= loop
-        case x of 
+        case x of
           FreeF d@(NormalDist _ _ obs k) -> handle d obs k
           FreeF d@(UniformDist _ _ obs k) -> handle d obs k
           FreeF d@(DiscrUniformDist _ _ obs k) -> handle d obs k
@@ -39,7 +39,7 @@ runModelFree model = do
           FreeF d@(CategoricalDist  _ obs k) -> handle d obs k
           FreeF d@(DiscreteDist  _ obs k) -> handle d obs k
           Pure v -> return v
-  loop model 
+  loop model
 
 runModel :: ModelT s IdentityT a -> MRec s -> IO a
 runModel model = sampleIO . runIdentityT . runReaderT (runModelFree model)

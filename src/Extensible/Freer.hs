@@ -31,7 +31,7 @@ data Union (rs :: [* -> *]) x where
 
 -- instance Functor (Union rs) where
 --   fmap f (Union i tx) = Union i (fmap f tx)
-  
+
 newtype P t rs = P {unP :: Int}
 
 class FindElem (t :: * -> *) r where
@@ -54,7 +54,7 @@ class (FindElem t rs) => Member (t :: * -> *) (rs :: [* -> *]) where
 -- instance {-# INCOHERENT #-} (t ~ s) => Member t '[s] where
 --    inj x          = Union 0 x
 --    prj (Union _ x) = Just (unsafeCoerce x)
- 
+
 instance (FindElem t rs) => Member t rs where
   inj = inj' (unP (findElem :: P t rs))
   prj = prj' (unP (findElem :: P t rs))
@@ -84,7 +84,7 @@ class Member t r =>
 instance MemberU' 'True tag (tag e) (tag e ': r)
 instance (Member t (t' ': r), SetMember tag t r) =>
            MemberU' 'False tag t (t' ': r)
-          
+
 {- Eff and VE -}
 -- data Free f a = Pure a |  Free (Union f (Free f a))
 
@@ -106,7 +106,7 @@ instance Monad (Freer f) where
   Pure a >>= f      = f a
   Free fx k >>= f = Free fx (k >=> f)
 
-run :: Freer '[] a -> a 
+run :: Freer '[] a -> a
 run (Pure x) = x
 
 send :: Member t rs => t x -> Freer rs x

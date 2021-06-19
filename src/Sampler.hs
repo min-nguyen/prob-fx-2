@@ -24,8 +24,8 @@ import qualified System.Random.MWC.Distributions as MWC.Dist
 import Util
 
 {-
-We need to 
-- Use "MWC.create :: PrimMonad m => m (Gen (PrimState m))" 
+We need to
+- Use "MWC.create :: PrimMonad m => m (Gen (PrimState m))"
 - We can concretize the "PrimMonad m" as the "ST s" monad, so this becomes
   "MWC.create :: ST s (Gen (PrimState ST s))", which is equivalent to
   "MWC.create :: ST s (GenST s)"
@@ -35,8 +35,8 @@ We need to
   "runST :: forall a. (forall s. ST s a) -> a" on "MWC.create :: ST s (GenST s)"
   and then use "reader :: Monad m => (r -> a) -> ReaderT r m a" to wrap around
   computations that require us to read from the "GenST s"
-  
-  Alternatively, we could use the ReaderT monad, where its read-only state is 
+
+  Alternatively, we could use the ReaderT monad, where its read-only state is
   "GenST s" and its monad is "ST s"
 -}
 
@@ -93,7 +93,7 @@ sampleBernoulli :: Double -> (MWC.GenIO -> IO Bool)
 sampleBernoulli p = \gen -> MWC.Dist.bernoulli p gen
 
 sampleBinomial :: Int -> Double -> (MWC.GenIO -> IO [Bool])
-sampleBinomial n p = \gen -> replicateM n (MWC.Dist.bernoulli p gen) 
+sampleBinomial n p = \gen -> replicateM n (MWC.Dist.bernoulli p gen)
 
 sampleCategorical :: V.Vector Double -> (MWC.GenIO -> IO Int)
 sampleCategorical ps = trace (show ps) $ \gen -> MWC.Dist.categorical (ps) gen

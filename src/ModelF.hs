@@ -5,7 +5,7 @@ module ModelF where
 
 
 -- import FreeT
-import Sample
+import Sampler
 import Util
 import GHC.Generics
 import GHC.Types
@@ -19,8 +19,8 @@ import Control.Monad.Trans.Class ( MonadTrans(lift) )
 import Control.Monad.Reader
 import Control.Monad.Trans.Identity
 
-data DistF a x 
-  = Pure a 
+data DistF a x
+  = Pure a
   | NormalF Double Double (Maybe Double) (Double -> x)
   | BernoulliF Double (Maybe Bool) (Bool -> x)
   | BinomialF Int Double (Maybe Int) (Int -> x)
@@ -103,7 +103,7 @@ access f = do
 
 {- Distribution functions -}
 normal :: (a ~ Maybe Double, Monad m)
-  => Double -> Double -> Maybe Double 
+  => Double -> Double -> Maybe Double
   -> DistT (ReaderT (Record s) m) Double
 normal mu sigma maybe_y = do
   suspend (NormalF mu sigma maybe_y return)

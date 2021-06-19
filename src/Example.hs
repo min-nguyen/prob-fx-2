@@ -23,7 +23,7 @@ exampleModel = do
   return (r1 + r2)
 
 -- Linear regression
-type LinRegrEnv =     
+type LinRegrEnv =
     '[  "y"    ':>  Double
      ]
 
@@ -33,7 +33,7 @@ linearRegression μ σ x = do
   a <- normal' (μ + x) σ y
   b <- normal' (μ + x) σ y
   return (a + b)
-   
+
 -- Hidden markov model (with parameter y :: Int)
 transitionModel ::  Double -> Int -> Model s Int
 transitionModel transition_p x_prev = do
@@ -46,7 +46,7 @@ observationModel :: (HasVar s "y" Int)
 observationModel observation_p x = do
   binomial' x observation_p y
 
-hmm :: (HasVar s "y" Int) 
+hmm :: (HasVar s "y" Int)
   => Double -> Double -> Int -> Model s Int
 hmm transition_p observation_p x_prev = do
   x_n <- transitionModel transition_p x_prev
@@ -54,10 +54,10 @@ hmm transition_p observation_p x_prev = do
   return x_n
 
 hmm' :: HasVar s "y" Int => Double -> Double -> Int -> Model s Int
-hmm' transition_p observation_p = 
+hmm' transition_p observation_p =
   observationModel observation_p <=< transitionModel transition_p
 
-hmmNSteps :: (HasVar s "y" Int) 
+hmmNSteps :: (HasVar s "y" Int)
   => Double -> Double -> Int -> (Int -> Model s Int)
 hmmNSteps transition_p observation_p n =
   foldl (>=>) return (replicate n (hmm transition_p observation_p))
@@ -82,7 +82,7 @@ hmmSt transition_p observation_p x_prev = do
   lift $ modify (++ [y_n])
   return x_n
 
-hmmNStepsSt :: (HasVar s "y" Int) 
+hmmNStepsSt :: (HasVar s "y" Int)
   => Double -> Double -> Int -> (Int -> ModelT s (StateT [Int]) Int)
 hmmNStepsSt transition_p observation_p n =
   foldl (>=>) return (replicate n (hmmSt transition_p observation_p))
@@ -100,15 +100,15 @@ observationModel' observation_p i x_i = do
   y_i <- access ys <&> fmap (!! i)
   binomial x_i observation_p y_i
 
--- hmm' :: (HasVar s "ys" [Int]) 
+-- hmm' :: (HasVar s "ys" [Int])
 --   => Double -> Double -> Int -> Int -> Model s Int
 -- hmm' transition_p observation_p i x_prev = do
 --   x_i <- transitionModel' transition_p x_prev
 --   y_i <- observationModel' observation_p i x_i
 --   return x_i
 
--- hmmNSteps' :: (HasVar s "ys" [Int]) 
+-- hmmNSteps' :: (HasVar s "ys" [Int])
 --   => Double -> Double -> Int -> (Int -> Model s Int)
 -- hmmNSteps' transition_p observation_p n =
---   foldl (>=>) return 
+--   foldl (>=>) return
 --     (replicate n (hmm' transition_p observation_p) <*> [0..])

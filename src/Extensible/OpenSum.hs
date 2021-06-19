@@ -4,7 +4,7 @@ module Extensible.OpenSum where
 
 import Data.Kind (Type)
 import Data.Proxy
--- import Fcf 
+-- import Fcf
 import GHC.Natural
 import GHC.TypeLits (Nat, KnownNat, natVal)
 import qualified GHC.TypeLits as TL
@@ -14,10 +14,10 @@ import Unsafe.Coerce
 data OpenSum (ts :: [k]) where
   UnsafeOpenSum :: Int -> t -> OpenSum ts
 
-instance {-# INCOHERENT #-} Show t => Show (OpenSum '[t]) where 
+instance {-# INCOHERENT #-} Show t => Show (OpenSum '[t]) where
   show (UnsafeOpenSum i t) = show (unsafeCoerce t :: t)
 
-instance forall t ts. (Show t, Show (OpenSum ts)) => Show (OpenSum (t ': ts)) where 
+instance forall t ts. (Show t, Show (OpenSum ts)) => Show (OpenSum (t ': ts)) where
   show (UnsafeOpenSum i t) =
     if i == 0
     then show (unsafeCoerce t :: t)
@@ -56,7 +56,7 @@ type instance Eval ((+) a b) = a TL.+ b
 -- ## If
 data If :: Bool -> a -> a -> Exp a
 type instance Eval (If 'True a1 a2) = a1
-type instance Eval (If 'False a1 a2) = a2 
+type instance Eval (If 'False a1 a2) = a2
 -- ## FromMaybe
 data FromMaybe :: a -> Maybe a -> Exp a
 type instance Eval (FromMaybe a' ('Just a)) = a
@@ -66,8 +66,8 @@ type family Stuck :: a
 -- ## FindIndex
 data FindIndex :: (a -> Exp Bool) -> [a] -> Exp (Maybe Nat)
 type instance Eval (FindIndex f '[]) = 'Nothing
-type instance Eval (FindIndex f (x ': xs)) 
-  = Eval (If (Eval (f x)) 
+type instance Eval (FindIndex f (x ': xs))
+  = Eval (If (Eval (f x))
              (Eval (Pure ('Just 0)))
              (Eval (FindIndex f xs >>= FMap ((+) 1))))
 
@@ -88,7 +88,7 @@ inj' ft = UnsafeOpenSum (findElem @t @ts) ft
 
 
 prj :: forall  t ts. Member t ts => OpenSum ts -> Maybe t
-prj (UnsafeOpenSum i ft) = 
+prj (UnsafeOpenSum i ft) =
   if i == findElem @t @ts
-  then Just $ unsafeCoerce ft 
+  then Just $ unsafeCoerce ft
   else Nothing

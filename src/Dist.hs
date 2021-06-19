@@ -53,7 +53,7 @@ instance Distribution (Dist a) where
     = cumulative (normalDistr μ σ) x
   cumulative (UniformDist min max obs _) x
     = cumulative (uniformDistr min max) x
-  cumulative (GammaDist k θ _ _) x 
+  cumulative (GammaDist k θ _ _) x
     = cumulative (gammaDistr k θ) x
   cumulative (BetaDist α β _ _) x
     = cumulative (betaDistr α β) x
@@ -95,46 +95,46 @@ instance DiscreteDistr (Dist a) where
 
 {- Returns 'Either LogProb SampledValue' -}
 prob :: Dist a -> Double
-prob d@(NormalDist _ _ obs _)     
+prob d@(NormalDist _ _ obs _)
   = density d (fromJust obs)
-prob d@(DiscrUniformDist _ _ obs _) 
+prob d@(DiscrUniformDist _ _ obs _)
   = probability d (fromJust obs)
-prob d@(UniformDist _ _ obs _)     
+prob d@(UniformDist _ _ obs _)
   = density d (fromJust obs)
-prob d@(GammaDist _ _ obs _)          
+prob d@(GammaDist _ _ obs _)
   = density d (fromJust obs)
-prob d@(BetaDist _ _ obs k)           
+prob d@(BetaDist _ _ obs k)
   = density d (fromJust obs)
-prob d@(BinomialDist _ _ obs _)       
+prob d@(BinomialDist _ _ obs _)
   = probability d (fromJust obs)
-prob d@(BernoulliDist _ obs _)        
+prob d@(BernoulliDist _ obs _)
   = probability d (boolToInt $ fromJust obs)
-prob d@(CategoricalDist _ obs _)     
+prob d@(CategoricalDist _ obs _)
   = probability d (fromJust obs)
-prob d@(DiscreteDist _ obs _)        
+prob d@(DiscreteDist _ obs _)
   = probability d (fromJust obs)
 
 {- Combines logDensity and logProbability.
    Log probability of double `x` from a distribution -}
 logProb :: Dist a -> Double
-logProb = log . prob 
+logProb = log . prob
 
 sample :: Dist a -> Sampler a
 sample (NormalDist μ σ obs k)  = do
   createSampler (sampleNormal μ σ) >>= return . k
-sample (UniformDist min max obs k )  = 
+sample (UniformDist min max obs k )  =
   createSampler (sampleUniform min max) >>= return . k
-sample (DiscrUniformDist min max obs k)  = 
+sample (DiscrUniformDist min max obs k)  =
   createSampler (sampleDiscreteUniform min max) >>= return . k
-sample (GammaDist k' θ obs k)        = 
+sample (GammaDist k' θ obs k)        =
   createSampler (sampleGamma k' θ) >>= return . k
-sample (BetaDist α β  obs k)         = 
+sample (BetaDist α β  obs k)         =
   createSampler (sampleBeta α β) >>= return . k
-sample (BinomialDist n p  obs k)     = 
+sample (BinomialDist n p  obs k)     =
   createSampler (sampleBinomial n p) >>=  return . k . length
-sample (BernoulliDist p obs k)      = 
+sample (BernoulliDist p obs k)      =
   createSampler (sampleBernoulli p) >>= return . k
-sample (CategoricalDist ps obs k)   = 
+sample (CategoricalDist ps obs k)   =
   createSampler (sampleCategorical (fmap snd ps)) >>= return . k
-sample (DiscreteDist ps obs k)      = 
+sample (DiscreteDist ps obs k)      =
   createSampler (sampleDiscrete (map snd ps)) >>= return . k

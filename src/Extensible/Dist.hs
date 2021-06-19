@@ -34,7 +34,7 @@ import qualified System.Random.MWC.Distributions as MWC
 data DistInfo where
   NormalDistI        :: Double -> Double -> DistInfo
   -- uniform        :: Dist Double
-  UniformDistI       :: Double -> Double -> DistInfo 
+  UniformDistI       :: Double -> Double -> DistInfo
   -- discr uniform  :: Dist Int
   DiscrUniformDistI  :: Int    -> Int    -> DistInfo
   -- gamma          :: Dist Double
@@ -52,15 +52,15 @@ data DistInfo where
   deriving Eq
 
 instance Show DistInfo where
-  show (NormalDistI mu sigma ) = 
+  show (NormalDistI mu sigma ) =
     "NormalDist(" ++ show mu ++ ", " ++ show sigma ++ ")"
   show (BernoulliDistI p ) =
     "BernoulliDist(" ++ show p  ++ ")"
-  show (DiscreteDistI ps ) = 
+  show (DiscreteDistI ps ) =
     "DiscreteDist(" ++ show ps ++ ")"
-  show (BetaDistI a b ) = 
+  show (BetaDistI a b ) =
     "DiscreteDist(" ++ show a ++ ", " ++ show b ++ ")"
-  show (GammaDistI a b ) = 
+  show (GammaDistI a b ) =
     "GammaDist(" ++ show a ++ ", " ++ show b ++ ")"
 
 toDistInfo :: Dist a -> DistInfo
@@ -94,15 +94,15 @@ data Dist a where
   DiscreteDist      :: [(Int, Double)] -> Maybe Int -> Dist Int
 
 instance Show a => Show (Dist a) where
-  show (NormalDist mu sigma y) = 
+  show (NormalDist mu sigma y) =
     "NormalDist(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ show y ++ ")"
   show (BernoulliDist p y) =
     "BernoulliDist(" ++ show p ++ ", " ++ show y ++ ")"
-  show (DiscreteDist ps y) = 
+  show (DiscreteDist ps y) =
     "DiscreteDist(" ++ show ps ++ ", " ++ show y ++ ")"
-  show (BetaDist a b y) = 
+  show (BetaDist a b y) =
     "DiscreteDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ")"
-  show (GammaDist a b y) = 
+  show (GammaDist a b y) =
     "GammaDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ")"
 
 type Addr = Int
@@ -137,21 +137,21 @@ isDistBool d@BernoulliDist {} = d
 
 isDistInt :: Dist x -> Dist Int
 isDistInt d@DiscrUniformDist {} = d
-isDistInt d@BinomialDist {} = d 
-isDistInt d@CategoricalDist {} = d 
+isDistInt d@BinomialDist {} = d
+isDistInt d@CategoricalDist {} = d
 isDistInt d@DiscreteDist {} = d
 
 {- Replaces Dists with Sample or Observe and adds address -}
-runDist :: forall rs a. (Member Sample rs, Member Observe rs) => Freer (Dist : rs) a 
+runDist :: forall rs a. (Member Sample rs, Member Observe rs) => Freer (Dist : rs) a
         -> Freer rs a
 runDist = loop 0
   where
   loop :: (Member Sample rs, Member Observe rs) => Addr -> Freer (Dist : rs) a -> Freer rs a
   loop α (Pure x) = return x
-  loop α (Free u k) = case decomp u of 
+  loop α (Free u k) = case decomp u of
     Right d
-      -> if hasObs d 
-          then send (Observe d (getObs d) α) >>= loop (α + 1) . k 
+      -> if hasObs d
+          then send (Observe d (getObs d) α) >>= loop (α + 1) . k
           else send (Sample d α) >>= loop (α + 1). k
     Left  u'  -> Free u' (loop α . k)
 
@@ -160,7 +160,7 @@ instance Distribution (Dist a) where
     = cumulative (normalDistr μ σ) x
   cumulative (UniformDist min max obs ) x
     = cumulative (uniformDistr min max) x
-  cumulative (GammaDist k θ _) x 
+  cumulative (GammaDist k θ _) x
     = cumulative (gammaDistr k θ) x
   cumulative (BetaDist α β _) x
     = cumulative (betaDistr α β) x
@@ -227,19 +227,19 @@ prob d@NormalDist {} y
   = density d y
 prob d@DiscrUniformDist {} y
   = probability d y
-prob d@UniformDist {} y     
+prob d@UniformDist {} y
   = density d y
-prob d@GammaDist {} y    
+prob d@GammaDist {} y
   = density d y
-prob d@BetaDist {}  y         
+prob d@BetaDist {}  y
   = density d y
-prob d@BinomialDist {} y      
+prob d@BinomialDist {} y
   = probability d y
-prob d@BernoulliDist {} y       
+prob d@BernoulliDist {} y
   = probability d (boolToInt y)
-prob d@CategoricalDist {} y    
+prob d@CategoricalDist {} y
   = probability d y
-prob d@DiscreteDist {} y      
+prob d@DiscreteDist {} y
   = probability d y
 
 {- Combines logDensity and logProbability.
@@ -250,31 +250,31 @@ logProb d = log . prob d
 sample :: Dist a -> Sampler a
 sample (NormalDist μ σ obs)  =
   createSampler (sampleNormal μ σ) >>= return
-sample (UniformDist min max obs  )  = 
-  createSampler (sampleUniform min max) >>= return 
-sample (DiscrUniformDist min max obs )  = 
-  createSampler (sampleDiscreteUniform min max) >>= return 
-sample (GammaDist k θ obs )        = 
-  createSampler (sampleGamma k θ) >>= return 
-sample (BetaDist α β  obs )         = 
-  createSampler (sampleBeta α β) >>= return 
-sample (BinomialDist n p  obs )     = 
+sample (UniformDist min max obs  )  =
+  createSampler (sampleUniform min max) >>= return
+sample (DiscrUniformDist min max obs )  =
+  createSampler (sampleDiscreteUniform min max) >>= return
+sample (GammaDist k θ obs )        =
+  createSampler (sampleGamma k θ) >>= return
+sample (BetaDist α β  obs )         =
+  createSampler (sampleBeta α β) >>= return
+sample (BinomialDist n p  obs )     =
   createSampler (sampleBinomial n p) >>=  return .  length
-sample (BernoulliDist p obs )      = 
-  createSampler (sampleBernoulli p) >>= return 
-sample (CategoricalDist ps obs )   = 
-  createSampler (sampleCategorical (fmap snd ps)) >>= return 
-sample (DiscreteDist ps obs )      = 
-  createSampler (sampleDiscrete (map snd ps)) >>= return 
+sample (BernoulliDist p obs )      =
+  createSampler (sampleBernoulli p) >>= return
+sample (CategoricalDist ps obs )   =
+  createSampler (sampleCategorical (fmap snd ps)) >>= return
+sample (DiscreteDist ps obs )      =
+  createSampler (sampleDiscrete (map snd ps)) >>= return
 
 
 {- Old version of runDist which always samples -}
--- runDist :: Member (Lift Sampler) rs => Freer (Dist : rs) a 
+-- runDist :: Member (Lift Sampler) rs => Freer (Dist : rs) a
 --         -> Freer rs  a
 -- runDist m = loop m where
 --   loop :: Member (Lift Sampler) rs => Freer (Dist : rs) a -> Freer rs a
 --   loop (Pure x) = return x
---   loop (Free u k) = case decomp u of 
---     Right d@(NormalDist m sigma y) 
+--   loop (Free u k) = case decomp u of
+--     Right d@(NormalDist m sigma y)
 --       -> send (Lift (sample d)) >>= loop . k
 --     Left  u'  -> Free u' (loop . k)
