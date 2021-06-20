@@ -118,44 +118,15 @@ gamma' k θ field = Model $ do
   let maybe_y = env ^. field
   send (GammaDist k θ maybe_y)
 
--- data IfModel s rs a = IfModel
+uniform :: Double -> Double -> Model s es Double
+uniform min max = Model $ do
+  send (UniformDist min max Nothing)
 
--- if' :: forall s rs a. Bool -> Model s rs a -> Model s rs a -> Model s rs a
--- if' b (Free u@(Union n tx) k) m2 =
---   case prj u :: forall x. Maybe (Dist x) of
---     _ -> undefined
-
-  -- send $ IfDist b d1 d2
-
-
-{- Newtype version of model (doesn't work with examples yet) -}
--- newtype Model env es a = Model {
---     runModel ::  Member Dist es => Member (Reader (MRec env)) es => (Freer es a)
---   } deriving (Functor)
-
--- instance Applicative (Model env es) where
---   pure x = Model (pure x)
---   (<*>) = ap
-
--- instance Monad (Model env es) where
---   return = pure
---   Model fs >>= f = Model (fs >>= (runModel . f))
-
--- access :: forall s rs a.
---      Getting a (Maybes s :& Field Identity) a
---   -> Model s rs a
--- access f = Model $ do
---     env :: MRec s <- get
---     return $ env ^. f
-
--- normal :: Double -> Double -> Maybe Double -> Model s rs Double
--- normal mu sigma maybe_y = Model $ do
---   send (NormalDist mu sigma maybe_y)
-
--- normal' :: forall s a rs. (a ~ Maybe Double) =>
---    Double -> Double -> Getting a (Maybes s :& Field Identity) a
---   -> Model s rs Double
--- normal' mu sigma field = Model $ do
---   -- env :: MRec s <- get
---   maybe_y  <- runModel $ access field
---   send (NormalDist mu sigma maybe_y)
+uniform' :: forall s es a. (a ~ Maybe Double) =>
+  (a ~ Maybe Double)
+  => Double -> Double -> Getting a (Maybes s :& Field Identity) a
+  -> Model s es Double
+uniform' min max field = Model $ do
+  env :: MRec s <- access
+  let maybe_y = env ^. field
+  send (UniformDist min max maybe_y)

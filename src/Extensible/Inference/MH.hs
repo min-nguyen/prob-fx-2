@@ -38,18 +38,18 @@ import qualified GHC.TypeLits as TL
 import Unsafe.Coerce
 
 {-
-MH(x0, Ⲭ, LogP): 
+MH(x0, Ⲭ, LogP):
 Perform initial run of MH.
 
 Repeat:
 1) Choose the sample site x0 uniformly from all possible sample addresses (keys of Ⲭ)
 
-2) let Ⲭ'    = Map.empty; 
+2) let Ⲭ'    = Map.empty;
        LogP' = Map.empty;
 
 3)  Evaluate the program:
 
-    -# x <- sample d   
+    -# x <- sample d
       If 1) x == x0, or
         2) x is not found in Ⲭ, or
         3) x is found in Ⲭ but the distribution it was sampled from was different
@@ -70,7 +70,7 @@ Repeat:
    iii) The old joint probability of all the variables except:
           a) The newly sampled x0, and
           b) Any sampled variables in Ⲭ that aren't in Ⲭ'.
-   Components ii) and iii) ensure that we are only comparing the probabilities of variables that they have both had to use. Variable x0 is not included in this because we want to see how it affects the probability of the rest of the program.    
+   Components ii) and iii) ensure that we are only comparing the probabilities of variables that they have both had to use. Variable x0 is not included in this because we want to see how it affects the probability of the rest of the program.
    The acceptance ratio is then: i) * ii) / iii)
 -}
 
@@ -112,9 +112,9 @@ mhNsteps n env model = do
   foldr (>=>) return (replicate n (mhStep env model)) (x, samples, logps)
 
 -- | Perform one step of MH
-mhStep :: MRec env 
-  -> Model env '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a 
-  -> (a, Ⲭ, LogP) 
+mhStep :: MRec env
+  -> Model env '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a
+  -> (a, Ⲭ, LogP)
   -> Sampler (a, Ⲭ, LogP)
 mhStep env model (x, samples, logps) = do
   let sample_size = Map.size samples
@@ -193,15 +193,15 @@ runSample α_samp samples = loop
     case u of
       Samp d α ->
         case d of
-          DistDouble d -> 
+          DistDouble d ->
             case lookupSample samples d α α_samp of
               Nothing -> sample d >>= loop . k . unsafeCoerce
               Just x  -> (loop . k . unsafeCoerce) x
-          DistBool d -> 
+          DistBool d ->
             case lookupSample samples d α α_samp of
               Nothing -> sample d >>= loop . k . unsafeCoerce
               Just x  -> (loop . k . unsafeCoerce) x
-          DistInt d -> 
+          DistInt d ->
             case lookupSample samples d α α_samp of
               Nothing -> sample d >>= loop . k . unsafeCoerce
               Just x  -> (loop . k . unsafeCoerce) x

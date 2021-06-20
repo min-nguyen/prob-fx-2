@@ -17,6 +17,7 @@
 
 module Extensible.Example where
 
+import Statistics.Distribution
 import Extensible.Freer
 import Extensible.Reader
 import Extensible.Writer
@@ -34,6 +35,44 @@ import Data.Extensible hiding (Member)
 
 {- Probabilistic programs -}
 
+-- Bayesian network
+data NN = NN { biases  :: [Double],
+               weights :: [Double],
+               sigm   :: Double }
+
+data Data = Data { xVal :: Double,
+                   yVal :: Double }
+
+dot :: [Double] -> [Double] -> Double
+dot [] _ = 0
+dot _ [] = 0
+dot (x:xs) (y:ys) = x * y + dot xs ys
+
+forwardNN :: NN -> Double -> Double
+forwardNN (NN bs ws _) x =
+  ws `dot` fmap activation (map (x -) bs)
+  where activation x = if x < 0 then 0 else 1
+
+likelihood :: NN -> Data -> Double
+likelihood nn (Data xObs yObs) =
+  let ySigma = sigm nn
+      yMean  = forwardNN nn xObs
+  in  prob (NormalDist yMean ySigma (Just yObs)) yObs
+
+nn :: NN
+nn = NN { biases = [1,5,8], weights = [2, -5, 1], sigm = 2.0}
+
+points :: [(Double, Double, Double)]
+points = [ (x, y, exp . log $ likelihood nn (Data x y)) | x <- [0 .. 10], y <- [-10 .. 10]]
+
+-- uniformList :: (Double, Double) -> Int -> [Double]
+-- uniformList (min, max) n = replicateM n (uniform)
+
+-- priorNN :: Int -> Model s es NN
+-- priorNN n_nodes = do
+--   bias   <-
+
+-- Logistic regression
 sigmoid :: Double -> Double
 sigmoid x = 1 / (1 + exp((-1) * x))
 
@@ -50,6 +89,7 @@ type LinRegrEnv =
     '[  "y"    ':>  Double
      ]
 
+-- Liniear regression
 linearRegression :: forall rs s.
   Double -> Double -> Double -> Model s rs Double
 linearRegression μ σ x =  --do
@@ -74,25 +114,10 @@ ifModel p = do
   x3 <- bernoulli p
   return 0
 
--- ifModel' :: Double -> Model s rs Double
--- ifModel' p =
---   Free (inj $ BernoulliDist p Nothing) Pure >>= \x1 ->
---     if x1 then Free (inj $ NormalDist 0 1 Nothing) Pure else return 0
-
--- ifModel :: forall rs s. Double -> Model s rs Double
--- ifModel p = do
---   x1 <- bernoulli p Nothing
---   x2 <- if' x1 undefined undefined
---   x3 <- bernoulli p Nothing
---   return 0
-
 ifModel' :: Double -> Model s rs Double
 ifModel' p = Model $
   Free (inj $ BernoulliDist p Nothing) Pure >>= \x1 ->
     if x1 then Free (inj $ NormalDist 0 1 Nothing) Pure else return 0
-
--- runIfModel :: Freer '[Observe, Sample] Double
--- runIfModel = runDist $ runReader (y @= Just 0.4 <: nil) (ifModel 0.5)
 
 {- Non probabilistic programs-}
 
