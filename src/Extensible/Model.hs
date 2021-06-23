@@ -35,7 +35,7 @@ import qualified System.Random.MWC.Distributions as MWC
 import qualified Data.Vector as V
 import Unsafe.Coerce
 
-mkField "mu sigma y ys label"
+mkField "mu sigma y ys label yObs"
 
 type family Maybes (as :: [k]) = (bs :: [k]) | bs -> as where
   Maybes ((f :> v) : as) = (f :> Maybe v) : Maybes as
@@ -67,19 +67,18 @@ instance Monad (Model env es) where
     f' <- f
     runModel $ k f'
 
-access :: forall s es . (Member (Reader (MRec s)) es) =>
+accessEnv :: forall s es . (Member (Reader (MRec s)) es) =>
    Freer es (MRec s)
-access = do
+accessEnv = do
     env :: MRec s <- Free (inj Ask) Pure
     return env
 
-normal'' :: forall s es a . (a ~ Maybe Double) =>
-   Double -> Double -> Getting a (Maybes s :& Field Identity) a ->
-   Model s es Double
-normal'' mu sigma f = Model $ do
-  env :: MRec s <- access
-  let maybe_y = env ^. f
-  send (NormalDist mu sigma maybe_y)
+accessField :: forall s es a.
+   Getting a (Maybes s :& Field Identity) a ->
+   Model s es a
+accessField f = Model $ do
+    env :: MRec s <- Free (inj Ask) Pure
+    return $ env ^. f
 
 normal :: Double -> Double -> Model s es Double
 normal mu sigma = Model $ do
@@ -89,9 +88,11 @@ normal' :: forall s es a . (a ~ Maybe Double)
   => Double -> Double -> Getting a (Maybes s :& Field Identity) a
   -> Model s es Double
 normal' mu sigma field = Model $ do
-  env :: MRec s <- access
+  env :: MRec s <- accessEnv
   let maybe_y = env ^. field
   send (NormalDist mu sigma maybe_y)
+
+
 
 bernoulli :: Double -> Model s es Bool
 bernoulli p = Model $ do
@@ -101,7 +102,7 @@ bernoulli' :: forall s es a. (a ~ Maybe Bool)
   => Double -> Getting a (Maybes s :& Field Identity) a
   -> Model s es Bool
 bernoulli' p field = Model $ do
-  env :: MRec s <- access
+  env :: MRec s <- accessEnv
   let maybe_y = env ^. field
   send (BernoulliDist p maybe_y)
 
@@ -114,7 +115,7 @@ gamma' :: forall s es a. (a ~ Maybe Double) =>
   => Double -> Double -> Getting a (Maybes s :& Field Identity) a
   -> Model s es Double
 gamma' k θ field = Model $ do
-  env :: MRec s <- access
+  env :: MRec s <- accessEnv
   let maybe_y = env ^. field
   send (GammaDist k θ maybe_y)
 
@@ -127,6 +128,6 @@ uniform' :: forall s es a. (a ~ Maybe Double) =>
   => Double -> Double -> Getting a (Maybes s :& Field Identity) a
   -> Model s es Double
 uniform' min max field = Model $ do
-  env :: MRec s <- access
+  env :: MRec s <- accessEnv
   let maybe_y = env ^. field
   send (UniformDist min max maybe_y)

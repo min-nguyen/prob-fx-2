@@ -40,8 +40,8 @@ data NN = NN { biases  :: [Double],
                weights :: [Double],
                sigm   :: Double }
 
-data Data = Data { xVal :: Double,
-                   yVal :: Double }
+-- data Data = Data { xVal :: Double,
+--                    yVal :: Double }
 
 dot :: [Double] -> [Double] -> Double
 dot [] _ = 0
@@ -53,24 +53,41 @@ forwardNN (NN bs ws _) x =
   ws `dot` fmap activation (map (x -) bs)
   where activation x = if x < 0 then 0 else 1
 
-likelihood :: NN -> Data -> Double
-likelihood nn (Data xObs yObs) =
+likelihood :: HasVar s "yObs" Double => NN -> Double -> Model s es Double
+likelihood nn x = do
   let ySigma = sigm nn
-      yMean  = forwardNN nn xObs
-  in  prob (NormalDist yMean ySigma (Just yObs)) yObs
+      yMean  = forwardNN nn x
+  normal' yMean ySigma yObs
 
 nn :: NN
 nn = NN { biases = [1,5,8], weights = [2, -5, 1], sigm = 2.0}
 
-points :: [(Double, Double, Double)]
-points = [ (x, y, exp . log $ likelihood nn (Data x y)) | x <- [0 .. 10], y <- [-10 .. 10]]
+uniformList :: (Double, Double) -> Int -> Model s es [Double]
+uniformList (min, max) n = replicateM n (uniform min max)
 
--- uniformList :: (Double, Double) -> Int -> [Double]
--- uniformList (min, max) n = replicateM n (uniform)
+priorNN :: Int -> Model s es NN
+priorNN n_nodes = do
+  bias   <- uniformList (0, 10) n_nodes
+  weight <- uniformList (-10, 10) n_nodes
+  sigma  <- uniform 0.5 1.5
+  return $ NN bias weight sigma
 
--- priorNN :: Int -> Model s es NN
--- priorNN n_nodes = do
---   bias   <-
+postNN :: HasVar s "yObs" Double => Model s es NN -> Double -> Model s es NN
+postNN prior x = do
+  nn <- prior
+  likelihood nn x
+  return nn
+
+predNN :: HasVar s "yObs" Double => Model s es NN -> Model s es (NN, Double, Double)
+predNN prior = do
+  nn <- prior
+  x  <- uniform 0 10
+  -- yObs  <- uniform (-5) 10 -- not used, unless we actually want condition against it
+  y  <- likelihood nn x
+  return (nn, x, y)
+
+-- points :: [(Double, Double, Double)]
+-- points = [ (x, y, exp . log $ likelihood nn x y) | x <- [0 .. 10], y <- [-10 .. 10]]
 
 -- Logistic regression
 sigmoid :: Double -> Double
