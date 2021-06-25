@@ -68,7 +68,8 @@ library
                       Extensible.Sampler,
                       Extensible.Inference.Basic,
                       Extensible.Inference.LW,
-                      Extensible.Inference.MH
+                      Extensible.Inference.MH,
+                      Extensible.Test
 
   -- Modules included in this library but not exported.
   -- other-modules:

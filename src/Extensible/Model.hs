@@ -92,8 +92,6 @@ normal' mu sigma field = Model $ do
   let maybe_y = env ^. field
   send (NormalDist mu sigma maybe_y)
 
-
-
 bernoulli :: Double -> Model s es Bool
 bernoulli p = Model $ do
   send (BernoulliDist p Nothing)
