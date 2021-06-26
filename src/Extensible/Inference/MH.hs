@@ -89,8 +89,8 @@ accept :: Addr -> Ⲭ -> Ⲭ -> LogP -> LogP -> IO Double
 accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   let _X'sampled = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ' \\ Map.keysSet _Ⲭ)
       _Xsampled  = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ \\ Map.keysSet _Ⲭ')
-  -- print $ " _X'sampled is " ++ show  _X'sampled
-  -- print $ " _Xsampled is " ++ show _Xsampled
+  print $ " _X'sampled is " ++ show  _X'sampled
+  print $ " _Xsampled is " ++ show _Xsampled
   let logα       = log (fromIntegral $ Map.size _Ⲭ) - log (fromIntegral $ Map.size _Ⲭ')
   -- print $ " logα is " ++ show logα
   let logα'      = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ'))
@@ -127,9 +127,9 @@ mhStep env model (x, samples, logps) = do
   acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
   u <- sample (UniformDist 0 1 Nothing)
   if u < acceptance_ratio
-    then do liftS $ putStrLn $ "Accepting with " ++ show acceptance_ratio ++ " > " ++ show u
+    then do liftS $ putStrLn $ "Accepting " ++ show logps' ++ "\nover      " ++ show logps ++ "\nwith " ++ show acceptance_ratio ++ " > " ++ show u
             return (x', samples', logps')
-    else do liftS $ putStrLn $ "Rejecting with α: " ++ show acceptance_ratio ++ " < u: " ++ show u
+    else do liftS $ putStrLn $ "Rejecting " ++ show logps' ++ "\nover      " ++ show logps ++  "\nwith α: " ++ show acceptance_ratio ++ " < u: " ++ show u
             return (x, samples, logps)
 
 -- | Run model once under MH
@@ -137,7 +137,9 @@ runMH :: MRec env -> Ⲭ -> Addr
       -> Model env '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a
       -> Sampler (a, Ⲭ, LogP)
 runMH env samples n m = do
-  ((a, samples'), logps) <- ( runSample n samples
+  ((a, samples'), logps') <- ( -- this is where the previous run's samples are actually reused
+                               -- we do not reuse logps, we simply recompute them
+                              runSample n samples
                             . runState Map.empty
                             . runState Map.empty
                             . runObserve
@@ -145,7 +147,7 @@ runMH env samples n m = do
                             . runDist
                             . runReader env
                             . runModel) m
-  return (a, samples', logps)
+  return (a, samples', logps')
 
 -- | Insert stateful operations for Ⲭ and LogP when either Sample or Observe occur.
 transformMH :: (Member (State Ⲭ) rs, Member (State LogP) rs, Member Sample rs, Member Observe rs) => Freer rs a -> Freer rs a
@@ -195,8 +197,13 @@ runSample α_samp samples = loop
         case d of
           DistDouble d ->
             case lookupSample samples d α α_samp of
-              Nothing -> sample d >>= loop . k . unsafeCoerce
-              Just x  -> (loop . k . unsafeCoerce) x
+              Nothing -> do
+                x <- sample d
+                liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " x: " ++ show x)
+                (loop . k . unsafeCoerce) x
+              Just x  -> do
+                liftS (putStrLn $ "Using old sample for α" ++ show α ++ " x: " ++ show x)
+                (loop . k . unsafeCoerce) x
           DistBool d ->
             case lookupSample samples d α α_samp of
               Nothing -> sample d >>= loop . k . unsafeCoerce

@@ -33,7 +33,6 @@ runObserve = loop
          in  loop (k y)
     Left  u'  -> Free u' (loop . k)
 
--- change io to sampler
 runSample :: Freer '[Sample] a -> Sampler a
 runSample = loop
   where

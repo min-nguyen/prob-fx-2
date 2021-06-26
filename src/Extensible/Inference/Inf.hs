@@ -19,6 +19,7 @@ module Extensible.Inference.Inf where
 import Extensible.Model
 import Extensible.Sampler
 
+-- Perhaps this is too general for inference algorithms that need to iterate a number of times per each provided set of model inputs and observed values.
 runInf :: (b -> Model s es a)              -- Model
        -> [b]                              -- Model inputs
        -> [MRec s]                         -- Model observed values

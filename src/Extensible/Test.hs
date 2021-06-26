@@ -65,10 +65,10 @@ testLinRegrMH = do
                      (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
                      (MH.mhNsteps 1)
       mhs'  = runInf Example.linearRegression
-                     [0, 1, 2, 3, 4]
-                     (map mkRecordLinRegrY [-0.3, 0.75, 2.43, 3.5, 3.2])
-                     (MH.mhNsteps 10)
-  output <- mhs
+                     [1]
+                     (map mkRecordLinRegrY [-0.3])
+                     (MH.mhNsteps 50)
+  output <- mhs'
   liftS $ print $ show output
   return output
 
