@@ -21,32 +21,50 @@ import Extensible.Sampler
 import Data.Extensible
 
 
+mkRecordLinRegr :: [Double] -> [MRec Example.LinRegrEnv]
+mkRecordLinRegr = map (\y_val -> (y @= Just y_val) <: nil)
 
-testLinRegr :: Sampler [(Double, Double)]
-testLinRegr = do
+testLinRegrBasic :: Sampler [(Double, Double)]
+testLinRegrBasic = do
   let -- Run basic simulation over linearRegression
       bs   = runInf (Example.linearRegression 0 1)
                       [0, 1, 2, 3, 4]
-                      ([nil, nil, nil, nil, nil])
+                      (repeat (y @= Nothing <: nil))
                       Basic.runBasic
       -- Run basic inference over linearRegression'
-      bs'  = runInf (Example.linearRegression' 0 1)
+      bs'  = runInf (Example.linearRegression 0 1)
                       [0, 1, 2, 3, 4]
-                      [(y @= Just (0.4 :: Double) <: nil)]
+                      (mkRecordLinRegr [-0.3, 0.75, 2.43, 3.5, 3.2])
                       Basic.runBasic
-  b   <- bs
+  output <- bs'
+  liftS $ print $ show output
+  return output
+
+testLinRegrLW :: Sampler [((Double, Double), Double)]
+testLinRegrLW = do
+  let lws   = runInf (Example.linearRegression 0 1)
+                      [0, 1, 2, 3, 4]
+                      (repeat (y @= Nothing <: nil))
+                      LW.runLW
+      lws'  = runInf (Example.linearRegression 0 1)
+                      [0, 1, 2, 3, 4]
+                      (mkRecordLinRegr [-0.3, 0.75, 2.43, 3.5, 3.2])
+                      LW.runLW
+  output <- lws'
   -- (r, p) <- LW.runLW (y @= Just (0.4 :: Double) <: nil) (Example.linearRegression 0 1 0)
   -- putStrLn $ show r ++ "\n" ++ show p
-  liftS $ print $ show b
-  return b
+  liftS $ print $ show output
+  return output
 
-testLogRegr :: IO ()
-testLogRegr = do
-  (x, samples, logps)
-    <- sampleIO $ MH.runMH (label @= Just True <: nil) Map.empty 0
-       (Example.logisticRegression (-1))
-  (x, samples, logps)
-    <- sampleIOFixed $ MH.mhNsteps 5 (label @= Just True <: nil)
-       (Example.logisticRegression 10)
-  -- putStrLn $ show x ++ "\n" ++ show samples ++ "\n" ++ show logps
-  return ()
+-- testLogRegr :: IO ()
+-- testLogRegr = do
+--   let -- Run basic simulation over logisticRegression
+--       bs =
+--   -- (x, samples, logps)
+--   --   <- sampleIO $ MH.runMH (label @= Just True <: nil) Map.empty 0
+--   --      (Example.logisticRegression (-1))
+--   -- (x, samples, logps)
+--   --   <- sampleIOFixed $ MH.mhNsteps 5 (label @= Just True <: nil)
+--   --      (Example.logisticRegression 10)
+--   -- putStrLn $ show x ++ "\n" ++ show samples ++ "\n" ++ show logps
+--   return ()

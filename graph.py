@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import ast
 
 # --| Linear Regression
-
 f = open("model-output.txt", "r")
 # Parse file to data structure :: [(Double, Double)]
 xys = ast.literal_eval(f.read())

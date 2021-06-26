@@ -90,35 +90,35 @@ predNN prior = do
 -- points = [ (x, y, exp . log $ likelihood nn x y) | x <- [0 .. 10], y <- [-10 .. 10]]
 
 -- Logistic regression
+type LogRegrEnv =
+    '[  "label"    ':>  Double
+     ]
+
 sigmoid :: Double -> Double
 sigmoid x = 1 / (1 + exp((-1) * x))
 
 logisticRegression :: forall rs s. HasVar s "label" Bool =>
- Double -> Model s rs Bool
+ Double -> Model s rs (Double, Bool)
 logisticRegression x = do
   m     <- normal 0 1
   b     <- normal 0 1
   sigma <- gamma 1 1
   y     <- normal (m * x + b) sigma
-  bernoulli' (sigmoid y) label
+  l     <- bernoulli' (sigmoid y) label
+  return (x, l)
 
+-- Linear regression
 type LinRegrEnv =
     '[  "y"    ':>  Double
      ]
 
--- Liniear regression
-linearRegression :: forall s rs .
+linearRegression :: forall s rs . HasVar s "y" Double =>
   Double -> Double -> Double -> Model s rs (Double, Double)
 linearRegression μ σ x = do
-  y <- normal (μ + x) σ
-  return (x, y)
-
-linearRegression' :: forall s rs . HasVar s "y" Double =>
-  Double -> Double -> Double -> Model s rs (Double, Double)
-linearRegression' μ σ x = do
   y <- normal' (μ + x) σ y
   return (x, y)
 
+--
 arbitraryModel :: forall es s. HasVar s "y" Double =>
   Double -> Double -> Double -> Model s es Double
 arbitraryModel μ σ x = do
