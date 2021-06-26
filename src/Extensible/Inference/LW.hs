@@ -5,7 +5,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE GADTs #-}
- 
+
 {-# LANGUAGE TypeOperators #-}
 module Extensible.Inference.LW where
 
@@ -22,7 +22,7 @@ import Extensible.Sampler
 type Conts = forall a. Map Int (Freer '[Sample] a)
 
 runLW :: MRec env -> Model env '[Reader (MRec env), Dist, Observe, Sample] a
-      -> IO (a, Double)
+      -> Sampler (a, Double)
 runLW env = runSample . runObserve . runDist . runReader env . runModel
 
 runObserve :: Freer (Observe : rs) a -> Freer rs (a, Double)
@@ -30,18 +30,18 @@ runObserve = loop 0
   where
   loop :: Double -> Freer (Observe : rs) a -> Freer rs (a, Double)
   loop p (Pure x) = return (x, p)
-  loop p (Free u k) = case decomp u of 
-    Right (Observe d y α)  
+  loop p (Free u k) = case decomp u of
+    Right (Observe d y α)
       -> let p' = logProb d y
-         in  loop (p + p') (k y) 
+         in  loop (p + p') (k y)
     Left  u'  -> Free u' (loop p . k)
 
-runSample :: Freer '[Sample] a -> IO a
-runSample = sampleIO . loop
+runSample :: Freer '[Sample] a -> Sampler a
+runSample = loop
   where
   loop :: Freer '[Sample] a -> Sampler a
   loop (Pure x) = return x
   loop (Free u k) = case prj u of
-    Just (Sample d α) -> 
+    Just (Sample d α) ->
        liftS (putStrLn $ ">> : " ++ show α) >> sample d >>= loop . k
     Nothing         -> error "Impossible: Nothing cannot occur"

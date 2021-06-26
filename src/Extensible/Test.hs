@@ -22,23 +22,23 @@ import Data.Extensible
 
 
 
-testLinRegr :: IO [(Double, Double)]
+testLinRegr :: Sampler [(Double, Double)]
 testLinRegr = do
-  let -- Run basic over linearRegression
-      rs   = runInf (Example.linearRegression 0 1)
+  let -- Run basic simulation over linearRegression
+      bs   = runInf (Example.linearRegression 0 1)
                       [0, 1, 2, 3, 4]
-                      (repeat nil)
+                      ([nil, nil, nil, nil, nil])
                       Basic.runBasic
-      -- Run basic over linearRegression'
-      rs'  = runInf (Example.linearRegression' 0 1)
+      -- Run basic inference over linearRegression'
+      bs'  = runInf (Example.linearRegression' 0 1)
                       [0, 1, 2, 3, 4]
                       [(y @= Just (0.4 :: Double) <: nil)]
                       Basic.runBasic
-  r   <- rs
+  b   <- bs
   -- (r, p) <- LW.runLW (y @= Just (0.4 :: Double) <: nil) (Example.linearRegression 0 1 0)
   -- putStrLn $ show r ++ "\n" ++ show p
-  print $ show r
-  return r
+  liftS $ print $ show b
+  return b
 
 testLogRegr :: IO ()
 testLogRegr = do
@@ -50,9 +50,3 @@ testLogRegr = do
        (Example.logisticRegression 10)
   -- putStrLn $ show x ++ "\n" ++ show samples ++ "\n" ++ show logps
   return ()
-
-testAndWrite :: Show a => IO a -> IO ()
-testAndWrite prog = do
-  -- a <- prog
-  writeFile "../../test.txt" "hi"
-  -- writeFile "/home/minh/Documents/model-output.txt" (show a)

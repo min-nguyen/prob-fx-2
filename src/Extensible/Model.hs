@@ -49,10 +49,6 @@ instance Lookup (Maybes xs) k (Maybe v) => HasVar xs k v where
 
 type MRec s = Record (Maybes s)
 
--- type Model env es a =
---   forall ts. (Member Dist ts, Member (Reader (MRec env)) ts) => Freer ts a
-
-
 newtype Model env es a =
   Model { runModel :: (Member Dist es, Member (Reader (MRec env)) es) => Freer es a }
   deriving (Functor)

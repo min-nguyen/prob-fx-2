@@ -19,7 +19,7 @@ import Extensible.Sampler
 import Extensible.Reader
 import Extensible.Example as Example
 
-runBasic :: MRec env -> Model env '[Dist, Observe, Reader (MRec env), Sample] a -> IO a
+runBasic :: MRec env -> Model env '[Dist, Observe, Reader (MRec env), Sample] a -> Sampler a
 runBasic env m = runSample $ runReader env $ runObserve $ runDist $ runModel m
 
 runObserve :: Freer (Observe : rs) a -> Freer rs  a
@@ -33,8 +33,9 @@ runObserve = loop
          in  loop (k y)
     Left  u'  -> Free u' (loop . k)
 
-runSample :: Freer '[Sample] a -> IO a
-runSample = sampleIOFixed . loop
+-- change io to sampler
+runSample :: Freer '[Sample] a -> Sampler a
+runSample = loop
   where
   loop :: Freer '[Sample] a -> Sampler a
   loop (Pure x) = return x

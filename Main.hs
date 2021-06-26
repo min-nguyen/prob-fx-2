@@ -17,16 +17,13 @@ import Data.Extensible
 import Extensible.Sampler
 import Extensible.Test
 
-testAndWrite' :: Show a => IO a -> IO ()
-testAndWrite' prog = do
-  -- a <- prog
-  -- putStrLn (show a)
-  writeFile "model-output.txt" "hi"
+testAndWrite :: Show a => Sampler a -> IO ()
+testAndWrite prog = do
+  a <- sampleIOFixed prog
+  writeFile "model-output.txt" (show a)
 
 main :: IO ()
 main = do
-  -- writeFile "test.txt" "hi"
-  a <- testLinRegr
-  -- testAndWrite' testLinRegr
+  testAndWrite testLinRegr
   return ()
 
