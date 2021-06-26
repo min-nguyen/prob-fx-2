@@ -20,41 +20,58 @@ import Extensible.Model
 import Extensible.Sampler
 import Data.Extensible
 
+mkRecordLinRegr :: (Maybe Double, Maybe Double, Maybe Double, Maybe Double) -> MRec Example.LinRegrEnv
+mkRecordLinRegr (y_val, m_val, c_val, σ_val) =
+  y @= y_val <: m @= m_val <: c @= c_val <: σ @= σ_val <: nil
 
-mkRecordLinRegr :: [Double] -> [MRec Example.LinRegrEnv]
-mkRecordLinRegr = map (\y_val -> (y @= Just y_val) <: nil)
+mkRecordLinRegrY :: Double -> MRec Example.LinRegrEnv
+mkRecordLinRegrY y_val =
+ y @= Just y_val <: m @= Nothing <: c @= Nothing <: σ @= Nothing <: nil
 
 testLinRegrBasic :: Sampler [(Double, Double)]
 testLinRegrBasic = do
   let -- Run basic simulation over linearRegression
-      bs   = runInf (Example.linearRegression 0 1)
-                      [0, 1, 2, 3, 4]
-                      (repeat (y @= Nothing <: nil))
-                      Basic.runBasic
-      -- Run basic inference over linearRegression'
-      bs'  = runInf (Example.linearRegression 0 1)
-                      [0, 1, 2, 3, 4]
-                      (mkRecordLinRegr [-0.3, 0.75, 2.43, 3.5, 3.2])
-                      Basic.runBasic
+      bs   = runInf Example.linearRegression
+                    [0, 1, 2, 3, 4]
+                    (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
+                    Basic.runBasic
+      -- Run basic inference over linearRegression
+      bs'  = runInf Example.linearRegression
+                    [0, 1, 2, 3, 4]
+                    (map mkRecordLinRegrY [-0.3, 0.75, 2.43, 3.5, 3.2])
+                    Basic.runBasic
   output <- bs'
   liftS $ print $ show output
   return output
 
 testLinRegrLW :: Sampler [((Double, Double), Double)]
 testLinRegrLW = do
-  let lws   = runInf (Example.linearRegression 0 1)
-                      [0, 1, 2, 3, 4]
-                      (repeat (y @= Nothing <: nil))
-                      LW.runLW
-      lws'  = runInf (Example.linearRegression 0 1)
-                      [0, 1, 2, 3, 4]
-                      (mkRecordLinRegr [-0.3, 0.75, 2.43, 3.5, 3.2])
-                      LW.runLW
-  output <- lws'
-  -- (r, p) <- LW.runLW (y @= Just (0.4 :: Double) <: nil) (Example.linearRegression 0 1 0)
-  -- putStrLn $ show r ++ "\n" ++ show p
+  let lws   = runInf Example.linearRegression
+                     [0, 1, 2, 3, 4]
+                     (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
+                     LW.runLW
+      lws'  = runInf Example.linearRegression
+                     [0, 1, 2, 3, 4]
+                     (map mkRecordLinRegrY [-0.3, 0.75, 2.43, 3.5, 3.2])
+                     LW.runLW
+  output <- lws
   liftS $ print $ show output
   return output
+
+testLinRegrMH :: Sampler [((Double, Double), MH.Ⲭ, MH.LogP)]
+testLinRegrMH = do
+  let mhs   = runInf Example.linearRegression
+                     [0, 1, 2, 3, 4]
+                     (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
+                     (MH.mhNsteps 1)
+      mhs'  = runInf Example.linearRegression
+                     [0, 1, 2, 3, 4]
+                     (map mkRecordLinRegrY [-0.3, 0.75, 2.43, 3.5, 3.2])
+                     (MH.mhNsteps 10)
+  output <- mhs
+  liftS $ print $ show output
+  return output
+
 
 -- testLogRegr :: IO ()
 -- testLogRegr = do

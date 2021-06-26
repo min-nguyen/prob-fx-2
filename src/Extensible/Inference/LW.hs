@@ -32,7 +32,7 @@ runObserve = loop 0
   loop p (Pure x) = return (x, p)
   loop p (Free u k) = case decomp u of
     Right (Observe d y α)
-      -> let p' = logProb d y
+      -> let p' = prob d y
          in  loop (p + p') (k y)
     Left  u'  -> Free u' (loop p . k)
 

@@ -62,6 +62,8 @@ instance Show DistInfo where
     "DiscreteDist(" ++ show a ++ ", " ++ show b ++ ")"
   show (GammaDistI a b ) =
     "GammaDist(" ++ show a ++ ", " ++ show b ++ ")"
+  show (UniformDistI a b ) =
+    "UniformDist(" ++ show a ++ ", " ++ show b ++ ")"
 
 toDistInfo :: Dist a -> DistInfo
 toDistInfo (NormalDist mu sigma y) = NormalDistI mu sigma
@@ -104,6 +106,8 @@ instance Show a => Show (Dist a) where
     "DiscreteDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ")"
   show (GammaDist a b y) =
     "GammaDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ")"
+  show (UniformDist a b y) =
+    "UniformDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ")"
 
 type Addr = Int
 

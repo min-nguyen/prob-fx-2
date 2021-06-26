@@ -109,13 +109,20 @@ logisticRegression x = do
 
 -- Linear regression
 type LinRegrEnv =
-    '[  "y"    ':>  Double
+    '[  "y"   ':>  Double,
+        "m"   ':>  Double,
+        "c"   ':>  Double,
+        "σ"   ':>  Double
      ]
 
-linearRegression :: forall s rs . HasVar s "y" Double =>
-  Double -> Double -> Double -> Model s rs (Double, Double)
-linearRegression μ σ x = do
-  y <- normal' (μ + x) σ y
+linearRegression :: forall s rs .
+  (HasVar s "y" Double, HasVar s "m" Double, HasVar s "c" Double, HasVar s "σ" Double) =>
+  Double -> Model s rs (Double, Double)
+linearRegression x = do
+  m <- normal' 0 2 m
+  c <- normal' 0 2 c
+  σ <- uniform' 1 3 σ
+  y <- normal' (m * x + c) σ y
   return (x, y)
 
 --

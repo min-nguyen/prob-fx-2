@@ -22,10 +22,13 @@ testAndWrite prog = do
   a <- sampleIOFixed prog
   writeFile "model-output.txt" (show a)
 
+
+
 main :: IO ()
 main = do
   -- testAndWrite testLinRegrBasic
   -- sampleIOFixed testLinRegrBasic
-  sampleIOFixed testLinRegrLW
+  -- sampleIOFixed testLinRegrLW
+  sampleIOFixed testLinRegrMH
   return ()
 
