@@ -101,6 +101,28 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   -- print $ " logα'' is " ++ show (exp logα'') ++ " from " ++ show (Map.keysSet logℙ \\ _Xsampled)
   return $ exp logα''
 
+-- | Need to implement mhNsteps for m number of envs and model inputs
+mh :: (es ~ '[Reader (Record (Maybes s)), Dist, Observe, State Ⲭ, State LogP, Sample])
+   => (b -> Model s es a)              -- Model
+   -> [b]                              -- Model inputs
+   -> [MRec s]
+   -> Sampler (a, Ⲭ, LogP)
+mh model xs ys = do
+  (x, samples, logps) <- runMH (head ys) Map.empty 0 (model $ head xs)
+  let models = map model xs
+      mhs    = mhNsteps 3 -- isn't used. need to fix this.
+      nMh    = repeat mhStep
+      -- currently this is just doing a single mhStep per data point
+      nMh'   = zipWith (\nMh (y, model) -> nMh y model) nMh (zip ys models)
+  liftS $ putStrLn $ "length is " ++ show (length nMh')
+-- models = map model xs :: [Model s es a]
+-- nMh = replicate n mhStep :: [MRec s -> Model s es a -> (a, Ⲭ, LogP) -> Sampler (a, Ⲭ, LogP)]
+-- nMh' = zipWith ($) nMh ys :: [Model s es a -> (a, Ⲭ, LogP) -> Sampler (a, Ⲭ, LogP)]
+-- nMh'' = zipWith ($) nMh' models :: [(a, Ⲭ, LogP) -> Sampler (a, Ⲭ, LogP)]
+  foldr (>=>) return nMh' (x, samples, logps)
+
+
+-- | Perform n steps of MH for a single observable variable environment
 mhNsteps :: Int
   -> MRec env
   -> Model env '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a
@@ -137,8 +159,8 @@ runMH :: MRec env -> Ⲭ -> Addr
       -> Model env '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a
       -> Sampler (a, Ⲭ, LogP)
 runMH env samples n m = do
-  ((a, samples'), logps') <- ( -- this is where the previous run's samples are actually reused
-                               -- we do not reuse logps, we simply recompute them
+  ((a, samples'), logps') <- ( -- This is where the previous run's samples are actually reused.
+                               -- We do not reuse logps, we simply recompute them.
                               runSample n samples
                             . runState Map.empty
                             . runState Map.empty

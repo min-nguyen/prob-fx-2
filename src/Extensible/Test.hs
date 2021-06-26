@@ -58,7 +58,7 @@ testLinRegrLW = do
   liftS $ print $ show output
   return output
 
-testLinRegrMH :: Sampler [((Double, Double), MH.Ⲭ, MH.LogP)]
+testLinRegrMH :: Sampler ((Double, Double), MH.Ⲭ, MH.LogP)
 testLinRegrMH = do
   let mhs   = runInf Example.linearRegression
                      [0, 1, 2, 3, 4]
@@ -67,11 +67,12 @@ testLinRegrMH = do
       mhs'  = runInf Example.linearRegression
                      [1]
                      (map mkRecordLinRegrY [-0.3])
-                     (MH.mhNsteps 50)
-  output <- mhs'
-  liftS $ print $ show output
-  return output
-
+                     (MH.mhNsteps 1)
+      mhs'' = MH.mh Example.linearRegression [1,2,3] (map mkRecordLinRegrY [-0.3, 1.6, 3.5])
+  -- output <- mhs''
+  -- liftS $ print $ show output
+  -- return output
+  mhs''
 
 -- testLogRegr :: IO ()
 -- testLogRegr = do
