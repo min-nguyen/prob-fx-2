@@ -1,3 +1,13 @@
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE PatternSynonyms, ViewPatterns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators, TypeApplications, UndecidableInstances #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+
 module Extensible.Test where
 
 import qualified Data.Map as Map
@@ -9,16 +19,37 @@ import Extensible.Model
 import Extensible.Sampler
 import Data.Extensible
 
+runModels :: (b -> Model s es a) -> [b] -> [MRec s] ->
+             (MRec s -> Model s es a -> IO c) ->
+             IO [c]
+runModels model xs ys inf = do
+  let models = map model xs
+      infs   = map inf ys
+      ys'    = zipWith ($) infs models
+  sequence ys'
+
 testLinRegr :: IO ()
 testLinRegr = do
-  let ms  = map (Example.linearRegression 0 1) [0, 1, 2, 3, 4]
-      xs  = map (Basic.runBasic nil) ms
-      ms' = map (Basic.runBasic (y @= Just (0.4 :: Double) <: nil))
-            (map (Example.linearRegression' 0 1) [0, 1, 2, 3, 4])
-  --map Basic.runBasic (Example.linearRegression 0 1) [0, 1, 2, 3, 4]
-  -- r <- Basic.runBasic (y @= Just (0.4 :: Double) <: nil) (Example.linearRegression' 0 1 0)
+  let -- Run basic over linearRegression
+      infs  = map Basic.runBasic [nil]
+      ys    = zipWith ($) infs (map (Example.linearRegression 0 1) [0, 1, 2, 3, 4])
+      -- Run basic over linearRegression'
+      infs' = map Basic.runBasic [(y @= Just (0.4 :: Double) <: nil)]
+      ys'    = zipWith ($) infs' (map (Example.linearRegression' 0 1) [0, 1, 2, 3, 4])
+
+      rs   = runModels (Example.linearRegression 0 1)
+                      [0, 1, 2, 3, 4]
+                      (repeat nil)
+                      Basic.runBasic
+      rs'  = runModels (Example.linearRegression' 0 1)
+                      [0, 1, 2, 3, 4]
+                      [(y @= Just (0.4 :: Double) <: nil)]
+                      Basic.runBasic
+  ys' <- sequence ys'
+  r   <- rs
   -- (r, p) <- LW.runLW (y @= Just (0.4 :: Double) <: nil) (Example.linearRegression 0 1 0)
   -- putStrLn $ show r ++ "\n" ++ show p
+  print $ show r
   return ()
 
 testLogRegr :: IO ()

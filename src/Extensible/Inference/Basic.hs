@@ -39,5 +39,5 @@ runSample = sampleIOFixed . loop
   loop :: Freer '[Sample] a -> Sampler a
   loop (Pure x) = return x
   loop (Free u k) = case prj u of
-     Just (Sample d α) -> liftS (putStrLn $ ">> : " ++ show α) >> sample d >>= loop . k
+     Just (Sample d α) -> liftS (putStrLn $ "α : " ++ show α) >> sample d >>= loop . k
      Nothing         -> error "Impossible: Nothing cannot occur"

@@ -107,15 +107,17 @@ type LinRegrEnv =
      ]
 
 -- Liniear regression
-linearRegression :: forall rs s.
-  Double -> Double -> Double -> Model s rs Double
-linearRegression μ σ x =  --do
-  normal (μ + x) σ
+linearRegression :: forall s rs .
+  Double -> Double -> Double -> Model s rs (Double, Double)
+linearRegression μ σ x = do
+  y <- normal (μ + x) σ
+  return (x, y)
 
-linearRegression' :: forall rs s. HasVar s "y" Double =>
-  Double -> Double -> Double -> Model s rs Double
+linearRegression' :: forall s rs . HasVar s "y" Double =>
+  Double -> Double -> Double -> Model s rs (Double, Double)
 linearRegression' μ σ x = do
-  normal' (μ + x) σ y
+  y <- normal' (μ + x) σ y
+  return (x, y)
 
 arbitraryModel :: forall es s. HasVar s "y" Double =>
   Double -> Double -> Double -> Model s es Double
