@@ -29,6 +29,7 @@ main = do
   -- testAndWrite testLinRegrBasic
   -- sampleIOFixed testLinRegrBasic
   -- sampleIOFixed testLinRegrLW
-  sampleIOFixed testLinRegrMH
+  trace <- sampleIOFixed testLinRegrMH
+  putStrLn $ show trace
   return ()
 

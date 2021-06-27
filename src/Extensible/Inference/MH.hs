@@ -78,6 +78,7 @@ type Vals = '[Int, Double, Bool]
 
 type LogP = Map Addr Double
 type Ⲭ    = Map Addr (DistInfo, OpenSum Vals)
+type Trace a = [(a, Ⲭ, LogP)]
 
 updateMapⲬ :: OpenSum.Member x Vals => Addr -> Dist x -> x -> Ⲭ -> Ⲭ
 updateMapⲬ α d x = Map.insert α (toDistInfo d, OpenSum.inj x) :: Ⲭ -> Ⲭ
@@ -111,7 +112,7 @@ mh :: (es ~ '[Reader (Record (Maybes s)), Dist, Observe, State Ⲭ, State LogP, 
    -> (b -> Model s es a)              -- Model awaiting input variable
    -> [b]                              -- List of model input variables
    -> [MRec s]                         -- List of model observed variables
-   -> Sampler (a, Ⲭ, LogP)
+   -> Sampler (Trace a)                -- Trace of all accepted outputs, samples, and logps
 mh n model xs ys = do
   -- Perform initial run of mh
   (x, samples, logps) <- runMH (head ys) Map.empty 0 (model $ head xs)
@@ -122,26 +123,28 @@ mh n model xs ys = do
       -- Apply mhNstep to each (model, input variable x, observed variable y)
       mhNs'  = zipWith (\mhN (y, model) -> mhN y model) mhNs (zip ys models)
   -- Perform mhNstep for each data point, propagating (x, samples, logps) through
-  foldl (>=>) return mhNs' (x, samples, logps)
+  foldl (>=>) return mhNs' [(x, samples, logps)]
 
 -- | Perform n steps of MH for a single data point
 mhNsteps :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample])
   => Int              -- Number of mhSteps
   -> MRec env         -- Model observed variable
   -> Model env es a   -- Model
-  -> (a, Ⲭ, LogP)     -- Previous mh output
-  -> Sampler (a, Ⲭ, LogP)
-mhNsteps n env model (x, samples, logps) = do
-  foldl (>=>) return (replicate n (mhStep env model)) (x, samples, logps)
+  -> Trace a          -- Previous mh output
+  -> Sampler (Trace a)
+mhNsteps n env model trace = do
+  foldl (>=>) return (replicate n (mhStep env model)) trace
 
 -- | Perform one step of MH for a single data point
 mhStep :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample])
   => MRec env         -- Model observed variable
   -> Model env es a   -- Model
-  -> (a, Ⲭ, LogP)     -- Previous mh output
-  -> Sampler (a, Ⲭ, LogP)
-mhStep env model (x, samples, logps) = do
-  let sample_size = Map.size samples
+  -> Trace a          -- Trace of previous mh outputs
+  -> Sampler (Trace a)
+mhStep env model trace = do
+  let -- Get previous mh output
+      (x, samples, logps) = head trace
+      sample_size = Map.size samples
   liftS $ print $ "samples are " ++ show samples
   α_samp <- sample $ DiscreteDist (map (,1.0/fromIntegral sample_size) (Map.keys samples)) Nothing
   -- run mh with new sample address
@@ -153,9 +156,9 @@ mhStep env model (x, samples, logps) = do
   u <- sample (UniformDist 0 1 Nothing)
   if u < acceptance_ratio
     then do liftS $ putStrLn $ "Accepting " ++ show logps' ++ "\nover      " ++ show logps ++ "\nwith " ++ show acceptance_ratio ++ " > " ++ show u
-            return (x', samples', logps')
+            return ((x', samples', logps'):trace)
     else do liftS $ putStrLn $ "Rejecting " ++ show logps' ++ "\nover      " ++ show logps ++  "\nwith α: " ++ show acceptance_ratio ++ " < u: " ++ show u
-            return (x, samples, logps)
+            return trace
 
 -- | Run model once under MH
 runMH :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample])
