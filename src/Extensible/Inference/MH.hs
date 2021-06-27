@@ -103,39 +103,37 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
 
 -- | Need to implement mhNsteps for m number of envs and model inputs
 mh :: (es ~ '[Reader (Record (Maybes s)), Dist, Observe, State Ⲭ, State LogP, Sample])
-   => (b -> Model s es a)              -- Model
-   -> [b]                              -- Model inputs
-   -> [MRec s]
+   => Int                              -- Number of mhSteps per data point
+   -> (b -> Model s es a)              -- Model
+   -> [b]                              -- Model input variables
+   -> [MRec s]                         -- Model observed variables
    -> Sampler (a, Ⲭ, LogP)
-mh model xs ys = do
+mh n model xs ys = do
+  -- Perform initial run of mh
   (x, samples, logps) <- runMH (head ys) Map.empty 0 (model $ head xs)
-  let models = map model xs
-      mhs    = mhNsteps 3 -- isn't used. need to fix this.
-      nMh    = repeat mhStep
-      -- currently this is just doing a single mhStep per data point
-      nMh'   = zipWith (\nMh (y, model) -> nMh y model) nMh (zip ys models)
-  liftS $ putStrLn $ "length is " ++ show (length nMh')
--- models = map model xs :: [Model s es a]
--- nMh = replicate n mhStep :: [MRec s -> Model s es a -> (a, Ⲭ, LogP) -> Sampler (a, Ⲭ, LogP)]
--- nMh' = zipWith ($) nMh ys :: [Model s es a -> (a, Ⲭ, LogP) -> Sampler (a, Ⲭ, LogP)]
--- nMh'' = zipWith ($) nMh' models :: [(a, Ⲭ, LogP) -> Sampler (a, Ⲭ, LogP)]
-  foldr (>=>) return nMh' (x, samples, logps)
-
+  let -- Apply model to each of input variables
+      models = map model xs
+      -- Create list of mhNsteps
+      mhNs   = repeat (mhNsteps n)
+      -- Apply mhNstep to each (model, input variable x, observed variable y)
+      mhNs'  = zipWith (\mhN (y, model) -> mhN y model) mhNs (zip ys models)
+  -- Perform mhNstep for each data point, propagating (x, samples, logps) through
+  foldl (>=>) return mhNs' (x, samples, logps)
 
 -- | Perform n steps of MH for a single observable variable environment
-mhNsteps :: Int
+mhNsteps :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample])
+  => Int
   -> MRec env
-  -> Model env '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a
+  -> Model env es a
+  -> (a, Ⲭ, LogP)
   -> Sampler (a, Ⲭ, LogP)
-mhNsteps n env model = do
-  -- perform initial run of mh
-  (x, samples, logps) <- runMH env Map.empty 0 model
-  -- liftS $ print $ "First run is: " ++ show (x, samples, logps)
-  foldr (>=>) return (replicate n (mhStep env model)) (x, samples, logps)
+mhNsteps n env model (x, samples, logps) = do
+  foldl (>=>) return (replicate n (mhStep env model)) (x, samples, logps)
 
 -- | Perform one step of MH
-mhStep :: MRec env
-  -> Model env '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a
+mhStep :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample])
+  => MRec env
+  -> Model env es a
   -> (a, Ⲭ, LogP)
   -> Sampler (a, Ⲭ, LogP)
 mhStep env model (x, samples, logps) = do
@@ -155,9 +153,12 @@ mhStep env model (x, samples, logps) = do
             return (x, samples, logps)
 
 -- | Run model once under MH
-runMH :: MRec env -> Ⲭ -> Addr
-      -> Model env '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample] a
-      -> Sampler (a, Ⲭ, LogP)
+runMH :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample])
+  => MRec env
+  -> Ⲭ
+  -> Addr
+  -> Model env es a
+  -> Sampler (a, Ⲭ, LogP)
 runMH env samples n m = do
   ((a, samples'), logps') <- ( -- This is where the previous run's samples are actually reused.
                                -- We do not reuse logps, we simply recompute them.
