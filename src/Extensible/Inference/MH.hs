@@ -85,28 +85,32 @@ updateMapⲬ α d x = Map.insert α (toDistInfo d, OpenSum.inj x) :: Ⲭ -> Ⲭ
 updateLogP :: Addr -> Dist x -> x -> LogP -> LogP
 updateLogP α d x  = Map.insert α (logProb d x)
 
+-- | Compute acceptance probability
+-- If the log prob from our new samples is better than our old samples, then we always accept.
+-- If the log prob from our new samples is worse than our old samples, then we sometimes accept.
 accept :: Addr -> Ⲭ -> Ⲭ -> LogP -> LogP -> IO Double
 accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   let _X'sampled = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ' \\ Map.keysSet _Ⲭ)
       _Xsampled  = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ \\ Map.keysSet _Ⲭ')
-  print $ " _X'sampled is " ++ show  _X'sampled
-  print $ " _Xsampled is " ++ show _Xsampled
-  let logα       = log (fromIntegral $ Map.size _Ⲭ) - log (fromIntegral $ Map.size _Ⲭ')
-  -- print $ " logα is " ++ show logα
-  let logα'      = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ'))
-                         logα (Map.keysSet logℙ' \\ _X'sampled)
-  -- print $ " logα' is " ++ show (exp logα') ++ " from " ++ show (Map.keysSet logℙ' \\ _X'sampled)
-  let logα''     = foldl (\logα' v -> logα' - fromJust (Map.lookup v logℙ))
-                         logα' (Map.keysSet logℙ \\ _Xsampled)
-  -- print $ " logα'' is " ++ show (exp logα'') ++ " from " ++ show (Map.keysSet logℙ \\ _Xsampled)
-  return $ exp logα''
+  -- putStrLn $ " Xsampled is " ++ show _Xsampled
+  -- putStrLn $ " X'sampled is " ++ show  _X'sampled
+  let dom_logα   = log (fromIntegral $ Map.size _Ⲭ) - log (fromIntegral $ Map.size _Ⲭ')
+  -- putStrLn $ " dom_logα is " ++ show dom_logα
+  let _Xlogα     = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ))
+                         0 (Map.keysSet logℙ \\ _Xsampled)
+  -- putStrLn $ " Xlogα is " ++ show _Xlogα ++ " from " ++ show (Map.keysSet logℙ \\ _Xsampled)
+  let _X'logα    = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ'))
+                         0 (Map.keysSet logℙ' \\ _X'sampled)
+  -- putStrLn $ " X'logα is " ++ show _X'logα ++ " from " ++ show (Map.keysSet logℙ' \\ _X'sampled)
+  -- putStrLn $ " X'logα - Xlogα is " ++ show (_X'logα - _Xlogα)
+  return $ exp (dom_logα + _X'logα - _Xlogα)
 
--- | Need to implement mhNsteps for m number of envs and model inputs
+-- | Run MH for multiple data points
 mh :: (es ~ '[Reader (Record (Maybes s)), Dist, Observe, State Ⲭ, State LogP, Sample])
    => Int                              -- Number of mhSteps per data point
-   -> (b -> Model s es a)              -- Model
-   -> [b]                              -- Model input variables
-   -> [MRec s]                         -- Model observed variables
+   -> (b -> Model s es a)              -- Model awaiting input variable
+   -> [b]                              -- List of model input variables
+   -> [MRec s]                         -- List of model observed variables
    -> Sampler (a, Ⲭ, LogP)
 mh n model xs ys = do
   -- Perform initial run of mh
@@ -120,21 +124,21 @@ mh n model xs ys = do
   -- Perform mhNstep for each data point, propagating (x, samples, logps) through
   foldl (>=>) return mhNs' (x, samples, logps)
 
--- | Perform n steps of MH for a single observable variable environment
+-- | Perform n steps of MH for a single data point
 mhNsteps :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample])
-  => Int
-  -> MRec env
-  -> Model env es a
-  -> (a, Ⲭ, LogP)
+  => Int              -- Number of mhSteps
+  -> MRec env         -- Model observed variable
+  -> Model env es a   -- Model
+  -> (a, Ⲭ, LogP)     -- Previous mh output
   -> Sampler (a, Ⲭ, LogP)
 mhNsteps n env model (x, samples, logps) = do
   foldl (>=>) return (replicate n (mhStep env model)) (x, samples, logps)
 
--- | Perform one step of MH
+-- | Perform one step of MH for a single data point
 mhStep :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample])
-  => MRec env
-  -> Model env es a
-  -> (a, Ⲭ, LogP)
+  => MRec env         -- Model observed variable
+  -> Model env es a   -- Model
+  -> (a, Ⲭ, LogP)     -- Previous mh output
   -> Sampler (a, Ⲭ, LogP)
 mhStep env model (x, samples, logps) = do
   let sample_size = Map.size samples
@@ -154,15 +158,15 @@ mhStep env model (x, samples, logps) = do
 
 -- | Run model once under MH
 runMH :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample])
-  => MRec env
-  -> Ⲭ
-  -> Addr
-  -> Model env es a
+  => MRec env       -- Model observed variable
+  -> Ⲭ              -- Previous mh sample set
+  -> Addr           -- Sample address
+  -> Model env es a -- Model
   -> Sampler (a, Ⲭ, LogP)
-runMH env samples n m = do
+runMH env samples α_samp m = do
   ((a, samples'), logps') <- ( -- This is where the previous run's samples are actually reused.
                                -- We do not reuse logps, we simply recompute them.
-                              runSample n samples
+                              runSample α_samp samples
                             . runState Map.empty
                             . runState Map.empty
                             . runObserve
