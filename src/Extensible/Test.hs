@@ -69,11 +69,13 @@ testLinRegrMH = do
       --                [1]
       --                (map mkRecordLinRegrY [-0.3])
       --                (MH.mhNsteps 1)
-      mhs'' = MH.mh 3 Example.linearRegression [1,2,3] (map mkRecordLinRegrY [-0.3, 1.6, 3.5])
+      mhs  = MH.mh 3 Example.linearRegression [1,2,3]
+                      (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
+      mhs' = MH.mh 3 Example.linearRegression [1,2,3] (map mkRecordLinRegrY [-0.3, 1.6, 3.5])
   -- output <- mhs''
   -- liftS $ print $ show output
   -- return output
-  mhs''
+  mhs
 
 -- testLogRegr :: IO ()
 -- testLogRegr = do

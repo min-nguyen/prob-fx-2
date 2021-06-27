@@ -269,7 +269,7 @@ sample (BernoulliDist p obs )      =
 sample (CategoricalDist ps obs )   =
   createSampler (sampleCategorical (fmap snd ps)) >>= return
 sample (DiscreteDist ps obs )      =
-  createSampler (sampleDiscrete (map snd ps)) >>= return
+  createSampler (sampleDiscrete (map snd ps)) >>= \i -> return (fst $ ps !! i)
 
 
 {- Old version of runDist which always samples -}

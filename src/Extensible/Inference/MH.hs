@@ -142,6 +142,7 @@ mhStep :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State 
   -> Sampler (a, Ⲭ, LogP)
 mhStep env model (x, samples, logps) = do
   let sample_size = Map.size samples
+  liftS $ print $ "samples are " ++ show samples
   α_samp <- sample $ DiscreteDist (map (,1.0/fromIntegral sample_size) (Map.keys samples)) Nothing
   -- run mh with new sample address
   liftS $ print $ "sample address is " ++ show α_samp
