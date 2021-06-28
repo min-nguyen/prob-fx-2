@@ -28,27 +28,27 @@ mkRecordLinRegrY :: Double -> MRec Example.LinRegrEnv
 mkRecordLinRegrY y_val =
  y @= Just y_val <: m @= Nothing <: c @= Nothing <: σ @= Nothing <: nil
 
-testLinRegrBasic :: Sampler [(Double, Double)]
+testLinRegrBasic :: Sampler [[(Double, Double)]]
 testLinRegrBasic = do
   let -- Run basic simulation over linearRegression
-      bs   = runInf Example.linearRegression
-                    [0, 1, 2, 3, 4]
-                    (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
-                    Basic.runBasic
+      bs   = Basic.basic 3 Example.linearRegression
+                           [0, 1, 2, 3, 4]
+                           (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
       -- Run basic inference over linearRegression
-      bs'  = runInf Example.linearRegression
+      bs'  = Basic.basic 3 Example.linearRegression
                     [0, 1, 2, 3, 4]
                     (map mkRecordLinRegrY [-0.3, 0.75, 2.43, 3.5, 3.2])
-                    Basic.runBasic
-  output <- bs'
+  output <- bs
   liftS $ print $ show output
   return output
 
 testLinRegrLW :: Sampler [[((Double, Double), Double)]]
 testLinRegrLW = do
-  let lws = LW.lw 3 Example.linearRegression
+  let -- Run likelihood weighting simulation over linearRegression
+      lws = LW.lw 3 Example.linearRegression
                     [0, 1, 2, 3, 4]
                     (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
+      -- Run likelihood weighting inference over linearRegression
       lws' = LW.lw 3 Example.linearRegression
                     [0, 1, 2, 3, 4]
                     (map mkRecordLinRegrY [-0.3, 0.75, 2.43, 3.5, 3.2])
@@ -58,9 +58,10 @@ testLinRegrLW = do
 
 testLinRegrMH :: Sampler [((Double, Double), MH.Ⲭ, MH.LogP)]
 testLinRegrMH = do
-  let
+  let -- Run mh simulation over linearRegression
       mhs  = MH.mh 3 Example.linearRegression [1,2,3]
                      (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
+      -- Run mh inference over linearRegression
       mhs' = MH.mh 3 Example.linearRegression [1,2,3]
                      (map mkRecordLinRegrY [-0.3, 1.6, 3.5])
   output <- mhs'

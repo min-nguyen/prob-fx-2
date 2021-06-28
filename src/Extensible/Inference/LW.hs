@@ -19,18 +19,17 @@ import Extensible.Freer
 import Extensible.Model hiding (runModelFree)
 import Extensible.Sampler
 
+-- | Run LW n times for multiple data points
 lw :: (es ~ '[Reader (MRec env), Dist, Observe, Sample])
    => Int                              -- Number of lw iterations per data point
-   -> (b -> Model env es a)              -- Model awaiting input variable
+   -> (b -> Model env es a)            -- Model awaiting input variable
    -> [b]                              -- List of model input variables
-   -> [MRec env]                         -- List of model observed variables
-   -> Sampler [[(a, Double)]]
+   -> [MRec env]                       -- List of model observed variables
+   -> Sampler [[(a, Double)]]          -- List of n likelihood weightings for each data point
 lw n model xs ys = do
-  let models = map model xs
-      lwNs   = repeat (lwNsteps n)
-      lws    = zipWith (\lwN (y, model) -> lwN y model) lwNs (zip ys models)
-  sequence lws
+  zipWithM (\x y -> lwNsteps n y (model x)) xs ys
 
+-- | Run LW n times for a single data point
 lwNsteps :: (es ~ '[Reader (MRec env), Dist, Observe, Sample])
   => Int
   -> MRec env
@@ -38,6 +37,7 @@ lwNsteps :: (es ~ '[Reader (MRec env), Dist, Observe, Sample])
   -> Sampler [(a, Double)]
 lwNsteps n env model = replicateM n (runLW env model)
 
+-- | Run LW once for single data point
 runLW :: MRec env -> Model env '[Reader (MRec env), Dist, Observe, Sample] a
       -> Sampler (a, Double)
 runLW env = runSample . runObserve . runDist . runReader env . runModel

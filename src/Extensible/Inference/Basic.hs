@@ -11,6 +11,7 @@
 module Extensible.Inference.Basic where
 
 import Data.Extensible hiding (Member)
+import Control.Monad
 import Control.Monad.Trans.Class
 import Extensible.Dist
 import Extensible.Freer
@@ -19,8 +20,24 @@ import Extensible.Sampler
 import Extensible.Reader
 import Extensible.Example as Example
 
+basic :: (es ~ '[Dist, Observe, Reader (MRec env), Sample])
+  => Int                             -- Number of iterations per data point
+  -> (b -> Model env es a)           -- Model awaiting input variable
+  -> [b]                             -- List of model input variables
+  -> [MRec env]                      -- List of model observed variables
+  -> Sampler [[a]]
+basic n model xs ys = do
+  zipWithM (\x y -> basicNsteps n y (model x)) xs ys
+
+basicNsteps :: (es ~ '[Dist, Observe, Reader (MRec env), Sample])
+  => Int
+  -> MRec env
+  -> Model env es a
+  -> Sampler [a]
+basicNsteps n ys model = replicateM n (runBasic ys model)
+
 runBasic :: MRec env -> Model env '[Dist, Observe, Reader (MRec env), Sample] a -> Sampler a
-runBasic env m = runSample $ runReader env $ runObserve $ runDist $ runModel m
+runBasic ys m = runSample $ runReader ys $ runObserve $ runDist $ runModel m
 
 runObserve :: Freer (Observe : rs) a -> Freer rs  a
 runObserve = loop
@@ -39,5 +56,5 @@ runSample = loop
   loop :: Freer '[Sample] a -> Sampler a
   loop (Pure x) = return x
   loop (Free u k) = case prj u of
-     Just (Sample d α) -> liftS (putStrLn $ "α : " ++ show α) >> sample d >>= loop . k
-     Nothing         -> error "Impossible: Nothing cannot occur"
+     Just (Sample d α) -> sample d >>= loop . k
+     Nothing           -> error "Impossible: Nothing cannot occur"

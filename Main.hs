@@ -25,8 +25,8 @@ testAndWrite prog = do
 main :: IO ()
 main = do
   -- testAndWrite testLinRegrBasic
-  -- sampleIOFixed testLinRegrBasic
-  trace <- sampleIOFixed testLinRegrLW
+  sampleIOFixed testLinRegrBasic
+  -- trace <- sampleIOFixed testLinRegrLW
   -- trace <- sampleIOFixed testLinRegrMH
   -- putStrLn $ show trace
   return ()

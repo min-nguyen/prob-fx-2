@@ -115,14 +115,10 @@ mh :: (es ~ '[Reader (Record (Maybes s)), Dist, Observe, State Ⲭ, State LogP, 
 mh n model xs ys = do
   -- Perform initial run of mh
   (x, samples, logps) <- runMH (head ys) Map.empty 0 (model $ head xs)
-  let -- Apply model to each of input variables
-      models = map model xs
-      -- Create list of mhNsteps
-      mhNs   = repeat (mhNsteps n)
-      -- Apply mhNstep to each (model, input variable x, observed variable y)
-      mhNs'  = zipWith (\mhN (y, model) -> mhN y model) mhNs (zip ys models)
+  -- Construct list of mhNstep functions, one for each data point
+  let mhs  = zipWith (\x y -> mhNsteps n y (model x)) xs ys
   -- Perform mhNstep for each data point, propagating (x, samples, logps) through
-  foldl (>=>) return mhNs' [(x, samples, logps)]
+  foldl (>=>) return mhs [(x, samples, logps)]
 
 -- | Perform n steps of MH for a single data point
 mhNsteps :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample])
