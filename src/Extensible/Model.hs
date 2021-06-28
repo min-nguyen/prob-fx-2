@@ -35,7 +35,7 @@ import qualified System.Random.MWC.Distributions as MWC
 import qualified Data.Vector as V
 import Unsafe.Coerce
 
-mkField "m c μ σ mu sigma y ys label yObs"
+mkField "m c b μ σ mu sigma y ys label yObs"
 
 type family Maybes (as :: [k]) = (bs :: [k]) | bs -> as where
   Maybes ((f :> v) : as) = (f :> Maybe v) : Maybes as

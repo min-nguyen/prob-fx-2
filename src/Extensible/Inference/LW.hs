@@ -19,6 +19,7 @@ import Extensible.Freer
 import Extensible.Model hiding (runModelFree)
 import Extensible.Sampler
 
+-- | Perhaps this should also return a list of samples.
 -- | Run LW n times for multiple data points
 lw :: (es ~ '[Reader (MRec env), Dist, Observe, Sample])
    => Int                              -- Number of lw iterations per data point

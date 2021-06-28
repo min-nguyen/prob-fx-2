@@ -67,15 +67,23 @@ testLinRegrMH = do
   liftS $ print $ show output
   return output
 
--- testLogRegr :: IO ()
--- testLogRegr = do
---   let -- Run basic simulation over logisticRegression
---       bs =
---   -- (x, samples, logps)
---   --   <- sampleIO $ MH.runMH (label @= Just True <: nil) Map.empty 0
---   --      (Example.logisticRegression (-1))
---   -- (x, samples, logps)
---   --   <- sampleIOFixed $ MH.mhNsteps 5 (label @= Just True <: nil)
---   --      (Example.logisticRegression 10)
---   -- putStrLn $ show x ++ "\n" ++ show samples ++ "\n" ++ show logps
---   return ()
+mkRecordLogRegr :: (Maybe Bool, Maybe Double, Maybe Double) -> MRec Example.LogRegrEnv
+mkRecordLogRegr (label_val, m_val, b_val) =
+  label @= label_val <: m @= m_val <: b @= b_val <: nil
+
+mkRecordLogRegrL :: Bool -> MRec Example.LogRegrEnv
+mkRecordLogRegrL label_val =
+ label @= Just label_val<: m @= Nothing <: b @= Nothing <: nil
+
+testLogRegrBasic :: Sampler  [(Double, Bool)]
+testLogRegrBasic = do
+  let -- Run basic simulation over logisticRegression
+      bs = Basic.basic 3 Example.logisticRegression
+                         [0, 1, 2, 3, 4]
+                         (repeat $ mkRecordLogRegr (Nothing, Just 0.3, Just (-0.2)))
+      bs' = Basic.basic 3 Example.logisticRegression
+                         [0, 1, 2, 3, 4]
+                         (repeat $ mkRecordLogRegr (Nothing, Nothing, Nothing))
+  output <- bs'
+  liftS $ print $ show output
+  return output

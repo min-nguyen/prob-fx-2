@@ -91,17 +91,20 @@ predNN prior = do
 
 -- Logistic regression
 type LogRegrEnv =
-    '[  "label"    ':>  Double
+    '[  "label" ':>  Bool,
+        "m"     ':> Double,
+        "b"     ':> Double
      ]
 
 sigmoid :: Double -> Double
 sigmoid x = 1 / (1 + exp((-1) * x))
 
-logisticRegression :: forall rs s. HasVar s "label" Bool =>
+logisticRegression :: forall rs s.
+ (HasVar s "label" Bool, HasVar s "m" Double, HasVar s "b" Double) =>
  Double -> Model s rs (Double, Bool)
 logisticRegression x = do
-  m     <- normal 0 1
-  b     <- normal 0 1
+  m     <- normal' 0 1 m
+  b     <- normal' 0 1 b
   sigma <- gamma 1 1
   y     <- normal (m * x + b) sigma
   l     <- bernoulli' (sigmoid y) label
