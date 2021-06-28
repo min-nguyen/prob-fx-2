@@ -28,13 +28,12 @@ mkRecordLinRegrY :: Double -> MRec Example.LinRegrEnv
 mkRecordLinRegrY y_val =
  y @= Just y_val <: m @= Nothing <: c @= Nothing <: σ @= Nothing <: nil
 
-testLinRegrBasic :: Sampler [[(Double, Double)]]
+testLinRegrBasic :: Sampler [(Double, Double)]
 testLinRegrBasic = do
   let -- Run basic simulation over linearRegression
       bs   = Basic.basic 3 Example.linearRegression
                            [0, 1, 2, 3, 4]
                            (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
-      -- Run basic inference over linearRegression
       bs'  = Basic.basic 3 Example.linearRegression
                     [0, 1, 2, 3, 4]
                     (map mkRecordLinRegrY [-0.3, 0.75, 2.43, 3.5, 3.2])
@@ -42,7 +41,7 @@ testLinRegrBasic = do
   liftS $ print $ show output
   return output
 
-testLinRegrLW :: Sampler [[((Double, Double), Double)]]
+testLinRegrLW :: Sampler [((Double, Double), Double)]
 testLinRegrLW = do
   let -- Run likelihood weighting simulation over linearRegression
       lws = LW.lw 3 Example.linearRegression

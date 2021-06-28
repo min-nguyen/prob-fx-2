@@ -25,9 +25,9 @@ basic :: (es ~ '[Dist, Observe, Reader (MRec env), Sample])
   -> (b -> Model env es a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
   -> [MRec env]                      -- List of model observed variables
-  -> Sampler [[a]]
+  -> Sampler [a]
 basic n model xs ys = do
-  zipWithM (\x y -> basicNsteps n y (model x)) xs ys
+  concat <$> zipWithM (\x y -> basicNsteps n y (model x)) xs ys
 
 basicNsteps :: (es ~ '[Dist, Observe, Reader (MRec env), Sample])
   => Int

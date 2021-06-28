@@ -25,9 +25,9 @@ lw :: (es ~ '[Reader (MRec env), Dist, Observe, Sample])
    -> (b -> Model env es a)            -- Model awaiting input variable
    -> [b]                              -- List of model input variables
    -> [MRec env]                       -- List of model observed variables
-   -> Sampler [[(a, Double)]]          -- List of n likelihood weightings for each data point
+   -> Sampler [(a, Double)]            -- List of n likelihood weightings for each data point
 lw n model xs ys = do
-  zipWithM (\x y -> lwNsteps n y (model x)) xs ys
+  concat <$> zipWithM (\x y -> lwNsteps n y (model x)) xs ys
 
 -- | Run LW n times for a single data point
 lwNsteps :: (es ~ '[Reader (MRec env), Dist, Observe, Sample])
