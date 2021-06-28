@@ -44,17 +44,15 @@ testLinRegrBasic = do
   liftS $ print $ show output
   return output
 
-testLinRegrLW :: Sampler [((Double, Double), Double)]
+testLinRegrLW :: Sampler [[((Double, Double), Double)]]
 testLinRegrLW = do
-  let lws   = runInf Example.linearRegression
-                     [0, 1, 2, 3, 4]
-                     (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
-                     LW.runLW
-      lws'  = runInf Example.linearRegression
-                     [0, 1, 2, 3, 4]
-                     (map mkRecordLinRegrY [-0.3, 0.75, 2.43, 3.5, 3.2])
-                     LW.runLW
-  output <- lws
+  let lws = LW.lw 3 Example.linearRegression
+                    [0, 1, 2, 3, 4]
+                    (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
+      lws' = LW.lw 3 Example.linearRegression
+                    [0, 1, 2, 3, 4]
+                    (map mkRecordLinRegrY [-0.3, 0.75, 2.43, 3.5, 3.2])
+  output <- lws'
   liftS $ print $ show output
   return output
 
@@ -65,10 +63,9 @@ testLinRegrMH = do
                      (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
       mhs' = MH.mh 3 Example.linearRegression [1,2,3]
                      (map mkRecordLinRegrY [-0.3, 1.6, 3.5])
-  -- output <- mhs'
-  -- liftS $ print $ show output
-  -- return output
-  mhs'
+  output <- mhs'
+  liftS $ print $ show output
+  return output
 
 -- testLogRegr :: IO ()
 -- testLogRegr = do

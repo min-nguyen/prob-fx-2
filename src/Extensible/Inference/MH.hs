@@ -48,13 +48,12 @@ Repeat:
        LogP' = Map.empty;
 
 3)  Evaluate the program:
-
     -# x <- sample d
       If 1) x == x0, or
-        2) x is not found in Ⲭ, or
-        3) x is found in Ⲭ but the distribution it was sampled from was different
+         2) x is not found in Ⲭ, or
+         3) x is found in Ⲭ but the distribution it was sampled from was different
       Then 1) Newly sample x and store it in Ⲭ' (along with its distribution), and
-          2) Compute logp = logP(d, x) and store logp in LogP'
+           2) Compute logp = logP(d, x) and store logp in LogP'
       Else reuse the sample for x found in Ⲭ
 
     -# observe d y

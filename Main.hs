@@ -13,7 +13,7 @@ import qualified Extensible.Inference.LW as LW
 import qualified Extensible.Inference.MH as MH
 import Extensible.OpenSum as OpenSum
 import Extensible.Model
-import Data.Extensible
+import Data.Extensible ()
 import Extensible.Sampler
 import Extensible.Test
 
@@ -22,14 +22,12 @@ testAndWrite prog = do
   a <- sampleIOFixed prog
   writeFile "model-output.txt" (show a)
 
-
-
 main :: IO ()
 main = do
   -- testAndWrite testLinRegrBasic
   -- sampleIOFixed testLinRegrBasic
-  -- sampleIOFixed testLinRegrLW
-  trace <- sampleIOFixed testLinRegrMH
-  putStrLn $ show trace
+  trace <- sampleIOFixed testLinRegrLW
+  -- trace <- sampleIOFixed testLinRegrMH
+  -- putStrLn $ show trace
   return ()
 

@@ -9,9 +9,9 @@
 {-# LANGUAGE TypeOperators #-}
 module Extensible.Inference.LW where
 
-import Data.Map
 import Data.Extensible
 import Extensible.Reader
+import Control.Monad
 import Control.Monad.Trans.Class
 import Extensible.Dist
 import qualified Extensible.Example as Example
@@ -19,7 +19,24 @@ import Extensible.Freer
 import Extensible.Model hiding (runModelFree)
 import Extensible.Sampler
 
-type Conts = forall a. Map Int (Freer '[Sample] a)
+lw :: (es ~ '[Reader (MRec env), Dist, Observe, Sample])
+   => Int                              -- Number of lw iterations per data point
+   -> (b -> Model env es a)              -- Model awaiting input variable
+   -> [b]                              -- List of model input variables
+   -> [MRec env]                         -- List of model observed variables
+   -> Sampler [[(a, Double)]]
+lw n model xs ys = do
+  let models = map model xs
+      lwNs   = repeat (lwNsteps n)
+      lws    = zipWith (\lwN (y, model) -> lwN y model) lwNs (zip ys models)
+  sequence lws
+
+lwNsteps :: (es ~ '[Reader (MRec env), Dist, Observe, Sample])
+  => Int
+  -> MRec env
+  -> Model env es a
+  -> Sampler [(a, Double)]
+lwNsteps n env model = replicateM n (runLW env model)
 
 runLW :: MRec env -> Model env '[Reader (MRec env), Dist, Observe, Sample] a
       -> Sampler (a, Double)
