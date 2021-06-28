@@ -14,15 +14,15 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-
 module Extensible.Freer where
 
 import Control.Monad
 import Unsafe.Coerce
 import Data.Kind (Constraint)
 import GHC.TypeLits
+    ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
 import Data.Typeable
-
+import qualified Extensible.OpenSum as OpenSum
 {- Extensible effects without Typeable in Union, using Freer monad -}
 
 {- Unions -}
@@ -31,13 +31,13 @@ data Union (rs :: [* -> *]) x where
 
 -- instance Functor (Union rs) where
 --   fmap f (Union i tx) = Union i (fmap f tx)
-  
+
 newtype P t rs = P {unP :: Int}
 
 class FindElem (t :: * -> *) r where
   findElem :: P t r
 
-instance FindElem t (t ': r) where
+instance {-# INCOHERENT  #-} FindElem t (t ': r) where
   findElem = P 0
 instance {-# OVERLAPPABLE #-} FindElem t r => FindElem t (t' ': r) where
   findElem = P $ 1 + (unP $ (findElem :: P t r))
@@ -50,12 +50,12 @@ instance TypeError ('Text "Cannot unify effect types." ':$$:
 class (FindElem t rs) => Member (t :: * -> *) (rs :: [* -> *]) where
   inj ::  t x -> Union rs x
   prj ::  Union rs x -> Maybe (t x)
- 
-instance {-# OVERLAPPING #-}  (t ~ s) => Member t '[s] where
-   inj x          = Union 0 x
-   prj (Union _ x) = Just (unsafeCoerce x)
- 
-instance {-# INCOHERENT #-}  (FindElem t rs) => Member t rs where
+
+-- instance {-# INCOHERENT #-} (t ~ s) => Member t '[s] where
+--    inj x          = Union 0 x
+--    prj (Union _ x) = Just (unsafeCoerce x)
+
+instance (FindElem t rs) => Member t rs where
   inj = inj' (unP (findElem :: P t rs))
   prj = prj' (unP (findElem :: P t rs))
 
@@ -75,6 +75,7 @@ class EQU (a :: k) (b :: k) p | a b -> p
 instance EQU a a 'True
 instance (p ~ 'False) => EQU a b p
 
+-- | This class is used for emulating monad transformers
 class Member t r => SetMember (tag :: k -> * -> *) (t :: * -> *) r | tag r -> t
 instance (EQU t1 t2 p, MemberU' p tag t1 (t2 ': r)) => SetMember tag t1 (t2 ': r)
 
@@ -105,7 +106,7 @@ instance Monad (Freer f) where
   Pure a >>= f      = f a
   Free fx k >>= f = Free fx (k >=> f)
 
-run :: Freer '[] a -> a 
+run :: Freer '[] a -> a
 run (Pure x) = x
 
 send :: Member t rs => t x -> Freer rs x

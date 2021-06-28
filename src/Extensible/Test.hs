@@ -1,0 +1,89 @@
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE PatternSynonyms, ViewPatterns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators, TypeApplications, UndecidableInstances #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+
+module Extensible.Test where
+
+import qualified Data.Map as Map
+import qualified Extensible.Example as Example
+import qualified Extensible.Inference.Basic as Basic
+import qualified Extensible.Inference.LW as LW
+import qualified Extensible.Inference.MH as MH
+import Extensible.Inference.Inf
+import Extensible.Model
+import Extensible.Sampler
+import Data.Extensible
+
+mkRecordLinRegr :: (Maybe Double, Maybe Double, Maybe Double, Maybe Double) -> MRec Example.LinRegrEnv
+mkRecordLinRegr (y_val, m_val, c_val, σ_val) =
+  y @= y_val <: m @= m_val <: c @= c_val <: σ @= σ_val <: nil
+
+mkRecordLinRegrY :: Double -> MRec Example.LinRegrEnv
+mkRecordLinRegrY y_val =
+ y @= Just y_val <: m @= Nothing <: c @= Nothing <: σ @= Nothing <: nil
+
+testLinRegrBasic :: Sampler [(Double, Double)]
+testLinRegrBasic = do
+  let -- Run basic simulation over linearRegression
+      bs   = Basic.basic 3 Example.linearRegression
+                           [0, 1, 2, 3, 4]
+                           (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
+      bs'  = Basic.basic 3 Example.linearRegression
+                    [0, 1, 2, 3, 4]
+                    (map mkRecordLinRegrY [-0.3, 0.75, 2.43, 3.5, 3.2])
+  output <- bs
+  liftS $ print $ show output
+  return output
+
+testLinRegrLW :: Sampler [((Double, Double), Double)]
+testLinRegrLW = do
+  let -- Run likelihood weighting simulation over linearRegression
+      lws = LW.lw 3 Example.linearRegression
+                    [0, 1, 2, 3, 4]
+                    (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
+      -- Run likelihood weighting inference over linearRegression
+      lws' = LW.lw 3 Example.linearRegression
+                    [0, 1, 2, 3, 4]
+                    (map mkRecordLinRegrY [-0.3, 0.75, 2.43, 3.5, 3.2])
+  output <- lws'
+  liftS $ print $ show output
+  return output
+
+testLinRegrMH :: Sampler [((Double, Double), MH.Ⲭ, MH.LogP)]
+testLinRegrMH = do
+  let -- Run mh simulation over linearRegression
+      mhs  = MH.mh 3 Example.linearRegression [1,2,3]
+                     (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
+      -- Run mh inference over linearRegression
+      mhs' = MH.mh 3 Example.linearRegression [1,2,3]
+                     (map mkRecordLinRegrY [-0.3, 1.6, 3.5])
+  output <- mhs'
+  liftS $ print $ show output
+  return output
+
+mkRecordLogRegr :: (Maybe Bool, Maybe Double, Maybe Double) -> MRec Example.LogRegrEnv
+mkRecordLogRegr (label_val, m_val, b_val) =
+  label @= label_val <: m @= m_val <: b @= b_val <: nil
+
+mkRecordLogRegrL :: Bool -> MRec Example.LogRegrEnv
+mkRecordLogRegrL label_val =
+ label @= Just label_val<: m @= Nothing <: b @= Nothing <: nil
+
+testLogRegrBasic :: Sampler  [(Double, Bool)]
+testLogRegrBasic = do
+  let -- Run basic simulation over logisticRegression
+      bs = Basic.basic 3 Example.logisticRegression
+                         [0, 1, 2, 3, 4]
+                         (repeat $ mkRecordLogRegr (Nothing, Just 0.3, Just (-0.2)))
+      bs' = Basic.basic 3 Example.logisticRegression
+                         [0, 1, 2, 3, 4]
+                         (repeat $ mkRecordLogRegr (Nothing, Nothing, Nothing))
+  output <- bs'
+  liftS $ print $ show output
+  return output

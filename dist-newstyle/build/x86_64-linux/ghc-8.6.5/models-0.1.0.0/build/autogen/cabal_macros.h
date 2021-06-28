@@ -11,6 +11,17 @@
   (major1) == 0 && (major2) == 1 && (minor) <= 0)
 #endif /* MIN_VERSION_models */
 
+/* package HMap-1.3.0 */
+#ifndef VERSION_HMap
+#define VERSION_HMap "1.3.0"
+#endif /* VERSION_HMap */
+#ifndef MIN_VERSION_HMap
+#define MIN_VERSION_HMap(major1,major2,minor) (\
+  (major1) <  1 || \
+  (major1) == 1 && (major2) <  3 || \
+  (major1) == 1 && (major2) == 3 && (minor) <= 0)
+#endif /* MIN_VERSION_HMap */
+
 /* package base-4.12.0.0 */
 #ifndef VERSION_base
 #define VERSION_base "4.12.0.0"

@@ -4,7 +4,7 @@ module Model where
 
 import Dist
 import FreeT
-import Sample
+import Sampler
 import Util
 import GHC.Generics
 import GHC.Types
@@ -16,12 +16,16 @@ import Control.Lens ( Identity, (^.), review, Getting )
 import Control.Monad
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
 import Control.Monad.Reader
+import Control.Monad.Trans.Identity
 
-mkField "mu sigma y ys"
 
-type ModelT s m a = FreeT Dist (ReaderT (Record (Maybes s)) m) a
+mkField "mu sigma y ys label"
 
-type Model s a = ModelT s Identity a
+type ModelT s t a =
+  (MonadTrans t, Monad (t Sampler)) =>
+  FreeT Dist (ReaderT (Record (Maybes s)) (t Sampler)) a
+
+type Model s a = ModelT s IdentityT a
 
 type family Keys (as :: [Assoc k v]) :: [k] where
   Keys ((k :> v) : as) = k : Keys as
@@ -90,7 +94,7 @@ access f = do
 
 {- Distribution functions -}
 normal :: (a ~ Maybe Double, Monad m)
-  => Double -> Double -> Maybe Double 
+  => Double -> Double -> Maybe Double
   -> FreeT Dist (ReaderT (Record s) m) Double
 normal mu sigma maybe_y = do
   suspend (NormalDist mu sigma maybe_y return)
@@ -130,7 +134,7 @@ binomial' n p field = do
 
 -- FreeT Dist (ReaderT (Record (Maybes s)) m) a
 {- Executing Models -}
-runModelFree :: Monad m => ModelT s m a -> ReaderT (MRec s) m a
+runModelFree :: (MonadTrans t, Monad (t Sampler)) => ModelT s t a -> ReaderT (MRec s) (t Sampler) a
 runModelFree model = do
   let loop v = do
           x <- runFreeT v
@@ -138,5 +142,5 @@ runModelFree model = do
                     Pure v -> return v
   loop model
 
-runModel :: Monad m => ModelT s m a -> MRec s -> m a
+runModel :: (MonadTrans t, Monad (t Sampler)) => ModelT s t a -> MRec s -> t (Sampler) a
 runModel model = runReaderT (runModelFree model)

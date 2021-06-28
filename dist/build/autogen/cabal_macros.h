@@ -11,6 +11,17 @@
   (major1) == 0 && (major2) == 1 && (minor) <= 0)
 #endif /* MIN_VERSION_models */
 
+/* package HMap-1.3.0 */
+#ifndef VERSION_HMap
+#define VERSION_HMap "1.3.0"
+#endif /* VERSION_HMap */
+#ifndef MIN_VERSION_HMap
+#define MIN_VERSION_HMap(major1,major2,minor) (\
+  (major1) <  1 || \
+  (major1) == 1 && (major2) <  3 || \
+  (major1) == 1 && (major2) == 3 && (minor) <= 0)
+#endif /* MIN_VERSION_HMap */
+
 /* package base-4.12.0.0 */
 #ifndef VERSION_base
 #define VERSION_base "4.12.0.0"
@@ -165,6 +176,17 @@
   (major1) == 3 && (major2) == 2 && (minor) <= 6)
 #endif /* MIN_TOOL_VERSION_alex */
 
+/* tool cpphs-1.20.9 */
+#ifndef TOOL_VERSION_cpphs
+#define TOOL_VERSION_cpphs "1.20.9"
+#endif /* TOOL_VERSION_cpphs */
+#ifndef MIN_TOOL_VERSION_cpphs
+#define MIN_TOOL_VERSION_cpphs(major1,major2,minor) (\
+  (major1) <  1 || \
+  (major1) == 1 && (major2) <  20 || \
+  (major1) == 1 && (major2) == 20 && (minor) <= 9)
+#endif /* MIN_TOOL_VERSION_cpphs */
+
 /* tool gcc-9 */
 #ifndef TOOL_VERSION_gcc
 #define TOOL_VERSION_gcc "9"
@@ -242,6 +264,17 @@
   (major1) == 0 && (major2) == 68 && (minor) <= 5)
 #endif /* MIN_TOOL_VERSION_hsc2hs */
 
+/* tool hscolour-1.24 */
+#ifndef TOOL_VERSION_hscolour
+#define TOOL_VERSION_hscolour "1.24"
+#endif /* TOOL_VERSION_hscolour */
+#ifndef MIN_TOOL_VERSION_hscolour
+#define MIN_TOOL_VERSION_hscolour(major1,major2,minor) (\
+  (major1) <  1 || \
+  (major1) == 1 && (major2) <  24 || \
+  (major1) == 1 && (major2) == 24 && (minor) <= 0)
+#endif /* MIN_TOOL_VERSION_hscolour */
+
 /* tool pkg-config-0.29.1 */
 #ifndef TOOL_VERSION_pkg_config
 #define TOOL_VERSION_pkg_config "0.29.1"
@@ -276,10 +309,10 @@
 #endif /* MIN_TOOL_VERSION_strip */
 
 #ifndef CURRENT_PACKAGE_KEY
-#define CURRENT_PACKAGE_KEY "models-0.1.0.0-68yQLQU6N6ACAnPJtYlfnQ"
+#define CURRENT_PACKAGE_KEY "models-0.1.0.0-FcfzuFIcvxL2QfXqZIFE7a"
 #endif /* CURRENT_PACKAGE_KEY */
 #ifndef CURRENT_COMPONENT_ID
-#define CURRENT_COMPONENT_ID "models-0.1.0.0-68yQLQU6N6ACAnPJtYlfnQ"
+#define CURRENT_COMPONENT_ID "models-0.1.0.0-FcfzuFIcvxL2QfXqZIFE7a"
 #endif /* CURRENT_COMPONENT_ID */
 #ifndef CURRENT_PACKAGE_VERSION
 #define CURRENT_PACKAGE_VERSION "0.1.0.0"

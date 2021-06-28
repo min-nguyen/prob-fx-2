@@ -49,16 +49,28 @@ cabal-version:       >=1.10
 library
   -- Modules exported by the library.
   exposed-modules:    Model,
+                      ModelF,
                       Example,
                       FreeT,
                       Dist,
                       Util,
-                      Sample,
+                      Sampler,
+                      Inference,
                       Extensible.Freer,
                       Extensible.Example,
                       Extensible.Reader,
                       Extensible.Writer,
-                      Inference.Basic
+                      Extensible.State,
+                      Extensible.IO,
+                      Extensible.Model,
+                      Extensible.OpenSum,
+                      Extensible.Dist,
+                      Extensible.Sampler,
+                      Extensible.Inference.Basic,
+                      Extensible.Inference.LW,
+                      Extensible.Inference.MH,
+                      Extensible.Inference.Inf,
+                      Extensible.Test
 
   -- Modules included in this library but not exported.
   -- other-modules:
@@ -67,7 +79,7 @@ library
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.12 && <4.13,
+  build-depends:       base >=4.14,
                        ghc-prim,
                        primitive,
                        containers,
@@ -75,6 +87,7 @@ library
                        vector,
                        lens,
                        transformers,
+                       HMap,
                        mtl,
                        membership,
                        profunctors,
@@ -99,9 +112,10 @@ executable models
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.12 && <4.13,
+  build-depends:       base >=4.14,
                        extensible,
-                       models
+                       models,
+                       containers
 
 
   -- Base language which the package is written in.
