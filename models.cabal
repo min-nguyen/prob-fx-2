@@ -92,6 +92,7 @@ library
                        membership,
                        profunctors,
                        statistics,
+                       split,
                        mwc-random
 
   -- Directories containing source files.
@@ -115,7 +116,8 @@ executable models
   build-depends:       base >=4.14,
                        extensible,
                        models,
-                       containers
+                       containers,
+                       split
 
 
   -- Base language which the package is written in.

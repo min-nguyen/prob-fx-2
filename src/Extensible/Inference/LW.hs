@@ -29,32 +29,36 @@ type Vals = '[Int, Double, Bool]
 
 type Ⲭ = Map Addr (OpenSum Vals)
 
+type TraceLW a = [(a, Ⲭ, Double)]
+
 updateMapⲬ :: OpenSum.Member x Vals => Addr -> x -> Ⲭ -> Ⲭ
 updateMapⲬ α x = Map.insert α (OpenSum.inj x) :: Ⲭ -> Ⲭ
 
 -- | Perhaps this should also return a list of samples.
 -- | Run LW n times for multiple data points
-lw :: (es ~ '[Reader (MRec env), Dist, Observe, Sample])
+lw :: (es ~ '[Reader (MRec env), Dist, State Ⲭ, Observe, Sample])
    => Int                              -- Number of lw iterations per data point
    -> (b -> Model env es a)            -- Model awaiting input variable
    -> [b]                              -- List of model input variables
    -> [MRec env]                       -- List of model observed variables
-   -> Sampler [(a, Double)]            -- List of n likelihood weightings for each data point
+   -> Sampler (TraceLW a)              -- List of n likelihood weightings for each data point
 lw n model xs ys = do
   concat <$> zipWithM (\x y -> lwNsteps n y (model x)) xs ys
 
 -- | Run LW n times for a single data point
-lwNsteps :: (es ~ '[Reader (MRec env), Dist, Observe, Sample])
+lwNsteps :: (es ~ '[Reader (MRec env), Dist, State Ⲭ, Observe, Sample])
   => Int
   -> MRec env
   -> Model env es a
-  -> Sampler [(a, Double)]
+  -> Sampler (TraceLW a)
 lwNsteps n env model = replicateM n (runLW env model)
 
 -- | Run LW once for single data point
-runLW :: MRec env -> Model env '[Reader (MRec env), Dist, Observe, Sample] a
-      -> Sampler (a, Double)
-runLW env = runSample . runObserve . runDist . runReader env . runModel
+runLW :: MRec env -> Model env '[Reader (MRec env), Dist, State Ⲭ, Observe, Sample] a
+      -> Sampler (a, Ⲭ, Double)
+runLW env model = do
+  ((x, samples), p) <- (runSample . runObserve . runState Map.empty . transformLW . runDist . runReader env . runModel) model
+  return (x, samples, p)
 
 transformLW :: (Member (State Ⲭ) rs, Member Sample rs)
   => Freer rs a -> Freer rs a

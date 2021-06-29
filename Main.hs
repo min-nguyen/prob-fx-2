@@ -3,7 +3,7 @@
 {-# LANGUAGE DataKinds #-}
 module Main where
 
-
+import Data.List.Split
 import Data.Tuple
 import qualified Data.Map as Map
 import qualified Inference as Infer
@@ -22,15 +22,22 @@ testAndWrite prog = do
   a <- sampleIOFixed prog
   writeFile "model-output.txt" (show a)
 
+removeWord :: String -> String -> String
+removeWord word s =
+  let repl ',' = " , "
+      repl x   = [x]
+      s'  = concat $ map repl s
+      s'' = concat $ filter (not . (== word)) $ splitOn " " s'
+  in  s''
+
 main :: IO ()
 main = do
-  -- testAndWrite testLinRegrBasic
   -- trace <- sampleIOFixed testLinRegrBasic
   trace <- sampleIOFixed testLinRegrLW
   -- trace <- sampleIOFixed testLinRegrMH
-
-  -- putStrLn $ show trace
   -- trace <- sampleIOFixed testLogRegrBasic
-  writeFile "model-output.txt" (show trace)
+  let traceStr = removeWord "fromList" $ show trace
+  putStrLn traceStr
+  -- writeFile "model-output.txt" traceStr
   return ()
 

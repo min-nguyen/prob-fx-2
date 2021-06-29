@@ -77,7 +77,7 @@ type Vals = '[Int, Double, Bool]
 
 type LogP = Map Addr Double
 type Ⲭ    = Map Addr (DistInfo, OpenSum Vals)
-type Trace a = [(a, Ⲭ, LogP)]
+type TraceMH a = [(a, Ⲭ, LogP)]
 
 updateMapⲬ :: OpenSum.Member x Vals => Addr -> Dist x -> x -> Ⲭ -> Ⲭ
 updateMapⲬ α d x = Map.insert α (toDistInfo d, OpenSum.inj x) :: Ⲭ -> Ⲭ
@@ -111,7 +111,7 @@ mh :: (es ~ '[Reader (Record (Maybes s)), Dist, Observe, State Ⲭ, State LogP, 
    -> (b -> Model s es a)              -- Model awaiting input variable
    -> [b]                              -- List of model input variables
    -> [MRec s]                         -- List of model observed variables
-   -> Sampler (Trace a)                -- Trace of all accepted outputs, samples, and logps
+   -> Sampler (TraceMH a)                -- Trace of all accepted outputs, samples, and logps
 mh n model xs ys = do
   -- Perform initial run of mh
   (x, samples, logps) <- runMH (head ys) Map.empty 0 (model $ head xs)
@@ -125,8 +125,8 @@ mhNsteps :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, Stat
   => Int              -- Number of mhSteps
   -> MRec env         -- Model observed variable
   -> Model env es a   -- Model
-  -> Trace a          -- Previous mh output
-  -> Sampler (Trace a)
+  -> TraceMH a        -- Previous mh output
+  -> Sampler (TraceMH a)
 mhNsteps n env model trace = do
   foldl (>=>) return (replicate n (mhStep env model)) trace
 
@@ -134,8 +134,8 @@ mhNsteps n env model trace = do
 mhStep :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample])
   => MRec env         -- Model observed variable
   -> Model env es a   -- Model
-  -> Trace a          -- Trace of previous mh outputs
-  -> Sampler (Trace a)
+  -> TraceMH a        -- Trace of previous mh outputs
+  -> Sampler (TraceMH a)
 mhStep env model trace = do
   let -- Get previous mh output
       (x, samples, logps) = head trace

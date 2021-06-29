@@ -27,16 +27,15 @@ def main():
     # function to show the plot
     plt.show()
   if arg == "lw":
-    xyps = [[ i for i, j in data ],
-            [ j for i, j in data ]]
-    xys = [[ i for i, j in xyps[0] ],
-           [ j for i, j in xyps[0] ]]
-    # x axis values
-    xs = xys[0]
-    # corresponding y axis values
-    ys = xys[1]
+    xys        = [ d[0] for d in data]
+    # sample maps
+    sampleMaps = [ d[1] for d in data]
     # probabilities
-    ps = xyps[1]
+    ps         = [ d[2] for d in data]
+    # x axis values
+    xs = [x[0] for x in xys]
+    # corresponding y axis values
+    ys = [y[1] for y in xys]
     # plotting the points
     plt.scatter(xs, ys, c=ps, cmap='gray')
     # naming the x axis

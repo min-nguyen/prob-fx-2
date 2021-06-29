@@ -45,7 +45,7 @@ testLinRegrBasic = do
   liftS $ print $ show output
   return output
 
-testLinRegrLW :: Sampler [((Double, Double), Double)]
+testLinRegrLW :: Sampler [((Double, Double), LW.Ⲭ, Double)]
 testLinRegrLW = do
   let -- Run likelihood weighting simulation over linearRegression
       {- This should generate a set of points on the y-axis for each given point on the x-axis
@@ -58,7 +58,7 @@ testLinRegrLW = do
       lws' = LW.lw 3 Example.linearRegression
                     [0, 1, 2, 3, 4]
                     (map mkRecordLinRegrY [-0.3, 0.75, 2.43, 3.5, 3.2])
-  output <- lws
+  output <- lws'
   liftS $ print $ show output
   return output
 
