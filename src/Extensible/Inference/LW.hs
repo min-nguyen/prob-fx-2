@@ -9,15 +9,28 @@
 {-# LANGUAGE TypeOperators #-}
 module Extensible.Inference.LW where
 
-import Data.Extensible
+import qualified Data.Map as Map
+import Data.Map (Map)
+import Data.Extensible hiding (Member)
 import Extensible.Reader
 import Control.Monad
 import Control.Monad.Trans.Class
+import Unsafe.Coerce
 import Extensible.Dist
 import qualified Extensible.Example as Example
 import Extensible.Freer
 import Extensible.Model hiding (runModelFree)
 import Extensible.Sampler
+import Extensible.State
+import qualified Extensible.OpenSum as OpenSum
+import Extensible.OpenSum (OpenSum(..))
+
+type Vals = '[Int, Double, Bool]
+
+type Ⲭ = Map Addr (OpenSum Vals)
+
+updateMapⲬ :: OpenSum.Member x Vals => Addr -> x -> Ⲭ -> Ⲭ
+updateMapⲬ α x = Map.insert α (OpenSum.inj x) :: Ⲭ -> Ⲭ
 
 -- | Perhaps this should also return a list of samples.
 -- | Run LW n times for multiple data points
@@ -42,6 +55,26 @@ lwNsteps n env model = replicateM n (runLW env model)
 runLW :: MRec env -> Model env '[Reader (MRec env), Dist, Observe, Sample] a
       -> Sampler (a, Double)
 runLW env = runSample . runObserve . runDist . runReader env . runModel
+
+transformLW :: (Member (State Ⲭ) rs, Member Sample rs)
+  => Freer rs a -> Freer rs a
+transformLW = loop
+  where
+  loop :: (Member (State Ⲭ) rs, Member Sample rs)
+       => Freer rs a -> Freer rs a
+  loop (Pure x) = return x
+  loop (Free u k) = do
+    case u of
+      Samp d α
+        -> case d of
+              -- We can unsafe coerce x here, because we've inferred the type of x from the distribution's type
+              DistDouble d -> Free u (\x -> modify (updateMapⲬ α (unsafeCoerce x :: Double)) >>
+                                            loop (k x))
+              DistBool d   -> Free u (\x -> modify (updateMapⲬ α (unsafeCoerce x :: Bool)) >>
+                                            loop (k x))
+              DistInt d    -> Free u (\x -> modify (updateMapⲬ α (unsafeCoerce x :: Int)) >>
+                                            loop (k x))
+      _ -> Free u (loop . k)
 
 runObserve :: Freer (Observe : rs) a -> Freer rs (a, Double)
 runObserve = loop 0
