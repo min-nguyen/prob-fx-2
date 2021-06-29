@@ -20,6 +20,8 @@ import Extensible.Model
 import Extensible.Sampler
 import Data.Extensible
 
+{- Linear Regression -}
+
 mkRecordLinRegr :: (Maybe Double, Maybe Double, Maybe Double, Maybe Double) -> MRec Example.LinRegrEnv
 mkRecordLinRegr (y_val, m_val, c_val, σ_val) =
   y @= y_val <: m @= m_val <: c @= c_val <: σ @= σ_val <: nil
@@ -31,9 +33,11 @@ mkRecordLinRegrY y_val =
 testLinRegrBasic :: Sampler [(Double, Double)]
 testLinRegrBasic = do
   let -- Run basic simulation over linearRegression
+      {- This should generate a set of points on the y-axis for each given point on the x-axis -}
       bs   = Basic.basic 3 Example.linearRegression
                            [0, 1, 2, 3, 4]
                            (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
+      {- This should output the provided fixed set of data points on the x and y axis. -}
       bs'  = Basic.basic 3 Example.linearRegression
                     [0, 1, 2, 3, 4]
                     (map mkRecordLinRegrY [-0.3, 0.75, 2.43, 3.5, 3.2])
@@ -44,14 +48,17 @@ testLinRegrBasic = do
 testLinRegrLW :: Sampler [((Double, Double), Double)]
 testLinRegrLW = do
   let -- Run likelihood weighting simulation over linearRegression
+      {- This should generate a set of points on the y-axis for each given point on the x-axis
+         where every point has the same likelihood (because we don't count the probability for sampling the y data point, and all other observe probabilities are the same every iteration). -}
       lws = LW.lw 3 Example.linearRegression
                     [0, 1, 2, 3, 4]
                     (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
       -- Run likelihood weighting inference over linearRegression
+      {- This should output the provided fixed set of data points on the x and y axis, where each point has a different probability (due to us observing the probability of given y's). -}
       lws' = LW.lw 3 Example.linearRegression
                     [0, 1, 2, 3, 4]
                     (map mkRecordLinRegrY [-0.3, 0.75, 2.43, 3.5, 3.2])
-  output <- lws'
+  output <- lws
   liftS $ print $ show output
   return output
 
@@ -66,6 +73,8 @@ testLinRegrMH = do
   output <- mhs'
   liftS $ print $ show output
   return output
+
+{- Logistic Regression -}
 
 mkRecordLogRegr :: (Maybe Bool, Maybe Double, Maybe Double) -> MRec Example.LogRegrEnv
 mkRecordLogRegr (label_val, m_val, b_val) =

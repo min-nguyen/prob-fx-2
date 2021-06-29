@@ -26,10 +26,11 @@ main :: IO ()
 main = do
   -- testAndWrite testLinRegrBasic
   -- trace <- sampleIOFixed testLinRegrBasic
-  -- trace <- sampleIOFixed testLinRegrLW
+  trace <- sampleIOFixed testLinRegrLW
   -- trace <- sampleIOFixed testLinRegrMH
-  -- writeFile "model-output.txt" (show trace)
+
   -- putStrLn $ show trace
-  trace <- sampleIOFixed testLogRegrBasic
+  -- trace <- sampleIOFixed testLogRegrBasic
+  writeFile "model-output.txt" (show trace)
   return ()
 
