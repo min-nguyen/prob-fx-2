@@ -37,6 +37,6 @@ main = do
   -- trace <- sampleIOFixed testLogRegrBasic
   let traceStr = removeWord "fromList" $ show trace
   putStrLn traceStr
-  -- writeFile "model-output.txt" traceStr
+  writeFile "model-output.txt" traceStr
   return ()
 

@@ -14,17 +14,12 @@ def main():
     print(xys)
     # x axis values
     xs = xys[0]
-    # corresponding y axis values
+    # y axis values
     ys = xys[1]
-    # plotting the points
     plt.scatter(xs, ys)
-    # naming the x axis
     plt.xlabel('x - axis')
-    # naming the y axis
     plt.ylabel('y - axis')
-    # giving a title to my graph
     plt.title('Linear regression')
-    # function to show the plot
     plt.show()
   if arg == "lw":
     xys        = [ d[0] for d in data]
@@ -34,17 +29,25 @@ def main():
     ps         = [ d[2] for d in data]
     # x axis values
     xs = [x[0] for x in xys]
-    # corresponding y axis values
+    # y axis values
     ys = [y[1] for y in xys]
-    # plotting the points
-    plt.scatter(xs, ys, c=ps, cmap='gray')
-    # naming the x axis
-    plt.xlabel('x - axis')
-    # naming the y axis
-    plt.ylabel('y - axis')
-    # giving a title to my graph
-    plt.title('Linear regression')
-    # function to show the plot
+
+    mu_samples    = [ d[0][1] for d in sampleMaps ]
+    c_samples     = [ d[1][1] for d in sampleMaps ]
+    std_samples   = [ d[2][1] for d in sampleMaps ]
+
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.set_title('Linear regression')
+
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel('mu value')
+    axs2.set_ylabel('probability')
+    axs2.scatter(mu_samples, ps)
+    axs2.set_title('Linear regression')
+
     plt.show()
 
 
