@@ -1,7 +1,7 @@
 
 {-# LANGUAGE MultiParamTypeClasses, FlexibleContexts, FlexibleInstances, UndecidableInstances #-}
 
-module FreeT where
+module Trans.FreeT where
 
 import Control.Monad
 import Control.Monad.Trans.Class

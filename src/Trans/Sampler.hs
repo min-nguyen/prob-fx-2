@@ -1,7 +1,7 @@
 {-# LANGUAGE RankNTypes, GADTs, FlexibleInstances, DerivingStrategies,
              GeneralizedNewtypeDeriving #-}
 
-module Sampler where
+module Trans.Sampler where
 
 import Control.Monad
 import Control.Monad.Primitive

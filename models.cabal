@@ -48,14 +48,14 @@ cabal-version:       >=1.10
 
 library
   -- Modules exported by the library.
-  exposed-modules:    Model,
-                      ModelF,
-                      Example,
-                      FreeT,
-                      Dist,
+  exposed-modules:    Trans.Model,
+                      Trans.ModelF,
+                      Trans.Example,
+                      Trans.FreeT,
+                      Trans.Dist,
+                      Trans.Sampler,
+                      Trans.Inference,
                       Util,
-                      Sampler,
-                      Inference,
                       Extensible.Freer,
                       Extensible.Example,
                       Extensible.Reader,
