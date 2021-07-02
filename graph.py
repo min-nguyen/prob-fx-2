@@ -47,9 +47,12 @@ def main():
     axs2.set_ylabel('probability')
     axs2.scatter(mu_samples, ps)
     axs2.set_title('Linear regression')
-
     plt.show()
-
+  if arg == "mh":
+    xys         = [ d[0] for d in data]
+    sampleMaps  = [ d[1] for d in data]
+    logpMaps    = [ d[2] for d in data]
+    print(logpMaps)
 
 if __name__ == "__main__":
   main()

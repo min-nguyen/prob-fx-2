@@ -12,9 +12,11 @@ module Extensible.Test where
 
 import qualified Data.Map as Map
 import qualified Extensible.Example as Example
+import Extensible.Dist
 import qualified Extensible.Inference.Basic as Basic
 import qualified Extensible.Inference.LW as LW
 import qualified Extensible.Inference.MH as MH
+import Extensible.OpenSum
 import Extensible.Inference.Inf
 import Extensible.Model
 import Extensible.Sampler
@@ -45,7 +47,8 @@ testLinRegrBasic = do
   liftS $ print $ show output
   return output
 
-testLinRegrLW :: Sampler [((Double, Double), LW.Ⲭ, Double)]
+-- | [(datapoints, samples, likelihood)]
+testLinRegrLW :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
 testLinRegrLW = do
   let -- Run likelihood weighting simulation over linearRegression
       {- This should generate a set of points on the y-axis for each given point on the x-axis
@@ -59,10 +62,14 @@ testLinRegrLW = do
                     [0, 1, 2, 3, 4]
                     (map mkRecordLinRegrY [-0.3, 0.75, 2.43, 3.5, 3.2])
   output <- lws'
-  liftS $ print $ show output
-  return output
+  let output' = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) output
+  liftS $ print $ show output'
+  return output'
 
-testLinRegrMH :: Sampler [((Double, Double), MH.Ⲭ, MH.LogP)]
+-- | [(datapoints, samples, logps)]
+testLinRegrMH :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
 testLinRegrMH = do
   let -- Run mh simulation over linearRegression
       mhs  = MH.mh 3 Example.linearRegression [1,2,3]
@@ -71,8 +78,12 @@ testLinRegrMH = do
       mhs' = MH.mh 3 Example.linearRegression [1,2,3]
                      (map mkRecordLinRegrY [-0.3, 1.6, 3.5])
   output <- mhs'
-  liftS $ print $ show output
-  return output
+  let output' = map (\(xy, samples, logps) ->
+       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+           logps'   = Map.toList logps
+       in  (xy, samples', logps') ) output
+  liftS $ print $ show output'
+  return output'
 
 {- Logistic Regression -}
 

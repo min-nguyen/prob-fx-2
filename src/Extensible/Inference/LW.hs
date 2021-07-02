@@ -34,7 +34,6 @@ type TraceLW a = [(a, Ⲭ, Double)]
 updateMapⲬ :: OpenSum.Member x Vals => Addr -> x -> Ⲭ -> Ⲭ
 updateMapⲬ α x = Map.insert α (OpenSum.inj x) :: Ⲭ -> Ⲭ
 
--- | Perhaps this should also return a list of samples.
 -- | Run LW n times for multiple data points
 lw :: (es ~ '[Reader (MRec env), Dist, State Ⲭ, Observe, Sample])
    => Int                              -- Number of lw iterations per data point

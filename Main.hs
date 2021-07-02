@@ -16,26 +16,26 @@ import Data.Extensible ()
 import Extensible.Sampler
 import Extensible.Test
 
-testAndWrite :: Show a => Sampler a -> IO ()
-testAndWrite prog = do
-  a <- sampleIOFixed prog
-  writeFile "model-output.txt" (show a)
+-- testAndWrite :: Show a => Sampler a -> IO ()
+-- testAndWrite prog = do
+--   a <- sampleIOFixed prog
+--   writeFile "model-output.txt" (show a)
 
-removeWord :: String -> String -> String
-removeWord word s =
-  let repl ',' = " , "
-      repl x   = [x]
-      s'  = concat $ map repl s
-      s'' = concat $ filter (not . (== word)) $ splitOn " " s'
-  in  s''
+-- removeWord :: String -> String -> String
+-- removeWord word s =
+--   let repl ',' = " , "
+--       repl x   = [x]
+--       s'  = concat $ map repl s
+--       s'' = concat $ filter (not . (== word)) $ splitOn " " s'
+--   in  s''
 
 main :: IO ()
 main = do
   -- trace <- sampleIOFixed testLinRegrBasic
-  trace <- sampleIOFixed testLinRegrLW
-  -- trace <- sampleIOFixed testLinRegrMH
+  -- trace <- sampleIOFixed testLinRegrLW
+  trace <- sampleIOFixed testLinRegrMH
   -- trace <- sampleIOFixed testLogRegrBasic
-  let traceStr = removeWord "fromList" $ show trace
+  let traceStr = show trace
   putStrLn traceStr
   writeFile "model-output.txt" traceStr
   return ()
