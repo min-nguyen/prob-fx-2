@@ -98,12 +98,13 @@ mkRecordLogRegrL label_val =
 testLogRegrBasic :: Sampler  [(Double, Bool)]
 testLogRegrBasic = do
   let -- Run basic simulation over logisticRegression
-      bs = Basic.basic 3 Example.logisticRegression
-                         [0, 1, 2, 3, 4]
-                         (repeat $ mkRecordLogRegr (Nothing, Just 0.3, Just (-0.2)))
+      bs = Basic.basic 1 Example.logisticRegression
+                         (map (/50) [(-100) .. 100])
+                         (repeat $ mkRecordLogRegr (Nothing, Just (-0.7), Just (-0.15)))
       bs' = Basic.basic 3 Example.logisticRegression
                          [0, 1, 2, 3, 4]
-                         (repeat $ mkRecordLogRegr (Nothing, Nothing, Nothing))
-  output <- bs'
+                         (map mkRecordLogRegrL [False, False, True, False, True])
+  output <- bs
   liftS $ print $ show output
   return output
+

@@ -91,7 +91,7 @@ predNN prior = do
 
 -- Logistic regression
 type LogRegrEnv =
-    '[  "label" ':>  Bool,
+    '[  "label" ':> Bool,
         "m"     ':> Double,
         "b"     ':> Double
      ]

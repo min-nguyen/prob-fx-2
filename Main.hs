@@ -33,8 +33,8 @@ main :: IO ()
 main = do
   -- trace <- sampleIOFixed testLinRegrBasic
   -- trace <- sampleIOFixed testLinRegrLW
-  trace <- sampleIOFixed testLinRegrMH
-  -- trace <- sampleIOFixed testLogRegrBasic
+  -- trace <- sampleIOFixed testLinRegrMH
+  trace <- sampleIOFixed testLogRegrBasic
   let traceStr = show trace
   putStrLn traceStr
   writeFile "model-output.txt" traceStr

@@ -3,12 +3,25 @@ import sys
 import matplotlib.pyplot as plt
 import ast
 import pandas as pd
+from sklearn import linear_model
 
 def main():
   arg  = sys.argv[1]
   f    = open("model-output.txt", "r")
   data = ast.literal_eval(f.read())
-  if arg == "basic":
+  if arg == "log-regr-basic":
+    xys =  [[ i for i, j in data ],
+            [ j for i, j in data ]]
+    print(xys)
+    xs = xys[0]
+    ys = xys[1]
+
+    plt.scatter(xs, ys)
+    plt.xlabel('x - axis')
+    plt.ylabel('y - axis')
+    plt.title('Logistic regression')
+    plt.show()
+  if arg == "lin-regr-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
     print(xys)
@@ -21,7 +34,7 @@ def main():
     plt.ylabel('y - axis')
     plt.title('Linear regression')
     plt.show()
-  if arg == "lw":
+  if arg == "lin-regr-lw":
     xys        = [ d[0] for d in data]
     # sample maps
     sampleMaps = [ d[1] for d in data]
@@ -48,7 +61,7 @@ def main():
     axs2.scatter(mu_samples, ps)
     axs2.set_title('Linear regression')
     plt.show()
-  if arg == "mh":
+  if arg == "lin-regr-mh":
     xys         = [ d[0] for d in data]
     sampleMaps  = [ d[1] for d in data]
     logpMaps    = [ d[2] for d in data]
