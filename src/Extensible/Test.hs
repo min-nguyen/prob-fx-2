@@ -123,3 +123,20 @@ testLogRegrLW = do
         in (xy, samples', prob)) output
   liftS $ print $ show output'
   return output'
+
+testLogRegrMH :: Sampler [((Double, Bool), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testLogRegrMH = do
+  let -- Run basic simulation over logisticRegression
+      mhs  = MH.mh 3 Example.logisticRegression
+                         (map (/50) [(-100) .. 100])
+                         (repeat $ mkRecordLogRegr (Nothing, Just (-0.7), Just (-0.15)))
+      mhs' = MH.mh 3 Example.logisticRegression
+                         [0, 1, 2, 3, 4]
+                         (map mkRecordLogRegrL [False, False, True, False, True])
+  output <- mhs'
+  let output' = map (\(xy, samples, logps) ->
+       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+           logps'   = Map.toList logps
+       in  (xy, samples', logps') ) output
+  liftS $ print $ show output'
+  return output'

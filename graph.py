@@ -72,6 +72,11 @@ def main():
     axs2.scatter(mu_samples, ps)
     axs2.set_title('Linear regression')
     plt.show()
+  if arg == "log-regr-mh":
+    xys         = [ d[0] for d in data]
+    sampleMaps  = [ d[1] for d in data]
+    logpMaps    = [ d[2] for d in data]
+    print(sampleMaps)
   if arg == "lin-regr-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
