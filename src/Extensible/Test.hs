@@ -108,3 +108,18 @@ testLogRegrBasic = do
   liftS $ print $ show output
   return output
 
+testLogRegrLW :: Sampler [((Double, Bool), [(Addr, OpenSum LW.Vals)], Double)]
+testLogRegrLW = do
+  let -- Run basic simulation over logisticRegression
+      lws  = LW.lw 3 Example.logisticRegression
+                         (map (/50) [(-100) .. 100])
+                         (repeat $ mkRecordLogRegr (Nothing, Just (-0.7), Just (-0.15)))
+      lws' = LW.lw 3 Example.logisticRegression
+                         [0, 1, 2, 3, 4]
+                         (map mkRecordLogRegrL [False, False, True, False, True])
+  output <- lws'
+  let output' = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) output
+  liftS $ print $ show output'
+  return output'
