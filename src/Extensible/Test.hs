@@ -93,7 +93,7 @@ mkRecordLogRegr (label_val, m_val, b_val) =
 
 mkRecordLogRegrL :: Bool -> MRec Example.LogRegrEnv
 mkRecordLogRegrL label_val =
- label @= Just label_val<: m @= Nothing <: b @= Nothing <: nil
+ label @= Just label_val <: m @= Nothing <: b @= Nothing <: nil
 
 testLogRegrBasic :: Sampler  [(Double, Bool)]
 testLogRegrBasic = do
@@ -140,3 +140,28 @@ testLogRegrMH = do
        in  (xy, samples', logps') ) output
   liftS $ print $ show output'
   return output'
+
+{- Bayesian Neural Network -}
+
+mkRecordNN :: (Maybe Double, Maybe Double, Maybe Double, Maybe Double)
+           -> MRec Example.NNEnv
+mkRecordNN (yobs_val, weight_val, bias_val, sigm_val) =
+  yObs @= yobs_val <: weight @= weight_val <: bias @= bias_val <: sigma @= sigm_val <: nil
+
+mkRecordNNy :: Double
+           -> MRec Example.NNEnv
+mkRecordNNy yobs_val =
+  yObs @= Just yobs_val <: weight @= Nothing <: bias @= Nothing <: sigma @= Nothing <: nil
+
+testNNBasic :: Sampler  [(Double, Double)]
+testNNBasic = do
+  let -- Run basic simulation over logisticRegression
+      bs = Basic.basic 1 (Example.nnModel 5)
+                         (map (/1) [0 .. 300])
+                         (repeat $ mkRecordNN (Nothing, Just (-0.7), Just 0.65, Just 1))
+      -- bs' = Basic.basic 3 Example.logisticRegression
+      --                    [0, 1, 2, 3, 4]
+      --                    (map mkRecordLogRegrL [False, False, True, False, True])
+  output <- bs
+  liftS $ print $ show output
+  return output
