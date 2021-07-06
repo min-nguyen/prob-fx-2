@@ -19,7 +19,7 @@ import Data.Maybe
 import Data.Kind
 import Data.Profunctor.Unsafe
 import Data.Extensible hiding (wrap, Head, Member)
-import Control.Lens ( Identity, (^.), review, Getting )
+import Control.Lens ( Identity, (^.), review, Getting, view )
 import Control.Monad
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
 -- import Control.Monad.Reader
@@ -74,7 +74,18 @@ accessField :: forall s es a.
    Model s es a
 accessField f = Model $ do
     env :: MRec s <- Free (inj Ask) Pure
-    return $ env ^. f
+    return $ view f env
+
+replicateMdl :: forall s es a.
+     Int
+  -> Getting [a] (Maybes s :& Field Identity) [a]
+  -> (Getting a (Maybes s :& Field Identity) a -> Model s es a)
+  -> Model s es [a]
+replicateMdl n field dist = Model $ do
+  env :: MRec s <- accessEnv
+  let maybe_ys = env ^. field
+  -- replicateM n ()
+  undefined
 
 normal :: Double -> Double -> Model s es Double
 normal mu sigma = Model $ do
@@ -99,6 +110,18 @@ bernoulli' p field = Model $ do
   env :: MRec s <- accessEnv
   let maybe_y = env ^. field
   send (BernoulliDist p maybe_y)
+
+binomial :: Int -> Double -> Model s es Int
+binomial n p = Model $ do
+  send (BinomialDist n p Nothing)
+
+binomial' :: forall s es a. (a ~ Maybe Int)
+  => Int -> Double -> Getting a (Maybes s :& Field Identity) a
+  -> Model s es Int
+binomial' n p field = Model $ do
+  env :: MRec s <- accessEnv
+  let maybe_y = env ^. field
+  send (BinomialDist n p maybe_y)
 
 gamma :: Double -> Double -> Model s es Double
 gamma k θ = Model $ do

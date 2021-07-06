@@ -35,6 +35,8 @@ import Data.Extensible hiding (Member)
 
 {- Probabilistic programs -}
 
+-- | Hidden Markov Model
+
 -- | Bayesian network
 type NNEnv =
     '[  "yObs"     ':> Double,
