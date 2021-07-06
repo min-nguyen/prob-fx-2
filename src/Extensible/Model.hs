@@ -49,9 +49,18 @@ instance Lookup (Maybes xs) k (Maybe v) => HasVar xs k v where
 
 type MRec s = Record (Maybes s)
 
+{-
+Idea : we can use State instead of Reader for the environment of observable variables.
+This lets us use affine types in a way. When a variable is consumed by being conditioned against, we replace its value in the environment with Nothing. When a variable corresponds to a list of values, conditioning against it means removing the head element from the list and writing back the tail of the list. When the tail is empty, we replace the variable's value with Nothing.
+  or:
+We convert all the environment values to lists if they aren't already.
+  or:
+We can use reader on the user end, but then transform this during inference to use the state effect.
+-}
+
 newtype Model env es a =
   Model { runModel :: (Member Dist es, Member (Reader (MRec env)) es) => Freer es a }
-  deriving (Functor)
+  deriving Functor
 
 instance Applicative (Model env es) where
   pure = Model . pure
