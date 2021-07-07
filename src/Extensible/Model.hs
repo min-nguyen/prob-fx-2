@@ -2,8 +2,7 @@
 
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Extensible.Model where
 
 import Util
@@ -41,6 +40,10 @@ type family Maybes (as :: [k]) = (bs :: [k]) | bs -> as where
   Maybes ((f :> v) : as) = (f :> Maybe v) : Maybes as
   Maybes (a : as) = Maybe a : Maybes as
   Maybes '[] = '[]
+
+type family AsList a where
+  AsList [a] = [a]
+  AsList a   = [a]
 
 -- HasVar: Lookup for maybe types
 class Lookup (Maybes xs) k (Maybe v) => HasVar xs k v where
@@ -91,7 +94,7 @@ replicateMdl :: forall s es a.
   -> (Getting a (Maybes s :& Field Identity) a -> Model s es a)
   -> Model s es [a]
 replicateMdl n field dist = Model $ do
-  env :: MRec s <- accessEnv
+  env <- accessEnv
   let maybe_ys = env ^. field
   -- replicateM n ()
   undefined
@@ -104,7 +107,7 @@ normal' :: forall s es a . (a ~ Maybe Double)
   => Double -> Double -> Getting a (Maybes s :& Field Identity) a
   -> Model s es Double
 normal' mu sigma field = Model $ do
-  env :: MRec s <- accessEnv
+  env <- accessEnv
   let maybe_y = env ^. field
   send (NormalDist mu sigma maybe_y)
 
@@ -116,7 +119,7 @@ bernoulli' :: forall s es a. (a ~ Maybe Bool)
   => Double -> Getting a (Maybes s :& Field Identity) a
   -> Model s es Bool
 bernoulli' p field = Model $ do
-  env :: MRec s <- accessEnv
+  env <- accessEnv
   let maybe_y = env ^. field
   send (BernoulliDist p maybe_y)
 
@@ -128,7 +131,7 @@ binomial' :: forall s es a. (a ~ Maybe Int)
   => Int -> Double -> Getting a (Maybes s :& Field Identity) a
   -> Model s es Int
 binomial' n p field = Model $ do
-  env :: MRec s <- accessEnv
+  env <- accessEnv
   let maybe_y = env ^. field
   send (BinomialDist n p maybe_y)
 
@@ -141,7 +144,7 @@ gamma' :: forall s es a. (a ~ Maybe Double) =>
   => Double -> Double -> Getting a (Maybes s :& Field Identity) a
   -> Model s es Double
 gamma' k θ field = Model $ do
-  env :: MRec s <- accessEnv
+  env <- accessEnv
   let maybe_y = env ^. field
   send (GammaDist k θ maybe_y)
 
@@ -154,6 +157,6 @@ uniform' :: forall s es a. (a ~ Maybe Double) =>
   => Double -> Double -> Getting a (Maybes s :& Field Identity) a
   -> Model s es Double
 uniform' min max field = Model $ do
-  env :: MRec s <- accessEnv
+  env <- accessEnv
   let maybe_y = env ^. field
   send (UniformDist min max maybe_y)
