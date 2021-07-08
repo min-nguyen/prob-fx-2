@@ -73,7 +73,7 @@ type NNEnv =
 
 data NN = NN { biases  :: [Double],
                weights :: [Double],
-               sigm    :: Double }
+               sigm    :: Double } deriving Show
 
 dot :: [Double] -> [Double] -> Double
 dot [] _ = 0
@@ -101,7 +101,7 @@ nnParams = NN { biases = [1,5,8], weights = [2, -5, 1], sigm = 2.0}
 priorNN :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double)
   => Int -> Model s es NN
 priorNN n_nodes = do
-  bias   <- replicateM n_nodes (uniform' 0 10 weight) --uniformList (0, 10) n_nodes
+  bias   <- replicateM n_nodes (uniform' 0 10 bias) --uniformList (0, 10) n_nodes
   weight <- replicateM n_nodes (uniform' (-10) 10 weight)
   sigma  <- uniform' 0.5 1.5 sigma
   return $ NN bias weight sigma
@@ -150,10 +150,11 @@ linearRegression :: forall s rs .
   (HasVar s "y" Double, HasVar s "m" Double, HasVar s "c" Double, HasVar s "σ" Double) =>
   Double -> Model s rs (Double, Double)
 linearRegression x = do
-  m <- normal' 0 2 m
+  m1 <- normal' 0 2 m
+  m2 <- normal' 0 2 m
   c <- normal' 0 2 c
   σ <- uniform' 1 3 σ
-  y <- normal' (m * x + c) σ y
+  y <- normal' (m1 * x + c) σ y
   return (x, y)
 
 -- --

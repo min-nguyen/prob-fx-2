@@ -155,7 +155,7 @@ mkRecordNNy :: Double
 mkRecordNNy yobs_val =
   yObs @= Just yobs_val <: weight @= Nothing <: bias @= Nothing <: sigma @= Nothing <: nil
 
-testNNBasic :: Sampler  [((Double, Double), LRec Example.NNEnv)]
+testNNBasic :: Sampler  [Example.NN]
 testNNBasic = do
   let -- Run basic simulation over logisticRegression
       bs = Basic.basic 1 (Example.nnModel 5)
@@ -166,6 +166,6 @@ testNNBasic = do
       -- bs' = Basic.basic 3 Example.logisticRegression
       --                    [0, 1, 2, 3, 4]
       --                    (map mkRecordLogRegrL [False, False, True, False, True])
-  output <- bs
+  output <- map fst <$> bs
   liftS $ print $ show output
   return output

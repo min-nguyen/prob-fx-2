@@ -52,13 +52,14 @@ runReader env = loop where
 runRecReader :: forall env rs a.
   (Member (State (LRec env)) rs) =>
   LRec env -> Freer (RecReader (AsList env) ': rs) a -> Freer rs a
-runRecReader env = loop where
-  loop :: Freer (RecReader (AsList env) ': rs) a -> Freer rs a
-  loop (Pure x) = return x
-  loop (Free u k) = case decomp u of
+runRecReader env = loop env where
+  loop :: LRec env -> Freer (RecReader (AsList env) ': rs) a -> Freer rs a
+  loop env (Pure x) = return x
+  loop env (Free u k) = case decomp u of
     Right (Ask f) -> do
       let ys = env ^. f
           y  = maybeHead ys
-      modify (set f (safeTail ys))
-      loop (k y)
-    Left  u'  -> Free u' (loop . k)
+          env' = set f (safeTail ys) env
+      put env'
+      loop env' (k y)
+    Left  u'  -> Free u' (loop env . k)
