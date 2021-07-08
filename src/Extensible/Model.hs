@@ -8,7 +8,8 @@ module Extensible.Model where
 import Util
 import Extensible.Dist
 import Extensible.Freer
-import Extensible.Reader
+-- import Extensible.Reader
+import Extensible.RecordReader
 import Extensible.Sampler
 import Extensible.IO
 import GHC.Generics
@@ -41,14 +42,14 @@ type family Maybes (as :: [k]) = (bs :: [k]) | bs -> as where
   Maybes (a : as) = Maybe a : Maybes as
   Maybes '[] = '[]
 
-type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
-  -- AsList ((f :> [a]) : as) = ((f :> [a]) : AsList as)
-  AsList ((f :> a) : as)   = ((f :> [a]) : AsList as)
-  AsList '[] = '[]
+-- type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
+--   -- AsList ((f :> [a]) : as) = ((f :> [a]) : AsList as)
+--   AsList ((f :> a) : as)   = ((f :> [a]) : AsList as)
+--   AsList '[] = '[]
 
-type family AsList' a where
-  AsList' [a] = [a]
-  AsList' a   = [a]
+-- type family AsList' a where
+--   AsList' [a] = [a]
+--   AsList' a   = [a]
 
 -- HasVar: Lookup for maybe types
 class Lookup (AsList xs) k [v] => HasVar xs k v where
@@ -68,7 +69,7 @@ We can use reader on the user end, but then transform this during inference to u
 -}
 
 newtype Model env es a =
-  Model { runModel :: (Member Dist es, Member (Reader (LRec env)) es) => Freer es a }
+  Model { runModel :: (Member Dist es, Member (RecReader (AsList env)) es) => Freer es a }
   deriving Functor
 
 instance Applicative (Model env es) where
@@ -81,80 +82,77 @@ instance Monad (Model env es) where
     f' <- f
     runModel $ k f'
 
-accessEnv :: forall s es . (Member (Reader (LRec s)) es) =>
-   Freer es (LRec s)
-accessEnv = do
-    env :: LRec s <- Free (inj Ask) Pure
-    return env
+-- accessEnv :: forall s es . (Member (RecReader (AsList s)) es) =>
+--    Freer es (LRec s)
+-- accessEnv = do
+--     env :: LRec s <- Free (inj Ask) Pure
+--     return env
 
 accessField :: forall s es a.
-   Getting a (AsList s :& Field Identity) a ->
-   Model s es a
+   Getting [a] (AsList s :& Field Identity) [a] ->
+   Model s es (Maybe a)
 accessField f = Model $ do
-    env :: LRec s <- Free (inj Ask) Pure
-    return $ view f env
+    env <- Free (inj $ Ask f) Pure
+    return env
 
-replicateMdl :: forall s es a.
-     Int
-  -> Getting [a] (AsList s :& Field Identity) [a]
-  -> (Getting a (AsList s :& Field Identity) a -> Model s es a)
-  -> Model s es [a]
-replicateMdl n field dist = Model $ do
-  env <- Free (inj Ask) Pure
-  let maybe_ys = env ^. field
-  -- replicateM n ()
-  undefined
+-- replicateMdl :: forall s es a.
+--      Int
+--   -> Getting [a] (AsList s :& Field Identity) [a]
+--   -> (Getting a (AsList s :& Field Identity) a -> Model s es a)
+--   -> Model s es [a]
+-- replicateMdl n field dist = Model $ do
+--   env <- Free (inj $ Ask field) Pure
+--   let maybe_ys = env ^. field
+--   -- replicateM n ()
+--   undefined
 
 normal :: Double -> Double -> Model s es Double
 normal mu sigma = Model $ do
   send (NormalDist mu sigma Nothing)
 
-normal' :: forall s es a . (a ~ [Double])
-  => Double -> Double -> Getting a (AsList s :& Field Identity) a
+normal' :: forall s es a . (a ~ Double)
+  => Double -> Double -> Getting [a] (AsList s :& Field Identity) [a]
   -> Model s es Double
 normal' mu sigma field = Model $ do
-  env <- Free (inj Ask) Pure
-  let maybe_y = case env ^. field of
-                  []     -> Nothing
-                  (y:ys) -> Just y
+  maybe_y <- Free (inj $ Ask field) Pure
   send (NormalDist mu sigma maybe_y)
 
 bernoulli :: Double -> Model s es Bool
 bernoulli p = Model $ do
   send (BernoulliDist p Nothing)
 
-bernoulli' :: forall s es a. (a ~ Maybe Bool)
-  => Double -> Getting a (AsList s :& Field Identity) a
-  -> Model s es Bool
-bernoulli' p field = Model $ do
-  env <- Free (inj Ask) Pure
-  let maybe_y = env ^. field
-  send (BernoulliDist p maybe_y)
+-- bernoulli' :: forall s es a. (a ~ Maybe Bool)
+--   => Double -> Getting a (AsList s :& Field Identity) a
+--   -> Model s es Bool
+-- bernoulli' p field = Model $ do
+--   env <- Free (inj Ask) Pure
+--   let maybe_y = env ^. field
+--   send (BernoulliDist p maybe_y)
 
-binomial :: Int -> Double -> Model s es Int
-binomial n p = Model $ do
-  send (BinomialDist n p Nothing)
+-- binomial :: Int -> Double -> Model s es Int
+-- binomial n p = Model $ do
+--   send (BinomialDist n p Nothing)
 
-binomial' :: forall s es a. (a ~ Maybe Int)
-  => Int -> Double -> Getting a (AsList s :& Field Identity) a
-  -> Model s es Int
-binomial' n p field = Model $ do
-  env <- Free (inj Ask) Pure
-  let maybe_y = env ^. field
-  send (BinomialDist n p maybe_y)
+-- binomial' :: forall s es a. (a ~ Maybe Int)
+--   => Int -> Double -> Getting a (AsList s :& Field Identity) a
+--   -> Model s es Int
+-- binomial' n p field = Model $ do
+--   env <- Free (inj Ask) Pure
+--   let maybe_y = env ^. field
+--   send (BinomialDist n p maybe_y)
 
-gamma :: Double -> Double -> Model s es Double
-gamma k θ = Model $ do
-  send (GammaDist k θ Nothing)
+-- gamma :: Double -> Double -> Model s es Double
+-- gamma k θ = Model $ do
+--   send (GammaDist k θ Nothing)
 
-gamma' :: forall s es a. (a ~ Maybe Double) =>
-  (a ~ Maybe Double)
-  => Double -> Double -> Getting a (AsList s :& Field Identity) a
-  -> Model s es Double
-gamma' k θ field = Model $ do
-  env <- Free (inj Ask) Pure
-  let maybe_y = env ^. field
-  send (GammaDist k θ maybe_y)
+-- gamma' :: forall s es a. (a ~ Maybe Double) =>
+--   (a ~ Maybe Double)
+--   => Double -> Double -> Getting a (AsList s :& Field Identity) a
+--   -> Model s es Double
+-- gamma' k θ field = Model $ do
+--   env <- Free (inj Ask) Pure
+--   let maybe_y = env ^. field
+--   send (GammaDist k θ maybe_y)
 
 uniform :: Double -> Double -> Model s es Double
 uniform min max = Model $ do
@@ -164,8 +162,5 @@ uniform' :: forall s es a. (a ~ [Double])
   => Double -> Double -> Getting a (AsList s :& Field Identity) a
   -> Model s es Double
 uniform' min max field = Model $ do
-  env <- Free (inj Ask) Pure
-  let maybe_y = case env ^. field of
-                  []     -> Nothing
-                  (y:ys) -> Just y
+  maybe_y <- Free (inj $ Ask field) Pure
   send (UniformDist min max maybe_y)

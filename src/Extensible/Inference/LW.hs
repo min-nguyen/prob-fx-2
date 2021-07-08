@@ -12,7 +12,7 @@ module Extensible.Inference.LW where
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Extensible hiding (Member)
-import Extensible.Reader
+import Extensible.RecordReader
 import Control.Monad
 import Control.Monad.Trans.Class
 import Unsafe.Coerce
@@ -35,7 +35,7 @@ updateMapⲬ :: OpenSum.Member x Vals => Addr -> x -> Ⲭ -> Ⲭ
 updateMapⲬ α x = Map.insert α (OpenSum.inj x) :: Ⲭ -> Ⲭ
 
 -- | Run LW n times for multiple data points
-lw :: (es ~ '[Reader (LRec env), Dist, State Ⲭ, Observe, Sample])
+lw :: (es ~ '[RecReader (AsList env), Dist, State Ⲭ, Observe, Sample])
    => Int                              -- Number of lw iterations per data point
    -> (b -> Model env es a)            -- Model awaiting input variable
    -> [b]                              -- List of model input variables
@@ -45,7 +45,7 @@ lw n model xs ys = do
   concat <$> zipWithM (\x y -> lwNsteps n y (model x)) xs ys
 
 -- | Run LW n times for a single data point
-lwNsteps :: (es ~ '[Reader (LRec env), Dist, State Ⲭ, Observe, Sample])
+lwNsteps :: (es ~ '[RecReader (AsList env), Dist, State Ⲭ, Observe, Sample])
   => Int
   -> LRec env
   -> Model env es a
@@ -53,7 +53,7 @@ lwNsteps :: (es ~ '[Reader (LRec env), Dist, State Ⲭ, Observe, Sample])
 lwNsteps n env model = replicateM n (runLW env model)
 
 -- | Run LW once for single data point
-runLW :: LRec env -> Model env '[Reader (LRec env), Dist, State Ⲭ, Observe, Sample] a
+runLW :: LRec env -> Model env '[RecReader (AsList env), Dist, State Ⲭ, Observe, Sample] a
       -> Sampler (a, Ⲭ, Double)
 runLW env model = do
   ((x, samples), p) <- (runSample . runObserve . runState Map.empty . transformLW . runDist . runReader env . runModel) model

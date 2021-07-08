@@ -30,7 +30,7 @@ import Extensible.Model hiding (runModelFree)
 import Extensible.Sampler
 import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum(..))
-import Extensible.Reader
+import Extensible.RecordReader
 import Extensible.State
 import GHC.Natural
 import GHC.TypeLits (Nat)
@@ -106,7 +106,7 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   return $ exp (dom_logα + _X'logα - _Xlogα)
 
 -- | Run MH for multiple data points
-mh :: (es ~ '[Reader (LRec s), Dist, Observe, State Ⲭ, State LogP, Sample])
+mh :: (es ~ '[RecReader (AsList s), Dist, Observe, State Ⲭ, State LogP, Sample])
    => Int                              -- Number of mhSteps per data point
    -> (b -> Model s es a)              -- Model awaiting input variable
    -> [b]                              -- List of model input variables
@@ -121,7 +121,7 @@ mh n model xs ys = do
   foldl (>=>) return mhs [(x, samples, logps)]
 
 -- | Perform n steps of MH for a single data point
-mhNsteps :: (es ~ '[Reader (LRec env), Dist, Observe, State Ⲭ, State LogP, Sample])
+mhNsteps :: (es ~ '[RecReader (AsList env), Dist, Observe, State Ⲭ, State LogP, Sample])
   => Int              -- Number of mhSteps
   -> LRec env         -- Model observed variable
   -> Model env es a   -- Model
@@ -131,7 +131,7 @@ mhNsteps n env model trace = do
   foldl (>=>) return (replicate n (mhStep env model)) trace
 
 -- | Perform one step of MH for a single data point
-mhStep :: (es ~ '[Reader (LRec env), Dist, Observe, State Ⲭ, State LogP, Sample])
+mhStep :: (es ~ '[RecReader (AsList env), Dist, Observe, State Ⲭ, State LogP, Sample])
   => LRec env         -- Model observed variable
   -> Model env es a   -- Model
   -> TraceMH a        -- Trace of previous mh outputs
@@ -156,7 +156,7 @@ mhStep env model trace = do
             return trace
 
 -- | Run model once under MH
-runMH :: (es ~ '[Reader (LRec env), Dist, Observe, State Ⲭ, State LogP, Sample])
+runMH :: (es ~ '[RecReader (AsList env), Dist, Observe, State Ⲭ, State LogP, Sample])
   => LRec env       -- Model observed variable
   -> Ⲭ              -- Previous mh sample set
   -> Addr           -- Sample address

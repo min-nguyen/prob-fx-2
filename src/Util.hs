@@ -9,6 +9,10 @@ boolToInt :: Bool -> Int
 boolToInt True  = 1
 boolToInt False = 0
 
+maybeHead :: [a] -> Maybe a
+maybeHead []     = Nothing
+maybeHead (x:xs) = Just x
+
 data Address =
   Address { -- The address of the previous sample statement
             prevSamp  :: String,
