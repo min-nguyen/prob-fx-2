@@ -53,8 +53,9 @@ lwNsteps :: (es ~ '[RecReader (AsList env), Dist, State Ⲭ, Observe, Sample])
 lwNsteps n env model = replicateM n (runLW env model)
 
 -- | Run LW once for single data point
-runLW :: LRec env -> Model env '[RecReader (AsList env), Dist, State Ⲭ, Observe, Sample] a
-      -> Sampler (a, Ⲭ, Double)
+runLW :: es ~ '[RecReader (AsList env), Dist, State Ⲭ, Observe, Sample]
+  => LRec env -> Model env es a
+  -> Sampler (a, Ⲭ, Double)
 runLW env model = do
   ((x, samples), p) <- (runSample . runObserve . runState Map.empty . transformLW . runDist . runReader env . runModel) model
   return (x, samples, p)

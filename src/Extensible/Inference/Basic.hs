@@ -37,8 +37,9 @@ basicNsteps :: (es ~ '[Dist, Observe, RecReader (AsList env), Sample])
   -> Sampler [a]
 basicNsteps n ys model = replicateM n (runBasic ys model)
 
-runBasic :: Record (AsList env)
-  -> Model env '[Dist, Observe, RecReader (AsList env), Sample] a -> Sampler a
+runBasic :: (es ~ '[Dist, Observe, RecReader (AsList env), Sample]) =>
+ LRec env
+  -> Model env es a -> Sampler a
 runBasic ys m
   = runSample $ runReader ys $ runObserve $ runDist $ runModel m
 
@@ -74,11 +75,22 @@ runSample = loop
 --       loop (k env)
 --     Left  u'  -> Free u' (loop . k)
 
--- transformLW :: (Member (Reader (LRec env)) rs, Member Sample rs)
---   => Freer rs a -> Freer rs a
--- transformLW = loop
---   where
---   loop :: (Member (Reader (LRec env)) rs, Member Sample rs)
---        => Freer rs a -> Freer rs a
---   loop (Pure x) = return x
---   loop (Free u k) = undefined
+
+-- why doesn't this version work?
+-- runBasic ::
+--  LRec env
+--   -> Model env '[Dist, Observe, RecReader (AsList env), Sample] a -> Sampler a
+-- runBasic ys m
+--   = runSample $ runReader ys $ runObserve $ runDist $ runModel m
+-- but this does:
+-- runBasic :: (e ~ AsList env) =>
+--  LRec env
+--   -> Model env '[Dist, Observe, RecReader (AsList env), Sample] a -> Sampler a
+-- runBasic ys m
+--   = runSample $ runReader ys $ runObserve $ runDist $ runModel m
+-- or this:
+-- runBasic ::
+--  LRec env
+--   -> Freer '[Dist, Observe, RecReader (AsList env), Sample] a -> Sampler a
+-- runBasic' ys m
+--   = runSample $ runReader ys $ runObserve $ runDist  m
