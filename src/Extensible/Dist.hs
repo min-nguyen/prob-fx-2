@@ -112,10 +112,14 @@ instance Show a => Show (Dist a) where
 type Addr = Int
 
 data Sample a where
-  Sample :: Dist a -> Addr -> Sample a
+  Sample  :: Dist a -> Addr -> Sample a
+  Printer :: String -> Sample ()
 
 data Observe a where
   Observe :: Dist a -> a -> Addr -> Observe a
+
+pattern Print :: Member Sample rs => String -> Union rs ()
+pattern Print s <- (prj -> Just (Printer s))
 
 pattern Samp :: Member Sample rs => Dist x -> Addr -> Union rs x
 pattern Samp d α <- (prj -> Just (Sample d α))

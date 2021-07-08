@@ -87,15 +87,16 @@ transformLW = loop
                                             loop (k x))
       _ -> Free u (loop . k)
 
-runObserve :: Freer (Observe : rs) a -> Freer rs (a, Double)
+runObserve :: Member Sample rs => Freer (Observe : rs) a -> Freer rs (a, Double)
 runObserve = loop 0
   where
-  loop :: Double -> Freer (Observe : rs) a -> Freer rs (a, Double)
+  loop :: Member Sample rs => Double -> Freer (Observe : rs) a -> Freer rs (a, Double)
   loop p (Pure x) = return (x, p)
   loop p (Free u k) = case decomp u of
     Right (Observe d y α)
-      -> let p' = prob d y
-         in  loop (p + p') (k y)
+      -> do let p' = prob d y
+
+            loop (p + p') (k y)
     Left  u'  -> Free u' (loop p . k)
 
 runSample :: Freer '[Sample] a -> Sampler a
@@ -104,6 +105,8 @@ runSample = loop
   loop :: Freer '[Sample] a -> Sampler a
   loop (Pure x) = return x
   loop (Free u k) = case prj u of
+    Just (Printer s) ->
+       liftS (putStrLn s) >> loop (k ())
     Just (Sample d α) ->
        liftS (putStrLn $ ">> : " ++ show α) >> sample d >>= loop . k
-    Nothing         -> error "Impossible: Nothing cannot occur"
+    _         -> error "Impossible: Nothing cannot occur"

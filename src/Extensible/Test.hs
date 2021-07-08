@@ -151,9 +151,9 @@ mkRecordNN (yobs_vals, weight_vals, bias_vals, sigm_vals) =
   yObs @= yobs_vals <: weight @= weight_vals <: bias @= bias_vals <: sigma @= sigm_vals <: nil
 
 mkRecordNNy :: Double
-           -> MRec Example.NNEnv
+           -> LRec Example.NNEnv
 mkRecordNNy yobs_val =
-  yObs @= Just yobs_val <: weight @= Nothing <: bias @= Nothing <: sigma @= Nothing <: nil
+  yObs @= [yobs_val] <: weight @= [] <: bias @= [] <: sigma @= [] <: nil
 
 testNNBasic :: Sampler  [(Double, Double)]
 testNNBasic = do
@@ -169,3 +169,21 @@ testNNBasic = do
   output <- map fst <$> bs
   liftS $ print $ show output
   return output
+
+testNNLW :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testNNLW = do
+  let -- Run basic simulation over logisticRegression
+      lws = LW.lw 1 (Example.nnModel 3)
+                    (concat [ replicate 10 x | x <- [0 .. 10]])
+                    (concat $ repeat $ map (\y -> mkRecordNN ([y], [1, 5, 8],
+                                              [2, -5, 1],
+                                              [0.2])) [0 .. 10]   )
+      lws' = LW.lw 3 (Example.nnModel 3)
+                     (map (/1) [0 .. 300])
+                     (map mkRecordNNy [0 .. 300])
+  output <- lws
+  let output' = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) output
+  liftS $ print $ show output'
+  return output'

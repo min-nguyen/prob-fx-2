@@ -220,8 +220,10 @@ runSample α_samp samples = loop
   loop :: Freer '[Sample] a -> Sampler a
   loop (Pure x) = return x
   loop (Free u k) = do
-    case u of
-      Samp d α ->
+    case prj u of
+      Just (Printer s) ->
+       liftS (putStrLn s) >> loop (k ())
+      Just (Sample d α) ->
         case d of
           DistDouble d ->
             case lookupSample samples d α α_samp of

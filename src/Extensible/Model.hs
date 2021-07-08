@@ -67,9 +67,16 @@ We convert all the environment values to lists if they aren't already.
 We can use reader on the user end, but then transform this during inference to use the state effect.
 -}
 
+{-
+Idea : We can introduce print statements by adding them as a constructor of Sample
+-}
+
 newtype Model env es a =
-  Model { runModel :: (Member Dist es, Member (RecReader (AsList env)) es) => Freer es a }
+  Model { runModel :: (Member Dist es, Member (RecReader (AsList env)) es, Member Sample es) => Freer es a }
   deriving Functor
+
+prinT :: Member Sample es => String -> Freer es ()
+prinT s = Free (inj $ Printer s) Pure
 
 instance Applicative (Model env es) where
   pure = Model . pure
@@ -81,29 +88,12 @@ instance Monad (Model env es) where
     f' <- f
     runModel $ k f'
 
--- accessEnv :: forall s es . (Member (RecReader (AsList s)) es) =>
---    Freer es (LRec s)
--- accessEnv = do
---     env :: LRec s <- Free (inj Ask) Pure
---     return env
-
 accessField :: forall s es a.
    Lens' (AsList s :& Field Identity) [a] ->
    Model s es (Maybe a)
 accessField f = Model $ do
     env <- Free (inj $ Ask f) Pure
     return env
-
--- replicateMdl :: forall s es a.
---      Int
---   -> Getting [a] (AsList s :& Field Identity) [a]
---   -> (Getting a (AsList s :& Field Identity) a -> Model s es a)
---   -> Model s es [a]
--- replicateMdl n field dist = Model $ do
---   env <- Free (inj $ Ask field) Pure
---   let maybe_ys = env ^. field
---   -- replicateM n ()
---   undefined
 
 normal :: Double -> Double -> Model s es Double
 normal mu sigma = Model $ do

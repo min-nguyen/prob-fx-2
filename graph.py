@@ -39,12 +39,14 @@ def main():
     xs = np.array([ x for x in xys[0] ])
     ys = np.array([ y for y in xys[1] ])
 
-
     plt.scatter(xs, ys)
     plt.xlabel('x - axis')
     plt.ylabel('y - axis')
     plt.title('Neural network')
     plt.show()
+  if arg == "nn-lw":
+
+
   if arg == "log-regr-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
