@@ -80,9 +80,6 @@ dot [] _ = 0
 dot _ [] = 0
 dot (x:xs) (y:ys) = x * y + dot xs ys
 
-uniformList :: (Double, Double) -> Int -> Model s es [Double]
-uniformList (min, max) n = replicateM n (uniform min max)
-
 forwardNN :: NN -> Double -> Double
 forwardNN (NN bs ws _) x =
   ws `dot` fmap activation (map (x -) bs)
@@ -95,13 +92,10 @@ likelihoodNN nn x = do
       yMean  = forwardNN nn x
   normal' yMean ySigma yObs
 
-nnParams :: NN
-nnParams = NN { biases = [1,5,8], weights = [2, -5, 1], sigm = 2.0}
-
 priorNN :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double)
   => Int -> Model s es NN
 priorNN n_nodes = do
-  bias   <- replicateM n_nodes (uniform' 0 10 bias) --uniformList (0, 10) n_nodes
+  bias   <- replicateM n_nodes (uniform' 0 10 bias)
   weight <- replicateM n_nodes (uniform' (-10) 10 weight)
   sigma  <- uniform' 0.5 1.5 sigma
   return $ NN bias weight sigma

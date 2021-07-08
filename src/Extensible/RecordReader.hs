@@ -48,7 +48,7 @@ runReader env = loop where
                      in  loop (k y)
     Left  u'      -> Free u' (loop . k)
 
--- |
+-- | The only purpose of the State (LRec env) effect is to check if all observed values in the environment have been consumed.
 runRecReader :: forall env rs a.
   (Member (State (LRec env)) rs) =>
   LRec env -> Freer (RecReader (AsList env) ': rs) a -> Freer rs a
