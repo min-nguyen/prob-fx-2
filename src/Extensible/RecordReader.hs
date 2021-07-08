@@ -30,7 +30,7 @@ type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
 
 type LRec s = Record (AsList s)
 
--- A Reader for which it is possible to access fields with type [a].
+-- A Reader for which it is only possible to access record fields with type [a].
 data RecReader env a where
   Ask :: Lens' (Record env) [a] -> RecReader env (Maybe a)
 
@@ -38,6 +38,17 @@ ask :: (Member (RecReader env) rs) =>
   Lens' (Record env) [a] -> Freer rs (Maybe a)
 ask field = Free (inj $ Ask field) Pure
 
+runReader :: Record env -> Freer (RecReader env ': rs) a -> Freer rs a
+runReader env = loop where
+  -- loop :: Freer (RecReader env ': rs) a -> Freer rs a
+  loop (Pure x) = return x
+  loop (Free u k) = case decomp u of
+    Right (Ask f) -> let ys = env ^. f
+                         y  = maybeHead ys
+                     in  loop (k y)
+    Left  u'      -> Free u' (loop . k)
+
+-- |
 runRecReader :: forall env rs a.
   (Member (State (LRec env)) rs) =>
   LRec env -> Freer (RecReader (AsList env) ': rs) a -> Freer rs a

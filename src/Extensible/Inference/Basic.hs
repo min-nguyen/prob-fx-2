@@ -26,7 +26,7 @@ basic :: (es ~ '[Dist, Observe, RecReader (AsList env), State (LRec env),  Sampl
   -> (b -> Model env es a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
   -> [LRec env]                      -- List of model observed variables
-  -> Sampler [a]
+  -> Sampler [(a, LRec env)]
 basic n model xs ys = do
   concat <$> zipWithM (\x y -> basicNsteps n y (model x)) xs ys
 
@@ -34,14 +34,14 @@ basicNsteps :: (es ~ '[Dist, Observe, RecReader (AsList env), State (LRec env), 
   => Int
   -> LRec env
   -> Model env es a
-  -> Sampler [a]
+  -> Sampler [(a, LRec env)]
 basicNsteps n ys model = replicateM n (runBasic ys model)
 
 runBasic :: (es ~ '[Dist, Observe, RecReader (AsList env), State (LRec env), Sample]) =>
  LRec env
-  -> Model env es a -> Sampler a
+  -> Model env es a -> Sampler (a, LRec env)
 runBasic ys m
-  = fst <$> runSample (runState ys $ runRecReader ys $ runObserve $ runDist $ runModel m)
+  = runSample (runState ys $ runRecReader ys $ runObserve $ runDist $ runModel m)
 
 runObserve :: Freer (Observe : rs) a -> Freer rs  a
 runObserve = loop
@@ -89,8 +89,8 @@ runSample = loop
 -- runBasic ys m
 --   = runSample $ runReader ys $ runObserve $ runDist $ runModel m
 -- or this:
--- runBasic ::
---  LRec env
---   -> Freer '[Dist, Observe, RecReader (AsList env), Sample] a -> Sampler a
--- runBasic' ys m
---   = runSample $ runReader ys $ runObserve $ runDist  m
+runBasic3 ::
+ LRec env
+  -> Freer '[Dist, Observe, RecReader (AsList env), Sample] a -> Sampler a
+runBasic3 ys m
+  = runSample $ runReader ys $ runObserve $ runDist  m

@@ -98,11 +98,12 @@ likelihoodNN nn x = do
 nnParams :: NN
 nnParams = NN { biases = [1,5,8], weights = [2, -5, 1], sigm = 2.0}
 
-priorNN :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double) => Int -> Model s es NN
+priorNN :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double)
+  => Int -> Model s es NN
 priorNN n_nodes = do
-  bias   <- uniformList (0, 10) n_nodes
-  weight <- uniformList (-10, 10) n_nodes
-  sigma  <- uniform 0.5 1.5
+  bias   <- replicateM n_nodes (uniform' 0 10 weight) --uniformList (0, 10) n_nodes
+  weight <- replicateM n_nodes (uniform' (-10) 10 weight)
+  sigma  <- uniform' 0.5 1.5 sigma
   return $ NN bias weight sigma
 
 nnModel :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double, HasVar s "yObs" Double) => Int -> Double -> Model s es (Double, Double)

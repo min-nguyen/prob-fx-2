@@ -34,7 +34,7 @@ mkRecordLinRegrY :: [Double] -> LRec Example.LinRegrEnv
 mkRecordLinRegrY y_vals =
  y @= y_vals <: m @= [] <: c @= [] <: σ @= [] <: nil
 
-testLinRegrBasic :: Sampler [(Double, Double)]
+testLinRegrBasic :: Sampler [((Double, Double), LRec Example.LinRegrEnv)]
 testLinRegrBasic = do
   let -- Run basic simulation over linearRegression
       {- This should generate a set of points on the y-axis for each given point on the x-axis -}
@@ -97,7 +97,7 @@ mkRecordLogRegrL :: [Bool] -> LRec Example.LogRegrEnv
 mkRecordLogRegrL label_val =
  label @= label_val <: m @= [] <: b @= [] <: nil
 
-testLogRegrBasic :: Sampler [(Double, Bool)]
+testLogRegrBasic :: Sampler [((Double, Bool), LRec Example.LogRegrEnv)]
 testLogRegrBasic = do
   let -- Run basic simulation over logisticRegression
       bs = Basic.basic 1 Example.logisticRegression
@@ -155,12 +155,14 @@ mkRecordNNy :: Double
 mkRecordNNy yobs_val =
   yObs @= Just yobs_val <: weight @= Nothing <: bias @= Nothing <: sigma @= Nothing <: nil
 
-testNNBasic :: Sampler  [(Double, Double)]
+testNNBasic :: Sampler  [((Double, Double), LRec Example.NNEnv)]
 testNNBasic = do
   let -- Run basic simulation over logisticRegression
       bs = Basic.basic 1 (Example.nnModel 5)
                          (map (/1) [0 .. 300])
-                         (repeat $ mkRecordNN ([], [-0.7], [0.65], [1]))
+                         (repeat $ mkRecordNN ([], [-0.7, 1.2, 3.0, 2.5, 0.5],
+                                                   [0.65, 2.0, 2.5, 1.7, 1.2],
+                                                   [1.0]))
       -- bs' = Basic.basic 3 Example.logisticRegression
       --                    [0, 1, 2, 3, 4]
       --                    (map mkRecordLogRegrL [False, False, True, False, True])
