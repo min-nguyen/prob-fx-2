@@ -39,7 +39,7 @@ testLinRegrBasic = do
       {- This should generate a set of points on the y-axis for each given point on the x-axis -}
       bs   = Basic.basic 3 Example.linearRegression
                            [0, 1, 2, 3, 4]
-                           ((repeat $ mkRecordLinRegr ([0.0], [1.0], [0.0], [1.0])) :: [LRec Example.LinRegrEnv])
+                           ((repeat $ mkRecordLinRegr ([], [1.0], [0.0], [1.0])) :: [LRec Example.LinRegrEnv])
       {- This should output the provided fixed set of data points on the x and y axis. -}
       bs'  = Basic.basic 3 Example.linearRegression
                     [0, 1, 2, 3, 4]

@@ -31,15 +31,15 @@ import Extensible.Test
 
 main :: IO ()
 main = do
-  -- trace <- sampleIOFixed testLinRegrBasic
+  trace <- sampleIOFixed testLinRegrBasic
   -- trace <- sampleIOFixed testLinRegrLW
   -- trace <- sampleIOFixed testLinRegrMH
   -- trace <- sampleIOFixed testLogRegrBasic
   -- trace <- sampleIOFixed testLogRegrLW
   -- trace <- sampleIOFixed testLogRegrMH
   -- trace <- sampleIOFixed testNNBasic
-  -- let traceStr = show trace
-  -- putStrLn traceStr
+  let traceStr = show trace
+  putStrLn traceStr
   -- writeFile "model-output.txt" traceStr
   return ()
 

@@ -41,8 +41,8 @@ type family Maybes (as :: [k]) = (bs :: [k]) | bs -> as where
   Maybes (a : as) = Maybe a : Maybes as
   Maybes '[] = '[]
 
-type family AsList (as :: [k]) = (bs :: [k])  where
-  AsList ((f :> [a]) : as) = ((f :> [a]) : AsList as)
+type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
+  -- AsList ((f :> [a]) : as) = ((f :> [a]) : AsList as)
   AsList ((f :> a) : as)   = ((f :> [a]) : AsList as)
   AsList '[] = '[]
 
@@ -100,7 +100,7 @@ replicateMdl :: forall s es a.
   -> (Getting a (AsList s :& Field Identity) a -> Model s es a)
   -> Model s es [a]
 replicateMdl n field dist = Model $ do
-  env :: LRec s <- Free (inj Ask) Pure
+  env <- Free (inj Ask) Pure
   let maybe_ys = env ^. field
   -- replicateM n ()
   undefined
