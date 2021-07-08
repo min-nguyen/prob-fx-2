@@ -162,7 +162,7 @@ testNNBasic = do
                          (map (/1) [0 .. 300])
                          (repeat $ mkRecordNN ([], [1, 5, 8],
                                                    [2, -5, 1],
-                                                   [0.2]))
+                                                   [4.0]))
       -- bs' = Basic.basic 3 Example.logisticRegression
       --                    [0, 1, 2, 3, 4]
       --                    (map mkRecordLogRegrL [False, False, True, False, True])
@@ -177,7 +177,7 @@ testNNLW = do
                     (concat [ replicate 10 x | x <- [0 .. 10]])
                     (concat $ repeat $ map (\y -> mkRecordNN ([y], [1, 5, 8],
                                               [2, -5, 1],
-                                              [0.2])) [0 .. 10]   )
+                                              [2.0])) [0 .. 10]   )
       lws' = LW.lw 3 (Example.nnModel 3)
                      (map (/1) [0 .. 300])
                      (map mkRecordNNy [0 .. 300])

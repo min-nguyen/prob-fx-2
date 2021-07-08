@@ -94,9 +94,20 @@ runObserve = loop 0
   loop p (Pure x) = return (x, p)
   loop p (Free u k) = case decomp u of
     Right (Observe d y α)
-      -> do let p' = prob d y
-
-            loop (p + p') (k y)
+      -> case d of
+          DistDouble d ->
+            do let p' = prob d (unsafeCoerce y :: Double)
+               prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show p'
+               loop (p + p') (k y)
+          DistBool d ->
+            do let p' = prob d (unsafeCoerce y :: Bool)
+               prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Bool) ++ " from " ++ show d ++ " is " ++ show p'
+               loop (p + p') (k y)
+          DistInt d ->
+            do let p' = prob d (unsafeCoerce y :: Int)
+               prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Int) ++ " from " ++ show d ++ " is " ++ show p'
+               loop (p + p') (k y)
+          _ -> undefined
     Left  u'  -> Free u' (loop p . k)
 
 runSample :: Freer '[Sample] a -> Sampler a

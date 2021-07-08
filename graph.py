@@ -44,7 +44,7 @@ def main():
     plt.ylabel('y - axis')
     plt.title('Neural network')
     plt.show()
-  if arg == "nn-lw":
+  # if arg == "nn-lw":
 
 
   if arg == "log-regr-basic":
