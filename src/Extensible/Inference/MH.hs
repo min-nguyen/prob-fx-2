@@ -106,11 +106,11 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   return $ exp (dom_logα + _X'logα - _Xlogα)
 
 -- | Run MH for multiple data points
-mh :: (es ~ '[Reader (Record (Maybes s)), Dist, Observe, State Ⲭ, State LogP, Sample])
+mh :: (es ~ '[Reader (LRec s), Dist, Observe, State Ⲭ, State LogP, Sample])
    => Int                              -- Number of mhSteps per data point
    -> (b -> Model s es a)              -- Model awaiting input variable
    -> [b]                              -- List of model input variables
-   -> [MRec s]                         -- List of model observed variables
+   -> [LRec s]                         -- List of model observed variables
    -> Sampler (TraceMH a)                -- Trace of all accepted outputs, samples, and logps
 mh n model xs ys = do
   -- Perform initial run of mh
@@ -121,9 +121,9 @@ mh n model xs ys = do
   foldl (>=>) return mhs [(x, samples, logps)]
 
 -- | Perform n steps of MH for a single data point
-mhNsteps :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample])
+mhNsteps :: (es ~ '[Reader (LRec env), Dist, Observe, State Ⲭ, State LogP, Sample])
   => Int              -- Number of mhSteps
-  -> MRec env         -- Model observed variable
+  -> LRec env         -- Model observed variable
   -> Model env es a   -- Model
   -> TraceMH a        -- Previous mh output
   -> Sampler (TraceMH a)
@@ -131,8 +131,8 @@ mhNsteps n env model trace = do
   foldl (>=>) return (replicate n (mhStep env model)) trace
 
 -- | Perform one step of MH for a single data point
-mhStep :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample])
-  => MRec env         -- Model observed variable
+mhStep :: (es ~ '[Reader (LRec env), Dist, Observe, State Ⲭ, State LogP, Sample])
+  => LRec env         -- Model observed variable
   -> Model env es a   -- Model
   -> TraceMH a        -- Trace of previous mh outputs
   -> Sampler (TraceMH a)
@@ -156,8 +156,8 @@ mhStep env model trace = do
             return trace
 
 -- | Run model once under MH
-runMH :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample])
-  => MRec env       -- Model observed variable
+runMH :: (es ~ '[Reader (LRec env), Dist, Observe, State Ⲭ, State LogP, Sample])
+  => LRec env       -- Model observed variable
   -> Ⲭ              -- Previous mh sample set
   -> Addr           -- Sample address
   -> Model env es a -- Model

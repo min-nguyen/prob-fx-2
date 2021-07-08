@@ -31,85 +31,111 @@ import Data.Kind (Constraint)
 import GHC.TypeLits
 import Data.Typeable
 import Data.Extensible hiding (Member)
-
+import Util
 
 {- Probabilistic programs -}
 
 -- | Hidden Markov Model
+-- transitionModel ::  Double -> Int -> Model s es Int
+-- transitionModel transition_p x_prev = do
+--   dX <- boolToInt <$> bernoulli transition_p
+--   let x = x_prev + dX
+--   return (dX + x)
 
--- | Bayesian network
-type NNEnv =
-    '[  "yObs"     ':> Double,
-        "weight"   ':> Double,
-        "bias"     ':> Double,
-        "sigma"    ':> Double
-     ]
+-- observationModel :: (HasVar s "y" Int)
+--   => Double -> Int -> Model s es Int
+-- observationModel observation_p x = do
+--   binomial' x observation_p y
 
-data NN = NN { biases  :: [Double],
-               weights :: [Double],
-               sigm   :: Double }
+-- hmm :: (HasVar s "y" Int)
+--   => Double -> Double -> Int -> Model s es Int
+-- hmm transition_p observation_p x_prev = do
+--   x_n <- transitionModel transition_p x_prev
+--   y_n <- observationModel observation_p x_n
+--   return x_n
 
-dot :: [Double] -> [Double] -> Double
-dot [] _ = 0
-dot _ [] = 0
-dot (x:xs) (y:ys) = x * y + dot xs ys
+-- hmm' :: HasVar s "y" Int => Double -> Double -> Int -> Model s es Int
+-- hmm' transition_p observation_p =
+--   observationModel observation_p <=< transitionModel transition_p
 
-uniformList :: (Double, Double) -> Int -> Model s es [Double]
-uniformList (min, max) n = replicateM n (uniform min max)
+-- hmmNSteps :: (HasVar s "y" Int)
+--   => Double -> Double -> Int -> (Int -> Model s es Int)
+-- hmmNSteps transition_p observation_p n =
+--   foldl (>=>) return (replicate n (hmm transition_p observation_p))
 
-forwardNN :: NN -> Double -> Double
-forwardNN (NN bs ws _) x =
-  ws `dot` fmap activation (map (x -) bs)
-  where activation x = if x < 0 then 0 else 1
+-- -- | Bayesian network
+-- type NNEnv =
+--     '[  "yObs"     ':> Double,
+--         "weight"   ':> Double,
+--         "bias"     ':> Double,
+--         "sigma"    ':> Double
+--      ]
 
--- likelihood model
-likelihoodNN :: HasVar s "yObs" Double => NN -> Double -> Model s es Double
-likelihoodNN nn x = do
-  let ySigma = sigm nn
-      yMean  = forwardNN nn x
-  normal' yMean ySigma yObs
+-- data NN = NN { biases  :: [Double],
+--                weights :: [Double],
+--                sigm    :: Double }
 
-nnParams :: NN
-nnParams = NN { biases = [1,5,8], weights = [2, -5, 1], sigm = 2.0}
+-- dot :: [Double] -> [Double] -> Double
+-- dot [] _ = 0
+-- dot _ [] = 0
+-- dot (x:xs) (y:ys) = x * y + dot xs ys
 
-priorNN :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double) => Int -> Model s es NN
-priorNN n_nodes = do
-  bias   <- uniformList (0, 10) n_nodes
-  weight <- uniformList (-10, 10) n_nodes
-  sigma  <- uniform 0.5 1.5
-  return $ NN bias weight sigma
+-- uniformList :: (Double, Double) -> Int -> Model s es [Double]
+-- uniformList (min, max) n = replicateM n (uniform min max)
 
-nnModel :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double, HasVar s "yObs" Double) => Int -> Double -> Model s es (Double, Double)
-nnModel n x = do
-  -- Sample neural network parameters
-  nn <- priorNN n
-  -- Compute output y
-  y <- likelihoodNN nn x
-  return (x, y)
+-- forwardNN :: NN -> Double -> Double
+-- forwardNN (NN bs ws _) x =
+--   ws `dot` fmap activation (map (x -) bs)
+--   where activation x = if x < 0 then 0 else 1
 
--- points :: [(Double, Double, Double)]
--- points = [ (x, y, exp . log $ likelihood nn x y) | x <- [0 .. 10], y <- [-10 .. 10]]
+-- -- likelihood model
+-- likelihoodNN :: HasVar s "yObs" Double => NN -> Double -> Model s es Double
+-- likelihoodNN nn x = do
+--   let ySigma = sigm nn
+--       yMean  = forwardNN nn x
+--   normal' yMean ySigma yObs
 
--- | Logistic regression
-type LogRegrEnv =
-    '[  "label" ':> Bool,
-        "m"     ':> Double,
-        "b"     ':> Double
-     ]
+-- nnParams :: NN
+-- nnParams = NN { biases = [1,5,8], weights = [2, -5, 1], sigm = 2.0}
 
-sigmoid :: Double -> Double
-sigmoid x = 1 / (1 + exp((-1) * x))
+-- priorNN :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double) => Int -> Model s es NN
+-- priorNN n_nodes = do
+--   bias   <- uniformList (0, 10) n_nodes
+--   weight <- uniformList (-10, 10) n_nodes
+--   sigma  <- uniform 0.5 1.5
+--   return $ NN bias weight sigma
 
-logisticRegression :: forall rs s.
- (HasVar s "label" Bool, HasVar s "m" Double, HasVar s "b" Double) =>
- Double -> Model s rs (Double, Bool)
-logisticRegression x = do
-  m     <- normal' 0 1 m
-  b     <- normal' 0 1 b
-  sigma <- gamma 1 1
-  y     <- normal (m * x + b) sigma
-  l     <- bernoulli' (sigmoid y) label
-  return (x, l)
+-- nnModel :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double, HasVar s "yObs" Double) => Int -> Double -> Model s es (Double, Double)
+-- nnModel n x = do
+--   -- Sample neural network parameters
+--   nn <- priorNN n
+--   -- Compute output y
+--   y <- likelihoodNN nn x
+--   return (x, y)
+
+-- -- points :: [(Double, Double, Double)]
+-- -- points = [ (x, y, exp . log $ likelihood nn x y) | x <- [0 .. 10], y <- [-10 .. 10]]
+
+-- -- | Logistic regression
+-- type LogRegrEnv =
+--     '[  "label" ':> Bool,
+--         "m"     ':> Double,
+--         "b"     ':> Double
+--      ]
+
+-- sigmoid :: Double -> Double
+-- sigmoid x = 1 / (1 + exp((-1) * x))
+
+-- logisticRegression :: forall rs s.
+--  (HasVar s "label" Bool, HasVar s "m" Double, HasVar s "b" Double) =>
+--  Double -> Model s rs (Double, Bool)
+-- logisticRegression x = do
+--   m     <- normal' 0 1 m
+--   b     <- normal' 0 1 b
+--   sigma <- gamma 1 1
+--   y     <- normal (m * x + b) sigma
+--   l     <- bernoulli' (sigmoid y) label
+--   return (x, l)
 
 -- | Linear regression
 type LinRegrEnv =
@@ -129,25 +155,25 @@ linearRegression x = do
   y <- normal' (m * x + c) σ y
   return (x, y)
 
---
-arbitraryModel :: forall es s. HasVar s "y" Double =>
-  Double -> Double -> Double -> Model s es Double
-arbitraryModel μ σ x = do
-  normal'  (μ + x) σ y
-  replicateM 4 $ normal (μ + x) σ
-  normal'  (μ + x) σ y
+-- --
+-- arbitraryModel :: forall es s. HasVar s "y" Double =>
+--   Double -> Double -> Double -> Model s es Double
+-- arbitraryModel μ σ x = do
+--   normal'  (μ + x) σ y
+--   replicateM 4 $ normal (μ + x) σ
+--   normal'  (μ + x) σ y
 
-ifModel :: forall rs s. Double -> Model s rs Double
-ifModel p = do
-  x1 <- bernoulli p
-  x2 <- if x1 then normal 0 1 else pure 0
-  x3 <- bernoulli p
-  return 0
+-- ifModel :: forall rs s. Double -> Model s rs Double
+-- ifModel p = do
+--   x1 <- bernoulli p
+--   x2 <- if x1 then normal 0 1 else pure 0
+--   x3 <- bernoulli p
+--   return 0
 
-ifModel' :: Double -> Model s rs Double
-ifModel' p = Model $
-  Free (inj $ BernoulliDist p Nothing) Pure >>= \x1 ->
-    if x1 then Free (inj $ NormalDist 0 1 Nothing) Pure else return 0
+-- ifModel' :: Double -> Model s rs Double
+-- ifModel' p = Model $
+--   Free (inj $ BernoulliDist p Nothing) Pure >>= \x1 ->
+--     if x1 then Free (inj $ NormalDist 0 1 Nothing) Pure else return 0
 
 {- Non probabilistic programs-}
 

@@ -20,23 +20,23 @@ import Extensible.Sampler
 import Extensible.Reader
 import Extensible.Example as Example
 
-basic :: (es ~ '[Dist, Observe, Reader (MRec env), Sample])
+basic :: (es ~ '[Dist, Observe, Reader (LRec env), Sample])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env es a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
-  -> [MRec env]                      -- List of model observed variables
+  -> [LRec env]                      -- List of model observed variables
   -> Sampler [a]
 basic n model xs ys = do
   concat <$> zipWithM (\x y -> basicNsteps n y (model x)) xs ys
 
-basicNsteps :: (es ~ '[Dist, Observe, Reader (MRec env), Sample])
+basicNsteps :: (es ~ '[Dist, Observe, Reader (LRec env), Sample])
   => Int
-  -> MRec env
+  -> LRec env
   -> Model env es a
   -> Sampler [a]
 basicNsteps n ys model = replicateM n (runBasic ys model)
 
-runBasic :: MRec env -> Model env '[Dist, Observe, Reader (MRec env), Sample] a -> Sampler a
+runBasic :: LRec env -> Model env '[Dist, Observe, Reader (LRec env), Sample] a -> Sampler a
 runBasic ys m = runSample $ runReader ys $ runObserve $ runDist $ runModel m
 
 runObserve :: Freer (Observe : rs) a -> Freer rs  a
