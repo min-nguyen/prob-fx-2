@@ -63,79 +63,79 @@ import Util
 -- hmmNSteps transition_p observation_p n =
 --   foldl (>=>) return (replicate n (hmm transition_p observation_p))
 
--- -- | Bayesian network
--- type NNEnv =
---     '[  "yObs"     ':> Double,
---         "weight"   ':> Double,
---         "bias"     ':> Double,
---         "sigma"    ':> Double
---      ]
+-- | Bayesian network
+type NNEnv =
+    '[  "yObs"     ':> Double,
+        "weight"   ':> Double,
+        "bias"     ':> Double,
+        "sigma"    ':> Double
+     ]
 
--- data NN = NN { biases  :: [Double],
---                weights :: [Double],
---                sigm    :: Double }
+data NN = NN { biases  :: [Double],
+               weights :: [Double],
+               sigm    :: Double }
 
--- dot :: [Double] -> [Double] -> Double
--- dot [] _ = 0
--- dot _ [] = 0
--- dot (x:xs) (y:ys) = x * y + dot xs ys
+dot :: [Double] -> [Double] -> Double
+dot [] _ = 0
+dot _ [] = 0
+dot (x:xs) (y:ys) = x * y + dot xs ys
 
--- uniformList :: (Double, Double) -> Int -> Model s es [Double]
--- uniformList (min, max) n = replicateM n (uniform min max)
+uniformList :: (Double, Double) -> Int -> Model s es [Double]
+uniformList (min, max) n = replicateM n (uniform min max)
 
--- forwardNN :: NN -> Double -> Double
--- forwardNN (NN bs ws _) x =
---   ws `dot` fmap activation (map (x -) bs)
---   where activation x = if x < 0 then 0 else 1
+forwardNN :: NN -> Double -> Double
+forwardNN (NN bs ws _) x =
+  ws `dot` fmap activation (map (x -) bs)
+  where activation x = if x < 0 then 0 else 1
 
--- -- likelihood model
--- likelihoodNN :: HasVar s "yObs" Double => NN -> Double -> Model s es Double
--- likelihoodNN nn x = do
---   let ySigma = sigm nn
---       yMean  = forwardNN nn x
---   normal' yMean ySigma yObs
+-- likelihood model
+likelihoodNN :: HasVar s "yObs" Double => NN -> Double -> Model s es Double
+likelihoodNN nn x = do
+  let ySigma = sigm nn
+      yMean  = forwardNN nn x
+  normal' yMean ySigma yObs
 
--- nnParams :: NN
--- nnParams = NN { biases = [1,5,8], weights = [2, -5, 1], sigm = 2.0}
+nnParams :: NN
+nnParams = NN { biases = [1,5,8], weights = [2, -5, 1], sigm = 2.0}
 
--- priorNN :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double) => Int -> Model s es NN
--- priorNN n_nodes = do
---   bias   <- uniformList (0, 10) n_nodes
---   weight <- uniformList (-10, 10) n_nodes
---   sigma  <- uniform 0.5 1.5
---   return $ NN bias weight sigma
+priorNN :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double) => Int -> Model s es NN
+priorNN n_nodes = do
+  bias   <- uniformList (0, 10) n_nodes
+  weight <- uniformList (-10, 10) n_nodes
+  sigma  <- uniform 0.5 1.5
+  return $ NN bias weight sigma
 
--- nnModel :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double, HasVar s "yObs" Double) => Int -> Double -> Model s es (Double, Double)
--- nnModel n x = do
---   -- Sample neural network parameters
---   nn <- priorNN n
---   -- Compute output y
---   y <- likelihoodNN nn x
---   return (x, y)
+nnModel :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double, HasVar s "yObs" Double) => Int -> Double -> Model s es (Double, Double)
+nnModel n x = do
+  -- Sample neural network parameters
+  nn <- priorNN n
+  -- Compute output y
+  y <- likelihoodNN nn x
+  return (x, y)
 
--- -- points :: [(Double, Double, Double)]
--- -- points = [ (x, y, exp . log $ likelihood nn x y) | x <- [0 .. 10], y <- [-10 .. 10]]
+-- points :: [(Double, Double, Double)]
+-- points = [ (x, y, exp . log $ likelihood nn x y) | x <- [0 .. 10], y <- [-10 .. 10]]
 
--- -- | Logistic regression
--- type LogRegrEnv =
---     '[  "label" ':> Bool,
---         "m"     ':> Double,
---         "b"     ':> Double
---      ]
+-- | Logistic regression
+type LogRegrEnv =
+    '[  "label" ':> Bool,
+        "m"     ':> Double,
+        "b"     ':> Double
+     ]
 
--- sigmoid :: Double -> Double
--- sigmoid x = 1 / (1 + exp((-1) * x))
+sigmoid :: Double -> Double
+sigmoid x = 1 / (1 + exp((-1) * x))
 
--- logisticRegression :: forall rs s.
---  (HasVar s "label" Bool, HasVar s "m" Double, HasVar s "b" Double) =>
---  Double -> Model s rs (Double, Bool)
--- logisticRegression x = do
---   m     <- normal' 0 1 m
---   b     <- normal' 0 1 b
---   sigma <- gamma 1 1
---   y     <- normal (m * x + b) sigma
---   l     <- bernoulli' (sigmoid y) label
---   return (x, l)
+logisticRegression :: forall rs s.
+ (HasVar s "label" Bool, HasVar s "m" Double, HasVar s "b" Double) =>
+ Double -> Model s rs (Double, Bool)
+logisticRegression x = do
+  m     <- normal' 0 1 m
+  b     <- normal' 0 1 b
+  sigma <- gamma 1 1
+  y     <- normal (m * x + b) sigma
+  l     <- bernoulli' (sigmoid y) label
+  return (x, l)
 
 -- | Linear regression
 type LinRegrEnv =

@@ -13,6 +13,10 @@ maybeHead :: [a] -> Maybe a
 maybeHead []     = Nothing
 maybeHead (x:xs) = Just x
 
+safeTail :: [a] -> [a]
+safeTail [] = []
+safeTail (x:xs) = xs
+
 data Address =
   Address { -- The address of the previous sample statement
             prevSamp  :: String,

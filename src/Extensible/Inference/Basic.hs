@@ -17,11 +17,11 @@ import Extensible.Dist
 import Extensible.Freer
 import Extensible.Model
 import Extensible.Sampler
-import Extensible.RecordReader ( RecReader, runReader, AsList )
+import Extensible.RecordReader
 import Extensible.State
 import Extensible.Example as Example
 
-basic :: (es ~ '[Dist, Observe, RecReader (AsList env), Sample])
+basic :: (es ~ '[Dist, Observe, RecReader (AsList env), State (LRec env),  Sample])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env es a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
@@ -30,18 +30,18 @@ basic :: (es ~ '[Dist, Observe, RecReader (AsList env), Sample])
 basic n model xs ys = do
   concat <$> zipWithM (\x y -> basicNsteps n y (model x)) xs ys
 
-basicNsteps :: (es ~ '[Dist, Observe, RecReader (AsList env), Sample])
+basicNsteps :: (es ~ '[Dist, Observe, RecReader (AsList env), State (LRec env),  Sample])
   => Int
   -> LRec env
   -> Model env es a
   -> Sampler [a]
 basicNsteps n ys model = replicateM n (runBasic ys model)
 
-runBasic :: (es ~ '[Dist, Observe, RecReader (AsList env), Sample]) =>
+runBasic :: (es ~ '[Dist, Observe, RecReader (AsList env), State (LRec env), Sample]) =>
  LRec env
   -> Model env es a -> Sampler a
 runBasic ys m
-  = runSample $ runReader ys $ runObserve $ runDist $ runModel m
+  = fst <$> runSample (runState ys $ runRecReader ys $ runObserve $ runDist $ runModel m)
 
 runObserve :: Freer (Observe : rs) a -> Freer rs  a
 runObserve = loop

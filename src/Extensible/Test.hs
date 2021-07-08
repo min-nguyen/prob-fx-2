@@ -20,6 +20,7 @@ import Extensible.OpenSum
 import Extensible.Inference.Inf
 import Extensible.Model
 import Extensible.Sampler
+import Extensible.RecordReader
 import Data.Extensible
 
 {- Linear Regression -}
@@ -39,7 +40,7 @@ testLinRegrBasic = do
       {- This should generate a set of points on the y-axis for each given point on the x-axis -}
       bs   = Basic.basic 3 Example.linearRegression
                            [0, 1, 2, 3, 4]
-                           ((repeat $ mkRecordLinRegr ([], [1.0], [0.0], [1.0])) :: [LRec Example.LinRegrEnv])
+                           ((repeat $ mkRecordLinRegr ([], [1.0, 10], [0.0], [1.0])) :: [LRec Example.LinRegrEnv])
       {- This should output the provided fixed set of data points on the x and y axis. -}
       bs'  = Basic.basic 3 Example.linearRegression
                     [0, 1, 2, 3, 4]
@@ -48,121 +49,121 @@ testLinRegrBasic = do
   liftS $ print $ show output
   return output
 
--- -- | [(datapoints, samples, likelihood)]
--- testLinRegrLW :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
--- testLinRegrLW = do
---   let -- Run likelihood weighting simulation over linearRegression
---       {- This should generate a set of points on the y-axis for each given point on the x-axis
---          where every point has the same likelihood (because we don't count the probability for sampling the y data point, and all other observe probabilities are the same every iteration). -}
---       lws = LW.lw 3 Example.linearRegression
---                     [0, 1, 2, 3, 4]
---                     (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
---       -- Run likelihood weighting inference over linearRegression
---       {- This should output the provided fixed set of data points on the x and y axis, where each point has a different probability (due to us observing the probability of given y's). -}
---       lws' = LW.lw 3 Example.linearRegression
---                     [0, 1, 2, 3, 4]
---                     (map mkRecordLinRegrY [-0.3, 0.75, 2.43, 3.5, 3.2])
---   output <- lws'
---   let output' = map (\(xy, samples, prob) ->
---         let samples' = Map.toList samples
---         in (xy, samples', prob)) output
---   liftS $ print $ show output'
---   return output'
+-- | [(datapoints, samples, likelihood)]
+testLinRegrLW :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testLinRegrLW = do
+  let -- Run likelihood weighting simulation over linearRegression
+      {- This should generate a set of points on the y-axis for each given point on the x-axis
+         where every point has the same likelihood (because we don't count the probability for sampling the y data point, and all other observe probabilities are the same every iteration). -}
+      lws = LW.lw 3 Example.linearRegression
+                    [0, 1, 2, 3, 4]
+                    (repeat $ mkRecordLinRegr ([], [1], [0], [1]))
+      -- Run likelihood weighting inference over linearRegression
+      {- This should output the provided fixed set of data points on the x and y axis, where each point has a different probability (due to us observing the probability of given y's). -}
+      lws' = LW.lw 3 Example.linearRegression
+                    [0, 1, 2, 3, 4]
+                    (map mkRecordLinRegrY [[-0.3], [0.75], [2.43], [3.5], [3.2]])
+  output <- lws'
+  let output' = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) output
+  liftS $ print $ show output'
+  return output'
 
--- -- | [(datapoints, samples, logps)]
--- testLinRegrMH :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
--- testLinRegrMH = do
---   let -- Run mh simulation over linearRegression
---       mhs  = MH.mh 3 Example.linearRegression [1,2,3]
---                      (repeat $ mkRecordLinRegr (Nothing, Just 1, Just 0, Just 1))
---       -- Run mh inference over linearRegression
---       mhs' = MH.mh 3 Example.linearRegression [1,2,3]
---                      (map mkRecordLinRegrY [-0.3, 1.6, 3.5])
---   output <- mhs'
---   let output' = map (\(xy, samples, logps) ->
---        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
---            logps'   = Map.toList logps
---        in  (xy, samples', logps') ) output
---   liftS $ print $ show output'
---   return output'
+-- | [(datapoints, samples, logps)]
+testLinRegrMH :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testLinRegrMH = do
+  let -- Run mh simulation over linearRegression
+      mhs  = MH.mh 3 Example.linearRegression [1,2,3]
+                     (repeat $ mkRecordLinRegr ([], [1], [0], [1]))
+      -- Run mh inference over linearRegression
+      mhs' = MH.mh 3 Example.linearRegression [1,2,3]
+                     (map mkRecordLinRegrY [[-0.3], [1.6], [3.5]])
+  output <- mhs'
+  let output' = map (\(xy, samples, logps) ->
+       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+           logps'   = Map.toList logps
+       in  (xy, samples', logps') ) output
+  liftS $ print $ show output'
+  return output'
 
--- {- Logistic Regression -}
+{- Logistic Regression -}
 
--- mkRecordLogRegr :: (Maybe Bool, Maybe Double, Maybe Double) -> MRec Example.LogRegrEnv
--- mkRecordLogRegr (label_val, m_val, b_val) =
---   label @= label_val <: m @= m_val <: b @= b_val <: nil
+mkRecordLogRegr :: ([Bool], [Double], [Double]) -> LRec Example.LogRegrEnv
+mkRecordLogRegr (label_vals, m_vals, b_vals) =
+  label @= label_vals <: m @= m_vals <: b @= b_vals <: nil
 
--- mkRecordLogRegrL :: Bool -> MRec Example.LogRegrEnv
--- mkRecordLogRegrL label_val =
---  label @= Just label_val <: m @= Nothing <: b @= Nothing <: nil
+mkRecordLogRegrL :: [Bool] -> LRec Example.LogRegrEnv
+mkRecordLogRegrL label_val =
+ label @= label_val <: m @= [] <: b @= [] <: nil
 
--- testLogRegrBasic :: Sampler  [(Double, Bool)]
--- testLogRegrBasic = do
---   let -- Run basic simulation over logisticRegression
---       bs = Basic.basic 1 Example.logisticRegression
---                          (map (/50) [(-100) .. 100])
---                          (repeat $ mkRecordLogRegr (Nothing, Just (-0.7), Just (-0.15)))
---       bs' = Basic.basic 3 Example.logisticRegression
---                          [0, 1, 2, 3, 4]
---                          (map mkRecordLogRegrL [False, False, True, False, True])
---   output <- bs
---   liftS $ print $ show output
---   return output
+testLogRegrBasic :: Sampler [(Double, Bool)]
+testLogRegrBasic = do
+  let -- Run basic simulation over logisticRegression
+      bs = Basic.basic 1 Example.logisticRegression
+                         (map (/50) [(-100) .. 100])
+                         (repeat $ mkRecordLogRegr ([], [-0.7], [-0.15]))
+      bs' = Basic.basic 3 Example.logisticRegression
+                         [0, 1, 2, 3, 4]
+                         (map mkRecordLogRegrL [[False], [False], [True], [False], [True]])
+  output <- bs
+  liftS $ print $ show output
+  return output
 
--- testLogRegrLW :: Sampler [((Double, Bool), [(Addr, OpenSum LW.Vals)], Double)]
--- testLogRegrLW = do
---   let -- Run basic simulation over logisticRegression
---       lws  = LW.lw 3 Example.logisticRegression
---                          (map (/50) [(-100) .. 100])
---                          (repeat $ mkRecordLogRegr (Nothing, Just (-0.7), Just (-0.15)))
---       lws' = LW.lw 3 Example.logisticRegression
---                          [0, 1, 2, 3, 4]
---                          (map mkRecordLogRegrL [False, False, True, False, True])
---   output <- lws'
---   let output' = map (\(xy, samples, prob) ->
---         let samples' = Map.toList samples
---         in (xy, samples', prob)) output
---   liftS $ print $ show output'
---   return output'
+testLogRegrLW :: Sampler [((Double, Bool), [(Addr, OpenSum LW.Vals)], Double)]
+testLogRegrLW = do
+  let -- Run basic simulation over logisticRegression
+      lws  = LW.lw 3 Example.logisticRegression
+                         (map (/50) [(-100) .. 100])
+                         (repeat $ mkRecordLogRegr ([], [-0.7], [-0.15]))
+      lws' = LW.lw 3 Example.logisticRegression
+                         [0, 1, 2, 3, 4]
+                         (map mkRecordLogRegrL [[False], [False], [True], [False], [True]])
+  output <- lws'
+  let output' = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) output
+  liftS $ print $ show output'
+  return output'
 
--- testLogRegrMH :: Sampler [((Double, Bool), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
--- testLogRegrMH = do
---   let -- Run basic simulation over logisticRegression
---       mhs  = MH.mh 3 Example.logisticRegression
---                          (map (/50) [(-100) .. 100])
---                          (repeat $ mkRecordLogRegr (Nothing, Just (-0.7), Just (-0.15)))
---       mhs' = MH.mh 3 Example.logisticRegression
---                          [0, 1, 2, 3, 4]
---                          (map mkRecordLogRegrL [False, False, True, False, True])
---   output <- mhs'
---   let output' = map (\(xy, samples, logps) ->
---        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
---            logps'   = Map.toList logps
---        in  (xy, samples', logps') ) output
---   liftS $ print $ show output'
---   return output'
+testLogRegrMH :: Sampler [((Double, Bool), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testLogRegrMH = do
+  let -- Run basic simulation over logisticRegression
+      mhs  = MH.mh 3 Example.logisticRegression
+                         (map (/50) [(-100) .. 100])
+                         (repeat $ mkRecordLogRegr ([], [-0.7], [-0.15]))
+      mhs' = MH.mh 3 Example.logisticRegression
+                         [0, 1, 2, 3, 4]
+                         (map mkRecordLogRegrL [[False], [False], [True], [False], [True]])
+  output <- mhs'
+  let output' = map (\(xy, samples, logps) ->
+       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+           logps'   = Map.toList logps
+       in  (xy, samples', logps') ) output
+  liftS $ print $ show output'
+  return output'
 
 -- {- Bayesian Neural Network -}
 
--- mkRecordNN :: (Maybe Double, Maybe Double, Maybe Double, Maybe Double)
---            -> MRec Example.NNEnv
--- mkRecordNN (yobs_val, weight_val, bias_val, sigm_val) =
---   yObs @= yobs_val <: weight @= weight_val <: bias @= bias_val <: sigma @= sigm_val <: nil
+mkRecordNN :: ([Double], [Double], [Double], [Double])
+           -> LRec Example.NNEnv
+mkRecordNN (yobs_vals, weight_vals, bias_vals, sigm_vals) =
+  yObs @= yobs_vals <: weight @= weight_vals <: bias @= bias_vals <: sigma @= sigm_vals <: nil
 
--- mkRecordNNy :: Double
---            -> MRec Example.NNEnv
--- mkRecordNNy yobs_val =
---   yObs @= Just yobs_val <: weight @= Nothing <: bias @= Nothing <: sigma @= Nothing <: nil
+mkRecordNNy :: Double
+           -> MRec Example.NNEnv
+mkRecordNNy yobs_val =
+  yObs @= Just yobs_val <: weight @= Nothing <: bias @= Nothing <: sigma @= Nothing <: nil
 
--- testNNBasic :: Sampler  [(Double, Double)]
--- testNNBasic = do
---   let -- Run basic simulation over logisticRegression
---       bs = Basic.basic 1 (Example.nnModel 5)
---                          (map (/1) [0 .. 300])
---                          (repeat $ mkRecordNN (Nothing, Just (-0.7), Just 0.65, Just 1))
---       -- bs' = Basic.basic 3 Example.logisticRegression
---       --                    [0, 1, 2, 3, 4]
---       --                    (map mkRecordLogRegrL [False, False, True, False, True])
---   output <- bs
---   liftS $ print $ show output
---   return output
+testNNBasic :: Sampler  [(Double, Double)]
+testNNBasic = do
+  let -- Run basic simulation over logisticRegression
+      bs = Basic.basic 1 (Example.nnModel 5)
+                         (map (/1) [0 .. 300])
+                         (repeat $ mkRecordNN ([], [-0.7], [0.65], [1]))
+      -- bs' = Basic.basic 3 Example.logisticRegression
+      --                    [0, 1, 2, 3, 4]
+      --                    (map mkRecordLogRegrL [False, False, True, False, True])
+  output <- bs
+  liftS $ print $ show output
+  return output
