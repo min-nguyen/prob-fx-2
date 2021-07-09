@@ -80,17 +80,15 @@ dot [] _ = 0
 dot _ [] = 0
 dot (x:xs) (y:ys) = x * y + dot xs ys
 
-forwardNN :: NN -> Double -> Double
-forwardNN (NN bs ws _) x =
+-- | Neural network formulation for linear regression
+forwardNN1 :: NN -> Double -> Double
+forwardNN1 (NN bs ws _) x =
   (ws `dot` map (x -) bs) / 20
-  where activation x = if x < 0 then 0 else 1
 
-{- Next step: plot lw with nn's using color map -}
-{- To do: see if we can properly infer the parameters of linear regression-}
-likelihoodNN :: HasVar s "yObs" Double => NN -> Double -> Model s es Double
-likelihoodNN nn x = do
+likelihoodNN1 :: HasVar s "yObs" Double => NN -> Double -> Model s es Double
+likelihoodNN1 nn x = do
   let ySigma = sigm nn
-      yMean  = forwardNN nn x
+      yMean  = forwardNN1 nn x
   normal' yMean ySigma yObs
 
 priorNN :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double)
@@ -101,16 +99,29 @@ priorNN n_nodes = do
   sigma  <- uniform' 0.5 1.5 sigma
   return $ NN bias weight sigma
 
-nnModel :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double, HasVar s "yObs" Double) => Int -> Double -> Model s es (Double, Double)
-nnModel n x = do
-  -- Sample neural network parameters
+nnModel1 :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double, HasVar s "yObs" Double) => Int -> Double -> Model s es (Double, Double)
+nnModel1 n x = do
   nn <- priorNN n
-  -- Compute output y
-  y <- likelihoodNN nn x
+  y <- likelihoodNN1 nn x
   return (x, y)
 
--- points :: [(Double, Double, Double)]
--- points = [ (x, y, exp . log $ likelihood nn x y) | x <- [0 .. 10], y <- [-10 .. 10]]
+-- | Alternative neural network formulation for sine curve
+forwardNN2 :: NN -> Double -> Double
+forwardNN2 (NN bs ws _) x =
+  ws `dot` map (activation . (x -)) bs
+  where activation x = if x < 0 then 0 else 1
+
+likelihoodNN2 :: HasVar s "yObs" Double => NN -> Double -> Model s es Double
+likelihoodNN2 nn x = do
+  let ySigma = sigm nn
+      yMean  = forwardNN2 nn x
+  normal' yMean ySigma yObs
+
+nnModel2 :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double, HasVar s "yObs" Double) => Int -> Double -> Model s es (Double, Double)
+nnModel2 n x = do
+  nn <- priorNN n
+  y <- likelihoodNN2 nn x
+  return (x, y)
 
 -- | Logistic regression
 type LogRegrEnv =

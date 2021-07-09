@@ -160,14 +160,11 @@ mkRecordNNy yobs_val =
 testNNBasic :: Sampler  [(Double, Double)]
 testNNBasic = do
   let -- Run basic simulation over neural network
-      bs = Basic.basic 1 (Example.nnModel 3)
+      bs = Basic.basic 1 (Example.nnModel1 3)
                          (map (/1) [0 .. 300])
                          (repeat $ mkRecordNN ([], [1, 5, 8],
                                                    [2, -5, 1],
                                                    [4.0]))
-      -- bs' = Basic.basic 3 Example.logisticRegression
-      --                    [0, 1, 2, 3, 4]
-      --                    (map mkRecordLogRegrL [False, False, True, False, True])
   output <- map fst <$> bs
   liftS $ print $ show output
   return output
@@ -176,21 +173,18 @@ testNNLW :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
 testNNLW = do
   let xs  = concat [ replicate 11 x | x <- [0 .. 10]]
       -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
-      lws = LW.lw 1 (Example.nnModel 3)
+      lws = LW.lw 1 (Example.nnModel1 3)
                     xs
                     (concat $ repeat $ map (\y -> mkRecordNN ([y], [1, 5, 8],
                                               [2, -5, 1],
                                               [2.0])) [0 .. 10]   )
       -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
-      lws' = LW.lw 1  (Example.nnModel 3)
+      lws' = LW.lw 1  (Example.nnModel1 3)
                       (map (/50) [0 .. 300])
                       (map (\y -> mkRecordNN ([y], [1, 5, 8],
                                                    [2, -5, 1],
                                                    [2.0]))
                            [ sin x | x <- map (/50) [0 .. 300] ])
-      -- lws' = LW.lw 3 (Example.nnModel 3)
-      --                (map (/1) [0 .. 300])
-      --                (map mkRecordNNy [0 .. 300])
   output <- lws'
   let output' = map (\(xy, samples, prob) ->
         let samples' = Map.toList samples
@@ -202,7 +196,7 @@ testNNLW = do
 testNNMH :: Sampler [(Double, Double)]
 testNNMH = do
   let -- Run mh over data representing a line with gradient 1 and intercept 0
-      mhs = MH.mh 40 (Example.nnModel 3)
+      mhs = MH.mh 40 (Example.nnModel1 3)
                     (map (/50) [0 .. 300])
                       (map mkRecordNNy
                            [ x | x <- map (/50) [0 .. 300] ])
@@ -218,46 +212,39 @@ testNNMH = do
       (weights, sigma)    = splitAt 3 postParams'
   liftS $ print $ show (weights, bias, sigma)
   -- Using these parameters, simulate data from the predictive. We can see that the predictive data becomes more accurate with more mh steps.
-  let bs = Basic.basic 1 (Example.nnModel 3)
+  let bs = Basic.basic 1 (Example.nnModel1 3)
                          (map (/1) [0 .. 300])
                          (repeat $ mkRecordNN ([], bias,
                                                    weights,
                                                    sigma))
   map fst <$> bs
 
--- -- testNNMH :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
--- testNNMH :: Sampler [(Double, Double)]
--- testNNMH = do
---   let xs  = concat [ replicate 11 x | x <- [0 .. 10]]
---       -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
---       mhs = MH.mh 40 (Example.nnModel 3)
---                     (map (/50) [0 .. 300])
---                       (map mkRecordNNy
---                            [ x | x <- map (/50) [0 .. 300] ])
---       -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
---       mhs' = MH.mh 1  (Example.nnModel 3)
---                       (map (/50) [0 .. 300])
---                       (map mkRecordNNy
---                            [ sin x | x <- map (/50) [0 .. 300] ])
---       -- lws' = LW.lw 3 (Example.nnModel 3)
---       --                (map (/1) [0 .. 300])
---       --                (map mkRecordNNy [0 .. 300])
---   output <- mhs
---   let output' = map (\(xy, samples, logps) ->
---        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
---            logps'   = Map.toList logps
---        in  (xy, samples', logps') ) output
-
---   let postParams = map (fromJust . prj @Double . snd . snd)
---                        ((Map.toList . snd3 . head) output)
---       (bias, postParams') = splitAt 3 postParams
---       (weights, sigma)    = splitAt 3 postParams'
-
---   let bs = Basic.basic 1 (Example.nnModel 3)
---                          (map (/1) [0 .. 300])
---                          (repeat $ mkRecordNN ([], bias,
---                                                    weights,
---                                                    sigma))
---   liftS $ print $ show (weights, bias, sigma)
---   -- return output'
---   map fst <$> bs
+-- testNNMH :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testNNMHSin :: Sampler [(Double, Double)]
+testNNMHSin = do
+  let -- Run mh over data representing a sine curve
+      mhs' = MH.mh 50  (Example.nnModel2 3)
+                      (map (/50) [0 .. 300])
+                      (map mkRecordNNy
+                           [ sin x | x <- map (/50) [0 .. 300] ])
+  output <- mhs'
+  let output' = map (\(xy, samples, logps) ->
+       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+           logps'   = Map.toList logps
+       in  (xy, samples', logps') ) output
+  -- Get the most recent accepted model parameters from the posterior
+  let postParams = map (fromJust . prj @Double . snd . snd)
+                       ((Map.toList . snd3 . head) output)
+      (bias, postParams') = splitAt 3 postParams
+      (weights, sigma)    = splitAt 3 postParams'
+  -- Using these parameters, simulate data from the predictive. We can see that the predictive data becomes more accurate with more mh steps.
+  let bs = Basic.basic 1 (Example.nnModel2 3)
+                         (map (/50) [0 .. 300])
+                        -- (map mkRecordNNy
+                        --    [ sin x | x <- map (/50) [0 .. 300] ])
+                         (repeat $ mkRecordNN ([], bias,
+                                                   weights,
+                                                   sigma))
+  liftS $ print $ show (weights, bias, sigma)
+  -- return output'
+  map fst <$> bs
