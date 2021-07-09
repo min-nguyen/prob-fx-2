@@ -44,8 +44,18 @@ def main():
     plt.ylabel('y - axis')
     plt.title('Neural network')
     plt.show()
-  # if arg == "nn-lw":
-
+  if arg == "nn-lw":
+    xys        = [ d[0] for d in data]
+    sampleMaps = [ d[1] for d in data]
+    ps         = [ d[2] for d in data]
+    xs = [x[0] for x in xys]
+    ys = [y[1] for y in xys]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.set_title('Bayesian neural network')
+    plt.show()
 
   if arg == "log-regr-basic":
     xys =  [[ i for i, j in data ],

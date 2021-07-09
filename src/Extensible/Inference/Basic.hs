@@ -59,10 +59,10 @@ runSample = loop
   where
   loop :: Freer '[Sample] a -> Sampler a
   loop (Pure x) = return x
-  loop (Free u k) = case u of
-    --  Just (Print s) ->
-    --    liftS (putStrLn s) >> loop (k ())
-     Samp d α -> sample d >>= loop . k
+  loop (Free u k) = case prj u of
+     Just (Printer s) ->
+       liftS (putStrLn s) >> loop (k ())
+     Just (Sample d α) -> sample d >>= loop . k
      _        -> error "Impossible: Nothing cannot occur"
 
 -- runReader' :: forall env rs a.

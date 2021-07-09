@@ -157,7 +157,7 @@ mkRecordNNy yobs_val =
 
 testNNBasic :: Sampler  [(Double, Double)]
 testNNBasic = do
-  let -- Run basic simulation over logisticRegression
+  let -- Run basic simulation over neural network
       bs = Basic.basic 1 (Example.nnModel 3)
                          (map (/1) [0 .. 300])
                          (repeat $ mkRecordNN ([], [1, 5, 8],
@@ -172,16 +172,24 @@ testNNBasic = do
 
 testNNLW :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
 testNNLW = do
-  let -- Run basic simulation over logisticRegression
+  let xs  = concat [ replicate 11 x | x <- [0 .. 10]]
+      -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
       lws = LW.lw 1 (Example.nnModel 3)
-                    (concat [ replicate 10 x | x <- [0 .. 10]])
+                    xs
                     (concat $ repeat $ map (\y -> mkRecordNN ([y], [1, 5, 8],
                                               [2, -5, 1],
                                               [2.0])) [0 .. 10]   )
-      lws' = LW.lw 3 (Example.nnModel 3)
-                     (map (/1) [0 .. 300])
-                     (map mkRecordNNy [0 .. 300])
-  output <- lws
+      -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
+      lws' = LW.lw 1  (Example.nnModel 3)
+                      (map (/50) [0 .. 300])
+                      (map (\y -> mkRecordNN ([y], [1, 5, 8],
+                                                   [2, -5, 1],
+                                                   [2.0]))
+                           [ sin x | x <- map (/50) [0 .. 300] ])
+      -- lws' = LW.lw 3 (Example.nnModel 3)
+      --                (map (/1) [0 .. 300])
+      --                (map mkRecordNNy [0 .. 300])
+  output <- lws'
   let output' = map (\(xy, samples, prob) ->
         let samples' = Map.toList samples
         in (xy, samples', prob)) output
