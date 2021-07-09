@@ -15,7 +15,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 
-module Extensible.RecordReader where
+module Extensible.AffineReader where
 
 import Extensible.State
 import Extensible.Freer
@@ -31,14 +31,14 @@ type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
 type LRec s = Record (AsList s)
 
 -- A Reader for which it is only possible to access record fields with type [a].
-data RecReader env a where
-  Ask :: Lens' (Record env) [a] -> RecReader env (Maybe a)
+data AffReader env a where
+  Ask :: Lens' (Record env) [a] -> AffReader env (Maybe a)
 
-ask :: (Member (RecReader env) rs) =>
+ask :: (Member (AffReader env) rs) =>
   Lens' (Record env) [a] -> Freer rs (Maybe a)
 ask field = Free (inj $ Ask field) Pure
 
-runReader :: Record env -> Freer (RecReader env ': rs) a -> Freer rs a
+runReader :: Record env -> Freer (AffReader env ': rs) a -> Freer rs a
 runReader env = loop where
   -- loop :: Freer (RecReader env ': rs) a -> Freer rs a
   loop (Pure x) = return x
@@ -49,17 +49,15 @@ runReader env = loop where
     Left  u'      -> Free u' (loop . k)
 
 -- | The only purpose of the State (LRec env) effect is to check if all observed values in the environment have been consumed.
-runRecReader :: forall env rs a.
-  (Member (State (LRec env)) rs) =>
-  LRec env -> Freer (RecReader (AsList env) ': rs) a -> Freer rs a
-runRecReader env = loop env where
-  loop :: LRec env -> Freer (RecReader (AsList env) ': rs) a -> Freer rs a
-  loop env (Pure x) = return x
+runAffReader :: forall env rs a.
+  LRec env -> Freer (AffReader (AsList env) ': rs) a -> Freer rs (a, LRec env)
+runAffReader env = loop env where
+  loop :: LRec env -> Freer (AffReader (AsList env) ': rs) a -> Freer rs (a, LRec env)
+  loop env (Pure x) = return (x, env)
   loop env (Free u k) = case decomp u of
     Right (Ask f) -> do
       let ys = env ^. f
           y  = maybeHead ys
           env' = set f (safeTail ys) env
-      put env'
       loop env' (k y)
     Left  u'  -> Free u' (loop env . k)

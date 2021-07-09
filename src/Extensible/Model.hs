@@ -9,7 +9,7 @@ import Util
 import Extensible.Dist
 import Extensible.Freer
 -- import Extensible.Reader
-import Extensible.RecordReader
+import Extensible.AffineReader
 import Extensible.Sampler
 import Extensible.IO
 import GHC.Generics
@@ -72,7 +72,7 @@ Idea : We can introduce print statements by adding them as a constructor of Samp
 -}
 
 newtype Model env es a =
-  Model { runModel :: (Member Dist es, Member (RecReader (AsList env)) es, Member Sample es) => Freer es a }
+  Model { runModel :: (Member Dist es, Member (AffReader (AsList env)) es, Member Sample es) => Freer es a }
   deriving Functor
 
 prinT :: Member Sample es => String -> Freer es ()

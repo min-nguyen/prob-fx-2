@@ -21,7 +21,7 @@ import Extensible.OpenSum
 import Extensible.Inference.Inf
 import Extensible.Model
 import Extensible.Sampler
-import Extensible.RecordReader
+import Extensible.AffineReader
 import Data.Extensible
 import Util
 
@@ -42,7 +42,7 @@ testLinRegrBasic = do
       {- This should generate a set of points on the y-axis for each given point on the x-axis -}
       bs   = Basic.basic 3 Example.linearRegression
                            [0, 1, 2, 3, 4]
-                           ((repeat $ mkRecordLinRegr ([], [1.0, 10], [0.0], [1.0])) :: [LRec Example.LinRegrEnv])
+                           ((repeat $ mkRecordLinRegr ([], [1.0], [0.0], [1.0])) :: [LRec Example.LinRegrEnv])
       {- This should output the provided fixed set of data points on the x and y axis. -}
       bs'  = Basic.basic 3 Example.linearRegression
                     [0, 1, 2, 3, 4]
@@ -219,14 +219,14 @@ testNNMH = do
                                                    sigma))
   map fst <$> bs
 
--- testNNMH :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+-- Run this with nn-basic, as it returns a predictive distribution rather than a posterior one.
 testNNMHSin :: Sampler [(Double, Double)]
 testNNMHSin = do
   let -- Run mh over data representing a sine curve
-      mhs' = MH.mh 50  (Example.nnModel2 3)
-                      (map (/50) [0 .. 300])
+      mhs' = MH.mh 20  (Example.nnModel2 3)
+                      (map (/20) [-200 .. 200])
                       (map mkRecordNNy
-                           [ sin x | x <- map (/50) [0 .. 300] ])
+                           [ sin x | x <- map (/20) [-200 .. 200] ])
   output <- mhs'
   let output' = map (\(xy, samples, logps) ->
        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
@@ -237,11 +237,11 @@ testNNMHSin = do
                        ((Map.toList . snd3 . head) output)
       (bias, postParams') = splitAt 3 postParams
       (weights, sigma)    = splitAt 3 postParams'
-  -- Using these parameters, simulate data from the predictive. We can see that the predictive data becomes more accurate with more mh steps.
+  -- Using these parameters, simulate data from the predictive.
   let bs = Basic.basic 1 (Example.nnModel2 3)
-                         (map (/50) [0 .. 300])
+                         ([-200 .. 200])
                         -- (map mkRecordNNy
-                        --    [ sin x | x <- map (/50) [0 .. 300] ])
+                        --    [ sin x | x <- map (/20) [-200 .. 200] ])
                          (repeat $ mkRecordNN ([], bias,
                                                    weights,
                                                    sigma))

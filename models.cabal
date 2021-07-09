@@ -59,7 +59,7 @@ library
                       Extensible.Freer,
                       Extensible.Example,
                       Extensible.Reader,
-                      Extensible.RecordReader,
+                      Extensible.AffineReader,
                       Extensible.Writer,
                       Extensible.State,
                       Extensible.IO,

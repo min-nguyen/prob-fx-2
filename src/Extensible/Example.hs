@@ -157,7 +157,6 @@ linearRegression :: forall s rs .
   Double -> Model s rs (Double, Double)
 linearRegression x = do
   m1 <- normal' 0 2 m
-  m2 <- normal' 0 2 m
   c <- normal' 0 2 c
   σ <- uniform' 1 3 σ
   y <- normal' (m1 * x + c) σ y

@@ -12,7 +12,7 @@ module Extensible.Inference.LW where
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Extensible hiding (Member)
-import Extensible.RecordReader
+import Extensible.AffineReader
 import Control.Monad
 import Control.Monad.Trans.Class
 import Unsafe.Coerce
@@ -35,7 +35,7 @@ updateMapⲬ :: OpenSum.Member x Vals => Addr -> x -> Ⲭ -> Ⲭ
 updateMapⲬ α x = Map.insert α (OpenSum.inj x) :: Ⲭ -> Ⲭ
 
 -- | Run LW n times for multiple data points
-lw :: (es ~ '[RecReader (AsList env), State (LRec env), Dist, State Ⲭ, Observe, Sample])
+lw :: (es ~ '[AffReader (AsList env), Dist, State Ⲭ, Observe, Sample])
    => Int                              -- Number of lw iterations per data point
    -> (b -> Model env es a)            -- Model awaiting input variable
    -> [b]                              -- List of model input variables
@@ -45,7 +45,7 @@ lw n model xs ys = do
   concat <$> zipWithM (\x y -> lwNsteps n y (model x)) xs ys
 
 -- | Run LW n times for a single data point
-lwNsteps :: (es ~ '[RecReader (AsList env), State (LRec env), Dist, State Ⲭ, Observe, Sample])
+lwNsteps :: (es ~ '[AffReader (AsList env), Dist, State Ⲭ, Observe, Sample])
   => Int
   -> LRec env
   -> Model env es a
@@ -53,7 +53,7 @@ lwNsteps :: (es ~ '[RecReader (AsList env), State (LRec env), Dist, State Ⲭ, O
 lwNsteps n env model = replicateM n (runLW env model)
 
 -- | Run LW once for single data point
-runLW :: es ~ '[RecReader (AsList env), State (LRec env), Dist, State Ⲭ, Observe, Sample]
+runLW :: es ~ '[AffReader (AsList env), Dist, State Ⲭ, Observe, Sample]
   => LRec env -> Model env es a
   -> Sampler (a, Ⲭ, Double)
 runLW env model = do
@@ -62,8 +62,7 @@ runLW env model = do
                             . runState Map.empty
                             . transformLW
                             . runDist
-                            . runState env
-                            . runRecReader env
+                            . runAffReader env
                             . runModel) model
   return (x, samples, p)
 
@@ -115,9 +114,11 @@ runSample = loop
   where
   loop :: Freer '[Sample] a -> Sampler a
   loop (Pure x) = return x
-  loop (Free u k) = case prj u of
-    Just (Printer s) ->
-       liftS (putStrLn s) >> loop (k ())
-    Just (Sample d α) ->
-       liftS (putStrLn $ ">> : " ++ show α) >> sample d >>= loop . k
-    _         -> error "Impossible: Nothing cannot occur"
+  loop (Free u k) =
+    let x = prj u
+    in case x of
+      (Just (Printer s) :: Maybe (Sample x)) ->
+        liftS (putStrLn s) >> loop (k ())
+      Just (Sample d α) ->
+        liftS (putStrLn $ ">> : " ++ show α) >> sample d >>= loop . k
+      _         -> error "Impossible: Nothing cannot occur"
