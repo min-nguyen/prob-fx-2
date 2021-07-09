@@ -32,15 +32,18 @@ import Extensible.Test
 main :: IO ()
 main = do
   -- trace <- sampleIOFixed testLinRegrBasic
-  -- trace <- sampleIOFixed testLinRegrLW
-  -- trace <- sampleIOFixed testLinRegrMH
+  trace <- sampleIOFixed testLinRegrLWSim
+  -- trace <- sampleIOFixed testLinRegrLWInf
+  -- trace <- sampleIOFixed testLinRegrMHPost
+  -- trace <- sampleIOFixed testLinRegrMHPred
   -- trace <- sampleIOFixed testLogRegrBasic
   -- trace <- sampleIOFixed testLogRegrLW
   -- trace <- sampleIOFixed testLogRegrMH
   -- trace <- sampleIOFixed testNNBasic
   -- trace <- sampleIOFixed testNNLW
   -- trace <- sampleIOFixed testNNMH
-  trace <- sampleIOFixed testNNMHSin
+  -- trace <- sampleIOFixed testNNMHSin
+  -- trace <- sampleIOFixed testSin
   let traceStr = show trace
   putStrLn traceStr
   writeFile "model-output.txt" traceStr

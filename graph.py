@@ -56,7 +56,18 @@ def main():
     axs1.scatter(xs, ys, c=ps, cmap='gray')
     axs1.set_title('Bayesian neural network')
     plt.show()
-
+  if arg == "sin-mh":
+    xys        = [ d[0] for d in data]
+    sampleMaps = [ d[1] for d in data]
+    logpMaps   = [ d[2] for d in data]
+    xs = [x[0] for x in xys]
+    ys = [y[1] for y in xys]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, cmap='gray')
+    axs1.set_title('Sin')
+    plt.show()
   if arg == "log-regr-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
@@ -114,7 +125,21 @@ def main():
     plt.ylabel('y - axis')
     plt.title('Linear regression')
     plt.show()
-  if arg == "lin-regr-lw":
+  if arg == "lin-regr-lw-sim":
+    xys        = [ d[0] for d in data]
+    # probabilities
+    ps         = [ d[2] for d in data]
+    # x axis values
+    xs = [x[0] for x in xys]
+    # y axis values
+    ys = [y[1] for y in xys]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.set_title('Linear regression')
+    plt.show()
+  if arg == "lin-regr-lw-inf":
     xys        = [ d[0] for d in data]
     # sample maps
     sampleMaps = [ d[1] for d in data]
@@ -141,11 +166,23 @@ def main():
     axs2.scatter(mu_samples, ps)
     axs2.set_title('Linear regression')
     plt.show()
-  if arg == "lin-regr-mh":
+  if arg == "lin-regr-mh-post":
     xys         = [ d[0] for d in data]
     sampleMaps  = [ d[1] for d in data]
     logpMaps    = [ d[2] for d in data]
     print(logpMaps)
+  if arg == "lin-regr-mh-pred":
+    xys =  [[ i for i, j in data ],
+            [ j for i, j in data ]]
+    # x axis values
+    xs = xys[0]
+    # y axis values
+    ys = xys[1]
+    plt.scatter(xs, ys)
+    plt.xlabel('x - axis')
+    plt.ylabel('y - axis')
+    plt.title('Linear regression')
+    plt.show()
 
 if __name__ == "__main__":
   main()

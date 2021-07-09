@@ -51,17 +51,27 @@ testLinRegrBasic = do
   liftS $ print $ show output
   return output
 
--- | [(datapoints, samples, likelihood)]
-testLinRegrLW :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
-testLinRegrLW = do
-  let -- Run likelihood weighting simulation over linearRegression
-      {- This should generate a set of points on the y-axis for each given point on the x-axis
-         where every point has the same likelihood (because we don't count the probability for sampling the y data point, and all other observe probabilities are the same every iteration). -}
+testLinRegrLWSim :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testLinRegrLWSim = do
+  let -- Run linear model with fixed parameters, inputs, and outputs, to get likelihood ofevery data point over a uniform area
+      xs  = concat [ replicate 11 x | x <- [0 .. 10]]
       lws = LW.lw 3 Example.linearRegression
-                    [0, 1, 2, 3, 4]
-                    (repeat $ mkRecordLinRegr ([], [1], [0], [1]))
-      -- Run likelihood weighting inference over linearRegression
-      {- This should output the provided fixed set of data points on the x and y axis, where each point has a different probability (due to us observing the probability of given y's). -}
+                    xs
+                    -- (repeat $ mkRecordLinRegr ([], [1], [0], [1]))
+                    (concat $ repeat $ map (\y -> mkRecordLinRegr ([y], [1], [2], [2.0]))
+                      [0 .. 10])
+  output <- lws
+  let output' = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) output
+  liftS $ print $ show output'
+  return output'
+
+-- | [(datapoints, samples, likelihood)]
+testLinRegrLWInf :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testLinRegrLWInf = do
+  let -- Run likelihood weighting inference over linearRegression
+      {- This should output the provided fixed set of data points on the x and y axis, where each point has a different probability (due to us observing the probability of given y's). Also returns a trace of parameters and their likelihoods -}
       lws' = LW.lw 3 Example.linearRegression
                     [0, 1, 2, 3, 4]
                     (map mkRecordLinRegrY [[-0.3], [0.75], [2.43], [3.5], [3.2]])
@@ -72,15 +82,13 @@ testLinRegrLW = do
   liftS $ print $ show output'
   return output'
 
--- | [(datapoints, samples, logps)]
-testLinRegrMH :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
-testLinRegrMH = do
-  let -- Run mh simulation over linearRegression
-      mhs  = MH.mh 3 Example.linearRegression [1,2,3]
-                     (repeat $ mkRecordLinRegr ([], [1], [0], [1]))
-      -- Run mh inference over linearRegression
-      mhs' = MH.mh 3 Example.linearRegression [1,2,3]
-                     (map mkRecordLinRegrY [[-0.3], [1.6], [3.5]])
+-- | Returns trace of model parameter samples
+testLinRegrMHPost :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testLinRegrMHPost = do
+  let -- Run mh inference over linearRegression for data representing a line with gradient 1 and intercept 0
+      mhs' = MH.mh 3 Example.linearRegression [0 .. 100]
+                     (map (mkRecordLinRegrY . (:[]) ) [0 .. 100])
+  -- Reformat MH trace
   output <- mhs'
   let output' = map (\(xy, samples, logps) ->
        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
@@ -89,8 +97,31 @@ testLinRegrMH = do
   liftS $ print $ show output'
   return output'
 
-{- Logistic Regression -}
+-- | Run mh then output predictive distribution
+testLinRegrMHPred :: Sampler [(Double, Double)]
+testLinRegrMHPred = do
+  let -- Run mh inference over linearRegression for data representing a line with gradient 1 and intercept 0
+      mhs' = MH.mh 3 Example.linearRegression [0 .. 100]
+                     (map (mkRecordLinRegrY . (:[]) ) [0 .. 100])
+  -- Reformat MH trace
+  output <- mhs'
+  let output' = map (\(xy, samples, logps) ->
+       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+           logps'   = Map.toList logps
+       in  (xy, samples', logps') ) output
+  liftS $ print $ show output'
+  -- Get the most recent accepted model parameters from the posterior
+  let postParams = map (fromJust . prj @Double . snd . snd)
+                       ((Map.toList . snd3 . head) output)
+      (mu, postParams') = splitAt 1 postParams
+      (c, sigma)        = splitAt 1 postParams'
+  -- Using these parameters, simulate data from the predictive.
+  let bs = Basic.basic 1 Example.linearRegression
+                         (map (/1) [0 .. 100])
+                         (repeat $ mkRecordLinRegr ([], mu, c, sigma))
+  map fst <$> bs
 
+{- Logistic Regression -}
 mkRecordLogRegr :: ([Bool], [Double], [Double]) -> LRec Example.LogRegrEnv
 mkRecordLogRegr (label_vals, m_vals, b_vals) =
   label @= label_vals <: m @= m_vals <: b @= b_vals <: nil
@@ -185,7 +216,7 @@ testNNLW = do
                                                    [2, -5, 1],
                                                    [2.0]))
                            [ sin x | x <- map (/50) [0 .. 300] ])
-  output <- lws'
+  output <- lws
   let output' = map (\(xy, samples, prob) ->
         let samples' = Map.toList samples
         in (xy, samples', prob)) output
@@ -248,3 +279,38 @@ testNNMHSin = do
   liftS $ print $ show (weights, bias, sigma)
   -- return output'
   map fst <$> bs
+
+-- Run this with nn-basic, as it returns a predictive distribution rather than a posterior one.
+testSin :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testSin = do
+  let -- Run mh over data representing a sine curve
+      mhs' = MH.mh 1  (Example.sineModel)
+                       [0 .. 100]
+                       (repeat $ mkRecordLinRegr ([], [1], [0], [0.5]))
+  output <- mhs'
+  let output' = map (\(xy, samples, logps) ->
+       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+           logps'   = Map.toList logps
+       in  (xy, samples', logps') ) output
+  liftS $ putStrLn (show output')
+  return output'
+  -- let output' = map (\(xy, samples, logps) ->
+  --      let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+  --          logps'   = Map.toList logps
+  --      in  (xy, samples', logps') ) output
+  -- -- Get the most recent accepted model parameters from the posterior
+  -- let postParams = map (fromJust . prj @Double . snd . snd)
+  --                      ((Map.toList . snd3 . head) output)
+  --     (bias, postParams') = splitAt 3 postParams
+  --     (weights, sigma)    = splitAt 3 postParams'
+  -- -- Using these parameters, simulate data from the predictive.
+  -- let bs = Basic.basic 1 (Example.nnModel2 3)
+  --                        ([-200 .. 200])
+  --                       -- (map mkRecordNNy
+  --                       --    [ sin x | x <- map (/20) [-200 .. 200] ])
+  --                        (repeat $ mkRecordNN ([], bias,
+  --                                                  weights,
+  --                                                  sigma))
+  -- liftS $ print $ show (weights, bias, sigma)
+  -- return output'
+  -- map fst <$> bs

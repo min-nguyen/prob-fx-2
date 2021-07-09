@@ -123,6 +123,19 @@ nnModel2 n x = do
   y <- likelihoodNN2 nn x
   return (x, y)
 
+-- | Sine model
+
+sineModel :: forall s rs .
+  (HasVar s "y" Double, HasVar s "m" Double, HasVar s "c" Double, HasVar s "σ" Double) =>
+  Double -> Model s rs (Double, Double)
+sineModel x = do
+  m <- normal' 0 2 m
+  c <- normal' 0 2 c
+  σ <- uniform' 1 3 σ
+  Model $ prinT $ "mean is " ++ (show $ sin $ m * x + c)
+  y <- normal' (sin $ m * x + c) σ y
+  return (x, y)
+
 -- | Logistic regression
 type LogRegrEnv =
     '[  "label" ':> Bool,
