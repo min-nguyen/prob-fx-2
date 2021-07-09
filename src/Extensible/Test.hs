@@ -10,6 +10,7 @@
 
 module Extensible.Test where
 
+import Data.Maybe
 import qualified Data.Map as Map
 import qualified Extensible.Example as Example
 import Extensible.Dist
@@ -22,6 +23,7 @@ import Extensible.Model
 import Extensible.Sampler
 import Extensible.RecordReader
 import Data.Extensible
+import Util
 
 {- Linear Regression -}
 
@@ -195,3 +197,67 @@ testNNLW = do
         in (xy, samples', prob)) output
   liftS $ print $ show output'
   return output'
+
+-- Run this with nn-basic, as it returns a predictive distribution rather than a posterior one.
+testNNMH :: Sampler [(Double, Double)]
+testNNMH = do
+  let -- Run mh over data representing a line with gradient 1 and intercept 0
+      mhs = MH.mh 40 (Example.nnModel 3)
+                    (map (/50) [0 .. 300])
+                      (map mkRecordNNy
+                           [ x | x <- map (/50) [0 .. 300] ])
+  output <- mhs
+  let output' = map (\(xy, samples, logps) ->
+       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+           logps'   = Map.toList logps
+       in  (xy, samples', logps') ) output
+  -- Get the most recent accepted model parameters from the posterior
+  let postParams = map (fromJust . prj @Double . snd . snd)
+                       ((Map.toList . snd3 . head) output)
+      (bias, postParams') = splitAt 3 postParams
+      (weights, sigma)    = splitAt 3 postParams'
+  liftS $ print $ show (weights, bias, sigma)
+  -- Using these parameters, simulate data from the predictive. We can see that the predictive data becomes more accurate with more mh steps.
+  let bs = Basic.basic 1 (Example.nnModel 3)
+                         (map (/1) [0 .. 300])
+                         (repeat $ mkRecordNN ([], bias,
+                                                   weights,
+                                                   sigma))
+  map fst <$> bs
+
+-- -- testNNMH :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+-- testNNMH :: Sampler [(Double, Double)]
+-- testNNMH = do
+--   let xs  = concat [ replicate 11 x | x <- [0 .. 10]]
+--       -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
+--       mhs = MH.mh 40 (Example.nnModel 3)
+--                     (map (/50) [0 .. 300])
+--                       (map mkRecordNNy
+--                            [ x | x <- map (/50) [0 .. 300] ])
+--       -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
+--       mhs' = MH.mh 1  (Example.nnModel 3)
+--                       (map (/50) [0 .. 300])
+--                       (map mkRecordNNy
+--                            [ sin x | x <- map (/50) [0 .. 300] ])
+--       -- lws' = LW.lw 3 (Example.nnModel 3)
+--       --                (map (/1) [0 .. 300])
+--       --                (map mkRecordNNy [0 .. 300])
+--   output <- mhs
+--   let output' = map (\(xy, samples, logps) ->
+--        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+--            logps'   = Map.toList logps
+--        in  (xy, samples', logps') ) output
+
+--   let postParams = map (fromJust . prj @Double . snd . snd)
+--                        ((Map.toList . snd3 . head) output)
+--       (bias, postParams') = splitAt 3 postParams
+--       (weights, sigma)    = splitAt 3 postParams'
+
+--   let bs = Basic.basic 1 (Example.nnModel 3)
+--                          (map (/1) [0 .. 300])
+--                          (repeat $ mkRecordNN ([], bias,
+--                                                    weights,
+--                                                    sigma))
+--   liftS $ print $ show (weights, bias, sigma)
+--   -- return output'
+--   map fst <$> bs

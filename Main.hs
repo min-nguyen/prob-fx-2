@@ -38,7 +38,8 @@ main = do
   -- trace <- sampleIOFixed testLogRegrLW
   -- trace <- sampleIOFixed testLogRegrMH
   -- trace <- sampleIOFixed testNNBasic
-  trace <- sampleIOFixed testNNLW
+  -- trace <- sampleIOFixed testNNLW
+  trace <- sampleIOFixed testNNMH
   let traceStr = show trace
   putStrLn traceStr
   writeFile "model-output.txt" traceStr

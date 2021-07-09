@@ -17,6 +17,9 @@ safeTail :: [a] -> [a]
 safeTail [] = []
 safeTail (x:xs) = xs
 
+snd3 :: (a, b, c) -> b
+snd3 (a, b, c) = b
+
 data Address =
   Address { -- The address of the previous sample statement
             prevSamp  :: String,
