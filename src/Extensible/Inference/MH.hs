@@ -30,7 +30,7 @@ import Extensible.Model hiding (runModelFree)
 import Extensible.Sampler
 import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum(..))
-import Extensible.Reader
+import Extensible.AffineReader
 import Extensible.State
 import GHC.Natural
 import GHC.TypeLits (Nat)
@@ -77,7 +77,7 @@ type Vals = '[Int, Double, Bool]
 
 type LogP = Map Addr Double
 type Ⲭ    = Map Addr (DistInfo, OpenSum Vals)
-type Trace a = [(a, Ⲭ, LogP)]
+type TraceMH a = [(a, Ⲭ, LogP)]
 
 updateMapⲬ :: OpenSum.Member x Vals => Addr -> Dist x -> x -> Ⲭ -> Ⲭ
 updateMapⲬ α d x = Map.insert α (toDistInfo d, OpenSum.inj x) :: Ⲭ -> Ⲭ
@@ -106,12 +106,12 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   return $ exp (dom_logα + _X'logα - _Xlogα)
 
 -- | Run MH for multiple data points
-mh :: (es ~ '[Reader (Record (Maybes s)), Dist, Observe, State Ⲭ, State LogP, Sample])
+mh :: (es ~ '[AffReader (AsList env), Dist, Observe, State Ⲭ, State LogP, Sample])
    => Int                              -- Number of mhSteps per data point
-   -> (b -> Model s es a)              -- Model awaiting input variable
+   -> (b -> Model env es a)              -- Model awaiting input variable
    -> [b]                              -- List of model input variables
-   -> [MRec s]                         -- List of model observed variables
-   -> Sampler (Trace a)                -- Trace of all accepted outputs, samples, and logps
+   -> [LRec env]                         -- List of model observed variables
+   -> Sampler (TraceMH a)                -- Trace of all accepted outputs, samples, and logps
 mh n model xs ys = do
   -- Perform initial run of mh
   (x, samples, logps) <- runMH (head ys) Map.empty 0 (model $ head xs)
@@ -121,21 +121,21 @@ mh n model xs ys = do
   foldl (>=>) return mhs [(x, samples, logps)]
 
 -- | Perform n steps of MH for a single data point
-mhNsteps :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample])
+mhNsteps :: (es ~ '[AffReader (AsList env), Dist, Observe, State Ⲭ, State LogP, Sample])
   => Int              -- Number of mhSteps
-  -> MRec env         -- Model observed variable
+  -> LRec env         -- Model observed variable
   -> Model env es a   -- Model
-  -> Trace a          -- Previous mh output
-  -> Sampler (Trace a)
+  -> TraceMH a        -- Previous mh output
+  -> Sampler (TraceMH a)
 mhNsteps n env model trace = do
   foldl (>=>) return (replicate n (mhStep env model)) trace
 
 -- | Perform one step of MH for a single data point
-mhStep :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample])
-  => MRec env         -- Model observed variable
+mhStep :: (es ~ '[AffReader (AsList env), Dist, Observe, State Ⲭ, State LogP, Sample])
+  => LRec env         -- Model observed variable
   -> Model env es a   -- Model
-  -> Trace a          -- Trace of previous mh outputs
-  -> Sampler (Trace a)
+  -> TraceMH a        -- Trace of previous mh outputs
+  -> Sampler (TraceMH a)
 mhStep env model trace = do
   let -- Get previous mh output
       (x, samples, logps) = head trace
@@ -156,22 +156,23 @@ mhStep env model trace = do
             return trace
 
 -- | Run model once under MH
-runMH :: (es ~ '[Reader (Record (Maybes env)), Dist, Observe, State Ⲭ, State LogP, Sample])
-  => MRec env       -- Model observed variable
+runMH :: (es ~ '[AffReader (AsList env), Dist, Observe, State Ⲭ, State LogP, Sample])
+  => LRec env       -- Model observed variable
   -> Ⲭ              -- Previous mh sample set
   -> Addr           -- Sample address
   -> Model env es a -- Model
   -> Sampler (a, Ⲭ, LogP)
 runMH env samples α_samp m = do
-  ((a, samples'), logps') <- ( -- This is where the previous run's samples are actually reused.
-                               -- We do not reuse logps, we simply recompute them.
+  (((a, ys), samples'), logps') <-
+                            ( -- This is where the previous run's samples are actually reused.
+                              -- We do not reuse logps, we simply recompute them.
                               runSample α_samp samples
                             . runState Map.empty
                             . runState Map.empty
                             . runObserve
                             . transformMH
                             . runDist
-                            . runReader env
+                            . runAffReader env
                             . runModel) m
   return (a, samples', logps')
 
@@ -186,13 +187,13 @@ transformMH = loop
       Samp d α
         -> case d of
               -- We can unsafe coerce x here, because we've inferred the type of x from the distribution's type
-              DistDouble d -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
+              DistDouble (Just d) -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
                                             modify (updateLogP α d (unsafeCoerce x)) >>
                                             loop (k x))
-              DistBool d   -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
+              DistBool (Just d)   -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
                                             modify (updateLogP α d (unsafeCoerce x)) >>
                                             loop (k x))
-              DistInt d    -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
+              DistInt (Just d)    -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
                                             modify (updateLogP α d (unsafeCoerce x)) >>
                                             loop (k x))
       Obs d y α
@@ -218,10 +219,12 @@ runSample α_samp samples = loop
   loop :: Freer '[Sample] a -> Sampler a
   loop (Pure x) = return x
   loop (Free u k) = do
-    case u of
-      Samp d α ->
+    case prj u of
+      Just (Printer s) ->
+       liftS (putStrLn s) >> loop (k ())
+      Just (Sample d α) ->
         case d of
-          DistDouble d ->
+          DistDouble (Just d) ->
             case lookupSample samples d α α_samp of
               Nothing -> do
                 x <- sample d
@@ -230,11 +233,11 @@ runSample α_samp samples = loop
               Just x  -> do
                 liftS (putStrLn $ "Using old sample for α" ++ show α ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
-          DistBool d ->
+          DistBool (Just d) ->
             case lookupSample samples d α α_samp of
               Nothing -> sample d >>= loop . k . unsafeCoerce
               Just x  -> (loop . k . unsafeCoerce) x
-          DistInt d ->
+          DistInt (Just d) ->
             case lookupSample samples d α α_samp of
               Nothing -> sample d >>= loop . k . unsafeCoerce
               Just x  -> (loop . k . unsafeCoerce) x

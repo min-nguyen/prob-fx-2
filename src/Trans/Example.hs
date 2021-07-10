@@ -1,13 +1,13 @@
 
 {-# LANGUAGE RankNTypes, GADTs, FlexibleInstances, DerivingStrategies, DataKinds, TypeOperators, TypeFamilies, FlexibleContexts, MultiParamTypeClasses, ConstraintKinds, PolyKinds, UndecidableSuperClasses, TemplateHaskell, ScopedTypeVariables, AllowAmbiguousTypes, QuantifiedConstraints, OverloadedLabels, UndecidableInstances, FunctionalDependencies, TypeFamilyDependencies #-}
 
-module Example where
+module Trans.Example where
 
-import Model
-import FreeT
+import Trans.Model
+import Trans.FreeT
+import Trans.Sampler
+import Trans.Dist
 import Control.Monad.Reader
-import Sampler
-import Dist
 import Util
 import Control.Monad
 import Control.Monad.State

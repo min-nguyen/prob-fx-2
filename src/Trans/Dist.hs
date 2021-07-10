@@ -1,9 +1,9 @@
 {-# LANGUAGE GADTs, TypeOperators #-}
 
-module Dist where
+module Trans.Dist where
 
-import FreeT
-import Sampler
+import Trans.FreeT
+import Trans.Sampler
 import Util
 import Control.Lens hiding ((:>))
 import Control.Monad.State

@@ -1,10 +1,10 @@
 {-# LANGUAGE RankNTypes, GADTs, TypeApplications, FlexibleInstances, DerivingStrategies, DataKinds, TypeOperators, TypeFamilies, FlexibleContexts, MultiParamTypeClasses, ConstraintKinds, PolyKinds, UndecidableSuperClasses, TemplateHaskell, ScopedTypeVariables, AllowAmbiguousTypes, QuantifiedConstraints, OverloadedLabels, UndecidableInstances, FunctionalDependencies, TypeFamilyDependencies #-}
 
-module Model where
+module Trans.Model where
 
-import Dist
-import FreeT
-import Sampler
+import Trans.Dist
+import Trans.FreeT
+import Trans.Sampler
 import Util
 import GHC.Generics
 import GHC.Types

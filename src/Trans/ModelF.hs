@@ -1,11 +1,11 @@
 {-# LANGUAGE RankNTypes, GADTs, TypeApplications, FlexibleInstances, DerivingStrategies, DataKinds, TypeOperators, TypeFamilies, FlexibleContexts, MultiParamTypeClasses, ConstraintKinds, PolyKinds, UndecidableSuperClasses, TemplateHaskell, ScopedTypeVariables, AllowAmbiguousTypes, QuantifiedConstraints, OverloadedLabels, UndecidableInstances, FunctionalDependencies, TypeFamilyDependencies #-}
 {-# LANGUAGE DeriveFunctor #-}
 
-module ModelF where
+module Trans.ModelF where
 
 
 -- import FreeT
-import Sampler
+import Trans.Sampler
 import Util
 import GHC.Generics
 import GHC.Types

@@ -5,17 +5,17 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PolyKinds #-}
 
-module Inference where
+module Trans.Inference where
 
 import Data.Extensible
 import Data.Maybe
 import Control.Monad.Reader
 import Control.Monad.Trans.Class
-import Dist
-import Model hiding (runModel, runModelFree)
-import FreeT
-import Sampler
-import Example
+import Trans.Dist
+import Trans.Model hiding (runModel, runModelFree)
+import Trans.FreeT
+import Trans.Sampler
+import Trans.Example
 import Control.Monad.Trans.Identity
 
 -- runModel :: ModelT s Sampler a -> Sampler (Reader (MRec s) a)

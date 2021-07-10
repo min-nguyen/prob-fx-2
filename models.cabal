@@ -48,17 +48,18 @@ cabal-version:       >=1.10
 
 library
   -- Modules exported by the library.
-  exposed-modules:    Model,
-                      ModelF,
-                      Example,
-                      FreeT,
-                      Dist,
+  exposed-modules:    Trans.Model,
+                      Trans.ModelF,
+                      Trans.Example,
+                      Trans.FreeT,
+                      Trans.Dist,
+                      Trans.Sampler,
+                      Trans.Inference,
                       Util,
-                      Sampler,
-                      Inference,
                       Extensible.Freer,
                       Extensible.Example,
                       Extensible.Reader,
+                      Extensible.AffineReader,
                       Extensible.Writer,
                       Extensible.State,
                       Extensible.IO,
@@ -92,6 +93,7 @@ library
                        membership,
                        profunctors,
                        statistics,
+                       split,
                        mwc-random
 
   -- Directories containing source files.
@@ -115,7 +117,8 @@ executable models
   build-depends:       base >=4.14,
                        extensible,
                        models,
-                       containers
+                       containers,
+                       split
 
 
   -- Base language which the package is written in.

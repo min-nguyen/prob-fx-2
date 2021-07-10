@@ -2,14 +2,14 @@
 
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Extensible.Model where
 
 import Util
 import Extensible.Dist
 import Extensible.Freer
-import Extensible.Reader
+-- import Extensible.Reader
+import Extensible.AffineReader
 import Extensible.Sampler
 import Extensible.IO
 import GHC.Generics
@@ -19,7 +19,7 @@ import Data.Maybe
 import Data.Kind
 import Data.Profunctor.Unsafe
 import Data.Extensible hiding (wrap, Head, Member)
-import Control.Lens ( Identity, (^.), review, Getting )
+import Control.Lens hiding ((:>))
 import Control.Monad
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
 -- import Control.Monad.Reader
@@ -35,23 +35,48 @@ import qualified System.Random.MWC.Distributions as MWC
 import qualified Data.Vector as V
 import Unsafe.Coerce
 
-mkField "m c b μ σ mu sigma y ys label yObs"
+mkField "m c b μ σ mu sigma y ys label yObs weight bias"
 
 type family Maybes (as :: [k]) = (bs :: [k]) | bs -> as where
   Maybes ((f :> v) : as) = (f :> Maybe v) : Maybes as
   Maybes (a : as) = Maybe a : Maybes as
   Maybes '[] = '[]
 
--- HasVar: Lookup for maybe types
-class Lookup (Maybes xs) k (Maybe v) => HasVar xs k v where
+-- type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
+--   -- AsList ((f :> [a]) : as) = ((f :> [a]) : AsList as)
+--   AsList ((f :> a) : as)   = ((f :> [a]) : AsList as)
+--   AsList '[] = '[]
 
-instance Lookup (Maybes xs) k (Maybe v) => HasVar xs k v where
+-- type family AsList' a where
+--   AsList' [a] = [a]
+--   AsList' a   = [a]
+
+-- HasVar: Lookup for maybe types
+class Lookup (AsList xs) k [v] => HasVar xs k v where
+
+instance Lookup (AsList xs) k [v] => HasVar xs k v where
 
 type MRec s = Record (Maybes s)
 
+{-
+Idea : we can use State instead of Reader for the environment of observable variables.
+This lets us use affine types in a way. When a variable is consumed by being conditioned against, we replace its value in the environment with Nothing. When a variable corresponds to a list of values, conditioning against it means removing the head element from the list and writing back the tail of the list. When the tail is empty, we replace the variable's value with Nothing.
+  or:
+We convert all the environment values to lists if they aren't already.
+  or:
+We can use reader on the user end, but then transform this during inference to use the state effect.
+-}
+
+{-
+Idea : We can introduce print statements by adding them as a constructor of Sample
+-}
+
 newtype Model env es a =
-  Model { runModel :: (Member Dist es, Member (Reader (MRec env)) es) => Freer es a }
-  deriving (Functor)
+  Model { runModel :: (Member Dist es, Member (AffReader (AsList env)) es, Member Sample es) => Freer es a }
+  deriving Functor
+
+prinT :: Member Sample es => String -> Freer es ()
+prinT s = Free (inj $ Printer s) Pure
 
 instance Applicative (Model env es) where
   pure = Model . pure
@@ -63,65 +88,64 @@ instance Monad (Model env es) where
     f' <- f
     runModel $ k f'
 
-accessEnv :: forall s es . (Member (Reader (MRec s)) es) =>
-   Freer es (MRec s)
-accessEnv = do
-    env :: MRec s <- Free (inj Ask) Pure
-    return env
-
 accessField :: forall s es a.
-   Getting a (Maybes s :& Field Identity) a ->
-   Model s es a
+   Lens' (AsList s :& Field Identity) [a] ->
+   Model s es (Maybe a)
 accessField f = Model $ do
-    env :: MRec s <- Free (inj Ask) Pure
-    return $ env ^. f
+    env <- Free (inj $ Ask f) Pure
+    return env
 
 normal :: Double -> Double -> Model s es Double
 normal mu sigma = Model $ do
   send (NormalDist mu sigma Nothing)
 
-normal' :: forall s es a . (a ~ Maybe Double)
-  => Double -> Double -> Getting a (Maybes s :& Field Identity) a
+normal' :: forall s es a . (a ~ Double)
+  => Double -> Double -> Lens' (AsList s :& Field Identity) [a]
   -> Model s es Double
 normal' mu sigma field = Model $ do
-  env :: MRec s <- accessEnv
-  let maybe_y = env ^. field
+  maybe_y <- Free (inj $ Ask field) Pure
   send (NormalDist mu sigma maybe_y)
 
 bernoulli :: Double -> Model s es Bool
 bernoulli p = Model $ do
   send (BernoulliDist p Nothing)
 
-bernoulli' :: forall s es a. (a ~ Maybe Bool)
-  => Double -> Getting a (Maybes s :& Field Identity) a
+bernoulli' :: forall s es a. (a ~ Bool)
+  => Double -> Lens' (AsList s :& Field Identity) [a]
   -> Model s es Bool
 bernoulli' p field = Model $ do
-  env :: MRec s <- accessEnv
-  let maybe_y = env ^. field
+  maybe_y <- Free (inj $ Ask field) Pure
   send (BernoulliDist p maybe_y)
+
+binomial :: Int -> Double -> Model s es Int
+binomial n p = Model $ do
+  send (BinomialDist n p Nothing)
+
+binomial' :: forall s es a. (a ~  Int)
+  => Int -> Double -> Lens' (AsList s :& Field Identity) [a]
+  -> Model s es Int
+binomial' n p field = Model $ do
+  maybe_y <- Free (inj $ Ask field) Pure
+  send (BinomialDist n p maybe_y)
 
 gamma :: Double -> Double -> Model s es Double
 gamma k θ = Model $ do
   send (GammaDist k θ Nothing)
 
-gamma' :: forall s es a. (a ~ Maybe Double) =>
-  (a ~ Maybe Double)
-  => Double -> Double -> Getting a (Maybes s :& Field Identity) a
+gamma' :: forall s es a. (a ~ Double)
+  => Double -> Double -> Lens' (AsList s :& Field Identity) [a]
   -> Model s es Double
 gamma' k θ field = Model $ do
-  env :: MRec s <- accessEnv
-  let maybe_y = env ^. field
+  maybe_y <- Free (inj $ Ask field) Pure
   send (GammaDist k θ maybe_y)
 
 uniform :: Double -> Double -> Model s es Double
 uniform min max = Model $ do
   send (UniformDist min max Nothing)
 
-uniform' :: forall s es a. (a ~ Maybe Double) =>
-  (a ~ Maybe Double)
-  => Double -> Double -> Getting a (Maybes s :& Field Identity) a
+uniform' :: forall s es a. (a ~ [Double])
+  => Double -> Double -> Lens' (AsList s :& Field Identity) a
   -> Model s es Double
 uniform' min max field = Model $ do
-  env :: MRec s <- accessEnv
-  let maybe_y = env ^. field
+  maybe_y <- Free (inj $ Ask field) Pure
   send (UniformDist min max maybe_y)

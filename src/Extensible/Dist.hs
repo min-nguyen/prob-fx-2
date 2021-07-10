@@ -112,10 +112,14 @@ instance Show a => Show (Dist a) where
 type Addr = Int
 
 data Sample a where
-  Sample :: Dist a -> Addr -> Sample a
+  Sample  :: Dist a -> Addr -> Sample a
+  Printer :: String -> Sample ()
 
 data Observe a where
   Observe :: Dist a -> a -> Addr -> Observe a
+
+pattern Print :: Member Sample rs => String -> Union rs ()
+pattern Print s <- (prj -> Just (Printer s))
 
 pattern Samp :: Member Sample rs => Dist x -> Addr -> Union rs x
 pattern Samp d α <- (prj -> Just (Sample d α))
@@ -123,27 +127,45 @@ pattern Samp d α <- (prj -> Just (Sample d α))
 pattern Obs :: Member Observe rs => Dist x -> x -> Addr -> Union rs x
 pattern Obs d y α <- (prj -> Just (Observe d y α))
 
-pattern DistDouble :: Dist Double -> Dist x
+pattern DistDouble :: Maybe (Dist Double) -> Dist x
 pattern DistDouble d <- (isDistDouble -> d)
-pattern DistBool :: Dist Bool -> Dist x
+pattern DistBool :: Maybe (Dist Bool) -> Dist x
 pattern DistBool d <- (isDistBool -> d)
-pattern DistInt :: Dist Int -> Dist x
+pattern DistInt :: Maybe (Dist Int) -> Dist x
 pattern DistInt d <- (isDistInt -> d)
 
-isDistDouble :: Dist x -> Dist Double
-isDistDouble d@NormalDist {} = d
-isDistDouble d@BetaDist {} = d
-isDistDouble d@GammaDist {} = d
-isDistDouble d@UniformDist {} = d
+isDistDouble :: Dist x -> Maybe (Dist Double)
+isDistDouble d@NormalDist {} = Just d
+isDistDouble d@BetaDist {} = Just d
+isDistDouble d@GammaDist {} = Just d
+isDistDouble d@UniformDist {} = Just d
+isDistDouble d@DiscrUniformDist {} = Nothing
+isDistDouble d@BinomialDist {} = Nothing
+isDistDouble d@CategoricalDist {} = Nothing
+isDistDouble d@DiscreteDist {} = Nothing
+isDistDouble d@BernoulliDist {} = Nothing
 
-isDistBool :: Dist x -> Dist Bool
-isDistBool d@BernoulliDist {} = d
+isDistBool :: Dist x -> Maybe (Dist Bool)
+isDistBool d@BernoulliDist {} = Just d
+isDistBool d@NormalDist {} = Nothing
+isDistBool d@BetaDist {} = Nothing
+isDistBool d@GammaDist {} = Nothing
+isDistBool d@UniformDist {} = Nothing
+isDistBool d@DiscrUniformDist {} = Nothing
+isDistBool d@BinomialDist {} = Nothing
+isDistBool d@CategoricalDist {} = Nothing
+isDistBool d@DiscreteDist {} = Nothing
 
-isDistInt :: Dist x -> Dist Int
-isDistInt d@DiscrUniformDist {} = d
-isDistInt d@BinomialDist {} = d
-isDistInt d@CategoricalDist {} = d
-isDistInt d@DiscreteDist {} = d
+isDistInt :: Dist x -> Maybe (Dist Int)
+isDistInt d@DiscrUniformDist {} = Just d
+isDistInt d@BinomialDist {} = Just d
+isDistInt d@CategoricalDist {} = Just d
+isDistInt d@DiscreteDist {} = Just d
+isDistInt d@BernoulliDist {} = Nothing
+isDistInt d@NormalDist {} = Nothing
+isDistInt d@BetaDist {} = Nothing
+isDistInt d@GammaDist {} = Nothing
+isDistInt d@UniformDist {} = Nothing
 
 {- Replaces Dists with Sample or Observe and adds address -}
 runDist :: forall rs a. (Member Sample rs, Member Observe rs) => Freer (Dist : rs) a
@@ -263,7 +285,7 @@ sample (GammaDist k θ obs )        =
 sample (BetaDist α β  obs )         =
   createSampler (sampleBeta α β) >>= return
 sample (BinomialDist n p  obs )     =
-  createSampler (sampleBinomial n p) >>=  return .  length
+  createSampler (sampleBinomial n p) >>=  return .  length . filter (== True)
 sample (BernoulliDist p obs )      =
   createSampler (sampleBernoulli p) >>= return
 sample (CategoricalDist ps obs )   =
