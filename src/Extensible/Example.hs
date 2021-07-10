@@ -95,7 +95,7 @@ logisticRegression :: forall rs s.
  (HasVar s "label" Bool, HasVar s "m" Double, HasVar s "b" Double) =>
  Double -> Model s rs (Double, Bool)
 logisticRegression x = do
-  m     <- normal' 0 1 m
+  m     <- normal' 0 3 m
   b     <- normal' 0 1 b
   sigma <- gamma 1 1
   y     <- normal (m * x + b) sigma

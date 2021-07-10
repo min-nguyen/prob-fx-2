@@ -135,9 +135,9 @@ def main():
     plt.plot(x_test, sigmoid.ravel(),c="green", label = "logistic fit")
     plt.xlabel('x - axis')
     plt.ylabel('y - axis')
-    plt.title('Logistic regression')
+    plt.title('Logistic regression - basic simulation')
     plt.show()
-  if arg == "log-regr-lw":
+  if arg == "log-regr-lw-sim":
     xys        = [ d[0] for d in data]
     sampleMaps = [ d[1] for d in data]
     ps         = [ d[2] for d in data]
@@ -145,18 +145,32 @@ def main():
     ys = [y[1] for y in xys]
     mu_samples    = [ d[0][1] for d in sampleMaps ]
     b_samples     = [ d[1][1] for d in sampleMaps ]
-
+    print(ps)
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
     axs1.scatter(xs, ys, c=ps, cmap='gray')
-    axs1.set_title('Logistic regression')
-
+    axs1.set_title('Logistic regression - likelihood weighting')
+    plt.show()
+  if arg == "log-regr-lw-inf":
+    xys        = [ d[0] for d in data]
+    sampleMaps = [ d[1] for d in data]
+    ps         = [ d[2] for d in data]
+    xs = [x[0] for x in xys]
+    ys = [y[1] for y in xys]
+    mu_samples    = [ d[0][1] for d in sampleMaps ]
+    b_samples     = [ d[1][1] for d in sampleMaps ]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.set_title('Logistic regression - likelihood weighting')
+    axs1.text(-2.5, 1.15, 'How likely the randomly sampled parameters of the current iteration gives rise to the data point')
     fig2, axs2 = plt.subplots(nrows=1)
     axs2.set_xlabel('mu value')
     axs2.set_ylabel('probability')
     axs2.scatter(mu_samples, ps)
-    axs2.set_title('Logistic regression')
+    axs2.set_title('Logistic regression - likelihood weighting')
     plt.show()
   if arg == "log-regr-mh":
     xys         = [ d[0] for d in data]
