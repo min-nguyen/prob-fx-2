@@ -39,8 +39,8 @@ main = do
   -- trace <- sampleIOFixed testLogRegrBasic
   -- trace <- sampleIOFixed testLogRegrLWSim
   -- trace <- sampleIOFixed testLogRegrLWInf
-  trace <- sampleIOFixed testLogRegrMHPost
-  -- trace <- sampleIOFixed testLogRegrMHPred
+  -- trace <- sampleIOFixed testLogRegrMHPost
+  trace <- sampleIOFixed testLogRegrMHPred
   -- trace <- sampleIOFixed testNNBasic
   -- trace <- sampleIOFixed testNNLW
   -- trace <- sampleIOFixed testNNMH

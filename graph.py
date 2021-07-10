@@ -192,9 +192,17 @@ def main():
     axs2.set_title('Logistic regression - Metropolis Hastings Posterior')
     plt.show()
   if arg == "log-regr-mh-pred":
-    xys         = [ d[0] for d in data]
-    sampleMaps  = [ d[1] for d in data]
-    logpMaps    = [ d[2] for d in data]
+    xys =  [[ i for i, j in data ],
+            [ j for i, j in data ]]
+    # x axis values
+    xs = xys[0]
+    # y axis values
+    ys = xys[1]
+    plt.scatter(xs, ys)
+    plt.xlabel('x - axis')
+    plt.ylabel('y - axis')
+    plt.title('Logistic regression - Metropolis Hastings Predictive')
+    plt.show()
     print(sampleMaps)
   if arg == "nn-basic":
     xys =  [[ i for i, j in data ],

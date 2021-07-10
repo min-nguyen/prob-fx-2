@@ -124,7 +124,7 @@ testLogRegrBasic = do
   let -- This should generate a set of points on the y-axis for each given point on the x-axis
       bs = Basic.basic 1 Example.logisticRegression
                          (map (/50) [(-100) .. 100])
-                         (repeat $ mkRecordLogRegr ([], [3], [-0.15]))
+                         (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
       -- This should output the provided fixed set of data points on the x and y axis.
       bs' = Basic.basic 3 Example.logisticRegression
                          [0, 1, 2, 3, 4]
@@ -149,7 +149,7 @@ testLogRegrLWInf = do
   -- Using fixed model parameters, generate some sample data points to learn
   output <- map fst <$> Basic.basic 1 Example.logisticRegression
                          (map (/50) [(-100) .. 100])
-                         (repeat $ mkRecordLogRegr ([], [3], [-0.15]))
+                         (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
   let (xs, ys) = (map fst output, map snd output)
   -- Perform inference against these data points
   let lws' = LW.lw 3 Example.logisticRegression xs (map (mkRecordLogRegrL . (:[])) ys)
@@ -165,7 +165,7 @@ testLogRegrMHPost = do
                          (map (/50) [(-100) .. 100])
                          (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
   let (xs, ys) = (map fst output, map snd output)
-  let mhs' = MH.mh 30 Example.logisticRegression
+  let mhs' = MH.mh 50 Example.logisticRegression
                          xs
                          (map (mkRecordLogRegrL . (:[])) ys)
   output <- mhs'
@@ -176,22 +176,18 @@ testLogRegrMHPost = do
   liftS $ print $ show output'
   return output'
 
-testLogRegrMHPred :: Sampler [((Double, Bool), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testLogRegrMHPred :: Sampler [(Double, Bool)]
 testLogRegrMHPred = do
-  let -- Run basic simulation over logisticRegression
-      mhs  = MH.mh 3 Example.logisticRegression
+  mhTrace <- testLogRegrMHPost
+  let postParams = map (fromJust . prj @Double . snd)
+                      ((snd3 . head) mhTrace)
+      (mu, postParams') = splitAt 1 postParams
+      (b, _)        = splitAt 1 postParams'
+  liftS $ print $ "mu is " ++ show mu ++ " b is " ++ show b
+  let bs = Basic.basic 1 Example.logisticRegression
                          (map (/50) [(-100) .. 100])
-                         (repeat $ mkRecordLogRegr ([], [-0.7], [-0.15]))
-      mhs' = MH.mh 3 Example.logisticRegression
-                         [0, 1, 2, 3, 4]
-                         (map mkRecordLogRegrL [[False], [False], [True], [False], [True]])
-  output <- mhs'
-  let output' = map (\(xy, samples, logps) ->
-       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
-           logps'   = Map.toList logps
-       in  (xy, samples', logps') ) output
-  liftS $ print $ show output'
-  return output'
+                         (repeat $ mkRecordLogRegr ([], mu, b))
+  map fst <$> bs
 
 -- {- Bayesian Neural Network -}
 
