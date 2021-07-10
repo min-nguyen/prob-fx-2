@@ -156,7 +156,7 @@ def main():
     axs2.set_xlabel('mu value')
     axs2.set_ylabel('probability')
     axs2.scatter(mu_samples, ps)
-    axs2.set_title('Linear regression')
+    axs2.set_title('Logistic regression')
     plt.show()
   if arg == "log-regr-mh":
     xys         = [ d[0] for d in data]

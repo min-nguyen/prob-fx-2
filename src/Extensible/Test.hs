@@ -36,7 +36,7 @@ mkRecordLinRegrY :: [Double] -> LRec Example.LinRegrEnv
 mkRecordLinRegrY y_vals =
  y @= y_vals <: m @= [] <: c @= [] <: σ @= [] <: nil
 
-testLinRegrBasic :: Sampler [((Double, Double), LRec Example.LinRegrEnv)]
+testLinRegrBasic :: Sampler [(Double, Double)]
 testLinRegrBasic = do
   let -- Run basic simulation over linearRegression
       {- This should generate a set of points on the y-axis for each given point on the x-axis -}
@@ -47,9 +47,7 @@ testLinRegrBasic = do
       bs'  = Basic.basic 3 Example.linearRegression
                     [0, 1, 2, 3, 4]
                     (map mkRecordLinRegrY [[-0.3], [0.75], [2.43], [3.5], [3.2]])
-  output <- bs
-  liftS $ print $ show output
-  return output
+  map fst <$> bs
 
 testLinRegrLWSim :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
 testLinRegrLWSim = do
@@ -121,21 +119,36 @@ mkRecordLogRegrL :: [Bool] -> LRec Example.LogRegrEnv
 mkRecordLogRegrL label_val =
  label @= label_val <: m @= [] <: b @= [] <: nil
 
-testLogRegrBasic :: Sampler [((Double, Bool), LRec Example.LogRegrEnv)]
+testLogRegrBasic :: Sampler [(Double, Bool)]
 testLogRegrBasic = do
-  let -- Run basic simulation over logisticRegression
+  let -- This should generate a set of points on the y-axis for each given point on the x-axis
       bs = Basic.basic 1 Example.logisticRegression
                          (map (/50) [(-100) .. 100])
                          (repeat $ mkRecordLogRegr ([], [-0.7], [-0.15]))
+      -- This should output the provided fixed set of data points on the x and y axis.
       bs' = Basic.basic 3 Example.logisticRegression
                          [0, 1, 2, 3, 4]
                          (map mkRecordLogRegrL [[False], [False], [True], [False], [True]])
-  output <- bs
-  liftS $ print $ show output
-  return output
+  map fst <$> bs
 
-testLogRegrLW :: Sampler [((Double, Bool), [(Addr, OpenSum LW.Vals)], Double)]
-testLogRegrLW = do
+testLogRegrLWSim :: Sampler [((Double, Bool), [(Addr, OpenSum LW.Vals)], Double)]
+testLogRegrLWSim = do
+  let -- Run basic simulation over logisticRegression
+      lws  = LW.lw 3 Example.logisticRegression
+                         (map (/50) [(-100) .. 100])
+                         (repeat $ mkRecordLogRegr ([], [-0.7], [-0.15]))
+      lws' = LW.lw 3 Example.logisticRegression
+                         [0, 1, 2, 3, 4]
+                         (map mkRecordLogRegrL [[False], [False], [True], [False], [True]])
+  output <- lws'
+  let output' = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) output
+  liftS $ print $ show output'
+  return output'
+
+testLogRegrLWInf :: Sampler [((Double, Bool), [(Addr, OpenSum LW.Vals)], Double)]
+testLogRegrLWInf = do
   let -- Run basic simulation over logisticRegression
       lws  = LW.lw 3 Example.logisticRegression
                          (map (/50) [(-100) .. 100])

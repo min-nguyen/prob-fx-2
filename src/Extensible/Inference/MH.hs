@@ -187,13 +187,13 @@ transformMH = loop
       Samp d α
         -> case d of
               -- We can unsafe coerce x here, because we've inferred the type of x from the distribution's type
-              DistDouble d -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
+              DistDouble (Just d) -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
                                             modify (updateLogP α d (unsafeCoerce x)) >>
                                             loop (k x))
-              DistBool d   -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
+              DistBool (Just d)   -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
                                             modify (updateLogP α d (unsafeCoerce x)) >>
                                             loop (k x))
-              DistInt d    -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
+              DistInt (Just d)    -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
                                             modify (updateLogP α d (unsafeCoerce x)) >>
                                             loop (k x))
       Obs d y α
@@ -224,7 +224,7 @@ runSample α_samp samples = loop
        liftS (putStrLn s) >> loop (k ())
       Just (Sample d α) ->
         case d of
-          DistDouble d ->
+          DistDouble (Just d) ->
             case lookupSample samples d α α_samp of
               Nothing -> do
                 x <- sample d
@@ -233,11 +233,11 @@ runSample α_samp samples = loop
               Just x  -> do
                 liftS (putStrLn $ "Using old sample for α" ++ show α ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
-          DistBool d ->
+          DistBool (Just d) ->
             case lookupSample samples d α α_samp of
               Nothing -> sample d >>= loop . k . unsafeCoerce
               Just x  -> (loop . k . unsafeCoerce) x
-          DistInt d ->
+          DistInt (Just d) ->
             case lookupSample samples d α α_samp of
               Nothing -> sample d >>= loop . k . unsafeCoerce
               Just x  -> (loop . k . unsafeCoerce) x

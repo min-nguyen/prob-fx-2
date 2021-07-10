@@ -78,12 +78,12 @@ transformLW = loop
       Samp d α
         -> case d of
               -- We can unsafe coerce x here, because we've inferred the type of x from the distribution's type
-              DistDouble d -> Free u (\x -> modify (updateMapⲬ α (unsafeCoerce x :: Double)) >>
-                                            loop (k x))
-              DistBool d   -> Free u (\x -> modify (updateMapⲬ α (unsafeCoerce x :: Bool)) >>
-                                            loop (k x))
-              DistInt d    -> Free u (\x -> modify (updateMapⲬ α (unsafeCoerce x :: Int)) >>
-                                            loop (k x))
+              DistInt (Just d)    -> Free u (\x -> do modify (updateMapⲬ α (unsafeCoerce x :: Int))
+                                                      loop (k x))
+              DistDouble (Just d) -> Free u (\x -> do modify (updateMapⲬ α (unsafeCoerce x :: Double))
+                                                      loop (k x))
+              DistBool (Just d)   -> Free u (\x -> do modify (updateMapⲬ α (unsafeCoerce x :: Bool))
+                                                      loop (k x))
       _ -> Free u (loop . k)
 
 runObserve :: Member Sample rs => Freer (Observe : rs) a -> Freer rs (a, Double)
@@ -91,23 +91,24 @@ runObserve = loop 0
   where
   loop :: Member Sample rs => Double -> Freer (Observe : rs) a -> Freer rs (a, Double)
   loop p (Pure x) = return (x, p)
-  loop p (Free u k) = case decomp u of
-    Right (Observe d y α)
-      -> case d of
-          DistDouble d ->
-            do let p' = prob d (unsafeCoerce y :: Double)
-               prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show p'
-               loop (p + p') (k y)
-          DistBool d ->
-            do let p' = prob d (unsafeCoerce y :: Bool)
-               prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Bool) ++ " from " ++ show d ++ " is " ++ show p'
-               loop (p + p') (k y)
-          DistInt d ->
-            do let p' = prob d (unsafeCoerce y :: Int)
-               prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Int) ++ " from " ++ show d ++ " is " ++ show p'
-               loop (p + p') (k y)
-          _ -> undefined
-    Left  u'  -> Free u' (loop p . k)
+  loop p (Free u k) = do
+    case decomp u of
+      Right (Observe d y α)
+        -> case d of
+            DistBool (Just d) ->
+              do let p' = prob d (unsafeCoerce y :: Bool)
+                 prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Bool) ++ " from " ++ show d ++ " is " ++ show p'
+                 loop (p + p') (k y)
+            DistDouble (Just d) ->
+              do  let p' = prob d (unsafeCoerce y :: Double)
+                  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show p'
+                  loop (p + p') (k y)
+            DistInt (Just d) ->
+              do let p' = prob d (unsafeCoerce y :: Int)
+                 prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Int) ++ " from " ++ show d ++ " is " ++ show p'
+                 loop (p + p') (k y)
+            _ -> undefined
+      Left  u'  -> Free u' (loop p . k)
 
 runSample :: Freer '[Sample] a -> Sampler a
 runSample = loop
