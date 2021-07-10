@@ -308,5 +308,18 @@ def main():
     axs2.hist(c_samples_unique, bins=50)
     axs2.set_title('Sine model - Metropolis Hastings Posterior')
     plt.show()
+  if arg == "sin-mh-pred":
+    xys =  [[ i for i, j in data ],
+            [ j for i, j in data ]]
+    # x axis values
+    xs = xys[0]
+    # y axis values
+    ys = xys[1]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, cmap='gray')
+    axs1.set_title('Sine model - Metropolis Hastings Predictive')
+    plt.show()
 if __name__ == "__main__":
   main()

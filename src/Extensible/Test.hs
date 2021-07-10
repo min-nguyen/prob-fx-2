@@ -82,9 +82,9 @@ testLinRegrLWInf = do
 -- | Returns trace of model parameter samples
 testLinRegrMHPost :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
 testLinRegrMHPost = do
-  let -- Run mh inference over linearRegression for data representing a line with gradient 1 and intercept 0
-      mhs' = MH.mh 20 Example.linearRegression [0 .. 100]
-                     (map (mkRecordLinRegrY . (:[]) ) [0 .. 100])
+  let -- Run mh inference over linearRegression for data representing a line with gradient 3 and intercept 0
+      mhs' = MH.mh 100 Example.linearRegression [0 .. 100]
+                     (map (mkRecordLinRegrY . (:[]) . (*3) ) [0 .. 100])
   -- Reformat MH trace
   mhTrace <- mhs'
   let mhTrace' = map (\(xy, samples, logps) ->
@@ -234,9 +234,7 @@ testNNLWInf = do
   let -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
       lws = LW.lw 1  (Example.nnModel1 3)
                       (map (/50) [0 .. 300])
-                      (map (\y -> mkRecordNN ([y], [],
-                                                   [],
-                                                   []))
+                      (map (\y -> mkRecordNN ([y], [], [], []))
                            [ x | x <- map (/50) [0 .. 300] ])
   output <- lws
   let output' = map (\(xy, samples, prob) ->
@@ -277,10 +275,10 @@ testNNMHPred = do
                                                    sigma))
   map fst <$> bs
 
-{- Bayesian neural network 2 -}
+{- Bayesian neural network v2 -}
 
-testNNSinBasic :: Sampler  [(Double, Double)]
-testNNSinBasic = do
+testNN2Basic :: Sampler  [(Double, Double)]
+testNN2Basic = do
   let -- Run basic simulation over neural network
       bs = Basic.basic 1 (Example.nnModel2 3)
                          (map (/1) [0 .. 300])
@@ -291,8 +289,8 @@ testNNSinBasic = do
   liftS $ print $ show output
   return output
 
-testNNSinLWSim :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
-testNNSinLWSim = do
+testNN2LWSim :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testNN2LWSim = do
   let xs  = concat [ replicate 31 x | x <- [-10 .. 10]]
       -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
       lws = LW.lw 1 (Example.nnModel2 3)
@@ -307,8 +305,8 @@ testNNSinLWSim = do
   liftS $ print $ show output'
   return output'
 
-testNNSinLWInf :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
-testNNSinLWInf = do
+testNN2LWInf :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testNN2LWInf = do
   let -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
       lws = LW.lw 1  (Example.nnModel1 3)
                       (map (/50) [0 .. 300])
@@ -324,13 +322,12 @@ testNNSinLWInf = do
   return output'
 
 -- Run this with nn-basic, as it returns a predictive distribution rather than a posterior one.
-testNNMHSin :: Sampler [(Double, Double)]
-testNNMHSin = do
-  let -- Run mh over data representing a sine curve
-      mhs' = MH.mh 20  (Example.nnModel2 3)
-                      (map (/20) [-200 .. 200])
-                      (map mkRecordNNy
-                           [ sin x | x <- map (/20) [-200 .. 200] ])
+testNN2MH :: Sampler [(Double, Double)]
+testNN2MH = do
+  let mhs' = MH.mh 20  (Example.nnModel2 3)
+                       (map (/20) [-200 .. 200])
+                       (map mkRecordNNy
+                           [  x | x <- map (/20) [-200 .. 200] ])
   output <- mhs'
   let output' = map (\(xy, samples, logps) ->
        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
@@ -353,14 +350,14 @@ testNNMHSin = do
   -- return output'
   map fst <$> bs
 
-{- Sine -}
+{- Sine Model -}
 
 testSinBasic :: Sampler [(Double, Double)]
 testSinBasic = do
   let -- Simulate a sine curve
       output = Basic.basic 1  (Example.sineModel)
-                       [0 .. 100]
-                       (repeat $ mkRecordLinRegr ([], [0.1], [0], [0.1]))
+                       (map (/50) [0 .. 200])
+                       (repeat $ mkRecordLinRegr ([], [2], [0], [0.1]))
   map fst <$> output
 
 testSinLWSim :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
@@ -381,10 +378,10 @@ testSinLWSim = do
 testSinLWInf :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
 testSinLWInf = do
   -- Generate data points from sine model with fixed parameters
-  let xs  = [  x | x <- [0 .. 100]]
+  let xs = map (/50) [0 .. 200]
       bs = Basic.basic 1 Example.sineModel
                     xs
-                    (repeat $ mkRecordLinRegr ([], [0.1], [0], [0.1]))
+                    (repeat $ mkRecordLinRegr ([], [2], [0], [0.1]))
   xys <- map fst <$> bs
   let (xs, ys) = (map fst xys, map snd xys)
   -- Perform inference against these data points to try and learn sine model parameters
@@ -395,22 +392,38 @@ testSinLWInf = do
         in (xy, samples', prob)) output
   return output'
 
-
--- Run this with nn-basic, as it returns a predictive distribution rather than a posterior one.
 testSinMHPost :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
 testSinMHPost = do
   -- Generate data points from sine model with fixed parameters
-  let xs  = [  x | x <- [0 .. 100]]
+  let xs = map (/50) [0 .. 200]
       bs = Basic.basic 1 Example.sineModel
                     xs
-                    (repeat $ mkRecordLinRegr ([], [0.1], [0], [0.1]))
+                    (repeat $ mkRecordLinRegr ([], [2], [0], [0.1]))
   xys <- map fst <$> bs
   let (xs, ys) = (map fst xys, map snd xys)
-      -- Run mh over data representing a line with gradient 1 and intercept 0
-      mhs = MH.mh 40 Example.sineModel xs (map (mkRecordLinRegrY . (:[])) ys)
+      -- Run mh over data representing a sine wave
+      mhs = MH.mh 200 Example.sineModel xs (map (mkRecordLinRegrY . (:[])) ys)
   mhTrace <- mhs
   let mhTrace' = map (\(xy, samples, logps) ->
        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
            logps'   = Map.toList logps
        in  (xy, samples', logps') ) mhTrace
   return mhTrace'
+
+-- | Use mh posterior to output predictive distribution
+testSinMHPred :: Sampler [(Double, Double)]
+testSinMHPred = do
+  mhTrace <- testSinMHPost
+  liftS $ print $ show mhTrace
+  -- Get the most recent accepted model parameters from the posterior
+  let postParams = map (fromJust . prj @Double . snd)
+                       ((snd3 . head) mhTrace)
+      (mu, postParams') = splitAt 1 postParams
+      (c, sigma)        = splitAt 1 postParams'
+      xs                = map (/50) [0 .. 200]
+  liftS $ putStrLn $ "mu c sigma" ++ show (mu, c, sigma)
+  -- Using these parameters, simulate data from the predictive.
+  let bs = Basic.basic 1 Example.sineModel
+                         xs
+                         (repeat $ mkRecordLinRegr ([], mu, c, sigma))
+  map fst <$> bs

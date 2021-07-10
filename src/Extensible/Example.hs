@@ -75,7 +75,7 @@ linearRegression :: forall s rs .
   (HasVar s "y" Double, HasVar s "m" Double, HasVar s "c" Double, HasVar s "σ" Double) =>
   Double -> Model s rs (Double, Double)
 linearRegression x = do
-  m1 <- normal' 0 2 m
+  m1 <- normal' 0 4 m
   c <- normal' 0 2 c
   σ <- uniform' 1 3 σ
   y <- normal' (m1 * x + c) σ y
@@ -144,7 +144,7 @@ nnModel1 n x = do
   y <- likelihoodNN1 nn x
   return (x, y)
 
--- | Alternative neural network formulation for sine curve
+-- | Alternative neural network formulation using activation
 forwardNN2 :: NN -> Double -> Double
 forwardNN2 (NN bs ws _) x =
   ws `dot` map (activation . (x -)) bs
@@ -168,7 +168,7 @@ sineModel :: forall s rs .
   (HasVar s "y" Double, HasVar s "m" Double, HasVar s "c" Double, HasVar s "σ" Double) =>
   Double -> Model s rs (Double, Double)
 sineModel x = do
-  m <- normal' 0 2 m
+  m <- normal' 0 4 m
   c <- normal' 0 2 c
   σ <- uniform' 1 3 σ
   Model $ prinT $ "mean is " ++ (show $ sin $ m * x + c)
