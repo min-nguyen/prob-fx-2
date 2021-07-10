@@ -175,25 +175,7 @@ sineModel x = do
   y <- normal' (sin $ m * x + c) σ y
   return (x, y)
 
--- --
--- arbitraryModel :: forall es s. HasVar s "y" Double =>
---   Double -> Double -> Double -> Model s es Double
--- arbitraryModel μ σ x = do
---   normal'  (μ + x) σ y
---   replicateM 4 $ normal (μ + x) σ
---   normal'  (μ + x) σ y
 
--- ifModel :: forall rs s. Double -> Model s rs Double
--- ifModel p = do
---   x1 <- bernoulli p
---   x2 <- if x1 then normal 0 1 else pure 0
---   x3 <- bernoulli p
---   return 0
-
--- ifModel' :: Double -> Model s rs Double
--- ifModel' p = Model $
---   Free (inj $ BernoulliDist p Nothing) Pure >>= \x1 ->
---     if x1 then Free (inj $ NormalDist 0 1 Nothing) Pure else return 0
 
 {- Non probabilistic programs-}
 

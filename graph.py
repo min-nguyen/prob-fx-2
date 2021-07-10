@@ -241,17 +241,72 @@ def main():
     axs1.scatter(xs, ys, cmap='gray')
     axs1.set_title('Bayesian neural network - Metropolis Hastings Predictive')
     plt.show()
-  if arg == "sin-mh":
-    xys        = [ d[0] for d in data]
-    sampleMaps = [ d[1] for d in data]
-    logpMaps   = [ d[2] for d in data]
-    xs = [x[0] for x in xys]
-    ys = [y[1] for y in xys]
+  if arg == "sin-basic":
+    xys =  [[ i for i, j in data ],
+            [ j for i, j in data ]]
+    # x axis values
+    xs = xys[0]
+    # y axis values
+    ys = xys[1]
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
     axs1.scatter(xs, ys, cmap='gray')
-    axs1.set_title('Sin')
+    axs1.set_title('Sine model - Simulation')
+    plt.show()
+  if arg == "sin-lw-sim":
+    xys        = [ d[0] for d in data]
+    # probabilities
+    ps         = [ d[2] for d in data]
+    # x axis values
+    xs = [x[0] for x in xys]
+    # y axis values
+    ys = [y[1] for y in xys]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.set_title('Sine model - Likelihood Weighting')
+    plt.show()
+  if arg == "sin-lw-inf":
+    xys        = [ d[0] for d in data]
+    sampleMaps = [ d[1] for d in data]
+    ps         = [ d[2] for d in data]
+    xs = [x[0] for x in xys]
+    ys = [y[1] for y in xys]
+    mu_samples    = [ d[0][1] for d in sampleMaps ]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.set_title('Sine model - Likelihood Weighting')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel('mu value')
+    axs2.set_ylabel('probability')
+    axs2.scatter(mu_samples, ps)
+    axs2.set_title('Sine model - likelihood weighting')
+    plt.show()
+    plt.show()
+  if arg == "sin-mh-post":
+    xys         = [ d[0] for d in data]
+    sampleMaps  = [ d[1] for d in data]
+    logpMaps    = [ d[2] for d in data]
+    mu_samples  = [ d[0][1] for d in sampleMaps ]
+    mu_samples_unique = removeDuplicates(mu_samples)
+    c_samples   = [ d[1][1] for d in sampleMaps ]
+    c_samples_unique = removeDuplicates(c_samples)
+    sigma_samples  = [ d[0][1] for d in sampleMaps ]
+    sigma_samples_unique = removeDuplicates(sigma_samples)
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("mu values")
+    axs1.set_ylabel("frequency")
+    axs1.hist(mu_samples_unique, bins=50)
+    axs1.set_title('Sine model - Metropolis Hastings Posterior')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel("b values")
+    axs2.set_ylabel("frequency")
+    axs2.hist(c_samples_unique, bins=50)
+    axs2.set_title('Sine model - Metropolis Hastings Posterior')
     plt.show()
 if __name__ == "__main__":
   main()
