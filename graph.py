@@ -8,10 +8,98 @@ from sklearn import datasets
 from scipy.special import expit
 import numpy as np
 
+# Remove consecutive duplicates
+def removeDuplicates(xs):
+  return [v for i, v in enumerate(xs) if i == 0 or v != xs[i-1]]
+
 def main():
   arg  = sys.argv[1]
   f    = open("model-output.txt", "r")
   data = ast.literal_eval(f.read())
+  if arg == "lin-regr-basic":
+    xys =  [[ i for i, j in data ],
+            [ j for i, j in data ]]
+    # x axis values
+    xs = xys[0]
+    # y axis values
+    ys = xys[1]
+    plt.scatter(xs, ys)
+    plt.xlabel('x - axis')
+    plt.ylabel('y - axis')
+    plt.title('Linear regression')
+    plt.show()
+  if arg == "lin-regr-lw-sim":
+    xys        = [ d[0] for d in data]
+    # probabilities
+    ps         = [ d[2] for d in data]
+    # x axis values
+    xs = [x[0] for x in xys]
+    # y axis values
+    ys = [y[1] for y in xys]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.set_title('Linear regression - Likelihood Weighting')
+    plt.show()
+  if arg == "lin-regr-lw-inf":
+    xys        = [ d[0] for d in data]
+    # sample maps
+    sampleMaps = [ d[1] for d in data]
+    # probabilities
+    ps         = [ d[2] for d in data]
+    # x axis values
+    xs = [x[0] for x in xys]
+    # y axis values
+    ys = [y[1] for y in xys]
+
+    mu_samples    = [ d[0][1] for d in sampleMaps ]
+    c_samples     = [ d[1][1] for d in sampleMaps ]
+    std_samples   = [ d[2][1] for d in sampleMaps ]
+
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.set_title('Linear regression - Likelihood Weighting')
+
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel('mu value')
+    axs2.set_ylabel('probability')
+    axs2.scatter(mu_samples, ps)
+    axs2.set_title('Linear regression - Likelihood Weighting')
+    plt.show()
+  if arg == "lin-regr-mh-post":
+    xys         = [ d[0] for d in data]
+    sampleMaps  = [ d[1] for d in data]
+    logpMaps    = [ d[2] for d in data]
+    mu_samples  = [ d[0][1] for d in sampleMaps ]
+    mu_samples_unique = removeDuplicates(mu_samples)
+    c_samples   = [ d[1][1] for d in sampleMaps ]
+    c_samples_unique = removeDuplicates(c_samples)
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("mu values")
+    axs1.set_ylabel("frequency")
+    axs1.hist(mu_samples_unique, bins=50)
+    axs1.set_title('Linear regression - Metropolis Hastings Posterior')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel("c values")
+    axs2.set_ylabel("frequency")
+    axs2.hist(c_samples_unique, bins=50)
+    axs2.set_title('Linear regression - Metropolis Hastings Posterior')
+    plt.show()
+  if arg == "lin-regr-mh-pred":
+    xys =  [[ i for i, j in data ],
+            [ j for i, j in data ]]
+    # x axis values
+    xs = xys[0]
+    # y axis values
+    ys = xys[1]
+    plt.scatter(xs, ys)
+    plt.xlabel('x - axis')
+    plt.ylabel('y - axis')
+    plt.title('Linear regression')
+    plt.show()
   if arg == "log-regr-test":
     iris = datasets.load_iris()
     # Get first 100 x data points. iris.data consists of a list of 4-dimensional data points. We will only use the 1st dimension for x data points.
@@ -32,49 +120,11 @@ def main():
     plt.xlabel("Sepal Length")
     plt.ylabel("Sepal Width")
     plt.show()
-  if arg == "nn-basic":
-    xys =  [[ i for i, j in data ],
-            [ j for i, j in data ]]
-
-    xs = np.array([ x for x in xys[0] ])
-    ys = np.array([ y for y in xys[1] ])
-
-    plt.scatter(xs, ys)
-    plt.xlabel('x - axis')
-    plt.ylabel('y - axis')
-    plt.title('Neural network')
-    plt.show()
-  if arg == "nn-lw":
-    xys        = [ d[0] for d in data]
-    sampleMaps = [ d[1] for d in data]
-    ps         = [ d[2] for d in data]
-    xs = [x[0] for x in xys]
-    ys = [y[1] for y in xys]
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("x axis")
-    axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap='gray')
-    axs1.set_title('Bayesian neural network')
-    plt.show()
-  if arg == "sin-mh":
-    xys        = [ d[0] for d in data]
-    sampleMaps = [ d[1] for d in data]
-    logpMaps   = [ d[2] for d in data]
-    xs = [x[0] for x in xys]
-    ys = [y[1] for y in xys]
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("x axis")
-    axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, cmap='gray')
-    axs1.set_title('Sin')
-    plt.show()
   if arg == "log-regr-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
-
     xs = np.array([ [x] for x in xys[0] ])
     ys = np.array([ y for y in xys[1] ])
-
     model = linear_model.LogisticRegression(C=1e5, solver='lbfgs')
     model.fit(xs.reshape(-1,1), ys)
     x_test = np.linspace(-2.0,2.0,num=100)
@@ -113,76 +163,41 @@ def main():
     sampleMaps  = [ d[1] for d in data]
     logpMaps    = [ d[2] for d in data]
     print(sampleMaps)
-  if arg == "lin-regr-basic":
+  if arg == "nn-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
-    # x axis values
-    xs = xys[0]
-    # y axis values
-    ys = xys[1]
+
+    xs = np.array([ x for x in xys[0] ])
+    ys = np.array([ y for y in xys[1] ])
+
     plt.scatter(xs, ys)
     plt.xlabel('x - axis')
     plt.ylabel('y - axis')
-    plt.title('Linear regression')
+    plt.title('Neural network')
     plt.show()
-  if arg == "lin-regr-lw-sim":
+  if arg == "nn-lw":
     xys        = [ d[0] for d in data]
-    # probabilities
-    ps         = [ d[2] for d in data]
-    # x axis values
-    xs = [x[0] for x in xys]
-    # y axis values
-    ys = [y[1] for y in xys]
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("x axis")
-    axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap='gray')
-    axs1.set_title('Linear regression')
-    plt.show()
-  if arg == "lin-regr-lw-inf":
-    xys        = [ d[0] for d in data]
-    # sample maps
     sampleMaps = [ d[1] for d in data]
-    # probabilities
     ps         = [ d[2] for d in data]
-    # x axis values
     xs = [x[0] for x in xys]
-    # y axis values
     ys = [y[1] for y in xys]
-
-    mu_samples    = [ d[0][1] for d in sampleMaps ]
-    c_samples     = [ d[1][1] for d in sampleMaps ]
-    std_samples   = [ d[2][1] for d in sampleMaps ]
-
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
     axs1.scatter(xs, ys, c=ps, cmap='gray')
-    axs1.set_title('Linear regression')
-
-    fig2, axs2 = plt.subplots(nrows=1)
-    axs2.set_xlabel('mu value')
-    axs2.set_ylabel('probability')
-    axs2.scatter(mu_samples, ps)
-    axs2.set_title('Linear regression')
+    axs1.set_title('Bayesian neural network')
     plt.show()
-  if arg == "lin-regr-mh-post":
-    xys         = [ d[0] for d in data]
-    sampleMaps  = [ d[1] for d in data]
-    logpMaps    = [ d[2] for d in data]
-    print(logpMaps)
-  if arg == "lin-regr-mh-pred":
-    xys =  [[ i for i, j in data ],
-            [ j for i, j in data ]]
-    # x axis values
-    xs = xys[0]
-    # y axis values
-    ys = xys[1]
-    plt.scatter(xs, ys)
-    plt.xlabel('x - axis')
-    plt.ylabel('y - axis')
-    plt.title('Linear regression')
+  if arg == "sin-mh":
+    xys        = [ d[0] for d in data]
+    sampleMaps = [ d[1] for d in data]
+    logpMaps   = [ d[2] for d in data]
+    xs = [x[0] for x in xys]
+    ys = [y[1] for y in xys]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, cmap='gray')
+    axs1.set_title('Sin')
     plt.show()
-
 if __name__ == "__main__":
   main()

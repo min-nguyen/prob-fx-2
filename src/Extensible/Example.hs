@@ -63,6 +63,45 @@ import Util
 -- hmmNSteps transition_p observation_p n =
 --   foldl (>=>) return (replicate n (hmm transition_p observation_p))
 
+-- | Linear regression
+type LinRegrEnv =
+    '[  "y"   ':>  Double,
+        "m"   ':>  Double,
+        "c"   ':>  Double,
+        "σ"   ':>  Double
+     ]
+
+linearRegression :: forall s rs .
+  (HasVar s "y" Double, HasVar s "m" Double, HasVar s "c" Double, HasVar s "σ" Double) =>
+  Double -> Model s rs (Double, Double)
+linearRegression x = do
+  m1 <- normal' 0 2 m
+  c <- normal' 0 2 c
+  σ <- uniform' 1 3 σ
+  y <- normal' (m1 * x + c) σ y
+  return (x, y)
+
+-- | Logistic regression
+type LogRegrEnv =
+    '[  "label" ':> Bool,
+        "m"     ':> Double,
+        "b"     ':> Double
+     ]
+
+sigmoid :: Double -> Double
+sigmoid x = 1 / (1 + exp((-1) * x))
+
+logisticRegression :: forall rs s.
+ (HasVar s "label" Bool, HasVar s "m" Double, HasVar s "b" Double) =>
+ Double -> Model s rs (Double, Bool)
+logisticRegression x = do
+  m     <- normal' 0 1 m
+  b     <- normal' 0 1 b
+  sigma <- gamma 1 1
+  y     <- normal (m * x + b) sigma
+  l     <- bernoulli' (sigmoid y) label
+  return (x, l)
+
 -- | Bayesian network
 type NNEnv =
     '[  "yObs"     ':> Double,
@@ -134,45 +173,6 @@ sineModel x = do
   σ <- uniform' 1 3 σ
   Model $ prinT $ "mean is " ++ (show $ sin $ m * x + c)
   y <- normal' (sin $ m * x + c) σ y
-  return (x, y)
-
--- | Logistic regression
-type LogRegrEnv =
-    '[  "label" ':> Bool,
-        "m"     ':> Double,
-        "b"     ':> Double
-     ]
-
-sigmoid :: Double -> Double
-sigmoid x = 1 / (1 + exp((-1) * x))
-
-logisticRegression :: forall rs s.
- (HasVar s "label" Bool, HasVar s "m" Double, HasVar s "b" Double) =>
- Double -> Model s rs (Double, Bool)
-logisticRegression x = do
-  m     <- normal' 0 1 m
-  b     <- normal' 0 1 b
-  sigma <- gamma 1 1
-  y     <- normal (m * x + b) sigma
-  l     <- bernoulli' (sigmoid y) label
-  return (x, l)
-
--- | Linear regression
-type LinRegrEnv =
-    '[  "y"   ':>  Double,
-        "m"   ':>  Double,
-        "c"   ':>  Double,
-        "σ"   ':>  Double
-     ]
-
-linearRegression :: forall s rs .
-  (HasVar s "y" Double, HasVar s "m" Double, HasVar s "c" Double, HasVar s "σ" Double) =>
-  Double -> Model s rs (Double, Double)
-linearRegression x = do
-  m1 <- normal' 0 2 m
-  c <- normal' 0 2 c
-  σ <- uniform' 1 3 σ
-  y <- normal' (m1 * x + c) σ y
   return (x, y)
 
 -- --

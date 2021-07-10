@@ -57,7 +57,6 @@ testLinRegrLWSim = do
       xs  = concat [ replicate 11 x | x <- [0 .. 10]]
       lws = LW.lw 3 Example.linearRegression
                     xs
-                    -- (repeat $ mkRecordLinRegr ([], [1], [0], [1]))
                     (concat $ repeat $ map (\y -> mkRecordLinRegr ([y], [1], [2], [2.0]))
                       [0 .. 10])
   output <- lws
@@ -72,9 +71,9 @@ testLinRegrLWInf :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Doubl
 testLinRegrLWInf = do
   let -- Run likelihood weighting inference over linearRegression
       {- This should output the provided fixed set of data points on the x and y axis, where each point has a different probability (due to us observing the probability of given y's). Also returns a trace of parameters and their likelihoods -}
-      lws' = LW.lw 3 Example.linearRegression
-                    [0, 1, 2, 3, 4]
-                    (map mkRecordLinRegrY [[-0.3], [0.75], [2.43], [3.5], [3.2]])
+      lws' = LW.lw 1 Example.linearRegression
+                    [0 .. 100]
+                    (map (mkRecordLinRegrY . (:[]) ) [0 .. 100])
   output <- lws'
   let output' = map (\(xy, samples, prob) ->
         let samples' = Map.toList samples
@@ -86,33 +85,25 @@ testLinRegrLWInf = do
 testLinRegrMHPost :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
 testLinRegrMHPost = do
   let -- Run mh inference over linearRegression for data representing a line with gradient 1 and intercept 0
-      mhs' = MH.mh 3 Example.linearRegression [0 .. 100]
+      mhs' = MH.mh 20 Example.linearRegression [0 .. 100]
                      (map (mkRecordLinRegrY . (:[]) ) [0 .. 100])
   -- Reformat MH trace
-  output <- mhs'
-  let output' = map (\(xy, samples, logps) ->
+  mhTrace <- mhs'
+  let mhTrace' = map (\(xy, samples, logps) ->
        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
            logps'   = Map.toList logps
-       in  (xy, samples', logps') ) output
-  liftS $ print $ show output'
-  return output'
+       in  (xy, samples', logps') ) mhTrace
+  liftS $ print $ show mhTrace'
+  return mhTrace'
 
--- | Run mh then output predictive distribution
+-- | Use mh posterior to output predictive distribution
 testLinRegrMHPred :: Sampler [(Double, Double)]
 testLinRegrMHPred = do
-  let -- Run mh inference over linearRegression for data representing a line with gradient 1 and intercept 0
-      mhs' = MH.mh 3 Example.linearRegression [0 .. 100]
-                     (map (mkRecordLinRegrY . (:[]) ) [0 .. 100])
-  -- Reformat MH trace
-  output <- mhs'
-  let output' = map (\(xy, samples, logps) ->
-       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
-           logps'   = Map.toList logps
-       in  (xy, samples', logps') ) output
-  liftS $ print $ show output'
+  mhTrace <- testLinRegrMHPost
+  liftS $ print $ show mhTrace
   -- Get the most recent accepted model parameters from the posterior
-  let postParams = map (fromJust . prj @Double . snd . snd)
-                       ((Map.toList . snd3 . head) output)
+  let postParams = map (fromJust . prj @Double . snd)
+                       ((snd3 . head) mhTrace)
       (mu, postParams') = splitAt 1 postParams
       (c, sigma)        = splitAt 1 postParams'
   -- Using these parameters, simulate data from the predictive.
@@ -208,7 +199,7 @@ testNNLW = do
                     xs
                     (concat $ repeat $ map (\y -> mkRecordNN ([y], [1, 5, 8],
                                               [2, -5, 1],
-                                              [2.0])) [0 .. 10]   )
+                                              [2.0])) [0 .. 10])
       -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
       lws' = LW.lw 1  (Example.nnModel1 3)
                       (map (/50) [0 .. 300])

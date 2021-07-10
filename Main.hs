@@ -32,10 +32,10 @@ import Extensible.Test
 main :: IO ()
 main = do
   -- trace <- sampleIOFixed testLinRegrBasic
-  trace <- sampleIOFixed testLinRegrLWSim
+  -- trace <- sampleIOFixed testLinRegrLWSim
   -- trace <- sampleIOFixed testLinRegrLWInf
   -- trace <- sampleIOFixed testLinRegrMHPost
-  -- trace <- sampleIOFixed testLinRegrMHPred
+  trace <- sampleIOFixed testLinRegrMHPred
   -- trace <- sampleIOFixed testLogRegrBasic
   -- trace <- sampleIOFixed testLogRegrLW
   -- trace <- sampleIOFixed testLogRegrMH
