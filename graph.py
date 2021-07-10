@@ -216,7 +216,7 @@ def main():
     plt.ylabel('y - axis')
     plt.title('Neural network')
     plt.show()
-  if arg == "nn-lw":
+  if arg == "nn-lw-sim":
     xys        = [ d[0] for d in data]
     sampleMaps = [ d[1] for d in data]
     ps         = [ d[2] for d in data]
@@ -227,6 +227,19 @@ def main():
     axs1.set_ylabel("y axis")
     axs1.scatter(xs, ys, c=ps, cmap='gray')
     axs1.set_title('Bayesian neural network')
+    plt.show()
+  if arg == "nn-mh-pred":
+    xys =  [[ i for i, j in data ],
+            [ j for i, j in data ]]
+    # x axis values
+    xs = xys[0]
+    # y axis values
+    ys = xys[1]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, cmap='gray')
+    axs1.set_title('Bayesian neural network - Metropolis Hastings Predictive')
     plt.show()
   if arg == "sin-mh":
     xys        = [ d[0] for d in data]

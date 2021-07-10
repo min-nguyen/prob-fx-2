@@ -40,10 +40,12 @@ main = do
   -- trace <- sampleIOFixed testLogRegrLWSim
   -- trace <- sampleIOFixed testLogRegrLWInf
   -- trace <- sampleIOFixed testLogRegrMHPost
-  trace <- sampleIOFixed testLogRegrMHPred
+  -- trace <- sampleIOFixed testLogRegrMHPred
   -- trace <- sampleIOFixed testNNBasic
-  -- trace <- sampleIOFixed testNNLW
-  -- trace <- sampleIOFixed testNNMH
+  -- trace <- sampleIOFixed testNNLWSim
+  trace <- sampleIOFixed testNNLWInf
+  -- trace <- sampleIOFixed testNNMHPost
+  -- trace <- sampleIOFixed testNNMHPred
   -- trace <- sampleIOFixed testNNMHSin
   -- trace <- sampleIOFixed testSin
   let traceStr = show trace
