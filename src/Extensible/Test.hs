@@ -146,22 +146,38 @@ testLogRegrLWSim = do
 
 testLogRegrLWInf :: Sampler [((Double, Bool), [(Addr, OpenSum LW.Vals)], Double)]
 testLogRegrLWInf = do
-  -- Run basic simulation over logisticRegression
+  -- Using fixed model parameters, generate some sample data points to learn
   output <- map fst <$> Basic.basic 1 Example.logisticRegression
                          (map (/50) [(-100) .. 100])
                          (repeat $ mkRecordLogRegr ([], [3], [-0.15]))
   let (xs, ys) = (map fst output, map snd output)
-  let lws' = LW.lw 3 Example.logisticRegression
-                         xs
-                         (map (mkRecordLogRegrL . (:[])) ys)
+  -- Perform inference against these data points
+  let lws' = LW.lw 3 Example.logisticRegression xs (map (mkRecordLogRegrL . (:[])) ys)
   output <- lws'
   let output' = map (\(xy, samples, prob) ->
         let samples' = Map.toList samples
         in (xy, samples', prob)) output
   return output'
 
-testLogRegrMH :: Sampler [((Double, Bool), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
-testLogRegrMH = do
+testLogRegrMHPost :: Sampler [((Double, Bool), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testLogRegrMHPost = do
+  output <- map fst <$> Basic.basic 1 Example.logisticRegression
+                         (map (/50) [(-100) .. 100])
+                         (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
+  let (xs, ys) = (map fst output, map snd output)
+  let mhs' = MH.mh 30 Example.logisticRegression
+                         xs
+                         (map (mkRecordLogRegrL . (:[])) ys)
+  output <- mhs'
+  let output' = map (\(xy, samples, logps) ->
+       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+           logps'   = Map.toList logps
+       in  (xy, samples', logps') ) output
+  liftS $ print $ show output'
+  return output'
+
+testLogRegrMHPred :: Sampler [((Double, Bool), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testLogRegrMHPred = do
   let -- Run basic simulation over logisticRegression
       mhs  = MH.mh 3 Example.logisticRegression
                          (map (/50) [(-100) .. 100])

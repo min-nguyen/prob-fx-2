@@ -172,7 +172,26 @@ def main():
     axs2.scatter(mu_samples, ps)
     axs2.set_title('Logistic regression - likelihood weighting')
     plt.show()
-  if arg == "log-regr-mh":
+  if arg == "log-regr-mh-post":
+    xys         = [ d[0] for d in data]
+    sampleMaps  = [ d[1] for d in data]
+    logpMaps    = [ d[2] for d in data]
+    mu_samples  = [ d[0][1] for d in sampleMaps ]
+    mu_samples_unique = removeDuplicates(mu_samples)
+    b_samples   = [ d[1][1] for d in sampleMaps ]
+    b_samples_unique = removeDuplicates(b_samples)
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("mu values")
+    axs1.set_ylabel("frequency")
+    axs1.hist(mu_samples_unique, bins=50)
+    axs1.set_title('Logistic regression - Metropolis Hastings Posterior')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel("b values")
+    axs2.set_ylabel("frequency")
+    axs2.hist(b_samples_unique, bins=50)
+    axs2.set_title('Logistic regression - Metropolis Hastings Posterior')
+    plt.show()
+  if arg == "log-regr-mh-pred":
     xys         = [ d[0] for d in data]
     sampleMaps  = [ d[1] for d in data]
     logpMaps    = [ d[2] for d in data]
