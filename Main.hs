@@ -15,7 +15,7 @@ import Extensible.Model
 import Data.Extensible ()
 import Extensible.Sampler
 import Extensible.Test
-
+import Util
 -- testAndWrite :: Show a => Sampler a -> IO ()
 -- testAndWrite prog = do
 --   a <- sampleIOFixed prog
@@ -53,9 +53,10 @@ main = do
   -- trace <- sampleIOFixed testSinMHPred
   -- trace <- sampleIOFixed testNN2Basic
   -- trace <- sampleIOFixed testNN2LWSim
-  trace <- sampleIOFixed testNN2MH
+  -- trace <- sampleIOFixed testNN2MH
+  trace <- sampleIOFixed testNN3Basic
   let traceStr = show trace
   putStrLn traceStr
-  writeFile "model-output.txt" traceStr
+  -- writeFile "model-output.txt" traceStr
   return ()
 

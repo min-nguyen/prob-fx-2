@@ -5,6 +5,9 @@ import ast
 import pandas as pd
 from sklearn import linear_model
 from sklearn import datasets
+from sklearn.datasets import make_moons
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import scale
 from scipy.special import expit
 import numpy as np
 
@@ -16,6 +19,13 @@ def main():
   arg  = sys.argv[1]
   f    = open("model-output.txt", "r")
   data = ast.literal_eval(f.read())
+  # floatX = theano.config.floatX
+  X, Y = make_moons(noise=0.2, random_state=0, n_samples=1000)
+  X = scale(X)
+  # X = X.astype(floatX)
+  # Y = Y.astype(floatX)
+  X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.5)
+  print(X.shape[1])
   if arg == "lin-regr-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]

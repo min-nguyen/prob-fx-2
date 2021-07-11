@@ -275,81 +275,6 @@ testNNMHPred = do
                                                    sigma))
   map fst <$> bs
 
-{- Bayesian neural network v2 -}
-
-testNN2Basic :: Sampler  [(Double, Double)]
-testNN2Basic = do
-  let -- Run basic simulation over neural network
-      bs = Basic.basic 1 (Example.nnModel2 3)
-                         (map (/1) [0 .. 300])
-                         (repeat $ mkRecordNN ([], [1, 5, 8],
-                                                   [2, -5, 1],
-                                                   [4.0]))
-  output <- map fst <$> bs
-  liftS $ print $ show output
-  return output
-
-testNN2LWSim :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
-testNN2LWSim = do
-  let xs  = concat [ replicate 31 x | x <- [-10 .. 10]]
-      -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
-      lws = LW.lw 1 (Example.nnModel2 3)
-                    xs
-                    (concat $ repeat $ map (\y -> mkRecordNN ([y], [1, 5, 8],
-                                              [2, -5, 1],
-                                              [2.0])) [-20 .. 10])
-  output <- lws
-  let output' = map (\(xy, samples, prob) ->
-        let samples' = Map.toList samples
-        in (xy, samples', prob)) output
-  liftS $ print $ show output'
-  return output'
-
-testNN2LWInf :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
-testNN2LWInf = do
-  let -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
-      lws = LW.lw 1  (Example.nnModel1 3)
-                      (map (/50) [0 .. 300])
-                      (map (\y -> mkRecordNN ([y], [1, 5, 8],
-                                                   [2, -5, 1],
-                                                   [2.0]))
-                           [ sin x | x <- map (/50) [0 .. 300] ])
-  output <- lws
-  let output' = map (\(xy, samples, prob) ->
-        let samples' = Map.toList samples
-        in (xy, samples', prob)) output
-  liftS $ print $ show output'
-  return output'
-
--- Run this with nn-basic, as it returns a predictive distribution rather than a posterior one.
-testNN2MH :: Sampler [(Double, Double)]
-testNN2MH = do
-  let mhs' = MH.mh 20  (Example.nnModel2 3)
-                       (map (/20) [-200 .. 200])
-                       (map mkRecordNNy
-                           [  x | x <- map (/20) [-200 .. 200] ])
-  output <- mhs'
-  let output' = map (\(xy, samples, logps) ->
-       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
-           logps'   = Map.toList logps
-       in  (xy, samples', logps') ) output
-  -- Get the most recent accepted model parameters from the posterior
-  let postParams = map (fromJust . prj @Double . snd . snd)
-                       ((Map.toList . snd3 . head) output)
-      (bias, postParams') = splitAt 3 postParams
-      (weights, sigma)    = splitAt 3 postParams'
-  -- Using these parameters, simulate data from the predictive.
-  let bs = Basic.basic 1 (Example.nnModel2 3)
-                         ([-200 .. 200])
-                        -- (map mkRecordNNy
-                        --    [ sin x | x <- map (/20) [-200 .. 200] ])
-                         (repeat $ mkRecordNN ([], bias,
-                                                   weights,
-                                                   sigma))
-  liftS $ print $ show (weights, bias, sigma)
-  -- return output'
-  map fst <$> bs
-
 {- Sine Model -}
 
 testSinBasic :: Sampler [(Double, Double)]
@@ -427,3 +352,99 @@ testSinMHPred = do
                          xs
                          (repeat $ mkRecordLinRegr ([], mu, c, sigma))
   map fst <$> bs
+
+{- Bayesian neural network v2 -}
+
+testNN2Basic :: Sampler  [(Double, Double)]
+testNN2Basic = do
+  let -- Run basic simulation over neural network
+      bs = Basic.basic 1 (Example.nnModel2 3)
+                         (map (/1) [-100 .. 100])
+                         (repeat $ mkRecordNN ([], [1, 5, 8],
+                                                   [2, -5, 1],
+                                                   [4.0]))
+  output <- map fst <$> bs
+  liftS $ print $ show output
+  return output
+
+testNN2LWSim :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testNN2LWSim = do
+  let xs  = concat [ replicate 31 x | x <- [-10 .. 10]]
+      -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
+      lws = LW.lw 1 (Example.nnModel2 3)
+                    xs
+                    (concat $ repeat $ map (\y -> mkRecordNN ([y], [1, 5, 8],
+                                              [2, -5, 1],
+                                              [2.0])) [-20 .. 10])
+  output <- lws
+  let output' = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) output
+  liftS $ print $ show output'
+  return output'
+
+testNN2LWInf :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testNN2LWInf = do
+  let -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
+      lws = LW.lw 1  (Example.nnModel1 3)
+                      (map (/50) [0 .. 300])
+                      (map (\y -> mkRecordNN ([y], [1, 5, 8],
+                                                   [2, -5, 1],
+                                                   [2.0]))
+                           [ sin x | x <- map (/50) [0 .. 300] ])
+  output <- lws
+  let output' = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) output
+  liftS $ print $ show output'
+  return output'
+
+-- Run this with nn-basic, as it returns a predictive distribution rather than a posterior one.
+testNN2MH :: Sampler [(Double, Double)]
+testNN2MH = do
+  let mhs' = MH.mh 20  (Example.nnModel2 3)
+                       (map (/20) [-200 .. 200])
+                       (map mkRecordNNy
+                           [  x | x <- map (/20) [-200 .. 200] ])
+  output <- mhs'
+  let output' = map (\(xy, samples, logps) ->
+       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+           logps'   = Map.toList logps
+       in  (xy, samples', logps') ) output
+  -- Get the most recent accepted model parameters from the posterior
+  let postParams = map (fromJust . prj @Double . snd . snd)
+                       ((Map.toList . snd3 . head) output)
+      (bias, postParams') = splitAt 3 postParams
+      (weights, sigma)    = splitAt 3 postParams'
+  -- Using these parameters, simulate data from the predictive.
+  let bs = Basic.basic 1 (Example.nnModel2 3)
+                         ([-200 .. 200])
+                        -- (map mkRecordNNy
+                        --    [ sin x | x <- map (/20) [-200 .. 200] ])
+                         (repeat $ mkRecordNN ([], bias,
+                                                   weights,
+                                                   sigma))
+  liftS $ print $ show (weights, bias, sigma)
+  -- return output'
+  map fst <$> bs
+
+-- | Another neural network variation
+
+mkRecordNN3 :: ([Bool], [Double])
+           -> LRec Example.NNEnv3
+mkRecordNN3 (yobs_vals, weight_vals) =
+  yObs @= yobs_vals <: weight @= weight_vals <: nil
+
+mkRecordNN3y :: Bool -> LRec Example.NNEnv3
+mkRecordNN3y yobs_val =
+  yObs @= [yobs_val] <: weight @= [] <: nil
+
+testNN3Basic :: Sampler [((Double, Double), Bool)]
+testNN3Basic = do
+  let -- Run basic simulation over neural network
+      bs = Basic.basic 1 (Example.nnModel3 3)
+                         [(2, 3)]
+                         (repeat $ mkRecordNN3 ([], []))
+  output <- map fst <$> bs
+  liftS $ print $ show output
+  return output
