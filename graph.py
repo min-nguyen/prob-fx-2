@@ -25,7 +25,8 @@ def main():
   # X = X.astype(floatX)
   # Y = Y.astype(floatX)
   X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.5)
-  print(X.shape[1])
+  X_test_tuple = [ tuple(x_test) for x_test in X_test]
+  print([bool(y) for y in Y_train])
   if arg == "lin-regr-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
@@ -330,6 +331,21 @@ def main():
     axs1.set_ylabel("y axis")
     axs1.scatter(xs, ys, cmap='gray')
     axs1.set_title('Sine model - Metropolis Hastings Predictive')
+    plt.show()
+  if arg == "nn-log-basic":
+    xyls =  [[ i for i, j in data ],
+             [ j for i, j in data ]]
+
+    xs = [ xys[0] for xys in xyls[0]]
+    ys = [ xys[1] for xys in xyls[0]]
+    ls = [ ls     for ls in xyls[1]]
+
+    print(xs, ys, ls)
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, c=ls)
+    # axs1.set_title('Sine model - Simulation')
     plt.show()
 if __name__ == "__main__":
   main()

@@ -13,6 +13,7 @@ module Extensible.Test where
 import Data.Maybe
 import qualified Data.Map as Map
 import qualified Extensible.Example as Example
+import Extensible.DataSets
 import Extensible.Dist
 import qualified Extensible.Inference.Basic as Basic
 import qualified Extensible.Inference.LW as LW
@@ -430,21 +431,24 @@ testNN2MH = do
 
 -- | Another neural network variation
 
-mkRecordNN3 :: ([Bool], [Double])
-           -> LRec Example.NNEnv3
-mkRecordNN3 (yobs_vals, weight_vals) =
+mkRecordNNLog :: ([Bool], [Double])
+           -> LRec Example.NNLogEnv
+mkRecordNNLog (yobs_vals, weight_vals) =
   yObs @= yobs_vals <: weight @= weight_vals <: nil
 
-mkRecordNN3y :: Bool -> LRec Example.NNEnv3
-mkRecordNN3y yobs_val =
+mkRecordNNLogy :: Bool -> LRec Example.NNLogEnv
+mkRecordNNLogy yobs_val =
   yObs @= [yobs_val] <: weight @= [] <: nil
 
-testNN3Basic :: Sampler [((Double, Double), Bool)]
-testNN3Basic = do
+testNNLogBasic :: Sampler [((Double, Double), Bool)]
+testNNLogBasic = do
   let -- Run basic simulation over neural network
-      bs = Basic.basic 1 (Example.nnModel3 3)
-                         [(2, 3)]
-                         (repeat $ mkRecordNN3 ([], []))
+      w1 = [0.18, 0.36, -1.29, 0.094, -1.64, 0.65]
+      w2 = [0.147, -0.417, -0.278, -1.275,0.568,-0.785,0.074,0.351,0.732]
+      w3 = [0.295, 0.414, -0.834]
+      bs = Basic.basic 1 (Example.nnLogModel 3)
+                         nnLogDataX
+                         (repeat $ mkRecordNNLog ([], w1 ++ w2 ++ w3))
   output <- map fst <$> bs
   liftS $ print $ show output
   return output

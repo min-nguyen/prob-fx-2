@@ -164,13 +164,13 @@ nnModel2 n x = do
 
 -- | Another neural network formulation
 
-type NNEnv3 =
+type NNLogEnv =
     '[  "yObs"     ':> Bool,
         "weight"   ':> Double
      ]
 
-nnModel3 :: (HasVar s "weight" Double, HasVar s "yObs" Bool) => Int -> (Double, Double) -> Model s es ((Double, Double), Bool)
-nnModel3 n_nodes (x, y)  = do
+nnLogModel :: (HasVar s "weight" Double, HasVar s "yObs" Bool) => Int -> (Double, Double) -> Model s es ((Double, Double), Bool)
+nnLogModel n_nodes (x, y)  = do
   let xs = [x, y]
   weight1 <- replicateM (length xs) (replicateM n_nodes (normal' 0 1 weight))
   Model $ prinT $ "xs is " ++ show [xs]

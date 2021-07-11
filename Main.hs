@@ -57,6 +57,6 @@ main = do
   trace <- sampleIOFixed testNN3Basic
   let traceStr = show trace
   putStrLn traceStr
-  -- writeFile "model-output.txt" traceStr
+  writeFile "model-output.txt" traceStr
   return ()
 
