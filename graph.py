@@ -19,14 +19,10 @@ def main():
   arg  = sys.argv[1]
   f    = open("model-output.txt", "r")
   data = ast.literal_eval(f.read())
-  # floatX = theano.config.floatX
-  X, Y = make_moons(noise=0.2, random_state=0, n_samples=1000)
-  X = scale(X)
-  # X = X.astype(floatX)
-  # Y = Y.astype(floatX)
-  X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.5)
-  X_test_tuple = [ tuple(x_test) for x_test in X_test]
-  print([bool(y) for y in Y_train])
+  # X, Y = make_moons(noise=0.2, random_state=0, n_samples=1000)
+  # X = scale(X)
+  # X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.5)
+  # X_test_tuple = [ tuple(x_test) for x_test in X_test]
   if arg == "lin-regr-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
@@ -215,7 +211,7 @@ def main():
     plt.title('Logistic regression - Metropolis Hastings Predictive')
     plt.show()
     print(sampleMaps)
-  if arg == "nn-basic":
+  if arg == "nn-lin-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
 
@@ -227,7 +223,7 @@ def main():
     plt.ylabel('y - axis')
     plt.title('Neural network')
     plt.show()
-  if arg == "nn-lw-sim":
+  if arg == "nn-lin-lw-sim":
     xys        = [ d[0] for d in data]
     sampleMaps = [ d[1] for d in data]
     ps         = [ d[2] for d in data]
@@ -239,7 +235,7 @@ def main():
     axs1.scatter(xs, ys, c=ps, cmap='gray')
     axs1.set_title('Bayesian neural network')
     plt.show()
-  if arg == "nn-mh-pred":
+  if arg == "nn-lin-mh-pred":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
     # x axis values
@@ -251,6 +247,72 @@ def main():
     axs1.set_ylabel("y axis")
     axs1.scatter(xs, ys, cmap='gray')
     axs1.set_title('Bayesian neural network - Metropolis Hastings Predictive')
+    plt.show()
+  if arg == "nn-step-basic":
+    xys =  [[ i for i, j in data ],
+            [ j for i, j in data ]]
+
+    xs = np.array([ x for x in xys[0] ])
+    ys = np.array([ y for y in xys[1] ])
+
+    plt.scatter(xs, ys)
+    plt.xlabel('x - axis')
+    plt.ylabel('y - axis')
+    plt.title('Neural network')
+    plt.show()
+  if arg == "nn-step-lw-sim":
+    xys        = [ d[0] for d in data]
+    sampleMaps = [ d[1] for d in data]
+    ps         = [ d[2] for d in data]
+    xs = [x[0] for x in xys]
+    ys = [y[1] for y in xys]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.set_title('Bayesian (step) neural network - Likelihood Weighting Simulation')
+    plt.show()
+  if arg == "nn-step-mh-pred":
+    xys =  [[ i for i, j in data ],
+            [ j for i, j in data ]]
+    # x axis values
+    xs = xys[0]
+    # y axis values
+    ys = xys[1]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, cmap='gray')
+    axs1.set_title('Bayesian neural network - Metropolis Hastings Predictive')
+    plt.show()
+  if arg == "nn-log-basic":
+    xyls =  [[ i for i, j in data ],
+             [ j for i, j in data ]]
+
+    xs = [ xys[0] for xys in xyls[0]]
+    ys = [ xys[1] for xys in xyls[0]]
+    ls = [ ls     for ls in xyls[1]]
+
+    print(xs, ys, ls)
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, c=ls)
+    axs1.set_title('Neural network logistic regression - Simulation')
+    plt.show()
+  if arg == "nn-log-mh-pred":
+    xyls =  [[ i for i, j in data ],
+             [ j for i, j in data ]]
+
+    xs = [ xys[0] for xys in xyls[0]]
+    ys = [ xys[1] for xys in xyls[0]]
+    ls = [ ls     for ls in xyls[1]]
+    print(xs, ys, ls)
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, c=ls)
+    axs1.set_title('Neural network logistic regression - Metropolis Hastings Predictive')
     plt.show()
   if arg == "sin-basic":
     xys =  [[ i for i, j in data ],
@@ -331,21 +393,6 @@ def main():
     axs1.set_ylabel("y axis")
     axs1.scatter(xs, ys, cmap='gray')
     axs1.set_title('Sine model - Metropolis Hastings Predictive')
-    plt.show()
-  if arg == "nn-log-basic":
-    xyls =  [[ i for i, j in data ],
-             [ j for i, j in data ]]
-
-    xs = [ xys[0] for xys in xyls[0]]
-    ys = [ xys[1] for xys in xyls[0]]
-    ls = [ ls     for ls in xyls[1]]
-
-    print(xs, ys, ls)
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("x axis")
-    axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ls)
-    # axs1.set_title('Sine model - Simulation')
     plt.show()
 if __name__ == "__main__":
   main()

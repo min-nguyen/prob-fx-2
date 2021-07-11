@@ -41,20 +41,25 @@ main = do
   -- trace <- sampleIOFixed testLogRegrLWInf
   -- trace <- sampleIOFixed testLogRegrMHPost
   -- trace <- sampleIOFixed testLogRegrMHPred
-  -- trace <- sampleIOFixed testNNBasic
-  -- trace <- sampleIOFixed testNNLWSim
-  -- trace <- sampleIOFixed testNNLWInf
-  -- trace <- sampleIOFixed testNNMHPost
-  -- trace <- sampleIOFixed testNNMHPred
+  -- trace <- sampleIOFixed testNNLinBasic
+  -- trace <- sampleIOFixed testNNLinLWSim
+  -- trace <- sampleIOFixed testNNLinLWInf
+  -- trace <- sampleIOFixed testNNLinMHPost
+  -- trace <- sampleIOFixed testNNLinMHPred
+  -- trace <- sampleIOFixed testNNStepBasic
+  -- trace <- sampleIOFixed testNNStepLWSim
+  -- trace <- sampleIOFixed testNNStepLWSim2
+  -- trace <- sampleIOFixed testNNStepLWInf
+  -- trace <- sampleIOFixed testNNStepMHPost
+  trace <- sampleIOFixed testNNStepMHPred
+  -- trace <- sampleIOFixed testNNLogBasic
+  -- trace <- sampleIOFixed testNNLogMHPost
+  -- trace <- sampleIOFixed testNNLogMHPred
   -- trace <- sampleIOFixed testSinBasic
   -- trace <- sampleIOFixed testSinLWSim
   -- trace <- sampleIOFixed testSinLWInf
   -- trace <- sampleIOFixed testSinMHPost
   -- trace <- sampleIOFixed testSinMHPred
-  -- trace <- sampleIOFixed testNN2Basic
-  -- trace <- sampleIOFixed testNN2LWSim
-  -- trace <- sampleIOFixed testNN2MH
-  trace <- sampleIOFixed testNN3Basic
   let traceStr = show trace
   putStrLn traceStr
   writeFile "model-output.txt" traceStr

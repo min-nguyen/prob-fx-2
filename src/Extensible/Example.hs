@@ -120,14 +120,14 @@ dot _ [] = 0
 dot (x:xs) (y:ys) = x * y + dot xs ys
 
 -- | Neural network formulation for linear regression
-forwardNN1 :: NN -> Double -> Double
-forwardNN1 (NN bs ws _) x =
+forwardNNLin :: NN -> Double -> Double
+forwardNNLin (NN bs ws _) x =
   (ws `dot` map (x -) bs) / 20
 
-likelihoodNN1 :: HasVar s "yObs" Double => NN -> Double -> Model s es Double
-likelihoodNN1 nn x = do
+likelihoodNNLin :: HasVar s "yObs" Double => NN -> Double -> Model s es Double
+likelihoodNNLin nn x = do
   let ySigma = sigm nn
-      yMean  = forwardNN1 nn x
+      yMean  = forwardNNLin nn x
   normal' yMean ySigma yObs
 
 priorNN :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double)
@@ -138,28 +138,28 @@ priorNN n_nodes = do
   sigma  <- uniform' 0.5 1.5 sigma
   return $ NN bias weight sigma
 
-nnModel1 :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double, HasVar s "yObs" Double) => Int -> Double -> Model s es (Double, Double)
-nnModel1 n x = do
+nnLinModel :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double, HasVar s "yObs" Double) => Int -> Double -> Model s es (Double, Double)
+nnLinModel n x = do
   nn <- priorNN n
-  y <- likelihoodNN1 nn x
+  y  <- likelihoodNNLin nn x
   return (x, y)
 
 -- | Alternative neural network formulation using activation
-forwardNN2 :: NN -> Double -> Double
-forwardNN2 (NN bs ws _) x =
+forwardNNStep :: NN -> Double -> Double
+forwardNNStep (NN bs ws _) x =
   ws `dot` map (activation . (x -)) bs
   where activation x = if x < 0 then 0 else 1
 
-likelihoodNN2 :: HasVar s "yObs" Double => NN -> Double -> Model s es Double
-likelihoodNN2 nn x = do
+likelihoodNNStep :: HasVar s "yObs" Double => NN -> Double -> Model s es Double
+likelihoodNNStep nn x = do
   let ySigma = sigm nn
-      yMean  = forwardNN2 nn x
+      yMean  = forwardNNStep nn x
   normal' yMean ySigma yObs
 
-nnModel2 :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double, HasVar s "yObs" Double) => Int -> Double -> Model s es (Double, Double)
-nnModel2 n x = do
+nnStepModel :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double, HasVar s "yObs" Double) => Int -> Double -> Model s es (Double, Double)
+nnStepModel n x = do
   nn <- priorNN n
-  y <- likelihoodNN2 nn x
+  y <- likelihoodNNStep nn x
   return (x, y)
 
 -- | Another neural network formulation
