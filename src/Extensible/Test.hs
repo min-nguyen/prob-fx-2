@@ -492,3 +492,15 @@ testSinMHPred = do
                          xs
                          (repeat $ mkRecordLinRegr ([], mu, c, sigma))
   map fst <$> bs
+
+{- Hidden markov model -}
+
+mkRecordHMM :: [Int] -> LRec Example.HMMEnv
+mkRecordHMM ys = y @= ys <: nil
+
+testHMMBasic :: Sampler [[Int]]
+testHMMBasic = do
+  let bs = Basic.basic 1 (Example.hmmNSteps 0.5 0.5 10)
+                         [[0]] (map mkRecordHMM [[]])
+  map fst <$> bs
+  -- undefined

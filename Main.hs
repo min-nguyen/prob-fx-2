@@ -51,7 +51,7 @@ main = do
   -- trace <- sampleIOFixed testNNStepLWSim2
   -- trace <- sampleIOFixed testNNStepLWInf
   -- trace <- sampleIOFixed testNNStepMHPost
-  trace <- sampleIOFixed testNNStepMHPred
+  -- trace <- sampleIOFixed testNNStepMHPred
   -- trace <- sampleIOFixed testNNLogBasic
   -- trace <- sampleIOFixed testNNLogMHPost
   -- trace <- sampleIOFixed testNNLogMHPred
@@ -60,8 +60,9 @@ main = do
   -- trace <- sampleIOFixed testSinLWInf
   -- trace <- sampleIOFixed testSinMHPost
   -- trace <- sampleIOFixed testSinMHPred
+  trace <- sampleIOFixed testHMMBasic
   let traceStr = show trace
   putStrLn traceStr
-  writeFile "model-output.txt" traceStr
+  -- writeFile "model-output.txt" traceStr
   return ()
 

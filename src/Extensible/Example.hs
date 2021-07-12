@@ -35,34 +35,6 @@ import Util
 
 {- Probabilistic programs -}
 
--- | Hidden Markov Model
--- transitionModel ::  Double -> Int -> Model s es Int
--- transitionModel transition_p x_prev = do
---   dX <- boolToInt <$> bernoulli transition_p
---   let x = x_prev + dX
---   return (dX + x)
-
--- observationModel :: (HasVar s "y" Int)
---   => Double -> Int -> Model s es Int
--- observationModel observation_p x = do
---   binomial' x observation_p y
-
--- hmm :: (HasVar s "y" Int)
---   => Double -> Double -> Int -> Model s es Int
--- hmm transition_p observation_p x_prev = do
---   x_n <- transitionModel transition_p x_prev
---   y_n <- observationModel observation_p x_n
---   return x_n
-
--- hmm' :: HasVar s "y" Int => Double -> Double -> Int -> Model s es Int
--- hmm' transition_p observation_p =
---   observationModel observation_p <=< transitionModel transition_p
-
--- hmmNSteps :: (HasVar s "y" Int)
---   => Double -> Double -> Int -> (Int -> Model s es Int)
--- hmmNSteps transition_p observation_p n =
---   foldl (>=>) return (replicate n (hmm transition_p observation_p))
-
 -- | Linear regression
 type LinRegrEnv =
     '[  "y"   ':>  Double,
@@ -201,6 +173,37 @@ sineModel x = do
   y <- normal' (sin $ m * x + c) σ y
   return (x, y)
 
+-- | Hidden Markov Model
+
+type HMMEnv = '[ "y" ':> Int ]
+
+transitionModel ::  Double -> Int -> Model s es Int
+transitionModel transition_p x_prev = do
+  dX <- boolToInt <$> bernoulli transition_p
+  Model $ prinT $ "x was " ++ show x_prev ++ " dX was " ++ show dX ++ " returning " ++ show (dX + x_prev)
+  return (dX + x_prev)
+
+observationModel :: (HasVar s "y" Int)
+  => Double -> Int -> Model s es Int
+observationModel observation_p x = do
+  binomial' x observation_p y
+
+hmm :: (HasVar s "y" Int)
+  => Double -> Double -> [Int] -> Model s es [Int]
+hmm transition_p observation_p xs = do
+  x_n <- transitionModel transition_p (head xs)
+  y_n <- observationModel observation_p x_n
+  Model $ prinT $ "y is " ++ show y_n
+  return (x_n:xs)
+
+hmm' :: HasVar s "y" Int => Double -> Double -> Int -> Model s es Int
+hmm' transition_p observation_p =
+  observationModel observation_p <=< transitionModel transition_p
+
+hmmNSteps :: (HasVar s "y" Int)
+  => Double -> Double -> Int -> ([Int] -> Model s es [Int])
+hmmNSteps transition_p observation_p n =
+  foldl (>=>) return (replicate n (hmm transition_p observation_p))
 
 
 {- Non probabilistic programs-}
