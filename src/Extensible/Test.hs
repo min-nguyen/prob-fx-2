@@ -7,6 +7,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds #-}
 
 module Extensible.Test where
 
@@ -20,6 +21,7 @@ import qualified Extensible.Inference.LW as LW
 import qualified Extensible.Inference.MH as MH
 import Extensible.OpenSum
 import Extensible.Inference.Inf
+import Extensible.State
 import Extensible.Model
 import Extensible.Sampler
 import Extensible.AffineReader
@@ -504,3 +506,10 @@ testHMMBasic = do
                          [0] (map mkRecordHMM [[]])
   map fst <$> bs
   -- undefined
+
+testHMMStBasic :: Sampler [([Int], [Int])]
+testHMMStBasic = do
+  let bs = Basic.basic 1
+            (runStateM . Example.hmmNStepsSt 0.5 0.5 10)
+                         [0] (map mkRecordHMM [[]])
+  map fst <$> bs

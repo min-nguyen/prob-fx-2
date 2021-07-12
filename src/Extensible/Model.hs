@@ -11,6 +11,7 @@ import Extensible.Freer
 -- import Extensible.Reader
 import Extensible.AffineReader
 import Extensible.Sampler
+import Extensible.State
 import Extensible.IO
 import GHC.Generics
 import GHC.Types
@@ -75,9 +76,6 @@ newtype Model env es a =
   Model { runModel :: (Member Dist es, Member (AffReader (AsList env)) es, Member Sample es) => Freer es a }
   deriving Functor
 
-prinT :: Member Sample es => String -> Freer es ()
-prinT s = Free (inj $ Printer s) Pure
-
 instance Applicative (Model env es) where
   pure = Model . pure
   (<*>) = ap
@@ -88,12 +86,20 @@ instance Monad (Model env es) where
     f' <- f
     runModel $ k f'
 
-accessField :: forall s es a.
-   Lens' (AsList s :& Field Identity) [a] ->
-   Model s es (Maybe a)
-accessField f = Model $ do
-    env <- Free (inj $ Ask f) Pure
-    return env
+printM :: Member Sample es => String -> Model env es ()
+printM = Model . prinT
+
+putM :: Member (State s) es => s -> Model env es ()
+putM = Model . put
+
+getM :: Member (State s) es => Model env es s
+getM = Model get
+
+modifyM :: Member (State s) es => (s -> s) -> Model env es ()
+modifyM = Model . modify
+
+runStateM :: Model env (State [Int]:es) a -> Model env es (a, [Int])
+runStateM m = Model $ runState [] $ runModel m
 
 normal :: Double -> Double -> Model s es Double
 normal mu sigma = Model $ do
@@ -103,7 +109,7 @@ normal' :: forall s es a . (a ~ Double)
   => Double -> Double -> Lens' (AsList s :& Field Identity) [a]
   -> Model s es Double
 normal' mu sigma field = Model $ do
-  maybe_y <- Free (inj $ Ask field) Pure
+  maybe_y <- ask field
   send (NormalDist mu sigma maybe_y)
 
 bernoulli :: Double -> Model s es Bool
@@ -114,7 +120,7 @@ bernoulli' :: forall s es a. (a ~ Bool)
   => Double -> Lens' (AsList s :& Field Identity) [a]
   -> Model s es Bool
 bernoulli' p field = Model $ do
-  maybe_y <- Free (inj $ Ask field) Pure
+  maybe_y <- ask field
   send (BernoulliDist p maybe_y)
 
 binomial :: Int -> Double -> Model s es Int
@@ -125,7 +131,7 @@ binomial' :: forall s es a. (a ~  Int)
   => Int -> Double -> Lens' (AsList s :& Field Identity) [a]
   -> Model s es Int
 binomial' n p field = Model $ do
-  maybe_y <- Free (inj $ Ask field) Pure
+  maybe_y <- ask field
   send (BinomialDist n p maybe_y)
 
 gamma :: Double -> Double -> Model s es Double
@@ -136,7 +142,7 @@ gamma' :: forall s es a. (a ~ Double)
   => Double -> Double -> Lens' (AsList s :& Field Identity) [a]
   -> Model s es Double
 gamma' k θ field = Model $ do
-  maybe_y <- Free (inj $ Ask field) Pure
+  maybe_y <- ask field
   send (GammaDist k θ maybe_y)
 
 uniform :: Double -> Double -> Model s es Double
@@ -147,5 +153,5 @@ uniform' :: forall s es a. (a ~ [Double])
   => Double -> Double -> Lens' (AsList s :& Field Identity) a
   -> Model s es Double
 uniform' min max field = Model $ do
-  maybe_y <- Free (inj $ Ask field) Pure
+  maybe_y <- ask field
   send (UniformDist min max maybe_y)

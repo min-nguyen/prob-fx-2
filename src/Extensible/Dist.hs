@@ -115,6 +115,9 @@ data Sample a where
   Sample  :: Dist a -> Addr -> Sample a
   Printer :: String -> Sample ()
 
+prinT :: Member Sample es => String -> Freer es ()
+prinT s = Free (inj $ Printer s) Pure
+
 data Observe a where
   Observe :: Dist a -> a -> Addr -> Observe a
 

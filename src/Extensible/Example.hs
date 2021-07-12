@@ -20,6 +20,7 @@ module Extensible.Example where
 import Statistics.Distribution
 import Extensible.Freer
 import Extensible.Reader
+import Extensible.State
 import Extensible.Writer
 import Extensible.Model
 import Extensible.Dist
@@ -174,7 +175,6 @@ sineModel x = do
   return (x, y)
 
 -- | Hidden Markov Model
-
 type HMMEnv = '[ "y" ':> Int ]
 
 transitionModel ::  Double -> Int -> Model s es Int
@@ -208,12 +208,31 @@ hmmNSteps transition_p observation_p n x =
       (x_n, y_n) <- hmm transition_p observation_p (head xs)
       return (x_n:xs, y_n:ys))) ([x], [])
 
+-- | Hidden Markov Model using State effect
+transitionModelSt ::  Double -> Int -> Model s es Int
+transitionModelSt transition_p x_prev = do
+  dX <- boolToInt <$> bernoulli transition_p
+  return (dX + x_prev)
 
--- hmmNSteps :: (HasVar s "y" Int)
---   => Double -> Double -> Int -> ([Int] -> Model s es [Int])
--- hmmNSteps transition_p observation_p n =
---   foldl (>=>) return
---     (replicate n (hmm transition_p observation_p))
+observationModelSt :: (HasVar s "y" Int, Member (State [Int]) es)
+  => Double -> Int -> Model s es Int
+observationModelSt observation_p x = do
+  y_n <- binomial' x observation_p y
+  modifyM (y_n:)
+  return y_n
+
+hmmSt :: (HasVar s "y" Int, Member (State [Int]) es)
+  => Double -> Double -> [Int] -> Model s es [Int]
+hmmSt transition_p observation_p xs = do
+  x_n <- transitionModelSt transition_p (head xs)
+  y_n <- observationModelSt observation_p x_n
+  return (x_n:xs)
+
+hmmNStepsSt :: (HasVar s "y" Int, Member (State [Int]) es)
+  => Double -> Double -> Int -> (Int -> Model s es [Int])
+hmmNStepsSt transition_p observation_p n x =
+  foldl (>=>) return
+    (replicate n (hmmSt transition_p observation_p)) [x]
 
 
 {- Non probabilistic programs-}

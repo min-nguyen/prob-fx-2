@@ -60,7 +60,8 @@ main = do
   -- trace <- sampleIOFixed testSinLWInf
   -- trace <- sampleIOFixed testSinMHPost
   -- trace <- sampleIOFixed testSinMHPred
-  trace <- sampleIOFixed testHMMBasic
+  -- trace <- sampleIOFixed testHMMBasic
+  trace <- sampleIOFixed testHMMStBasic
   let traceStr = show trace
   putStrLn traceStr
   -- writeFile "model-output.txt" traceStr
