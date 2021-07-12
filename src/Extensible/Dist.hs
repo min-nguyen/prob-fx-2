@@ -101,11 +101,11 @@ instance Show a => Show (Dist a) where
   show (BernoulliDist p y) =
     "BernoulliDist(" ++ show p ++ ", " ++ show y ++ ")"
   show (BinomialDist n p y) =
-    "BernoulliDist(" ++ show n ++ ", " ++ show p ++ ", " ++ show y ++ ")"
+    "BinomialDist(" ++ show n ++ ", " ++ show p ++ ", " ++ show y ++ ")"
   show (DiscreteDist ps y) =
     "DiscreteDist(" ++ show ps ++ ", " ++ show y ++ ")"
   show (BetaDist a b y) =
-    "DiscreteDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ")"
+    "BetaDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ")"
   show (GammaDist a b y) =
     "GammaDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ")"
   show (UniformDist a b y) =

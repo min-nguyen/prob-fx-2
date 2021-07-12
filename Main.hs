@@ -66,6 +66,6 @@ main = do
   -- trace <- sampleIOFixed testHMMStBasic
   let traceStr = show trace
   putStrLn traceStr
-  -- writeFile "model-output.txt" traceStr
+  writeFile "model-output.txt" traceStr
   return ()
 

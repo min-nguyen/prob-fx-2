@@ -523,18 +523,15 @@ testHMMLWSim = do
 
 testHMMLWInf :: Sampler [(([Int], [Int]), [(Addr, OpenSum LW.Vals)], Double)]
 testHMMLWInf = do
-  bs <- map fst <$> Basic.basic 100 (Example.hmmNSteps 10) [0] (repeat $ mkRecordHMM ([], 0.5, 0.5))
+  bs <- map fst <$> Basic.basic 10 (Example.hmmNSteps 10) [0] (repeat $ mkRecordHMM ([], 0.1, 0.1))
   let (xss, yss) = unzip bs
-  liftS $ print xss
-  liftS $ print yss
-  let lws' = LW.lw 1   (Example.hmmNSteps 10)
-                       [0, 0]
-                       (map (\ys -> mkRecordHMMy ys) yss)
+  let lws' = LW.lw 100  (Example.hmmNSteps 10)
+                        (replicate 10 0)
+                        (map (\ys -> mkRecordHMMy ys) yss)
   output <- lws'
   let output' = map (\(xy, samples, prob) ->
         let samples' = Map.toList samples
         in (xy, samples', prob)) output
-  -- liftS $ print $ show output'
   return output'
 
 
