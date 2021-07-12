@@ -370,7 +370,7 @@ def main():
     mu_samples_unique = removeDuplicates(mu_samples)
     c_samples   = [ d[1][1] for d in sampleMaps ]
     c_samples_unique = removeDuplicates(c_samples)
-    sigma_samples  = [ d[0][1] for d in sampleMaps ]
+    sigma_samples  = [ d[2][1] for d in sampleMaps ]
     sigma_samples_unique = removeDuplicates(sigma_samples)
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("mu values")
@@ -455,6 +455,26 @@ def main():
     axs2.set_ylabel("p")
     axs2.scatter(obs_ps, ps, cmap='gray')
     axs2.set_title('HMM - Likelihood Weighting (Obs p)')
+    plt.show()
+  if arg == "hmm-mh-post":
+    xys         = [ d[0] for d in data]
+    sampleMaps  = [ d[1] for d in data]
+    logpMaps    = [ d[2] for d in data]
+    trans_ps  = [ d[0][1] for d in sampleMaps ]
+    trans_ps_unique = removeDuplicates(trans_ps)
+    obs_ps   = [ d[1][1] for d in sampleMaps ]
+    obs_ps_unique = removeDuplicates(obs_ps)
+    print(trans_ps)
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("trans_ps values")
+    axs1.set_ylabel("frequency")
+    axs1.hist(trans_ps_unique, bins=50)
+    axs1.set_title('HMM - Metropolis Hastings Posterior (')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel("obs_ps values")
+    axs2.set_ylabel("frequency")
+    axs2.hist(obs_ps_unique, bins=50)
+    axs2.set_title('HMM - Metropolis Hastings Posterior')
     plt.show()
 if __name__ == "__main__":
   main()

@@ -534,6 +534,17 @@ testHMMLWInf = do
         in (xy, samples', prob)) output
   return output'
 
+testHMMMHPost :: Sampler [(([Int], [Int]), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testHMMMHPost = do
+  bs <- map fst <$> Basic.basic 10 (Example.hmmNSteps 10) [0] (repeat $ mkRecordHMM ([], 0.1, 0.1))
+  let (xss, yss) = unzip bs
+      mhs = MH.mh 1 (Example.hmmNSteps 10) (replicate 10 0) (map (\ys -> mkRecordHMMy ys) yss)
+  mhTrace <- mhs
+  let mhTrace' = map (\(xy, samples, logps) ->
+       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+           logps'   = Map.toList logps
+       in  (xy, samples', logps') ) mhTrace
+  return mhTrace'
 
 testHMMStBasic :: Sampler [([Int], [Int])]
 testHMMStBasic = do
