@@ -498,9 +498,9 @@ testSinMHPred = do
 mkRecordHMM :: [Int] -> LRec Example.HMMEnv
 mkRecordHMM ys = y @= ys <: nil
 
-testHMMBasic :: Sampler [[Int]]
+testHMMBasic :: Sampler [([Int], [Int])]
 testHMMBasic = do
   let bs = Basic.basic 1 (Example.hmmNSteps 0.5 0.5 10)
-                         [[0]] (map mkRecordHMM [[]])
+                         [0] (map mkRecordHMM [[]])
   map fst <$> bs
   -- undefined

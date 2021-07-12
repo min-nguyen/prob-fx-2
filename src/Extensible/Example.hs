@@ -189,21 +189,31 @@ observationModel observation_p x = do
   binomial' x observation_p y
 
 hmm :: (HasVar s "y" Int)
-  => Double -> Double -> [Int] -> Model s es [Int]
-hmm transition_p observation_p xs = do
-  x_n <- transitionModel transition_p (head xs)
+  => Double -> Double -> Int -> Model s es (Int, Int)
+hmm transition_p observation_p x_prev = do
+  x_n <- transitionModel transition_p x_prev
   y_n <- observationModel observation_p x_n
   Model $ prinT $ "y is " ++ show y_n
-  return (x_n:xs)
+  return (x_n, y_n)
 
 hmm' :: HasVar s "y" Int => Double -> Double -> Int -> Model s es Int
 hmm' transition_p observation_p =
   observationModel observation_p <=< transitionModel transition_p
 
 hmmNSteps :: (HasVar s "y" Int)
-  => Double -> Double -> Int -> ([Int] -> Model s es [Int])
-hmmNSteps transition_p observation_p n =
-  foldl (>=>) return (replicate n (hmm transition_p observation_p))
+  => Double -> Double -> Int -> (Int -> Model s es ([Int], [Int]))
+hmmNSteps transition_p observation_p n x =
+  foldl (>=>) return
+    (replicate n (\(xs, ys) -> do
+      (x_n, y_n) <- hmm transition_p observation_p (head xs)
+      return (x_n:xs, y_n:ys))) ([x], [])
+
+
+-- hmmNSteps :: (HasVar s "y" Int)
+--   => Double -> Double -> Int -> ([Int] -> Model s es [Int])
+-- hmmNSteps transition_p observation_p n =
+--   foldl (>=>) return
+--     (replicate n (hmm transition_p observation_p))
 
 
 {- Non probabilistic programs-}
