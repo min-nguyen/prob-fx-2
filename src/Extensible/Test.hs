@@ -497,19 +497,50 @@ testSinMHPred = do
 
 {- Hidden markov model -}
 
-mkRecordHMM :: [Int] -> LRec Example.HMMEnv
-mkRecordHMM ys = y @= ys <: nil
+mkRecordHMM :: ([Int], Double, Double) -> LRec Example.HMMEnv
+mkRecordHMM (ys, obsp, transp) = y @= ys <: obs_p @= [obsp] <: trans_p @= [transp] <: nil
+
+mkRecordHMMy :: [Int] -> LRec Example.HMMEnv
+mkRecordHMMy ys = y @= ys <: obs_p @= [] <: trans_p @= [] <: nil
 
 testHMMBasic :: Sampler [([Int], [Int])]
 testHMMBasic = do
-  let bs = Basic.basic 1 (Example.hmmNSteps 0.5 0.5 10)
-                         [0] (map mkRecordHMM [[]])
+  let bs = Basic.basic 10 (Example.hmmNSteps 10)
+                         [0] (repeat $ mkRecordHMM ([], 0.5, 0.5))
   map fst <$> bs
-  -- undefined
+
+testHMMLWSim :: Sampler [(([Int], [Int]), [(Addr, OpenSum LW.Vals)], Double)]
+testHMMLWSim = do
+  let lws = LW.lw 1 (Example.hmmNSteps 10)
+                    (replicate 10 0)
+                    (concat $ repeat $ map (\y -> mkRecordHMMy (repeat y)) [0 .. 10])
+  output <- lws
+  let output' = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) output
+  liftS $ print $ show output'
+  return output'
+
+testHMMLWInf :: Sampler [(([Int], [Int]), [(Addr, OpenSum LW.Vals)], Double)]
+testHMMLWInf = do
+  bs <- map fst <$> Basic.basic 100 (Example.hmmNSteps 10) [0] (repeat $ mkRecordHMM ([], 0.5, 0.5))
+  let (xss, yss) = unzip bs
+  liftS $ print xss
+  liftS $ print yss
+  let lws' = LW.lw 1   (Example.hmmNSteps 10)
+                       [0, 0]
+                       (map (\ys -> mkRecordHMMy ys) yss)
+  output <- lws'
+  let output' = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) output
+  -- liftS $ print $ show output'
+  return output'
+
 
 testHMMStBasic :: Sampler [([Int], [Int])]
 testHMMStBasic = do
-  let bs = Basic.basic 1
+  let bs = Basic.basic 2
             (runStateM . Example.hmmNStepsSt 0.5 0.5 10)
-                         [0] (map mkRecordHMM [[]])
+                         [0] (repeat $ mkRecordHMM ([], 0.5, 0.5))
   map fst <$> bs

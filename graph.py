@@ -10,6 +10,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import scale
 from scipy.special import expit
 import numpy as np
+from functools import reduce
+import itertools
 
 # Remove consecutive duplicates
 def removeDuplicates(xs):
@@ -393,6 +395,66 @@ def main():
     axs1.set_ylabel("y axis")
     axs1.scatter(xs, ys, cmap='gray')
     axs1.set_title('Sine model - Metropolis Hastings Predictive')
+    plt.show()
+  if arg == "hmm-basic":
+    xys =  [[ i for i, j in data ],
+            [ j for i, j in data ]]
+    # x axis values
+    xs = np.array([xs[:-1] for xs in xys[0]])
+    # y axis values
+    ys = np.array(xys[1])
+    print(xs.ravel(), ys.ravel())
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs.ravel(), ys.ravel(), cmap='gray')
+    axs1.set_title('HMM - Simulation')
+    plt.show()
+  if arg == "hmm-lw-sim":
+    xys        = [ d[0] for d in data]
+    # probabilities
+    ps         = [ d[2] for d in data]
+
+    xs = [xs[0][:-1] for xs in xys]
+    ys = [ys[1] for ys in xys]
+
+    ps    = [ [p for i in range(len(ys))] for p in ps ]
+    print(ps)
+
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.set_title('HMM - Likelihood Weighting')
+    plt.show()
+  if arg == "hmm-lw-inf":
+    xys        = [ d[0] for d in data]
+    sampleMaps = [ d[1] for d in data]
+    # probabilities
+    ps         = [ d[2] for d in data]
+    print(sampleMaps)
+    # x axis values
+    # xs = np.array([xs[:-1] for xs in xys[0]])
+    xs = [xs[0][:-1] for xs in xys]
+    ys = [ys[1] for ys in xys]
+    # ps = [ [p for i in range(len(ys))] for p in ps ]
+    trans_ps = [ s[0][1] for s in sampleMaps]
+    obs_ps   = [ s[1][1] for s in sampleMaps]
+    print(trans_ps)
+    # np.array([x[0] for x in xys])
+    # # y axis values
+    # ys = np.array([y[1] for y in xys])
+    # print(ps)
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("trans")
+    axs1.set_ylabel("p")
+    axs1.scatter(trans_ps, ps, cmap='gray')
+    axs1.set_title('HMM - Likelihood Weighting (Trans p)')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel("obs")
+    axs2.set_ylabel("p")
+    axs2.scatter(obs_ps, ps, cmap='gray')
+    axs2.set_title('HMM - Likelihood Weighting (Obs p)')
     plt.show()
 if __name__ == "__main__":
   main()
