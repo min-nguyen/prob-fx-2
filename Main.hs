@@ -57,13 +57,13 @@ main = do
   -- trace <- sampleIOFixed testNNLogMHPred
   -- trace <- sampleIOFixed testSinBasic
   -- trace <- sampleIOFixed testSinLWSim
-  -- trace <- sampleIOFixed testSinLWInf
+  trace <- sampleIOFixed testSinLWInf
   -- trace <- sampleIOFixed testSinMHPost
   -- trace <- sampleIOFixed testSinMHPred
   -- trace <- sampleIOFixed testHMMBasic
   -- trace <- sampleIOFixed testHMMLWSim
   -- trace <- sampleIOFixed testHMMLWInf
-  trace <- sampleIOFixed testHMMMHPost
+  -- trace <- sampleIOFixed testHMMMHPost
   -- trace <- sampleIOFixed testHMMStBasic
   let traceStr = show trace
   putStrLn traceStr
