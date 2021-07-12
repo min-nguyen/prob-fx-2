@@ -28,9 +28,7 @@ def main():
   if arg == "lin-regr-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
-    # x axis values
     xs = xys[0]
-    # y axis values
     ys = xys[1]
     plt.scatter(xs, ys)
     plt.xlabel('x - axis')
@@ -39,11 +37,8 @@ def main():
     plt.show()
   if arg == "lin-regr-lw-sim":
     xys        = [ d[0] for d in data]
-    # probabilities
     ps         = [ d[2] for d in data]
-    # x axis values
     xs = [x[0] for x in xys]
-    # y axis values
     ys = [y[1] for y in xys]
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
@@ -53,13 +48,9 @@ def main():
     plt.show()
   if arg == "lin-regr-lw-inf":
     xys        = [ d[0] for d in data]
-    # sample maps
     sampleMaps = [ d[1] for d in data]
-    # probabilities
     ps         = [ d[2] for d in data]
-    # x axis values
     xs = [x[0] for x in xys]
-    # y axis values
     ys = [y[1] for y in xys]
 
     mu_samples    = [ d[0][1] for d in sampleMaps ]
@@ -100,9 +91,7 @@ def main():
   if arg == "lin-regr-mh-pred":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
-    # x axis values
     xs = xys[0]
-    # y axis values
     ys = xys[1]
     plt.scatter(xs, ys)
     plt.xlabel('x - axis')
@@ -203,9 +192,7 @@ def main():
   if arg == "log-regr-mh-pred":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
-    # x axis values
     xs = xys[0]
-    # y axis values
     ys = xys[1]
     plt.scatter(xs, ys)
     plt.xlabel('x - axis')
@@ -216,10 +203,8 @@ def main():
   if arg == "nn-lin-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
-
     xs = np.array([ x for x in xys[0] ])
     ys = np.array([ y for y in xys[1] ])
-
     plt.scatter(xs, ys)
     plt.xlabel('x - axis')
     plt.ylabel('y - axis')
@@ -240,9 +225,7 @@ def main():
   if arg == "nn-lin-mh-pred":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
-    # x axis values
     xs = xys[0]
-    # y axis values
     ys = xys[1]
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
@@ -253,10 +236,8 @@ def main():
   if arg == "nn-step-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
-
     xs = np.array([ x for x in xys[0] ])
     ys = np.array([ y for y in xys[1] ])
-
     plt.scatter(xs, ys)
     plt.xlabel('x - axis')
     plt.ylabel('y - axis')
@@ -277,9 +258,7 @@ def main():
   if arg == "nn-step-mh-pred":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
-    # x axis values
     xs = xys[0]
-    # y axis values
     ys = xys[1]
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
@@ -305,7 +284,6 @@ def main():
   if arg == "nn-log-mh-pred":
     xyls =  [[ i for i, j in data ],
              [ j for i, j in data ]]
-
     xs = [ xys[0] for xys in xyls[0]]
     ys = [ xys[1] for xys in xyls[0]]
     ls = [ ls     for ls in xyls[1]]
@@ -319,9 +297,7 @@ def main():
   if arg == "sin-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
-    # x axis values
     xs = xys[0]
-    # y axis values
     ys = xys[1]
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
@@ -331,11 +307,8 @@ def main():
     plt.show()
   if arg == "sin-lw-sim":
     xys        = [ d[0] for d in data]
-    # probabilities
     ps         = [ d[2] for d in data]
-    # x axis values
     xs = [x[0] for x in xys]
-    # y axis values
     ys = [y[1] for y in xys]
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
@@ -386,9 +359,7 @@ def main():
   if arg == "sin-mh-pred":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
-    # x axis values
     xs = xys[0]
-    # y axis values
     ys = xys[1]
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
@@ -399,9 +370,7 @@ def main():
   if arg == "hmm-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
-    # x axis values
     xs = np.array([xs[:-1] for xs in xys[0]])
-    # y axis values
     ys = np.array(xys[1])
     print(xs.ravel(), ys.ravel())
     fig1, axs1 = plt.subplots(nrows=1)
@@ -412,12 +381,9 @@ def main():
     plt.show()
   if arg == "hmm-lw-sim":
     xys        = [ d[0] for d in data]
-    # probabilities
     ps         = [ d[2] for d in data]
-
     xs = [xs[0][:-1] for xs in xys]
     ys = [ys[1] for ys in xys]
-
     ps    = [ [p for i in range(len(ys))] for p in ps ]
     print(ps)
 
@@ -430,21 +396,11 @@ def main():
   if arg == "hmm-lw-inf":
     xys        = [ d[0] for d in data]
     sampleMaps = [ d[1] for d in data]
-    # probabilities
     ps         = [ d[2] for d in data]
-    print(sampleMaps)
-    # x axis values
-    # xs = np.array([xs[:-1] for xs in xys[0]])
     xs = [xs[0][:-1] for xs in xys]
     ys = [ys[1] for ys in xys]
-    # ps = [ [p for i in range(len(ys))] for p in ps ]
     trans_ps = [ s[0][1] for s in sampleMaps]
     obs_ps   = [ s[1][1] for s in sampleMaps]
-    print(trans_ps)
-    # np.array([x[0] for x in xys])
-    # # y axis values
-    # ys = np.array([y[1] for y in xys])
-    # print(ps)
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("trans")
     axs1.set_ylabel("p")
@@ -464,17 +420,16 @@ def main():
     trans_ps_unique = removeDuplicates(trans_ps)
     obs_ps   = [ d[1][1] for d in sampleMaps ]
     obs_ps_unique = removeDuplicates(obs_ps)
-    print(trans_ps)
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("trans_ps values")
     axs1.set_ylabel("frequency")
     axs1.hist(trans_ps_unique, bins=50)
-    axs1.set_title('HMM - Metropolis Hastings Posterior (')
+    axs1.set_title('HMM - Metropolis Hastings Posterior (Trans P)')
     fig2, axs2 = plt.subplots(nrows=1)
     axs2.set_xlabel("obs_ps values")
     axs2.set_ylabel("frequency")
     axs2.hist(obs_ps_unique, bins=50)
-    axs2.set_title('HMM - Metropolis Hastings Posterior')
+    axs2.set_title('HMM - Metropolis Hastings Posterior (Obs P)')
     plt.show()
 if __name__ == "__main__":
   main()
