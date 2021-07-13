@@ -22,6 +22,7 @@ import Data.Extensible hiding (wrap, Head, Member)
 import qualified Data.Vector as V
 import Statistics.Distribution
 import Statistics.Distribution.DiscreteUniform
+import Statistics.Distribution.Poisson
 import Statistics.Distribution.Normal
 import Statistics.Distribution.Gamma
 import Statistics.Distribution.Beta
@@ -49,6 +50,8 @@ data DistInfo where
   CategoricalDistI   :: V.Vector (Int, Double) -> DistInfo
   -- discrete       :: Dist Int
   DiscreteDistI      :: [(Int, Double)] -> DistInfo
+  -- poisson        :: Dist Int
+  PoissonDistI       :: Double -> DistInfo
   deriving Eq
 
 instance Show DistInfo where
@@ -64,6 +67,14 @@ instance Show DistInfo where
     "GammaDist(" ++ show a ++ ", " ++ show b ++ ")"
   show (UniformDistI a b ) =
     "UniformDist(" ++ show a ++ ", " ++ show b ++ ")"
+  show (DiscrUniformDistI min max ) =
+    "DiscrUniformDist(" ++ show min ++ ", " ++ show max ++ ")"
+  show (PoissonDistI l) =
+    "PoissonDist(" ++ show l ++ ")"
+  show (CategoricalDistI xs ) =
+    "CategoricalDist(" ++ show xs  ++ ")"
+  show (BinomialDistI n p ) =
+    "BinomialDist(" ++ show n ++ ", " ++ show p ++ ")"
 
 toDistInfo :: Dist a -> DistInfo
 toDistInfo (NormalDist mu sigma y) = NormalDistI mu sigma
@@ -73,6 +84,9 @@ toDistInfo (GammaDist a b y) = GammaDistI a b
 toDistInfo (BetaDist a b y) = BetaDistI a b
 toDistInfo (BinomialDist n p y) = BinomialDistI n p
 toDistInfo (BernoulliDist p y) = BernoulliDistI p
+toDistInfo (PoissonDist l y) = PoissonDistI l
+toDistInfo (DiscreteDist p y) = DiscreteDistI p
+toDistInfo (CategoricalDist p y) = CategoricalDistI p
 
 data Dist a where
   -- IfDist            :: Bool -> Dist a -> Dist a -> Dist a
@@ -94,6 +108,8 @@ data Dist a where
   CategoricalDist   :: V.Vector (Int, Double) -> Maybe Int -> Dist Int
   -- discrete       :: Dist Int
   DiscreteDist      :: [(Int, Double)] -> Maybe Int -> Dist Int
+  -- poisson        :: Dist Int
+  PoissonDist       :: Double -> Maybe Int -> Dist Int
 
 instance Show a => Show (Dist a) where
   show (NormalDist mu sigma y) =
@@ -110,6 +126,12 @@ instance Show a => Show (Dist a) where
     "GammaDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ")"
   show (UniformDist a b y) =
     "UniformDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ")"
+  show (DiscrUniformDist min max y) =
+    "DiscrUniformDist(" ++ show min ++ ", " ++ show max ++ ", " ++ show y ++ ")"
+  show (PoissonDist l y) =
+    "PoissonDist(" ++ show l ++ ", " ++ show y ++ ")"
+  show (CategoricalDist xs y) =
+    "CategoricalDist(" ++ show xs ++ ", " ++ show y ++ ")"
 
 type Addr = Int
 
@@ -149,6 +171,7 @@ isDistDouble d@BinomialDist {} = Nothing
 isDistDouble d@CategoricalDist {} = Nothing
 isDistDouble d@DiscreteDist {} = Nothing
 isDistDouble d@BernoulliDist {} = Nothing
+isDistDouble d@PoissonDist {} = Nothing
 
 isDistBool :: Dist x -> Maybe (Dist Bool)
 isDistBool d@BernoulliDist {} = Just d
@@ -160,12 +183,14 @@ isDistBool d@DiscrUniformDist {} = Nothing
 isDistBool d@BinomialDist {} = Nothing
 isDistBool d@CategoricalDist {} = Nothing
 isDistBool d@DiscreteDist {} = Nothing
+isDistBool d@PoissonDist {} = Nothing
 
 isDistInt :: Dist x -> Maybe (Dist Int)
 isDistInt d@DiscrUniformDist {} = Just d
 isDistInt d@BinomialDist {} = Just d
 isDistInt d@CategoricalDist {} = Just d
 isDistInt d@DiscreteDist {} = Just d
+isDistInt d@PoissonDist {} = Just d
 isDistInt d@BernoulliDist {} = Nothing
 isDistInt d@NormalDist {} = Nothing
 isDistInt d@BetaDist {} = Nothing
@@ -203,6 +228,10 @@ instance Distribution (Dist a) where
     = foldr (\(a, ap) p -> if fromIntegral a <= x then p + ap else p) 0 ps
   cumulative (DiscreteDist ps _ ) x
     = foldr (\(a, ap) p -> if fromIntegral a <= x then p + ap else p) 0 ps
+  cumulative (PoissonDist λ _) x
+    = cumulative (poisson λ) x
+  cumulative (DiscrUniformDist min max _) x
+    = cumulative (uniformDistr (fromIntegral min) (fromIntegral max)) x
 
 instance ContDistr (Dist a) where
   density (NormalDist μ σ _ )          = density (normalDistr μ σ)
@@ -225,11 +254,13 @@ instance DiscreteDistr (Dist a) where
   probability (CategoricalDist ps _ ) i          = snd (ps V.! i)
   probability (DiscreteDist ps _ ) i             = snd (ps !! i)
   probability (DiscrUniformDist min max _ ) i    = probability (discreteUniformAB min max) i
+  probability (PoissonDist λ _) i                = probability (poisson λ) i
   logProbability (BinomialDist n p _ ) i         = logProbability (binomial n p) i
   logProbability (BernoulliDist p _ ) i          = logProbability (binomial 1 p) i
   logProbability (CategoricalDist ps _ ) i       = (log . snd) (ps V.! i)
   logProbability (DiscreteDist ps _ ) i          = (log . snd) (ps !! i)
   logProbability (DiscrUniformDist min max _ ) i = logProbability (discreteUniformAB min max) i
+  logProbability (PoissonDist λ _) i = logProbability (poisson λ) i
 
 hasObs :: Dist a -> Bool
 hasObs d@(NormalDist _ _ obs )       = isJust obs
@@ -241,6 +272,7 @@ hasObs d@(BinomialDist _ _ obs )     = isJust obs
 hasObs d@(BernoulliDist _ obs )      = isJust obs
 hasObs d@(CategoricalDist _ obs )    = isJust obs
 hasObs d@(DiscreteDist _ obs )       = isJust obs
+hasObs d@(PoissonDist _ obs )       = isJust obs
 
 getObs :: Dist a -> a
 getObs d@(NormalDist _ _ obs )       = fromJust obs
@@ -252,6 +284,7 @@ getObs d@(BinomialDist _ _ obs )     = fromJust obs
 getObs d@(BernoulliDist _ obs )      = fromJust obs
 getObs d@(CategoricalDist _ obs )    = fromJust obs
 getObs d@(DiscreteDist _ obs )       = fromJust obs
+getObs d@(PoissonDist _ obs )       = fromJust obs
 
 prob :: Dist a -> a -> Double
 prob d@NormalDist {} y
@@ -272,6 +305,8 @@ prob d@CategoricalDist {} y
   = probability d y
 prob d@DiscreteDist {} y
   = probability d y
+prob d@PoissonDist {} y
+  = probability d y
 
 {- Combines logDensity and logProbability.
    Log probability of double `x` from a distribution -}
@@ -280,32 +315,22 @@ logProb d = log . prob d
 
 sample :: Dist a -> Sampler a
 sample (NormalDist μ σ obs)  =
-  createSampler (sampleNormal μ σ) >>= return
+  createSampler (sampleNormal μ σ)
 sample (UniformDist min max obs  )  =
-  createSampler (sampleUniform min max) >>= return
+  createSampler (sampleUniform min max)
 sample (DiscrUniformDist min max obs )  =
-  createSampler (sampleDiscreteUniform min max) >>= return
+  createSampler (sampleDiscreteUniform min max)
 sample (GammaDist k θ obs )        =
-  createSampler (sampleGamma k θ) >>= return
+  createSampler (sampleGamma k θ)
 sample (BetaDist α β  obs )         =
-  createSampler (sampleBeta α β) >>= return
+  createSampler (sampleBeta α β)
 sample (BinomialDist n p  obs )     =
   createSampler (sampleBinomial n p) >>=  return .  length . filter (== True)
 sample (BernoulliDist p obs )      =
-  createSampler (sampleBernoulli p) >>= return
+  createSampler (sampleBernoulli p)
 sample (CategoricalDist ps obs )   =
-  createSampler (sampleCategorical (fmap snd ps)) >>= return
+  createSampler (sampleCategorical (fmap snd ps))
 sample (DiscreteDist ps obs )      =
   createSampler (sampleDiscrete (map snd ps)) >>= \i -> return (fst $ ps !! i)
-
-
-{- Old version of runDist which always samples -}
--- runDist :: Member (Lift Sampler) rs => Freer (Dist : rs) a
---         -> Freer rs  a
--- runDist m = loop m where
---   loop :: Member (Lift Sampler) rs => Freer (Dist : rs) a -> Freer rs a
---   loop (Pure x) = return x
---   loop (Free u k) = case decomp u of
---     Right d@(NormalDist m sigma y)
---       -> send (Lift (sample d)) >>= loop . k
---     Left  u'  -> Free u' (loop . k)
+sample (PoissonDist λ obs) =
+  createSampler (samplePoisson λ)

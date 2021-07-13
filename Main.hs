@@ -32,7 +32,7 @@ import Util
 main :: IO ()
 main = do
   -- trace <- sampleIOFixed testLinRegrBasic
-  trace <- sampleIOFixed testLinRegrLWSim
+  -- trace <- sampleIOFixed testLinRegrLWSim
   -- trace <- sampleIOFixed testLinRegrLWInf
   -- trace <- sampleIOFixed testLinRegrMHPost
   -- trace <- sampleIOFixed testLinRegrMHPred
@@ -66,8 +66,9 @@ main = do
   -- trace <- sampleIOFixed testHMMMHPost
   -- trace <- sampleIOFixed testHMMMHPred
   -- trace <- sampleIOFixed testHMMStBasic
+  trace <- sampleIOFixed testPoisson
   let traceStr = show trace
   putStrLn traceStr
-  writeFile "model-output.txt" traceStr
+  -- writeFile "model-output.txt" traceStr
   return ()
 

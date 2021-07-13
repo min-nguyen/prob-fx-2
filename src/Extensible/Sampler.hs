@@ -25,7 +25,7 @@ import Statistics.Distribution
 import Statistics.Distribution.Normal
 import qualified System.Random.MWC as MWC
 import qualified System.Random.MWC.Distributions as MWC.Dist
-
+import qualified System.Random.MWC.Probability as MWC.Probability
 import Util
 
 newtype Sampler a = Sampler {runSampler :: ReaderT MWC.GenIO IO a}
@@ -81,3 +81,6 @@ sampleCategorical ps = trace (show ps) $ \gen -> MWC.Dist.categorical (ps) gen
 
 sampleDiscrete :: [Double] -> (MWC.GenIO -> IO Int)
 sampleDiscrete ps = \gen -> MWC.Dist.categorical (V.fromList ps) gen
+
+samplePoisson :: Double -> (MWC.GenIO -> IO Int)
+samplePoisson λ = \gen -> MWC.Probability.sample (MWC.Probability.poisson λ) gen

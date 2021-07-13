@@ -522,7 +522,7 @@ testHMMMHPost = do
       hmm_n_samples = 10
   bs <- map fst <$> Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
                     [0] [mkRecordHMM ([], 0.5, 0.5)]
-  let mh_n_iterations = 1
+  let mh_n_iterations = 100
       (_, yss)  = unzip bs
 
   mhTrace <- MH.mh mh_n_iterations (Example.hmmNSteps hmm_n_steps)
@@ -539,8 +539,6 @@ testHMMMHPred = do
   mhTrace <- testHMMMHPost
   let (trans_p:obs_p:_) = map (fromJust . prj @Double . snd)
                           ((snd3 . head) mhTrace)
-      -- (trans_p, postParams') = splitAt 1 postParams
-      -- (obs_p, _)             = splitAt 1 postParams'
   liftS $ print $ "using parameters " ++ show (trans_p, obs_p)
   let hmm_n_samples = 100
       hmm_n_steps   = 10
@@ -554,3 +552,12 @@ testHMMStBasic = do
             (runStateM . Example.hmmNStepsSt 0.5 0.5 10)
                          [0] (repeat $ mkRecordHMM ([], 0.5, 0.5))
   return $ map fst bs
+
+-- mkRecordY :: Int -> LRec
+mkRecordY yv = y @= [yv] <: nil
+
+testPoisson :: Sampler [Int]
+testPoisson = do
+  bs <- LW.lw 1 Example.poissonm
+                [10, 10, 10, 10, 10, 10] (map mkRecordY [0, 3, 6, 9, 10, 11])
+  return $ []

@@ -95,7 +95,8 @@ library
                        profunctors,
                        statistics,
                        split,
-                       mwc-random
+                       mwc-random,
+                       mwc-probability
 
   -- Directories containing source files.
   hs-source-dirs:      src

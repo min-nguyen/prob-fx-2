@@ -235,7 +235,18 @@ hmmNStepsSt transition_p observation_p n x =
   foldl (>=>) return
     (replicate n (hmmSt transition_p observation_p)) [x]
 
+-- | Hidden Markov Model - SIR
 
+-- Model for observing the number of infected people
+-- observeSIR :: Double -> Int -> Model s es Int
+-- observeSIR rho inf =
+poissonm :: (HasVar s "y" Int) => Double -> Model s es Int
+poissonm l = do
+  y <- poisson' l y
+  Model $ prinT $ "y is " ++ show y
+  let x = prob (UniformDist 4 8 Nothing) 6.5
+  Model $ prinT $ "x is " ++ show x
+  return y
 {- Non probabilistic programs-}
 
 example :: (Member (Reader Int) rs, Member (Writer String) rs)

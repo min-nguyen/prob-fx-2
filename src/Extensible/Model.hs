@@ -155,3 +155,14 @@ uniform' :: forall s es a. (a ~ [Double])
 uniform' min max field = Model $ do
   maybe_y <- ask field
   send (UniformDist min max maybe_y)
+
+poisson :: Double -> Model s es Int
+poisson λ = Model $ do
+  send (PoissonDist λ Nothing)
+
+poisson' :: forall s es a. (a ~ Int)
+  => Double -> Lens' (AsList s :& Field Identity) [a]
+  -> Model s es Int
+poisson' λ field = Model $ do
+  maybe_y <- ask field
+  send (PoissonDist λ maybe_y)
