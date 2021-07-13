@@ -36,7 +36,7 @@ import qualified System.Random.MWC.Distributions as MWC
 import qualified Data.Vector as V
 import Unsafe.Coerce
 
-mkField "m c b μ σ mu sigma y ys label yObs weight bias obs_p trans_p"
+mkField "ρ β γ m c b μ σ mu sigma y ys label yObs weight bias obs_p trans_p"
 
 type family Maybes (as :: [k]) = (bs :: [k]) | bs -> as where
   Maybes ((f :> v) : as) = (f :> Maybe v) : Maybes as
@@ -144,6 +144,17 @@ gamma' :: forall s es a. (a ~ Double)
 gamma' k θ field = Model $ do
   maybe_y <- ask field
   send (GammaDist k θ maybe_y)
+
+beta :: Double -> Double -> Model s es Double
+beta α β = Model $ do
+  send (BetaDist α β Nothing)
+
+beta' :: forall s es a. (a ~ Double)
+  => Double -> Double -> Lens' (AsList s :& Field Identity) [a]
+  -> Model s es Double
+beta' α β field = Model $ do
+  maybe_y <- ask field
+  send (BetaDist α β maybe_y)
 
 uniform :: Double -> Double -> Model s es Double
 uniform min max = Model $ do

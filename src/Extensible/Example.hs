@@ -237,18 +237,58 @@ hmmNStepsSt transition_p observation_p n x =
 
 -- | Hidden Markov Model - SIR
 
--- Model for observing the number of infected people
--- observeSIR :: Double -> Int -> Model s es Int
--- observeSIR rho inf =
-poissonm :: (HasVar s "y" Int) => Double -> Model s es Int
-poissonm l = do
-  y <- poisson' l y
-  Model $ prinT $ "y is " ++ show y
-  let x = prob (UniformDist 4 8 Nothing) 6.5
-  Model $ prinT $ "x is " ++ show x
-  return y
-{- Non probabilistic programs-}
+data FixedParams = FixedParams {
+    numPop :: Int,
+    timeSlices :: Int
+}
+data Params = Params {
+    ρ :: Double, -- ^ Rate of detection
+    β :: Double, -- ^ Mean contact rate between susceptible and infected people
+    γ :: Double -- ^ Mean recovery rate
+}
+data LatentState = LatentState {
+    sus :: Int, -- ^ Number of people susceptible to infection
+    inf :: Int, -- ^ Number of people currently infected
+    recov :: Int -- ^ Number of people recovered from infection
+}
 
+observeSIR :: Params -> LatentState -> Model s es Int
+observeSIR (Params rho _ _) (LatentState _ inf _) =
+  poisson (rho * fromIntegral inf)
+
+transitionSIR :: FixedParams -> Params -> LatentState -> Model s es LatentState
+transitionSIR (FixedParams numPop timeSlices) (Params rho beta gamma) (LatentState sus inf recov)  = do
+  let dt   = 1 / fromIntegral timeSlices
+      si_p = 1 - exp ((-beta * dt * fromIntegral inf) / fromIntegral numPop)
+  dN_SI <- binomial sus si_p
+  let ir_p = 1 - exp (-gamma * dt)
+  dN_IR <- binomial inf ir_p
+  let sus'   = sus - dN_SI
+      inf'   = inf + dN_SI - dN_IR
+      recov' = recov + dN_IR
+  return (LatentState sus' inf' recov')
+
+hmmSIR :: FixedParams -> Params -> LatentState -> Model s es LatentState
+hmmSIR fixedParams  params latentState = do
+  latentState'   <- transitionSIR fixedParams params latentState
+  infectionCount <- observeSIR params latentState
+  return latentState'
+
+paramsPrior :: (HasVar s "ρ" Double, HasVar s "β" Double, HasVar s "γ" Double) =>
+  Model s es Params
+paramsPrior = do
+  pBeta  <- gamma 2 1
+  pRho   <- beta 2 7
+  pGamma <- gamma 1 (1/8)
+  return (Params pRho pBeta pGamma)
+
+hmmSIRNsteps :: (HasVar s "ρ" Double, HasVar s "β" Double, HasVar s "γ" Double) => FixedParams -> LatentState -> Int -> Model s es LatentState
+hmmSIRNsteps fixedParams latentState n = do
+  params <- paramsPrior
+  let go = foldl (>=>) return (replicate n (hmmSIR fixedParams params))
+  go latentState
+
+{- Non probabilistic programs-}
 example :: (Member (Reader Int) rs, Member (Writer String) rs)
         => Freer rs Int
 example = do
