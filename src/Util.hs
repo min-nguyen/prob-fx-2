@@ -24,6 +24,9 @@ dotProd xss yss =
       dot xs1 xs2 = sum $ zipWith (*) xs1 xs2
   in  [map (dot xs) ys_T | xs <- xss]
 
+fst3 :: (a, b, c) -> a
+fst3 (a, b, c) = a
+
 snd3 :: (a, b, c) -> b
 snd3 (a, b, c) = b
 

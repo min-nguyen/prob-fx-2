@@ -180,7 +180,6 @@ type HMMEnv = '[ "y" ':> Int, "obs_p" ':> Double, "trans_p" ':> Double ]
 transitionModel ::  Double -> Int -> Model s es Int
 transitionModel transition_p x_prev = do
   dX <- boolToInt <$> bernoulli transition_p
-  Model $ prinT $ "x was " ++ show x_prev ++ " dX was " ++ show dX ++ " returning " ++ show (dX + x_prev)
   return (dX + x_prev)
 
 observationModel :: (HasVar s "y" Int)
@@ -193,7 +192,6 @@ hmm :: (HasVar s "y" Int)
 hmm transition_p observation_p x_prev = do
   x_n <- transitionModel  transition_p x_prev
   y_n <- observationModel observation_p x_n
-  Model $ prinT $ "y is " ++ show y_n
   return (x_n, y_n)
 
 hmm' :: HasVar s "y" Int => Double -> Double -> Int -> Model s es Int

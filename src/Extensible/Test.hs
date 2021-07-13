@@ -88,7 +88,7 @@ testLinRegrMHPost = do
   -- Run mh inference over linearRegression for data representing a line with gradient 3 and intercept 0
   let mh_n_iterations = 100
   mhTrace <- MH.mh mh_n_iterations Example.linearRegression [0 .. 100]
-                     (map (mkRecordLinRegrY . (:[]) . (*3) ) [0 .. 100])
+                     (map (mkRecordLinRegrY . (:[]) . (*3)) [0 .. 100])
   -- Reformat MH trace
   let mhTrace' = map (\(xy, samples, logps) ->
        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
@@ -505,7 +505,7 @@ testHMMLWInf = do
   let hmm_n_steps   = 10
       hmm_n_samples = 10
   bs <- map fst <$> Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
-                    [0] [mkRecordHMM ([], 0.1, 0.1)]
+                    [0] [mkRecordHMM ([], 0.5, 0.5)]
   let lw_n_iterations = 100
       (_, yss) = unzip bs
   lws <- LW.lw lw_n_iterations  (Example.hmmNSteps hmm_n_steps)
@@ -519,11 +519,12 @@ testHMMLWInf = do
 testHMMMHPost :: Sampler [(([Int], [Int]), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
 testHMMMHPost = do
   let hmm_n_steps   = 10
-      hmm_n_samples = 100
+      hmm_n_samples = 10
   bs <- map fst <$> Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
-                    [0] [mkRecordHMM ([], 0.1, 0.1)]
-  let mh_n_iterations = 100
+                    [0] [mkRecordHMM ([], 0.5, 0.5)]
+  let mh_n_iterations = 1
       (_, yss)  = unzip bs
+
   mhTrace <- MH.mh mh_n_iterations (Example.hmmNSteps hmm_n_steps)
                                    (replicate hmm_n_samples 0)
                                    (map mkRecordHMMy yss)
@@ -532,6 +533,20 @@ testHMMMHPost = do
            logps'   = Map.toList logps
        in  (xy, samples', logps') ) mhTrace
   return mhTrace'
+
+testHMMMHPred :: Sampler [([Int], [Int])]
+testHMMMHPred = do
+  mhTrace <- testHMMMHPost
+  let (trans_p:obs_p:_) = map (fromJust . prj @Double . snd)
+                          ((snd3 . head) mhTrace)
+      -- (trans_p, postParams') = splitAt 1 postParams
+      -- (obs_p, _)             = splitAt 1 postParams'
+  liftS $ print $ "using parameters " ++ show (trans_p, obs_p)
+  let hmm_n_samples = 100
+      hmm_n_steps   = 10
+  bs <- Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
+                    [0] [mkRecordHMM ([], trans_p, obs_p)]
+  return $ map fst bs
 
 testHMMStBasic :: Sampler [([Int], [Int])]
 testHMMStBasic = do

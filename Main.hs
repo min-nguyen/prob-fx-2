@@ -32,7 +32,7 @@ import Util
 main :: IO ()
 main = do
   -- trace <- sampleIOFixed testLinRegrBasic
-  -- trace <- sampleIOFixed testLinRegrLWSim
+  trace <- sampleIOFixed testLinRegrLWSim
   -- trace <- sampleIOFixed testLinRegrLWInf
   -- trace <- sampleIOFixed testLinRegrMHPost
   -- trace <- sampleIOFixed testLinRegrMHPred
@@ -62,8 +62,9 @@ main = do
   -- trace <- sampleIOFixed testSinMHPred
   -- trace <- sampleIOFixed testHMMBasic
   -- trace <- sampleIOFixed testHMMLWSim
-  trace <- sampleIOFixed testHMMLWInf
+  -- trace <- sampleIOFixed testHMMLWInf
   -- trace <- sampleIOFixed testHMMMHPost
+  -- trace <- sampleIOFixed testHMMMHPred
   -- trace <- sampleIOFixed testHMMStBasic
   let traceStr = show trace
   putStrLn traceStr

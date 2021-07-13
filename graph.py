@@ -12,6 +12,7 @@ from scipy.special import expit
 import numpy as np
 from functools import reduce
 import itertools
+from scipy.stats import gaussian_kde
 
 # Remove consecutive duplicates
 def removeDuplicates(xs):
@@ -21,6 +22,7 @@ def main():
   arg  = sys.argv[1]
   f    = open("model-output.txt", "r")
   data = ast.literal_eval(f.read())
+  color_map = plt.cm.get_cmap('Blues')
   # X, Y = make_moons(noise=0.2, random_state=0, n_samples=1000)
   # X = scale(X)
   # X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.5)
@@ -43,7 +45,7 @@ def main():
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.scatter(xs, ys, c=ps, cmap=color_map)
     axs1.set_title('Linear regression - Likelihood Weighting')
     plt.show()
   if arg == "lin-regr-lw-inf":
@@ -60,7 +62,7 @@ def main():
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.scatter(xs, ys, c=ps, cmap=color_map)
     axs1.set_title('Linear regression - Likelihood Weighting')
 
     fig2, axs2 = plt.subplots(nrows=1)
@@ -147,7 +149,7 @@ def main():
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.scatter(xs, ys, c=ps, cmap=color_map)
     axs1.set_title('Logistic regression - likelihood weighting')
     plt.show()
   if arg == "log-regr-lw-inf":
@@ -161,7 +163,7 @@ def main():
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.scatter(xs, ys, c=ps, cmap=color_map)
     axs1.set_title('Logistic regression - likelihood weighting')
     axs1.text(-2.5, 1.15, 'How likely the randomly sampled parameters of the current iteration gives rise to the data point')
     fig2, axs2 = plt.subplots(nrows=1)
@@ -219,7 +221,7 @@ def main():
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.scatter(xs, ys, c=ps, cmap=color_map)
     axs1.set_title('Bayesian neural network')
     plt.show()
   if arg == "nn-lin-mh-pred":
@@ -230,7 +232,7 @@ def main():
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, cmap='gray')
+    axs1.scatter(xs, ys, cmap=color_map)
     axs1.set_title('Bayesian neural network - Metropolis Hastings Predictive')
     plt.show()
   if arg == "nn-step-basic":
@@ -252,7 +254,7 @@ def main():
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.scatter(xs, ys, c=ps, cmap=color_map)
     axs1.set_title('Bayesian (step) neural network - Likelihood Weighting Simulation')
     plt.show()
   if arg == "nn-step-mh-pred":
@@ -263,7 +265,7 @@ def main():
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, cmap='gray')
+    axs1.scatter(xs, ys, cmap=color_map)
     axs1.set_title('Bayesian neural network - Metropolis Hastings Predictive')
     plt.show()
   if arg == "nn-log-basic":
@@ -302,7 +304,7 @@ def main():
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, cmap='gray')
+    axs1.scatter(xs, ys, cmap=color_map)
     axs1.set_title('Sine model - Simulation')
     plt.show()
   if arg == "sin-lw-sim":
@@ -313,7 +315,7 @@ def main():
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.scatter(xs, ys, c=ps, cmap=color_map)
     axs1.set_title('Sine model - Likelihood Weighting')
     plt.show()
   if arg == "sin-lw-inf":
@@ -326,7 +328,7 @@ def main():
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.scatter(xs, ys, c=ps, cmap=color_map)
     axs1.set_title('Sine model - Likelihood Weighting')
     fig2, axs2 = plt.subplots(nrows=1)
     axs2.set_xlabel('mu value')
@@ -364,25 +366,25 @@ def main():
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, cmap='gray')
+    axs1.scatter(xs, ys, cmap=color_map)
     axs1.set_title('Sine model - Metropolis Hastings Predictive')
     plt.show()
   if arg == "hmm-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
-    xs = np.array([xs[:-1] for xs in xys[0]])
+    xs = np.array([xs[1:] for xs in xys[0]])
     ys = np.array(xys[1])
     print(xs.ravel(), ys.ravel())
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
-    axs1.scatter(xs.ravel(), ys.ravel(), cmap='gray')
+    axs1.scatter(xs.ravel(), ys.ravel(), cmap=color_map)
     axs1.set_title('HMM - Simulation')
     plt.show()
   if arg == "hmm-lw-sim":
     xys        = [ d[0] for d in data]
     ps         = [ d[2] for d in data]
-    xs = [xs[0][:-1] for xs in xys]
+    xs = [xs[0][1:] for xs in xys]
     ys = [ys[1] for ys in xys]
     ps    = [ [p for i in range(len(ys))] for p in ps ]
     print(ps)
@@ -390,26 +392,27 @@ def main():
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap='gray')
+    axs1.scatter(xs, ys, c=ps, cmap=color_map)
     axs1.set_title('HMM - Likelihood Weighting')
     plt.show()
   if arg == "hmm-lw-inf":
+
     xys        = [ d[0] for d in data]
     sampleMaps = [ d[1] for d in data]
     ps         = [ d[2] for d in data]
-    xs = [xs[0][:-1] for xs in xys]
+    xs = [xs[0][1:] for xs in xys]
     ys = [ys[1] for ys in xys]
     trans_ps = [ s[0][1] for s in sampleMaps]
     obs_ps   = [ s[1][1] for s in sampleMaps]
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("trans")
     axs1.set_ylabel("p")
-    axs1.scatter(trans_ps, ps, cmap='gray')
+    axs1.scatter(trans_ps, ps, cmap=color_map)
     axs1.set_title('HMM - Likelihood Weighting (Trans p)')
     fig2, axs2 = plt.subplots(nrows=1)
     axs2.set_xlabel("obs")
     axs2.set_ylabel("p")
-    axs2.scatter(obs_ps, ps, cmap='gray')
+    axs2.scatter(obs_ps, ps, cmap=color_map)
     axs2.set_title('HMM - Likelihood Weighting (Obs p)')
     plt.show()
   if arg == "hmm-mh-post":
@@ -430,6 +433,27 @@ def main():
     axs2.set_ylabel("frequency")
     axs2.hist(obs_ps_unique, bins=50)
     axs2.set_title('HMM - Metropolis Hastings Posterior (Obs P)')
+    plt.show()
+  if arg == "hmm-mh-pred":
+    xys =  [[ i for i, j in data ],
+            [ j for i, j in data ]]
+    xs = np.array([xs[1:] for xs in xys[0]])
+    ys = np.array(xys[1])
+    xy = np.vstack([xs.ravel(),ys.ravel()])
+    z = gaussian_kde(xy)(xy)
+    print(xs, ys)
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("x axis")
+    axs1.set_ylabel("y axis")
+    color_map = plt.cm.get_cmap('Blues')
+    axs1.scatter(xs, ys, c=z, cmap=color_map)
+    axs1.set_title('HMM - Metropolis Hastings Predictive')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel("x axis")
+    axs2.set_ylabel("y axis")
+    plt.hist2d(xs.ravel(), ys.ravel(), (10, 10), cmap=plt.cm.jet)
+    axs2.set_title('HMM - Metropolis Hastings Predictive')
+    plt.colorbar()
     plt.show()
 if __name__ == "__main__":
   main()

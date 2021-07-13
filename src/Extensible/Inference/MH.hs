@@ -118,7 +118,9 @@ mh n model xs ys = do
   -- Construct list of mhNstep functions, one for each data point
   let mhs  = zipWith (\x y -> mhNsteps n y (model x)) xs ys
   -- Perform mhNstep for each data point, propagating (x, samples, logps) through
-  foldl (>=>) return mhs [(x, samples, logps)]
+  l <- foldl (>=>) return mhs [(x, samples, logps)]
+  -- Return mhTrace in correct order of execution (due to mhStep prepending new results onto head of trace)
+  return $ reverse l
 
 -- | Perform n steps of MH for a single data point
 mhNsteps :: (es ~ '[AffReader (AsList env), Dist, Observe, State Ⲭ, State LogP, Sample])
@@ -140,10 +142,10 @@ mhStep env model trace = do
   let -- Get previous mh output
       (x, samples, logps) = head trace
       sample_size = Map.size samples
-  liftS $ print $ "samples are " ++ show samples
+  -- liftS $ print $ "samples are " ++ show samples
   α_samp <- sample $ DiscreteDist (map (,1.0/fromIntegral sample_size) (Map.keys samples)) Nothing
   -- run mh with new sample address
-  liftS $ print $ "sample address is " ++ show α_samp
+  -- liftS $ print $ "sample address is " ++ show α_samp
   (x', samples', logps') <- runMH env samples α_samp model
   -- liftS $ print $ "Second run is: " ++ show (x', samples', logps')
   -- do some acceptance ratio to see if we use samples or samples'
@@ -228,10 +230,10 @@ runSample α_samp samples = loop
             case lookupSample samples d α α_samp of
               Nothing -> do
                 x <- sample d
-                liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " x: " ++ show x)
+                --liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
               Just x  -> do
-                liftS (putStrLn $ "Using old sample for α" ++ show α ++ " x: " ++ show x)
+               -- liftS (putStrLn $ "Using old sample for α" ++ show α ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
           DistBool (Just d) ->
             case lookupSample samples d α α_samp of
