@@ -542,6 +542,7 @@ testHMMMHPred = do
   liftS $ print $ "using parameters " ++ show (trans_p, obs_p)
   let hmm_n_samples = 100
       hmm_n_steps   = 10
+
   bs <- Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
                     [0] [mkRecordHMM ([], trans_p, obs_p)]
   return $ map fst bs
@@ -553,11 +554,27 @@ testHMMStBasic = do
                          [0] (repeat $ mkRecordHMM ([], 0.5, 0.5))
   return $ map fst bs
 
--- mkRecordY :: Int -> LRec
-mkRecordY yv = y @= [yv] <: nil
+{- Hidden markov model : SIR -}
 
-testPoisson :: Sampler [Int]
-testPoisson = do
-  bs <- LW.lw 1 Example.poissonm
-                [10, 10, 10, 10, 10, 10] (map mkRecordY [0, 3, 6, 9, 10, 11])
-  return $ []
+-- type SIREnv = '[ "ρ" ':> Int, "β" ':> Double, "γ" ':> Double ]
+
+mkRecordSIR :: ([Double], [Double], [Double]) -> LRec Example.SIREnv
+mkRecordSIR (ρv, βv, γv) = ρ @= ρv <: β @= βv <: γ @= γv <: nil
+
+fixedParams :: Int -> Int -> Example.FixedParams
+fixedParams = Example.FixedParams
+
+latentState :: Int -> Int -> Int -> Example.LatentState
+latentState = Example.LatentState
+
+fromLatentState :: Example.LatentState -> (Int, Int, Int)
+fromLatentState (Example.LatentState sus inf recov) = (sus, inf, recov)
+
+testSIRBasic :: Sampler ([(Int, Int, Int)], [Int])
+testSIRBasic = do
+  bs <- Basic.basic 1
+          (Example.hmmSIRNsteps (fixedParams 763 1) 100)
+          [latentState 762 1 0] [mkRecordSIR ([], [], [])]
+
+  let output = map ((\(xs, ys) -> (map fromLatentState xs, ys)) . fst) bs
+  return $ head output

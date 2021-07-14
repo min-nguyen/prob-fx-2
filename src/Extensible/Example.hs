@@ -250,7 +250,11 @@ data LatentState = LatentState {
     sus :: Int, -- ^ Number of people susceptible to infection
     inf :: Int, -- ^ Number of people currently infected
     recov :: Int -- ^ Number of people recovered from infection
-}
+} deriving Show
+
+type SIREnv = '[ "ρ" ':> Double, "β" ':> Double, "γ" ':> Double ]
+
+type InfectionCount = Int
 
 observeSIR :: Params -> LatentState -> Model s es Int
 observeSIR (Params rho _ _) (LatentState _ inf _) =
@@ -268,11 +272,11 @@ transitionSIR (FixedParams numPop timeSlices) (Params rho beta gamma) (LatentSta
       recov' = recov + dN_IR
   return (LatentState sus' inf' recov')
 
-hmmSIR :: FixedParams -> Params -> LatentState -> Model s es LatentState
-hmmSIR fixedParams  params latentState = do
+hmmSIR :: FixedParams -> Params -> LatentState -> Model s es (LatentState, Int)
+hmmSIR fixedParams params latentState = do
   latentState'   <- transitionSIR fixedParams params latentState
   infectionCount <- observeSIR params latentState
-  return latentState'
+  return (latentState', infectionCount)
 
 paramsPrior :: (HasVar s "ρ" Double, HasVar s "β" Double, HasVar s "γ" Double) =>
   Model s es Params
@@ -282,11 +286,15 @@ paramsPrior = do
   pGamma <- gamma 1 (1/8)
   return (Params pRho pBeta pGamma)
 
-hmmSIRNsteps :: (HasVar s "ρ" Double, HasVar s "β" Double, HasVar s "γ" Double) => FixedParams -> LatentState -> Int -> Model s es LatentState
-hmmSIRNsteps fixedParams latentState n = do
+hmmSIRNsteps :: (HasVar s "ρ" Double, HasVar s "β" Double, HasVar s "γ" Double) =>
+  FixedParams -> Int -> LatentState -> Model s es ([LatentState], [Int])
+hmmSIRNsteps fixedParams n latentState  = do
   params <- paramsPrior
-  let go = foldl (>=>) return (replicate n (hmmSIR fixedParams params))
-  go latentState
+  (xs, ys) <- foldl (>=>) return
+          (replicate n (\(xs, ys) -> do
+                  (x_n, y_n) <- hmmSIR fixedParams params (head xs)
+                  return (x_n:xs, y_n:ys))) ([latentState], [])
+  return (reverse xs, reverse ys)
 
 {- Non probabilistic programs-}
 example :: (Member (Reader Int) rs, Member (Writer String) rs)

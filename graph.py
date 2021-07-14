@@ -13,6 +13,7 @@ import numpy as np
 from functools import reduce
 import itertools
 from scipy.stats import gaussian_kde
+from scipy.interpolate import make_interp_spline
 
 # Remove consecutive duplicates
 def removeDuplicates(xs):
@@ -445,7 +446,6 @@ def main():
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")
-    color_map = plt.cm.get_cmap('Blues')
     axs1.scatter(xs, ys, c=z, cmap=color_map)
     axs1.set_title('HMM - Metropolis Hastings Predictive')
     fig2, axs2 = plt.subplots(nrows=1)
@@ -454,6 +454,36 @@ def main():
     plt.hist2d(xs.ravel(), ys.ravel(), (10, 10), cmap=plt.cm.jet)
     axs2.set_title('HMM - Metropolis Hastings Predictive')
     plt.colorbar()
+    plt.show()
+  if arg == "sir-basic":
+    # y axis
+    latentStates   = np.array(data[0][1:])
+    infectedCount  = np.array(data[1])
+    sus            = np.array([sir[0] for sir in latentStates])
+    inf            = np.array([sir[1] for sir in latentStates])
+    recov          = np.array([sir[2] for sir in latentStates])
+    # x axis
+    timeSteps      = np.array([ t for t in range(len(sus))])
+    # interpolate data
+    X_ = np.linspace(timeSteps.min(), timeSteps.max(), 300)
+    X_S_Spline = make_interp_spline(timeSteps.ravel(), sus.ravel())
+    X_I_Spline = make_interp_spline(timeSteps.ravel(), inf.ravel())
+    X_R_Spline = make_interp_spline(timeSteps.ravel(), recov.ravel())
+    X_InfCount_Spline = make_interp_spline(timeSteps.ravel(), infectedCount.ravel())
+    S_ = X_S_Spline(X_)
+    I_ = X_I_Spline(X_)
+    R_ = X_R_Spline(X_)
+    IC_ = X_InfCount_Spline(X_)
+
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("time steps")
+    axs1.set_ylabel("population")
+    axs1.plot(X_, S_, color='blue', label='Actual Susceptible')
+    axs1.plot(X_, I_, color='red', label='Actual Infected')
+    axs1.plot(X_, R_, color='green', label='Actual Recovered')
+    axs1.plot(X_, IC_, color='black', label='Recorded Infected')
+    axs1.set_title('SIR model - Basic Simulation')
+    plt.legend()
     plt.show()
 if __name__ == "__main__":
   main()
