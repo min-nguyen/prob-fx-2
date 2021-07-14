@@ -8,6 +8,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedLabels #-}
 
 module Extensible.Test where
 
@@ -25,15 +26,22 @@ import Extensible.State
 import Extensible.Model
 import Extensible.Sampler
 import Extensible.AffineReader
-import Data.Extensible
+-- import Data.Extensible
+import Extensible.OpenProduct
 import Util
 
 {- Linear Regression -}
-
-mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double])
-  -> LRec Example.LinRegrEnv
+type LinRegrEnv =
+    '[  '("y" , Double),
+        '("m" , Double),
+        '("c" , Double),
+        '("σ" , Double)
+     ]
+-- mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double])
+  -- -> LRec Example.LinRegrEnv
+mkRecordLinRegr :: (Double,  Double,  Double,  Double) -> LRec LinRegrEnv
 mkRecordLinRegr (y_vals, m_vals, c_vals, σ_vals) =
-  y @= y_vals <: m @= m_vals <: c @= c_vals <: σ @= σ_vals <: nil
+  (#y , [y_vals]) <:> (#m , [m_vals]) <:> (#c , [c_vals]) <:> (#σ , [σ_vals]) <:> nil
 
 mkRecordLinRegrY :: [Double] -> LRec Example.LinRegrEnv
 mkRecordLinRegrY y_vals =

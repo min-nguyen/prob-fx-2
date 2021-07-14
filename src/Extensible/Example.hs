@@ -33,17 +33,17 @@ import Unsafe.Coerce
 import Data.Kind (Constraint)
 import GHC.TypeLits
 import Data.Typeable
-import Data.Extensible hiding (Member)
+import Extensible.OpenProduct
 import Util
 
 {- Probabilistic programs -}
 
 -- | Linear regression
 type LinRegrEnv =
-    '[  "y"   ':>  Double,
-        "m"   ':>  Double,
-        "c"   ':>  Double,
-        "σ"   ':>  Double
+    '[  '("y" , Double),
+        '("m" , Double),
+        '("c" , Double),
+        '("σ" , Double)
      ]
 
 linearRegression :: forall s rs .
@@ -58,9 +58,9 @@ linearRegression x = do
 
 -- | Logistic regression
 type LogRegrEnv =
-    '[  "label" ':> Bool,
-        "m"     ':> Double,
-        "b"     ':> Double
+    '[  '("label" , Bool),
+        '("m"     , Double),
+        '("b"     , Double)
      ]
 
 sigmoid :: Double -> Double
@@ -79,10 +79,10 @@ logisticRegression x = do
 
 -- | Bayesian network
 type NNEnv =
-    '[  "yObs"     ':> Double,
-        "weight"   ':> Double,
-        "bias"     ':> Double,
-        "sigma"    ':> Double
+    '[  '("yObs"     , Double),
+        '("weight"   , Double),
+        '("bias"     , Double),
+        '("sigma"    , Double)
      ]
 
 data NN = NN { biases  :: [Double],
@@ -140,8 +140,8 @@ nnStepModel n x = do
 -- | Another neural network formulation
 
 type NNLogEnv =
-    '[  "yObs"     ':> Bool,
-        "weight"   ':> Double
+    '[  '("yObs"     , Bool),
+        '("weight"   , Double)
      ]
 
 nnLogModel :: (HasVar s "weight" Double, HasVar s "yObs" Bool) => Int -> (Double, Double) -> Model s es ((Double, Double), Bool)
@@ -177,7 +177,11 @@ sineModel x = do
   return (x, y)
 
 -- | Hidden Markov Model
-type HMMEnv = '[ "y" ':> Int, "obs_p" ':> Double, "trans_p" ':> Double ]
+type HMMEnv =
+  '[ '("y"       , Int),
+     '("obs_p"   , Double),
+     '("trans_p" , Double)
+   ]
 
 transitionModel ::  Double -> Int -> Model s es Int
 transitionModel transition_p x_prev = do
@@ -254,7 +258,12 @@ data LatentState = LatentState {
     recov :: Int -- ^ Number of people recovered from infection
 } deriving Show
 
-type SIREnv = '[ "infobs" ':> Int, "ρ" ':> Double, "β" ':> Double, "γ" ':> Double]
+type SIREnv =
+  '[ '("infobs" , Int),
+     '("ρ" , Double),
+     '("β" , Double),
+     '("γ" , Double)
+   ]
 
 type InfectionCount = Int
 
@@ -280,12 +289,6 @@ hmmSIR fixedParams params latentState = do
   latentState'   <- transitionSIR fixedParams params latentState
   infectionCount <- observeSIR params latentState
   return (latentState', infectionCount)
-
-access :: Record xs -> Lens' (Record xs) a -> a
-access record lens = record ^. lens
-
-ex :: Lookup xs "y" Double => Record xs -> Double
-ex record = access record #y
 
 paramsPrior :: (HasVar s "ρ" Double, HasVar s "β" Double, HasVar s "γ" Double) =>
   Model s es Params

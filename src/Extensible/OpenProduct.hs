@@ -187,11 +187,7 @@ type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
   AsList ((f, a) : as)   = ((f , [a]) : AsList as)
   AsList '[] = '[]
 
-class Lookup (AsList xs) k [v]  => HasVar xs k v where
-
-instance Lookup (AsList xs) k [v] => HasVar xs k v where
-
-mkGetterSetter :: (KnownNat (FindElem k xs), a ~ Eval (FromMaybe Stuck (Eval (LookUp k xs)))) => Key k -> (Getting a (OpenProduct  xs) a, ASetter (OpenProduct  xs) (OpenProduct  xs) a a)
+mkGetterSetter :: (KnownNat (FindElem k xs), [a] ~ Eval (FromMaybe Stuck (Eval (LookUp k xs)))) => Key k -> (Getting [a] (OpenProduct  xs) [a], ASetter (OpenProduct  xs) (OpenProduct xs) [a] [a])
 mkGetterSetter field =
   let getter' = to' (\s -> getOP field s) -- :: Getting [a] (OpenProduct s) [a]
       setter' = sets' (\f s ->  let a = s ^. getter'

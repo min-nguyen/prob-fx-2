@@ -29,7 +29,7 @@ type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
   AsList ((f, a) : as)   = ((f , [a]) : AsList as)
   AsList '[] = '[]
 
--- type LRec s = OP.OpenProduct (AsList s)
+type LRec s = OP.OpenProduct (AsList s)
 
 -- A Reader for which it is only possible to access record fields with type [a].
 data AffReader env a where
