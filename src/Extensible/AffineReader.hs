@@ -34,9 +34,14 @@ type LRec s = Record (AsList s)
 data AffReader env a where
   Ask :: Lens' (Record env) [a] -> AffReader env (Maybe a)
 
-ask :: (Member (AffReader env) rs) =>
-  Lens' (Record env) [a] -> Freer rs (Maybe a)
+-- ask :: forall env rs a. (Member (AffReader env) rs) =>
+--   Lens' (Record env) [a] -> Freer rs (Maybe a)
+-- ask field = Free (inj $ Ask field) Pure
+
+ask :: forall env rs a. (Member (AffReader env) rs) =>
+  Lens' (env :& Field Identity) (Repr Identity [a]) -> Freer rs (Maybe a)
 ask field = Free (inj $ Ask field) Pure
+
 
 runReader :: Record env -> Freer (AffReader env ': rs) a -> Freer rs a
 runReader env = loop where

@@ -596,9 +596,9 @@ testSIRLWInf = do
 
 testSIRMHPost ::  Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
 testSIRMHPost = do
-  let sir_n_samples = 2
+  let sir_n_samples = 10
   bs <- map fst <$> Basic.basic sir_n_samples
-          (Example.hmmSIRNsteps (fixedParams 763 1) 200)
+          (Example.hmmSIRNsteps (fixedParams 763 1) 100)
           [latentState 762 1 0] [mkRecordSIR ([0.29], [0.25], [0.015])]
   let infectedData    = map snd bs
       mh_n_iterations = 100

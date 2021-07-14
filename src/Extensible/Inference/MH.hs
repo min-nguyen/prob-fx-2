@@ -143,6 +143,7 @@ mhStep env model trace = do
       (x, samples, logps) = head trace
       sample_size = Map.size samples
   -- liftS $ print $ "samples are " ++ show samples
+  -- α_samp <- sample $ DiscrUniformDist 0 2 Nothing
   α_samp <- sample $ DiscreteDist (map (,1.0/fromIntegral sample_size) (Map.keys samples)) Nothing
   -- run mh with new sample address
   -- liftS $ print $ "sample address is " ++ show α_samp
@@ -152,9 +153,15 @@ mhStep env model trace = do
   acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
   u <- sample (UniformDist 0 1 Nothing)
   if u < acceptance_ratio
-    then do liftS $ putStrLn $ "Accepting " ++ show logps' ++ "\nover      " ++ show logps ++ "\nwith α" ++ show α_samp ++ ": " ++ show acceptance_ratio ++ " > " ++ show u
+    then do liftS $ putStrLn $ "Accepting " -- ++ show logps' ++ "\nover      "
+            --  ++ show logps
+              ++ "\nwith α" ++ show α_samp ++ ": "
+              ++ show acceptance_ratio ++ " > " ++ show u
             return ((x', samples', logps'):trace)
-    else do liftS $ putStrLn $ "Rejecting " ++ show logps' ++ "\nover      " ++ show logps ++  "\nwith α" ++ show α_samp ++ ": " ++ show acceptance_ratio ++ " < u: " ++ show u
+    else do liftS $ putStrLn $ "Rejecting " -- ++ show logps' ++ "\nover      "
+            --  ++ show logps
+              ++ "\nwith α" ++ show α_samp ++ ": "
+              ++ show acceptance_ratio ++ " < u: " ++ show u
             return trace
 
 -- | Run model once under MH
@@ -224,15 +231,15 @@ runObserve = loop 0
         -> case d of
             DistBool (Just d) ->
               do let p' = prob d (unsafeCoerce y :: Bool)
-                 prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Bool) ++ " from " ++ show d ++ " is " ++ show p'
+                --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Bool) ++ " from " ++ show d ++ " is " ++ show p'
                  loop (p + p') (k y)
             DistDouble (Just d) ->
               do  let p' = prob d (unsafeCoerce y :: Double)
-                  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show p'
+                  -- prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show p'
                   loop (p + p') (k y)
             DistInt (Just d) ->
               do let p' = prob d (unsafeCoerce y :: Int)
-                 prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Int) ++ " from " ++ show d ++ " is " ++ show p'
+                --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Int) ++ " from " ++ show d ++ " is " ++ show p'
                  loop (p + p') (k y)
             _ -> undefined
       Left  u'  -> Free u' (loop p . k)

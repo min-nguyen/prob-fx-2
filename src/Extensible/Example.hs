@@ -27,6 +27,7 @@ import Extensible.Dist
 import Extensible.IO
 import Extensible.Sampler
 import Control.Monad
+import Control.Lens hiding ((:>))
 import Unsafe.Coerce
 import Data.Kind (Constraint)
 import GHC.TypeLits
@@ -258,7 +259,7 @@ type InfectionCount = Int
 
 observeSIR :: HasVar s "infobs" Int => Params -> LatentState -> Model s es Int
 observeSIR (Params rho _ _) (LatentState _ inf _) = do
-  Model $ prinT $ "inf is " ++ show inf
+  -- Model $ prinT $ "inf is " ++ show inf
   poisson' (rho * fromIntegral inf) infobs
 
 transitionSIR :: FixedParams -> Params -> LatentState -> Model s es LatentState
@@ -278,6 +279,12 @@ hmmSIR fixedParams params latentState = do
   latentState'   <- transitionSIR fixedParams params latentState
   infectionCount <- observeSIR params latentState
   return (latentState', infectionCount)
+
+access :: Record xs -> Lens' (Record xs) a -> a
+access record lens = record ^. lens
+
+ex :: Lookup xs "y" Double => Record xs -> Double
+ex record = access record y
 
 paramsPrior :: (HasVar s "ρ" Double, HasVar s "β" Double, HasVar s "γ" Double) =>
   Model s es Params

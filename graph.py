@@ -24,7 +24,7 @@ def main():
   f    = open("model-output.txt", "r")
   # l = f.read().replace('-inf', '-2e308')
   # print(l)
-  data = ast.literal_eval(f.read().replace('-Infinity', '-2e308'))
+  data = ast.literal_eval(f.read()) #.replace('-Infinity', '-2e308')
   color_map = plt.cm.get_cmap('Blues')
   # X, Y = make_moons(noise=0.2, random_state=0, n_samples=1000)
   # X = scale(X)
@@ -517,8 +517,13 @@ def main():
     sampleMaps    = [d[1] for d in data]
     ps            = [d[2] for d in data]
     rhos          = [s[0][1] for s in sampleMaps]
+    rhos_unique = removeDuplicates(rhos)
     betas         = [s[1][1] for s in sampleMaps]
+    betas_unique = removeDuplicates(betas)
     gammas        = [s[2][1] for s in sampleMaps]
-    print(rhos)
+    gammas_unique = removeDuplicates(gammas)
+    print(rhos_unique)
+    print(betas_unique)
+    print(gammas_unique)
 if __name__ == "__main__":
   main()
