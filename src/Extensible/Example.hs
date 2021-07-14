@@ -51,9 +51,9 @@ linearRegression :: forall s rs .
   Double -> Model s rs (Double, Double)
 linearRegression x = do
   m1 <- normal' 0 4 #m
-  c <- normal' 0 2 c
-  σ <- uniform' 1 3 σ
-  y <- normal' (m1 * x + c) σ y
+  c <- normal' 0 2 #c
+  σ <- uniform' 1 3 #σ
+  y <- normal' (m1 * x + c) σ #y
   return (x, y)
 
 -- | Logistic regression
@@ -70,11 +70,11 @@ logisticRegression :: forall rs s.
  (HasVar s "label" Bool, HasVar s "m" Double, HasVar s "b" Double) =>
  Double -> Model s rs (Double, Bool)
 logisticRegression x = do
-  m     <- normal' 0 5 m
-  b     <- normal' 0 1 b
+  m     <- normal' 0 5 #m
+  b     <- normal' 0 1 #b
   sigma <- gamma 1 1
   y     <- normal (m * x + b) sigma
-  l     <- bernoulli' (sigmoid y) label
+  l     <- bernoulli' (sigmoid y) #label
   return (x, l)
 
 -- | Bayesian network
@@ -103,14 +103,14 @@ likelihoodNNLin :: HasVar s "yObs" Double => NN -> Double -> Model s es Double
 likelihoodNNLin nn x = do
   let ySigma = sigm nn
       yMean  = forwardNNLin nn x
-  normal' yMean ySigma yObs
+  normal' yMean ySigma #yObs
 
 priorNN :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double)
   => Int -> Model s es NN
 priorNN n_nodes = do
-  bias   <- replicateM n_nodes (uniform' 0 10 bias)
-  weight <- replicateM n_nodes (uniform' (-10) 10 weight)
-  sigma  <- uniform' 0.5 1.5 sigma
+  bias   <- replicateM n_nodes (uniform' 0 10 #bias)
+  weight <- replicateM n_nodes (uniform' (-10) 10 #weight)
+  sigma  <- uniform' 0.5 1.5 #sigma
   return $ NN bias weight sigma
 
 nnLinModel :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double, HasVar s "yObs" Double) => Int -> Double -> Model s es (Double, Double)
@@ -129,7 +129,7 @@ likelihoodNNStep :: HasVar s "yObs" Double => NN -> Double -> Model s es Double
 likelihoodNNStep nn x = do
   let ySigma = sigm nn
       yMean  = forwardNNStep nn x
-  normal' yMean ySigma yObs
+  normal' yMean ySigma #yObs
 
 nnStepModel :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double, HasVar s "yObs" Double) => Int -> Double -> Model s es (Double, Double)
 nnStepModel n x = do
@@ -147,20 +147,20 @@ type NNLogEnv =
 nnLogModel :: (HasVar s "weight" Double, HasVar s "yObs" Bool) => Int -> (Double, Double) -> Model s es ((Double, Double), Bool)
 nnLogModel n_nodes (x, y)  = do
   let xs = [x, y]
-  weight1 <- replicateM (length xs) (replicateM n_nodes (normal' 0 1 weight))
+  weight1 <- replicateM (length xs) (replicateM n_nodes (normal' 0 1 #weight))
   Model $ prinT $ "xs is " ++ show [xs]
   Model $ prinT $ "weight1 is " ++ show weight1
   let output1 = map2 tanh (dotProd [xs] weight1)
   Model $ prinT $ "output1 is " ++ show output1
-  weight2 <- replicateM n_nodes (replicateM n_nodes (normal' 0 1 weight))
+  weight2 <- replicateM n_nodes (replicateM n_nodes (normal' 0 1 #weight))
   Model $ prinT $ "weight2 is " ++ show weight2
   let output2 = map2 tanh (dotProd output1 weight2)
   Model $ prinT $ "output2 is " ++ show output2
-  weight3 <- replicateM n_nodes (replicateM 1 (normal' 0 1 weight))
+  weight3 <- replicateM n_nodes (replicateM 1 (normal' 0 1 #weight))
   Model $ prinT $ "weight3 is " ++ show weight3
   let output3 =  sigmoid . head . head $ dotProd output2 weight3
   Model $ prinT $ "output3 is " ++ show output3
-  label <- bernoulli' output3 yObs
+  label <- bernoulli' output3 #yObs
   return ((x, y), label)
 
 -- | Sine model
@@ -169,11 +169,11 @@ sineModel :: forall s rs .
   (HasVar s "y" Double, HasVar s "m" Double, HasVar s "c" Double, HasVar s "σ" Double) =>
   Double -> Model s rs (Double, Double)
 sineModel x = do
-  m <- normal' 0 4 m
-  c <- normal' 0 2 c
-  σ <- uniform' 1 3 σ
+  m <- normal' 0 4 #m
+  c <- normal' 0 2 #c
+  σ <- uniform' 1 3 #σ
   Model $ prinT $ "mean is " ++ (show $ sin $ m * x + c)
-  y <- normal' (sin $ m * x + c) σ y
+  y <- normal' (sin $ m * x + c) σ #y
   return (x, y)
 
 -- | Hidden Markov Model
@@ -187,7 +187,7 @@ transitionModel transition_p x_prev = do
 observationModel :: (HasVar s "y" Int)
   => Double -> Int -> Model s es Int
 observationModel observation_p x = do
-  binomial' x observation_p y
+  binomial' x observation_p #y
 
 hmm :: (HasVar s "y" Int)
   => Double -> Double -> Int -> Model s es (Int, Int)
@@ -203,8 +203,8 @@ hmm' transition_p observation_p =
 hmmNSteps :: (HasVar s "y" Int, HasVar s "obs_p" Double, HasVar s "trans_p" Double)
   => Int -> (Int -> Model s es ([Int], [Int]))
 hmmNSteps n x = do
-  trans_p <- uniform' 0 1 trans_p
-  obs_p   <- uniform' 0 1 obs_p
+  trans_p <- uniform' 0 1 #trans_p
+  obs_p   <- uniform' 0 1 #obs_p
   (xs, ys) <- foldl (>=>) return
                 (replicate n (\(xs, ys) -> do
                   (x_n, y_n) <- hmm trans_p obs_p (head xs)
@@ -220,7 +220,7 @@ transitionModelSt transition_p x_prev = do
 observationModelSt :: (HasVar s "y" Int, Member (State [Int]) es)
   => Double -> Int -> Model s es Int
 observationModelSt observation_p x = do
-  y_n <- binomial' x observation_p y
+  y_n <- binomial' x observation_p #y
   modifyM (y_n:)
   return y_n
 
@@ -285,14 +285,14 @@ access :: Record xs -> Lens' (Record xs) a -> a
 access record lens = record ^. lens
 
 ex :: Lookup xs "y" Double => Record xs -> Double
-ex record = access record y
+ex record = access record #y
 
 paramsPrior :: (HasVar s "ρ" Double, HasVar s "β" Double, HasVar s "γ" Double) =>
   Model s es Params
 paramsPrior = do
-  pRho   <- beta' 2 7 ρ
-  pBeta  <- gamma' 2 1 β
-  pGamma <- gamma' 1 (1/8) γ
+  pRho   <- beta' 2 7 #ρ
+  pBeta  <- gamma' 2 1 #β
+  pGamma <- gamma' 1 (1/8) #γ
   Model $ prinT $ "Using params: " ++ show (pRho, pBeta, pGamma)
   return (Params pRho pBeta pGamma)
 
@@ -307,13 +307,13 @@ hmmSIRNsteps fixedParams n latentState  = do
   return (reverse xs, reverse ys)
 
 {- Non probabilistic programs-}
--- example :: (Member (Reader Int) rs, Member (Writer String) rs)
---         => Freer rs Int
--- example = do
---   tell "hi"
---   x :: Int <- ask
---   tell "hi"
---   return 5
+example :: (Member (Reader Int) rs, Member (Writer String) rs)
+        => Freer rs Int
+example = do
+  tell "hi"
+  x :: Int <- ask
+  tell "hi"
+  return 5
 
 prog :: (Member (Reader Int) rs, Member (Writer String) rs)
         => Freer rs Int
@@ -334,28 +334,28 @@ prog'' = Free (inj $ Tell "hi") (\() ->
             Free (inj $ Tell (show x)) (\() ->
               Pure 5)))
 
--- example' :: forall env. Freer '[Reader env, Writer String] Int
--- example' = do
---   tell "hi"
---   x :: env <- ask
---   return 5
+example' :: forall env. Freer '[Reader env, Writer String] Int
+example' = do
+  tell "hi"
+  x :: env <- ask
+  return 5
 
--- exampleR :: forall rs . (Member (Reader Int) rs)
---         => Freer rs Int
--- exampleR = do
---   x :: Int <- ask
---   return 5
+exampleR :: forall rs . (Member (Reader Int) rs)
+        => Freer rs Int
+exampleR = do
+  x :: Int <- ask
+  return 5
 
--- exampleW :: forall rs. (Member (Writer String) rs)
---         => Freer rs Int
--- exampleW = do
---   tell "hi"
---   return 5
+exampleW :: forall rs. (Member (Writer String) rs)
+        => Freer rs Int
+exampleW = do
+  tell "hi"
+  return 5
 
--- exampleIO :: forall rs. (SetMember Lift (Lift IO) rs) => Freer rs ()
--- exampleIO = do
---   lift $ print "hi"
---   return ()
+exampleIO :: forall rs. (SetMember Lift (Lift IO) rs) => Freer rs ()
+exampleIO = do
+  lift $ print "hi"
+  return ()
 
 runEx :: (Int, String)
 runEx = (run . runWriter . runReader (5 :: Int)) example

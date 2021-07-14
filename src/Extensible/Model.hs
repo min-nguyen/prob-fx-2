@@ -74,7 +74,7 @@ Idea : We can introduce print statements by adding them as a constructor of Samp
 -}
 
 newtype Model env es a =
-  Model { runModel :: (Member Dist es, Member (AffReader ( env)) es, Member Sample es) => Freer es a }
+  Model { runModel :: (Member Dist es, Member (AffReader (AsList env)) es, Member Sample es) => Freer es a }
   deriving Functor
 
 instance Applicative (Model env es) where
@@ -106,86 +106,113 @@ normal :: Double -> Double -> Model s es Double
 normal mu sigma = Model $ do
   send (NormalDist mu sigma Nothing)
 
-ask field = Free (inj $ Ask field) Pure
-
--- toLens :: OP.Lookup s k [a] => OP.Key k -> Lens'
-
-normal' :: forall s es a k. (a ~ Double) => OP.Lookup s k a
+normalLens :: forall s es a k. (a ~ Double) => OP.Lookup s k a
   => Double -> Double -> OP.Key k
   -> Lens' (OP.OpenProduct s) a
-normal' mu sigma field =
+normalLens mu sigma field =
   lens (\s -> OP.getOP field s) (\s b -> OP.setOP field b s)
 
-  -- Model $ do
-  -- let lens' = lens (\s -> OP.getOP field s) (\s b -> OP.setOP field b s)
-  -- undefined
-
 -- keyLens
-normal'' :: forall s es a k. (a ~ Double) => OP.Lookup s k [a] => KnownNat (OP.FindElem k s)
+normal' :: forall s es a k. (a ~ Double) => OP.Lookup (AsList s) k [a]
   => Double -> Double -> OP.Key k
   -> Model s es Double
-normal'' mu sigma field = Model $ do
-  let getter' = OP.to' (\s -> OP.getOP field s) :: Getting [a] (OP.OpenProduct s) [a]
+normal' mu sigma field = Model $ do
+  let getter' = OP.to' (\s -> OP.getOP field s) :: Getting [a] (OP.OpenProduct (AsList s)) [a]
       setter' = OP.sets' (\f s -> let a = s ^. getter'
                                       a' = f a
                                   in  OP.setOP field a' s)
-  maybe_y <- Free (inj $ Ask getter' setter') Pure
+  maybe_y <- ask getter' setter'
   send (NormalDist mu sigma maybe_y)
 
 bernoulli :: Double -> Model s es Bool
 bernoulli p = Model $ do
   send (BernoulliDist p Nothing)
 
--- bernoulli' :: forall s es a. (a ~ Bool) => FindElem (AffReader s) es
---   => Double -> Lens' (OP.OpenProduct s) [a]
---   -> Model s es Bool
--- bernoulli' p field = Model $ do
---   maybe_y <- ask field
---   send (BernoulliDist p maybe_y)
+bernoulli' :: forall s es a k. (a ~ Bool) => OP.Lookup (AsList s) k [a]
+  => Double -> OP.Key k
+  -> Model s es Bool
+bernoulli' p field = Model $ do
+  let getter' = OP.to' (\s -> OP.getOP field s) :: Getting [a] (OP.OpenProduct (AsList s)) [a]
+      setter' = OP.sets' (\f s -> let a = s ^. getter'
+                                      a' = f a
+                                  in  OP.setOP field a' s)
+  maybe_y <- ask getter' setter'
+  send (BernoulliDist p maybe_y)
 
--- binomial :: Int -> Double -> Model s es Int
--- binomial n p = Model $ do
---   send (BinomialDist n p Nothing)
+binomial :: Int -> Double -> Model s es Int
+binomial n p = Model $ do
+  send (BinomialDist n p Nothing)
 
--- binomial' :: forall s es a. (a ~  Int) => FindElem (AffReader s) es
---   => Int -> Double -> Lens' (OP.OpenProduct s) [a]
---   -> Model s es Int
--- binomial' n p field = Model $ do
---   maybe_y <- ask field
---   send (BinomialDist n p maybe_y)
+binomial' :: forall s es a k. (a ~  Int) => (OP.Lookup (AsList s) k [a])
+  => Int -> Double -> OP.Key k
+  -> Model s es Int
+binomial' n p field = Model $ do
+  let getter' = OP.to' (\s -> OP.getOP field s) :: Getting [a] (OP.OpenProduct (AsList s)) [a]
+      setter' = OP.sets' (\f s -> let a = s ^. getter'
+                                      a' = f a
+                                  in  OP.setOP field a' s)
+  maybe_y <- ask getter' setter'
+  send (BinomialDist n p maybe_y)
 
--- gamma :: Double -> Double -> Model s es Double
--- gamma k θ = Model $ do
---   send (GammaDist k θ Nothing)
+gamma :: Double -> Double -> Model s es Double
+gamma k θ = Model $ do
+  send (GammaDist k θ Nothing)
 
--- gamma' :: forall s es a. (a ~ Double) => FindElem (AffReader s) es
---   => Double -> Double -> Lens'  (OP.OpenProduct s) [a]
---   -> Model s es Double
--- gamma' k θ field = Model $ do
---   maybe_y <- ask field
---   send (GammaDist k θ maybe_y)
+gamma' :: forall s es a k. (a ~ Double) => (OP.Lookup (AsList s) k [a])
+  => Double -> Double -> OP.Key k
+  -> Model s es Double
+gamma' k θ field = Model $ do
+  let getter' = OP.to' (\s -> OP.getOP field s) :: Getting [a] (OP.OpenProduct (AsList s)) [a]
+      setter' = OP.sets' (\f s -> let a = s ^. getter'
+                                      a' = f a
+                                  in  OP.setOP field a' s)
+  maybe_y <- ask getter' setter'
+  send (GammaDist k θ maybe_y)
 
--- beta :: Double -> Double -> Model s es Double
--- beta α β = Model $ do
---   send (BetaDist α β Nothing)
+beta :: Double -> Double -> Model s es Double
+beta α β = Model $ do
+  send (BetaDist α β Nothing)
 
--- beta' :: forall s es a. (a ~ Double) => FindElem (AffReader s) es
---   => Double -> Double -> Lens'  (OP.OpenProduct s) [a]
---   -> Model s es Double
--- beta' α β field = Model $ do
---   maybe_y <- ask field
---   send (BetaDist α β maybe_y)
+beta' :: forall s es a k. (a ~ Double) => (OP.Lookup (AsList s) k [a])
+  => Double -> Double -> OP.Key k
+  -> Model s es Double
+beta' α β field = Model $ do
+  let getter' = OP.to' (\s -> OP.getOP field s) :: Getting [a] (OP.OpenProduct (AsList s)) [a]
+      setter' = OP.sets' (\f s -> let a = s ^. getter'
+                                      a' = f a
+                                  in  OP.setOP field a' s)
+  maybe_y <- ask getter' setter'
+  send (BetaDist α β maybe_y)
 
+uniform :: Double -> Double -> Model s es Double
+uniform min max = Model $ do
+  send (UniformDist min max Nothing)
 
--- -- beta' :: forall s es a k. (a ~ Double)
--- --   => Double -> Double -> FieldOptic k
--- --   -> Model s es Double
--- -- beta' α β field = Model $ do
--- --   -- let lens = fromFieldOptic field
--- --   -- maybe_y <- ask field
--- --   undefined
--- --   -- send (BetaDist α β maybe_y)
+uniform' :: forall s es a k. (a ~ Double) => (OP.Lookup (AsList s) k [a])
+  => Double -> Double -> OP.Key k
+  -> Model s es Double
+uniform' min max field = Model $ do
+  let getter' = OP.to' (\s -> OP.getOP field s) :: Getting [a] (OP.OpenProduct (AsList s)) [a]
+      setter' = OP.sets' (\f s -> let a = s ^. getter'
+                                      a' = f a
+                                  in  OP.setOP field a' s)
+  maybe_y <- ask getter' setter'
+  send (UniformDist min max maybe_y)
 
+poisson :: Double -> Model s es Int
+poisson λ = Model $ do
+  send (PoissonDist λ Nothing)
+
+poisson' :: forall s es a k. (a ~ Int) => (OP.Lookup (AsList s) k [a])
+  => Double -> OP.Key k
+  -> Model s es Int
+poisson' λ field = Model $ do
+  let getter' = OP.to' (\s -> OP.getOP field s) :: Getting [a] (OP.OpenProduct (AsList s)) [a]
+      setter' = OP.sets' (\f s -> let a = s ^. getter'
+                                      a' = f a
+                                  in  OP.setOP field a' s)
+  maybe_y <- ask getter' setter'
+  send (PoissonDist λ maybe_y)
 
 -- -- fromFieldOptic :: Lookup (AsList s) k a => KnownSymbol k => Extensible f p t =>
 -- --   FieldOptic k -> Lens' (AsList s :& Field Identity) a
@@ -204,26 +231,3 @@ bernoulli p = Model $ do
 -- -- toFieldName :: forall s k a. KnownSymbol k => Lookup (AsList s) k a =>
 -- --   FieldOptic k -> String -- Lens' (AsList s :& Field Identity) a
 -- -- toFieldName l = symbolVal (Proxy @k)
-
-
--- uniform :: Double -> Double -> Model s es Double
--- uniform min max = Model $ do
---   send (UniformDist min max Nothing)
-
--- uniform' :: forall s es a. (a ~ [Double]) => FindElem (AffReader s) es
---   => Double -> Double -> Lens'  (OP.OpenProduct s) a
---   -> Model s es Double
--- uniform' min max field = Model $ do
---   maybe_y <- ask field
---   send (UniformDist min max maybe_y)
-
--- poisson :: Double -> Model s es Int
--- poisson λ = Model $ do
---   send (PoissonDist λ Nothing)
-
--- poisson' :: forall s es a. (a ~ Int) => FindElem (AffReader s) es
---   => Double -> Lens'  (OP.OpenProduct s) [a]
---   -> Model s es Int
--- poisson' λ field = Model $ do
---   maybe_y <- ask field
---   send (PoissonDist λ maybe_y)

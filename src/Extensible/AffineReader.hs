@@ -29,7 +29,7 @@ type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
   AsList ((f, a) : as)   = ((f , [a]) : AsList as)
   AsList '[] = '[]
 
-type LRec s = OP.OpenProduct (AsList s)
+-- type LRec s = OP.OpenProduct (AsList s)
 
 -- A Reader for which it is only possible to access record fields with type [a].
 data AffReader env a where
@@ -37,20 +37,10 @@ data AffReader env a where
       -> ASetter (OP.OpenProduct env) (OP.OpenProduct env) [a] [a]
       -> AffReader env (Maybe a)
 
--- data AffReader env a where
---   Ask :: (as ~ [a], OP.HasVar env k as) => OP.Key k -> AffReader env (Maybe a)
-
--- ask :: (Member (AffReader env) rs) =>
---   Lens' (OP.OpenProduct env) [a] -> Freer rs (Maybe a)
--- ask field = Free (inj $ Ask field) Pure
-
--- ask :: forall env rs k a. (Member (AffReader env) rs, OP.Lookup env k [a]) =>
---   OP.Key k -> Freer rs (Maybe a)
--- ask :: (FindElem (AffReader env) f, OP.HasVar env k a) => OP.Key k -> Freer f (Maybe a)
--- ask :: (FindElem (AffReader env) f, OP.Lookup (OP.AsList env) k [[a]]) =>
---  OP.Key k -> Freer f (Maybe a)
-ask field = Free (inj $ Ask field) Pure
-
+ask :: Member (AffReader env) rs => Getting [a] (OP.OpenProduct env) [a]
+  -> ASetter (OP.OpenProduct env) (OP.OpenProduct env) [a] [a]
+  -> Freer rs (Maybe a)
+ask g s = Free (inj $ Ask g s) Pure
 
 runReader :: OP.OpenProduct env -> Freer (AffReader env ': rs) a -> Freer rs a
 runReader env = loop where
@@ -64,9 +54,9 @@ runReader env = loop where
 
 -- | The only purpose of the State (LRec env) effect is to check if all observed values in the environment have been consumed.
 runAffReader :: forall env rs a.
-  LRec env -> Freer (AffReader (AsList env) ': rs) a -> Freer rs (a, LRec env)
+  OP.OpenProduct (AsList env) -> Freer (AffReader (AsList env) ': rs) a -> Freer rs (a, OP.OpenProduct (AsList env) )
 runAffReader env = loop env where
-  loop :: LRec env -> Freer (AffReader (AsList env) ': rs) a -> Freer rs (a, LRec env)
+  loop :: OP.OpenProduct (AsList env) -> Freer (AffReader (AsList env)  ': rs) a -> Freer rs (a, OP.OpenProduct (AsList env) )
   loop env (Pure x) = return (x, env)
   loop env (Free u k) = case decomp u of
     Right (Ask g s) -> do
