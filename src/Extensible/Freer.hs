@@ -108,6 +108,7 @@ instance Monad (Freer f) where
 
 run :: Freer '[] a -> a
 run (Pure x) = x
+run _ = error "'run' isn't defiend for non-pure computations"
 
 send :: Member t rs => t x -> Freer rs x
 send t = Free (inj t) Pure

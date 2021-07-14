@@ -22,7 +22,9 @@ def removeDuplicates(xs):
 def main():
   arg  = sys.argv[1]
   f    = open("model-output.txt", "r")
-  data = ast.literal_eval(f.read())
+  # l = f.read().replace('-inf', '-2e308')
+  # print(l)
+  data = ast.literal_eval(f.read().replace('-Infinity', '-2e308'))
   color_map = plt.cm.get_cmap('Blues')
   # X, Y = make_moons(noise=0.2, random_state=0, n_samples=1000)
   # X = scale(X)
@@ -485,5 +487,38 @@ def main():
     axs1.set_title('SIR model - Basic Simulation')
     plt.legend()
     plt.show()
+  if arg == "sir-lw-inf":
+    latentStates  = [d[0][0] for d in data]
+    infectedCount = [d[0][1] for d in data]
+    sampleMaps    = [d[1] for d in data]
+    ps            = [d[2] for d in data]
+    rhos          = [s[0][1] for s in sampleMaps]
+    betas         = [s[1][1] for s in sampleMaps]
+    gammas        = [s[2][1] for s in sampleMaps]
+    print(sampleMaps)
+    print(ps)
+    print(rhos)
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("rho")
+    axs1.set_ylabel("likelihood")
+    axs1.scatter(rhos, ps)
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel("beta")
+    axs2.set_ylabel("likelihood")
+    axs2.scatter(betas, ps)
+    fig3, axs3 = plt.subplots(nrows=1)
+    axs3.set_xlabel("gamma")
+    axs3.set_ylabel("likelihood")
+    axs3.scatter(gammas, ps)
+    plt.show()
+  if arg == "sir-mh-post":
+    latentStates  = [d[0][0] for d in data]
+    infectedCount = [d[0][1] for d in data]
+    sampleMaps    = [d[1] for d in data]
+    ps            = [d[2] for d in data]
+    rhos          = [s[0][1] for s in sampleMaps]
+    betas         = [s[1][1] for s in sampleMaps]
+    gammas        = [s[2][1] for s in sampleMaps]
+    print(rhos)
 if __name__ == "__main__":
   main()

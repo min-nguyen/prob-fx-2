@@ -242,9 +242,9 @@ data FixedParams = FixedParams {
     timeSlices :: Int
 }
 data Params = Params {
-    ρ :: Double, -- ^ Rate of detection
-    β :: Double, -- ^ Mean contact rate between susceptible and infected people
-    γ :: Double -- ^ Mean recovery rate
+    rhoP   :: Double, -- ^ Rate of detection
+    betaP  :: Double, -- ^ Mean contact rate between susceptible and infected people
+    gammaP :: Double -- ^ Mean recovery rate
 }
 data LatentState = LatentState {
     sus :: Int, -- ^ Number of people susceptible to infection
@@ -252,13 +252,14 @@ data LatentState = LatentState {
     recov :: Int -- ^ Number of people recovered from infection
 } deriving Show
 
-type SIREnv = '[ "ρ" ':> Double, "β" ':> Double, "γ" ':> Double ]
+type SIREnv = '[ "infobs" ':> Int, "ρ" ':> Double, "β" ':> Double, "γ" ':> Double]
 
 type InfectionCount = Int
 
-observeSIR :: Params -> LatentState -> Model s es Int
-observeSIR (Params rho _ _) (LatentState _ inf _) =
-  poisson (rho * fromIntegral inf)
+observeSIR :: HasVar s "infobs" Int => Params -> LatentState -> Model s es Int
+observeSIR (Params rho _ _) (LatentState _ inf _) = do
+  Model $ prinT $ "inf is " ++ show inf
+  poisson' (rho * fromIntegral inf) infobs
 
 transitionSIR :: FixedParams -> Params -> LatentState -> Model s es LatentState
 transitionSIR (FixedParams numPop timeSlices) (Params rho beta gamma) (LatentState sus inf recov)  = do
@@ -272,7 +273,7 @@ transitionSIR (FixedParams numPop timeSlices) (Params rho beta gamma) (LatentSta
       recov' = recov + dN_IR
   return (LatentState sus' inf' recov')
 
-hmmSIR :: FixedParams -> Params -> LatentState -> Model s es (LatentState, Int)
+hmmSIR :: HasVar s "infobs" Int => FixedParams -> Params -> LatentState -> Model s es (LatentState, Int)
 hmmSIR fixedParams params latentState = do
   latentState'   <- transitionSIR fixedParams params latentState
   infectionCount <- observeSIR params latentState
@@ -281,12 +282,13 @@ hmmSIR fixedParams params latentState = do
 paramsPrior :: (HasVar s "ρ" Double, HasVar s "β" Double, HasVar s "γ" Double) =>
   Model s es Params
 paramsPrior = do
-  pBeta  <- gamma 2 1
-  pRho   <- beta 2 7
-  pGamma <- gamma 1 (1/8)
+  pRho   <- beta' 2 7 ρ
+  pBeta  <- gamma' 2 1 β
+  pGamma <- gamma' 1 (1/8) γ
+  Model $ prinT $ "Using params: " ++ show (pRho, pBeta, pGamma)
   return (Params pRho pBeta pGamma)
 
-hmmSIRNsteps :: (HasVar s "ρ" Double, HasVar s "β" Double, HasVar s "γ" Double) =>
+hmmSIRNsteps :: (HasVar s "infobs" Int, HasVar s "ρ" Double, HasVar s "β" Double, HasVar s "γ" Double) =>
   FixedParams -> Int -> LatentState -> Model s es ([LatentState], [Int])
 hmmSIRNsteps fixedParams n latentState  = do
   params <- paramsPrior

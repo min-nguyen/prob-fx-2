@@ -556,10 +556,11 @@ testHMMStBasic = do
 
 {- Hidden markov model : SIR -}
 
--- type SIREnv = '[ "ρ" ':> Int, "β" ':> Double, "γ" ':> Double ]
-
 mkRecordSIR :: ([Double], [Double], [Double]) -> LRec Example.SIREnv
-mkRecordSIR (ρv, βv, γv) = ρ @= ρv <: β @= βv <: γ @= γv <: nil
+mkRecordSIR (ρv, βv, γv) = infobs @= [] <: ρ @= ρv <: β @= βv <: γ @= γv <: nil
+
+mkRecordSIRy :: [Int] -> LRec Example.SIREnv
+mkRecordSIRy ys = infobs @= ys <: ρ @= [] <: β @= [] <: γ @= [] <: nil
 
 fixedParams :: Int -> Int -> Example.FixedParams
 fixedParams = Example.FixedParams
@@ -573,8 +574,41 @@ fromLatentState (Example.LatentState sus inf recov) = (sus, inf, recov)
 testSIRBasic :: Sampler ([(Int, Int, Int)], [Int])
 testSIRBasic = do
   bs <- Basic.basic 1
-          (Example.hmmSIRNsteps (fixedParams 763 1) 100)
-          [latentState 762 1 0] [mkRecordSIR ([], [], [])]
+          (Example.hmmSIRNsteps (fixedParams 763 1) 200)
+          [latentState 762 1 0] [mkRecordSIR ([0.29], [0.25], [0.015])]
 
   let output = map ((\(xs, ys) -> (map fromLatentState xs, ys)) . fst) bs
   return $ head output
+
+testSIRLWInf :: Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum LW.Vals)], Double)]
+testSIRLWInf = do
+  let sir_n_steps    = length sirInfectedData
+
+  lws <- LW.lw 100 (Example.hmmSIRNsteps (fixedParams 763 1) sir_n_steps)
+                 [latentState 762 1 0] [mkRecordSIRy sirInfectedData]
+  let output = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) lws
+  liftS $ print $ show output
+  let output' =
+        map (\((xs, ys), sampleMap, p) -> ((map fromLatentState xs, ys), sampleMap, p)) output
+  return output'
+
+testSIRMHPost ::  Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testSIRMHPost = do
+  let sir_n_samples = 2
+  bs <- map fst <$> Basic.basic sir_n_samples
+          (Example.hmmSIRNsteps (fixedParams 763 1) 200)
+          [latentState 762 1 0] [mkRecordSIR ([0.29], [0.25], [0.015])]
+  let infectedData    = map snd bs
+      mh_n_iterations = 100
+  liftS $ print $ "infected data is " ++ show infectedData
+  mhTrace <- MH.mh mh_n_iterations (Example.hmmSIRNsteps (fixedParams 763 1) 200)
+                        (replicate sir_n_samples $ latentState 762 1 0)
+                        (map mkRecordSIRy infectedData)
+  let mhTrace' = map (\(xy, samples, logps) ->
+        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+            logps'   = Map.toList logps
+        in  (xy, samples', logps') ) mhTrace
+      mhTrace'' = map (\((xs, ys), sampleMap, p) -> ((map fromLatentState xs, ys), sampleMap, p)) mhTrace'
+  return mhTrace''

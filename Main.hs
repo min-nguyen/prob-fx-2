@@ -21,13 +21,15 @@ import Util
 --   a <- sampleIOFixed prog
 --   writeFile "model-output.txt" (show a)
 
--- removeWord :: String -> String -> String
--- removeWord word s =
---   let repl ',' = " , "
---       repl x   = [x]
---       s'  = concat $ map repl s
---       s'' = concat $ filter (not . (== word)) $ splitOn " " s'
---   in  s''
+replaceWord :: String -> String -> String -> String
+replaceWord word replace s =
+  let repl ',' = " , "
+      repl '(' = " ( "
+      repl ')' = " ) "
+      repl x   = [x]
+      s'  = concat $ map repl s
+      s'' = concat $ map (\w -> if w == word then replace else w) $ splitOn " " s'
+  in  s''
 
 main :: IO ()
 main = do
@@ -66,7 +68,9 @@ main = do
   -- trace <- sampleIOFixed testHMMMHPost
   -- trace <- sampleIOFixed testHMMMHPred
   -- trace <- sampleIOFixed testHMMStBasic
-  trace <- sampleIOFixed testSIRBasic
+  -- trace <- sampleIOFixed testSIRBasic
+  -- trace <- sampleIOFixed testSIRLWInf
+  trace <- sampleIOFixed testSIRMHPost
   let traceStr = show trace
   putStrLn traceStr
   writeFile "model-output.txt" traceStr
