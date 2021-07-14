@@ -14,10 +14,11 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE OverlappingInstances #-}
-
+{-# LANGUAGE OverloadedLabels #-}
 module Extensible.Example where
 
 import Statistics.Distribution
+import GHC.OverloadedLabels
 import Extensible.Freer
 import Extensible.Reader
 import Extensible.State
@@ -49,7 +50,7 @@ linearRegression :: forall s rs .
   (HasVar s "y" Double, HasVar s "m" Double, HasVar s "c" Double, HasVar s "σ" Double) =>
   Double -> Model s rs (Double, Double)
 linearRegression x = do
-  m1 <- normal' 0 4 m
+  m1 <- normal' 0 4 #m
   c <- normal' 0 2 c
   σ <- uniform' 1 3 σ
   y <- normal' (m1 * x + c) σ y
@@ -260,7 +261,7 @@ type InfectionCount = Int
 observeSIR :: HasVar s "infobs" Int => Params -> LatentState -> Model s es Int
 observeSIR (Params rho _ _) (LatentState _ inf _) = do
   -- Model $ prinT $ "inf is " ++ show inf
-  poisson' (rho * fromIntegral inf) infobs
+  poisson' (rho * fromIntegral inf) #infobs
 
 transitionSIR :: FixedParams -> Params -> LatentState -> Model s es LatentState
 transitionSIR (FixedParams numPop timeSlices) (Params rho beta gamma) (LatentState sus inf recov)  = do
@@ -306,13 +307,13 @@ hmmSIRNsteps fixedParams n latentState  = do
   return (reverse xs, reverse ys)
 
 {- Non probabilistic programs-}
-example :: (Member (Reader Int) rs, Member (Writer String) rs)
-        => Freer rs Int
-example = do
-  tell "hi"
-  x :: Int <- ask
-  tell "hi"
-  return 5
+-- example :: (Member (Reader Int) rs, Member (Writer String) rs)
+--         => Freer rs Int
+-- example = do
+--   tell "hi"
+--   x :: Int <- ask
+--   tell "hi"
+--   return 5
 
 prog :: (Member (Reader Int) rs, Member (Writer String) rs)
         => Freer rs Int
@@ -333,28 +334,28 @@ prog'' = Free (inj $ Tell "hi") (\() ->
             Free (inj $ Tell (show x)) (\() ->
               Pure 5)))
 
-example' :: forall env. Freer '[Reader env, Writer String] Int
-example' = do
-  tell "hi"
-  x :: env <- ask
-  return 5
+-- example' :: forall env. Freer '[Reader env, Writer String] Int
+-- example' = do
+--   tell "hi"
+--   x :: env <- ask
+--   return 5
 
-exampleR :: forall rs . (Member (Reader Int) rs)
-        => Freer rs Int
-exampleR = do
-  x :: Int <- ask
-  return 5
+-- exampleR :: forall rs . (Member (Reader Int) rs)
+--         => Freer rs Int
+-- exampleR = do
+--   x :: Int <- ask
+--   return 5
 
-exampleW :: forall rs. (Member (Writer String) rs)
-        => Freer rs Int
-exampleW = do
-  tell "hi"
-  return 5
+-- exampleW :: forall rs. (Member (Writer String) rs)
+--         => Freer rs Int
+-- exampleW = do
+--   tell "hi"
+--   return 5
 
-exampleIO :: forall rs. (SetMember Lift (Lift IO) rs) => Freer rs ()
-exampleIO = do
-  lift $ print "hi"
-  return ()
+-- exampleIO :: forall rs. (SetMember Lift (Lift IO) rs) => Freer rs ()
+-- exampleIO = do
+--   lift $ print "hi"
+--   return ()
 
 runEx :: (Int, String)
 runEx = (run . runWriter . runReader (5 :: Int)) example

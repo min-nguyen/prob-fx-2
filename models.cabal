@@ -66,6 +66,7 @@ library
                       Extensible.IO,
                       Extensible.Model,
                       Extensible.OpenSum,
+                      Extensible.OpenProduct,
                       Extensible.Dist,
                       Extensible.Sampler,
                       Extensible.Inference.Basic,
