@@ -41,7 +41,7 @@ type LinRegrEnv =
   -- -> LRec Example.LinRegrEnv
 mkRecordLinRegr :: (Double,  Double,  Double,  Double) -> LRec LinRegrEnv
 mkRecordLinRegr (y_vals, m_vals, c_vals, σ_vals) =
-  (#y , [y_vals]) <:> (#m , [m_vals]) <:> (#c , [c_vals]) <:> (#σ , [σ_vals]) <:> nil
+  (#y :> [y_vals]) <:> (#m :> [m_vals]) <:> (#c :> [c_vals]) <:> (#σ :> [σ_vals]) <:> nil
 
 mkRecordLinRegrY :: [Double] -> LRec Example.LinRegrEnv
 mkRecordLinRegrY y_vals =

@@ -40,10 +40,10 @@ import Util
 
 -- | Linear regression
 type LinRegrEnv =
-    '[  '("y" , Double),
-        '("m" , Double),
-        '("c" , Double),
-        '("σ" , Double)
+    '[  "y" ':> Double,
+        "m" ':>  Double,
+        "c" ':>  Double,
+        "σ" ':>  Double
      ]
 
 linearRegression :: forall s rs .
@@ -58,9 +58,9 @@ linearRegression x = do
 
 -- | Logistic regression
 type LogRegrEnv =
-    '[  '("label" , Bool),
-        '("m"     , Double),
-        '("b"     , Double)
+    '[  "label" ':> Bool,
+        "m"     ':> Double,
+        "b"     ':> Double
      ]
 
 sigmoid :: Double -> Double
@@ -79,10 +79,10 @@ logisticRegression x = do
 
 -- | Bayesian network
 type NNEnv =
-    '[  '("yObs"     , Double),
-        '("weight"   , Double),
-        '("bias"     , Double),
-        '("sigma"    , Double)
+    '[  "yObs"     ':> Double,
+        "weight"   ':> Double,
+        "bias"     ':> Double,
+        "sigma"    ':> Double
      ]
 
 data NN = NN { biases  :: [Double],
@@ -140,8 +140,8 @@ nnStepModel n x = do
 -- | Another neural network formulation
 
 type NNLogEnv =
-    '[  '("yObs"     , Bool),
-        '("weight"   , Double)
+    '[  "yObs"     ':> Bool,
+        "weight"   ':> Double
      ]
 
 nnLogModel :: (HasVar s "weight" Double, HasVar s "yObs" Bool) => Int -> (Double, Double) -> Model s es ((Double, Double), Bool)
@@ -178,9 +178,9 @@ sineModel x = do
 
 -- | Hidden Markov Model
 type HMMEnv =
-  '[ '("y"       , Int),
-     '("obs_p"   , Double),
-     '("trans_p" , Double)
+  '[ "y"       ':> Int,
+     "obs_p"   ':> Double,
+     "trans_p" ':> Double
    ]
 
 transitionModel ::  Double -> Int -> Model s es Int
@@ -259,10 +259,10 @@ data LatentState = LatentState {
 } deriving Show
 
 type SIREnv =
-  '[ '("infobs" , Int),
-     '("ρ" , Double),
-     '("β" , Double),
-     '("γ" , Double)
+  '[ "infobs" ':> Int,
+     "ρ" ':> Double,
+     "β" ':> Double,
+     "γ" ':> Double
    ]
 
 type InfectionCount = Int

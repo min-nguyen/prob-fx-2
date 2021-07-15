@@ -10,7 +10,8 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 module Extensible.Inference.Basic where
 
-import Data.Extensible hiding (Member)
+-- import Data.Extensible hiding (Member)
+import Extensible.OpenProduct
 import Control.Monad
 import Control.Monad.Trans.Class
 import Extensible.Dist

@@ -11,7 +11,7 @@ module Extensible.Inference.LW where
 
 import qualified Data.Map as Map
 import Data.Map (Map)
-import Data.Extensible hiding (Member)
+import Extensible.OpenProduct
 import Extensible.AffineReader
 import Control.Monad
 import Control.Monad.Trans.Class

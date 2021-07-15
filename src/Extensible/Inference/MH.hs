@@ -21,7 +21,8 @@ import Data.Kind (Type)
 import qualified Data.Set as Set
 import Data.Set (Set, (\\))
 import Data.Maybe
-import Data.Extensible hiding (Member)
+-- import Data.Extensible hiding (Member)
+import Extensible.OpenProduct
 import Control.Monad
 import Control.Monad.Trans.Class
 import Extensible.Dist

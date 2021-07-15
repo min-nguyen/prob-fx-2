@@ -25,12 +25,6 @@ import qualified Extensible.OpenProduct as OP
 import Control.Lens hiding ((:>))
 import Util
 
-type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
-  AsList ((f, a) : as)   = ((f , [a]) : AsList as)
-  AsList '[] = '[]
-
-type LRec s = OP.OpenProduct (AsList s)
-
 -- A Reader for which it is only possible to access record fields with type [a].
 data AffReader env a where
   Ask :: Getting [a] (OP.OpenProduct env) [a]
@@ -54,9 +48,9 @@ runReader env = loop where
 
 -- | The only purpose of the State (LRec env) effect is to check if all observed values in the environment have been consumed.
 runAffReader :: forall env rs a.
-  OP.OpenProduct (AsList env) -> Freer (AffReader (AsList env) ': rs) a -> Freer rs (a, OP.OpenProduct (AsList env) )
+  OP.OpenProduct (OP.AsList env) -> Freer (AffReader (OP.AsList env) ': rs) a -> Freer rs (a, OP.OpenProduct (OP.AsList env) )
 runAffReader env = loop env where
-  loop :: OP.OpenProduct (AsList env) -> Freer (AffReader (AsList env)  ': rs) a -> Freer rs (a, OP.OpenProduct (AsList env) )
+  loop :: OP.OpenProduct (OP.AsList env) -> Freer (AffReader (OP.AsList env)  ': rs) a -> Freer rs (a, OP.OpenProduct (OP.AsList env) )
   loop env (Pure x) = return (x, env)
   loop env (Free u k) = case decomp u of
     Right (Ask g s) -> do

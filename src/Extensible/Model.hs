@@ -53,10 +53,11 @@ type family Maybes (as :: [k]) = (bs :: [k]) | bs -> as where
 --   AsList' [a] = [a]
 --   AsList' a   = [a]
 
--- HasVar: Lookup for maybe types
-class OP.Lookup (AsList xs) k [v]  => HasVar xs k v where
 
-instance OP.Lookup (AsList xs) k [v] => HasVar xs k v where
+-- HasVar: Lookup for maybe types
+-- class OP.Lookup (AsList xs) k [v]  => HasVar xs k v where
+
+-- instance OP.Lookup (AsList xs) k [v] => HasVar xs k v where
 
 type MRec s = OP.OpenProduct (Maybes s)
 
@@ -74,7 +75,7 @@ Idea : We can introduce print statements by adding them as a constructor of Samp
 -}
 
 newtype Model env es a =
-  Model { runModel :: (Member Dist es, Member (AffReader (AsList env)) es, Member Sample es) => Freer es a }
+  Model { runModel :: (Member Dist es, Member (AffReader (OP.AsList env)) es, Member Sample es) => Freer es a }
   deriving Functor
 
 instance Applicative (Model env es) where
@@ -113,11 +114,11 @@ normalLens mu sigma field =
   lens (\s -> OP.getOP field s) (\s b -> OP.setOP field b s)
 
 -- keyLens
-normal' :: forall s es a k. (a ~ Double) => OP.Lookup (AsList s) k [a]
+normal' :: forall s es a k. (a ~ Double) => OP.Lookup (OP.AsList s) k [a]
   => Double -> Double -> OP.Key k
   -> Model s es Double
 normal' mu sigma field = Model $ do
-  let (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (AsList s)) [a], ASetter (OP.OpenProduct (AsList s)) (OP.OpenProduct (AsList s)) [a] [a])
+  let (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])
   maybe_y <- ask getter setter
   send (NormalDist mu sigma maybe_y)
 
@@ -125,11 +126,11 @@ bernoulli :: Double -> Model s es Bool
 bernoulli p = Model $ do
   send (BernoulliDist p Nothing)
 
-bernoulli' :: forall s es a k. (a ~ Bool) => OP.Lookup (AsList s) k [a]
+bernoulli' :: forall s es a k. (a ~ Bool) => OP.Lookup (OP.AsList s) k [a]
   => Double -> OP.Key k
   -> Model s es Bool
 bernoulli' p field = Model $ do
-  let (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (AsList s)) [a], ASetter (OP.OpenProduct (AsList s)) (OP.OpenProduct (AsList s)) [a] [a])
+  let (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])
   maybe_y <- ask getter setter
   send (BernoulliDist p maybe_y)
 
@@ -137,11 +138,11 @@ binomial :: Int -> Double -> Model s es Int
 binomial n p = Model $ do
   send (BinomialDist n p Nothing)
 
-binomial' :: forall s es a k. (a ~  Int) => (OP.Lookup (AsList s) k [a])
+binomial' :: forall s es a k. (a ~  Int) => (OP.Lookup (OP.AsList s) k [a])
   => Int -> Double -> OP.Key k
   -> Model s es Int
 binomial' n p field = Model $ do
-  let (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (AsList s)) [a], ASetter (OP.OpenProduct (AsList s)) (OP.OpenProduct (AsList s)) [a] [a])
+  let (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])
   maybe_y <- ask getter setter
   send (BinomialDist n p maybe_y)
 
@@ -149,11 +150,11 @@ gamma :: Double -> Double -> Model s es Double
 gamma k θ = Model $ do
   send (GammaDist k θ Nothing)
 
-gamma' :: forall s es a k. (a ~ Double) => (OP.Lookup (AsList s) k [a])
+gamma' :: forall s es a k. (a ~ Double) => (OP.Lookup (OP.AsList s) k [a])
   => Double -> Double -> OP.Key k
   -> Model s es Double
 gamma' k θ field = Model $ do
-  let (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (AsList s)) [a], ASetter (OP.OpenProduct (AsList s)) (OP.OpenProduct (AsList s)) [a] [a])
+  let (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])
   maybe_y <- ask getter setter
   send (GammaDist k θ maybe_y)
 
@@ -161,11 +162,11 @@ beta :: Double -> Double -> Model s es Double
 beta α β = Model $ do
   send (BetaDist α β Nothing)
 
-beta' :: forall s es a k. (a ~ Double) => (OP.Lookup (AsList s) k [a])
+beta' :: forall s es a k. (a ~ Double) => (OP.Lookup (OP.AsList s) k [a])
   => Double -> Double -> OP.Key k
   -> Model s es Double
 beta' α β field = Model $ do
-  let (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (AsList s)) [a], ASetter (OP.OpenProduct (AsList s)) (OP.OpenProduct (AsList s)) [a] [a])
+  let (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])
   maybe_y <- ask getter setter
   send (BetaDist α β maybe_y)
 
@@ -173,11 +174,11 @@ uniform :: Double -> Double -> Model s es Double
 uniform min max = Model $ do
   send (UniformDist min max Nothing)
 
-uniform' :: forall s es a k. (a ~ Double) => (OP.Lookup (AsList s) k [a])
+uniform' :: forall s es a k. (a ~ Double) => (OP.Lookup (OP.AsList s) k [a])
   => Double -> Double -> OP.Key k
   -> Model s es Double
 uniform' min max field = Model $ do
-  let (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (AsList s)) [a], ASetter (OP.OpenProduct (AsList s)) (OP.OpenProduct (AsList s)) [a] [a])
+  let (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])
   maybe_y <- ask getter setter
   send (UniformDist min max maybe_y)
 
@@ -185,11 +186,11 @@ poisson :: Double -> Model s es Int
 poisson λ = Model $ do
   send (PoissonDist λ Nothing)
 
-poisson' :: forall s es a k. (a ~ Int) => (OP.Lookup (AsList s) k [a])
+poisson' :: forall s es a k. (a ~ Int) => (OP.Lookup (OP.AsList s) k [a])
   => Double -> OP.Key k
   -> Model s es Int
 poisson' λ field = Model $ do
-  let (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (AsList s)) [a], ASetter (OP.OpenProduct (AsList s)) (OP.OpenProduct (AsList s)) [a] [a])
+  let (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])
   maybe_y <- ask getter setter
   send (PoissonDist λ maybe_y)
 
