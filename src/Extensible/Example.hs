@@ -47,7 +47,7 @@ type LinRegrEnv =
      ]
 
 linearRegression :: forall s rs .
-  (HasVar s "y" Double, HasVar s "m" Double, HasVar s "c" Double, HasVar s "σ" Double) =>
+  (HasVar s "y" Double, HasVar s "m" Double, Lookup (AsList s) "c" [Double], HasVar s "σ" Double) =>
   Double -> Model s rs (Double, Double)
 linearRegression x = do
   m1 <- normal' 0 4 #m
