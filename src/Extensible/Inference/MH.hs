@@ -79,12 +79,13 @@ type Vals = '[Int, Double, Bool]
 type LogP = Map Addr Double
 type Ⲭ    = Map Addr (DistInfo, OpenSum Vals)
 type TraceMH a = [(a, Ⲭ, LogP)]
-type Tags = Map
+
+
 updateMapⲬ :: OpenSum.Member x Vals => Addr -> Dist x -> x -> Ⲭ -> Ⲭ
-updateMapⲬ α d x = Map.insert α (toDistInfo d, OpenSum.inj x) :: Ⲭ -> Ⲭ
+updateMapⲬ (α, i) d x = Map.insert (α, i) (toDistInfo d, OpenSum.inj x) :: Ⲭ -> Ⲭ
 
 updateLogP :: Addr -> Dist x -> x -> LogP -> LogP
-updateLogP α d x  = Map.insert α (logProb d x)
+updateLogP (α, i) d x  = Map.insert (α, i) (logProb d x)
 
 -- | Compute acceptance probability
 -- If the log prob from our new samples is better than our old samples, then we always accept.
@@ -109,15 +110,16 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
 -- | Run MH for multiple data points
 mh :: (es ~ '[AffReader (AsList env), Dist, Observe, State Ⲭ, State LogP, Sample])
    => Int                              -- Number of mhSteps per data point
-   -> (b -> Model env es a)              -- Model awaiting input variable
+   -> (b -> Model env es a)            -- Model awaiting input variable
+   -> [Tag]                            -- Tags indicated sample sites of interest
    -> [b]                              -- List of model input variables
-   -> [LRec env]                         -- List of model observed variables
-   -> Sampler (TraceMH a)                -- Trace of all accepted outputs, samples, and logps
-mh n model xs ys = do
+   -> [LRec env]                       -- List of model observed variables
+   -> Sampler (TraceMH a)              -- Trace of all accepted outputs, samples, and logps
+mh n model tags xs ys = do
   -- Perform initial run of mh
-  (x, samples, logps) <- runMH (head ys) Map.empty "" (model $ head xs)
+  (x, samples, logps) <- runMH (head ys) Map.empty ("", 0) (model $ head xs)
   -- Construct list of mhNstep functions, one for each data point
-  let mhs  = zipWith (\x y -> mhNsteps n y (model x)) xs ys
+  let mhs  = zipWith (\x y -> mhNsteps n y (model x) tags) xs ys
   -- Perform mhNstep for each data point, propagating (x, samples, logps) through
   l <- foldl (>=>) return mhs [(x, samples, logps)]
   -- Return mhTrace in correct order of execution (due to mhStep prepending new results onto head of trace)
@@ -126,45 +128,48 @@ mh n model xs ys = do
 -- | Perform n steps of MH for a single data point
 mhNsteps :: (es ~ '[AffReader (AsList env), Dist, Observe, State Ⲭ, State LogP, Sample])
   => Int              -- Number of mhSteps
-  -> LRec env         -- Model observed variable
+  -> LRec env         -- Model observed variables
   -> Model env es a   -- Model
+  -> [Tag]            -- Tags indicating sample sites of interest
   -> TraceMH a        -- Previous mh output
   -> Sampler (TraceMH a)
-mhNsteps n env model trace = do
-  foldl (>=>) return (replicate n (mhStep env model)) trace
+mhNsteps n env model tags trace = do
+  foldl (>=>) return (replicate n (mhStep env model tags)) trace
 
 -- | Perform one step of MH for a single data point
 mhStep :: (es ~ '[AffReader (AsList env), Dist, Observe, State Ⲭ, State LogP, Sample])
   => LRec env         -- Model observed variable
   -> Model env es a   -- Model
+  -> [Tag]            -- Tags indicating sample sites of interest
   -> TraceMH a        -- Trace of previous mh outputs
   -> Sampler (TraceMH a)
-mhStep env model trace = do
+mhStep env model tags trace = do
   let -- Get previous mh output
       (x, samples, logps) = head trace
-      sample_size = Map.size samples
   -- liftS $ print $ "samples are " ++ show samples
   -- α_samp <- sample $ DiscrUniformDist 0 2 Nothing
-  α_samp_ind <- sample $ DiscrUniformDist 0 (Map.size samples - 1) Nothing Nothing
+  let sampleSites = if null tags then samples
+                    else  Map.filterWithKey (\(tag, i) _ -> tag `elem` tags) samples
+  α_samp_ind <- sample $ DiscrUniformDist 0 (Map.size sampleSites - 1) Nothing Nothing
   -- liftS $ print $ "α_samp_ind is " ++ show α_samp_ind ++ " Map.size samples is " ++ show (Map.size samples)
-  let (α_samp, _) = Map.elemAt α_samp_ind samples
+  let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
   -- run mh with new sample address
-  -- liftS $ print $ "sample address is " ++ show α_samp
+  liftS $ print $ "sample address is " ++ show α_samp
   (x', samples', logps') <- runMH env samples α_samp model
   -- liftS $ print $ "Second run is: " ++ show (x', samples', logps')
   -- do some acceptance ratio to see if we use samples or samples'
   acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
   u <- sample (UniformDist 0 1 Nothing Nothing)
   if u < acceptance_ratio
-    then do liftS $ putStrLn $ "Accepting " -- ++ show logps' ++ "\nover      "
+    then do -- liftS $ putStrLn $ "Accepting " -- ++ show logps' ++ "\nover      "
             --  ++ show logps
-              ++ "\nwith α" ++ show α_samp ++ ": "
-              ++ show acceptance_ratio ++ " > " ++ show u
+            --  ++ "\nwith α" ++ show α_samp ++ ": "
+            --  ++ show acceptance_ratio ++ " > " ++ show u
             return ((x', samples', logps'):trace)
-    else do liftS $ putStrLn $ "Rejecting " -- ++ show logps' ++ "\nover      "
+    else do -- liftS $ putStrLn $ "Rejecting " -- ++ show logps' ++ "\nover      "
             --  ++ show logps
-              ++ "\nwith α" ++ show α_samp ++ ": "
-              ++ show acceptance_ratio ++ " < u: " ++ show u
+            --  ++ "\nwith α" ++ show α_samp ++ ": "
+            --  ++ show acceptance_ratio ++ " < u: " ++ show u
             return trace
 
 -- | Run model once under MH

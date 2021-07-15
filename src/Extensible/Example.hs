@@ -148,18 +148,18 @@ nnLogModel :: (HasVar s "weight" Double, HasVar s "yObs" Bool) => Int -> (Double
 nnLogModel n_nodes (x, y)  = do
   let xs = [x, y]
   weight1 <- replicateM (length xs) (replicateM n_nodes (normal' 0 1 #weight))
-  Model $ prinT $ "xs is " ++ show [xs]
-  Model $ prinT $ "weight1 is " ++ show weight1
+--  Model $ prinT $ "xs is " ++ show [xs]
+--  Model $ prinT $ "weight1 is " ++ show weight1
   let output1 = map2 tanh (dotProd [xs] weight1)
-  Model $ prinT $ "output1 is " ++ show output1
+--  Model $ prinT $ "output1 is " ++ show output1
   weight2 <- replicateM n_nodes (replicateM n_nodes (normal' 0 1 #weight))
-  Model $ prinT $ "weight2 is " ++ show weight2
+--  Model $ prinT $ "weight2 is " ++ show weight2
   let output2 = map2 tanh (dotProd output1 weight2)
-  Model $ prinT $ "output2 is " ++ show output2
+--  Model $ prinT $ "output2 is " ++ show output2
   weight3 <- replicateM n_nodes (replicateM 1 (normal' 0 1 #weight))
-  Model $ prinT $ "weight3 is " ++ show weight3
+--  Model $ prinT $ "weight3 is " ++ show weight3
   let output3 =  sigmoid . head . head $ dotProd output2 weight3
-  Model $ prinT $ "output3 is " ++ show output3
+--  Model $ prinT $ "output3 is " ++ show output3
   label <- bernoulli' output3 #yObs
   return ((x, y), label)
 

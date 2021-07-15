@@ -17,6 +17,8 @@ import Util
 import Control.Lens hiding ((:>))
 import Control.Monad.State
 import Data.Kind
+import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.Maybe
 import Data.Extensible hiding (wrap, Head, Member)
 import qualified Data.Vector as V
@@ -133,7 +135,8 @@ instance Show a => Show (Dist a) where
   show (CategoricalDist xs y tag) =
     "CategoricalDist(" ++ show xs ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
 
-type Addr = String
+type Tag  = String
+type Addr = (Tag, Int)
 
 data Sample a where
   Sample  :: Dist a -> Addr -> Sample a
@@ -197,19 +200,40 @@ isDistInt d@BetaDist {} = Nothing
 isDistInt d@GammaDist {} = Nothing
 isDistInt d@UniformDist {} = Nothing
 
+type TagMap = Map Tag Int
+
 {- Replaces Dists with Sample or Observe and adds address -}
 runDist :: forall rs a. (Member Sample rs, Member Observe rs) => Freer (Dist : rs) a
         -> Freer rs a
-runDist = loop 0
+runDist = loop 0 Map.empty
   where
-  loop :: (Member Sample rs, Member Observe rs) => Int -> Freer (Dist : rs) a -> Freer rs a
-  loop α (Pure x) = return x
-  loop α (Free u k) = case decomp u of
+  loop :: (Member Sample rs, Member Observe rs) => Int -> TagMap -> Freer (Dist : rs) a -> Freer rs a
+  loop α_counter tagMap (Pure x) = return x
+  loop α_counter tagMap (Free u k) = case decomp u of
     Right d
-      -> if hasObs d
-          then send (Observe d (getObs d) (show α)) >>= loop (α + 1) . k
-          else send (Sample d (show α)) >>= loop (α + 1). k
-    Left  u'  -> Free u' (loop α . k)
+      -> let tag     = if hasTag d then getTag d else show α_counter
+             tag_i   = Map.findWithDefault 0 tag tagMap
+             tagMap' = Map.insert tag (tag_i + 1) tagMap
+         in if hasObs d
+            then send (Observe d (getObs d) (tag, tag_i)) >>= loop (α_counter + 1) tagMap' . k
+            else send (Sample d (tag, tag_i)) >>= loop (α_counter + 1) tagMap' . k
+    Left  u'  -> Free u' (loop α_counter tagMap. k)
+
+{- Replaces Dists with Sample or Observe and adds address -}
+-- runDist :: forall rs a. (Member Sample rs, Member Observe rs) => Freer (Dist : rs) a
+--         -> Freer rs a
+-- runDist = loop 0
+--   where
+--   loop :: (Member Sample rs, Member Observe rs) => Int -> Freer (Dist : rs) a -> Freer rs a
+--   loop α_counter (Pure x) = return x
+--   loop α_counter (Free u k) = case decomp u of
+--     Right d
+--       -> let α = if hasTag d then getTag d else show α_counter
+--          in if hasObs d
+--             then send (Observe d (getObs d) α) >>= loop (α_counter + 1) . k
+--             else send (Sample d α) >>= loop (α_counter + 1). k
+--     Left  u'  -> Free u' (loop α_counter . k)
+
 
 instance Distribution (Dist a) where
   cumulative (NormalDist μ σ _ _) x
@@ -274,6 +298,18 @@ hasObs d@(CategoricalDist _ obs _)    = isJust obs
 hasObs d@(DiscreteDist _ obs _)       = isJust obs
 hasObs d@(PoissonDist _ obs _)        = isJust obs
 
+hasTag :: Dist a -> Bool
+hasTag d@(NormalDist _ _ _ tag)       = isJust tag
+hasTag d@(DiscrUniformDist _ _ _ tag) = isJust tag
+hasTag d@(UniformDist _ _ _ tag)      = isJust tag
+hasTag d@(GammaDist _ _ _ tag)        = isJust tag
+hasTag d@(BetaDist _ _ _ tag)         = isJust tag
+hasTag d@(BinomialDist _ _ _ tag)     = isJust tag
+hasTag d@(BernoulliDist _ _ tag)      = isJust tag
+hasTag d@(CategoricalDist _ _ tag)    = isJust tag
+hasTag d@(DiscreteDist _ _ tag)       = isJust tag
+hasTag d@(PoissonDist _ _ tag)        = isJust tag
+
 getObs :: Dist a -> a
 getObs d@(NormalDist _ _ obs _)       = fromJust obs
 getObs d@(DiscrUniformDist _ _ obs _) = fromJust obs
@@ -285,6 +321,19 @@ getObs d@(BernoulliDist _ obs _)      = fromJust obs
 getObs d@(CategoricalDist _ obs _)    = fromJust obs
 getObs d@(DiscreteDist _ obs _)       = fromJust obs
 getObs d@(PoissonDist _ obs _)        = fromJust obs
+
+getTag :: Dist a -> String
+getTag d@(NormalDist _ _ _ tag)       = fromJust tag
+getTag d@(DiscrUniformDist _ _ _ tag) = fromJust tag
+getTag d@(UniformDist _ _ _ tag)      = fromJust tag
+getTag d@(GammaDist _ _ _ tag)        = fromJust tag
+getTag d@(BetaDist _ _ _ tag)         = fromJust tag
+getTag d@(BinomialDist _ _ _ tag)     = fromJust tag
+getTag d@(BernoulliDist _ _ tag)      = fromJust tag
+getTag d@(CategoricalDist _ _ tag)    = fromJust tag
+getTag d@(DiscreteDist _ _ tag)       = fromJust tag
+getTag d@(PoissonDist _ _ tag)        = fromJust tag
+
 
 prob :: Dist a -> a -> Double
 prob d@NormalDist {} y
