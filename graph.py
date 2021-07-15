@@ -152,14 +152,13 @@ def main():
     ps         = [ d[2] for d in data]
     xs = [x[0] for x in xys]
     ys = [y[1] for y in xys]
-    mu_samples    = [ d[0][1] for d in sampleMaps ]
-    b_samples     = [ d[1][1] for d in sampleMaps ]
+    mu_samples  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'm'] for d in sampleMaps ]).ravel()
+    b_samples   = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'b'] for d in sampleMaps ]).ravel()
     fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("x axis")
-    axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap=color_map)
+    axs1.set_xlabel("b value")
+    axs1.set_ylabel("probability")
+    axs1.scatter(b_samples, ps)
     axs1.set_title('Logistic regression - likelihood weighting')
-    axs1.text(-2.5, 1.15, 'How likely the randomly sampled parameters of the current iteration gives rise to the data point')
     fig2, axs2 = plt.subplots(nrows=1)
     axs2.set_xlabel('mu value')
     axs2.set_ylabel('probability')

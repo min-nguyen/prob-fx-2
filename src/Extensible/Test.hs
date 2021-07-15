@@ -166,7 +166,7 @@ testLogRegrLWInf = do
                          (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
   let (xs, ys) = (map fst bs, map snd bs)
   -- Perform inference against these data points
-  lws <- LW.lw 3 Example.logisticRegression xs (map (mkRecordLogRegrL . (:[])) ys)
+  lws <- LW.lw 10 Example.logisticRegression xs (map (mkRecordLogRegrL . (:[])) ys)
   let output = map (\(xy, samples, prob) ->
         let samples' = Map.toList samples
         in (xy, samples', prob)) lws
@@ -191,13 +191,13 @@ testLogRegrMHPost = do
 testLogRegrMHPred :: Sampler [(Double, Bool)]
 testLogRegrMHPred = do
   mhTrace <- testLogRegrMHPost
-  let postParams = map (fromJust . prj @Double . snd)
-                      ((snd3 . head) (reverse mhTrace))
-      (mu, postParams') = splitAt 1 postParams
-      (b, _)            = splitAt 1 postParams'
+  let postParams = getPostParams [("m", 0), ("b", 0)] mhTrace
+      mu         = fromJust $ lookup ("m", 0) postParams
+      b          = fromJust $ lookup ("b", 0) postParams
+  liftS $ print $ "Using parameters " ++ show (mu, b)
   bs <- Basic.basic 1 Example.logisticRegression
                       (map (/50) [(-100) .. 100])
-                      (repeat $ mkRecordLogRegr ([], mu, b))
+                      (repeat $ mkRecordLogRegr ([], [mu], [b]))
   return $ map fst bs
 
 -- -- {- Bayesian Neural Network for linear regression -}
