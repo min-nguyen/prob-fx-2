@@ -39,13 +39,49 @@ data Assoc k v = k :> v
 (@=) :: k -> v -> Assoc k v
 (@=) = (:>)
 
-class FindElem k r where
-  findElem :: P k r
-
+-- | Find index of key 'k' in list of assocs 'kvs'
+class FindElem k kvs where
+  findElem :: P k kvs
 instance {-# INCOHERENT  #-} FindElem k ((k ':> v) ': kvs) where
   findElem = P 0
 instance {-# OVERLAPPABLE #-} FindElem k kvs => FindElem k (kv ': kvs) where
   findElem = P $ 1 + unP (findElem :: P k kvs)
+
+-- | Look up type associated with key 'k' in list of assocs 'kvs'
+type family LookupType k kvs where
+  LookupType k ((k ':> v) : kvs) = v
+  LookupType k ((k' ':> v) : kvs) = LookupType k kvs
+
+-- | Determine whether a key 'k' exists in a list of assocs 'kvs'
+type family UniqueKey k kvs where
+  UniqueKey k ((k ':> v) : kvs) = False
+  UniqueKey k ((k' ':> v) : kvs) = UniqueKey k kvs
+  UniqueKey k '[] = True
+
+-- | State that we can lookup key 'k' with value type 'a' in list of assocs 'xs'
+class (FindElem k xs, LookupType k xs ~ a) => Lookup xs k a
+
+instance (FindElem k xs, LookupType k xs ~ a) => Lookup xs k a
+
+-- | Map the list constructor over a list of assocs
+type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
+  AsList ((f :> a) : as)   = ((f :> [a]) : AsList as)
+  AsList '[] = '[]
+
+-- | "HasVar xs k v" is shorthand for "Lookup (AsList xs) k [v]""
+class Lookup (AsList xs) k [v]  => HasVar xs k v where
+
+instance Lookup (AsList xs) k [v] => HasVar xs k v where
+
+type LRec s = OpenProduct (AsList s)
+
+insert :: UniqueKey key ts ~ 'True
+       => Key key -> t -> OpenProduct ts -> OpenProduct (key ':> t ': ts)
+insert _ t (OpenProduct v) = OpenProduct (V.cons (Any t) v)
+
+infixr 5 <:
+(<:) :: UniqueKey key ts ~ 'True => Assoc (Key key) t -> OpenProduct ts -> OpenProduct ((key ':> t) ': ts)
+(<:) (k :> v) op = insert k v op
 
 getOP :: forall key ts a. FindElem key ts => Key key -> OpenProduct ts -> a
 getOP _ (OpenProduct v) =
@@ -58,51 +94,20 @@ setOP :: forall key ts . FindElem key ts
 setOP _ ft (OpenProduct v) =
   OpenProduct (v V.// [(unP (findElem @key @ts), Any ft)])
 
-type family LookupType k kvs where
-  LookupType k ((k ':> v) : kvs) = v
-  LookupType k ((k' ':> v) : kvs) = LookupType k kvs
+mkGetter ::  (s -> a) -> Getting a s a
+mkGetter k = dimap k (contramap k)
 
-type family UniqueKey k kvs where
-  UniqueKey k ((k ':> v) : kvs) = False
-  UniqueKey k ((k' ':> v) : kvs) = UniqueKey k kvs
-  UniqueKey k '[] = True
+mkSetter :: ((a -> b) -> s -> t) -> ASetter s t a b
+mkSetter f g = Identity . f (runIdentity . g)
 
-class (FindElem k xs, LookupType k xs ~ a) => Lookup xs k a
-
-instance (FindElem k xs, LookupType k xs ~ a) => Lookup xs k a
-
-insert :: UniqueKey key ts ~ 'True
-       => Key key -> t -> OpenProduct ts -> OpenProduct (key ':> t ': ts)
-insert _ t (OpenProduct v) = OpenProduct (V.cons (Any t) v)
-
-infixr 5 <:
-(<:) :: UniqueKey key ts ~ 'True => Assoc (Key key) t -> OpenProduct ts -> OpenProduct ((key ':> t) ': ts)
-(<:) (k :> v) op = insert k v op
-
-
-to' ::  (s -> a) -> Getting a s a
-to' k = dimap k (contramap k)
-
-sets' :: ((a -> b) -> s -> t) -> ASetter s t a b
-sets' f g = Identity . f (runIdentity . g)
-
-mkGetterSetter :: (FindElem k xs, Lookup xs k [a]) => Key k -> (Getting [a] (OpenProduct  xs) [a], ASetter (OpenProduct  xs) (OpenProduct xs) [a] [a])
+mkGetterSetter :: (Lookup xs k a)
+  => Key k -> (Getting a (OpenProduct xs) a, ASetter (OpenProduct xs) (OpenProduct xs) a a)
 mkGetterSetter field =
-  let getter' = to' (\s -> getOP field s)
-      setter' = sets' (\f s ->  let a = s ^. getter'
-                                    a' = f a
-                                in  setOP field a' s)
+  let getter' = mkGetter (\s -> getOP field s)
+      setter' = mkSetter (\f s ->  let a = s ^. getter'
+                                       a' = f a
+                                   in  setOP field a' s)
   in (getter', setter')
-
-type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
-  AsList ((f :> a) : as)   = ((f :> [a]) : AsList as)
-  AsList '[] = '[]
-
-class Lookup (AsList xs) k [v]  => HasVar xs k v where
-
-instance Lookup (AsList xs) k [v] => HasVar xs k v where
-
-type LRec s = OpenProduct (AsList s)
 
 -- f = #hi :> 5 <: #bye :> 5
 
