@@ -27,10 +27,15 @@ data OpenProduct (ts :: [Assoc Symbol k])  where
 nil :: OpenProduct '[]
 nil = OpenProduct V.empty
 
-data Key (key :: Symbol) = Key
+-- data Key (key :: Symbol) = Key
+data Key (key :: Symbol) where
+  Key :: KnownSymbol key => Key key
 
-instance (key ~ key') => IsLabel key (Key key') where
+instance (KnownSymbol key, key ~ key') => IsLabel key (Key key') where
   fromLabel = Key
+
+keyToStr :: forall k. Key k -> String
+keyToStr Key = symbolVal (Proxy @k)
 
 newtype P t rs = P {unP :: Int}
 

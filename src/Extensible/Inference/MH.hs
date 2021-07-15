@@ -145,14 +145,14 @@ mhStep env model trace = do
       sample_size = Map.size samples
   -- liftS $ print $ "samples are " ++ show samples
   -- α_samp <- sample $ DiscrUniformDist 0 2 Nothing
-  α_samp <- sample $ DiscreteDist (map (,1.0/fromIntegral sample_size) (Map.keys samples)) Nothing
+  α_samp <- sample $ DiscreteDist (map (,1.0/fromIntegral sample_size) (Map.keys samples)) Nothing Nothing
   -- run mh with new sample address
   -- liftS $ print $ "sample address is " ++ show α_samp
   (x', samples', logps') <- runMH env samples α_samp model
   -- liftS $ print $ "Second run is: " ++ show (x', samples', logps')
   -- do some acceptance ratio to see if we use samples or samples'
   acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
-  u <- sample (UniformDist 0 1 Nothing)
+  u <- sample (UniformDist 0 1 Nothing Nothing)
   if u < acceptance_ratio
     then do liftS $ putStrLn $ "Accepting " -- ++ show logps' ++ "\nover      "
             --  ++ show logps
