@@ -384,50 +384,49 @@ testNNStepMHPred = do
   liftS $ print $ show (weights, bias, sigma)
   return $ map fst bs
 
--- -- | Another neural network variation for logistic regression
--- mkRecordNNLog :: ([Bool], [Double])
---            -> LRec Example.NNLogEnv
--- mkRecordNNLog (yobs_vals, weight_vals) =
---   #yObs @= yobs_vals <: #weight @= weight_vals <: nil
+-- | Another neural network variation for logistic regression
+mkRecordNNLog :: ([Bool], [Double])
+           -> LRec Example.NNLogEnv
+mkRecordNNLog (yobs_vals, weight_vals) =
+  #yObs @= yobs_vals <: #weight @= weight_vals <: nil
 
--- mkRecordNNLogy :: Bool -> LRec Example.NNLogEnv
--- mkRecordNNLogy yobs_val =
---   #yObs @= [yobs_val] <: #weight @= [] <: nil
+mkRecordNNLogy :: Bool -> LRec Example.NNLogEnv
+mkRecordNNLogy yobs_val =
+  #yObs @= [yobs_val] <: #weight @= [] <: nil
 
--- testNNLogBasic :: Sampler [((Double, Double), Bool)]
--- testNNLogBasic = do
---   let -- Run basic simulation over neural network
---       w1 = [0.18, 0.36, -1.29, 0.094, -1.64, 0.65]
---       w2 = [0.147, -0.417, -0.278, -1.275,0.568,-0.785,0.074,0.351,0.732]
---       w3 = [0.295, 0.414, -0.834]
---   bs <- Basic.basic 1 (Example.nnLogModel 3)
---                       nnLogDataX
---                       (repeat $ mkRecordNNLog ([], w1 ++ w2 ++ w3))
---   return $ map fst bs
+testNNLogBasic :: Sampler [((Double, Double), Bool)]
+testNNLogBasic = do
+  let -- Run basic simulation over neural network
+      w1 = [0.18, 0.36, -1.29, 0.094, -1.64, 0.65]
+      w2 = [0.147, -0.417, -0.278, -1.275,0.568,-0.785,0.074,0.351,0.732]
+      w3 = [0.295, 0.414, -0.834]
+  bs <- Basic.basic 1 (Example.nnLogModel 3)
+                      nnLogDataX
+                      (repeat $ mkRecordNNLog ([], w1 ++ w2 ++ w3))
+  return $ map fst bs
 
--- testNNLogMHPost :: Sampler [(((Double, Double), Bool), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
--- testNNLogMHPost = do
---   mhTrace <- MH.mh 50 (Example.nnLogModel 3)
---                       nnLogDataX
---                       (map mkRecordNNLogy nnLogDataY)
---   let mhTrace' = map (\(xy, samples, logps) ->
---         let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
---             logps'   = Map.toList logps
---         in  (xy, samples', logps') ) mhTrace
---   return mhTrace'
+testNNLogMHPost :: Sampler [(((Double, Double), Bool), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testNNLogMHPost = do
+  mhTrace <- MH.mh 50 (Example.nnLogModel 3) []
+                      nnLogDataX
+                      (map mkRecordNNLogy nnLogDataY)
+  let mhTrace' = map (\(xy, samples, logps) ->
+        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+            logps'   = Map.toList logps
+        in  (xy, samples', logps') ) mhTrace
+  return mhTrace'
 
--- testNNLogMHPred :: Sampler [((Double, Double), Bool)]
--- testNNLogMHPred = do
---   mhTrace <- testNNLogMHPost
---   let postParams = map (fromJust . prj @Double . snd)
---                        ((snd3 . head) (reverse mhTrace))
---       (w1, postParams')   = splitAt 6 postParams
---       (w2, postParams'')  = splitAt 9 postParams'
---       (w3, postParams''') = splitAt 3 postParams''
---   bs <- Basic.basic 1 (Example.nnLogModel 3)
---                          nnLogDataX
---                          (repeat $ mkRecordNNLog ([], w1 ++ w2 ++ w3))
---   return $ map fst bs
+testNNLogMHPred :: Sampler [((Double, Double), Bool)]
+testNNLogMHPred = do
+  mhTrace <- testNNLogMHPost
+  let weight_length = 18
+      addrs      = [ ("weight", i) | i <- [0..(weight_length - 1)]]
+      postParams = getPostParams addrs mhTrace
+      weights    = lookupTag "weight" postParams
+  bs <- Basic.basic 1 (Example.nnLogModel 3)
+                         nnLogDataX
+                         (repeat $ mkRecordNNLog ([], weights))
+  return $ map fst bs
 
 -- {- Sine Model -}
 -- testSinBasic :: Sampler [(Double, Double)]
