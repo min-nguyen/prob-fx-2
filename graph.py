@@ -137,13 +137,9 @@ def main():
     plt.show()
   if arg == "log-regr-lw-sim":
     xys        = [ d[0] for d in data]
-    sampleMaps = [ d[1] for d in data]
     ps         = [ d[2] for d in data]
     xs = [x[0] for x in xys]
     ys = [y[1] for y in xys]
-    mu_samples    = [ d[0][1] for d in sampleMaps ]
-    b_samples     = [ d[1][1] for d in sampleMaps ]
-    print(ps)
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("x axis")
     axs1.set_ylabel("y axis")

@@ -143,15 +143,18 @@ testLogRegrBasic = do
 testLogRegrLWSim :: Sampler [((Double, Bool), [(Addr, OpenSum LW.Vals)], Double)]
 testLogRegrLWSim = do
   -- Run logistic model with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
+  bs <- map fst <$> Basic.basic 1 Example.logisticRegression
+                         (map (/50) [(-100) .. 100])
+                         (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
+  let (xs, ys) = unzip bs
   let lw_n_iterations = 3
   lws <- LW.lw lw_n_iterations Example.logisticRegression
-            (concatMap ((\x -> [x, x]) . (/50)) [(-100) .. 100])
-            (concat $ repeat $ map mkRecordLogRegr $
-              ([True], [2], [-0.15]) : ([False], [-0.7], [-0.15]) : [])
+            xs
+            (map (\y -> mkRecordLogRegr ([y], [2], [-0.15])) ys)
   let output = map (\(xy, samples, prob) ->
         let samples' = Map.toList samples
         in (xy, samples', prob)) lws
-  liftS $ print $ show output
+  liftS $ print $ show (map snd3 output)
   return output
 
 testLogRegrLWInf :: Sampler [((Double, Bool), [(Addr, OpenSum LW.Vals)], Double)]
