@@ -79,7 +79,7 @@ type Vals = '[Int, Double, Bool]
 type LogP = Map Addr Double
 type Ⲭ    = Map Addr (DistInfo, OpenSum Vals)
 type TraceMH a = [(a, Ⲭ, LogP)]
-
+type Tags = Map
 updateMapⲬ :: OpenSum.Member x Vals => Addr -> Dist x -> x -> Ⲭ -> Ⲭ
 updateMapⲬ α d x = Map.insert α (toDistInfo d, OpenSum.inj x) :: Ⲭ -> Ⲭ
 
@@ -115,7 +115,7 @@ mh :: (es ~ '[AffReader (AsList env), Dist, Observe, State Ⲭ, State LogP, Samp
    -> Sampler (TraceMH a)                -- Trace of all accepted outputs, samples, and logps
 mh n model xs ys = do
   -- Perform initial run of mh
-  (x, samples, logps) <- runMH (head ys) Map.empty 0 (model $ head xs)
+  (x, samples, logps) <- runMH (head ys) Map.empty "" (model $ head xs)
   -- Construct list of mhNstep functions, one for each data point
   let mhs  = zipWith (\x y -> mhNsteps n y (model x)) xs ys
   -- Perform mhNstep for each data point, propagating (x, samples, logps) through
@@ -145,7 +145,9 @@ mhStep env model trace = do
       sample_size = Map.size samples
   -- liftS $ print $ "samples are " ++ show samples
   -- α_samp <- sample $ DiscrUniformDist 0 2 Nothing
-  α_samp <- sample $ DiscreteDist (map (,1.0/fromIntegral sample_size) (Map.keys samples)) Nothing Nothing
+  α_samp_ind <- sample $ DiscrUniformDist 0 (Map.size samples - 1) Nothing Nothing
+  -- liftS $ print $ "α_samp_ind is " ++ show α_samp_ind ++ " Map.size samples is " ++ show (Map.size samples)
+  let (α_samp, _) = Map.elemAt α_samp_ind samples
   -- run mh with new sample address
   -- liftS $ print $ "sample address is " ++ show α_samp
   (x', samples', logps') <- runMH env samples α_samp model

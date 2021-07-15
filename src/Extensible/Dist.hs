@@ -133,7 +133,7 @@ instance Show a => Show (Dist a) where
   show (CategoricalDist xs y tag) =
     "CategoricalDist(" ++ show xs ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
 
-type Addr = Int
+type Addr = String
 
 data Sample a where
   Sample  :: Dist a -> Addr -> Sample a
@@ -202,13 +202,13 @@ runDist :: forall rs a. (Member Sample rs, Member Observe rs) => Freer (Dist : r
         -> Freer rs a
 runDist = loop 0
   where
-  loop :: (Member Sample rs, Member Observe rs) => Addr -> Freer (Dist : rs) a -> Freer rs a
+  loop :: (Member Sample rs, Member Observe rs) => Int -> Freer (Dist : rs) a -> Freer rs a
   loop α (Pure x) = return x
   loop α (Free u k) = case decomp u of
     Right d
       -> if hasObs d
-          then send (Observe d (getObs d) α) >>= loop (α + 1) . k
-          else send (Sample d α) >>= loop (α + 1). k
+          then send (Observe d (getObs d) (show α)) >>= loop (α + 1) . k
+          else send (Sample d (show α)) >>= loop (α + 1). k
     Left  u'  -> Free u' (loop α . k)
 
 instance Distribution (Dist a) where

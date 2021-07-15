@@ -104,9 +104,10 @@ testLinRegrMHPred = do
   liftS $ print $ show mhTrace
   -- Get the most recent accepted model parameters from the posterior
   let postParams = map (fromJust . prj @Double . snd)
-                       ((snd3 . head) mhTrace)
+                       ((snd3 . head) (reverse mhTrace))
       (mu, postParams') = splitAt 1 postParams
       (c, sigma)        = splitAt 1 postParams'
+  liftS $ print $ "Using parameters " ++ show (mu, c, sigma)
   -- Using these parameters, simulate data from the predictive.
   bs <- Basic.basic 1 Example.linearRegression
                          (map (/1) [0 .. 100])
@@ -184,7 +185,7 @@ testLogRegrMHPred :: Sampler [(Double, Bool)]
 testLogRegrMHPred = do
   mhTrace <- testLogRegrMHPost
   let postParams = map (fromJust . prj @Double . snd)
-                      ((snd3 . head) mhTrace)
+                      ((snd3 . head) (reverse mhTrace))
       (mu, postParams') = splitAt 1 postParams
       (b, _)            = splitAt 1 postParams'
   bs <- Basic.basic 1 Example.logisticRegression
@@ -259,7 +260,7 @@ testNNLinMHPred = do
   mhTrace <- testNNLinMHPost
   -- Get the most recent accepted model parameters from the posterior
   let postParams = map (fromJust . prj @Double . snd)
-                       ((snd3 . head) mhTrace)
+                       ((snd3 . head) (reverse mhTrace))
       (bias, postParams') = splitAt 3 postParams
       (weights, sigma)    = splitAt 3 postParams'
   liftS $ print $ show (weights, bias, sigma)
@@ -343,7 +344,7 @@ testNNStepMHPred = do
   mhTrace <- testNNStepMHPost
   -- Get the most recent accepted model parameters from the posterior
   let postParams = map (fromJust . prj @Double . snd)
-                       ((snd3 . head) mhTrace)
+                       ((snd3 . head) (reverse mhTrace))
       (bias, postParams') = splitAt 3 postParams
       (weights, sigma)    = splitAt 3 postParams'
   -- Using these parameters, simulate data from the predictive.
@@ -391,7 +392,7 @@ testNNLogMHPred :: Sampler [((Double, Double), Bool)]
 testNNLogMHPred = do
   mhTrace <- testNNLogMHPost
   let postParams = map (fromJust . prj @Double . snd)
-                       ((snd3 . head) mhTrace)
+                       ((snd3 . head) (reverse mhTrace))
       (w1, postParams')   = splitAt 6 postParams
       (w2, postParams'')  = splitAt 9 postParams'
       (w3, postParams''') = splitAt 3 postParams''
@@ -461,7 +462,7 @@ testSinMHPred = do
   liftS $ print $ show mhTrace
   -- Get the most recent accepted model parameters from the posterior
   let postParams = map (fromJust . prj @Double . snd)
-                       ((snd3 . head) mhTrace)
+                       ((snd3 . head) (reverse mhTrace))
       (mu, postParams') = splitAt 1 postParams
       (c, sigma)        = splitAt 1 postParams'
       xs                = map (/50) [0 .. 200]
@@ -539,7 +540,7 @@ testHMMMHPred :: Sampler [([Int], [Int])]
 testHMMMHPred = do
   mhTrace <- testHMMMHPost
   let (trans_p:obs_p:_) = map (fromJust . prj @Double . snd)
-                          ((snd3 . head) mhTrace)
+                          ((snd3 . head) (reverse mhTrace))
   liftS $ print $ "using parameters " ++ show (trans_p, obs_p)
   let hmm_n_samples = 100
       hmm_n_steps   = 10
