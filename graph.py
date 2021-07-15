@@ -57,17 +57,12 @@ def main():
     ps         = [ d[2] for d in data]
     xs = [x[0] for x in xys]
     ys = [y[1] for y in xys]
-
-    mu_samples    = [ d[0][1] for d in sampleMaps ]
-    c_samples     = [ d[1][1] for d in sampleMaps ]
-    std_samples   = [ d[2][1] for d in sampleMaps ]
-
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("x axis")
-    axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap=color_map)
-    axs1.set_title('Linear regression - Likelihood Weighting')
-
+    mu_samples  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'm'] for d in sampleMaps ]).ravel()
+    mu_samples_unique = removeDuplicates(mu_samples)
+    c_samples  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'c'] for d in sampleMaps ]).ravel()
+    c_samples_unique = removeDuplicates(c_samples)
+    std_samples   = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'σ'] for d in sampleMaps ]).ravel()
+    std_samples_unique = removeDuplicates(std_samples)
     fig2, axs2 = plt.subplots(nrows=1)
     axs2.set_xlabel('mu value')
     axs2.set_ylabel('probability')
@@ -78,9 +73,9 @@ def main():
     xys         = [ d[0] for d in data]
     sampleMaps  = [ d[1] for d in data]
     logpMaps    = [ d[2] for d in data]
-    mu_samples  = [ d[0][1] for d in sampleMaps ]
+    mu_samples  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'm'] for d in sampleMaps ]).ravel()
     mu_samples_unique = removeDuplicates(mu_samples)
-    c_samples   = [ d[1][1] for d in sampleMaps ]
+    c_samples  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'c'] for d in sampleMaps ]).ravel()
     c_samples_unique = removeDuplicates(c_samples)
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("mu values")
@@ -179,10 +174,12 @@ def main():
     xys         = [ d[0] for d in data]
     sampleMaps  = [ d[1] for d in data]
     logpMaps    = [ d[2] for d in data]
-    mu_samples  = [ d[0][1] for d in sampleMaps ]
+    # print(sampleMaps)
+    mu_samples  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'm'] for d in sampleMaps ]).ravel()
     mu_samples_unique = removeDuplicates(mu_samples)
-    b_samples   = [ d[1][1] for d in sampleMaps ]
+    b_samples   = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'b'] for d in sampleMaps ]).ravel()
     b_samples_unique = removeDuplicates(b_samples)
+    # print(b_samples_unique)
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("mu values")
     axs1.set_ylabel("frequency")

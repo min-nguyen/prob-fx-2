@@ -74,7 +74,7 @@ testLinRegrLWInf :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Doubl
 testLinRegrLWInf = do
   -- Run likelihood weighting inference over linearRegression
   {- This should output the provided fixed set of data points on the x and y axis, where each point has a different probability (due to us observing the probability of given y's). Also returns a trace of parameters and their likelihoods -}
-  let  lw_n_iterations = 1
+  let  lw_n_iterations = 100
   lws <- LW.lw lw_n_iterations Example.linearRegression
                     [0 .. 100]
                     (map (mkRecordLinRegrY . (:[]) ) [0 .. 100])
@@ -116,83 +116,83 @@ testLinRegrMHPred = do
   return $ map fst bs
 
 {- Logistic Regression -}
--- mkRecordLogRegr :: ([Bool], [Double], [Double]) -> LRec Example.LogRegrEnv
--- mkRecordLogRegr (label_vals, m_vals, b_vals) =
---   #label @= label_vals <: #m @= m_vals <: #b @= b_vals <: nil
+mkRecordLogRegr :: ([Bool], [Double], [Double]) -> LRec Example.LogRegrEnv
+mkRecordLogRegr (label_vals, m_vals, b_vals) =
+  #label @= label_vals <: #m @= m_vals <: #b @= b_vals <: nil
 
--- mkRecordLogRegrL :: [Bool] -> LRec Example.LogRegrEnv
--- mkRecordLogRegrL label_val =
---  #label @= label_val <: #m @= [] <: #b @= [] <: nil
+mkRecordLogRegrL :: [Bool] -> LRec Example.LogRegrEnv
+mkRecordLogRegrL label_val =
+ #label @= label_val <: #m @= [] <: #b @= [] <: nil
 
--- testLogRegrBasic :: Sampler [(Double, Bool)]
--- testLogRegrBasic = do
---   -- This should generate a set of points on the y-axis for each given point on the x-axis
---   let n_samples = 1
---   bs <- Basic.basic n_samples Example.logisticRegression
---                          (map (/50) [(-100) .. 100])
---                          (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
---   -- This should output the provided fixed set of data points on the x and y axis.
---   bs' <- Basic.basic 3 Example.logisticRegression
---                          [0, 1, 2, 3, 4]
---                          (map mkRecordLogRegrL [[False], [False], [True], [False], [True]])
---   return $ map fst bs
+testLogRegrBasic :: Sampler [(Double, Bool)]
+testLogRegrBasic = do
+  -- This should generate a set of points on the y-axis for each given point on the x-axis
+  let n_samples = 1
+  bs <- Basic.basic n_samples Example.logisticRegression
+                         (map (/50) [(-100) .. 100])
+                         (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
+  -- This should output the provided fixed set of data points on the x and y axis.
+  bs' <- Basic.basic 3 Example.logisticRegression
+                         [0, 1, 2, 3, 4]
+                         (map mkRecordLogRegrL [[False], [False], [True], [False], [True]])
+  return $ map fst bs
 
--- testLogRegrLWSim :: Sampler [((Double, Bool), [(Addr, OpenSum LW.Vals)], Double)]
--- testLogRegrLWSim = do
---   -- Run logistic model with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
---   let lw_n_iterations = 3
---   lws <- LW.lw lw_n_iterations Example.logisticRegression
---             (concatMap ((\x -> [x, x]) . (/50)) [(-100) .. 100])
---             (concat $ repeat $ map mkRecordLogRegr $
---               ([True], [2], [-0.15]) : ([False], [-0.7], [-0.15]) : [])
---   let output = map (\(xy, samples, prob) ->
---         let samples' = Map.toList samples
---         in (xy, samples', prob)) lws
---   liftS $ print $ show output
---   return output
+testLogRegrLWSim :: Sampler [((Double, Bool), [(Addr, OpenSum LW.Vals)], Double)]
+testLogRegrLWSim = do
+  -- Run logistic model with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
+  let lw_n_iterations = 3
+  lws <- LW.lw lw_n_iterations Example.logisticRegression
+            (concatMap ((\x -> [x, x]) . (/50)) [(-100) .. 100])
+            (concat $ repeat $ map mkRecordLogRegr $
+              ([True], [2], [-0.15]) : ([False], [-0.7], [-0.15]) : [])
+  let output = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) lws
+  liftS $ print $ show output
+  return output
 
--- testLogRegrLWInf :: Sampler [((Double, Bool), [(Addr, OpenSum LW.Vals)], Double)]
--- testLogRegrLWInf = do
---   -- Using fixed model parameters, generate some sample data points to learn
---   let n_samples = 1
---   bs <- map fst <$> Basic.basic n_samples Example.logisticRegression
---                          (map (/50) [(-100) .. 100])
---                          (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
---   let (xs, ys) = (map fst bs, map snd bs)
---   -- Perform inference against these data points
---   lws <- LW.lw 3 Example.logisticRegression xs (map (mkRecordLogRegrL . (:[])) ys)
---   let output = map (\(xy, samples, prob) ->
---         let samples' = Map.toList samples
---         in (xy, samples', prob)) lws
---   return output
+testLogRegrLWInf :: Sampler [((Double, Bool), [(Addr, OpenSum LW.Vals)], Double)]
+testLogRegrLWInf = do
+  -- Using fixed model parameters, generate some sample data points to learn
+  let n_samples = 1
+  bs <- map fst <$> Basic.basic n_samples Example.logisticRegression
+                         (map (/50) [(-100) .. 100])
+                         (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
+  let (xs, ys) = (map fst bs, map snd bs)
+  -- Perform inference against these data points
+  lws <- LW.lw 3 Example.logisticRegression xs (map (mkRecordLogRegrL . (:[])) ys)
+  let output = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) lws
+  return output
 
--- testLogRegrMHPost :: Sampler [((Double, Bool), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
--- testLogRegrMHPost = do
---   let n_samples = 1
---   bs <- map fst <$> Basic.basic n_samples Example.logisticRegression
---                          (map (/50) [(-100) .. 100])
---                          (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
---   let (xs, ys) = (map fst bs, map snd bs)
---       mh_n_iterations = 70
---   mhTrace <- MH.mh mh_n_iterations Example.logisticRegression
---                    xs (map (mkRecordLogRegrL . (:[])) ys)
---   let mhTrace' = map (\(xy, samples, logps) ->
---        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
---            logps'   = Map.toList logps
---        in  (xy, samples', logps') ) mhTrace
---   return mhTrace'
+testLogRegrMHPost :: Sampler [((Double, Bool), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testLogRegrMHPost = do
+  let n_samples = 1
+  bs <- map fst <$> Basic.basic n_samples Example.logisticRegression
+                         (map (/50) [(-100) .. 100])
+                         (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
+  let (xs, ys) = (map fst bs, map snd bs)
+      mh_n_iterations = 70
+  mhTrace <- MH.mh mh_n_iterations Example.logisticRegression []
+                   xs (map (mkRecordLogRegrL . (:[])) ys)
+  let mhTrace' = map (\(xy, samples, logps) ->
+       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+           logps'   = Map.toList logps
+       in  (xy, samples', logps') ) mhTrace
+  return mhTrace'
 
--- testLogRegrMHPred :: Sampler [(Double, Bool)]
--- testLogRegrMHPred = do
---   mhTrace <- testLogRegrMHPost
---   let postParams = map (fromJust . prj @Double . snd)
---                       ((snd3 . head) (reverse mhTrace))
---       (mu, postParams') = splitAt 1 postParams
---       (b, _)            = splitAt 1 postParams'
---   bs <- Basic.basic 1 Example.logisticRegression
---                       (map (/50) [(-100) .. 100])
---                       (repeat $ mkRecordLogRegr ([], mu, b))
---   return $ map fst bs
+testLogRegrMHPred :: Sampler [(Double, Bool)]
+testLogRegrMHPred = do
+  mhTrace <- testLogRegrMHPost
+  let postParams = map (fromJust . prj @Double . snd)
+                      ((snd3 . head) (reverse mhTrace))
+      (mu, postParams') = splitAt 1 postParams
+      (b, _)            = splitAt 1 postParams'
+  bs <- Basic.basic 1 Example.logisticRegression
+                      (map (/50) [(-100) .. 100])
+                      (repeat $ mkRecordLogRegr ([], mu, b))
+  return $ map fst bs
 
 -- -- {- Bayesian Neural Network for linear regression -}
 
