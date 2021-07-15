@@ -36,6 +36,9 @@ newtype P t rs = P {unP :: Int}
 
 data Assoc k v = k :> v
 
+(@=) :: k -> v -> Assoc k v
+(@=) = (:>)
+
 class FindElem k r where
   findElem :: P k r
 
@@ -66,7 +69,9 @@ type family UniqueKey k kvs where
 
 class (FindElem k xs, LookupType k xs ~ a) => Lookup xs k a
 
-insert :: () --UniqueKey key ts ~ 'True
+instance (FindElem k xs, LookupType k xs ~ a) => Lookup xs k a
+
+insert :: UniqueKey key ts ~ 'True
        => Key key -> t -> OpenProduct ts -> OpenProduct (key ':> t ': ts)
 insert _ t (OpenProduct v) = OpenProduct (V.cons (Any t) v)
 
