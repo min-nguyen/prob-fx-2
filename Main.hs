@@ -36,8 +36,8 @@ main = do
   -- trace <- sampleIOFixed testLinRegrBasic
   -- trace <- sampleIOFixed testLinRegrLWSim
   -- trace <- sampleIOFixed testLinRegrLWInf
-  trace <- sampleIOFixed testLinRegrMHPost
-  -- trace <- sampleIOFixed testLinRegrMHPred
+  -- trace <- sampleIOFixed testLinRegrMHPost
+  trace <- sampleIOFixed testLinRegrMHPred
   -- trace <- sampleIOFixed testLogRegrBasic
   -- trace <- sampleIOFixed testLogRegrLWSim
   -- trace <- sampleIOFixed testLogRegrLWInf
@@ -72,7 +72,7 @@ main = do
   -- trace <- sampleIOFixed testSIRLWInf
   -- trace <- sampleIOFixed testSIRMHPost
   let traceStr = show trace
-  putStrLn traceStr
+  -- putStrLn traceStr
   writeFile "model-output.txt" traceStr
   return ()
 

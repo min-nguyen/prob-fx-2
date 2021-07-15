@@ -30,6 +30,11 @@ import Extensible.AffineReader
 import Extensible.OpenProduct
 import Util
 
+getPostParams :: [Addr] -> [(a, [(Addr, OpenSum MH.Vals)], [(Addr, Double)])] -> [(Addr, Double)]
+getPostParams addrs mhTrace =
+  let sampleMap = snd3 (last mhTrace)
+  in  [ (addr, x) | addr <- addrs, let x = fromJust (lookup addr sampleMap >>= prj @Double ) ]
+
 {- Linear Regression -}
 
 mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> LRec Example.LinRegrEnv
@@ -101,18 +106,16 @@ testLinRegrMHPost = do
 testLinRegrMHPred :: Sampler [(Double, Double)]
 testLinRegrMHPred = do
   mhTrace <- testLinRegrMHPost
-  liftS $ print $ show mhTrace
   -- Get the most recent accepted model parameters from the posterior
-  let postParams = map (fromJust . prj @Double . snd)
-                       ((snd3 . head) (reverse mhTrace))
-      (c, postParams')   = splitAt 1 postParams
-      (mu, postParams'') = splitAt 1 postParams'
-      (sigma, _)         = splitAt 1 postParams''
+  let postParams = getPostParams [("m", 0), ("c", 0), ("σ", 0)] mhTrace
+      mu         = fromJust $ lookup ("m", 0) postParams
+      c          = fromJust $ lookup ("c", 0) postParams
+      sigma      = fromJust $ lookup ("σ", 0) postParams
   liftS $ print $ "Using parameters " ++ show (mu, c, sigma)
   -- Using these parameters, simulate data from the predictive.
   bs <- Basic.basic 1 Example.linearRegression
                          (map (/1) [0 .. 100])
-                         (repeat $ mkRecordLinRegr ([], mu, c, sigma))
+                         (repeat $ mkRecordLinRegr ([], [mu], [c], [sigma]))
   return $ map fst bs
 
 {- Logistic Regression -}
