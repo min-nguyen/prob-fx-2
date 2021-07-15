@@ -35,6 +35,10 @@ getPostParams addrs mhTrace =
   let sampleMap = snd3 (last mhTrace)
   in  [ (addr, x) | addr <- addrs, let x = fromJust (lookup addr sampleMap >>= prj @Double ) ]
 
+-- List must be sorted
+lookupTag :: Tag ->  [(Addr, Double)] -> [Double]
+lookupTag tag xs = [ v | ((t, i), v) <- xs, t == tag]
+
 {- Linear Regression -}
 
 mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> LRec Example.LinRegrEnv
@@ -108,14 +112,14 @@ testLinRegrMHPred = do
   mhTrace <- testLinRegrMHPost
   -- Get the most recent accepted model parameters from the posterior
   let postParams = getPostParams [("m", 0), ("c", 0), ("σ", 0)] mhTrace
-      mu         = fromJust $ lookup ("m", 0) postParams
-      c          = fromJust $ lookup ("c", 0) postParams
-      sigma      = fromJust $ lookup ("σ", 0) postParams
+      mu         = lookupTag "m" postParams
+      c          = lookupTag "c" postParams
+      sigma      = lookupTag "σ" postParams
   liftS $ print $ "Using parameters " ++ show (mu, c, sigma)
   -- Using these parameters, simulate data from the predictive.
   bs <- Basic.basic 1 Example.linearRegression
                          (map (/1) [0 .. 100])
-                         (repeat $ mkRecordLinRegr ([], [mu], [c], [sigma]))
+                         (repeat $ mkRecordLinRegr ([], mu, c, sigma))
   return $ map fst bs
 
 {- Logistic Regression -}
@@ -192,92 +196,103 @@ testLogRegrMHPred :: Sampler [(Double, Bool)]
 testLogRegrMHPred = do
   mhTrace <- testLogRegrMHPost
   let postParams = getPostParams [("m", 0), ("b", 0)] mhTrace
-      mu         = fromJust $ lookup ("m", 0) postParams
-      b          = fromJust $ lookup ("b", 0) postParams
+      mu         = lookupTag "m" postParams
+      b          = lookupTag "b" postParams
   liftS $ print $ "Using parameters " ++ show (mu, b)
   bs <- Basic.basic 1 Example.logisticRegression
                       (map (/50) [(-100) .. 100])
-                      (repeat $ mkRecordLogRegr ([], [mu], [b]))
+                      (repeat $ mkRecordLogRegr ([], mu, b))
   return $ map fst bs
 
--- -- {- Bayesian Neural Network for linear regression -}
+-- {- Bayesian Neural Network for linear regression -}
 
--- mkRecordNN :: ([Double], [Double], [Double], [Double])
---            -> LRec Example.NNEnv
--- mkRecordNN (yobs_vals, weight_vals, bias_vals, sigm_vals) =
---   #yObs @= yobs_vals <: #weight @= weight_vals <: #bias @= bias_vals <: #sigma @= sigm_vals <: nil
+mkRecordNN :: ([Double], [Double], [Double], [Double])
+           -> LRec Example.NNEnv
+mkRecordNN (yobs_vals, weight_vals, bias_vals, sigm_vals) =
+  #yObs @= yobs_vals <: #weight @= weight_vals <: #bias @= bias_vals <: #sigma @= sigm_vals <: nil
 
--- mkRecordNNy :: Double
---            -> LRec Example.NNEnv
--- mkRecordNNy yobs_val =
---   #yObs @= [yobs_val] <: #weight @= [] <: #bias @= [] <: #sigma @= [] <: nil
+mkRecordNNy :: Double
+           -> LRec Example.NNEnv
+mkRecordNNy yobs_val =
+  #yObs @= [yobs_val] <: #weight @= [] <: #bias @= [] <: #sigma @= [] <: nil
 
--- testNNLinBasic :: Sampler  [(Double, Double)]
--- testNNLinBasic = do
---   -- Run basic simulation over neural network
---   bs <- Basic.basic 1 (Example.nnLinModel 3)
---                          (map (/1) [0 .. 300])
---                          (repeat $ mkRecordNN ([], [1, 5, 8],
---                                                    [2, -5, 1],
---                                                    [4.0]))
---   return $ map fst bs
+testNNLinBasic :: Sampler  [(Double, Double)]
+testNNLinBasic = do
+  -- Run basic simulation over neural network
+  bs <- Basic.basic 1 (Example.nnLinModel 3)
+                         (map (/1) [0 .. 300])
+                         (repeat $ mkRecordNN ([], [1, 5, 8],
+                                                   [2, -5, 1],
+                                                   [4.0]))
+  return $ map fst bs
 
--- testNNLinLWSim :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
--- testNNLinLWSim = do
---   -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
---   let xs  = concat [ replicate 11 x | x <- [0 .. 10]]
---   lws <- LW.lw 1 (Example.nnLinModel 3)
---                     xs
---                     (concat $ repeat $ map (\y -> mkRecordNN ([y], [1, 5, 8],
---                                               [2, -5, 1],
---                                               [2.0])) [0 .. 10])
---   let output = map (\(xy, samples, prob) ->
---         let samples' = Map.toList samples
---         in (xy, samples', prob)) lws
---   return output
+testNNLinLWSim :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testNNLinLWSim = do
+  -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
+  let xs  = concat [ replicate 11 x | x <- [0 .. 10]]
+  lws <- LW.lw 1 (Example.nnLinModel 3)
+                    xs
+                    (concat $ repeat $ map (\y -> mkRecordNN ([y], [1, 5, 8],
+                                              [2, -5, 1],
+                                              [2.0])) [0 .. 10])
+  let output = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) lws
+  return output
 
--- testNNLinLWInf :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
--- testNNLinLWInf = do
---   -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
---   lws <- LW.lw 1  (Example.nnLinModel 3)
---                       (map (/50) [0 .. 300])
---                       (map (\y -> mkRecordNN ([y], [], [], []))
---                            [ x | x <- map (/50) [0 .. 300] ])
---   let output = map (\(xy, samples, prob) ->
---         let samples' = Map.toList samples
---         in (xy, samples', prob)) lws
---   return output
+testNNLinLWInf :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testNNLinLWInf = do
+  -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
+  lws <- LW.lw 1  (Example.nnLinModel 3)
+                      (map (/50) [0 .. 300])
+                      (map (\y -> mkRecordNN ([y], [], [], []))
+                           [ x | x <- map (/50) [0 .. 300] ])
+  let output = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) lws
+  liftS $ print $ "output " ++ show output
+  return output
 
--- -- Run this with nn-basic, as it returns a predictive distribution rather than a posterior one.
--- testNNLinMHPost :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
--- testNNLinMHPost = do
---   -- Run mh over data representing a line with gradient 1 and intercept 0
---   let mh_n_iterations = 40
---   mhTrace <- MH.mh mh_n_iterations (Example.nnLinModel 3)
---                     (map (/50) [0 .. 300])
---                     (map mkRecordNNy [ x | x <- map (/50) [0 .. 300] ])
---   let mhTrace' = map (\(xy, samples, logps) ->
---        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
---            logps'   = Map.toList logps
---        in  (xy, samples', logps') ) mhTrace
---   return mhTrace'
+-- Run this with nn-basic, as it returns a predictive distribution rather than a posterior one.
+testNNLinMHPost :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testNNLinMHPost = do
+  -- Run mh over data representing a line with gradient 1 and intercept 0
+  let mh_n_iterations = 40
+  mhTrace <- MH.mh mh_n_iterations (Example.nnLinModel 3) []
+                    (map (/50) [0 .. 300])
+                    (map mkRecordNNy [ x | x <- map (/50) [0 .. 300] ])
+  let mhTrace' = map (\(xy, samples, logps) ->
+       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+           logps'   = Map.toList logps
+       in  (xy, samples', logps') ) mhTrace
+  return mhTrace'
 
--- testNNLinMHPred :: Sampler [(Double, Double)]
--- testNNLinMHPred = do
---   mhTrace <- testNNLinMHPost
---   -- Get the most recent accepted model parameters from the posterior
---   let postParams = map (fromJust . prj @Double . snd)
---                        ((snd3 . head) (reverse mhTrace))
---       (bias, postParams') = splitAt 3 postParams
---       (weights, sigma)    = splitAt 3 postParams'
---   liftS $ print $ show (weights, bias, sigma)
---   -- Using these parameters, simulate data from the predictive. We can see that the predictive data becomes more accurate with more mh steps.
---   bs <- Basic.basic 1 (Example.nnLinModel 3)
---                          (map (/1) [0 .. 300])
---                          (repeat $ mkRecordNN ([], bias,
---                                                    weights,
---                                                    sigma))
---   return $ map fst bs
+testNNLinMHPred :: Sampler [(Double, Double)]
+testNNLinMHPred = do
+  mhTrace <- testNNLinMHPost
+
+  -- Get the most recent accepted model parameters from the posterior
+  let matrix_size = 3
+      addrs      = [ ("weight", i) | i <- [0..(matrix_size - 1)]] ++
+                   [ ("bias", i)   | i <- [0..(matrix_size - 1)]] ++
+                   [ ("sigma", 0)]
+      postParams = getPostParams addrs mhTrace
+      weights    = lookupTag "weight" postParams
+      bias       = lookupTag "bias" postParams
+      sigma      = lookupTag "sigma" postParams
+
+      -- postParams = map (fromJust . prj @Double . snd)
+      --                  ((snd3 . head) (reverse mhTrace))
+      -- (bias, postParams') = splitAt 3 postParams
+      -- (weights, sigma)    = splitAt 3 postParams'
+  liftS $ print $ "Using parameters: " ++ show (weights, bias, sigma)
+  -- Using these parameters, simulate data from the predictive. We can see that the predictive data becomes more accurate with more mh steps.
+  bs <- Basic.basic 1 (Example.nnLinModel 3)
+                         (map (/1) [0 .. 300])
+                         (repeat $ mkRecordNN ([], bias,
+                                                   weights,
+                                                   sigma))
+  return $ map fst bs
 
 -- {- Bayesian neural network v2 -}
 

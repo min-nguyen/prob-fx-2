@@ -196,7 +196,6 @@ def main():
     plt.ylabel('y - axis')
     plt.title('Logistic regression - Metropolis Hastings Predictive')
     plt.show()
-    print(sampleMaps)
   if arg == "nn-lin-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
