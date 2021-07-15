@@ -56,12 +56,12 @@ main = do
   -- trace <- sampleIOFixed testNNStepMHPred
   -- trace <- sampleIOFixed testNNLogBasic
   -- trace <- sampleIOFixed testNNLogMHPost
-  trace <- sampleIOFixed testNNLogMHPred
+  -- trace <- sampleIOFixed testNNLogMHPred
   -- trace <- sampleIOFixed testSinBasic
   -- trace <- sampleIOFixed testSinLWSim
   -- trace <- sampleIOFixed testSinLWInf
   -- trace <- sampleIOFixed testSinMHPost
-  -- trace <- sampleIOFixed testSinMHPred
+  trace <- sampleIOFixed testSinMHPred
   -- trace <- sampleIOFixed testHMMBasic
   -- trace <- sampleIOFixed testHMMLWSim
   -- trace <- sampleIOFixed testHMMLWInf
