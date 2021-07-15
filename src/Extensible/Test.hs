@@ -294,89 +294,95 @@ testNNLinMHPred = do
                                                    sigma))
   return $ map fst bs
 
--- {- Bayesian neural network v2 -}
+{- Bayesian neural network v2 -}
 
--- testNNStepBasic :: Sampler  [(Double, Double)]
--- testNNStepBasic = do
---   let n_samples = 1 -- Run basic simulation over neural network
---   bs <- Basic.basic n_samples (Example.nnStepModel 3)
---                               (map (/1) [-100 .. 100])
---                               (repeat $ mkRecordNN ([], [1, 5, 8],
---                                                         [2, -5, 1],
---                                                         [4.0]))
---   return $ map fst bs
+testNNStepBasic :: Sampler  [(Double, Double)]
+testNNStepBasic = do
+  let n_samples = 1 -- Run basic simulation over neural network
+  bs <- Basic.basic n_samples (Example.nnStepModel 3)
+                              (map (/1) [-100 .. 100])
+                              (repeat $ mkRecordNN ([], [1, 5, 8],
+                                                        [2, -5, 1],
+                                                        [4.0]))
+  return $ map fst bs
 
--- testNNStepLWSim :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
--- testNNStepLWSim = do
---   let xs  = concat [ replicate 31 x | x <- [-10 .. 10]]
---       -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
---   lws <- LW.lw 1 (Example.nnStepModel 3)
---                     xs
---                     (concat $ repeat $ map (\y -> mkRecordNN ([y], [1, 5, 8],
---                                               [2, -5, 1],
---                                               [2.0])) [-20 .. 10])
---   let output = map (\(xy, samples, prob) ->
---         let samples' = Map.toList samples
---         in (xy, samples', prob)) lws
---   return output
+testNNStepLWSim :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testNNStepLWSim = do
+  let xs  = concat [ replicate 31 x | x <- [-10 .. 10]]
+      -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
+  lws <- LW.lw 1 (Example.nnStepModel 3)
+                    xs
+                    (concat $ repeat $ map (\y -> mkRecordNN ([y], [1, 5, 8],
+                                              [2, -5, 1],
+                                              [2.0])) [-20 .. 10])
+  let output = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) lws
+  return output
 
--- testNNStepLWSim2 :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
--- testNNStepLWSim2 = do
---   -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
---   lws <- LW.lw 1  (Example.nnLinModel 3)
---                       (map (/50) [-200 .. 200])
---                       (map (\y -> mkRecordNN ([y], [1, 5, 8],
---                                                    [2, -5, 1],
---                                                    [2.0]))
---                            [ sin x | x <- map (/50) [-200 .. 200] ])
---   let output = map (\(xy, samples, prob) ->
---         let samples' = Map.toList samples
---         in (xy, samples', prob)) lws
---   return output
+testNNStepLWSim2 :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testNNStepLWSim2 = do
+  -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
+  lws <- LW.lw 1  (Example.nnLinModel 3)
+                      (map (/50) [-200 .. 200])
+                      (map (\y -> mkRecordNN ([y], [1, 5, 8],
+                                                   [2, -5, 1],
+                                                   [2.0]))
+                           [ sin x | x <- map (/50) [-200 .. 200] ])
+  let output = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) lws
+  return output
 
--- testNNStepLWInf :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
--- testNNStepLWInf = do
---   -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
---   lws <- LW.lw 1  (Example.nnLinModel 3)
---                       (map (/50) [-200 .. 200])
---                       (map (\y -> mkRecordNN ([y], [],
---                                                    [],
---                                                    []))
---                            [ sin x | x <- map (/50) [-200 .. 200] ])
---   let output = map (\(xy, samples, prob) ->
---         let samples' = Map.toList samples
---         in (xy, samples', prob)) lws
---   return output
+testNNStepLWInf :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testNNStepLWInf = do
+  -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
+  lws <- LW.lw 1  (Example.nnLinModel 3)
+                      (map (/50) [-200 .. 200])
+                      (map (\y -> mkRecordNN ([y], [],
+                                                   [],
+                                                   []))
+                           [ sin x | x <- map (/50) [-200 .. 200] ])
+  let output = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) lws
+  return output
 
--- testNNStepMHPost :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)],
---                    [(Addr, Double)])]
--- testNNStepMHPost = do
---   mhTrace <- MH.mh 20  (Example.nnStepModel 3)
---                        (map (/20) [-200 .. 200])
---                        (map mkRecordNNy
---                            [  x | x <- map (/20) [-200 .. 200] ])
---   let mhTrace' = map (\(xy, samples, logps) ->
---        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
---            logps'   = Map.toList logps
---        in  (xy, samples', logps') ) mhTrace
---   return mhTrace'
+testNNStepMHPost :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)],
+                   [(Addr, Double)])]
+testNNStepMHPost = do
+  mhTrace <- MH.mh 20  (Example.nnStepModel 3) []
+                       (map (/20) [-200 .. 200])
+                       (map mkRecordNNy
+                           [  x | x <- map (/20) [-200 .. 200] ])
+  let mhTrace' = map (\(xy, samples, logps) ->
+       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+           logps'   = Map.toList logps
+       in  (xy, samples', logps') ) mhTrace
+  return mhTrace'
 
--- testNNStepMHPred :: Sampler [(Double, Double)]
--- testNNStepMHPred = do
---   mhTrace <- testNNStepMHPost
---   -- Get the most recent accepted model parameters from the posterior
---   let postParams = map (fromJust . prj @Double . snd)
---                        ((snd3 . head) (reverse mhTrace))
---       (bias, postParams') = splitAt 3 postParams
---       (weights, sigma)    = splitAt 3 postParams'
---   -- Using these parameters, simulate data from the predictive.
---   bs <- Basic.basic 1 (Example.nnStepModel 3)
---                          ([-200 .. 200])
---                          (repeat $ mkRecordNN ([], bias,
---                                                    weights,
---                                                    sigma))
---   liftS $ print $ show (weights, bias, sigma)
---   return $ map fst bs
+testNNStepMHPred :: Sampler [(Double, Double)]
+testNNStepMHPred = do
+  mhTrace <- testNNStepMHPost
+  -- Get the most recent accepted model parameters from the posterior
+  let matrix_size = 3
+      addrs      = [ ("weight", i) | i <- [0..(matrix_size - 1)]] ++
+                   [ ("bias", i)   | i <- [0..(matrix_size - 1)]] ++
+                   [ ("sigma", 0)]
+      postParams = getPostParams addrs mhTrace
+      weights    = lookupTag "weight" postParams
+      bias       = lookupTag "bias" postParams
+      sigma      = lookupTag "sigma" postParams
+
+  -- Using these parameters, simulate data from the predictive.
+  liftS $ print $ "Using parameters: " ++ show (weights, bias, sigma)
+  bs <- Basic.basic 1 (Example.nnStepModel 3)
+                         ([-200 .. 200])
+                         (repeat $ mkRecordNN ([], bias,
+                                                   weights,
+                                                   sigma))
+  liftS $ print $ show (weights, bias, sigma)
+  return $ map fst bs
 
 -- -- | Another neural network variation for logistic regression
 -- mkRecordNNLog :: ([Bool], [Double])

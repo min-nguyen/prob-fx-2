@@ -47,13 +47,13 @@ main = do
   -- trace <- sampleIOFixed testNNLinLWSim
   -- trace <- sampleIOFixed testNNLinLWInf
   -- trace <- sampleIOFixed testNNLinMHPost
-  trace <- sampleIOFixed testNNLinMHPred
+  -- trace <- sampleIOFixed testNNLinMHPred
   -- trace <- sampleIOFixed testNNStepBasic
   -- trace <- sampleIOFixed testNNStepLWSim
   -- trace <- sampleIOFixed testNNStepLWSim2
   -- trace <- sampleIOFixed testNNStepLWInf
   -- trace <- sampleIOFixed testNNStepMHPost
-  -- trace <- sampleIOFixed testNNStepMHPred
+  trace <- sampleIOFixed testNNStepMHPred
   -- trace <- sampleIOFixed testNNLogBasic
   -- trace <- sampleIOFixed testNNLogMHPost
   -- trace <- sampleIOFixed testNNLogMHPred
