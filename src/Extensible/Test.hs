@@ -500,81 +500,82 @@ testSinMHPred = do
                          (repeat $ mkRecordLinRegr ([], mu, c, sigma))
   return $ map fst bs
 
--- {- Hidden markov model -}
+{- Hidden markov model -}
 
--- mkRecordHMM :: ([Int], Double, Double) -> LRec Example.HMMEnv
--- mkRecordHMM (ys, obsp, transp) = #y @= ys <: #obs_p @= [obsp] <: #trans_p @= [transp] <: nil
+mkRecordHMM :: ([Int], Double, Double) -> LRec Example.HMMEnv
+mkRecordHMM (ys, obsp, transp) = #y @= ys <: #obs_p @= [obsp] <: #trans_p @= [transp] <: nil
 
--- mkRecordHMMy :: [Int] -> LRec Example.HMMEnv
--- mkRecordHMMy ys = #y @= ys <: #obs_p @= [] <: #trans_p @= [] <: nil
+mkRecordHMMy :: [Int] -> LRec Example.HMMEnv
+mkRecordHMMy ys = #y @= ys <: #obs_p @= [] <: #trans_p @= [] <: nil
 
--- testHMMBasic :: Sampler [([Int], [Int])]
--- testHMMBasic = do
---   let hmm_n_steps   = 10
---       hmm_n_samples = 10
---   bs <- Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
---                                    [0] [mkRecordHMM ([], 0.5, 0.5)]
---   return $ map fst bs
+testHMMBasic :: Sampler [([Int], [Int])]
+testHMMBasic = do
+  let hmm_n_steps   = 100
+      hmm_n_samples = 10
+  bs <- Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
+                                   [0] [mkRecordHMM ([], 0.5, 0.5)]
+  return $ map fst bs
 
--- testHMMLWSim :: Sampler [(([Int], [Int]), [(Addr, OpenSum LW.Vals)], Double)]
--- testHMMLWSim = do
---   let hmm_n_steps    = 10
---       hmm_n_samples  = 10
---   lws <- LW.lw 1 (Example.hmmNSteps hmm_n_steps)
---                     (replicate hmm_n_samples 0)
---                     (concat $ repeat $ map (mkRecordHMMy . repeat) [0 .. hmm_n_samples])
---   let output = map (\(xy, samples, prob) ->
---         let samples' = Map.toList samples
---         in (xy, samples', prob)) lws
---   liftS $ print $ show output
---   return output
+testHMMLWSim :: Sampler [(([Int], [Int]), [(Addr, OpenSum LW.Vals)], Double)]
+testHMMLWSim = do
+  let hmm_n_steps    = 10
+      hmm_n_samples  = 10
+  lws <- LW.lw 1 (Example.hmmNSteps hmm_n_steps)
+                 (replicate hmm_n_samples 0)
+                 (map ((\ys -> mkRecordHMM (ys, 0.5, 0.5)) . replicate hmm_n_steps)
+                  [0 .. hmm_n_samples])
+  let output = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) lws
+  liftS $ print $ show output
+  return output
 
--- testHMMLWInf :: Sampler [(([Int], [Int]), [(Addr, OpenSum LW.Vals)], Double)]
--- testHMMLWInf = do
---   let hmm_n_steps   = 10
---       hmm_n_samples = 10
---   bs <- map fst <$> Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
---                     [0] [mkRecordHMM ([], 0.5, 0.5)]
---   let lw_n_iterations = 100
---       (_, yss) = unzip bs
---   lws <- LW.lw lw_n_iterations  (Example.hmmNSteps hmm_n_steps)
---                                 (replicate hmm_n_samples 0)
---                                 (map mkRecordHMMy yss)
---   let output = map (\(xy, samples, prob) ->
---         let samples' = Map.toList samples
---         in (xy, samples', prob)) lws
---   return output
+testHMMLWInf :: Sampler [(([Int], [Int]), [(Addr, OpenSum LW.Vals)], Double)]
+testHMMLWInf = do
+  let hmm_n_steps   = 10
+      hmm_n_samples = 10
+  bs <- map fst <$> Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
+                    [0] [mkRecordHMM ([], 0.9, 0.1)]
+  let lw_n_iterations = 100
+      (_, yss) = unzip bs
+  lws <- LW.lw lw_n_iterations  (Example.hmmNSteps hmm_n_steps)
+                                (replicate hmm_n_samples 0)
+                                (map mkRecordHMMy yss)
+  let output = map (\(xy, samples, prob) ->
+        let samples' = Map.toList samples
+        in (xy, samples', prob)) lws
+  return output
 
--- testHMMMHPost :: Sampler [(([Int], [Int]), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
--- testHMMMHPost = do
---   let hmm_n_steps   = 10
---       hmm_n_samples = 10
---   bs <- map fst <$> Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
---                     [0] [mkRecordHMM ([], 0.5, 0.5)]
---   let mh_n_iterations = 100
---       (_, yss)  = unzip bs
+testHMMMHPost :: Sampler [(([Int], [Int]), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testHMMMHPost = do
+  let hmm_n_steps   = 10
+      hmm_n_samples = 10
+  bs <- map fst <$> Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
+                    [0] [mkRecordHMM ([], 0.5, 0.5)]
+  let mh_n_iterations = 100
+      (_, yss)  = unzip bs
 
---   mhTrace <- MH.mh mh_n_iterations (Example.hmmNSteps hmm_n_steps)
---                                    (replicate hmm_n_samples 0)
---                                    (map mkRecordHMMy yss)
---   let mhTrace' = map (\(xy, samples, logps) ->
---        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
---            logps'   = Map.toList logps
---        in  (xy, samples', logps') ) mhTrace
---   return mhTrace'
+  mhTrace <- MH.mh mh_n_iterations (Example.hmmNSteps hmm_n_steps) []
+                                   (replicate hmm_n_samples 0)
+                                   (map mkRecordHMMy yss)
+  let mhTrace' = map (\(xy, samples, logps) ->
+       let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+           logps'   = Map.toList logps
+       in  (xy, samples', logps') ) mhTrace
+  return mhTrace'
 
--- testHMMMHPred :: Sampler [([Int], [Int])]
--- testHMMMHPred = do
---   mhTrace <- testHMMMHPost
---   let (trans_p:obs_p:_) = map (fromJust . prj @Double . snd)
---                           ((snd3 . head) (reverse mhTrace))
---   liftS $ print $ "using parameters " ++ show (trans_p, obs_p)
---   let hmm_n_samples = 100
---       hmm_n_steps   = 10
+testHMMMHPred :: Sampler [([Int], [Int])]
+testHMMMHPred = do
+  mhTrace <- testHMMMHPost
+  let (trans_p:obs_p:_) = map (fromJust . prj @Double . snd)
+                          ((snd3 . head) (reverse mhTrace))
+  liftS $ print $ "using parameters " ++ show (trans_p, obs_p)
+  let hmm_n_samples = 100
+      hmm_n_steps   = 10
 
---   bs <- Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
---                     [0] [mkRecordHMM ([], trans_p, obs_p)]
---   return $ map fst bs
+  bs <- Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
+                    [0] [mkRecordHMM ([], trans_p, obs_p)]
+  return $ map fst bs
 
 -- testHMMStBasic :: Sampler [([Int], [Int])]
 -- testHMMStBasic = do

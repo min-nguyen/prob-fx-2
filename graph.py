@@ -371,11 +371,15 @@ def main():
     axs1.set_title('HMM - Simulation')
     plt.show()
   if arg == "hmm-lw-sim":
+    # Note: not a very useful simulation
     xys        = [ d[0] for d in data]
     ps         = [ d[2] for d in data]
     xs = [xs[0][1:] for xs in xys]
     ys = [ys[1] for ys in xys]
-    ps    = [ [p for i in range(len(ys))] for p in ps ]
+
+    ps    = [ [p for i in range(len(ys[0]))] for p in ps ]
+    print(xs)
+    print(ys)
     print(ps)
 
     fig1, axs1 = plt.subplots(nrows=1)
@@ -391,8 +395,8 @@ def main():
     ps         = [ d[2] for d in data]
     xs = [xs[0][1:] for xs in xys]
     ys = [ys[1] for ys in xys]
-    trans_ps = [ s[0][1] for s in sampleMaps]
-    obs_ps   = [ s[1][1] for s in sampleMaps]
+    trans_ps  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'trans_p'] for d in sampleMaps ]).ravel()
+    obs_ps  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'obs_p'] for d in sampleMaps ]).ravel()
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("trans")
     axs1.set_ylabel("p")
