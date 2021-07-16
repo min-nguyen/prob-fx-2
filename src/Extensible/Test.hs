@@ -30,6 +30,7 @@ import Extensible.AffineReader
 import Extensible.OpenProduct
 import Util
 
+-- | Return the most recent sample map from the mh trace, containing only the provided addresses
 getPostParams :: [Addr] -> [(a, [(Addr, OpenSum MH.Vals)], [(Addr, Double)])] -> [(Addr, Double)]
 getPostParams addrs mhTrace =
   let sampleMap = snd3 (last mhTrace)
@@ -548,13 +549,12 @@ testHMMLWInf = do
 
 testHMMMHPost :: Sampler [(([Int], [Int]), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
 testHMMMHPost = do
-  let hmm_n_steps   = 10
+  let hmm_n_steps   = 100
       hmm_n_samples = 10
   bs <- map fst <$> Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
                     [0] [mkRecordHMM ([], 0.5, 0.5)]
-  let mh_n_iterations = 100
+  let mh_n_iterations = 1000
       (_, yss)  = unzip bs
-
   mhTrace <- MH.mh mh_n_iterations (Example.hmmNSteps hmm_n_steps) []
                                    (replicate hmm_n_samples 0)
                                    (map mkRecordHMMy yss)
@@ -567,14 +567,14 @@ testHMMMHPost = do
 testHMMMHPred :: Sampler [([Int], [Int])]
 testHMMMHPred = do
   mhTrace <- testHMMMHPost
-  let (trans_p:obs_p:_) = map (fromJust . prj @Double . snd)
-                          ((snd3 . head) (reverse mhTrace))
+  let hmm_n_steps   = 100
+      hmm_n_samples = 10
+      postParams = getPostParams [("trans_p", 0), ("obs_p", 0)] mhTrace
+      trans_p    = lookupTag "trans_p" postParams
+      obs_p      = lookupTag "obs_p" postParams
   liftS $ print $ "using parameters " ++ show (trans_p, obs_p)
-  let hmm_n_samples = 100
-      hmm_n_steps   = 10
-
   bs <- Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
-                    [0] [mkRecordHMM ([], trans_p, obs_p)]
+                    [0] [mkRecordHMM ([], head trans_p, head obs_p)]
   return $ map fst bs
 
 -- testHMMStBasic :: Sampler [([Int], [Int])]

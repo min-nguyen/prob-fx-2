@@ -389,7 +389,7 @@ def main():
     axs1.set_title('HMM - Likelihood Weighting')
     plt.show()
   if arg == "hmm-lw-inf":
-
+    # Note : this inference method knowingly doesn't work well for this model
     xys        = [ d[0] for d in data]
     sampleMaps = [ d[1] for d in data]
     ps         = [ d[2] for d in data]
@@ -412,10 +412,17 @@ def main():
     xys         = [ d[0] for d in data]
     sampleMaps  = [ d[1] for d in data]
     logpMaps    = [ d[2] for d in data]
-    trans_ps  = [ d[0][1] for d in sampleMaps ]
+    print(sampleMaps)
+    # trans_ps  = [ d[0][1] for d in sampleMaps ]
+    # trans_ps_unique = removeDuplicates(trans_ps)
+    # obs_ps   = [ d[1][1] for d in sampleMaps ]
+    # obs_ps_unique = removeDuplicates(obs_ps)
+    trans_ps  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'trans_p'] for d in sampleMaps ]).ravel()
     trans_ps_unique = removeDuplicates(trans_ps)
-    obs_ps   = [ d[1][1] for d in sampleMaps ]
+    obs_ps  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'obs_p'] for d in sampleMaps ]).ravel()
     obs_ps_unique = removeDuplicates(obs_ps)
+    # print(obs_ps_unique)
+    # print(trans_ps)
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("trans_ps values")
     axs1.set_ylabel("frequency")
