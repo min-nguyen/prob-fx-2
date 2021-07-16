@@ -179,8 +179,8 @@ sineModel x = do
 -- | Hidden Markov Model
 type HMMEnv =
   '[ "y"       ':> Int,
-     "obs_p"   ':> Double,
-     "trans_p" ':> Double
+     "trans_p" ':> Double,
+     "obs_p"   ':> Double
    ]
 
 transitionModel ::  Double -> Int -> Model s es Int

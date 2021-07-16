@@ -504,10 +504,10 @@ testSinMHPred = do
 {- Hidden markov model -}
 
 mkRecordHMM :: ([Int], Double, Double) -> LRec Example.HMMEnv
-mkRecordHMM (ys, obsp, transp) = #y @= ys <: #obs_p @= [obsp] <: #trans_p @= [transp] <: nil
+mkRecordHMM (ys, transp, obsp) = #y @= ys <: #trans_p @= [transp] <: #obs_p @= [obsp] <:  nil
 
 mkRecordHMMy :: [Int] -> LRec Example.HMMEnv
-mkRecordHMMy ys = #y @= ys <: #obs_p @= [] <: #trans_p @= [] <: nil
+mkRecordHMMy ys = #y @= ys <: #trans_p @= [] <: #obs_p @= [] <:  nil
 
 testHMMBasic :: Sampler [([Int], [Int])]
 testHMMBasic = do
@@ -549,26 +549,27 @@ testHMMLWInf = do
 
 testHMMMHPost :: Sampler [(([Int], [Int]), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
 testHMMMHPost = do
-  let hmm_n_steps   = 100
-      hmm_n_samples = 10
+  let hmm_n_steps   = 20
+      hmm_n_samples = 30
   bs <- map fst <$> Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
-                    [0] [mkRecordHMM ([], 0.5, 0.5)]
+                    [0] [mkRecordHMM ([], 0.8, 0.1)]
   let mh_n_iterations = 1000
       (_, yss)  = unzip bs
-  mhTrace <- MH.mh mh_n_iterations (Example.hmmNSteps hmm_n_steps) []
+  mhTrace <- MH.mh mh_n_iterations (Example.hmmNSteps hmm_n_steps) ["trans_p", "obs_p"]
                                    (replicate hmm_n_samples 0)
                                    (map mkRecordHMMy yss)
   let mhTrace' = map (\(xy, samples, logps) ->
        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
            logps'   = Map.toList logps
        in  (xy, samples', logps') ) mhTrace
+  liftS $ print $ "trace is " ++ show (map snd3 mhTrace')
   return mhTrace'
 
 testHMMMHPred :: Sampler [([Int], [Int])]
 testHMMMHPred = do
   mhTrace <- testHMMMHPost
-  let hmm_n_steps   = 100
-      hmm_n_samples = 10
+  let hmm_n_steps   = 10
+      hmm_n_samples = 100
       postParams = getPostParams [("trans_p", 0), ("obs_p", 0)] mhTrace
       trans_p    = lookupTag "trans_p" postParams
       obs_p      = lookupTag "obs_p" postParams

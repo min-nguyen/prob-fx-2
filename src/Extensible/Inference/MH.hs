@@ -161,15 +161,15 @@ mhStep env model tags trace = do
   acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
   u <- sample (UniformDist 0 1 Nothing Nothing)
   if u < acceptance_ratio
-    then do -- liftS $ putStrLn $ "Accepting " -- ++ show logps' ++ "\nover      "
-            --  ++ show logps
-            --  ++ "\nwith α" ++ show α_samp ++ ": "
-            --  ++ show acceptance_ratio ++ " > " ++ show u
+    then do liftS $ putStrLn $ "Accepting " -- ++ show logps' ++ "\nover      "
+            -- ++ show logps
+             ++ "\nwith α" ++ show α_samp ++ ": "
+             ++ show acceptance_ratio ++ " > " ++ show u
             return ((x', samples', logps'):trace)
-    else do -- liftS $ putStrLn $ "Rejecting " -- ++ show logps' ++ "\nover      "
-            --  ++ show logps
-            --  ++ "\nwith α" ++ show α_samp ++ ": "
-            --  ++ show acceptance_ratio ++ " < u: " ++ show u
+    else do liftS $ putStrLn $ "Rejecting " -- ++ show logps' ++ "\nover      "
+            -- ++ show logps
+             ++ "\nwith α" ++ show α_samp ++ ": "
+             ++ show acceptance_ratio ++ " < u: " ++ show u
             return trace
 
 -- | Run model once under MH
