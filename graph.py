@@ -484,12 +484,9 @@ def main():
     infectedCount = [d[0][1] for d in data]
     sampleMaps    = [d[1] for d in data]
     ps            = [d[2] for d in data]
-    rhos          = [s[0][1] for s in sampleMaps]
-    betas         = [s[1][1] for s in sampleMaps]
-    gammas        = [s[2][1] for s in sampleMaps]
-    print(sampleMaps)
-    print(ps)
-    print(rhos)
+    rhos          = np.array([ [ d1[1] for d1 in d if d1[0][0] == '\961'] for d in sampleMaps ]).ravel()
+    betas         = np.array([ [ d1[1] for d1 in d if d1[0][0] == '\946'] for d in sampleMaps ]).ravel()
+    gammas        = np.array([ [ d1[1] for d1 in d if d1[0][0] == '\947'] for d in sampleMaps ]).ravel()
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("rho")
     axs1.set_ylabel("likelihood")
@@ -508,14 +505,33 @@ def main():
     infectedCount = [d[0][1] for d in data]
     sampleMaps    = [d[1] for d in data]
     ps            = [d[2] for d in data]
-    rhos          = [s[0][1] for s in sampleMaps]
+    rhos          = np.array([ [ d1[1] for d1 in d if d1[0][0] == '\961'] for d in sampleMaps ]).ravel()
     rhos_unique = removeDuplicates(rhos)
-    betas         = [s[1][1] for s in sampleMaps]
+    betas         = np.array([ [ d1[1] for d1 in d if d1[0][0] == '\946'] for d in sampleMaps ]).ravel()
     betas_unique = removeDuplicates(betas)
-    gammas        = [s[2][1] for s in sampleMaps]
+    gammas        = np.array([ [ d1[1] for d1 in d if d1[0][0] == '\947'] for d in sampleMaps ]).ravel()
     gammas_unique = removeDuplicates(gammas)
     print(rhos_unique)
     print(betas_unique)
     print(gammas_unique)
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("rho values")
+    axs1.set_ylabel("frequency")
+    axs1.hist(rhos_unique, bins=50)
+    axs1.set_title('SIR - Metropolis Hastings Posterior (Rho)')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel("beta values")
+    axs2.set_ylabel("frequency")
+    axs2.hist(betas_unique, bins=50)
+    axs2.set_title('HMM - Metropolis Hastings Posterior (Beta)')
+    fig3, axs3 = plt.subplots(nrows=1)
+    axs3.set_xlabel("gamma values")
+    axs3.set_ylabel("frequency")
+    axs3.hist(gammas_unique, bins=50)
+    axs3.set_title('HMM - Metropolis Hastings Posterior (Gamma)')
+    plt.show()
+    # print(rhos_unique)
+    # print(betas_unique)
+    # print(gammas_unique)
 if __name__ == "__main__":
   main()

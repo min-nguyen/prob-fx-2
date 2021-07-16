@@ -65,12 +65,12 @@ main = do
   -- trace <- sampleIOFixed testHMMBasic
   -- trace <- sampleIOFixed testHMMLWSim
   -- trace <- sampleIOFixed testHMMLWInf
-  trace <- sampleIOFixed testHMMMHPost
+  -- trace <- sampleIOFixed testHMMMHPost
   -- trace <- sampleIOFixed testHMMMHPred
   -- trace <- sampleIOFixed testHMMStBasic
   -- trace <- sampleIOFixed testSIRBasic
   -- trace <- sampleIOFixed testSIRLWInf
-  -- trace <- sampleIOFixed testSIRMHPost
+  trace <- sampleIOFixed testSIRMHPost
   let traceStr = show trace
   -- putStrLn traceStr
   writeFile "model-output.txt" traceStr

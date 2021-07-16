@@ -258,35 +258,61 @@ runSample α_samp samples = loop
   where
   loop :: Freer '[Sample] a -> Sampler a
   loop (Pure x) = return x
-  loop (Free u k) = do
+  loop (Free u k) =
     case prj u of
       Just (Printer s) ->
        liftS (putStrLn s) >> loop (k ())
       Just (Sample d α) ->
         case d of
-          DistDouble (Just d) ->
-            case lookupSample samples d α α_samp of
+          DistDouble (Just d) -> do
+            m <- lookupSample samples d α α_samp
+            case m of
               Nothing -> do
                 x <- sample d
-                --liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " x: " ++ show x)
+                --liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
               Just x  -> do
-               -- liftS (putStrLn $ "Using old sample for α" ++ show α ++ " x: " ++ show x)
+                --liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
-          DistBool (Just d) ->
-            case lookupSample samples d α α_samp of
-              Nothing -> sample d >>= loop . k . unsafeCoerce
-              Just x  -> (loop . k . unsafeCoerce) x
-          DistInt (Just d) ->
-            case lookupSample samples d α α_samp of
-              Nothing -> sample d >>= loop . k . unsafeCoerce
-              Just x  -> (loop . k . unsafeCoerce) x
+          DistBool (Just d) -> do
+            m <- lookupSample samples d α α_samp
+            case m of
+              Nothing -> do
+                x <- sample d
+                --liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                (loop . k . unsafeCoerce) x
+              Just x  -> do
+                --liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                (loop . k . unsafeCoerce) x
+          DistInt (Just d) -> do
+            m <- lookupSample samples d α α_samp
+            case m of
+              Nothing -> do
+                x <- sample d
+                --liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                (loop . k . unsafeCoerce) x
+              Just x  -> do
+                --liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                (loop . k . unsafeCoerce) x
       _  -> error "Impossible: Nothing cannot occur"
+
+lookupSample :: OpenSum.Member a '[Int, Double, Bool] => Ⲭ -> Dist a -> Addr -> Addr -> Sampler (Maybe a)
+lookupSample samples d α α_samp
+  | α == α_samp = return Nothing
+  | otherwise   = do
+    let m = Map.lookup α samples
+    case m of
+      Just (d_info, x) -> do
+        --liftS $ print $ "Address : " ++ show α ++ " Current dist : " ++ show (toDistInfo d) ++ " Looked up dist : " ++ show d_info ++ " Are they equal? " ++ show (toDistInfo d == d_info)
+        return $ if toDistInfo d == d_info then OpenSum.prj x else Nothing
+      Nothing -> return Nothing
+
+
 
 -- | Lookup a sample address α's value in Ⲭ.
 -- Return Nothing if: 1) it doesn't exist, 2) the sample address is the same as the current sample site α_samp, or 3) the sample we're supposed to reuse belongs to either a different distribution or the same distribution with different parameters (due to a new sampled value affecting its parameters). These all indicate that a new value should be sampled.
-lookupSample :: OpenSum.Member a '[Int, Double, Bool] => Ⲭ -> Dist a -> Addr -> Addr -> Maybe a
-lookupSample samples d α α_samp
-  | α == α_samp = Nothing
-  | otherwise   = Map.lookup α samples >>= \(d_info, x) ->
-                  if toDistInfo d == d_info then OpenSum.prj x else Nothing
+-- lookupSample :: OpenSum.Member a '[Int, Double, Bool] => Ⲭ -> Dist a -> Addr -> Addr -> Maybe a
+-- lookupSample samples d α α_samp
+--   | α == α_samp = Nothing
+--   | otherwise   = Map.lookup α samples >>= \(d_info, x) ->
+--                   if toDistInfo d == d_info then OpenSum.prj x else Nothing
