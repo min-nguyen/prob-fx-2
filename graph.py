@@ -504,7 +504,6 @@ def main():
     latentStates  = [d[0][0] for d in data]
     infectedCount = [d[0][1] for d in data]
     sampleMaps    = [d[1] for d in data]
-    ps            = [d[2] for d in data]
     rhos          = np.array([ [ d1[1] for d1 in d if d1[0][0] == '\961'] for d in sampleMaps ]).ravel()
     rhos_unique = removeDuplicates(rhos)
     betas         = np.array([ [ d1[1] for d1 in d if d1[0][0] == '\946'] for d in sampleMaps ]).ravel()

@@ -30,6 +30,9 @@ fst3 (a, b, c) = a
 snd3 :: (a, b, c) -> b
 snd3 (a, b, c) = b
 
+fstsnd3 :: (a, b, c) -> (a, b)
+fstsnd3 (a, b, c) = (a, b)
+
 map2 :: (a -> b) -> [[a]] -> [[b]]
 map2 = map . map
 

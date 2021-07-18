@@ -87,6 +87,7 @@ updateMapⲬ (α, i) d x = Map.insert (α, i) (toDistInfo d, OpenSum.inj x) :: �
 updateLogP :: Addr -> Dist x -> x -> LogP -> LogP
 updateLogP (α, i) d x  = Map.insert (α, i) (logProb d x)
 
+
 -- | Compute acceptance probability
 -- If the log prob from our new samples is better than our old samples, then we always accept.
 -- If the log prob from our new samples is worse than our old samples, then we sometimes accept.

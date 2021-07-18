@@ -606,7 +606,7 @@ testSIRBasic :: Sampler ([(Int, Int, Int)], [Int])
 testSIRBasic = do
   bs <- Basic.basic 1
           (Example.hmmSIRNsteps (fixedParams 763 1) 200)
-          [latentState 762 1 0] [mkRecordSIR ([0.29],[0.2589351626423],[0.015])]
+          [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
           --[mkRecordSIR ([0.29], [0.25], [0.015])]
 
   let output = map ((\(xs, ys) -> (map fromLatentState xs, ys)) . fst) bs
@@ -627,14 +627,14 @@ testSIRLWInf = do
         map (\((xs, ys), sampleMap, p) -> ((map fromLatentState xs, ys), sampleMap, p)) output
   return output'
 
-testSIRMHPost ::  Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testSIRMHPost ::  Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum MH.Vals)])]
 testSIRMHPost = do
   let sir_n_samples = 10
   bs <- map fst <$> Basic.basic sir_n_samples
-          (Example.hmmSIRNsteps (fixedParams 763 1) 50)
-          [latentState 762 1 0] [mkRecordSIR ([0.3], [0.25], [0.009])]
+          (Example.hmmSIRNsteps (fixedParams 763 1) 30)
+          [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
   let infectedData    = map snd bs
-      mh_n_iterations = 1000
+      mh_n_iterations = 300
   liftS $ print $ "infected data is " ++ show infectedData
   -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
   mhTrace <- MH.mh mh_n_iterations (Example.hmmSIRNsteps (fixedParams 763 1) 200) ["ρ", "β", "γ"]
@@ -645,19 +645,19 @@ testSIRMHPost = do
             logps'   = Map.toList logps
         in  (xy, samples', logps') ) mhTrace
       mhTrace'' = map (\((xs, ys), sampleMap, p) -> ((map fromLatentState xs, ys), sampleMap, p)) mhTrace'
-  return mhTrace''
+  return (map fstsnd3 mhTrace'')
 
-testSIRMHPred :: Sampler ([(Int, Int, Int)], [Int])
-testSIRMHPred = do
-  mhTrace <- testSIRMHPost
-  let postParams = getPostParams [("ρ", 0), ("β", 0), ("γ", 0)] mhTrace
-      ρ    = lookupTag "ρ" postParams
-      β    = lookupTag "β" postParams
-      γ    = lookupTag "γ" postParams
-  liftS $ print $ show (ρ, β, γ)
-  bs <- Basic.basic 1
-                    (Example.hmmSIRNsteps (fixedParams 763 1) 200)
-                    [latentState 762 1 0] [mkRecordSIR (ρ, β, γ)]
-  let output = map ((\(xs, ys) -> (map fromLatentState xs, ys)) . fst) bs
-  liftS $ print $ show (map fst bs)
-  return $ head output
+-- testSIRMHPred :: Sampler ([(Int, Int, Int)], [Int])
+-- testSIRMHPred = do
+--   mhTrace <- testSIRMHPost
+--   let postParams = getPostParams [("ρ", 0), ("β", 0), ("γ", 0)] mhTrace
+--       ρ    = lookupTag "ρ" postParams
+--       β    = lookupTag "β" postParams
+--       γ    = lookupTag "γ" postParams
+--   liftS $ print $ show (ρ, β, γ)
+--   bs <- Basic.basic 1
+--                     (Example.hmmSIRNsteps (fixedParams 763 1) 200)
+--                     [latentState 762 1 0] [mkRecordSIR (ρ, β, γ)]
+--   let output = map ((\(xs, ys) -> (map fromLatentState xs, ys)) . fst) bs
+--   liftS $ print $ show (map fst bs)
+--   return $ head output
