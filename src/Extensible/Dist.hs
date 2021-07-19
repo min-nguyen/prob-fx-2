@@ -24,6 +24,7 @@ import Data.Maybe
 import Data.Extensible hiding (wrap, Head, Member)
 import qualified Data.Vector as V
 import Statistics.Distribution
+import Statistics.Distribution.CauchyLorentz
 import Statistics.Distribution.DiscreteUniform
 import Statistics.Distribution.Poisson
 import Statistics.Distribution.Normal
@@ -36,33 +37,30 @@ import qualified System.Random.MWC.Distributions as MWC
 
 
 data DistInfo where
+  CauchyDistI       :: Double -> Double -> DistInfo
+  HalfCauchyDistI   :: Double -> DistInfo
   NormalDistI        :: Double -> Double -> DistInfo
   HalfNormalDistI    :: Double -> DistInfo
-  -- uniform        :: Dist Double
   UniformDistI       :: Double -> Double -> DistInfo
-  -- discr uniform  :: Dist Int
   DiscrUniformDistI  :: Int    -> Int    -> DistInfo
-  -- gamma          :: Dist Double
   GammaDistI         :: Double -> Double -> DistInfo
-  -- beta           :: Dist Double
   BetaDistI          :: Double -> Double -> DistInfo
-  -- binomial       :: Dist [Bool]
   BinomialDistI      :: Int    -> Double -> DistInfo
-  -- bernoulli      :: Dist Bool
   BernoulliDistI     :: Double -> DistInfo
-  -- categorical    :: Dist Int
   CategoricalDistI   :: V.Vector (Int, Double) -> DistInfo
-  -- discrete       :: Dist Int
   DiscreteDistI      :: [(Int, Double)] -> DistInfo
-  -- poisson        :: Dist Int
   PoissonDistI       :: Double -> DistInfo
   deriving Eq
 
 instance Show DistInfo where
+  show (CauchyDistI mu sigma ) =
+    "CauchyDist(" ++ show mu ++ ", " ++ show sigma ++ ")"
+  show (HalfCauchyDistI sigma ) =
+    "HalfCauchyDist(" ++ show sigma ++ ")"
   show (NormalDistI mu sigma ) =
     "NormalDist(" ++ show mu ++ ", " ++ show sigma ++ ")"
   show (HalfNormalDistI sigma ) =
-    "HalfNormalDistI(" ++ show sigma ++ ")"
+    "HalfNormalDist(" ++ show sigma ++ ")"
   show (BernoulliDistI p ) =
     "BernoulliDist(" ++ show p  ++ ")"
   show (DiscreteDistI ps ) =
@@ -83,6 +81,8 @@ instance Show DistInfo where
     "BinomialDist(" ++ show n ++ ", " ++ show p ++ ")"
 
 toDistInfo :: Dist a -> DistInfo
+toDistInfo (CauchyDist mu sigma y tag) = CauchyDistI mu sigma
+toDistInfo (HalfCauchyDist sigma y tag) = HalfCauchyDistI sigma
 toDistInfo (NormalDist mu sigma y tag) = NormalDistI mu sigma
 toDistInfo (HalfNormalDist sigma y tag) = HalfNormalDistI sigma
 toDistInfo (UniformDist min max y tag) = UniformDistI min max
@@ -96,31 +96,25 @@ toDistInfo (DiscreteDist p y tag) = DiscreteDistI p
 toDistInfo (CategoricalDist p y tag) = CategoricalDistI p
 
 data Dist a where
-  -- IfDist            :: Bool -> Dist a -> Dist a -> Dist a
-  -- normal         :: Dist Double
+  HalfCauchyDist    :: Double -> Maybe Double -> Maybe String -> Dist Double
+  CauchyDist        :: Double -> Double -> Maybe Double -> Maybe String -> Dist Double
   NormalDist        :: Double -> Double -> Maybe Double -> Maybe String -> Dist Double
-  -- half normal
   HalfNormalDist    :: Double -> Maybe Double -> Maybe String -> Dist Double
-  -- uniform        :: Dist Double
   UniformDist       :: Double -> Double -> Maybe Double -> Maybe String -> Dist Double
-  -- discr uniform  :: Dist Int
   DiscrUniformDist  :: Int    -> Int    -> Maybe Int -> Maybe String -> Dist Int
-  -- gamma          :: Dist Double
   GammaDist         :: Double -> Double -> Maybe Double -> Maybe String -> Dist Double
-  -- beta           :: Dist Double
   BetaDist          :: Double -> Double -> Maybe Double -> Maybe String ->  Dist Double
-  -- binomial       :: Dist [Bool]
   BinomialDist      :: Int    -> Double -> Maybe Int -> Maybe String -> Dist Int
-  -- bernoulli      :: Dist Bool
   BernoulliDist     :: Double -> Maybe Bool -> Maybe String -> Dist Bool
-  -- categorical    :: Dist Int
   CategoricalDist   :: V.Vector (Int, Double) -> Maybe Int -> Maybe String -> Dist Int
-  -- discrete       :: Dist Int
   DiscreteDist      :: [(Int, Double)] -> Maybe Int -> Maybe String -> Dist Int
-  -- poisson        :: Dist Int
   PoissonDist       :: Double -> Maybe Int -> Maybe String -> Dist Int
 
 instance Show a => Show (Dist a) where
+  show (CauchyDist mu sigma y tag) =
+    "CauchyDist(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
+  show (HalfCauchyDist sigma y tag) =
+    "HalfCauchyDist(" ++ show sigma ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
   show (NormalDist mu sigma y tag) =
     "NormalDist(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
   show (HalfNormalDist sigma y tag) =
@@ -174,6 +168,8 @@ pattern DistInt :: Maybe (Dist Int) -> Dist x
 pattern DistInt d <- (isDistInt -> d)
 
 isDistDouble :: Dist x -> Maybe (Dist Double)
+isDistDouble d@HalfCauchyDist {} = Just d
+isDistDouble d@CauchyDist {} = Just d
 isDistDouble d@HalfNormalDist {} = Just d
 isDistDouble d@NormalDist {} = Just d
 isDistDouble d@BetaDist {} = Just d
@@ -187,8 +183,10 @@ isDistDouble d@BernoulliDist {} = Nothing
 isDistDouble d@PoissonDist {} = Nothing
 
 isDistBool :: Dist x -> Maybe (Dist Bool)
-isDistBool d@HalfNormalDist {} = Nothing
 isDistBool d@BernoulliDist {} = Just d
+isDistBool d@HalfCauchyDist {} = Nothing
+isDistBool d@CauchyDist {} = Nothing
+isDistBool d@HalfNormalDist {} = Nothing
 isDistBool d@NormalDist {} = Nothing
 isDistBool d@BetaDist {} = Nothing
 isDistBool d@GammaDist {} = Nothing
@@ -200,7 +198,6 @@ isDistBool d@DiscreteDist {} = Nothing
 isDistBool d@PoissonDist {} = Nothing
 
 isDistInt :: Dist x -> Maybe (Dist Int)
-isDistInt d@HalfNormalDist {} = Nothing
 isDistInt d@DiscrUniformDist {} = Just d
 isDistInt d@BinomialDist {} = Just d
 isDistInt d@CategoricalDist {} = Just d
@@ -208,6 +205,9 @@ isDistInt d@DiscreteDist {} = Just d
 isDistInt d@PoissonDist {} = Just d
 isDistInt d@BernoulliDist {} = Nothing
 isDistInt d@NormalDist {} = Nothing
+isDistInt d@HalfNormalDist {} = Nothing
+isDistInt d@CauchyDist {} = Nothing
+isDistInt d@HalfCauchyDist {} = Nothing
 isDistInt d@BetaDist {} = Nothing
 isDistInt d@GammaDist {} = Nothing
 isDistInt d@UniformDist {} = Nothing
@@ -251,6 +251,8 @@ instance Distribution (Dist a) where
   -- cumulative (HalfNormalDist σ _ _) x
   --   = if x <= μ then 0 else
   --     (cumulative (normalDistr μ σ) x - cumulative (normalDistr μ σ) μ) * 2
+  cumulative (CauchyDist μ σ _ _) x
+    = cumulative (cauchyDistribution μ σ) x
   cumulative (NormalDist μ σ _ _) x
     = cumulative (normalDistr μ σ) x
   cumulative (UniformDist min max _ _) x
@@ -273,6 +275,10 @@ instance Distribution (Dist a) where
     = cumulative (uniformDistr (fromIntegral min) (fromIntegral max)) x
 
 instance ContDistr (Dist a) where
+  density (HalfCauchyDist σ _ _)
+    =  \x -> if x < 0 then 0 else
+              2 * density (CauchyDist 0 σ Nothing Nothing) x
+  density (CauchyDist μ σ _ _) = density (cauchyDistribution μ σ)
   density (HalfNormalDist σ _ _)
     =  \x -> if x < 0 then 0 else
               2 * density (NormalDist 0 σ Nothing Nothing) x
@@ -305,6 +311,8 @@ instance DiscreteDistr (Dist a) where
   logProbability (PoissonDist λ _ _) i = logProbability (poisson λ) i
 
 hasObs :: Dist a -> Bool
+hasObs d@(HalfCauchyDist _ obs _)       = isJust obs
+hasObs d@(CauchyDist _ _ obs _)       = isJust obs
 hasObs d@(HalfNormalDist _ obs _)       = isJust obs
 hasObs d@(NormalDist _ _ obs _)       = isJust obs
 hasObs d@(DiscrUniformDist _ _ obs _) = isJust obs
@@ -318,6 +326,8 @@ hasObs d@(DiscreteDist _ obs _)       = isJust obs
 hasObs d@(PoissonDist _ obs _)        = isJust obs
 
 hasTag :: Dist a -> Bool
+hasTag d@(HalfCauchyDist _ _ tag)       = isJust tag
+hasTag d@(CauchyDist _ _ _ tag)       = isJust tag
 hasTag d@(HalfNormalDist _ _ tag)       = isJust tag
 hasTag d@(NormalDist _ _ _ tag)       = isJust tag
 hasTag d@(DiscrUniformDist _ _ _ tag) = isJust tag
@@ -331,6 +341,8 @@ hasTag d@(DiscreteDist _ _ tag)       = isJust tag
 hasTag d@(PoissonDist _ _ tag)        = isJust tag
 
 getObs :: Dist a -> a
+getObs d@(HalfCauchyDist _ obs _)     = fromJust obs
+getObs d@(CauchyDist _ _ obs _)       = fromJust obs
 getObs d@(HalfNormalDist _ obs _)     = fromJust obs
 getObs d@(NormalDist _ _ obs _)       = fromJust obs
 getObs d@(DiscrUniformDist _ _ obs _) = fromJust obs
@@ -344,6 +356,8 @@ getObs d@(DiscreteDist _ obs _)       = fromJust obs
 getObs d@(PoissonDist _ obs _)        = fromJust obs
 
 getTag :: Dist a -> String
+getTag d@(HalfCauchyDist _ _ tag)     = fromJust tag
+getTag d@(CauchyDist _ _ _ tag)       = fromJust tag
 getTag d@(HalfNormalDist _ _ tag)     = fromJust tag
 getTag d@(NormalDist _ _ _ tag)       = fromJust tag
 getTag d@(DiscrUniformDist _ _ _ tag) = fromJust tag
@@ -358,6 +372,10 @@ getTag d@(PoissonDist _ _ tag)        = fromJust tag
 
 
 prob :: Dist a -> a -> Double
+prob d@HalfCauchyDist {} y
+  = density d y
+prob d@CauchyDist {} y
+  = density d y
 prob d@HalfNormalDist {} y
   = density d y
 prob d@NormalDist {} y
@@ -387,6 +405,10 @@ logProb :: Dist a -> a -> Double
 logProb d = log . prob d
 
 sample :: Dist a -> Sampler a
+sample (HalfCauchyDist σ obs _)  =
+  createSampler (sampleCauchy 0 σ) >>= return . abs
+sample (CauchyDist μ σ obs _)  =
+  createSampler (sampleCauchy μ σ)
 sample (HalfNormalDist σ obs _)  =
   createSampler (sampleNormal 0 σ) >>= return . abs
 sample (NormalDist μ σ obs _)  =

@@ -311,13 +311,17 @@ hmmSIRNsteps fixedParams n latentState  = do
 
 -- | Hierarchical Linear Regression
 
-hierarchicalLinRegr :: (HasVar s "mu_a" Double, HasVar s "mu_b" Double) => Model s es ()
-hierarchicalLinRegr = do
-  mu_a <- normal' 0 100 #mu_a
-  -- sigma_a <-
-  undefined
+-- hierarchicalLinRegr :: (HasVar s "mu_a" Double, HasVar s "mu_b" Double, HasVar s "sigma_a" Double, HasVar s "sigma_b" Double, HasVar s "a" double, HasVar s "b" Double) => Model s es ()
+-- hierarchicalLinRegr = do
+--   mu_a <- normal' 0 100 #mu_a
+--   sigma_a <- halfNormal' 5 #sigma_a
+--   mu_b <- normal' 0 100 #mu_b
+--   sigma_b <- halfNormal' 5 #sigma_b
+--   a <- normal' mu_a sigma_a
+--   undefined
 
 halfNorm :: Int -> Model s es Double
 halfNorm n = do
   s <- halfNormal 1
-  return s
+  x <- cauchy 0 1
+  return x

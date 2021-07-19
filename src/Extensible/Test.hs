@@ -664,6 +664,6 @@ testSIRMHPost = do
 
 testHalfNormal = do
   map fst <$> Basic.basic 10 Example.halfNorm [1] [nil]
-  let p = prob (HalfNormalDist 1 Nothing Nothing) (0)
-  let p' = prob (NormalDist 0 1 Nothing Nothing) 0
-  return (p, p')
+  -- let p = prob (HalfNormalDist 1 Nothing Nothing) (0)
+  -- let p' = prob (NormalDist 0 1 Nothing Nothing) 0
+  -- return (p, p')

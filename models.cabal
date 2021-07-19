@@ -82,7 +82,7 @@ library
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.14,
+  build-depends:       base,
                        ghc-prim,
                        primitive,
                        containers,
@@ -117,7 +117,7 @@ executable models
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.14,
+  build-depends:       base,
                        extensible,
                        models,
                        containers,

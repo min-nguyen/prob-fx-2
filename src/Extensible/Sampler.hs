@@ -25,6 +25,7 @@ import Statistics.Distribution
 import Statistics.Distribution.Normal
 import qualified System.Random.MWC as MWC
 import qualified System.Random.MWC.Distributions as MWC.Dist
+import Statistics.Distribution.CauchyLorentz
 import qualified System.Random.MWC.Probability as MWC.Probability
 import Util
 
@@ -54,6 +55,9 @@ createSampler f = Sampler $ ask >>= lift . f
 
 sampleRandom :: MWC.GenIO -> IO Double
 sampleRandom = \gen -> MWC.uniform gen
+
+sampleCauchy :: Double -> Double -> (MWC.GenIO -> IO Double)
+sampleCauchy μ σ = \gen -> genContVar (cauchyDistribution μ σ) gen
 
 sampleNormal :: Double -> Double -> (MWC.GenIO -> IO Double)
 sampleNormal μ σ = \gen -> MWC.Dist.normal μ σ gen

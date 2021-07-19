@@ -136,6 +136,33 @@ halfNormal' sigma field = Model $ do
   maybe_y <- ask getter setter
   send (HalfNormalDist sigma maybe_y tag)
 
+cauchy :: Double -> Double -> Model s es Double
+cauchy mu sigma = Model $ do
+  send (CauchyDist mu sigma Nothing Nothing)
+
+cauchy' :: forall s es a k. (a ~ Double) => OP.Lookup (OP.AsList s) k [a]
+  => Double -> Double -> OP.Key k
+  -> Model s es Double
+cauchy' mu sigma field = Model $ do
+  let tag = Just $ OP.keyToStr field
+      (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])
+  maybe_y <- ask getter setter
+  send (CauchyDist mu sigma maybe_y tag)
+
+halfCauchy :: Double -> Model s es Double
+halfCauchy sigma = Model $ do
+  send (HalfCauchyDist sigma Nothing Nothing)
+
+halfCauchy' :: forall s es a k. (a ~ Double) => OP.Lookup (OP.AsList s) k [a]
+  => Double -> OP.Key k
+  -> Model s es Double
+halfCauchy' sigma field = Model $ do
+  let tag = Just $ OP.keyToStr field
+      (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])
+  maybe_y <- ask getter setter
+  send (HalfCauchyDist sigma maybe_y tag)
+
+
 bernoulli :: Double -> Model s es Bool
 bernoulli p = Model $ do
   send (BernoulliDist p Nothing Nothing)
