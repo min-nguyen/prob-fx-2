@@ -36,6 +36,9 @@ fstsnd3 (a, b, c) = (a, b)
 map2 :: (a -> b) -> [[a]] -> [[b]]
 map2 = map . map
 
+ones :: Int -> Int -> [[Int]]
+ones m n = replicate m $ replicate n 1
+
 data Address =
   Address { -- The address of the previous sample statement
             prevSamp  :: String,

@@ -51,7 +51,7 @@ data DistInfo where
   BetaDistI          :: Double -> Double -> DistInfo
   BinomialDistI      :: Int    -> Double -> DistInfo
   BernoulliDistI     :: Double -> DistInfo
-  CategoricalDistI   :: V.Vector (Int, Double) -> DistInfo
+  CategoricalDistI   :: [(Int, Double)] -> DistInfo
   DiscreteDistI      :: [(Int, Double)] -> DistInfo
   PoissonDistI       :: Double -> DistInfo
   DirichletDistI     :: [Double] -> DistInfo
@@ -114,7 +114,7 @@ data Dist a where
   BetaDist          :: Double -> Double -> Maybe Double -> Maybe String ->  Dist Double
   BinomialDist      :: Int    -> Double -> Maybe Int -> Maybe String -> Dist Int
   BernoulliDist     :: Double -> Maybe Bool -> Maybe String -> Dist Bool
-  CategoricalDist   :: V.Vector (Int, Double) -> Maybe Int -> Maybe String -> Dist Int
+  CategoricalDist   :: [(Int, Double)] -> Maybe Int -> Maybe String -> Dist Int
   DiscreteDist      :: [(Int, Double)] -> Maybe Int -> Maybe String -> Dist Int
   PoissonDist       :: Double -> Maybe Int -> Maybe String -> Dist Int
   DirichletDist     :: [Double] -> Maybe [Double] -> Maybe String -> Dist [Double]
@@ -293,13 +293,13 @@ instance DiscreteDistr (Dist a) where
   -- binomial: probability of `i` successful outcomes
   probability (BinomialDist n p _ _) i            = probability (binomial n p) i
   probability (BernoulliDist p _ _) i             = probability (binomial 1 p) i
-  probability (CategoricalDist ps _ _) i          = snd (ps V.! i)
+  probability (CategoricalDist ps _ _) i          = snd (ps !! i)
   probability (DiscreteDist ps _ _) i             = snd (ps !! i)
   probability (DiscrUniformDist min max _ _) i    = probability (discreteUniformAB min max) i
   probability (PoissonDist λ _ _) i               = probability (poisson λ) i
   logProbability (BinomialDist n p _ _) i         = logProbability (binomial n p) i
   logProbability (BernoulliDist p _ _) i          = logProbability (binomial 1 p) i
-  logProbability (CategoricalDist ps _ _) i       = (log . snd) (ps V.! i)
+  logProbability (CategoricalDist ps _ _) i       = (log . snd) (ps !! i)
   logProbability (DiscreteDist ps _ _) i          = (log . snd) (ps !! i)
   logProbability (DiscrUniformDist min max _ _) i = logProbability (discreteUniformAB min max) i
   logProbability (PoissonDist λ _ _) i = logProbability (poisson λ) i
@@ -429,7 +429,7 @@ sample (BinomialDist n p  obs _)     =
 sample (BernoulliDist p obs _)      =
   createSampler (sampleBernoulli p)
 sample (CategoricalDist ps obs _)   =
-  createSampler (sampleCategorical (fmap snd ps))
+  createSampler (sampleCategorical (V.fromList $ fmap snd ps))
 sample (DiscreteDist ps obs _)      =
   createSampler (sampleDiscrete (map snd ps)) >>= \i -> return (fst $ ps !! i)
 sample (PoissonDist λ obs _) =

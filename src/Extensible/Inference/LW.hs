@@ -84,6 +84,8 @@ transformLW = loop
                                                       loop (k x))
               DistBool (Just d)   -> Free u (\x -> do modify (updateMapⲬ α (unsafeCoerce x :: Bool))
                                                       loop (k x))
+              DistDoubles (Just d) -> Free u (\x -> do modify (updateMapⲬ α (unsafeCoerce x :: [Double]))
+                                                       loop (k x))
       _ -> Free u (loop . k)
 
 runObserve :: Member Sample rs => Freer (Observe : rs) a -> Freer rs (a, Double)

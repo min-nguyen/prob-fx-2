@@ -328,9 +328,23 @@ type DirEnv =
   '[ "xs" ':> Double
    ]
 
-halfNorm :: HasVar s "xs" Double => Int -> Model s es [Double]
-halfNorm n = do
-  -- s <- halfNormal 1
-  -- x <- cauchy 0 1
-  xs <- dirichlet' [0.3, 0.2] #xs
-  return xs
+-- halfNorm :: HasVar s "xs" Double => Int -> Model s es Int
+-- halfNorm n = do
+--   -- s <- halfNormal 1
+--   -- x <- cauchy 0 1
+--   -- xs <- dirichlet' [0.3, 0.2] #xs
+--   -- xs <- categorical [("", 1]
+--   return xs
+
+-- | Topic model
+
+topicModel :: [String] -> [[String]] -> Int -> Model s es ()
+topicModel vocab corpus n_topics = do
+  topics <- replicateM n_topics $ dirichlet (replicate (length vocab) 1)
+  let f doc = do
+        topicDist <- dirichlet (replicate n_topics 1)
+
+        undefined
+      -- g word = do
+      --   z <- discrete
+  return ()

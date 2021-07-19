@@ -663,13 +663,14 @@ testSIRMHPred = do
   liftS $ print $ show (map fst bs)
   return $ head output
 
-mkRecordDir :: LRec Example.DirEnv
-mkRecordDir = #xs @= [0.9967905431482104,3.2094568517896955e-3] <: nil
+mkRecordDir :: [Double] -> LRec Example.DirEnv
+mkRecordDir ds = #xs @= ds <: nil
 
-testHalfNormal :: Sampler ()
+
+testHalfNormal :: Sampler [[Double]]
 testHalfNormal = do
-  LW.lw 1 Example.halfNorm [1] [mkRecordDir]
-  return ()
+  map fst <$> Basic.basic 1 Example.halfNorm [1] [mkRecordDir []]
+
   -- let p = prob (HalfNormalDist 1 Nothing Nothing) (0)
   -- let p' = prob (NormalDist 0 1 Nothing Nothing) 0
   -- return (p, p')

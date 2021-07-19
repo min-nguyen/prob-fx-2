@@ -124,6 +124,18 @@ dirichlet' xs field = Model $ do
   maybe_y <- sequence <$> replicateM (length xs) (ask getter setter)
   send (DirichletDist xs maybe_y tag)
 
+categorical :: [(Int, Double)] -> Model s es Int
+categorical xs = Model $ do
+  send (CategoricalDist xs Nothing Nothing)
+
+categorical' :: forall s es a k. (a ~ Int) => OP.Lookup (OP.AsList s) k [a]
+  => [(Int, Double)] -> OP.Key k
+  -> Model s es Int
+categorical' xs field = Model $ do
+  let tag = Just $ OP.keyToStr field
+      (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])
+  maybe_y <- ask getter setter
+  send (CategoricalDist xs maybe_y tag)
 
 normal :: Double -> Double -> Model s es Double
 normal mu sigma = Model $ do
