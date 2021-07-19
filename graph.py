@@ -572,6 +572,14 @@ def main():
     axs1.set_title('SIR model - Basic Simulation')
     plt.legend()
     plt.show()
+  if arg == "topic-basic":
+    words = list(np.array(data).ravel())
+    fig, ax = plt.subplots(nrows=1)
+    ws = list(set(words))
+    freqs = [ words.count(w)  for w in ws]
+    ax.bar(ws, freqs)
+    ax.set_xticklabels(ws)
+    plt.show()
   if arg == "topic-mh-post":
     words       = [ d[0] for d in data] #np.array(data[0])
     sampleMaps  = [ d[1] for d in data]
@@ -579,5 +587,9 @@ def main():
     topic_1     = np.array([ [ d1[1] for d1 in d if d1[0] == ('word_p', 1)] for d in sampleMaps ])
     print(sampleMaps)
     print(topic_0)
+    print(topic_1)
 if __name__ == "__main__":
   main()
+
+# 0.161703431 0.0808751181 0.0365742808 0.720847170
+# 0.232963296 0.127890173 0.469281425 0.169865107
