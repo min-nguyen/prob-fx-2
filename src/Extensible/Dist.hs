@@ -16,6 +16,7 @@ import Extensible.Sampler
 import Util
 import Control.Lens hiding ((:>))
 import Control.Monad.State
+import GHC.Float
 import Data.Kind
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -36,6 +37,7 @@ import qualified System.Random.MWC.Distributions as MWC
 
 data DistInfo where
   NormalDistI        :: Double -> Double -> DistInfo
+  HalfNormalDistI    :: Double -> DistInfo
   -- uniform        :: Dist Double
   UniformDistI       :: Double -> Double -> DistInfo
   -- discr uniform  :: Dist Int
@@ -59,6 +61,8 @@ data DistInfo where
 instance Show DistInfo where
   show (NormalDistI mu sigma ) =
     "NormalDist(" ++ show mu ++ ", " ++ show sigma ++ ")"
+  show (HalfNormalDistI sigma ) =
+    "HalfNormalDistI(" ++ show sigma ++ ")"
   show (BernoulliDistI p ) =
     "BernoulliDist(" ++ show p  ++ ")"
   show (DiscreteDistI ps ) =
@@ -80,6 +84,7 @@ instance Show DistInfo where
 
 toDistInfo :: Dist a -> DistInfo
 toDistInfo (NormalDist mu sigma y tag) = NormalDistI mu sigma
+toDistInfo (HalfNormalDist sigma y tag) = HalfNormalDistI sigma
 toDistInfo (UniformDist min max y tag) = UniformDistI min max
 toDistInfo (DiscrUniformDist min max y tag) = DiscrUniformDistI min max
 toDistInfo (GammaDist a b y tag) = GammaDistI a b
@@ -94,6 +99,8 @@ data Dist a where
   -- IfDist            :: Bool -> Dist a -> Dist a -> Dist a
   -- normal         :: Dist Double
   NormalDist        :: Double -> Double -> Maybe Double -> Maybe String -> Dist Double
+  -- half normal
+  HalfNormalDist    :: Double -> Maybe Double -> Maybe String -> Dist Double
   -- uniform        :: Dist Double
   UniformDist       :: Double -> Double -> Maybe Double -> Maybe String -> Dist Double
   -- discr uniform  :: Dist Int
@@ -116,6 +123,8 @@ data Dist a where
 instance Show a => Show (Dist a) where
   show (NormalDist mu sigma y tag) =
     "NormalDist(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
+  show (HalfNormalDist sigma y tag) =
+    "HalfNormalDist(" ++ show sigma ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
   show (BernoulliDist p y tag) =
     "BernoulliDist(" ++ show p ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
   show (BinomialDist n p y tag) =
@@ -165,6 +174,7 @@ pattern DistInt :: Maybe (Dist Int) -> Dist x
 pattern DistInt d <- (isDistInt -> d)
 
 isDistDouble :: Dist x -> Maybe (Dist Double)
+isDistDouble d@HalfNormalDist {} = Just d
 isDistDouble d@NormalDist {} = Just d
 isDistDouble d@BetaDist {} = Just d
 isDistDouble d@GammaDist {} = Just d
@@ -177,6 +187,7 @@ isDistDouble d@BernoulliDist {} = Nothing
 isDistDouble d@PoissonDist {} = Nothing
 
 isDistBool :: Dist x -> Maybe (Dist Bool)
+isDistBool d@HalfNormalDist {} = Nothing
 isDistBool d@BernoulliDist {} = Just d
 isDistBool d@NormalDist {} = Nothing
 isDistBool d@BetaDist {} = Nothing
@@ -189,6 +200,7 @@ isDistBool d@DiscreteDist {} = Nothing
 isDistBool d@PoissonDist {} = Nothing
 
 isDistInt :: Dist x -> Maybe (Dist Int)
+isDistInt d@HalfNormalDist {} = Nothing
 isDistInt d@DiscrUniformDist {} = Just d
 isDistInt d@BinomialDist {} = Just d
 isDistInt d@CategoricalDist {} = Just d
@@ -236,6 +248,9 @@ runDist = loop 0 Map.empty
 
 
 instance Distribution (Dist a) where
+  -- cumulative (HalfNormalDist σ _ _) x
+  --   = if x <= μ then 0 else
+  --     (cumulative (normalDistr μ σ) x - cumulative (normalDistr μ σ) μ) * 2
   cumulative (NormalDist μ σ _ _) x
     = cumulative (normalDistr μ σ) x
   cumulative (UniformDist min max _ _) x
@@ -258,6 +273,9 @@ instance Distribution (Dist a) where
     = cumulative (uniformDistr (fromIntegral min) (fromIntegral max)) x
 
 instance ContDistr (Dist a) where
+  density (HalfNormalDist σ _ _)
+    =  \x -> if x < 0 then 0 else
+              2 * density (NormalDist 0 σ Nothing Nothing) x
   density (NormalDist μ σ _ _)          = density (normalDistr μ σ)
   density (UniformDist min max _ _)     = density (uniformDistr min max)
   density (GammaDist k θ _ _)           = density (gammaDistr k θ)
@@ -287,6 +305,7 @@ instance DiscreteDistr (Dist a) where
   logProbability (PoissonDist λ _ _) i = logProbability (poisson λ) i
 
 hasObs :: Dist a -> Bool
+hasObs d@(HalfNormalDist _ obs _)       = isJust obs
 hasObs d@(NormalDist _ _ obs _)       = isJust obs
 hasObs d@(DiscrUniformDist _ _ obs _) = isJust obs
 hasObs d@(UniformDist _ _ obs _)      = isJust obs
@@ -299,6 +318,7 @@ hasObs d@(DiscreteDist _ obs _)       = isJust obs
 hasObs d@(PoissonDist _ obs _)        = isJust obs
 
 hasTag :: Dist a -> Bool
+hasTag d@(HalfNormalDist _ _ tag)       = isJust tag
 hasTag d@(NormalDist _ _ _ tag)       = isJust tag
 hasTag d@(DiscrUniformDist _ _ _ tag) = isJust tag
 hasTag d@(UniformDist _ _ _ tag)      = isJust tag
@@ -311,6 +331,7 @@ hasTag d@(DiscreteDist _ _ tag)       = isJust tag
 hasTag d@(PoissonDist _ _ tag)        = isJust tag
 
 getObs :: Dist a -> a
+getObs d@(HalfNormalDist _ obs _)     = fromJust obs
 getObs d@(NormalDist _ _ obs _)       = fromJust obs
 getObs d@(DiscrUniformDist _ _ obs _) = fromJust obs
 getObs d@(UniformDist _ _ obs _)      = fromJust obs
@@ -323,6 +344,7 @@ getObs d@(DiscreteDist _ obs _)       = fromJust obs
 getObs d@(PoissonDist _ obs _)        = fromJust obs
 
 getTag :: Dist a -> String
+getTag d@(HalfNormalDist _ _ tag)     = fromJust tag
 getTag d@(NormalDist _ _ _ tag)       = fromJust tag
 getTag d@(DiscrUniformDist _ _ _ tag) = fromJust tag
 getTag d@(UniformDist _ _ _ tag)      = fromJust tag
@@ -336,6 +358,8 @@ getTag d@(PoissonDist _ _ tag)        = fromJust tag
 
 
 prob :: Dist a -> a -> Double
+prob d@HalfNormalDist {} y
+  = density d y
 prob d@NormalDist {} y
   = density d y
 prob d@DiscrUniformDist {} y
@@ -363,6 +387,8 @@ logProb :: Dist a -> a -> Double
 logProb d = log . prob d
 
 sample :: Dist a -> Sampler a
+sample (HalfNormalDist σ obs _)  =
+  createSampler (sampleNormal 0 σ) >>= return . abs
 sample (NormalDist μ σ obs _)  =
   createSampler (sampleNormal μ σ)
 sample (UniformDist min max obs  _)  =

@@ -68,13 +68,13 @@ main = do
   -- trace <- sampleIOFixed testHMMMHPost
   -- trace <- sampleIOFixed testHMMMHPred
   -- trace <- sampleIOFixed testHMMStBasic
-  trace <- sampleIOFixed testSIRBasic
+  -- trace <- sampleIOFixed testSIRBasic
   -- trace <- sampleIOFixed testSIRLWInf
   -- trace <- sampleIOFixed testSIRMHPost
-
   -- trace <- sampleIOFixed testSIRMHPred
+  trace <- sampleIOFixed testHalfNormal
   let traceStr = show trace
   putStrLn traceStr
-  writeFile "model-output.txt" traceStr
+  -- writeFile "model-output.txt" traceStr
   return ()
 

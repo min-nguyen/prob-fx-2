@@ -309,56 +309,15 @@ hmmSIRNsteps fixedParams n latentState  = do
                   return (x_n:xs, y_n:ys))) ([latentState], [])
   return (reverse xs, reverse ys)
 
-{- Non probabilistic programs-}
-example :: (Member (Reader Int) rs, Member (Writer String) rs)
-        => Freer rs Int
-example = do
-  tell "hi"
-  x :: Int <- ask
-  tell "hi"
-  return 5
+-- | Hierarchical Linear Regression
 
-prog :: (Member (Reader Int) rs, Member (Writer String) rs)
-        => Freer rs Int
-prog = Free (inj $ Tell "hi") Pure >>= \() ->
-         Free (inj Ask) Pure >>= \(x :: Int) ->
-           Free (inj $ Tell (show x)) Pure >>= \() ->
-             Pure 5
+hierarchicalLinRegr :: (HasVar s "mu_a" Double, HasVar s "mu_b" Double) => Model s es ()
+hierarchicalLinRegr = do
+  mu_a <- normal' 0 100 #mu_a
+  -- sigma_a <-
+  undefined
 
-prog' :: (Member (Reader Int) rs, Member (Writer String) rs) => Freer rs Int
-prog' = Free (inj $ Tell "hi") (Pure >=> \() ->
-          Free (inj Ask) (Pure >=> \(x :: Int) ->
-            Free (inj $ Tell (show x)) (Pure >=> \() ->
-              Pure 5)))
-
-prog'' :: (Member (Reader Int) rs, Member (Writer String) rs) => Freer rs Int
-prog'' = Free (inj $ Tell "hi") (\() ->
-          Free (inj Ask) (\(x :: Int) ->
-            Free (inj $ Tell (show x)) (\() ->
-              Pure 5)))
-
-example' :: forall env. Freer '[Reader env, Writer String] Int
-example' = do
-  tell "hi"
-  x :: env <- ask
-  return 5
-
-exampleR :: forall rs . (Member (Reader Int) rs)
-        => Freer rs Int
-exampleR = do
-  x :: Int <- ask
-  return 5
-
-exampleW :: forall rs. (Member (Writer String) rs)
-        => Freer rs Int
-exampleW = do
-  tell "hi"
-  return 5
-
-exampleIO :: forall rs. (SetMember Lift (Lift IO) rs) => Freer rs ()
-exampleIO = do
-  lift $ print "hi"
-  return ()
-
-runEx :: (Int, String)
-runEx = (run . runWriter . runReader (5 :: Int)) example
+halfNorm :: Int -> Model s es Double
+halfNorm n = do
+  s <- halfNormal 1
+  return s

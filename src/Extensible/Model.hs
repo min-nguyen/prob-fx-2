@@ -104,17 +104,16 @@ modifyM = Model . modify
 runStateM :: Model env (State [Int]:es) a -> Model env es (a, [Int])
 runStateM m = Model $ runState [] $ runModel m
 
-normal :: Double -> Double -> Model s es Double
-normal mu sigma = Model $ do
-  send (NormalDist mu sigma Nothing Nothing)
-
 normalLens :: forall s es a k. (a ~ Double) => OP.Lookup s k a
   => Double -> Double -> OP.Key k
   -> Lens' (OP.OpenProduct s) a
 normalLens mu sigma field =
   lens (\s -> OP.getOP field s) (\s b -> OP.setOP field b s)
 
--- keyLens
+normal :: Double -> Double -> Model s es Double
+normal mu sigma = Model $ do
+  send (NormalDist mu sigma Nothing Nothing)
+
 normal' :: forall s es a k. (a ~ Double) => OP.Lookup (OP.AsList s) k [a]
   => Double -> Double -> OP.Key k
   -> Model s es Double
@@ -123,6 +122,19 @@ normal' mu sigma field = Model $ do
       (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])
   maybe_y <- ask getter setter
   send (NormalDist mu sigma maybe_y tag)
+
+halfNormal :: Double -> Model s es Double
+halfNormal sigma = Model $ do
+  send (HalfNormalDist sigma Nothing Nothing)
+
+halfNormal' :: forall s es a k. (a ~ Double) => OP.Lookup (OP.AsList s) k [a]
+  => Double -> OP.Key k
+  -> Model s es Double
+halfNormal' sigma field = Model $ do
+  let tag = Just $ OP.keyToStr field
+      (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])
+  maybe_y <- ask getter setter
+  send (HalfNormalDist sigma maybe_y tag)
 
 bernoulli :: Double -> Model s es Bool
 bernoulli p = Model $ do
