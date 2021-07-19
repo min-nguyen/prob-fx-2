@@ -311,17 +311,26 @@ hmmSIRNsteps fixedParams n latentState  = do
 
 -- | Hierarchical Linear Regression
 
--- hierarchicalLinRegr :: (HasVar s "mu_a" Double, HasVar s "mu_b" Double, HasVar s "sigma_a" Double, HasVar s "sigma_b" Double, HasVar s "a" double, HasVar s "b" Double) => Model s es ()
--- hierarchicalLinRegr = do
---   mu_a <- normal' 0 100 #mu_a
---   sigma_a <- halfNormal' 5 #sigma_a
---   mu_b <- normal' 0 100 #mu_b
---   sigma_b <- halfNormal' 5 #sigma_b
---   a <- normal' mu_a sigma_a
---   undefined
+hierarchicalLinRegr :: (HasVar s "mu_a" Double, HasVar s "mu_b" Double, HasVar s "sigma_a" Double, HasVar s "sigma_b" Double)
+  => Int -> [Int] -> [Int] -> Model s es [Double]
+hierarchicalLinRegr n_counties floor_x county_idx = do
+  mu_a <- normal' 0 100 #mu_a
+  sigma_a <- halfNormal' 5 #sigma_a
+  mu_b <- normal' 0 100 #mu_b
+  sigma_b <- halfNormal' 5 #sigma_b
+  a <- replicateM n_counties (normal mu_a sigma_a)
+  b <- replicateM n_counties (normal mu_b sigma_b)
+  eps <- halfCauchy 5
+  let radon_est = zipWith (+) (map (a !!) county_idx) (zipWith (*) (map (b !!) county_idx) (map fromIntegral floor_x))
+  return radon_est
 
-halfNorm :: Int -> Model s es Double
+type DirEnv =
+  '[ "xs" ':> Double
+   ]
+
+halfNorm :: HasVar s "xs" Double => Int -> Model s es [Double]
 halfNorm n = do
-  s <- halfNormal 1
-  x <- cauchy 0 1
-  return x
+  -- s <- halfNormal 1
+  -- x <- cauchy 0 1
+  xs <- dirichlet' [0.3, 0.2] #xs
+  return xs

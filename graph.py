@@ -30,7 +30,7 @@ def main():
   color_map = plt.cm.get_cmap('Blues')
 
   data = pd.read_csv(pm.get_data("radon.csv"))
-  data["log_radon"] = data["log_radon"]
+  data_log_radon = data["log_radon"]
   county_names = data.county.unique()
   county_idx = data.county_code.values
 
@@ -38,7 +38,7 @@ def main():
   a = np.array([i for i in range(86)])
   # b = a[2,4,4]
   # print(data[["county", "log_radon", "floor"]])
-  print(a[county_idx])
+  print(data)
   # print(data.floor.values)
   if arg == "lin-regr-basic":
     xys =  [[ i for i, j in data ],

@@ -21,6 +21,7 @@ import Data.Set (Set)
 import Data.List
 import Debug.Trace
 import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as UV
 import Statistics.Distribution
 import Statistics.Distribution.Normal
 import qualified System.Random.MWC as MWC
@@ -88,3 +89,6 @@ sampleDiscrete ps = \gen -> MWC.Dist.categorical (V.fromList ps) gen
 
 samplePoisson :: Double -> (MWC.GenIO -> IO Int)
 samplePoisson λ = \gen -> MWC.Probability.sample (MWC.Probability.poisson λ) gen
+
+sampleDirichlet :: [Double] -> (MWC.GenIO -> IO [Double])
+sampleDirichlet xs = \gen -> MWC.Dist.dirichlet xs gen

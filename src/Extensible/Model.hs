@@ -110,6 +110,21 @@ normalLens :: forall s es a k. (a ~ Double) => OP.Lookup s k a
 normalLens mu sigma field =
   lens (\s -> OP.getOP field s) (\s b -> OP.setOP field b s)
 
+
+dirichlet :: [Double] -> Model s es [Double]
+dirichlet xs = Model $ do
+  send (DirichletDist xs Nothing Nothing)
+
+dirichlet' :: forall s es a k. (a ~ Double) => OP.Lookup (OP.AsList s) k [a]
+  => [Double] -> OP.Key k
+  -> Model s es [Double]
+dirichlet' xs field = Model $ do
+  let tag = Just $ OP.keyToStr field
+      (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])
+  maybe_y <- sequence <$> replicateM (length xs) (ask getter setter)
+  send (DirichletDist xs maybe_y tag)
+
+
 normal :: Double -> Double -> Model s es Double
 normal mu sigma = Model $ do
   send (NormalDist mu sigma Nothing Nothing)

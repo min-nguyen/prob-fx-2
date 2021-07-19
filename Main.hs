@@ -73,10 +73,10 @@ main = do
   -- trace <- sampleIOFixed testSIRLWInf
   -- trace <- sampleIOFixed testSIRMHPost
   -- trace <- sampleIOFixed testSIRMHPred
-  print dataFloorValues
-  -- trace <- sampleIOFixed testHalfNormal
-  -- let traceStr = show trace
-  -- putStrLn traceStr
+  -- print dataFloorValues
+  trace <- sampleIOFixed testHalfNormal
+  let traceStr = show trace
+  putStrLn traceStr
   -- writeFile "model-output.txt" traceStr
   return ()
 

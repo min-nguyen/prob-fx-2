@@ -97,7 +97,9 @@ library
                        statistics,
                        split,
                        mwc-random,
-                       mwc-probability
+                       mwc-probability,
+                       dirichlet,
+                       log-domain
 
   -- Directories containing source files.
   hs-source-dirs:      src

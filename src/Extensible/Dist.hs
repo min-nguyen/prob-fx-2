@@ -14,6 +14,7 @@ module Extensible.Dist where
 import Extensible.Freer
 import Extensible.Sampler
 import Util
+import Data.Coerce
 import Control.Lens hiding ((:>))
 import Control.Monad.State
 import GHC.Float
@@ -23,16 +24,19 @@ import qualified Data.Map as Map
 import Data.Maybe
 import Data.Extensible hiding (wrap, Head, Member)
 import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as UV
 import Statistics.Distribution
 import Statistics.Distribution.CauchyLorentz
 import Statistics.Distribution.DiscreteUniform
 import Statistics.Distribution.Poisson
 import Statistics.Distribution.Normal
+import Statistics.Distribution.Dirichlet
 import Statistics.Distribution.Gamma
 import Statistics.Distribution.Beta
 import Statistics.Distribution.Binomial
 import Statistics.Distribution.Uniform
 import System.Random.MWC
+import Numeric.Log
 import qualified System.Random.MWC.Distributions as MWC
 
 
@@ -50,6 +54,7 @@ data DistInfo where
   CategoricalDistI   :: V.Vector (Int, Double) -> DistInfo
   DiscreteDistI      :: [(Int, Double)] -> DistInfo
   PoissonDistI       :: Double -> DistInfo
+  DirichletDistI     :: [Double] -> DistInfo
   deriving Eq
 
 instance Show DistInfo where
@@ -79,6 +84,8 @@ instance Show DistInfo where
     "CategoricalDist(" ++ show xs  ++ ")"
   show (BinomialDistI n p ) =
     "BinomialDist(" ++ show n ++ ", " ++ show p ++ ")"
+  show (DirichletDistI xs) =
+    "DirichletDist(" ++ show xs  ++ ")"
 
 toDistInfo :: Dist a -> DistInfo
 toDistInfo (CauchyDist mu sigma y tag) = CauchyDistI mu sigma
@@ -94,6 +101,7 @@ toDistInfo (BernoulliDist p y tag) = BernoulliDistI p
 toDistInfo (PoissonDist l y tag) = PoissonDistI l
 toDistInfo (DiscreteDist p y tag) = DiscreteDistI p
 toDistInfo (CategoricalDist p y tag) = CategoricalDistI p
+toDistInfo (DirichletDist p y tag) = DirichletDistI p
 
 data Dist a where
   HalfCauchyDist    :: Double -> Maybe Double -> Maybe String -> Dist Double
@@ -109,6 +117,7 @@ data Dist a where
   CategoricalDist   :: V.Vector (Int, Double) -> Maybe Int -> Maybe String -> Dist Int
   DiscreteDist      :: [(Int, Double)] -> Maybe Int -> Maybe String -> Dist Int
   PoissonDist       :: Double -> Maybe Int -> Maybe String -> Dist Int
+  DirichletDist     :: [Double] -> Maybe [Double] -> Maybe String -> Dist [Double]
 
 instance Show a => Show (Dist a) where
   show (CauchyDist mu sigma y tag) =
@@ -137,6 +146,8 @@ instance Show a => Show (Dist a) where
    "PoissonDist(" ++ show l ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
   show (CategoricalDist xs y tag) =
    "CategoricalDist(" ++ show xs ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
+  show (DirichletDist xs y tag) =
+   "DirichletDistDist(" ++ show xs ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
 
 type Tag  = String
 type Addr = (Tag, Int)
@@ -160,12 +171,18 @@ pattern Samp d α <- (prj -> Just (Sample d α))
 pattern Obs :: Member Observe rs => Dist x -> x -> Addr -> Union rs x
 pattern Obs d y α <- (prj -> Just (Observe d y α))
 
+pattern DistDoubles :: Maybe (Dist [Double]) -> Dist x
+pattern DistDoubles d <- (isDistDoubles -> d)
 pattern DistDouble :: Maybe (Dist Double) -> Dist x
 pattern DistDouble d <- (isDistDouble -> d)
 pattern DistBool :: Maybe (Dist Bool) -> Dist x
 pattern DistBool d <- (isDistBool -> d)
 pattern DistInt :: Maybe (Dist Int) -> Dist x
 pattern DistInt d <- (isDistInt -> d)
+
+isDistDoubles :: Dist x -> Maybe (Dist [Double])
+isDistDoubles d@DirichletDist {} = Just d
+isDistDoubles _ = Nothing
 
 isDistDouble :: Dist x -> Maybe (Dist Double)
 isDistDouble d@HalfCauchyDist {} = Just d
@@ -175,27 +192,11 @@ isDistDouble d@NormalDist {} = Just d
 isDistDouble d@BetaDist {} = Just d
 isDistDouble d@GammaDist {} = Just d
 isDistDouble d@UniformDist {} = Just d
-isDistDouble d@DiscrUniformDist {} = Nothing
-isDistDouble d@BinomialDist {} = Nothing
-isDistDouble d@CategoricalDist {} = Nothing
-isDistDouble d@DiscreteDist {} = Nothing
-isDistDouble d@BernoulliDist {} = Nothing
-isDistDouble d@PoissonDist {} = Nothing
+isDistDouble _ = Nothing
 
 isDistBool :: Dist x -> Maybe (Dist Bool)
 isDistBool d@BernoulliDist {} = Just d
-isDistBool d@HalfCauchyDist {} = Nothing
-isDistBool d@CauchyDist {} = Nothing
-isDistBool d@HalfNormalDist {} = Nothing
-isDistBool d@NormalDist {} = Nothing
-isDistBool d@BetaDist {} = Nothing
-isDistBool d@GammaDist {} = Nothing
-isDistBool d@UniformDist {} = Nothing
-isDistBool d@DiscrUniformDist {} = Nothing
-isDistBool d@BinomialDist {} = Nothing
-isDistBool d@CategoricalDist {} = Nothing
-isDistBool d@DiscreteDist {} = Nothing
-isDistBool d@PoissonDist {} = Nothing
+isDistBool _ = Nothing
 
 isDistInt :: Dist x -> Maybe (Dist Int)
 isDistInt d@DiscrUniformDist {} = Just d
@@ -203,14 +204,7 @@ isDistInt d@BinomialDist {} = Just d
 isDistInt d@CategoricalDist {} = Just d
 isDistInt d@DiscreteDist {} = Just d
 isDistInt d@PoissonDist {} = Just d
-isDistInt d@BernoulliDist {} = Nothing
-isDistInt d@NormalDist {} = Nothing
-isDistInt d@HalfNormalDist {} = Nothing
-isDistInt d@CauchyDist {} = Nothing
-isDistInt d@HalfCauchyDist {} = Nothing
-isDistInt d@BetaDist {} = Nothing
-isDistInt d@GammaDist {} = Nothing
-isDistInt d@UniformDist {} = Nothing
+isDistInt _ = Nothing
 
 type TagMap = Map Tag Int
 
@@ -324,6 +318,7 @@ hasObs d@(BernoulliDist _ obs _)      = isJust obs
 hasObs d@(CategoricalDist _ obs _)    = isJust obs
 hasObs d@(DiscreteDist _ obs _)       = isJust obs
 hasObs d@(PoissonDist _ obs _)        = isJust obs
+hasObs d@(DirichletDist _ obs _)      = isJust obs
 
 hasTag :: Dist a -> Bool
 hasTag d@(HalfCauchyDist _ _ tag)       = isJust tag
@@ -339,6 +334,7 @@ hasTag d@(BernoulliDist _ _ tag)      = isJust tag
 hasTag d@(CategoricalDist _ _ tag)    = isJust tag
 hasTag d@(DiscreteDist _ _ tag)       = isJust tag
 hasTag d@(PoissonDist _ _ tag)        = isJust tag
+hasTag d@(DirichletDist _ _ tag)      = isJust tag
 
 getObs :: Dist a -> a
 getObs d@(HalfCauchyDist _ obs _)     = fromJust obs
@@ -354,6 +350,7 @@ getObs d@(BernoulliDist _ obs _)      = fromJust obs
 getObs d@(CategoricalDist _ obs _)    = fromJust obs
 getObs d@(DiscreteDist _ obs _)       = fromJust obs
 getObs d@(PoissonDist _ obs _)        = fromJust obs
+getObs d@(DirichletDist _ obs _)      = fromJust obs
 
 getTag :: Dist a -> String
 getTag d@(HalfCauchyDist _ _ tag)     = fromJust tag
@@ -369,8 +366,15 @@ getTag d@(BernoulliDist _ _ tag)      = fromJust tag
 getTag d@(CategoricalDist _ _ tag)    = fromJust tag
 getTag d@(DiscreteDist _ _ tag)       = fromJust tag
 getTag d@(PoissonDist _ _ tag)        = fromJust tag
+getTag d@(DirichletDist _ _ tag)      = fromJust tag
+
 
 prob :: Dist a -> a -> Double
+prob (DirichletDist xs _ _) ys =
+    case dirichletDistribution (UV.fromList xs)
+      of Left e -> error "dirichlet error"
+         Right d -> let Exp p = dirichletDensity d (UV.fromList ys)
+                        in  p
 prob d@HalfCauchyDist {} y
   = density d y
 prob d@CauchyDist {} y
@@ -430,3 +434,5 @@ sample (DiscreteDist ps obs _)      =
   createSampler (sampleDiscrete (map snd ps)) >>= \i -> return (fst $ ps !! i)
 sample (PoissonDist λ obs _) =
   createSampler (samplePoisson λ)
+sample (DirichletDist xs _ _) =
+  createSampler (sampleDirichlet xs)

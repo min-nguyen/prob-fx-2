@@ -627,7 +627,7 @@ testSIRLWInf = do
         map (\((xs, ys), sampleMap, p) -> ((map fromLatentState xs, ys), sampleMap, p)) output
   return output'
 
-testSIRMHPost ::  Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum MH.Vals)])]
+testSIRMHPost ::  Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
 testSIRMHPost = do
   let sir_n_samples = 10
   bs <- map fst <$> Basic.basic sir_n_samples
@@ -645,25 +645,31 @@ testSIRMHPost = do
             logps'   = Map.toList logps
         in  (xy, samples', logps') ) mhTrace
       mhTrace'' = map (\((xs, ys), sampleMap, p) -> ((map fromLatentState xs, ys), sampleMap, p)) mhTrace'
-  return (map fstsnd3 mhTrace'')
+  return mhTrace''
 
--- testSIRMHPred :: Sampler ([(Int, Int, Int)], [Int])
--- testSIRMHPred = do
---   mhTrace <- testSIRMHPost
---   let postParams = getPostParams [("ρ", 0), ("β", 0), ("γ", 0)] mhTrace
---       ρ    = lookupTag "ρ" postParams
---       β    = lookupTag "β" postParams
---       γ    = lookupTag "γ" postParams
---   liftS $ print $ show (ρ, β, γ)
---   bs <- Basic.basic 1
---                     (Example.hmmSIRNsteps (fixedParams 763 1) 200)
---                     [latentState 762 1 0] [mkRecordSIR (ρ, β, γ)]
---   let output = map ((\(xs, ys) -> (map fromLatentState xs, ys)) . fst) bs
---   liftS $ print $ show (map fst bs)
---   return $ head output
+testSIRMHPred :: Sampler ([(Int, Int, Int)], [Int])
+testSIRMHPred = do
+  mhTrace <- testSIRMHPost
+  -- mhTrace' =
+  let postParams = getPostParams [("ρ", 0), ("β", 0), ("γ", 0)] mhTrace
+      ρ    = lookupTag "ρ" postParams
+      β    = lookupTag "β" postParams
+      γ    = lookupTag "γ" postParams
+  liftS $ print $ show (ρ, β, γ)
+  bs <- Basic.basic 1
+                    (Example.hmmSIRNsteps (fixedParams 763 1) 200)
+                    [latentState 762 1 0] [mkRecordSIR (ρ, β, γ)]
+  let output = map ((\(xs, ys) -> (map fromLatentState xs, ys)) . fst) bs
+  liftS $ print $ show (map fst bs)
+  return $ head output
 
+mkRecordDir :: LRec Example.DirEnv
+mkRecordDir = #xs @= [0.9967905431482104,3.2094568517896955e-3] <: nil
+
+testHalfNormal :: Sampler ()
 testHalfNormal = do
-  map fst <$> Basic.basic 10 Example.halfNorm [1] [nil]
+  LW.lw 1 Example.halfNorm [1] [mkRecordDir]
+  return ()
   -- let p = prob (HalfNormalDist 1 Nothing Nothing) (0)
   -- let p' = prob (NormalDist 0 1 Nothing Nothing) 0
   -- return (p, p')

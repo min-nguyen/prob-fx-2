@@ -74,7 +74,7 @@ Repeat:
    The acceptance ratio is then: i) * ii) / iii)
 -}
 
-type Vals = '[Int, Double, Bool]
+type Vals = '[Int, Double, [Double], Bool]
 
 type LogP = Map Addr Double
 type Ⲭ    = Map Addr (DistInfo, OpenSum Vals)
@@ -205,6 +205,9 @@ transformMH = loop
       Samp d α
         -> case d of
               -- We can unsafe coerce x here, because we've inferred the type of x from the distribution's type
+              DistDoubles (Just d) -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
+                                            modify (updateLogP α d (unsafeCoerce x)) >>
+                                            loop (k x))
               DistDouble (Just d) -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
                                             modify (updateLogP α d (unsafeCoerce x)) >>
                                             loop (k x))
@@ -242,6 +245,10 @@ runObserve = loop 0
               do let p' = prob d (unsafeCoerce y :: Bool)
                 --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Bool) ++ " from " ++ show d ++ " is " ++ show p'
                  loop (p + p') (k y)
+            DistDoubles (Just d) ->
+              do  let p' = prob d (unsafeCoerce y :: [Double])
+                  -- prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show p'
+                  loop (p + p') (k y)
             DistDouble (Just d) ->
               do  let p' = prob d (unsafeCoerce y :: Double)
                   -- prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show p'
@@ -265,6 +272,16 @@ runSample α_samp samples = loop
        liftS (putStrLn s) >> loop (k ())
       Just (Sample d α) ->
         case d of
+          DistDoubles (Just d) -> do
+            m <- lookupSample samples d α α_samp
+            case m of
+              Nothing -> do
+                x <- sample d
+                --liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                (loop . k . unsafeCoerce) x
+              Just x  -> do
+                --liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                (loop . k . unsafeCoerce) x
           DistDouble (Just d) -> do
             m <- lookupSample samples d α α_samp
             case m of
@@ -297,7 +314,7 @@ runSample α_samp samples = loop
                 (loop . k . unsafeCoerce) x
       _  -> error "Impossible: Nothing cannot occur"
 
-lookupSample :: OpenSum.Member a '[Int, Double, Bool] => Ⲭ -> Dist a -> Addr -> Addr -> Sampler (Maybe a)
+lookupSample :: OpenSum.Member a '[Int, Double, [Double], Bool] => Ⲭ -> Dist a -> Addr -> Addr -> Sampler (Maybe a)
 lookupSample samples d α α_samp
   | α == α_samp = return Nothing
   | otherwise   = do
