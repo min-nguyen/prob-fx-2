@@ -583,11 +583,13 @@ def main():
   if arg == "topic-mh-post":
     words       = [ d[0] for d in data] #np.array(data[0])
     sampleMaps  = [ d[1] for d in data]
+    topic_ps    = np.array([ [ d1[1] for d1 in d if d1[0] == ('topic_p', 0)] for d in sampleMaps ])
     topic_0     = np.array([ [ d1[1] for d1 in d if d1[0] == ('word_p', 0)] for d in sampleMaps ])
     topic_1     = np.array([ [ d1[1] for d1 in d if d1[0] == ('word_p', 1)] for d in sampleMaps ])
     print(sampleMaps)
-    print(topic_0)
-    print(topic_1)
+    print(topic_ps)
+    # print(topic_0)
+    # print(topic_1)
 if __name__ == "__main__":
   main()
 

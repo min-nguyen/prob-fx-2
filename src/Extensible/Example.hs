@@ -340,22 +340,23 @@ halfNorm n = do
 -- | Topic model
 
 type TopicEnv =
-  '[ "word" ':> String,
-     "word_p" ':> Double
+  '[ "topic_p" ':> Double,
+     "word_p" ':> Double,
+     "word" ':> String
    ]
 
 -- Probability of each topic
 wordDist :: HasVar s "word" String => [String] -> [Double] -> Model s es String
 wordDist words ps = categorical' (zip words ps) #word
 
-topicDist :: Int -> Model s es [Double]
-topicDist n_topics = dirichlet (replicate n_topics 1)
+topicDist :: HasVar s "topic_p" Double => Int -> Model s es [Double]
+topicDist n_topics = dirichlet' (replicate n_topics 1) #topic_p
 
-topicModel :: (HasVar s "word_p" Double, HasVar s "word" String) => [String] -> Int -> Int -> Model s es [String]
+topicModel :: (HasVar s "word_p" Double, HasVar s "topic_p" Double, HasVar s "word" String) => [String] -> Int -> Int -> Model s es [String]
 topicModel vocab n_topics n_words = do
   -- Distribution over words for each topic
   topics   <- replicateM n_topics $ dirichlet' (replicate (length vocab) 1) #word_p
-  -- Distribution over topics
+  -- Distribution over topics for a given document
   topic_ps <- topicDist n_topics
   words    <- replicateM n_words (do  z <- discrete topic_ps
                                       let topic = topics !! z

@@ -675,22 +675,20 @@ testHalfNormal = do
   -- let p' = prob (NormalDist 0 1 Nothing Nothing) 0
   -- return (p, p')
 
-mkRecordTopic :: ([String], [Double]) -> LRec Example.TopicEnv
-mkRecordTopic (ws, wps) =  #word @= ws <: #word_p @= wps <: nil
+mkRecordTopic :: ([Double], [Double], [String]) -> LRec Example.TopicEnv
+mkRecordTopic (tps, wps, ys) =  #topic_p @= tps <:  #word_p @= wps <: #word @= ys <:nil
 
 
 testTopicBasic :: Sampler [[String]]
 testTopicBasic = do
   bs <- Basic.basic 1 (Example.topicModel vocabulary 2)
-                        [10] [mkRecordTopic ([], [0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638,1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021])]
+                        [10] [mkRecordTopic ([], [0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638,1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021], [])]
   return $ map fst bs
 
 testTopicMHPost :: Sampler [([String], [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
 testTopicMHPost = do
-  -- bs <- Basic.basic 100 (Example.topicModel vocabulary 2)
-  --                       [10] [mkRecordTopic ([], [0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638,1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021])]
-  mhTrace <- MH.mh 100 (Example.topicModel vocabulary 2) ["word_p"]
-                       (repeat 10) (map (\ws -> mkRecordTopic (ws,[])) corpus)
+  mhTrace <- MH.mh 100 (Example.topicModel vocabulary 2) ["word_p", "topic_p"]
+                       (repeat 10) (map (\ws -> mkRecordTopic ([], [], ws)) corpus)
   let mhTrace' = map (\(xy, samples, logps) ->
         let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
             logps'   = Map.toList logps
