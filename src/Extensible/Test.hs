@@ -669,8 +669,23 @@ mkRecordDir ds = #xs @= ds <: nil
 
 -- testHalfNormal :: Sampler [String]
 testHalfNormal = do
- LW.lw 5 Example.halfNorm [1] [mkRecordDir []]
-
+ map fst <$> Basic.basic 1 Example.halfNorm [1] [mkRecordDir []]
   -- let p = prob (HalfNormalDist 1 Nothing Nothing) (0)
   -- let p' = prob (NormalDist 0 1 Nothing Nothing) 0
   -- return (p, p')
+
+mkRecordTopic :: ([String], [Double]) -> LRec Example.TopicEnv
+mkRecordTopic (ws, wps) =  #word @= ws <: #word_p @= wps <: nil
+
+
+testTopicBasic :: Sampler [[String]]
+testTopicBasic = do
+  bs <- Basic.basic 1 (Example.topicModel vocabulary 2)
+                        [10] [mkRecordTopic ([], [0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638,1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021])]
+  return $ map fst bs
+
+-- testTopicMHPost :: Sampler [[String]]
+-- testTopicMHPost = do
+--   bs <- Basic.basic 1 (Example.topicModel vocabulary 2)
+--                         (replicate 6 10) (map mkRecordTopic corpus)
+--   return $ map fst bs

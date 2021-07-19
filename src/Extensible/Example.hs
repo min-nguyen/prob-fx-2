@@ -328,15 +328,21 @@ type DirEnv =
   '[ "xs" ':> Double
    ]
 
-halfNorm :: HasVar s "xs" Double => Int -> Model s es String
+halfNorm :: HasVar s "xs" Double => Int -> Model s es [[Double]]
 halfNorm n = do
   -- s <- halfNormal 1
   -- x <- cauchy 0 1
   -- xs <- dirichlet' [0.3, 0.2] #xs
   xs <- categorical [("hi", 1), ("bye", 0.5)]
-  return xs
+  topics   <- replicateM 2 $ dirichlet (replicate 4 1)
+  return topics
 
 -- | Topic model
+
+type TopicEnv =
+  '[ "word" ':> String,
+     "word_p" ':> Double
+   ]
 
 -- Probability of each topic
 wordDist :: HasVar s "word" String => [String] -> [Double] -> Model s es String
@@ -345,13 +351,18 @@ wordDist words ps = categorical' (zip words ps) #word
 topicDist :: Int -> Model s es [Double]
 topicDist n_topics = dirichlet (replicate n_topics 1)
 
-topicModel :: HasVar s "word" String => [String] -> [[String]] -> Int -> Model s es ()
-topicModel vocab corpus n_topics = do
-  -- List of probabilities of words for each topic
-  topics <- replicateM n_topics $ dirichlet (replicate (length vocab) 1)
-  let output = map (\doc -> do topic_ps <- topicDist n_topics
-                               mapM (\word -> do z <- discrete topic_ps
-                                                 let topic = topics !! z
-                                                 categorical (zip vocab topic)) doc
-                               ) corpus
-  return ()
+topicModel :: (HasVar s "word_p" Double, HasVar s "word" String) => [String] -> Int -> Int -> Model s es [String]
+topicModel vocab n_topics n_words = do
+  -- Distribution over words for each topic
+  topics   <- replicateM n_topics $ dirichlet' (replicate (length vocab) 1) #word_p
+  -- Distribution over topics
+  topic_ps <- topicDist n_topics
+  words    <- replicateM n_words (do  z <- discrete topic_ps
+                                      let topic = topics !! z
+                                      categorical' (zip vocab topic) #word)
+  -- let output = map (\doc -> do topic_ps <- topicDist n_topics
+  --                              mapM (\word -> do z <- discrete topic_ps
+  --                                                let topic = topics !! z
+  --                                                categorical (zip vocab topic)) doc
+  --                              ) corpus
+  return words

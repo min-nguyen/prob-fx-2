@@ -9,6 +9,18 @@ replaceWord s =
       s'   = map repl s
   in  s'
 
+vocabulary :: [String]
+vocabulary = ["DNA", "evolution", "parsing", "phonology"]
+
+corpus :: [[String]]
+corpus = [
+  ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution"],
+  ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution"],
+  ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution"],
+  ["parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology"],
+  ["parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology"],
+  ["parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology"]]
+
 n_counties :: Int
 n_counties = 85
 
