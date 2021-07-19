@@ -112,31 +112,31 @@ data Dist a where
 
 instance Show a => Show (Dist a) where
   show (CauchyDist mu sigma y tag) =
-    "CauchyDist(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
+   "CauchyDist(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
   show (HalfCauchyDist sigma y tag) =
-    "HalfCauchyDist(" ++ show sigma ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
+   "HalfCauchyDist(" ++ show sigma ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
   show (NormalDist mu sigma y tag) =
-    "NormalDist(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
+   "NormalDist(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
   show (HalfNormalDist sigma y tag) =
-    "HalfNormalDist(" ++ show sigma ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
+   "HalfNormalDist(" ++ show sigma ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
   show (BernoulliDist p y tag) =
-    "BernoulliDist(" ++ show p ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
+   "BernoulliDist(" ++ show p ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
   show (BinomialDist n p y tag) =
-    "BinomialDist(" ++ show n ++ ", " ++ show p ++ ", " ++ show y ++ ", " ++ show tag ++  ")"
+   "BinomialDist(" ++ show n ++ ", " ++ show p ++ ", " ++ show y ++ ", " ++ show tag ++  ")"
   show (DiscreteDist ps y tag) =
-    "DiscreteDist(" ++ show ps ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
+   "DiscreteDist(" ++ show ps ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
   show (BetaDist a b y tag) =
-    "BetaDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ", " ++ show tag ++ ")"
+   "BetaDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ", " ++ show tag ++ ")"
   show (GammaDist a b y tag) =
-    "GammaDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ", " ++ show tag ++ ")"
+   "GammaDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ", " ++ show tag ++ ")"
   show (UniformDist a b y tag) =
-    "UniformDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ", " ++ show tag ++ ")"
+   "UniformDist(" ++ show a ++ ", " ++ show b ++ "," ++ show y ++ ", " ++ show tag ++ ")"
   show (DiscrUniformDist min max y tag) =
-    "DiscrUniformDist(" ++ show min ++ ", " ++ show max ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
+   "DiscrUniformDist(" ++ show min ++ ", " ++ show max ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
   show (PoissonDist l y tag) =
-    "PoissonDist(" ++ show l ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
+   "PoissonDist(" ++ show l ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
   show (CategoricalDist xs y tag) =
-    "CategoricalDist(" ++ show xs ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
+   "CategoricalDist(" ++ show xs ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
 
 type Tag  = String
 type Addr = (Tag, Int)
@@ -369,7 +369,6 @@ getTag d@(BernoulliDist _ _ tag)      = fromJust tag
 getTag d@(CategoricalDist _ _ tag)    = fromJust tag
 getTag d@(DiscreteDist _ _ tag)       = fromJust tag
 getTag d@(PoissonDist _ _ tag)        = fromJust tag
-
 
 prob :: Dist a -> a -> Double
 prob d@HalfCauchyDist {} y

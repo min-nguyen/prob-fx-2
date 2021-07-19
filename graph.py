@@ -14,6 +14,8 @@ from functools import reduce
 import itertools
 from scipy.stats import gaussian_kde
 from scipy.interpolate import make_interp_spline
+import pymc3 as pm
+
 
 # Remove consecutive duplicates
 def removeDuplicates(xs):
@@ -26,10 +28,18 @@ def main():
   # print(l)
   data = ast.literal_eval(f.read().replace('-Infinity', '-2e308')) #
   color_map = plt.cm.get_cmap('Blues')
-  # X, Y = make_moons(noise=0.2, random_state=0, n_samples=1000)
-  # X = scale(X)
-  # X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.5)
-  # X_test_tuple = [ tuple(x_test) for x_test in X_test]
+
+  data = pd.read_csv(pm.get_data("radon.csv"))
+  data["log_radon"] = data["log_radon"]
+  county_names = data.county.unique()
+  county_idx = data.county_code.values
+
+  n_counties = len(data.county.unique())
+  a = np.array([i for i in range(86)])
+  # b = a[2,4,4]
+  # print(data[["county", "log_radon", "floor"]])
+  print(a[county_idx])
+  # print(data.floor.values)
   if arg == "lin-regr-basic":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
