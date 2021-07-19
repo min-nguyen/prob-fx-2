@@ -51,8 +51,8 @@ data DistInfo where
   BetaDistI          :: Double -> Double -> DistInfo
   BinomialDistI      :: Int    -> Double -> DistInfo
   BernoulliDistI     :: Double -> DistInfo
-  CategoricalDistI   :: [(Int, Double)] -> DistInfo
-  DiscreteDistI      :: [(Int, Double)] -> DistInfo
+  CategoricalDistI   :: [(String, Double)] -> DistInfo
+  DiscreteDistI      :: [Double] -> DistInfo
   PoissonDistI       :: Double -> DistInfo
   DirichletDistI     :: [Double] -> DistInfo
   deriving Eq
@@ -114,8 +114,8 @@ data Dist a where
   BetaDist          :: Double -> Double -> Maybe Double -> Maybe String ->  Dist Double
   BinomialDist      :: Int    -> Double -> Maybe Int -> Maybe String -> Dist Int
   BernoulliDist     :: Double -> Maybe Bool -> Maybe String -> Dist Bool
-  CategoricalDist   :: [(Int, Double)] -> Maybe Int -> Maybe String -> Dist Int
-  DiscreteDist      :: [(Int, Double)] -> Maybe Int -> Maybe String -> Dist Int
+  CategoricalDist   :: [(String, Double)] -> Maybe String -> Maybe String -> Dist String
+  DiscreteDist      :: [Double] -> Maybe Int -> Maybe String -> Dist Int
   PoissonDist       :: Double -> Maybe Int -> Maybe String -> Dist Int
   DirichletDist     :: [Double] -> Maybe [Double] -> Maybe String -> Dist [Double]
 
@@ -179,6 +179,12 @@ pattern DistBool :: Maybe (Dist Bool) -> Dist x
 pattern DistBool d <- (isDistBool -> d)
 pattern DistInt :: Maybe (Dist Int) -> Dist x
 pattern DistInt d <- (isDistInt -> d)
+pattern DistString :: Maybe (Dist String) -> Dist x
+pattern DistString d <- (isDistString -> d)
+
+isDistString :: Dist x -> Maybe (Dist String)
+isDistString d@CategoricalDist {} = Just d
+isDistString _ = Nothing
 
 isDistDoubles :: Dist x -> Maybe (Dist [Double])
 isDistDoubles d@DirichletDist {} = Just d
@@ -201,7 +207,6 @@ isDistBool _ = Nothing
 isDistInt :: Dist x -> Maybe (Dist Int)
 isDistInt d@DiscrUniformDist {} = Just d
 isDistInt d@BinomialDist {} = Just d
-isDistInt d@CategoricalDist {} = Just d
 isDistInt d@DiscreteDist {} = Just d
 isDistInt d@PoissonDist {} = Just d
 isDistInt _ = Nothing
@@ -260,9 +265,9 @@ instance Distribution (Dist a) where
   cumulative (BernoulliDist p _ _) x
     = cumulative (binomial 1 p) x
   cumulative (CategoricalDist ps _ _) x
-    = foldr (\(a, ap) p -> if fromIntegral a <= x then p + ap else p) 0 ps
+    = undefined -- foldr (\(a, ap) p -> if fromIntegral a <= x then p + ap else p) 0 ps
   cumulative (DiscreteDist ps _ _) x
-    = foldr (\(a, ap) p -> if fromIntegral a <= x then p + ap else p) 0 ps
+    = cumulative (uniformDistr 0 (fromIntegral $ length ps)) x
   cumulative (PoissonDist λ _ _) x
     = cumulative (poisson λ) x
   cumulative (DiscrUniformDist min max _ _) x
@@ -294,13 +299,13 @@ instance DiscreteDistr (Dist a) where
   probability (BinomialDist n p _ _) i            = probability (binomial n p) i
   probability (BernoulliDist p _ _) i             = probability (binomial 1 p) i
   probability (CategoricalDist ps _ _) i          = snd (ps !! i)
-  probability (DiscreteDist ps _ _) i             = snd (ps !! i)
+  probability (DiscreteDist ps _ _) i             = (ps !! i)
   probability (DiscrUniformDist min max _ _) i    = probability (discreteUniformAB min max) i
   probability (PoissonDist λ _ _) i               = probability (poisson λ) i
   logProbability (BinomialDist n p _ _) i         = logProbability (binomial n p) i
   logProbability (BernoulliDist p _ _) i          = logProbability (binomial 1 p) i
   logProbability (CategoricalDist ps _ _) i       = (log . snd) (ps !! i)
-  logProbability (DiscreteDist ps _ _) i          = (log . snd) (ps !! i)
+  logProbability (DiscreteDist ps _ _) i          = (log ) (ps !! i)
   logProbability (DiscrUniformDist min max _ _) i = logProbability (discreteUniformAB min max) i
   logProbability (PoissonDist λ _ _) i = logProbability (poisson λ) i
 
@@ -395,8 +400,8 @@ prob d@BinomialDist {} y
   = probability d y
 prob d@BernoulliDist {} y
   = probability d (boolToInt y)
-prob d@CategoricalDist {} y
-  = probability d y
+prob d@(CategoricalDist ps _ _) y
+  = fromJust $ lookup y ps
 prob d@DiscreteDist {} y
   = probability d y
 prob d@PoissonDist {} y
@@ -429,9 +434,9 @@ sample (BinomialDist n p  obs _)     =
 sample (BernoulliDist p obs _)      =
   createSampler (sampleBernoulli p)
 sample (CategoricalDist ps obs _)   =
-  createSampler (sampleCategorical (V.fromList $ fmap snd ps))
+  createSampler (sampleCategorical (V.fromList $ fmap snd ps)) >>= \i -> return $ fst $ ps !! i
 sample (DiscreteDist ps obs _)      =
-  createSampler (sampleDiscrete (map snd ps)) >>= \i -> return (fst $ ps !! i)
+  createSampler (sampleDiscrete ps)
 sample (PoissonDist λ obs _) =
   createSampler (samplePoisson λ)
 sample (DirichletDist xs _ _) =

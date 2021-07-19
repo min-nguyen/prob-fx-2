@@ -124,13 +124,26 @@ dirichlet' xs field = Model $ do
   maybe_y <- sequence <$> replicateM (length xs) (ask getter setter)
   send (DirichletDist xs maybe_y tag)
 
-categorical :: [(Int, Double)] -> Model s es Int
+discrete :: [Double] -> Model s es Int
+discrete xs = Model $ do
+  send (DiscreteDist xs Nothing Nothing)
+
+discrete' :: forall s es a k. (a ~ Int) => OP.Lookup (OP.AsList s) k [a]
+  => [Double] -> OP.Key k
+  -> Model s es Int
+discrete' xs field = Model $ do
+  let tag = Just $ OP.keyToStr field
+      (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])
+  maybe_y <- ask getter setter
+  send (DiscreteDist xs maybe_y tag)
+
+categorical :: [(String, Double)] -> Model s es String
 categorical xs = Model $ do
   send (CategoricalDist xs Nothing Nothing)
 
-categorical' :: forall s es a k. (a ~ Int) => OP.Lookup (OP.AsList s) k [a]
-  => [(Int, Double)] -> OP.Key k
-  -> Model s es Int
+categorical' :: forall s es a k. (a ~ String) => OP.Lookup (OP.AsList s) k [a]
+  => [(String, Double)] -> OP.Key k
+  -> Model s es String
 categorical' xs field = Model $ do
   let tag = Just $ OP.keyToStr field
       (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])

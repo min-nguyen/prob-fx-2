@@ -25,7 +25,7 @@ import Extensible.State
 import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum(..))
 
-type Vals = '[Int, Double, [Double], Bool]
+type Vals = '[Int, Double, [Double], Bool, String]
 
 type Ⲭ = Map Addr (OpenSum Vals)
 
@@ -85,6 +85,8 @@ transformLW = loop
               DistBool (Just d)   -> Free u (\x -> do modify (updateMapⲬ α (unsafeCoerce x :: Bool))
                                                       loop (k x))
               DistDoubles (Just d) -> Free u (\x -> do modify (updateMapⲬ α (unsafeCoerce x :: [Double]))
+                                                       loop (k x))
+              DistString (Just d) -> Free u (\x ->  do modify (updateMapⲬ α (unsafeCoerce x :: String))
                                                        loop (k x))
       _ -> Free u (loop . k)
 

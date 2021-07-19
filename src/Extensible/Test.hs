@@ -667,9 +667,9 @@ mkRecordDir :: [Double] -> LRec Example.DirEnv
 mkRecordDir ds = #xs @= ds <: nil
 
 
-testHalfNormal :: Sampler [[Double]]
+-- testHalfNormal :: Sampler [String]
 testHalfNormal = do
-  map fst <$> Basic.basic 1 Example.halfNorm [1] [mkRecordDir []]
+ LW.lw 5 Example.halfNorm [1] [mkRecordDir []]
 
   -- let p = prob (HalfNormalDist 1 Nothing Nothing) (0)
   -- let p' = prob (NormalDist 0 1 Nothing Nothing) 0

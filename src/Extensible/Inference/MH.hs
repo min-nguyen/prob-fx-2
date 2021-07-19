@@ -74,7 +74,7 @@ Repeat:
    The acceptance ratio is then: i) * ii) / iii)
 -}
 
-type Vals = '[Int, Double, [Double], Bool]
+type Vals = '[Int, Double, [Double], Bool, String]
 
 type LogP = Map Addr Double
 type Ⲭ    = Map Addr (DistInfo, OpenSum Vals)
@@ -282,6 +282,16 @@ runSample α_samp samples = loop
               Just x  -> do
                 --liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
+          DistString (Just d) -> do
+            m <- lookupSample samples d α α_samp
+            case m of
+              Nothing -> do
+                x <- sample d
+                --liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                (loop . k . unsafeCoerce) x
+              Just x  -> do
+                --liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                (loop . k . unsafeCoerce) x
           DistDouble (Just d) -> do
             m <- lookupSample samples d α α_samp
             case m of
@@ -314,7 +324,7 @@ runSample α_samp samples = loop
                 (loop . k . unsafeCoerce) x
       _  -> error "Impossible: Nothing cannot occur"
 
-lookupSample :: OpenSum.Member a '[Int, Double, [Double], Bool] => Ⲭ -> Dist a -> Addr -> Addr -> Sampler (Maybe a)
+lookupSample :: OpenSum.Member a '[Int, Double, [Double], Bool, String] => Ⲭ -> Dist a -> Addr -> Addr -> Sampler (Maybe a)
 lookupSample samples d α α_samp
   | α == α_samp = return Nothing
   | otherwise   = do

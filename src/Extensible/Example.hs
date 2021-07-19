@@ -328,23 +328,30 @@ type DirEnv =
   '[ "xs" ':> Double
    ]
 
--- halfNorm :: HasVar s "xs" Double => Int -> Model s es Int
--- halfNorm n = do
---   -- s <- halfNormal 1
---   -- x <- cauchy 0 1
---   -- xs <- dirichlet' [0.3, 0.2] #xs
---   -- xs <- categorical [("", 1]
---   return xs
+halfNorm :: HasVar s "xs" Double => Int -> Model s es String
+halfNorm n = do
+  -- s <- halfNormal 1
+  -- x <- cauchy 0 1
+  -- xs <- dirichlet' [0.3, 0.2] #xs
+  xs <- categorical [("hi", 1), ("bye", 0.5)]
+  return xs
 
 -- | Topic model
 
-topicModel :: [String] -> [[String]] -> Int -> Model s es ()
-topicModel vocab corpus n_topics = do
-  topics <- replicateM n_topics $ dirichlet (replicate (length vocab) 1)
-  let f doc = do
-        topicDist <- dirichlet (replicate n_topics 1)
+-- Probability of each topic
+wordDist :: HasVar s "word" String => [String] -> [Double] -> Model s es String
+wordDist words ps = categorical' (zip words ps) #word
 
-        undefined
-      -- g word = do
-      --   z <- discrete
+topicDist :: Int -> Model s es [Double]
+topicDist n_topics = dirichlet (replicate n_topics 1)
+
+topicModel :: HasVar s "word" String => [String] -> [[String]] -> Int -> Model s es ()
+topicModel vocab corpus n_topics = do
+  -- List of probabilities of words for each topic
+  topics <- replicateM n_topics $ dirichlet (replicate (length vocab) 1)
+  let output = map (\doc -> do topic_ps <- topicDist n_topics
+                               mapM (\word -> do z <- discrete topic_ps
+                                                 let topic = topics !! z
+                                                 categorical (zip vocab topic)) doc
+                               ) corpus
   return ()
