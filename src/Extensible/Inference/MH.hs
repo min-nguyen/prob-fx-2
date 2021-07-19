@@ -101,10 +101,10 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   -- putStrLn $ " dom_logα is " ++ show dom_logα
   let _Xlogα     = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ))
                          0 (Map.keysSet logℙ \\ _Xsampled)
-  -- putStrLn $ " Xlogα is " ++ show _Xlogα ++ " from " ++ show (Map.keysSet logℙ \\ _Xsampled)
+  -- putStrLn $ " Xlogα is " ++ show _Xlogα ++ " from " ++ show (logℙ)
   let _X'logα    = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ'))
                          0 (Map.keysSet logℙ' \\ _X'sampled)
-  -- putStrLn $ " X'logα is " ++ show _X'logα ++ " from " ++ show (Map.keysSet logℙ' \\ _X'sampled)
+  -- putStrLn $ " X'logα is " ++ show _X'logα ++ " from " ++ show (logℙ')
   -- putStrLn $ " X'logα - Xlogα is " ++ show (_X'logα - _Xlogα)
   return $ exp (dom_logα + _X'logα - _Xlogα)
 
@@ -205,8 +205,10 @@ transformMH = loop
       Samp d α
         -> case d of
               -- We can unsafe coerce x here, because we've inferred the type of x from the distribution's type
-              DistDoubles (Just d) -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
-                                            modify (updateLogP α d (unsafeCoerce x)) >>
+              DistDoubles (Just d) -> Free u (\x -> do
+                                            modify (updateMapⲬ α d (unsafeCoerce x))
+                                            modify (updateLogP α d (unsafeCoerce x))
+                                            -- prinT $ "Prob of observing " ++ show (unsafeCoerce x :: [Double]) ++ " from " ++ show (toDistInfo d) ++ " is " ++ show (prob d (unsafeCoerce x))
                                             loop (k x))
               DistDouble (Just d) -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
                                             modify (updateLogP α d (unsafeCoerce x)) >>
@@ -215,6 +217,9 @@ transformMH = loop
                                             modify (updateLogP α d (unsafeCoerce x)) >>
                                             loop (k x))
               DistInt (Just d)    -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
+                                            modify (updateLogP α d (unsafeCoerce x)) >>
+                                            loop (k x))
+              DistString (Just d) -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
                                             modify (updateLogP α d (unsafeCoerce x)) >>
                                             loop (k x))
       Obs d y α
@@ -241,6 +246,10 @@ runObserve = loop 0
     case decomp u of
       Right (Observe d y α)
         -> case d of
+            DistString (Just d) ->
+              do let p' = prob d (unsafeCoerce y :: String)
+                --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: String) ++ " from " ++ show d ++ " is " ++ show p'
+                 loop (p + p') (k y)
             DistBool (Just d) ->
               do let p' = prob d (unsafeCoerce y :: Bool)
                 --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Bool) ++ " from " ++ show d ++ " is " ++ show p'

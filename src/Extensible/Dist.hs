@@ -376,10 +376,12 @@ getTag d@(DirichletDist _ _ tag)      = fromJust tag
 
 prob :: Dist a -> a -> Double
 prob (DirichletDist xs _ _) ys =
-    case dirichletDistribution (UV.fromList xs)
+  let xs' = map (/(Prelude.sum xs)) xs
+  in  if Prelude.sum xs' /= 1 then error "dirichlet can't normalize" else
+      case dirichletDistribution (UV.fromList xs')
       of Left e -> error "dirichlet error"
          Right d -> let Exp p = dirichletDensity d (UV.fromList ys)
-                        in  p
+                        in  exp p
 prob d@HalfCauchyDist {} y
   = density d y
 prob d@CauchyDist {} y

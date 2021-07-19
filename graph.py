@@ -29,16 +29,16 @@ def main():
   data = ast.literal_eval(f.read().replace('-Infinity', '-2e308')) #
   color_map = plt.cm.get_cmap('Blues')
 
-  data = pd.read_csv(pm.get_data("radon.csv"))
-  data_log_radon = data["log_radon"]
-  county_names = data.county.unique()
-  county_idx = data.county_code.values
+  # data = pd.read_csv(pm.get_data("radon.csv"))
+  # data_log_radon = data["log_radon"]
+  # county_names = data.county.unique()
+  # county_idx = data.county_code.values
 
-  n_counties = len(data.county.unique())
-  a = np.array([i for i in range(86)])
+  # n_counties = len(data.county.unique())
+  # a = np.array([i for i in range(86)])
   # b = a[2,4,4]
   # print(data[["county", "log_radon", "floor"]])
-  print(data)
+  # print(data)
   # print(data.floor.values)
   if arg == "lin-regr-basic":
     xys =  [[ i for i, j in data ],
@@ -572,5 +572,12 @@ def main():
     axs1.set_title('SIR model - Basic Simulation')
     plt.legend()
     plt.show()
+  if arg == "topic-mh-post":
+    words       = [ d[0] for d in data] #np.array(data[0])
+    sampleMaps  = [ d[1] for d in data]
+    topic_0     = np.array([ [ d1[1] for d1 in d if d1[0] == ('word_p', 0)] for d in sampleMaps ])
+    topic_1     = np.array([ [ d1[1] for d1 in d if d1[0] == ('word_p', 1)] for d in sampleMaps ])
+    print(sampleMaps)
+    print(topic_0)
 if __name__ == "__main__":
   main()

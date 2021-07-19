@@ -328,14 +328,14 @@ type DirEnv =
   '[ "xs" ':> Double
    ]
 
-halfNorm :: HasVar s "xs" Double => Int -> Model s es [[Double]]
+halfNorm :: HasVar s "xs" Double => Int -> Model s es [Double]
 halfNorm n = do
   -- s <- halfNormal 1
   -- x <- cauchy 0 1
-  -- xs <- dirichlet' [0.3, 0.2] #xs
-  xs <- categorical [("hi", 1), ("bye", 0.5)]
-  topics   <- replicateM 2 $ dirichlet (replicate 4 1)
-  return topics
+  xs <- dirichlet' [0.5, 0.5] #xs
+  -- xs <- categorical [("hi", 1), ("bye", 0.5)]
+  -- topics   <- replicateM 2 $ dirichlet (replicate 4 1)
+  return xs
 
 -- | Topic model
 
