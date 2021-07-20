@@ -663,6 +663,23 @@ testSIRMHPred = do
   liftS $ print $ show (map fst bs)
   return $ head output
 
+
+-- | Hierchical linear regression
+
+type HLREnv =
+  '[ "mu_a" ':> Double, "mu_b" ':> Double, "sigma_a" ':> Double, "sigma_b" ':> Double,
+     "log_radon" ':> Double]
+
+mkRecordHLR :: ([Double], [Double], [Double], [Double], [Double]) -> LRec Example.HLREnv
+mkRecordHLR (mua, mub, siga, sigb, lograds) = #mu_a @= mua <: #mu_b @= mub <: #sigma_a @= siga <: #sigma_b @= sigb <: #log_radon @= lograds <: nil
+
+testHLRBasic :: Sampler [[Double]]
+testHLRBasic = do
+  bs <- Basic.basic 1 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx)
+                        [()] [mkRecordHLR ([], [], [], [], [])]
+  return $ map fst bs
+
+
 mkRecordDir :: [Double] -> LRec Example.DirEnv
 mkRecordDir ds = #xs @= ds <: nil
 
@@ -675,9 +692,10 @@ testHalfNormal = do
   -- let p' = prob (NormalDist 0 1 Nothing Nothing) 0
   -- return (p, p')
 
+
+-- | Topic model
 mkRecordTopic :: ([Double], [Double], [String]) -> LRec Example.TopicEnv
 mkRecordTopic (tps, wps, ys) =  #topic_p @= tps <:  #word_p @= wps <: #word @= ys <:nil
-
 
 testTopicBasic :: Sampler [[String]]
 testTopicBasic = do

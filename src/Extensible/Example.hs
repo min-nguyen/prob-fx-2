@@ -311,18 +311,28 @@ hmmSIRNsteps fixedParams n latentState  = do
 
 -- | Hierarchical Linear Regression
 
-hierarchicalLinRegr :: (HasVar s "mu_a" Double, HasVar s "mu_b" Double, HasVar s "sigma_a" Double, HasVar s "sigma_b" Double)
-  => Int -> [Int] -> [Int] -> Model s es [Double]
-hierarchicalLinRegr n_counties floor_x county_idx = do
-  mu_a <- normal' 0 100 #mu_a
+type HLREnv =
+  '[ "mu_a" ':> Double, "mu_b" ':> Double, "sigma_a" ':> Double, "sigma_b" ':> Double,
+     "log_radon" ':> Double]
+
+-- n counties = 85, len(floor_x) = 919, len(county_idx) = 919
+hierarchicalLinRegr :: (HasVar s "mu_a" Double, HasVar s "mu_b" Double, HasVar s "sigma_a" Double, HasVar s "sigma_b" Double, HasVar s "log_radon" Double)
+  => Int -> [Int] -> [Int] -> () -> Model s es [Double]
+hierarchicalLinRegr n_counties floor_x county_idx _ = do
+  mu_a    <- normal' 0 100 #mu_a
   sigma_a <- halfNormal' 5 #sigma_a
-  mu_b <- normal' 0 100 #mu_b
+  mu_b    <- normal' 0 100 #mu_b
   sigma_b <- halfNormal' 5 #sigma_b
-  a <- replicateM n_counties (normal mu_a sigma_a)
-  b <- replicateM n_counties (normal mu_b sigma_b)
+  a <- replicateM n_counties (normal mu_a sigma_a) -- length = 85
+  b <- replicateM n_counties (normal mu_b sigma_b) -- length = 85
   eps <- halfCauchy 5
-  let radon_est = zipWith (+) (map (a !!) county_idx) (zipWith (*) (map (b !!) county_idx) (map fromIntegral floor_x))
-  return radon_est
+  let a_county_idx = map (a !!) county_idx
+      b_county_idx = map (b !!) county_idx
+      floor_values = map fromIntegral floor_x
+      radon_est = zipWith (+) a_county_idx (zipWith (*) b_county_idx floor_values)
+  radon_like <- mapM (\rad_est -> normal' rad_est eps #log_radon) radon_est
+  let f = ""
+  return radon_like
 
 type DirEnv =
   '[ "xs" ':> Double
@@ -366,4 +376,5 @@ topicModel vocab n_topics n_words = do
   --                                                let topic = topics !! z
   --                                                categorical (zip vocab topic)) doc
   --                              ) corpus
+  let f = ""
   return words

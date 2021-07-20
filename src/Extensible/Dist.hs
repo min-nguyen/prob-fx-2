@@ -403,7 +403,9 @@ prob d@BinomialDist {} y
 prob d@BernoulliDist {} y
   = probability d (boolToInt y)
 prob d@(CategoricalDist ps _ _) y
-  = fromJust $ lookup y ps
+  = case lookup y ps of
+      Nothing -> error $ "Couldn't find " ++ show y ++ " in categorical dist"
+      Just p  -> p
 prob d@DiscreteDist {} y
   = probability d y
 prob d@PoissonDist {} y
