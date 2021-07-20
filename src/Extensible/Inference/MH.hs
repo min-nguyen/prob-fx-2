@@ -248,23 +248,23 @@ runObserve = loop 0
         -> case d of
             DistString (Just d) ->
               do let p' = prob d (unsafeCoerce y :: String)
-                 prinT $ "Prob of observing " ++ show (unsafeCoerce y :: String) ++ " from " ++ show d ++ " is " ++ show p'
+                --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: String) ++ " from " ++ show d ++ " is " ++ show p'
                  loop (p + p') (k y)
             DistBool (Just d) ->
               do let p' = prob d (unsafeCoerce y :: Bool)
-                 prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Bool) ++ " from " ++ show d ++ " is " ++ show p'
+                --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Bool) ++ " from " ++ show d ++ " is " ++ show p'
                  loop (p + p') (k y)
             DistDoubles (Just d) ->
               do  let p' = prob d (unsafeCoerce y :: [Double])
-                  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show p'
+                  -- prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show p'
                   loop (p + p') (k y)
             DistDouble (Just d) ->
               do  let p' = prob d (unsafeCoerce y :: Double)
-                  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show p'
+                  -- prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show p'
                   loop (p + p') (k y)
             DistInt (Just d) ->
               do let p' = prob d (unsafeCoerce y :: Int)
-                 prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Int) ++ " from " ++ show d ++ " is " ++ show p'
+                --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Int) ++ " from " ++ show d ++ " is " ++ show p'
                  loop (p + p') (k y)
             _ -> undefined
       Left  u'  -> Free u' (loop p . k)

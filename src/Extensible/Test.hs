@@ -743,15 +743,16 @@ testHLRBasic = do
   return (basementPoints, nobasementPoints)
   -- return $ map fst bs
 
-testHLRMHPost :: Sampler  [([Double], [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
-testHLRMHPost = do
-  mhTrace <- MH.mh 1 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx) []
+testHLRMHPredictive :: Sampler  ([Double], [(Addr, OpenSum MH.Vals)], [(Addr, Double)])
+testHLRMHPredictive = do
+  mhTrace <- MH.mh 2000 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx) []
                     [()] [mkRecordHLR ([], [], [], [], [], [], logRadon)]
   let mhTrace' = map (\(xy, samples, logps) ->
         let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
             logps'   = Map.toList logps
         in  (xy, samples', logps') ) mhTrace
   liftS $ print $ show $ map snd3 mhTrace'
-  return mhTrace'
+  -- Only returning the last of the mh trace here
+  return (last mhTrace')
   -- return $ map fst bs
 

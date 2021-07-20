@@ -657,14 +657,20 @@ def main():
     plt.scatter(basement_xs, basement_ys, color="r")
     plt.scatter(nobasement_xs, nobasement_ys, color='b')
     plt.show()
-  if arg == "hlr-mh-post":
-    sampleMaps = [d[1] for d in data]
-    intercepts = np.array([[ d1[1] for d1 in d if d1[0][0] == 'a'] for d in sampleMaps ]).ravel()
-    gradients  = np.array([[ d1[1] for d1 in d if d1[0][0] == 'b'] for d in sampleMaps ]).ravel()
-    x = np.arange(0, 1)
-    y = intercepts + x * gradients
-    print(y)
-    # print(intercepts)
+  if arg == "hlr-mh-predictive":
+    sampleMaps = data[1] # Only use last sample
+    intercepts = np.array([ d[1] for d in sampleMaps if d[0][0] == 'a' ]).ravel()
+    gradients  = np.array([ d[1] for d in sampleMaps if d[0][0] == 'b' ]).ravel()
+
+    plt.xticks([0, 1], ["basement", "no basement"])
+    plt.ylabel('Log radon level')
+
+    for (m, c) in zip(gradients, intercepts):
+      x = np.linspace(0, 1, 100)
+      y = m * x + c
+      plt.plot(x, y)
+    plt.show()
+
 if __name__ == "__main__":
   main()
 
