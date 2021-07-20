@@ -728,17 +728,30 @@ type HLREnv =
   '[ "mu_a" ':> Double, "mu_b" ':> Double, "sigma_a" ':> Double, "sigma_b" ':> Double,
      "log_radon" ':> Double]
 
-mkRecordHLR :: ([Double], [Double], [Double], [Double], [Double]) -> LRec Example.HLREnv
-mkRecordHLR (mua, mub, siga, sigb, lograds) = #mu_a @= mua <: #mu_b @= mub <: #sigma_a @= siga <: #sigma_b @= sigb <: #log_radon @= lograds <: nil
+mkRecordHLR :: ([Double], [Double], [Double], [Double], [Double], [Double], [Double]) -> LRec Example.HLREnv
+mkRecordHLR (mua, mub, siga, sigb, a, b, lograds) = #mu_a @= mua <: #mu_b @= mub <: #sigma_a @= siga <: #sigma_b @= sigb <: #a @= a <: #b @= b <: #log_radon @= lograds <: nil
 
 -- testHLRBasic :: Sampler [[Double]]
 testHLRBasic :: Sampler ([Double], [Double])
 testHLRBasic = do
   bs <- map fst <$> Basic.basic 1 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx)
-                        [()] [mkRecordHLR ([1.45], [-0.68], [0.3], [0.2], [])]
+                    [()] [mkRecordHLR ([1.45], [-0.68], [0.3], [0.2], [], [], [])]
   let basementIdxs      = findIndexes dataFloorValues 0
       noBasementIdxs    = findIndexes dataFloorValues 1
       basementPoints    = map (head bs !!) basementIdxs
       nobasementPoints  = map (head bs !!) noBasementIdxs
   return (basementPoints, nobasementPoints)
   -- return $ map fst bs
+
+testHLRMHPost :: Sampler  [([Double], [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testHLRMHPost = do
+  mhTrace <- MH.mh 1 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx) []
+                    [()] [mkRecordHLR ([], [], [], [], [], [], logRadon)]
+  let mhTrace' = map (\(xy, samples, logps) ->
+        let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+            logps'   = Map.toList logps
+        in  (xy, samples', logps') ) mhTrace
+  liftS $ print $ show $ map snd3 mhTrace'
+  return mhTrace'
+  -- return $ map fst bs
+

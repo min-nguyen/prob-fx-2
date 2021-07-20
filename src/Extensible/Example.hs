@@ -361,21 +361,20 @@ topicModel vocab n_topics doc_words = do
 -- | Hierarchical Linear Regression
 
 type HLREnv =
-  '[ "mu_a" ':> Double, "mu_b" ':> Double, "sigma_a" ':> Double, "sigma_b" ':> Double,
-     "log_radon" ':> Double]
+  '[ "mu_a" ':> Double, "mu_b" ':> Double, "sigma_a" ':> Double, "sigma_b" ':> Double, "a" ':> Double, "b" ':> Double,     "log_radon" ':> Double]
 
 -- n counties = 85, len(floor_x) = 919, len(county_idx) = 919
-hierarchicalLinRegr :: (HasVar s "mu_a" Double, HasVar s "mu_b" Double, HasVar s "sigma_a" Double, HasVar s "sigma_b" Double, HasVar s "log_radon" Double)
+hierarchicalLinRegr :: (HasVar s "mu_a" Double, HasVar s "mu_b" Double, HasVar s "sigma_a" Double, HasVar s "sigma_b" Double, HasVar s "a" Double, HasVar s "b" Double, HasVar s "log_radon" Double)
   => Int -> [Int] -> [Int] -> () -> Model s es [Double]
 hierarchicalLinRegr n_counties floor_x county_idx _ = do
-  mu_a    <- normal' 0 100 #mu_a
+  mu_a    <- normal' 0 5 #mu_a
   sigma_a <- halfNormal' 5 #sigma_a
-  mu_b    <- normal' 0 100 #mu_b
+  mu_b    <- normal' 0 5 #mu_b
   sigma_b <- halfNormal' 5 #sigma_b
   -- Intercept for each county
-  a <- replicateM n_counties (normal mu_a sigma_a) -- length = 85
+  a <- replicateM n_counties (normal' mu_a sigma_a #a)  -- length = 85
   -- Gradient for each county
-  b <- replicateM n_counties (normal mu_b sigma_b) -- length = 85
+  b <- replicateM n_counties (normal' mu_b sigma_b #b) -- length = 85
   -- Model error
   eps <- halfCauchy 5
   let -- Get county intercept for each datapoint
