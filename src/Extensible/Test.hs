@@ -9,6 +9,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Extensible.Test where
 
@@ -29,15 +30,16 @@ import Extensible.AffineReader
 -- import Data.Extensible
 import Extensible.OpenProduct
 import Util
+import Debug.Trace
 
 -- | Return the most recent sample map from the mh trace, containing only the provided addresses
-getPostParams :: [Addr] -> [(a, [(Addr, OpenSum MH.Vals)], [(Addr, Double)])] -> [(Addr, Double)]
-getPostParams addrs mhTrace =
+getPostParams :: forall p a. Member p MH.Vals => Proxy p -> [Addr] -> [(a, [(Addr, OpenSum MH.Vals)], [(Addr, Double)])] -> [(Addr, p)]
+getPostParams _ addrs mhTrace =
   let sampleMap = snd3 (last mhTrace)
-  in  [ (addr, x) | addr <- addrs, let x = fromJust (lookup addr sampleMap >>= prj @Double ) ]
+  in  trace (show sampleMap) [ (addr, x) | addr <- addrs, let x = fromJust (lookup addr sampleMap >>= (\x' -> prj @p x') )]
 
 -- List must be sorted
-lookupTag :: Tag ->  [(Addr, Double)] -> [Double]
+lookupTag :: Tag ->  [(Addr, a)] -> [a]
 lookupTag tag xs = [ v | ((t, i), v) <- xs, t == tag]
 
 {- Linear Regression -}
@@ -112,7 +114,7 @@ testLinRegrMHPred :: Sampler [(Double, Double)]
 testLinRegrMHPred = do
   mhTrace <- testLinRegrMHPost
   -- Get the most recent accepted model parameters from the posterior
-  let postParams = getPostParams [("m", 0), ("c", 0), ("σ", 0)] mhTrace
+  let postParams = getPostParams (Proxy @Double) [("m", 0), ("c", 0), ("σ", 0)] mhTrace
       mu         = lookupTag "m" postParams
       c          = lookupTag "c" postParams
       sigma      = lookupTag "σ" postParams
@@ -196,7 +198,7 @@ testLogRegrMHPost = do
 testLogRegrMHPred :: Sampler [(Double, Bool)]
 testLogRegrMHPred = do
   mhTrace <- testLogRegrMHPost
-  let postParams = getPostParams [("m", 0), ("b", 0)] mhTrace
+  let postParams = getPostParams (Proxy @Double) [("m", 0), ("b", 0)] mhTrace
       mu         = lookupTag "m" postParams
       b          = lookupTag "b" postParams
   liftS $ print $ "Using parameters " ++ show (mu, b)
@@ -277,7 +279,7 @@ testNNLinMHPred = do
       addrs      = [ ("weight", i) | i <- [0..(matrix_size - 1)]] ++
                    [ ("bias", i)   | i <- [0..(matrix_size - 1)]] ++
                    [ ("sigma", 0)]
-      postParams = getPostParams addrs mhTrace
+      postParams = getPostParams (Proxy @Double) addrs mhTrace
       weights    = lookupTag "weight" postParams
       bias       = lookupTag "bias" postParams
       sigma      = lookupTag "sigma" postParams
@@ -370,7 +372,7 @@ testNNStepMHPred = do
       addrs      = [ ("weight", i) | i <- [0..(matrix_size - 1)]] ++
                    [ ("bias", i)   | i <- [0..(matrix_size - 1)]] ++
                    [ ("sigma", 0)]
-      postParams = getPostParams addrs mhTrace
+      postParams = getPostParams (Proxy @Double) addrs mhTrace
       weights    = lookupTag "weight" postParams
       bias       = lookupTag "bias" postParams
       sigma      = lookupTag "sigma" postParams
@@ -422,7 +424,7 @@ testNNLogMHPred = do
   mhTrace <- testNNLogMHPost
   let weight_length = 18
       addrs      = [ ("weight", i) | i <- [0..(weight_length - 1)]]
-      postParams = getPostParams addrs mhTrace
+      postParams = getPostParams (Proxy @Double) addrs mhTrace
       weights    = lookupTag "weight" postParams
   bs <- Basic.basic 1 (Example.nnLogModel 3)
                          nnLogDataX
@@ -489,7 +491,7 @@ testSinMHPred = do
   mhTrace <- testSinMHPost
   liftS $ print $ show mhTrace
   -- Get the most recent accepted model parameters from the posterior
-  let postParams = getPostParams [("m", 0), ("c", 0), ("σ", 0)] mhTrace
+  let postParams = getPostParams (Proxy @Double) [("m", 0), ("c", 0), ("σ", 0)] mhTrace
       mu         = lookupTag "m" postParams
       c          = lookupTag "c" postParams
       sigma      = lookupTag "σ" postParams
@@ -570,7 +572,7 @@ testHMMMHPred = do
   mhTrace <- testHMMMHPost
   let hmm_n_steps   = 10
       hmm_n_samples = 100
-      postParams = getPostParams [("trans_p", 0), ("obs_p", 0)] mhTrace
+      postParams = getPostParams (Proxy @Double) [("trans_p", 0), ("obs_p", 0)] mhTrace
       trans_p    = lookupTag "trans_p" postParams
       obs_p      = lookupTag "obs_p" postParams
   liftS $ print $ "using parameters " ++ show (trans_p, obs_p)
@@ -651,7 +653,7 @@ testSIRMHPred :: Sampler ([(Int, Int, Int)], [Int])
 testSIRMHPred = do
   mhTrace <- testSIRMHPost
   -- mhTrace' =
-  let postParams = getPostParams [("ρ", 0), ("β", 0), ("γ", 0)] mhTrace
+  let postParams = getPostParams (Proxy @Double) [("ρ", 0), ("β", 0), ("γ", 0)] mhTrace
       ρ    = lookupTag "ρ" postParams
       β    = lookupTag "β" postParams
       γ    = lookupTag "γ" postParams
@@ -706,10 +708,22 @@ testTopicBasic = do
 testTopicMHPost :: Sampler [([String], [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
 testTopicMHPost = do
   mhTrace <- MH.mh 100 (Example.topicModel vocabulary 2) ["word_p", "topic_p"]
-                       (repeat 10) (map (\ws -> mkRecordTopic ([], [], ws)) corpus)
+                       (repeat 10) (map (\ws -> mkRecordTopic ([], [], ws)) corpus2)
   let mhTrace' = map (\(xy, samples, logps) ->
         let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
             logps'   = Map.toList logps
         in  (xy, samples', logps') ) mhTrace
-
+  liftS $ print $ map snd3 mhTrace'
   return mhTrace'
+
+testTopicMHPred :: Sampler [[String]]
+testTopicMHPred = do
+  mhTrace <- testTopicMHPost
+  let  addrs      = [ ("topic_p", 0), ("word_p", 0), ("word_p", 1)]
+       postParams = getPostParams (Proxy @[Double]) addrs mhTrace
+       topic_p    = concat $ lookupTag "topic_p" postParams
+       word_p     = concat $ lookupTag "word_p" postParams
+  liftS $ print $ "Using params " ++ show (topic_p, word_p)
+  bs <- Basic.basic 1 (Example.topicModel vocabulary 2) [10] [mkRecordTopic (topic_p,  word_p, [])]
+  -- return []
+  return $ map fst bs

@@ -6,6 +6,8 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.List
 
+data Proxy p = Proxy
+
 boolToInt :: Bool -> Int
 boolToInt True  = 1
 boolToInt False = 0

@@ -355,22 +355,24 @@ type TopicEnv =
      "word" ':> String
    ]
 
--- Probability of each topic
+-- Probability of each word in a topic
 wordDist :: HasVar s "word" String => [String] -> [Double] -> Model s es String
-wordDist words ps = categorical' (zip words ps) #word
+wordDist vocab ps = categorical' (zip vocab ps) #word
 
+-- Probability of each topic in a document
 topicDist :: HasVar s "topic_p" Double => Int -> Model s es [Double]
 topicDist n_topics = dirichlet' (replicate n_topics 1) #topic_p
 
+-- Learns topic model for a single document
 topicModel :: (HasVar s "word_p" Double, HasVar s "topic_p" Double, HasVar s "word" String) => [String] -> Int -> Int -> Model s es [String]
 topicModel vocab n_topics n_words = do
   -- Distribution over words for each topic
-  topics   <- replicateM n_topics $ dirichlet' (replicate (length vocab) 1) #word_p
+  topic_word_ps <- replicateM n_topics $ dirichlet' (replicate (length vocab) 1) #word_p
   -- Distribution over topics for a given document
   topic_ps <- topicDist n_topics
   words    <- replicateM n_words (do  z <- discrete topic_ps
-                                      let topic = topics !! z
-                                      categorical' (zip vocab topic) #word)
+                                      let word_ps = topic_word_ps !! z
+                                      wordDist vocab word_ps)
   -- let output = map (\doc -> do topic_ps <- topicDist n_topics
   --                              mapM (\word -> do z <- discrete topic_ps
   --                                                let topic = topics !! z
@@ -378,3 +380,4 @@ topicModel vocab n_topics n_words = do
   --                              ) corpus
   let f = ""
   return words
+

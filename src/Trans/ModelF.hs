@@ -92,7 +92,7 @@ instance AllNothing '[] where
   allNothing = emptyRecord
 
 instance AllNothing xs => AllNothing ((x ':> y) ': xs) where
-  allNothing = xlb (Proxy @x) @= Nothing <: allNothing
+  allNothing = xlb (Data.Extensible.Proxy @x) @= Nothing <: allNothing
 
 access :: Monad m
   => Getting a (s :& Field Identity) a

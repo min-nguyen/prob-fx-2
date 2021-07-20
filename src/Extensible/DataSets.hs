@@ -21,6 +21,19 @@ corpus = [
   ["parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology"],
   ["parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology"]]
 
+corpus1 :: [[String]]
+corpus1 = [
+  ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution"],
+  ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution"],
+  ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution"]
+  ]
+corpus2 :: [[String]]
+corpus2 = [
+  ["parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology"],
+  ["parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology"],
+  ["parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology"]
+  ]
+
 n_counties :: Int
 n_counties = 85
 
