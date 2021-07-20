@@ -367,9 +367,9 @@ type HLREnv =
 hierarchicalLinRegr :: (HasVar s "mu_a" Double, HasVar s "mu_b" Double, HasVar s "sigma_a" Double, HasVar s "sigma_b" Double, HasVar s "a" Double, HasVar s "b" Double, HasVar s "log_radon" Double)
   => Int -> [Int] -> [Int] -> () -> Model s es [Double]
 hierarchicalLinRegr n_counties floor_x county_idx _ = do
-  mu_a    <- normal' 0 5 #mu_a
+  mu_a    <- normal' 0 10 #mu_a
   sigma_a <- halfNormal' 5 #sigma_a
-  mu_b    <- normal' 0 5 #mu_b
+  mu_b    <- normal' 0 10 #mu_b
   sigma_b <- halfNormal' 5 #sigma_b
   -- Intercept for each county
   a <- replicateM n_counties (normal' mu_a sigma_a #a)  -- length = 85

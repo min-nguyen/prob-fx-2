@@ -33,14 +33,23 @@ import Util
 import Debug.Trace
 
 -- | Return the most recent sample map from the mh trace, containing only the provided addresses
-getPostParams :: forall p a. Member p MH.Vals => Proxy p -> [Addr] -> [(a, [(Addr, OpenSum MH.Vals)], [(Addr, Double)])] -> [(Addr, p)]
-getPostParams _ addrs mhTrace =
+drawPostParam :: forall p a. Member p MH.Vals => Proxy p -> [Addr] -> [(a, [(Addr, OpenSum MH.Vals)], [(Addr, Double)])] -> [(Addr, p)]
+drawPostParam _ addrs mhTrace =
   let sampleMap = snd3 (last mhTrace)
   in  trace (show sampleMap) [ (addr, x) | addr <- addrs, let x = fromJust (lookup addr sampleMap >>= (\x' -> prj @p x') )]
 
 -- List must be sorted
 lookupTag :: Tag ->  [(Addr, a)] -> [a]
 lookupTag tag xs = [ v | ((t, i), v) <- xs, t == tag]
+
+-- Returns a list of (addr, [p]) for addresses of interest for all the samples in the mh trace
+extractPostParams :: forall p a. Member p MH.Vals => Proxy p -> [Addr] -> [(a, [(Addr, OpenSum MH.Vals)], [(Addr, Double)])] -> [(Addr, [p])]
+extractPostParams _ addrs mhTrace =
+  let sampleMap = map snd3 mhTrace
+  in  trace (show sampleMap) [ (addr, xs) | addr <- addrs,
+        let xs = map (\smap -> let p = fromJust $ lookup addr smap
+                                   d = fromJust $ prj @p p
+                               in  d) sampleMap ]
 
 {- Linear Regression -}
 
@@ -114,7 +123,7 @@ testLinRegrMHPred :: Sampler [(Double, Double)]
 testLinRegrMHPred = do
   mhTrace <- testLinRegrMHPost
   -- Get the most recent accepted model parameters from the posterior
-  let postParams = getPostParams (Proxy @Double) [("m", 0), ("c", 0), ("σ", 0)] mhTrace
+  let postParams = drawPostParam (Proxy @Double) [("m", 0), ("c", 0), ("σ", 0)] mhTrace
       mu         = lookupTag "m" postParams
       c          = lookupTag "c" postParams
       sigma      = lookupTag "σ" postParams
@@ -198,7 +207,7 @@ testLogRegrMHPost = do
 testLogRegrMHPred :: Sampler [(Double, Bool)]
 testLogRegrMHPred = do
   mhTrace <- testLogRegrMHPost
-  let postParams = getPostParams (Proxy @Double) [("m", 0), ("b", 0)] mhTrace
+  let postParams = drawPostParam (Proxy @Double) [("m", 0), ("b", 0)] mhTrace
       mu         = lookupTag "m" postParams
       b          = lookupTag "b" postParams
   liftS $ print $ "Using parameters " ++ show (mu, b)
@@ -279,7 +288,7 @@ testNNLinMHPred = do
       addrs      = [ ("weight", i) | i <- [0..(matrix_size - 1)]] ++
                    [ ("bias", i)   | i <- [0..(matrix_size - 1)]] ++
                    [ ("sigma", 0)]
-      postParams = getPostParams (Proxy @Double) addrs mhTrace
+      postParams = drawPostParam (Proxy @Double) addrs mhTrace
       weights    = lookupTag "weight" postParams
       bias       = lookupTag "bias" postParams
       sigma      = lookupTag "sigma" postParams
@@ -372,7 +381,7 @@ testNNStepMHPred = do
       addrs      = [ ("weight", i) | i <- [0..(matrix_size - 1)]] ++
                    [ ("bias", i)   | i <- [0..(matrix_size - 1)]] ++
                    [ ("sigma", 0)]
-      postParams = getPostParams (Proxy @Double) addrs mhTrace
+      postParams = drawPostParam (Proxy @Double) addrs mhTrace
       weights    = lookupTag "weight" postParams
       bias       = lookupTag "bias" postParams
       sigma      = lookupTag "sigma" postParams
@@ -424,7 +433,7 @@ testNNLogMHPred = do
   mhTrace <- testNNLogMHPost
   let weight_length = 18
       addrs      = [ ("weight", i) | i <- [0..(weight_length - 1)]]
-      postParams = getPostParams (Proxy @Double) addrs mhTrace
+      postParams = drawPostParam (Proxy @Double) addrs mhTrace
       weights    = lookupTag "weight" postParams
   bs <- Basic.basic 1 (Example.nnLogModel 3)
                          nnLogDataX
@@ -491,7 +500,7 @@ testSinMHPred = do
   mhTrace <- testSinMHPost
   liftS $ print $ show mhTrace
   -- Get the most recent accepted model parameters from the posterior
-  let postParams = getPostParams (Proxy @Double) [("m", 0), ("c", 0), ("σ", 0)] mhTrace
+  let postParams = drawPostParam (Proxy @Double) [("m", 0), ("c", 0), ("σ", 0)] mhTrace
       mu         = lookupTag "m" postParams
       c          = lookupTag "c" postParams
       sigma      = lookupTag "σ" postParams
@@ -572,7 +581,7 @@ testHMMMHPred = do
   mhTrace <- testHMMMHPost
   let hmm_n_steps   = 10
       hmm_n_samples = 100
-      postParams = getPostParams (Proxy @Double) [("trans_p", 0), ("obs_p", 0)] mhTrace
+      postParams = drawPostParam (Proxy @Double) [("trans_p", 0), ("obs_p", 0)] mhTrace
       trans_p    = lookupTag "trans_p" postParams
       obs_p      = lookupTag "obs_p" postParams
   liftS $ print $ "using parameters " ++ show (trans_p, obs_p)
@@ -653,7 +662,7 @@ testSIRMHPred :: Sampler ([(Int, Int, Int)], [Int])
 testSIRMHPred = do
   mhTrace <- testSIRMHPost
   -- mhTrace' =
-  let postParams = getPostParams (Proxy @Double) [("ρ", 0), ("β", 0), ("γ", 0)] mhTrace
+  let postParams = drawPostParam (Proxy @Double) [("ρ", 0), ("β", 0), ("γ", 0)] mhTrace
       ρ    = lookupTag "ρ" postParams
       β    = lookupTag "β" postParams
       γ    = lookupTag "γ" postParams
@@ -703,7 +712,7 @@ testTopicMHPred :: Sampler [[String]]
 testTopicMHPred = do
   mhTrace <- testTopicMHPost
   let  addrs      = [ ("topic_p", 0), ("word_p", 0), ("word_p", 1)]
-       postParams = getPostParams (Proxy @[Double]) addrs mhTrace
+       postParams = drawPostParam (Proxy @[Double]) addrs mhTrace
        topic_p    = concat $ lookupTag "topic_p" postParams
        word_p     = concat $ lookupTag "word_p" postParams
   liftS $ print $ "Using params " ++ show (topic_p, word_p)
@@ -741,24 +750,25 @@ testHLRBasic = do
       basementPoints    = map (head bs !!) basementIdxs
       nobasementPoints  = map (head bs !!) noBasementIdxs
   return (basementPoints, nobasementPoints)
-  -- return $ map fst bs
 
-testHLRMHPost :: Sampler  [([Double], [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+-- testHLRMHPost :: Sampler  [([Double], [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testHLRMHPost :: Sampler  [(Addr, [Double])]
 testHLRMHPost = do
-  mhTrace <- MH.mh 100 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx) []
+  mhTrace <- MH.mh 3000 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx) ["mu_a", "mu_b", "sigma_a", "sigma_b"]
                     [()] [mkRecordHLR ([], [], [], [], [], [], logRadon)]
   let mhTrace' = map (\(xy, samples, logps) ->
         let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
             logps'   = Map.toList logps
         in  (xy, samples', logps') ) mhTrace
-  liftS $ print $ show $ map snd3 mhTrace'
-  -- Only returning the last of the mh trace here
-  return mhTrace'
-  -- return $ map fst bs
+  -- liftS $ print $ show $ map snd3 mhTrace'
+  let addrs = extractPostParams (Proxy @Double)  [("mu_a", 0), ("mu_b", 0), ("sigma_a", 0), ("sigma_b", 0) ] mhTrace'
+      addrs' = map (\(addr, xs) -> (addr, removeDuplicates xs)) addrs
+  liftS $ print addrs'
+  return addrs'
 
 testHLRMHPredictive :: Sampler  ([Double], [(Addr, OpenSum MH.Vals)], [(Addr, Double)])
 testHLRMHPredictive = do
-  mhTrace <- MH.mh 2000 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx) []
+  mhTrace <- MH.mh 2000 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx) ["mu_a", "mu_b", "sigma_a", "sigma_b"]
                     [()] [mkRecordHLR ([], [], [], [], [], [], logRadon)]
   let mhTrace' = map (\(xy, samples, logps) ->
         let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
@@ -767,5 +777,4 @@ testHLRMHPredictive = do
   liftS $ print $ show $ map snd3 mhTrace'
   -- Only returning the last of the mh trace here
   return (last mhTrace')
-  -- return $ map fst bs
 

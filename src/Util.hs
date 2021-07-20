@@ -8,6 +8,9 @@ import Data.List
 
 data Proxy p = Proxy
 
+removeDuplicates :: Eq a => [a] -> [a]
+removeDuplicates = foldr (\x seen -> if x `elem` seen then seen else x : seen) []
+
 findIndexes :: Eq a => [a] -> a -> [Int]
 findIndexes xs a = reverse $ go xs 0 []
   where
