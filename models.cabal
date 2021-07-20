@@ -59,12 +59,14 @@ library
                       Extensible.Freer,
                       Extensible.Example,
                       Extensible.Reader,
+                      Extensible.DataSets,
                       Extensible.AffineReader,
                       Extensible.Writer,
                       Extensible.State,
                       Extensible.IO,
                       Extensible.Model,
                       Extensible.OpenSum,
+                      Extensible.OpenProduct,
                       Extensible.Dist,
                       Extensible.Sampler,
                       Extensible.Inference.Basic,
@@ -80,7 +82,7 @@ library
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.14,
+  build-depends:       base,
                        ghc-prim,
                        primitive,
                        containers,
@@ -94,7 +96,10 @@ library
                        profunctors,
                        statistics,
                        split,
-                       mwc-random
+                       mwc-random,
+                       mwc-probability,
+                       dirichlet,
+                       log-domain
 
   -- Directories containing source files.
   hs-source-dirs:      src
@@ -114,7 +119,7 @@ executable models
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.14,
+  build-depends:       base,
                        extensible,
                        models,
                        containers,

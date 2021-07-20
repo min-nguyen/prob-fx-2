@@ -11,7 +11,7 @@ module Extensible.Inference.LW where
 
 import qualified Data.Map as Map
 import Data.Map (Map)
-import Data.Extensible hiding (Member)
+import Extensible.OpenProduct
 import Extensible.AffineReader
 import Control.Monad
 import Control.Monad.Trans.Class
@@ -25,7 +25,7 @@ import Extensible.State
 import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum(..))
 
-type Vals = '[Int, Double, Bool]
+type Vals = '[Int, Double, [Double], Bool, String]
 
 type Ⲭ = Map Addr (OpenSum Vals)
 
@@ -84,6 +84,10 @@ transformLW = loop
                                                       loop (k x))
               DistBool (Just d)   -> Free u (\x -> do modify (updateMapⲬ α (unsafeCoerce x :: Bool))
                                                       loop (k x))
+              DistDoubles (Just d) -> Free u (\x -> do modify (updateMapⲬ α (unsafeCoerce x :: [Double]))
+                                                       loop (k x))
+              DistString (Just d) -> Free u (\x ->  do modify (updateMapⲬ α (unsafeCoerce x :: String))
+                                                       loop (k x))
       _ -> Free u (loop . k)
 
 runObserve :: Member Sample rs => Freer (Observe : rs) a -> Freer rs (a, Double)
@@ -95,6 +99,10 @@ runObserve = loop 0
     case decomp u of
       Right (Observe d y α)
         -> case d of
+            DistDoubles (Just d) ->
+              do let p' = prob d (unsafeCoerce y :: [Double])
+                 prinT $ "Prob of observing " ++ show (unsafeCoerce y :: [Double]) ++ " from " ++ show d ++ " is " ++ show p'
+                 loop (p + p') (k y)
             DistBool (Just d) ->
               do let p' = prob d (unsafeCoerce y :: Bool)
                  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Bool) ++ " from " ++ show d ++ " is " ++ show p'

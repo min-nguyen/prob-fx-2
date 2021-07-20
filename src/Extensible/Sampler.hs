@@ -21,11 +21,13 @@ import Data.Set (Set)
 import Data.List
 import Debug.Trace
 import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as UV
 import Statistics.Distribution
 import Statistics.Distribution.Normal
 import qualified System.Random.MWC as MWC
 import qualified System.Random.MWC.Distributions as MWC.Dist
-
+import Statistics.Distribution.CauchyLorentz
+import qualified System.Random.MWC.Probability as MWC.Probability
 import Util
 
 newtype Sampler a = Sampler {runSampler :: ReaderT MWC.GenIO IO a}
@@ -55,6 +57,9 @@ createSampler f = Sampler $ ask >>= lift . f
 sampleRandom :: MWC.GenIO -> IO Double
 sampleRandom = \gen -> MWC.uniform gen
 
+sampleCauchy :: Double -> Double -> (MWC.GenIO -> IO Double)
+sampleCauchy μ σ = \gen -> genContVar (cauchyDistribution μ σ) gen
+
 sampleNormal :: Double -> Double -> (MWC.GenIO -> IO Double)
 sampleNormal μ σ = \gen -> MWC.Dist.normal μ σ gen
 
@@ -81,3 +86,9 @@ sampleCategorical ps = trace (show ps) $ \gen -> MWC.Dist.categorical (ps) gen
 
 sampleDiscrete :: [Double] -> (MWC.GenIO -> IO Int)
 sampleDiscrete ps = \gen -> MWC.Dist.categorical (V.fromList ps) gen
+
+samplePoisson :: Double -> (MWC.GenIO -> IO Int)
+samplePoisson λ = \gen -> MWC.Probability.sample (MWC.Probability.poisson λ) gen
+
+sampleDirichlet :: [Double] -> (MWC.GenIO -> IO [Double])
+sampleDirichlet xs = \gen -> MWC.Dist.dirichlet xs gen
