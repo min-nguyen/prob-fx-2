@@ -603,6 +603,51 @@ def main():
     ax1.set_xticklabels(ws)
     plt.title('Topic 1 - Word distribution')
     plt.show()
+  if arg == "topics-mh-post":
+    words       = list(np.array([ d[0] for d in data]).ravel())
+    ws          = ['DNA', 'evolution', 'parsing', 'phonology']
+    sampleMaps  = [ d[1] for d in data]
+    # Document 0
+    d0_topic_ps    = np.array([ [ d1[1] for d1 in d if d1[0] == ('topic_p', 0)] for d in sampleMaps ])
+    d0_topic_0s    = np.array([ [ d1[1] for d1 in d if d1[0] == ('word_p', 0)]  for d in sampleMaps ])
+    d0_topic_1s    = np.array([ [ d1[1] for d1 in d if d1[0] == ('word_p', 1)]  for d in sampleMaps ])
+    d0_topic_p = d0_topic_ps[-1].ravel()
+    d0_topic_0 = d0_topic_0s[-1].ravel()
+    d0_topic_1 = d0_topic_1s[-1].ravel()
+    # Document 1
+    d1_topic_ps    = np.array([ [ d1[1] for d1 in d if d1[0] == ('topic_p', 1)] for d in sampleMaps ])
+    d1_topic_0s    = np.array([ [ d1[1] for d1 in d if d1[0] == ('word_p', 2)]  for d in sampleMaps ])
+    d1_topic_1s    = np.array([ [ d1[1] for d1 in d if d1[0] == ('word_p', 3)]  for d in sampleMaps ])
+    d1_topic_p = d1_topic_ps[-1].ravel()
+    d1_topic_0 = d1_topic_0s[-1].ravel()
+    d1_topic_1 = d1_topic_1s[-1].ravel()
+    # Plot document 0
+    fig, ax = plt.subplots(nrows=1)
+    ax.bar(['Topic 0', 'Topic 1'], d0_topic_p, 0.4)
+    ax.set_xticklabels(['Topic 0', 'Topic 1'])
+    plt.title('Document 0 - Topic distribution')
+    fig0, ax0 = plt.subplots(nrows=1)
+    ax0.bar(ws, d0_topic_0, 0.4)
+    ax0.set_xticklabels(ws)
+    plt.title('Document 0 - Topic 0 - Word distribution')
+    fig1, ax1 = plt.subplots(nrows=1)
+    ax1.bar(ws, d0_topic_1, 0.4)
+    ax1.set_xticklabels(ws)
+    plt.title('Document 0 - Topic 1 - Word distribution')
+    # Plot document 1
+    fig2, ax2 = plt.subplots(nrows=1)
+    ax2.bar(['Topic 0', 'Topic 1'], d1_topic_p, 0.4)
+    ax2.set_xticklabels(['Topic 0', 'Topic 1'])
+    plt.title('Document 1 - Topic distribution')
+    fig3, ax3 = plt.subplots(nrows=1)
+    ax3.bar(ws, d1_topic_0, 0.4)
+    ax3.set_xticklabels(ws)
+    plt.title('Document 1 - Topic 0 - Word distribution')
+    fig4, ax4 = plt.subplots(nrows=1)
+    ax4.bar(ws, d1_topic_1, 0.4)
+    ax4.set_xticklabels(ws)
+    plt.title('Document 1 - Topic 1 - Word distribution')
+    plt.show()
 if __name__ == "__main__":
   main()
 

@@ -364,20 +364,21 @@ topicDist :: HasVar s "topic_p" Double => Int -> Model s es [Double]
 topicDist n_topics = dirichlet' (replicate n_topics 1) #topic_p
 
 -- Learns topic model for a single document
-topicModel :: (HasVar s "word_p" Double, HasVar s "topic_p" Double, HasVar s "word" String) => [String] -> Int -> Int -> Model s es [String]
-topicModel vocab n_topics n_words = do
-  -- Distribution over words for each topic
+documentDist :: (HasVar s "word_p" Double, HasVar s "topic_p" Double, HasVar s "word" String) => [String] -> Int -> Int -> Model s es [String]
+documentDist vocab n_topics n_words = do
+  -- Generate distribution over words for each topic
   topic_word_ps <- replicateM n_topics $ dirichlet' (replicate (length vocab) 1) #word_p
   -- Distribution over topics for a given document
   topic_ps <- topicDist n_topics
-  words    <- replicateM n_words (do  z <- discrete topic_ps
-                                      let word_ps = topic_word_ps !! z
-                                      wordDist vocab word_ps)
-  -- let output = map (\doc -> do topic_ps <- topicDist n_topics
-  --                              mapM (\word -> do z <- discrete topic_ps
-  --                                                let topic = topics !! z
-  --                                                categorical (zip vocab topic)) doc
-  --                              ) corpus
-  let f = ""
-  return words
+  replicateM n_words (do  z <- discrete topic_ps
+                          let word_ps = topic_word_ps !! z
+                          wordDist vocab word_ps)
 
+-- Learns topic models for multiple documents
+topicModel :: (HasVar s "word_p" Double, HasVar s "topic_p" Double, HasVar s "word" String) =>
+  [String] ->
+  Int      ->
+  [Int]    -> -- Number of words per document
+  Model s es [[String]]
+topicModel vocab n_topics doc_words = do
+  mapM (documentDist vocab n_topics) doc_words

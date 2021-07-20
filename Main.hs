@@ -78,9 +78,10 @@ main = do
   -- trace <- sampleIOFixed testHLRBasic
   -- trace <- sampleIOFixed testTopicBasic
   -- trace <- sampleIOFixed testTopicMHPost
-  trace <- sampleIOFixed testTopicMHPred
+  -- trace <- sampleIOFixed testTopicMHPred
+  trace <- sampleIOFixed testTopicsMHPost
   let traceStr = show trace
-  putStrLn traceStr
+  -- putStrLn traceStr
   writeFile "model-output.txt" traceStr
   return ()
 

@@ -15,24 +15,15 @@ vocabulary = ["DNA", "evolution", "parsing", "phonology"]
 corpus :: [[String]]
 corpus = [
   ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution"],
-  ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution"],
-  ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution"],
-  ["parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology"],
-  ["parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology"],
   ["parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology"]]
 
-corpus1 :: [[String]]
-corpus1 = [
-  ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution"],
-  ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution"],
+document1 :: [String]
+document1 =
   ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution"]
-  ]
-corpus2 :: [[String]]
-corpus2 = [
-  ["parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology"],
-  ["parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology"],
+
+document2 :: [String]
+document2 =
   ["parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology","parsing","phonology"]
-  ]
 
 n_counties :: Int
 n_counties = 85
