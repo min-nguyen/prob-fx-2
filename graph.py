@@ -657,6 +657,20 @@ def main():
     plt.scatter(basement_xs, basement_ys, color="r")
     plt.scatter(nobasement_xs, nobasement_ys, color='b')
     plt.show()
+  if arg == "hlr-mh-post":
+    sampleMaps = [d[1] for d in data]
+    mu_a       = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'mu_a'] for d in sampleMaps ])
+    mu_b       = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'mu_b'] for d in sampleMaps ])
+    sigma_a    = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'sigma_a'] for d in sampleMaps ])
+    sigma_b    = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'sigma_b'] for d in sampleMaps ])
+    mu_a_unique = removeDuplicates(mu_a)
+    mu_b_unique = removeDuplicates(mu_b)
+    sigma_a_unique = removeDuplicates(sigma_a)
+    sigma_b_unique = removeDuplicates(sigma_b)
+    print(mu_a_unique)
+    print(mu_b_unique)
+    print(sigma_a_unique)
+    print(sigma_b_unique)
   if arg == "hlr-mh-predictive":
     sampleMaps = data[1] # Only use last sample
     intercepts = np.array([ d[1] for d in sampleMaps if d[0][0] == 'a' ]).ravel()
