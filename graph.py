@@ -648,6 +648,15 @@ def main():
     ax4.set_xticklabels(ws)
     plt.title('Document 1 - Topic 1 - Word distribution')
     plt.show()
+  if arg == "hlr-basic":
+    basement_ys   = data[0]
+    basement_xs   = [0 for i in range(len(basement_ys))]
+    nobasement_ys = data[1]
+    nobasement_xs = [1 for i in range(len(nobasement_ys))]
+    print(data)
+    plt.scatter(basement_xs, basement_ys, color="r")
+    plt.scatter(nobasement_xs, nobasement_ys, color='b')
+    plt.show()
 if __name__ == "__main__":
   main()
 

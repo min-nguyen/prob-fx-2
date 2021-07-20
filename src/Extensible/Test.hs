@@ -665,26 +665,9 @@ testSIRMHPred = do
   liftS $ print $ show (map fst bs)
   return $ head output
 
-
--- | Hierchical linear regression
-
-type HLREnv =
-  '[ "mu_a" ':> Double, "mu_b" ':> Double, "sigma_a" ':> Double, "sigma_b" ':> Double,
-     "log_radon" ':> Double]
-
-mkRecordHLR :: ([Double], [Double], [Double], [Double], [Double]) -> LRec Example.HLREnv
-mkRecordHLR (mua, mub, siga, sigb, lograds) = #mu_a @= mua <: #mu_b @= mub <: #sigma_a @= siga <: #sigma_b @= sigb <: #log_radon @= lograds <: nil
-
-testHLRBasic :: Sampler [[Double]]
-testHLRBasic = do
-  bs <- Basic.basic 1 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx)
-                        [()] [mkRecordHLR ([], [], [], [], [])]
-  return $ map fst bs
-
-
+-- | Testing random distributions
 mkRecordDir :: [Double] -> LRec Example.DirEnv
 mkRecordDir ds = #xs @= ds <: nil
-
 
 -- testHalfNormal :: Sampler [String]
 testHalfNormal = do
@@ -738,3 +721,24 @@ testTopicsMHPost = do
         in  (xy, samples', logps') ) mhTrace
   liftS $ print $ map snd3 mhTrace'
   return mhTrace'
+
+
+-- | Hierchical linear regression
+type HLREnv =
+  '[ "mu_a" ':> Double, "mu_b" ':> Double, "sigma_a" ':> Double, "sigma_b" ':> Double,
+     "log_radon" ':> Double]
+
+mkRecordHLR :: ([Double], [Double], [Double], [Double], [Double]) -> LRec Example.HLREnv
+mkRecordHLR (mua, mub, siga, sigb, lograds) = #mu_a @= mua <: #mu_b @= mub <: #sigma_a @= siga <: #sigma_b @= sigb <: #log_radon @= lograds <: nil
+
+-- testHLRBasic :: Sampler [[Double]]
+testHLRBasic :: Sampler ([Double], [Double])
+testHLRBasic = do
+  bs <- map fst <$> Basic.basic 1 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx)
+                        [()] [mkRecordHLR ([1.45], [-0.68], [0.3], [0.2], [])]
+  let basementIdxs      = findIndexes dataFloorValues 0
+      noBasementIdxs    = findIndexes dataFloorValues 1
+      basementPoints    = map (head bs !!) basementIdxs
+      nobasementPoints  = map (head bs !!) noBasementIdxs
+  return (basementPoints, nobasementPoints)
+  -- return $ map fst bs

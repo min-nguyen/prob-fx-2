@@ -309,31 +309,6 @@ hmmSIRNsteps fixedParams n latentState  = do
                   return (x_n:xs, y_n:ys))) ([latentState], [])
   return (reverse xs, reverse ys)
 
--- | Hierarchical Linear Regression
-
-type HLREnv =
-  '[ "mu_a" ':> Double, "mu_b" ':> Double, "sigma_a" ':> Double, "sigma_b" ':> Double,
-     "log_radon" ':> Double]
-
--- n counties = 85, len(floor_x) = 919, len(county_idx) = 919
-hierarchicalLinRegr :: (HasVar s "mu_a" Double, HasVar s "mu_b" Double, HasVar s "sigma_a" Double, HasVar s "sigma_b" Double, HasVar s "log_radon" Double)
-  => Int -> [Int] -> [Int] -> () -> Model s es [Double]
-hierarchicalLinRegr n_counties floor_x county_idx _ = do
-  mu_a    <- normal' 0 100 #mu_a
-  sigma_a <- halfNormal' 5 #sigma_a
-  mu_b    <- normal' 0 100 #mu_b
-  sigma_b <- halfNormal' 5 #sigma_b
-  a <- replicateM n_counties (normal mu_a sigma_a) -- length = 85
-  b <- replicateM n_counties (normal mu_b sigma_b) -- length = 85
-  eps <- halfCauchy 5
-  let a_county_idx = map (a !!) county_idx
-      b_county_idx = map (b !!) county_idx
-      floor_values = map fromIntegral floor_x
-      radon_est = zipWith (+) a_county_idx (zipWith (*) b_county_idx floor_values)
-  radon_like <- mapM (\rad_est -> normal' rad_est eps #log_radon) radon_est
-  let f = ""
-  return radon_like
-
 type DirEnv =
   '[ "xs" ':> Double
    ]
@@ -382,3 +357,35 @@ topicModel :: (HasVar s "word_p" Double, HasVar s "topic_p" Double, HasVar s "wo
   Model s es [[String]]
 topicModel vocab n_topics doc_words = do
   mapM (documentDist vocab n_topics) doc_words
+
+-- | Hierarchical Linear Regression
+
+type HLREnv =
+  '[ "mu_a" ':> Double, "mu_b" ':> Double, "sigma_a" ':> Double, "sigma_b" ':> Double,
+     "log_radon" ':> Double]
+
+-- n counties = 85, len(floor_x) = 919, len(county_idx) = 919
+hierarchicalLinRegr :: (HasVar s "mu_a" Double, HasVar s "mu_b" Double, HasVar s "sigma_a" Double, HasVar s "sigma_b" Double, HasVar s "log_radon" Double)
+  => Int -> [Int] -> [Int] -> () -> Model s es [Double]
+hierarchicalLinRegr n_counties floor_x county_idx _ = do
+  mu_a    <- normal' 0 100 #mu_a
+  sigma_a <- halfNormal' 5 #sigma_a
+  mu_b    <- normal' 0 100 #mu_b
+  sigma_b <- halfNormal' 5 #sigma_b
+  -- Intercept for each county
+  a <- replicateM n_counties (normal mu_a sigma_a) -- length = 85
+  -- Gradient for each county
+  b <- replicateM n_counties (normal mu_b sigma_b) -- length = 85
+  -- Model error
+  eps <- halfCauchy 5
+  let -- Get county intercept for each datapoint
+      a_county_idx = map (a !!) county_idx
+      -- Get county gradient for each datapoint
+      b_county_idx = map (b !!) county_idx
+      floor_values = map fromIntegral floor_x
+      -- Get radon estimate for each data point
+      radon_est = zipWith (+) a_county_idx (zipWith (*) b_county_idx floor_values)
+  -- Sample radon amount for each data point
+  radon_like <- mapM (\rad_est -> normal' rad_est eps #log_radon) radon_est
+  let f = ""
+  return radon_like

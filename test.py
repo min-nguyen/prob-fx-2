@@ -18,7 +18,7 @@ n_counties = len(data.county.unique())
 print(data[["county", "log_radon", "floor"]].head())
 print(n_counties)
 print(len(county_idx))
-print(len(data.floor.values))
+print(data.floor.values)
 with pm.Model() as unpooled_model:
 
     # Independent parameters for each county
