@@ -415,7 +415,7 @@ gmm :: (HasVar s "mu" Double, HasVar s "x" Double, HasVar s "y" Double)
   -> Model s es [(Double, Double)]
 gmm k n = do
   cluster_ps <- dirichlet (replicate k 1)
-  mus        <- replicateM k (normal' 0 15 #mu)
+  mus        <- replicateM k (normal' 0 5 #mu)
   replicateM n (do mu_k <- categorical (zip mus cluster_ps)
                    x    <- normal' mu_k 1 #x
                    y    <- normal' mu_k 1 #y

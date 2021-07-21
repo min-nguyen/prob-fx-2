@@ -713,13 +713,15 @@ mkRecordGMM (mus, xs, ys) = #mu @= mus <: #x @= xs <: #y @= ys <: nil
 
 testGMMBasic :: Sampler [[(Double, Double)]]
 testGMMBasic = do
-  bs <- Basic.basic 1 (Example.gmm 2) [100] [mkRecordGMM ([-2.0, 3.5], [], [])]
+  bs <- Basic.basic 1 (Example.gmm 2) [50] [mkRecordGMM ([-2.0, 3.5], [], [])]
   return $ map fst bs
 
-testGMMMHPost :: Sampler [([(Double, Double)], [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
+testGMMMHPost :: Sampler [(Addr, [Double])]
 testGMMMHPost = do
   bs <- testGMMBasic
   let (xs, ys) = unzip (concat bs)
-  mhTrace <- MH.mh 100 (Example.gmm 2) [] [20] [mkRecordGMM ([], xs, ys)]
+  mhTrace <- MH.mh 20000 (Example.gmm 2) ["mu"] [50] [mkRecordGMM ([], xs, ys)]
   let mhTrace' = processMHTrace mhTrace
-  return mhTrace'
+      addrs    = extractPostParams (Proxy @Double)  [("mu", 0), ("mu", 1)] mhTrace'
+      addrs'   = map (\(addr, xs) -> (addr, removeDuplicates xs)) addrs
+  return addrs'

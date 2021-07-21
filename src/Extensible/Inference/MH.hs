@@ -103,7 +103,7 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   let _X'logα    = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ'))
                          0 (Map.keysSet logℙ' \\ _X'sampled)
   -- putStrLn $ " X'logα is " ++ show _X'logα ++ " from " ++ show (logℙ')
-  -- putStrLn $ " X'logα - Xlogα is " ++ show (_X'logα - _Xlogα)
+  putStrLn $ " X'logα - Xlogα is " ++ show (_Xlogα , _X'logα)
   return $ exp (dom_logα + _X'logα - _Xlogα)
 
 -- | Run MH for multiple data points
@@ -133,7 +133,6 @@ mhNsteps :: (es ~ '[AffReader (AsList env), Dist, Observe, State Ⲭ, State LogP
   -> TraceMH a        -- Previous mh output
   -> Sampler (TraceMH a)
 mhNsteps n env model tags trace = do
-  liftS $ print $ "am here"
   foldl (>=>) return (replicate n (mhStep env model tags)) trace
 
 -- | Perform one step of MH for a single data point
@@ -161,12 +160,12 @@ mhStep env model tags trace = do
   acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
   u <- sample (UniformDist 0 1 Nothing Nothing)
   if u < acceptance_ratio
-    then do liftS $ putStrLn $ "Accepting " -- ++ show logps' ++ "\nover      "
+    then do liftS $ putStrLn $ "Accepting " ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
             -- ++ show logps
              ++ "\nwith α" ++ show α_samp ++ ": "
              ++ show acceptance_ratio ++ " > " ++ show u
             return ((x', samples', logps'):trace)
-    else do liftS $ putStrLn $ "Rejecting " -- ++ show logps' ++ "\nover      "
+    else do liftS $ putStrLn $ "Rejecting " ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
             -- ++ show logps
              ++ "\nwith α" ++ show α_samp ++ ": "
              ++ show acceptance_ratio ++ " < u: " ++ show u
@@ -278,50 +277,50 @@ runSample α_samp samples = loop
             case m of
               Nothing -> do
                 x <- sample d
-                liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                -- liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
               Just x  -> do
-                liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                -- liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
           DistDoubles (Just d) -> do
             m <- lookupSample samples d α α_samp
             case m of
               Nothing -> do
                 x <- sample d
-                liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                -- liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
               Just x  -> do
-                liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                -- liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
           DistDouble (Just d) -> do
             m <- lookupSample samples d α α_samp
             case m of
               Nothing -> do
                 x <- sample d
-                liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                -- liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
               Just x  -> do
-                liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                -- liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
           DistBool (Just d) -> do
             m <- lookupSample samples d α α_samp
             case m of
               Nothing -> do
                 x <- sample d
-                liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                -- liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
               Just x  -> do
-                liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                -- liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
           DistInt (Just d) -> do
             m <- lookupSample samples d α α_samp
             case m of
               Nothing -> do
                 x <- sample d
-                liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                -- liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
               Just x  -> do
-                liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                -- liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
       _  -> error "Impossible: Nothing cannot occur"
 

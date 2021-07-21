@@ -82,10 +82,10 @@ main = do
   -- trace <- sampleIOFixed testHLRBasic
   -- trace <- sampleIOFixed testHLRMHPost
   -- trace <- sampleIOFixed testHLRMHPredictive
-  trace <- sampleIOFixed testGMMBasic
-  -- trace <- sampleIOFixed testGMMMHPost
+  -- trace <- sampleIOFixed testGMMBasic
+  trace <- sampleIOFixed testGMMMHPost
   let traceStr = show trace
-  putStrLn traceStr
+  -- putStrLn traceStr
   writeFile "model-output.txt" traceStr
   return ()
 

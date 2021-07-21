@@ -713,7 +713,16 @@ def main():
     plt.ylabel('y - axis')
     plt.title('Gaussian Mixture Model')
     plt.show()
+  if arg == "gmm-mh-post":
+    print(data)
+    # sampleMaps    = data
 
+    # mu_0s          = np.array([ [ d1[1] for d1 in d if d1[0] == ('mu', 0)] for d in sampleMaps ]).ravel()
+    # mu_0s_unique = removeDuplicates(mu_0s)
+
+    # mu_1s          = np.array([ [ d1[1] for d1 in d if d1[0] == ('mu', 1)] for d in sampleMaps ]).ravel()
+    # mu_1s_unique = removeDuplicates(mu_1s)
+    # print(mu_0s_unique, mu_1s_unique)
 if __name__ == "__main__":
   main()
 

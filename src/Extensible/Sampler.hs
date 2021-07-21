@@ -82,7 +82,7 @@ sampleBinomial :: Int -> Double -> (MWC.GenIO -> IO [Bool])
 sampleBinomial n p = \gen -> replicateM n (MWC.Dist.bernoulli p gen)
 
 sampleCategorical :: V.Vector Double -> (MWC.GenIO -> IO Int)
-sampleCategorical ps = trace (show ps) $ \gen -> MWC.Dist.categorical (ps) gen
+sampleCategorical ps =  \gen -> MWC.Dist.categorical (ps) gen
 
 sampleDiscrete :: [Double] -> (MWC.GenIO -> IO Int)
 sampleDiscrete ps = \gen -> MWC.Dist.categorical (V.fromList ps) gen
