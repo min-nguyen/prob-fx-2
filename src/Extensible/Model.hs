@@ -10,6 +10,8 @@ import Extensible.Dist
 import Extensible.Freer
 -- import Extensible.Reader
 import Extensible.AffineReader
+import Extensible.OpenSum (OpenSum)
+import qualified Extensible.OpenSum as OpenSum
 import Extensible.Sampler
 import Extensible.State
 import Extensible.IO
@@ -125,13 +127,13 @@ discrete' xs field = Model $ do
   maybe_y <- ask getter setter
   send (DiscreteDist xs maybe_y tag)
 
-categorical :: [(String, Double)] -> Model s es String
+categorical :: [(OpenSum PrimVal, Double)] -> Model s es (OpenSum PrimVal)
 categorical xs = Model $ do
   send (CategoricalDist xs Nothing Nothing)
 
-categorical' :: forall s es a k. (a ~ String) => OP.Lookup (OP.AsList s) k [a]
-  => [(String, Double)] -> OP.Key k
-  -> Model s es String
+categorical' :: forall s es a k. (a ~ OpenSum PrimVal) => OP.Lookup (OP.AsList s) k [a]
+  => [(OpenSum PrimVal, Double)] -> OP.Key k
+  -> Model s es (OpenSum PrimVal)
 categorical' xs field = Model $ do
   let tag = Just $ OP.keyToStr field
       (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])

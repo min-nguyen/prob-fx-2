@@ -13,6 +13,8 @@ module Extensible.Dist where
 -- import Extensible.IO
 import Extensible.Freer
 import Extensible.Sampler
+import Extensible.OpenSum (OpenSum)
+import qualified Extensible.OpenSum as OpenSum
 import Util
 import Data.Coerce
 import Control.Lens hiding ((:>))
@@ -22,7 +24,6 @@ import Data.Kind
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe
-import Data.Extensible hiding (wrap, Head, Member)
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 import Statistics.Distribution
@@ -39,6 +40,8 @@ import System.Random.MWC
 import Numeric.Log
 import qualified System.Random.MWC.Distributions as MWC
 
+type PrimVal = '[Int, Double, [Double], Bool, String]
+
 data DistInfo where
   CauchyDistI       :: Double -> Double -> DistInfo
   HalfCauchyDistI   :: Double -> DistInfo
@@ -50,7 +53,7 @@ data DistInfo where
   BetaDistI          :: Double -> Double -> DistInfo
   BinomialDistI      :: Int    -> Double -> DistInfo
   BernoulliDistI     :: Double -> DistInfo
-  CategoricalDistI   :: [(String, Double)] -> DistInfo
+  CategoricalDistI   :: [(OpenSum PrimVal, Double)] -> DistInfo
   DiscreteDistI      :: [Double] -> DistInfo
   PoissonDistI       :: Double -> DistInfo
   DirichletDistI     :: [Double] -> DistInfo
@@ -113,7 +116,7 @@ data Dist a where
   BetaDist          :: Double -> Double -> Maybe Double -> Maybe String ->  Dist Double
   BinomialDist      :: Int    -> Double -> Maybe Int -> Maybe String -> Dist Int
   BernoulliDist     :: Double -> Maybe Bool -> Maybe String -> Dist Bool
-  CategoricalDist   :: [(String, Double)] -> Maybe String -> Maybe String -> Dist String
+  CategoricalDist   :: [(OpenSum PrimVal, Double)] -> Maybe (OpenSum PrimVal) -> Maybe String -> Dist (OpenSum PrimVal)
   DiscreteDist      :: [Double] -> Maybe Int -> Maybe String -> Dist Int
   PoissonDist       :: Double -> Maybe Int -> Maybe String -> Dist Int
   DirichletDist     :: [Double] -> Maybe [Double] -> Maybe String -> Dist [Double]
@@ -178,12 +181,12 @@ pattern DistBool :: Maybe (Dist Bool) -> Dist x
 pattern DistBool d <- (isDistBool -> d)
 pattern DistInt :: Maybe (Dist Int) -> Dist x
 pattern DistInt d <- (isDistInt -> d)
-pattern DistString :: Maybe (Dist String) -> Dist x
-pattern DistString d <- (isDistString -> d)
+pattern DistPrimVal :: Maybe (Dist (OpenSum PrimVal)) -> Dist x
+pattern DistPrimVal d <- (isDistPrimVal -> d)
 
-isDistString :: Dist x -> Maybe (Dist String)
-isDistString d@CategoricalDist {} = Just d
-isDistString _ = Nothing
+isDistPrimVal :: Dist x -> Maybe (Dist (OpenSum PrimVal))
+isDistPrimVal d@CategoricalDist {} = Just d
+isDistPrimVal _ = Nothing
 
 isDistDoubles :: Dist x -> Maybe (Dist [Double])
 isDistDoubles d@DirichletDist {} = Just d

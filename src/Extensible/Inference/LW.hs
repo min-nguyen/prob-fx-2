@@ -25,14 +25,14 @@ import Extensible.State
 import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum(..))
 
-type Vals = '[Int, Double, [Double], Bool, String]
-
-type Ⲭ = Map Addr (OpenSum Vals)
+type Ⲭ = Map Addr (OpenSum PrimVal)
 
 type TraceLW a = [(a, Ⲭ, Double)]
 
-updateMapⲬ :: OpenSum.Member x Vals => Addr -> x -> Ⲭ -> Ⲭ
+updateMapⲬ :: OpenSum.Member x PrimVal => Addr -> x -> Ⲭ -> Ⲭ
 updateMapⲬ α x = Map.insert α (OpenSum.inj x) :: Ⲭ -> Ⲭ
+
+
 
 -- | Run LW n times for multiple data points
 lw :: (es ~ '[AffReader (AsList env), Dist, State Ⲭ, Observe, Sample])
@@ -86,8 +86,8 @@ transformLW = loop
                                                       loop (k x))
               DistDoubles (Just d) -> Free u (\x -> do modify (updateMapⲬ α (unsafeCoerce x :: [Double]))
                                                        loop (k x))
-              DistString (Just d) -> Free u (\x ->  do modify (updateMapⲬ α (unsafeCoerce x :: String))
-                                                       loop (k x))
+              DistPrimVal (Just d) -> Free u (\x ->  do modify (Map.insert α (unsafeCoerce x :: OpenSum PrimVal))
+                                                        loop (k x))
       _ -> Free u (loop . k)
 
 runObserve :: Member Sample rs => Freer (Observe : rs) a -> Freer rs (a, Double)

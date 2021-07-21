@@ -1,4 +1,4 @@
-{-# LANGUAGE AllowAmbiguousTypes, ConstraintKinds, FlexibleContexts, FlexibleInstances, GADTs, PolyKinds, RankNTypes, DataKinds, ScopedTypeVariables, TypeApplications, TypeFamilies, TypeOperators, UndecidableInstances #-}
+{-# LANGUAGE AllowAmbiguousTypes, ConstraintKinds, FlexibleContexts, FlexibleInstances, GADTs, PolyKinds, RankNTypes, DataKinds, ScopedTypeVariables, TypeApplications, TypeFamilies, TypeOperators, UndecidableInstances, EmptyCase #-}
 
 module Extensible.OpenSum where
 
@@ -13,6 +13,25 @@ import Unsafe.Coerce
 
 data OpenSum (ts :: [k]) where
   UnsafeOpenSum :: Int -> t -> OpenSum ts
+
+instance Eq (OpenSum '[]) where
+  x == _ = case x of {}
+
+testOpenSum :: Bool
+testOpenSum =
+  let os1 = inj (5 :: Int) :: OpenSum '[Int, Bool]
+      os2 = inj (True :: Bool) :: OpenSum '[Int, Bool]
+  in  os1 == os2
+
+instance forall t ts. (Eq t, Eq (OpenSum ts)) => Eq (OpenSum (t ': ts)) where
+  -- If their types aren't the same, return false
+  UnsafeOpenSum i _ == UnsafeOpenSum j _ | i /= j = False
+  -- If their types are both t, then unsafe coerce both and compare
+  UnsafeOpenSum 0 x == UnsafeOpenSum 0 y =
+    unsafeCoerce x == (unsafeCoerce y :: t)
+  -- If their types are still to be determined (in ts), then compare the same values but with the type OpenSum ts
+  UnsafeOpenSum i x == UnsafeOpenSum j y =
+    UnsafeOpenSum (i - 1) x == (UnsafeOpenSum (j - 1) y :: OpenSum ts)
 
 instance {-# INCOHERENT #-} Show t => Show (OpenSum '[t]) where
   show (UnsafeOpenSum i t) = show (unsafeCoerce t :: t)

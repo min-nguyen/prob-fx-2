@@ -15,10 +15,10 @@ county_idx = data.county_code.values
 
 n_counties = len(data.county.unique())
 
-print(data[["county", "log_radon", "floor"]].head())
-print(n_counties)
-print(len(county_idx))
-print(data.floor.values)
+# print(data[["county", "log_radon", "floor"]].head())
+# print(n_counties)
+# print(len(county_idx))
+# print(data.floor.values)
 
 np.random.seed(12345)  # set random seed for reproducibility
 

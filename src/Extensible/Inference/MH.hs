@@ -74,19 +74,17 @@ Repeat:
    The acceptance ratio is then: i) * ii) / iii)
 -}
 
-type Vals = '[Int, Double, [Double], Bool, String]
 
 type LogP = Map Addr Double
-type Ⲭ    = Map Addr (DistInfo, OpenSum Vals)
+type Ⲭ    = Map Addr (DistInfo, OpenSum PrimVal)
 type TraceMH a = [(a, Ⲭ, LogP)]
 
 
-updateMapⲬ :: OpenSum.Member x Vals => Addr -> Dist x -> x -> Ⲭ -> Ⲭ
-updateMapⲬ (α, i) d x = Map.insert (α, i) (toDistInfo d, OpenSum.inj x) :: Ⲭ -> Ⲭ
+updateMapⲬ :: OpenSum.Member x PrimVal => Addr -> Dist x -> x -> Ⲭ -> Ⲭ
+updateMapⲬ α d x = Map.insert α (toDistInfo d, OpenSum.inj x) :: Ⲭ -> Ⲭ
 
 updateLogP :: Addr -> Dist x -> x -> LogP -> LogP
-updateLogP (α, i) d x  = Map.insert (α, i) (logProb d x)
-
+updateLogP α d x  = Map.insert α (logProb d x)
 
 -- | Compute acceptance probability
 -- If the log prob from our new samples is better than our old samples, then we always accept.
@@ -220,7 +218,8 @@ transformMH = loop
               DistInt (Just d)    -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
                                             modify (updateLogP α d (unsafeCoerce x)) >>
                                             loop (k x))
-              DistString (Just d) -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
+              DistPrimVal (Just d) -> Free u (\x -> modify
+                                                      (Map.insert α (toDistInfo d, unsafeCoerce x :: OpenSum PrimVal)) >>
                                             modify (updateLogP α d (unsafeCoerce x)) >>
                                             loop (k x))
       Obs d y α
@@ -247,8 +246,8 @@ runObserve = loop 0
     case decomp u of
       Right (Observe d y α)
         -> case d of
-            DistString (Just d) ->
-              do let p' = prob d (unsafeCoerce y :: String)
+            DistPrimVal (Just d) ->
+              do let p' = prob d (unsafeCoerce y :: OpenSum PrimVal)
                 --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: String) ++ " from " ++ show d ++ " is " ++ show p'
                  loop (p + p') (k y)
             DistBool (Just d) ->
@@ -292,8 +291,9 @@ runSample α_samp samples = loop
               Just x  -> do
                 liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
-          DistString (Just d) -> do
-            m <- lookupSample samples d α α_samp
+
+          DistPrimVal (Just d) -> do
+            m <- lookupSample' samples d α α_samp
             case m of
               Nothing -> do
                 x <- sample d
@@ -334,7 +334,7 @@ runSample α_samp samples = loop
                 (loop . k . unsafeCoerce) x
       _  -> error "Impossible: Nothing cannot occur"
 
-lookupSample :: OpenSum.Member a '[Int, Double, [Double], Bool, String] => Ⲭ -> Dist a -> Addr -> Addr -> Sampler (Maybe a)
+lookupSample :: OpenSum.Member a PrimVal => Ⲭ -> Dist a -> Addr -> Addr -> Sampler (Maybe a)
 lookupSample samples d α α_samp
   | α == α_samp = return Nothing
   | otherwise   = do
@@ -343,6 +343,17 @@ lookupSample samples d α α_samp
       Just (d_info, x) -> do
         --liftS $ print $ "Address : " ++ show α ++ " Current dist : " ++ show (toDistInfo d) ++ " Looked up dist : " ++ show d_info ++ " Are they equal? " ++ show (toDistInfo d == d_info)
         return $ if toDistInfo d == d_info then OpenSum.prj x else Nothing
+      Nothing -> return Nothing
+
+lookupSample' :: Ⲭ -> Dist (OpenSum PrimVal) -> Addr -> Addr -> Sampler (Maybe (OpenSum PrimVal))
+lookupSample' samples d α α_samp
+  | α == α_samp = return Nothing
+  | otherwise   = do
+    let m = Map.lookup α samples
+    case m of
+      Just (d_info, x) -> do
+        --liftS $ print $ "Address : " ++ show α ++ " Current dist : " ++ show (toDistInfo d) ++ " Looked up dist : " ++ show d_info ++ " Are they equal? " ++ show (toDistInfo d == d_info)
+        return $ if toDistInfo d == d_info then Just x else Nothing
       Nothing -> return Nothing
 
 

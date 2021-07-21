@@ -78,12 +78,14 @@ main = do
   -- trace <- sampleIOFixed testTopicBasic
   -- trace <- sampleIOFixed testTopicMHPost
   -- trace <- sampleIOFixed testTopicMHPred
-  -- trace <- sampleIOFixed testTopicsMHPost
+  trace <- sampleIOFixed testTopicsMHPost
   -- trace <- sampleIOFixed testHLRBasic
-  trace <- sampleIOFixed testHLRMHPost
+  -- trace <- sampleIOFixed testHLRMHPost
   -- trace <- sampleIOFixed testHLRMHPredictive
+  -- let b = testOpenSum
+  -- putStrLn $ show b
   let traceStr = show trace
-  -- putStrLn traceStr
+  putStrLn traceStr
   writeFile "model-output.txt" traceStr
   return ()
 

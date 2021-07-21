@@ -22,6 +22,7 @@ import qualified Extensible.Inference.Basic as Basic
 import qualified Extensible.Inference.LW as LW
 import qualified Extensible.Inference.MH as MH
 import Extensible.OpenSum
+import qualified Extensible.OpenSum as OpenSum
 import Extensible.Inference.Inf
 import Extensible.State
 import Extensible.Model
@@ -35,7 +36,7 @@ import Debug.Trace
 {- Util -}
 
 -- | Return the most recent sample map from the mh trace, containing only the provided addresses
-drawPostParam :: forall p a. Member p MH.Vals => Proxy p -> [Addr] -> [(a, [(Addr, OpenSum MH.Vals)], [(Addr, Double)])] -> [(Addr, p)]
+drawPostParam :: forall p a. Member p PrimVal => Proxy p -> [Addr] -> [(a, [(Addr, OpenSum PrimVal)], [(Addr, Double)])] -> [(Addr, p)]
 drawPostParam _ addrs mhTrace =
   let sampleMap = snd3 (last mhTrace)
   in  [ (addr, x) | addr <- addrs, let x = fromJust (lookup addr sampleMap >>= (\x' -> prj @p x') )]
@@ -45,7 +46,7 @@ lookupTag :: Tag ->  [(Addr, a)] -> [a]
 lookupTag tag xs = [ v | ((t, i), v) <- xs, t == tag]
 
 -- Returns a list of (addr, [p]) for addresses of interest for all the samples in the mh trace
-extractPostParams :: forall p a. Member p MH.Vals => Proxy p -> [Addr] -> [(a, [(Addr, OpenSum MH.Vals)], [(Addr, Double)])] -> [(Addr, [p])]
+extractPostParams :: forall p a. Member p PrimVal => Proxy p -> [Addr] -> [(a, [(Addr, OpenSum PrimVal)], [(Addr, Double)])] -> [(Addr, [p])]
 extractPostParams _ addrs mhTrace =
   let sampleMap = map snd3 mhTrace
   in  trace (show sampleMap) [ (addr, xs) | addr <- addrs,
@@ -53,14 +54,14 @@ extractPostParams _ addrs mhTrace =
                                    d = fromJust $ prj @p p
                                in  d) sampleMap ]
 
-processLWTrace :: [(a, Map.Map Addr (OpenSum LW.Vals), Double)]
-               -> [(a, [(Addr, OpenSum LW.Vals)], Double)]
+processLWTrace :: [(a, Map.Map Addr (OpenSum PrimVal), Double)]
+               -> [(a, [(Addr, OpenSum PrimVal)], Double)]
 processLWTrace = map (\(xy, samples, prob) ->
         let samples' = Map.toList samples
         in (xy, samples', prob))
 
-processMHTrace :: [(a, Map.Map Addr (DistInfo, OpenSum MH.Vals), Map.Map Addr Double)]
-               -> [(a, [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+processMHTrace :: [(a, Map.Map Addr (DistInfo, OpenSum PrimVal), Map.Map Addr Double)]
+               -> [(a, [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
 processMHTrace = map (\(xy, samples, logps) ->
   let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
       logps'   = Map.toList logps
@@ -91,7 +92,7 @@ testLinRegrBasic = do
   return $ map fst bs
 
 
-testLinRegrLWSim :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testLinRegrLWSim :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
 testLinRegrLWSim = do
   -- Run linear model with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
   let lw_n_iterations = 3
@@ -104,7 +105,7 @@ testLinRegrLWSim = do
   return lwTrace'
 
 -- | [(datapoints, samples, likelihood)]
-testLinRegrLWInf :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testLinRegrLWInf :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
 testLinRegrLWInf = do
   -- Run likelihood weighting inference over linearRegression
   {- This should output the provided fixed set of data points on the x and y axis, where each point has a different probability (due to us observing the probability of given y's). Also returns a trace of parameters and their likelihoods -}
@@ -116,7 +117,7 @@ testLinRegrLWInf = do
   return lwTrace'
 
 -- | Returns trace of model parameter samples
-testLinRegrMHPost :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testLinRegrMHPost :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
 testLinRegrMHPost = do
   -- Run mh inference over linearRegression for data representing a line with gradient 3 and intercept 0
   let mh_n_iterations = 200
@@ -164,7 +165,7 @@ testLogRegrBasic = do
                          (map mkRecordLogRegrL [[False], [False], [True], [False], [True]])
   return $ map fst bs
 
-testLogRegrLWSim :: Sampler [((Double, Bool), [(Addr, OpenSum LW.Vals)], Double)]
+testLogRegrLWSim :: Sampler [((Double, Bool), [(Addr, OpenSum PrimVal)], Double)]
 testLogRegrLWSim = do
   -- Run logistic model with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
   bs <- map fst <$> Basic.basic 1 Example.logisticRegression
@@ -177,7 +178,7 @@ testLogRegrLWSim = do
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
-testLogRegrLWInf :: Sampler [((Double, Bool), [(Addr, OpenSum LW.Vals)], Double)]
+testLogRegrLWInf :: Sampler [((Double, Bool), [(Addr, OpenSum PrimVal)], Double)]
 testLogRegrLWInf = do
   -- Using fixed model parameters, generate some sample data points to learn
   let n_samples = 1
@@ -190,7 +191,7 @@ testLogRegrLWInf = do
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
-testLogRegrMHPost :: Sampler [((Double, Bool), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testLogRegrMHPost :: Sampler [((Double, Bool), [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
 testLogRegrMHPost = do
   let n_samples = 1
   bs <- map fst <$> Basic.basic n_samples Example.logisticRegression
@@ -237,7 +238,7 @@ testNNLinBasic = do
                                                    [4.0]))
   return $ map fst bs
 
-testNNLinLWSim :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testNNLinLWSim :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
 testNNLinLWSim = do
   -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
   let xs  = concat [ replicate 11 x | x <- [0 .. 10]]
@@ -249,7 +250,7 @@ testNNLinLWSim = do
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
-testNNLinLWInf :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testNNLinLWInf :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
 testNNLinLWInf = do
   -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
   lwTrace <- LW.lw 1  (Example.nnLinModel 3)
@@ -260,7 +261,7 @@ testNNLinLWInf = do
   return lwTrace'
 
 -- Run this with nn-basic, as it returns a predictive distribution rather than a posterior one.
-testNNLinMHPost :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testNNLinMHPost :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
 testNNLinMHPost = do
   -- Run mh over data representing a line with gradient 1 and intercept 0
   let mh_n_iterations = 40
@@ -303,7 +304,7 @@ testNNStepBasic = do
                                                         [4.0]))
   return $ map fst bs
 
-testNNStepLWSim :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testNNStepLWSim :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
 testNNStepLWSim = do
   let xs  = concat [ replicate 31 x | x <- [-10 .. 10]]
       -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
@@ -315,7 +316,7 @@ testNNStepLWSim = do
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
-testNNStepLWSim2 :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testNNStepLWSim2 :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
 testNNStepLWSim2 = do
   -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
   lwTrace <- LW.lw 1  (Example.nnLinModel 3)
@@ -327,7 +328,7 @@ testNNStepLWSim2 = do
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
-testNNStepLWInf :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testNNStepLWInf :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
 testNNStepLWInf = do
   -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
   lwTrace <- LW.lw 1  (Example.nnLinModel 3)
@@ -339,7 +340,7 @@ testNNStepLWInf = do
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
-testNNStepMHPost :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)],
+testNNStepMHPost :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)],
                    [(Addr, Double)])]
 testNNStepMHPost = do
   mhTrace <- MH.mh 20  (Example.nnStepModel 3) []
@@ -392,7 +393,7 @@ testNNLogBasic = do
                       (repeat $ mkRecordNNLog ([], w1 ++ w2 ++ w3))
   return $ map fst bs
 
-testNNLogMHPost :: Sampler [(((Double, Double), Bool), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testNNLogMHPost :: Sampler [(((Double, Double), Bool), [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
 testNNLogMHPost = do
   mhTrace <- MH.mh 50 (Example.nnLogModel 3) []
                       nnLogDataX
@@ -421,7 +422,7 @@ testSinBasic = do
                        (repeat $ mkRecordLinRegr ([], [5], [0], [0.1]))
   return $ map fst bs
 
-testSinLWSim :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testSinLWSim :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
 testSinLWSim = do
   -- Run sine model with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
   let xs  = concat [ replicate 101 x | x <- [0 .. 100]]
@@ -432,7 +433,7 @@ testSinLWSim = do
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
-testSinLWInf :: Sampler [((Double, Double), [(Addr, OpenSum LW.Vals)], Double)]
+testSinLWInf :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
 testSinLWInf = do
   -- Generate data points from sine model with fixed parameters
   let xs = map (/50) [0 .. 200]
@@ -445,7 +446,7 @@ testSinLWInf = do
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
-testSinMHPost :: Sampler [((Double, Double), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testSinMHPost :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
 testSinMHPost = do
   -- Generate data points from sine model with fixed parameters
   let xs = map (/50) [0 .. 200]
@@ -491,7 +492,7 @@ testHMMBasic = do
                                    [0] [mkRecordHMM ([], 0.5, 0.5)]
   return $ map fst bs
 
-testHMMLWSim :: Sampler [(([Int], [Int]), [(Addr, OpenSum LW.Vals)], Double)]
+testHMMLWSim :: Sampler [(([Int], [Int]), [(Addr, OpenSum PrimVal)], Double)]
 testHMMLWSim = do
   let hmm_n_steps    = 10
       hmm_n_samples  = 10
@@ -502,7 +503,7 @@ testHMMLWSim = do
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
-testHMMLWInf :: Sampler [(([Int], [Int]), [(Addr, OpenSum LW.Vals)], Double)]
+testHMMLWInf :: Sampler [(([Int], [Int]), [(Addr, OpenSum PrimVal)], Double)]
 testHMMLWInf = do
   let hmm_n_steps   = 10
       hmm_n_samples = 10
@@ -516,7 +517,7 @@ testHMMLWInf = do
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
-testHMMMHPost :: Sampler [(([Int], [Int]), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testHMMMHPost :: Sampler [(([Int], [Int]), [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
 testHMMMHPost = do
   let hmm_n_steps   = 20
       hmm_n_samples = 30
@@ -577,7 +578,7 @@ testSIRBasic = do
   let output = map ((\(xs, ys) -> (map fromLatentState xs, ys)) . fst) bs
   return $ head output
 
-testSIRLWInf :: Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum LW.Vals)], Double)]
+testSIRLWInf :: Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum PrimVal)], Double)]
 testSIRLWInf = do
   let sir_n_steps    = length sirInfectedData
 
@@ -589,7 +590,7 @@ testSIRLWInf = do
         map (\((xs, ys), sampleMap, p) -> ((map fromLatentState xs, ys), sampleMap, p)) lwTrace'
   return output'
 
-testSIRMHPost ::  Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testSIRMHPost ::  Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
 testSIRMHPost = do
   let sir_n_samples = 10
   bs <- map fst <$> Basic.basic sir_n_samples
@@ -635,20 +636,20 @@ testHalfNormal = do
 
 -- | Topic model over single document
 mkRecordTopic :: ([[Double]], [[Double]], [String]) -> LRec Example.TopicEnv
-mkRecordTopic (tps, wps, ys) =  #topic_ps @= tps <:  #word_ps @= wps <: #word @= ys <:nil
+mkRecordTopic (tps, wps, ys) =  #topic_ps @= tps <:  #word_ps @= wps <: #word @= map OpenSum.inj ys <:nil
 
 testTopicBasic :: Sampler [[String]]
 testTopicBasic = do
-  bs <- Basic.basic 1 (Example.documentDist vocabulary 2)
+  map fst <$> Basic.basic 1 (Example.documentDist vocabulary 2)
                         [10] [mkRecordTopic ([[0.5, 0.5]], [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],[1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]], [])]
-  return $ map fst bs
 
-testTopicMHPost :: Sampler [([String], [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+
+testTopicMHPost :: Sampler [([String], [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
 testTopicMHPost = do
   mhTrace <- MH.mh 100 (Example.documentDist vocabulary 2) ["word_ps", "topic_ps"]
                        [10] [mkRecordTopic ([], [], document1)]
   let mhTrace' = processMHTrace mhTrace
-  return mhTrace'
+  return mhTrace' -- (map (\(a, b, c) -> (map (fromJust . OpenSum.prj) a, b, c)) mhTrace')
 
 testTopicMHPred :: Sampler [[String]]
 testTopicMHPred = do
@@ -658,12 +659,11 @@ testTopicMHPred = do
        topic_ps   = concat $ lookupTag "topic_ps" postParams
        word_ps    = concat $ lookupTag "word_ps" postParams
   liftS $ print $ "Using params " ++ show (topic_ps, word_ps)
-  bs <- Basic.basic 1 (Example.documentDist vocabulary 2) [10]
+  map fst <$> Basic.basic 1 (Example.documentDist vocabulary 2) [10]
         [mkRecordTopic ([topic_ps],  [word_ps], [])]
-  return $ map fst bs
 
 -- | Topic model over multiple (two) documents
-testTopicsMHPost :: Sampler [([[String]], [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+testTopicsMHPost :: Sampler [([[String]], [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
 testTopicsMHPost = do
   mhTrace <- MH.mh 1000 (Example.topicModel vocabulary 2) ["word_ps", "topic_ps"]
                        [[10, 10]] [mkRecordTopic ([], [], concat corpus)]
@@ -689,7 +689,7 @@ testHLRBasic = do
       nobasementPoints  = map (head bs !!) noBasementIdxs
   return (basementPoints, nobasementPoints)
 
--- testHLRMHPost :: Sampler  [([Double], [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
+-- testHLRMHPost :: Sampler  [([Double], [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
 testHLRMHPost :: Sampler  [(Addr, [Double])]
 testHLRMHPost = do
   mhTrace <- MH.mh 3000 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx) ["mu_a", "mu_b", "sigma_a", "sigma_b"]
@@ -701,7 +701,7 @@ testHLRMHPost = do
   liftS $ print addrs'
   return addrs'
 
-testHLRMHPredictive :: Sampler  ([Double], [(Addr, OpenSum MH.Vals)], [(Addr, Double)])
+testHLRMHPredictive :: Sampler  ([Double], [(Addr, OpenSum PrimVal)], [(Addr, Double)])
 testHLRMHPredictive = do
   mhTrace <- MH.mh 2000 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx)
              ["mu_a", "mu_b", "sigma_a", "sigma_b"] [()] [mkRecordHLR ([], [], [], [], [], [], logRadon)]
