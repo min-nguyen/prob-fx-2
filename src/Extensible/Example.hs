@@ -309,6 +309,7 @@ hmmSIRNsteps fixedParams n latentState  = do
                   return (x_n:xs, y_n:ys))) ([latentState], [])
   return (reverse xs, reverse ys)
 
+-- | Random test model
 type DirEnv =
   '[ "xs" ':> Double
    ]
