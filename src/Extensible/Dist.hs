@@ -8,6 +8,8 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Extensible.Dist where
 
 -- import Extensible.IO
@@ -41,6 +43,9 @@ import Numeric.Log
 import qualified System.Random.MWC.Distributions as MWC
 
 type PrimVal = '[Int, Double, [Double], Bool, String]
+
+-- instance (OpenSum.Member a PrimVal) => Show a where
+--   show os = show (OpenSum.inj os :: OpenSum PrimVal)
 
 data DistInfo where
   CauchyDistI       :: Double -> Double -> DistInfo
@@ -102,7 +107,7 @@ toDistInfo (BinomialDist n p y tag) = BinomialDistI n p
 toDistInfo (BernoulliDist p y tag) = BernoulliDistI p
 toDistInfo (PoissonDist l y tag) = PoissonDistI l
 toDistInfo (DiscreteDist p y tag) = DiscreteDistI p
-toDistInfo (CategoricalDist p y tag) = CategoricalDistI p
+toDistInfo (CategoricalDist xs y tag) = CategoricalDistI (map (\(x, p) -> (OpenSum.inj x, p)) xs)
 toDistInfo (DirichletDist p y tag) = DirichletDistI p
 
 data Dist a where
@@ -116,7 +121,7 @@ data Dist a where
   BetaDist          :: Double -> Double -> Maybe Double -> Maybe String ->  Dist Double
   BinomialDist      :: Int    -> Double -> Maybe Int -> Maybe String -> Dist Int
   BernoulliDist     :: Double -> Maybe Bool -> Maybe String -> Dist Bool
-  CategoricalDist   :: [(OpenSum PrimVal, Double)] -> Maybe (OpenSum PrimVal) -> Maybe String -> Dist (OpenSum PrimVal)
+  CategoricalDist   :: (Eq a, Show a, OpenSum.Member a PrimVal) => [(a, Double)] -> Maybe a -> Maybe String -> Dist a
   DiscreteDist      :: [Double] -> Maybe Int -> Maybe String -> Dist Int
   PoissonDist       :: Double -> Maybe Int -> Maybe String -> Dist Int
   DirichletDist     :: [Double] -> Maybe [Double] -> Maybe String -> Dist [Double]
@@ -181,10 +186,10 @@ pattern DistBool :: Maybe (Dist Bool) -> Dist x
 pattern DistBool d <- (isDistBool -> d)
 pattern DistInt :: Maybe (Dist Int) -> Dist x
 pattern DistInt d <- (isDistInt -> d)
-pattern DistPrimVal :: Maybe (Dist (OpenSum PrimVal)) -> Dist x
+pattern DistPrimVal :: OpenSum.Member x PrimVal => Maybe (Dist x) -> Dist x
 pattern DistPrimVal d <- (isDistPrimVal -> d)
 
-isDistPrimVal :: Dist x -> Maybe (Dist (OpenSum PrimVal))
+isDistPrimVal :: OpenSum.Member x PrimVal => Dist x -> Maybe (Dist x)
 isDistPrimVal d@CategoricalDist {} = Just d
 isDistPrimVal _ = Nothing
 

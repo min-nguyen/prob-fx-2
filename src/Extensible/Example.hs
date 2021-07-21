@@ -331,21 +331,21 @@ halfNorm n = do
 type TopicEnv =
   '[ "topic_ps" ':> [Double],
      "word_ps" ':> [Double],
-     "word" ':> OpenSum PrimVal
+     "word" ':> String
    ]
 
 -- Probability of each word in a topic
-wordDist :: HasVar s "word" (OpenSum PrimVal) =>
+wordDist :: HasVar s "word" String =>
   [String] -> [Double] -> Model s es String
 wordDist vocab ps =
-  fromJust . OpenSum.prj  <$> categorical' (zip (map OpenSum.inj vocab) ps) #word
+  categorical' (zip vocab ps) #word
 
 -- Probability of each topic in a document
 topicDist :: HasVar s "topic_ps" [Double] => Int -> Model s es [Double]
 topicDist n_topics = dirichlet' (replicate n_topics 1) #topic_ps
 
 -- Learns topic model for a single document
-documentDist :: (HasVar s "word_ps" [Double], HasVar s "topic_ps" [Double], HasVar s "word" (OpenSum PrimVal)) => [String] -> Int -> Int -> Model s es [String]
+documentDist :: (HasVar s "word_ps" [Double], HasVar s "topic_ps" [Double], HasVar s "word" String) => [String] -> Int -> Int -> Model s es [String]
 documentDist vocab n_topics n_words = do
   -- Generate distribution over words for each topic
   topic_word_ps <- replicateM n_topics $ dirichlet' (replicate (length vocab) 1) #word_ps
@@ -356,7 +356,7 @@ documentDist vocab n_topics n_words = do
                           wordDist vocab word_ps)
 
 -- Learns topic models for multiple documents
-topicModel :: (HasVar s "word_ps" [Double], HasVar s "topic_ps" [Double], HasVar s "word" (OpenSum PrimVal)) =>
+topicModel :: (HasVar s "word_ps" [Double], HasVar s "topic_ps" [Double], HasVar s "word" String) =>
   [String] ->
   Int      ->
   [Int]    -> -- Number of words per document

@@ -636,7 +636,7 @@ testHalfNormal = do
 
 -- | Topic model over single document
 mkRecordTopic :: ([[Double]], [[Double]], [String]) -> LRec Example.TopicEnv
-mkRecordTopic (tps, wps, ys) =  #topic_ps @= tps <:  #word_ps @= wps <: #word @= map OpenSum.inj ys <:nil
+mkRecordTopic (tps, wps, ys) =  #topic_ps @= tps <:  #word_ps @= wps <: #word @= ys <:nil
 
 testTopicBasic :: Sampler [[String]]
 testTopicBasic = do

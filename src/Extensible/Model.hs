@@ -127,13 +127,13 @@ discrete' xs field = Model $ do
   maybe_y <- ask getter setter
   send (DiscreteDist xs maybe_y tag)
 
-categorical :: [(OpenSum PrimVal, Double)] -> Model s es (OpenSum PrimVal)
+categorical :: (Eq a, Show a, OpenSum.Member a PrimVal) => [(a, Double)] -> Model s es a
 categorical xs = Model $ do
   send (CategoricalDist xs Nothing Nothing)
 
-categorical' :: forall s es a k. (a ~ OpenSum PrimVal) => OP.Lookup (OP.AsList s) k [a]
-  => [(OpenSum PrimVal, Double)] -> OP.Key k
-  -> Model s es (OpenSum PrimVal)
+categorical' :: forall s es a k. (Eq a, Show a, OpenSum.Member a PrimVal) => OP.Lookup (OP.AsList s) k [a]
+  => [(a, Double)] -> OP.Key k
+  -> Model s es a
 categorical' xs field = Model $ do
   let tag = Just $ OP.keyToStr field
       (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])

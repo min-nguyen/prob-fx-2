@@ -204,6 +204,10 @@ transformMH = loop
       Samp d α
         -> case d of
               -- We can unsafe coerce x here, because we've inferred the type of x from the distribution's type
+              d@CategoricalDist{} -> Free u (\x -> modify
+                                           (Map.insert α (toDistInfo d, unsafeCoerce x :: OpenSum PrimVal)) >>
+                                            modify (updateLogP α d (unsafeCoerce x)) >>
+                                            loop (k x))
               DistDoubles (Just d) -> Free u (\x -> do
                                             modify (updateMapⲬ α d (unsafeCoerce x))
                                             modify (updateLogP α d (unsafeCoerce x))
@@ -218,10 +222,7 @@ transformMH = loop
               DistInt (Just d)    -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
                                             modify (updateLogP α d (unsafeCoerce x)) >>
                                             loop (k x))
-              DistPrimVal (Just d) -> Free u (\x -> modify
-                                                      (Map.insert α (toDistInfo d, unsafeCoerce x :: OpenSum PrimVal)) >>
-                                            modify (updateLogP α d (unsafeCoerce x)) >>
-                                            loop (k x))
+
       Obs d y α
         -> Free u (\x -> modify (updateLogP α d y  :: LogP -> LogP) >>
                          loop (k x))
@@ -246,8 +247,8 @@ runObserve = loop 0
     case decomp u of
       Right (Observe d y α)
         -> case d of
-            DistPrimVal (Just d) ->
-              do let p' = prob d (unsafeCoerce y :: OpenSum PrimVal)
+            d@CategoricalDist {} ->
+              do let p' = prob d y
                 --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: String) ++ " from " ++ show d ++ " is " ++ show p'
                  loop (p + p') (k y)
             DistBool (Just d) ->
@@ -281,7 +282,7 @@ runSample α_samp samples = loop
        liftS (putStrLn s) >> loop (k ())
       Just (Sample d α) ->
         case d of
-          DistDoubles (Just d) -> do
+          d@CategoricalDist {} -> do
             m <- lookupSample samples d α α_samp
             case m of
               Nothing -> do
@@ -291,9 +292,8 @@ runSample α_samp samples = loop
               Just x  -> do
                 liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
                 (loop . k . unsafeCoerce) x
-
-          DistPrimVal (Just d) -> do
-            m <- lookupSample' samples d α α_samp
+          DistDoubles (Just d) -> do
+            m <- lookupSample samples d α α_samp
             case m of
               Nothing -> do
                 x <- sample d

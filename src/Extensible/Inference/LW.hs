@@ -86,7 +86,7 @@ transformLW = loop
                                                       loop (k x))
               DistDoubles (Just d) -> Free u (\x -> do modify (updateMapⲬ α (unsafeCoerce x :: [Double]))
                                                        loop (k x))
-              DistPrimVal (Just d) -> Free u (\x ->  do modify (Map.insert α (unsafeCoerce x :: OpenSum PrimVal))
+              d@CategoricalDist {} -> Free u (\x ->  do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
                                                         loop (k x))
       _ -> Free u (loop . k)
 
@@ -114,6 +114,10 @@ runObserve = loop 0
             DistInt (Just d) ->
               do let p' = prob d (unsafeCoerce y :: Int)
                  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Int) ++ " from " ++ show d ++ " is " ++ show p'
+                 loop (p + p') (k y)
+            d@CategoricalDist {} ->
+              do let p' = prob d y
+                 prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show p'
                  loop (p + p') (k y)
             _ -> undefined
       Left  u'  -> Free u' (loop p . k)
