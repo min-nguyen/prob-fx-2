@@ -715,8 +715,19 @@ def main():
     plt.show()
   if arg == "gmm-mh-post":
     print(data)
-    # sampleMaps    = data
-
+    mu_0s = data[0][1]
+    mu_1s = data[1][1]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("mu_0 values")
+    axs1.set_ylabel("frequency")
+    axs1.hist(mu_0s, bins=50)
+    axs1.set_title('GMM - Metropolis Hastings Posterior (mu_0)')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel("mu_1 values")
+    axs2.set_ylabel("frequency")
+    axs2.hist(mu_1s, bins=50)
+    axs2.set_title('GMM - Metropolis Hastings Posterior (mu_1)')
+    plt.show()
     # mu_0s          = np.array([ [ d1[1] for d1 in d if d1[0] == ('mu', 0)] for d in sampleMaps ]).ravel()
     # mu_0s_unique = removeDuplicates(mu_0s)
 

@@ -708,19 +708,20 @@ testHLRMHPredictive = do
   return (last mhTrace')
 
 {- Gaussian Mixture Model -}
-mkRecordGMM :: ([Double], [Double], [Double]) -> LRec Example.GMMEnv
-mkRecordGMM (mus, xs, ys) = #mu @= mus <: #x @= xs <: #y @= ys <: nil
+mkRecordGMM :: ([Double], [Double], [Double], [Double]) -> LRec Example.GMMEnv
+mkRecordGMM (mus, mu_ks, xs, ys) = #mu @= mus <: #mu_k @= mu_ks <: #x @= xs <: #y @= ys <: nil
 
 testGMMBasic :: Sampler [[(Double, Double)]]
 testGMMBasic = do
-  bs <- Basic.basic 1 (Example.gmm 2) [50] [mkRecordGMM ([-2.0, 3.5], [], [])]
+  bs <- Basic.basic 100 (Example.gmm 2) [50] [mkRecordGMM ([-2.0, 3.5], [], [], [])]
   return $ map fst bs
 
 testGMMMHPost :: Sampler [(Addr, [Double])]
 testGMMMHPost = do
   bs <- testGMMBasic
-  let (xs, ys) = unzip (concat bs)
-  mhTrace <- MH.mh 20000 (Example.gmm 2) ["mu"] [50] [mkRecordGMM ([], xs, ys)]
+  let xys = map unzip bs
+  mhTrace <- MH.mh 20000 (Example.gmm 2) [] (repeat 50)
+                (map (\(xs, ys) ->  mkRecordGMM ([], [], xs, ys)) xys)
   let mhTrace' = processMHTrace mhTrace
       addrs    = extractPostParams (Proxy @Double)  [("mu", 0), ("mu", 1)] mhTrace'
       addrs'   = map (\(addr, xs) -> (addr, removeDuplicates xs)) addrs
