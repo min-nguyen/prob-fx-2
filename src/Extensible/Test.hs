@@ -671,9 +671,6 @@ testTopicsMHPost = do
   return mhTrace'
 
 -- | Hierchical linear regression
-type HLREnv =
-  '[ "mu_a" ':> Double, "mu_b" ':> Double, "sigma_a" ':> Double, "sigma_b" ':> Double,
-     "log_radon" ':> Double]
 
 mkRecordHLR :: ([Double], [Double], [Double], [Double], [Double], [Double], [Double]) -> LRec Example.HLREnv
 mkRecordHLR (mua, mub, siga, sigb, a, b, lograds) = #mu_a @= mua <: #mu_b @= mub <: #sigma_a @= siga <: #sigma_b @= sigb <: #a @= a <: #b @= b <: #log_radon @= lograds <: nil
@@ -710,3 +707,19 @@ testHLRMHPredictive = do
   -- Only returning the last of the mh trace here
   return (last mhTrace')
 
+{- Gaussian Mixture Model -}
+mkRecordGMM :: ([Double], [Double]) -> LRec Example.GMMEnv
+mkRecordGMM (mus, ys) = #mu @= mus <:  #y @= ys <: nil
+
+testGMMBasic :: Sampler [[Double]]
+testGMMBasic = do
+  bs <- Basic.basic 1 (Example.gmm 2) [20] [mkRecordGMM ([0.0, 3.5],  [])]
+  return $ map fst bs
+
+testGMMMHPost :: Sampler [([Double], [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
+testGMMMHPost = do
+  bs <- testGMMBasic
+
+  mhTrace <- MH.mh 100 (Example.gmm 2) [] [20] [mkRecordGMM ([], concat bs)]
+  let mhTrace' = processMHTrace mhTrace
+  return mhTrace'

@@ -704,6 +704,8 @@ def main():
       y = m * x + c
       plt.plot(x, y)
     plt.show()
+  # if arg == "gmm-basic":
+
 
 if __name__ == "__main__":
   main()

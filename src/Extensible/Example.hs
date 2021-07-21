@@ -402,10 +402,18 @@ hierarchicalLinRegr n_counties floor_x county_idx _ = do
   return radon_like
 
 -- | Gaussian Mixture Model
-gmm :: HasVar s "y" Double => Int -> Model s es ()
-gmm k = do
-  cluster_ps <- dirichlet (replicate k 1)
-  mus        <- replicateM k (normal 0 15)
-  -- categorical cluster_ps
 
-  undefined
+type GMMEnv = '[
+    "mu" ':> Double,
+    "y"  ':> Double
+  ]
+
+gmm :: (HasVar s "mu" Double, HasVar s "y" Double)
+  => Int -- num clusters
+  -> Int -- num data points
+  -> Model s es [Double]
+gmm k n = do
+  cluster_ps <- dirichlet (replicate k 1)
+  mus        <- replicateM k (normal' 0 15 #mu)
+  replicateM n (do mu_k <- categorical (zip mus cluster_ps)
+                   normal' mu_k 1 #y)

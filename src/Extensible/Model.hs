@@ -40,27 +40,10 @@ import qualified System.Random.MWC.Distributions as MWC
 import qualified Data.Vector as V
 import Unsafe.Coerce
 
--- mkField "infobs ρ β γ m c b μ σ mu sigma y ys label yObs weight bias obs_p trans_p"
-
 type family Maybes (as :: [k]) = (bs :: [k]) | bs -> as where
   Maybes ((f , v) : as) = (f , Maybe v) : Maybes as
   Maybes (a : as) = Maybe a : Maybes as
   Maybes '[] = '[]
-
--- type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
---   -- AsList ((f :> [a]) : as) = ((f :> [a]) : AsList as)
---   AsList ((f :> a) : as)   = ((f :> [a]) : AsList as)
---   AsList '[] = '[]
-
--- type family AsList' a where
---   AsList' [a] = [a]
---   AsList' a   = [a]
-
-
--- HasVar: Lookup for maybe types
--- class OP.Lookup (AsList xs) k [v]  => HasVar xs k v where
-
--- instance OP.Lookup (AsList xs) k [v] => HasVar xs k v where
 
 type MRec s = OP.OpenProduct (Maybes s)
 

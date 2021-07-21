@@ -133,6 +133,7 @@ mhNsteps :: (es ~ '[AffReader (AsList env), Dist, Observe, State Ⲭ, State LogP
   -> TraceMH a        -- Previous mh output
   -> Sampler (TraceMH a)
 mhNsteps n env model tags trace = do
+  liftS $ print $ "am here"
   foldl (>=>) return (replicate n (mhStep env model tags)) trace
 
 -- | Perform one step of MH for a single data point
@@ -145,7 +146,6 @@ mhStep :: (es ~ '[AffReader (AsList env), Dist, Observe, State Ⲭ, State LogP, 
 mhStep env model tags trace = do
   let -- Get previous mh output
       (x, samples, logps) = head trace
-  -- liftS $ print $ "samples are " ++ show samples
   -- α_samp <- sample $ DiscrUniformDist 0 2 Nothing
   let sampleSites = if null tags then samples
                     else  Map.filterWithKey (\(tag, i) _ -> tag `elem` tags) samples
@@ -205,7 +205,7 @@ transformMH = loop
         -> case d of
               -- We can unsafe coerce x here, because we've inferred the type of x from the distribution's type
               d@CategoricalDist{} -> Free u (\x -> modify
-                                           (Map.insert α (toDistInfo d, unsafeCoerce x :: OpenSum PrimVal)) >>
+                                           (Map.insert α (toDistInfo d, OpenSum.inj x :: OpenSum PrimVal)) >>
                                             modify (updateLogP α d (unsafeCoerce x)) >>
                                             loop (k x))
               DistDoubles (Just d) -> Free u (\x -> do
@@ -229,15 +229,6 @@ transformMH = loop
       _ -> Free u (loop . k)
 
 -- | Remove Observe occurrences from tree (log p is taken care of by transformMH)
--- runObserve :: Freer (Observe : rs) a -> Freer rs a
--- runObserve  = loop
---   where
---   loop :: Freer (Observe : rs) a -> Freer rs a
---   loop (Pure x) = return x
---   loop (Free u k) = case decomp u of
---     Right (Observe d y α)
---       -> loop (k y)
---     Left  u'  -> Free u' (loop . k)
 runObserve :: Member Sample rs => Freer (Observe : rs) a -> Freer rs a
 runObserve = loop 0
   where
@@ -343,17 +334,6 @@ lookupSample samples d α α_samp
       Just (d_info, x) -> do
         --liftS $ print $ "Address : " ++ show α ++ " Current dist : " ++ show (toDistInfo d) ++ " Looked up dist : " ++ show d_info ++ " Are they equal? " ++ show (toDistInfo d == d_info)
         return $ if toDistInfo d == d_info then OpenSum.prj x else Nothing
-      Nothing -> return Nothing
-
-lookupSample' :: Ⲭ -> Dist (OpenSum PrimVal) -> Addr -> Addr -> Sampler (Maybe (OpenSum PrimVal))
-lookupSample' samples d α α_samp
-  | α == α_samp = return Nothing
-  | otherwise   = do
-    let m = Map.lookup α samples
-    case m of
-      Just (d_info, x) -> do
-        --liftS $ print $ "Address : " ++ show α ++ " Current dist : " ++ show (toDistInfo d) ++ " Looked up dist : " ++ show d_info ++ " Are they equal? " ++ show (toDistInfo d == d_info)
-        return $ if toDistInfo d == d_info then Just x else Nothing
       Nothing -> return Nothing
 
 
