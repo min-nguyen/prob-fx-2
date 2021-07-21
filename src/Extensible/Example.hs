@@ -395,3 +395,12 @@ hierarchicalLinRegr n_counties floor_x county_idx _ = do
   radon_like <- mapM (\rad_est -> normal' rad_est eps #log_radon) radon_est
   let f = ""
   return radon_like
+
+-- | Gaussian Mixture Model
+gmm :: HasVar s "y" Double => Int -> Model s es ()
+gmm k = do
+  cluster_ps <- dirichlet (replicate k 1)
+  mus        <- replicateM k (normal 0 15)
+  -- categorical cluster_ps
+
+  undefined
