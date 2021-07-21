@@ -62,19 +62,6 @@ type family Maybes (as :: [k]) = (bs :: [k]) | bs -> as where
 
 type MRec s = OP.OpenProduct (Maybes s)
 
-{-
-Idea : we can use State instead of Reader for the environment of observable variables.
-This lets us use affine types in a way. When a variable is consumed by being conditioned against, we replace its value in the environment with Nothing. When a variable corresponds to a list of values, conditioning against it means removing the head element from the list and writing back the tail of the list. When the tail is empty, we replace the variable's value with Nothing.
-  or:
-We convert all the environment values to lists if they aren't already.
-  or:
-We can use reader on the user end, but then transform this during inference to use the state effect.
--}
-
-{-
-Idea : We can introduce print statements by adding them as a constructor of Sample
--}
-
 newtype Model env es a =
   Model { runModel :: (Member Dist es, Member (AffReader (OP.AsList env)) es, Member Sample es) => Freer es a }
   deriving Functor
@@ -110,6 +97,7 @@ normalLens :: forall s es a k. (a ~ Double) => OP.Lookup s k a
 normalLens mu sigma field =
   lens (\s -> OP.getOP field s) (\s b -> OP.setOP field b s)
 
+{- Distribution smart constructors -}
 
 dirichlet :: [Double] -> Model s es [Double]
 dirichlet xs = Model $ do
@@ -201,7 +189,6 @@ halfCauchy' sigma field = Model $ do
       (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])
   maybe_y <- ask getter setter
   send (HalfCauchyDist sigma maybe_y tag)
-
 
 bernoulli :: Double -> Model s es Bool
 bernoulli p = Model $ do

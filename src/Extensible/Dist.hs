@@ -39,7 +39,6 @@ import System.Random.MWC
 import Numeric.Log
 import qualified System.Random.MWC.Distributions as MWC
 
-
 data DistInfo where
   CauchyDistI       :: Double -> Double -> DistInfo
   HalfCauchyDistI   :: Double -> DistInfo
@@ -230,89 +229,10 @@ runDist = loop 0 Map.empty
             else send (Sample d (tag, tag_i)) >>= loop (α_counter + 1) tagMap' . k
     Left  u'  -> Free u' (loop α_counter tagMap. k)
 
-{- Replaces Dists with Sample or Observe and adds address -}
--- runDist :: forall rs a. (Member Sample rs, Member Observe rs) => Freer (Dist : rs) a
---         -> Freer rs a
--- runDist = loop 0
---   where
---   loop :: (Member Sample rs, Member Observe rs) => Int -> Freer (Dist : rs) a -> Freer rs a
---   loop α_counter (Pure x) = return x
---   loop α_counter (Free u k) = case decomp u of
---     Right d
---       -> let α = if hasTag d then getTag d else show α_counter
---          in if hasObs d
---             then send (Observe d (getObs d) α) >>= loop (α_counter + 1) . k
---             else send (Sample d α) >>= loop (α_counter + 1). k
---     Left  u'  -> Free u' (loop α_counter . k)
-
-
-instance Distribution (Dist a) where
-  -- cumulative (HalfNormalDist σ _ _) x
-  --   = if x <= μ then 0 else
-  --     (cumulative (normalDistr μ σ) x - cumulative (normalDistr μ σ) μ) * 2
-  cumulative (CauchyDist μ σ _ _) x
-    = cumulative (cauchyDistribution μ σ) x
-  cumulative (NormalDist μ σ _ _) x
-    = cumulative (normalDistr μ σ) x
-  cumulative (UniformDist min max _ _) x
-    = cumulative (uniformDistr min max) x
-  cumulative (GammaDist k θ _ _) x
-    = cumulative (gammaDistr k θ) x
-  cumulative (BetaDist α β _ _) x
-    = cumulative (betaDistr α β) x
-  cumulative (BinomialDist n p _ _) x
-    = cumulative (binomial n p) x
-  cumulative (BernoulliDist p _ _) x
-    = cumulative (binomial 1 p) x
-  cumulative (CategoricalDist ps _ _) x
-    = undefined -- foldr (\(a, ap) p -> if fromIntegral a <= x then p + ap else p) 0 ps
-  cumulative (DiscreteDist ps _ _) x
-    = cumulative (uniformDistr 0 (fromIntegral $ length ps)) x
-  cumulative (PoissonDist λ _ _) x
-    = cumulative (poisson λ) x
-  cumulative (DiscrUniformDist min max _ _) x
-    = cumulative (uniformDistr (fromIntegral min) (fromIntegral max)) x
-
-instance ContDistr (Dist a) where
-  density (HalfCauchyDist σ _ _)
-    =  \x -> if x < 0 then 0 else
-              2 * density (CauchyDist 0 σ Nothing Nothing) x
-  density (CauchyDist μ σ _ _) = density (cauchyDistribution μ σ)
-  density (HalfNormalDist σ _ _)
-    =  \x -> if x < 0 then 0 else
-              2 * density (NormalDist 0 σ Nothing Nothing) x
-  density (NormalDist μ σ _ _)          = density (normalDistr μ σ)
-  density (UniformDist min max _ _)     = density (uniformDistr min max)
-  density (GammaDist k θ _ _)           = density (gammaDistr k θ)
-  density (BetaDist α β _ _)            = density (betaDistr α β)
-  logDensity (NormalDist μ σ _ _)       = logDensity (normalDistr μ σ)
-  logDensity (UniformDist min max _ _)  = logDensity (uniformDistr min max)
-  logDensity (GammaDist k θ _ _)        = logDensity (gammaDistr k θ)
-  logDensity (BetaDist α β _ _)         = logDensity (betaDistr α β)
-  quantile (NormalDist μ σ _ _)         = quantile (normalDistr μ σ)
-  quantile (UniformDist min max _ _)    = quantile (uniformDistr min max)
-  quantile (GammaDist k θ _ _)          = quantile (gammaDistr k θ)
-  quantile (BetaDist α β _ _)           = quantile (betaDistr α β)
-
-instance DiscreteDistr (Dist a) where
-  -- binomial: probability of `i` successful outcomes
-  probability (BinomialDist n p _ _) i            = probability (binomial n p) i
-  probability (BernoulliDist p _ _) i             = probability (binomial 1 p) i
-  probability (CategoricalDist ps _ _) i          = snd (ps !! i)
-  probability (DiscreteDist ps _ _) i             = (ps !! i)
-  probability (DiscrUniformDist min max _ _) i    = probability (discreteUniformAB min max) i
-  probability (PoissonDist λ _ _) i               = probability (poisson λ) i
-  logProbability (BinomialDist n p _ _) i         = logProbability (binomial n p) i
-  logProbability (BernoulliDist p _ _) i          = logProbability (binomial 1 p) i
-  logProbability (CategoricalDist ps _ _) i       = (log . snd) (ps !! i)
-  logProbability (DiscreteDist ps _ _) i          = (log ) (ps !! i)
-  logProbability (DiscrUniformDist min max _ _) i = logProbability (discreteUniformAB min max) i
-  logProbability (PoissonDist λ _ _) i = logProbability (poisson λ) i
-
 hasObs :: Dist a -> Bool
-hasObs d@(HalfCauchyDist _ obs _)       = isJust obs
+hasObs d@(HalfCauchyDist _ obs _)     = isJust obs
 hasObs d@(CauchyDist _ _ obs _)       = isJust obs
-hasObs d@(HalfNormalDist _ obs _)       = isJust obs
+hasObs d@(HalfNormalDist _ obs _)     = isJust obs
 hasObs d@(NormalDist _ _ obs _)       = isJust obs
 hasObs d@(DiscrUniformDist _ _ obs _) = isJust obs
 hasObs d@(UniformDist _ _ obs _)      = isJust obs
@@ -326,9 +246,9 @@ hasObs d@(PoissonDist _ obs _)        = isJust obs
 hasObs d@(DirichletDist _ obs _)      = isJust obs
 
 hasTag :: Dist a -> Bool
-hasTag d@(HalfCauchyDist _ _ tag)       = isJust tag
+hasTag d@(HalfCauchyDist _ _ tag)     = isJust tag
 hasTag d@(CauchyDist _ _ _ tag)       = isJust tag
-hasTag d@(HalfNormalDist _ _ tag)       = isJust tag
+hasTag d@(HalfNormalDist _ _ tag)     = isJust tag
 hasTag d@(NormalDist _ _ _ tag)       = isJust tag
 hasTag d@(DiscrUniformDist _ _ _ tag) = isJust tag
 hasTag d@(UniformDist _ _ _ tag)      = isJust tag
@@ -373,7 +293,6 @@ getTag d@(DiscreteDist _ _ tag)       = fromJust tag
 getTag d@(PoissonDist _ _ tag)        = fromJust tag
 getTag d@(DirichletDist _ _ tag)      = fromJust tag
 
-
 prob :: Dist a -> a -> Double
 prob (DirichletDist xs _ _) ys =
   let xs' = map (/(Prelude.sum xs)) xs
@@ -382,34 +301,36 @@ prob (DirichletDist xs _ _) ys =
       of Left e -> error "dirichlet error"
          Right d -> let Exp p = dirichletDensity d (UV.fromList ys)
                         in  exp p
-prob d@HalfCauchyDist {} y
-  = density d y
-prob d@CauchyDist {} y
-  = density d y
-prob d@HalfNormalDist {} y
-  = density d y
-prob d@NormalDist {} y
-  = density d y
-prob d@DiscrUniformDist {} y
-  = probability d y
-prob d@UniformDist {} y
-  = density d y
-prob d@GammaDist {} y
-  = density d y
-prob d@BetaDist {}  y
-  = density d y
-prob d@BinomialDist {} y
-  = probability d y
-prob d@BernoulliDist {} y
-  = probability d (boolToInt y)
+prob (HalfCauchyDist σ _ _) y
+  = if y < 0 then 0 else
+            2 * density (cauchyDistribution 0 σ) y
+prob (CauchyDist μ σ _ _) y
+  = density (cauchyDistribution μ σ) y
+prob (HalfNormalDist σ _ _) y
+  = if y < 0 then 0 else
+            2 * density (normalDistr 0 σ) y
+prob (NormalDist μ σ _ _) y
+  = density (normalDistr μ σ) y
+prob (UniformDist min max _ _) y
+  = density (uniformDistr min max) y
+prob (GammaDist k θ _ _) y
+  = density (gammaDistr k θ) y
+prob  (BetaDist α β _ _) y
+  = density (betaDistr α β) y
+prob (DiscrUniformDist min max _ _) y
+  = probability (discreteUniformAB min max) y
+prob (BinomialDist n p _ _) y
+  = probability (binomial n p) y
+prob (BernoulliDist p _ _) i
+  = probability (binomial 1 p) (boolToInt i)
 prob d@(CategoricalDist ps _ _) y
   = case lookup y ps of
       Nothing -> error $ "Couldn't find " ++ show y ++ " in categorical dist"
       Just p  -> p
-prob d@DiscreteDist {} y
-  = probability d y
-prob d@PoissonDist {} y
-  = probability d y
+prob (DiscreteDist ps _ _) y
+  = ps !! y
+prob (PoissonDist λ _ _) y
+  = probability (poisson λ) y
 
 {- Combines logDensity and logProbability.
    Log probability of double `x` from a distribution -}
