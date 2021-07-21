@@ -405,15 +405,18 @@ hierarchicalLinRegr n_counties floor_x county_idx _ = do
 
 type GMMEnv = '[
     "mu" ':> Double,
+    "x"  ':> Double,
     "y"  ':> Double
   ]
 
-gmm :: (HasVar s "mu" Double, HasVar s "y" Double)
+gmm :: (HasVar s "mu" Double, HasVar s "x" Double, HasVar s "y" Double)
   => Int -- num clusters
   -> Int -- num data points
-  -> Model s es [Double]
+  -> Model s es [(Double, Double)]
 gmm k n = do
   cluster_ps <- dirichlet (replicate k 1)
   mus        <- replicateM k (normal' 0 15 #mu)
   replicateM n (do mu_k <- categorical (zip mus cluster_ps)
-                   normal' mu_k 1 #y)
+                   x    <- normal' mu_k 1 #x
+                   y    <- normal' mu_k 1 #y
+                   return (x, y))

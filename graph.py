@@ -704,8 +704,15 @@ def main():
       y = m * x + c
       plt.plot(x, y)
     plt.show()
-  # if arg == "gmm-basic":
-
+  if arg == "gmm-basic":
+    xyss = data
+    xs  = [[xy[0] for xy in xys] for xys in xyss]
+    ys  = [[xy[1] for xy in xys] for xys in xyss]
+    plt.scatter(xs, ys)
+    plt.xlabel('x - axis')
+    plt.ylabel('y - axis')
+    plt.title('Gaussian Mixture Model')
+    plt.show()
 
 if __name__ == "__main__":
   main()

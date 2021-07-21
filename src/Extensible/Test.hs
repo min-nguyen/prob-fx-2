@@ -708,18 +708,18 @@ testHLRMHPredictive = do
   return (last mhTrace')
 
 {- Gaussian Mixture Model -}
-mkRecordGMM :: ([Double], [Double]) -> LRec Example.GMMEnv
-mkRecordGMM (mus, ys) = #mu @= mus <:  #y @= ys <: nil
+mkRecordGMM :: ([Double], [Double], [Double]) -> LRec Example.GMMEnv
+mkRecordGMM (mus, xs, ys) = #mu @= mus <: #x @= xs <: #y @= ys <: nil
 
-testGMMBasic :: Sampler [[Double]]
+testGMMBasic :: Sampler [[(Double, Double)]]
 testGMMBasic = do
-  bs <- Basic.basic 1 (Example.gmm 2) [20] [mkRecordGMM ([0.0, 3.5],  [])]
+  bs <- Basic.basic 1 (Example.gmm 2) [100] [mkRecordGMM ([-2.0, 3.5], [], [])]
   return $ map fst bs
 
-testGMMMHPost :: Sampler [([Double], [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
+testGMMMHPost :: Sampler [([(Double, Double)], [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
 testGMMMHPost = do
   bs <- testGMMBasic
-
-  mhTrace <- MH.mh 100 (Example.gmm 2) [] [20] [mkRecordGMM ([], concat bs)]
+  let (xs, ys) = unzip (concat bs)
+  mhTrace <- MH.mh 100 (Example.gmm 2) [] [20] [mkRecordGMM ([], xs, ys)]
   let mhTrace' = processMHTrace mhTrace
   return mhTrace'
