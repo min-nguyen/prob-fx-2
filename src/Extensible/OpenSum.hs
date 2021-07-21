@@ -83,10 +83,6 @@ findElem = fromIntegral $ natVal (Proxy @(Eval (FindElem t ts)))
 inj :: forall  t ts. Member t ts => t -> OpenSum ts
 inj ft = UnsafeOpenSum (findElem @t @ts) ft
 
-inj' :: forall  t ts. Member t ts => t -> OpenSum ts
-inj' ft = UnsafeOpenSum (findElem @t @ts) ft
-
-
 prj :: forall  t ts. Member t ts => OpenSum ts -> Maybe t
 prj (UnsafeOpenSum i ft) =
   if i == findElem @t @ts

@@ -103,13 +103,13 @@ dirichlet :: [Double] -> Model s es [Double]
 dirichlet xs = Model $ do
   send (DirichletDist xs Nothing Nothing)
 
-dirichlet' :: forall s es a k. (a ~ Double) => OP.Lookup (OP.AsList s) k [a]
+dirichlet' :: forall s es a k. (a ~ [Double]) => OP.Lookup (OP.AsList s) k [a]
   => [Double] -> OP.Key k
   -> Model s es [Double]
 dirichlet' xs field = Model $ do
   let tag = Just $ OP.keyToStr field
       (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])
-  maybe_y <- sequence <$> replicateM (length xs) (ask getter setter)
+  maybe_y <- ask getter setter
   send (DirichletDist xs maybe_y tag)
 
 discrete :: [Double] -> Model s es Int

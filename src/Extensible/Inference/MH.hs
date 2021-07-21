@@ -153,6 +153,7 @@ mhStep env model tags trace = do
                     else  Map.filterWithKey (\(tag, i) _ -> tag `elem` tags) samples
   α_samp_ind <- sample $ DiscrUniformDist 0 (Map.size sampleSites - 1) Nothing Nothing
   -- liftS $ print $ "α_samp_ind is " ++ show α_samp_ind ++ " Map.size samples is " ++ show (Map.size samples)
+  liftS $ print $ "sample ind is " ++ show α_samp_ind ++ "\n sample sites are " ++ show sampleSites
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
   -- run mh with new sample address
   liftS $ print $ "sample address is " ++ show α_samp

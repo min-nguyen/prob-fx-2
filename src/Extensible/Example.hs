@@ -311,10 +311,10 @@ hmmSIRNsteps fixedParams n latentState  = do
 
 -- | Random test model
 type DirEnv =
-  '[ "xs" ':> Double
+  '[ "xs" ':> [Double]
    ]
 
-halfNorm :: HasVar s "xs" Double => Int -> Model s es [Double]
+halfNorm :: HasVar s "xs" [Double] => Int -> Model s es [Double]
 halfNorm n = do
   -- s <- halfNormal 1
   -- x <- cauchy 0 1
@@ -326,8 +326,8 @@ halfNorm n = do
 -- | Topic model
 
 type TopicEnv =
-  '[ "topic_p" ':> Double,
-     "word_p" ':> Double,
+  '[ "topic_ps" ':> [Double],
+     "word_ps" ':> [Double],
      "word" ':> String
    ]
 
@@ -336,14 +336,14 @@ wordDist :: HasVar s "word" String => [String] -> [Double] -> Model s es String
 wordDist vocab ps = categorical' (zip vocab ps) #word
 
 -- Probability of each topic in a document
-topicDist :: HasVar s "topic_p" Double => Int -> Model s es [Double]
-topicDist n_topics = dirichlet' (replicate n_topics 1) #topic_p
+topicDist :: HasVar s "topic_ps" [Double] => Int -> Model s es [Double]
+topicDist n_topics = dirichlet' (replicate n_topics 1) #topic_ps
 
 -- Learns topic model for a single document
-documentDist :: (HasVar s "word_p" Double, HasVar s "topic_p" Double, HasVar s "word" String) => [String] -> Int -> Int -> Model s es [String]
+documentDist :: (HasVar s "word_ps" [Double], HasVar s "topic_ps" [Double], HasVar s "word" String) => [String] -> Int -> Int -> Model s es [String]
 documentDist vocab n_topics n_words = do
   -- Generate distribution over words for each topic
-  topic_word_ps <- replicateM n_topics $ dirichlet' (replicate (length vocab) 1) #word_p
+  topic_word_ps <- replicateM n_topics $ dirichlet' (replicate (length vocab) 1) #word_ps
   -- Distribution over topics for a given document
   topic_ps <- topicDist n_topics
   replicateM n_words (do  z <- discrete topic_ps
@@ -351,7 +351,7 @@ documentDist vocab n_topics n_words = do
                           wordDist vocab word_ps)
 
 -- Learns topic models for multiple documents
-topicModel :: (HasVar s "word_p" Double, HasVar s "topic_p" Double, HasVar s "word" String) =>
+topicModel :: (HasVar s "word_ps" [Double], HasVar s "topic_ps" [Double], HasVar s "word" String) =>
   [String] ->
   Int      ->
   [Int]    -> -- Number of words per document
@@ -362,20 +362,26 @@ topicModel vocab n_topics doc_words = do
 -- | Hierarchical Linear Regression
 
 type HLREnv =
-  '[ "mu_a" ':> Double, "mu_b" ':> Double, "sigma_a" ':> Double, "sigma_b" ':> Double, "a" ':> Double, "b" ':> Double,     "log_radon" ':> Double]
+  '[ "mu_a" ':> Double, "mu_b" ':> Double, "sigma_a" ':> Double, "sigma_b" ':> Double,
+     "a" ':> Double, "b" ':> Double, "log_radon" ':> Double]
+
+hlrPrior :: (HasVar s "mu_a" Double, HasVar s "mu_b" Double, HasVar s "sigma_a" Double, HasVar s "sigma_b" Double) => Model s es (Double, Double, Double, Double)
+hlrPrior = do
+  mu_a    <- normal' 0 10 #mu_a
+  sigma_a <- halfNormal' 5 #sigma_a
+  mu_b    <- normal' 0 10 #mu_b
+  sigma_b <- halfNormal' 5 #sigma_b
+  return (mu_a, sigma_a, mu_b, sigma_b)
 
 -- n counties = 85, len(floor_x) = 919, len(county_idx) = 919
 hierarchicalLinRegr :: (HasVar s "mu_a" Double, HasVar s "mu_b" Double, HasVar s "sigma_a" Double, HasVar s "sigma_b" Double, HasVar s "a" Double, HasVar s "b" Double, HasVar s "log_radon" Double)
   => Int -> [Int] -> [Int] -> () -> Model s es [Double]
 hierarchicalLinRegr n_counties floor_x county_idx _ = do
-  mu_a    <- normal' 0 10 #mu_a
-  sigma_a <- halfNormal' 5 #sigma_a
-  mu_b    <- normal' 0 10 #mu_b
-  sigma_b <- halfNormal' 5 #sigma_b
+  (mu_a, sigma_a, mu_b, sigma_b) <- hlrPrior
   -- Intercept for each county
   a <- replicateM n_counties (normal' mu_a sigma_a #a)  -- length = 85
   -- Gradient for each county
-  b <- replicateM n_counties (normal' mu_b sigma_b #b) -- length = 85
+  b <- replicateM n_counties (normal' mu_b sigma_b #b)  -- length = 85
   -- Model error
   eps <- halfCauchy 5
   let -- Get county intercept for each datapoint

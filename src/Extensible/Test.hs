@@ -622,31 +622,30 @@ testSIRMHPred = do
   return $ head output
 
 -- | Testing random distributions
-mkRecordDir :: [Double] -> LRec Example.DirEnv
+mkRecordDir :: [[Double]] -> LRec Example.DirEnv
 mkRecordDir ds = #xs @= ds <: nil
 
 -- testHalfNormal :: Sampler [String]
 testHalfNormal = do
 --  map fst <$> Basic.basic 5 Example.halfNorm [1] [mkRecordDir [0.3889326877819943,0.6110673122180057]]
-  LW.lw 1 Example.halfNorm [1] [mkRecordDir [0.3889326877819943,0.6110673122180057]]
+  LW.lw 1 Example.halfNorm [1] [mkRecordDir [[0.3889326877819943,0.6110673122180057]]]
   -- let p = prob (HalfNormalDist 1 Nothing Nothing) (0)
   -- let p' = prob (NormalDist 0 1 Nothing Nothing) 0
   -- return (p, p')
 
-
 -- | Topic model over single document
-mkRecordTopic :: ([Double], [Double], [String]) -> LRec Example.TopicEnv
-mkRecordTopic (tps, wps, ys) =  #topic_p @= tps <:  #word_p @= wps <: #word @= ys <:nil
+mkRecordTopic :: ([[Double]], [[Double]], [String]) -> LRec Example.TopicEnv
+mkRecordTopic (tps, wps, ys) =  #topic_ps @= tps <:  #word_ps @= wps <: #word @= ys <:nil
 
 testTopicBasic :: Sampler [[String]]
 testTopicBasic = do
   bs <- Basic.basic 1 (Example.documentDist vocabulary 2)
-                        [10] [mkRecordTopic ([], [0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638,1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021], [])]
+                        [10] [mkRecordTopic ([[0.5, 0.5]], [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],[1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]], [])]
   return $ map fst bs
 
 testTopicMHPost :: Sampler [([String], [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
 testTopicMHPost = do
-  mhTrace <- MH.mh 100 (Example.documentDist vocabulary 2) ["word_p", "topic_p"]
+  mhTrace <- MH.mh 100 (Example.documentDist vocabulary 2) ["word_ps", "topic_ps"]
                        [10] [mkRecordTopic ([], [], document1)]
   let mhTrace' = processMHTrace mhTrace
   return mhTrace'
@@ -654,18 +653,19 @@ testTopicMHPost = do
 testTopicMHPred :: Sampler [[String]]
 testTopicMHPred = do
   mhTrace <- testTopicMHPost
-  let  addrs      = [ ("topic_p", 0), ("word_p", 0), ("word_p", 1)]
+  let  addrs      = [ ("topic_ps", 0), ("word_ps", 0), ("word_ps", 1)]
        postParams = drawPostParam (Proxy @[Double]) addrs mhTrace
-       topic_p    = concat $ lookupTag "topic_p" postParams
-       word_p     = concat $ lookupTag "word_p" postParams
-  liftS $ print $ "Using params " ++ show (topic_p, word_p)
-  bs <- Basic.basic 1 (Example.documentDist vocabulary 2) [10] [mkRecordTopic (topic_p,  word_p, [])]
+       topic_ps   = concat $ lookupTag "topic_ps" postParams
+       word_ps    = concat $ lookupTag "word_ps" postParams
+  liftS $ print $ "Using params " ++ show (topic_ps, word_ps)
+  bs <- Basic.basic 1 (Example.documentDist vocabulary 2) [10]
+        [mkRecordTopic ([topic_ps],  [word_ps], [])]
   return $ map fst bs
 
 -- | Topic model over multiple (two) documents
 testTopicsMHPost :: Sampler [([[String]], [(Addr, OpenSum MH.Vals)], [(Addr, Double)])]
 testTopicsMHPost = do
-  mhTrace <- MH.mh 1000 (Example.topicModel vocabulary 2) ["word_p", "topic_p"]
+  mhTrace <- MH.mh 1000 (Example.topicModel vocabulary 2) ["word_ps", "topic_ps"]
                        [[10, 10]] [mkRecordTopic ([], [], concat corpus)]
   let mhTrace' = processMHTrace mhTrace
   return mhTrace'
