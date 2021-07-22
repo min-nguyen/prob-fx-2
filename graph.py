@@ -80,13 +80,8 @@ def main():
     axs2.set_title('Linear regression - Likelihood Weighting')
     plt.show()
   if arg == "lin-regr-mh-post":
-    xys         = [ d[0] for d in data]
-    sampleMaps  = [ d[1] for d in data]
-    logpMaps    = [ d[2] for d in data]
-    mu_samples  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'm'] for d in sampleMaps ]).ravel()
-    mu_samples_unique = removeDuplicates(mu_samples)
-    c_samples  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'c'] for d in sampleMaps ]).ravel()
-    c_samples_unique = removeDuplicates(c_samples)
+    mu_samples_unique = np.array([d[1] for d in data if d[0][0] == 'm']).ravel()
+    c_samples_unique  = np.array([d[1] for d in data if d[0][0] == 'c']).ravel()
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("mu values")
     axs1.set_ylabel("frequency")

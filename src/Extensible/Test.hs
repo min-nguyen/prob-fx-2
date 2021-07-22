@@ -35,21 +35,11 @@ import Debug.Trace
 
 {- Util -}
 
--- | Return the most recent sample map from the mh trace, containing only the provided addresses
-drawPostParam :: forall p a. Member p PrimVal => Proxy p -> [Addr] -> [(a, [(Addr, OpenSum PrimVal)], [(Addr, Double)])] -> [(Addr, p)]
-drawPostParam _ addrs mhTrace =
-  let sampleMap = snd3 (last mhTrace)
-  in  [ (addr, x) | addr <- addrs, let x = fromJust (lookup addr sampleMap >>= (\x' -> prj @p x') )]
-
-
--- List must be sorted
-lookupTag :: Tag ->  [(Addr, a)] -> [a]
-lookupTag tag xs = [ v | ((t, i), v) <- xs, t == tag]
-
+-- Draw the most recent sampled parameters from a post param mh trace
 drawPredParam :: Tag -> [(Addr, [a])] -> [a]
 drawPredParam tag xs = [ last v | ((t, i), v) <- xs, t == tag]
 
--- Returns a list of (addr, [p]) for addresses of interest for all the samples in the mh trace
+-- Returns a list of (addr, [p]) of all unique samples for addresses of interest in the mh trace
 extractPostParams :: forall p a. (Eq p, Member p PrimVal) => Proxy p -> [Addr] -> [(a, [(Addr, OpenSum PrimVal)], [(Addr, Double)])] -> [(Addr, [p])]
 extractPostParams _ addrs mhTrace =
   let sampleMap = map snd3 mhTrace
@@ -123,25 +113,25 @@ testLinRegrLWInf = do
   return lwTrace'
 
 -- | Returns trace of model parameter samples
-testLinRegrMHPost :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
+testLinRegrMHPost :: Sampler [(Addr, [Double])]
 testLinRegrMHPost = do
   -- Run mh inference over linearRegression for data representing a line with gradient 3 and intercept 0
   let mh_n_iterations = 200
   mhTrace <- MH.mh mh_n_iterations Example.linearRegression [] [0 .. 100]
                      (map (mkRecordLinRegrY . (:[]) . (*3)) [0 .. 100])
   -- Reformat MH trace
-  let mhTrace' = processMHTrace mhTrace
-  return mhTrace'
+  let mhTrace'  = processMHTrace mhTrace
+      postParams = extractPostParams (Proxy @Double) [("m", 0), ("c", 0), ("σ", 0)] mhTrace'
+  return postParams
 
 -- | Use mh posterior to output predictive distribution
 testLinRegrMHPred :: Sampler [(Double, Double)]
 testLinRegrMHPred = do
   mhTrace <- testLinRegrMHPost
   -- Get the most recent accepted model parameters from the posterior
-  let postParams = drawPostParam (Proxy @Double) [("m", 0), ("c", 0), ("σ", 0)] mhTrace
-      mu         = lookupTag "m" postParams
-      c          = lookupTag "c" postParams
-      sigma      = lookupTag "σ" postParams
+  let mu         = drawPredParam "m" mhTrace
+      c          = drawPredParam "c" mhTrace
+      sigma      = drawPredParam "σ" mhTrace
   liftS $ print $ "Using parameters " ++ show (mu, c, sigma)
   -- Using these parameters, simulate data from the predictive.
   bs <- Basic.basic 1 Example.linearRegression
