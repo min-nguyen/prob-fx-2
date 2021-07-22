@@ -176,14 +176,8 @@ def main():
     axs2.set_title('Logistic regression - likelihood weighting')
     plt.show()
   if arg == "log-regr-mh-post":
-    xys         = [ d[0] for d in data]
-    sampleMaps  = [ d[1] for d in data]
-    logpMaps    = [ d[2] for d in data]
-    # print(sampleMaps)
-    mu_samples  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'm'] for d in sampleMaps ]).ravel()
-    mu_samples_unique = removeDuplicates(mu_samples)
-    b_samples   = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'b'] for d in sampleMaps ]).ravel()
-    b_samples_unique = removeDuplicates(b_samples)
+    mu_samples_unique =  np.array([d[1] for d in data if d[0][0] == 'm']).ravel()
+    b_samples_unique = np.array([d[1] for d in data if d[0][0] == 'b']).ravel()
     # print(b_samples_unique)
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("mu values")
@@ -337,15 +331,8 @@ def main():
     axs2.set_title('Sine model - likelihood weighting')
     plt.show()
   if arg == "sin-mh-post":
-    xys         = [ d[0] for d in data]
-    sampleMaps  = [ d[1] for d in data]
-    logpMaps    = [ d[2] for d in data]
-    mu_samples  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'm'] for d in sampleMaps ]).ravel()
-    mu_samples_unique = removeDuplicates(mu_samples)
-    c_samples  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'c'] for d in sampleMaps ]).ravel()
-    c_samples_unique = removeDuplicates(c_samples)
-    print(sampleMaps)
-    print(mu_samples_unique)
+    mu_samples_unique = np.array([d[1] for d in data if d[0][0] == 'm']).ravel()
+    c_samples_unique  = np.array([d[1] for d in data if d[0][0] == 'c']).ravel()
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("mu values")
     axs1.set_ylabel("frequency")
@@ -420,14 +407,8 @@ def main():
     plt.show()
   if arg == "hmm-mh-post":
     # Note : this works less well for certain parameters of trans_p and obs_p used for the training data
-    xys         = [ d[0] for d in data]
-    sampleMaps  = [ d[1] for d in data]
-    logpMaps    = [ d[2] for d in data]
-    print(sampleMaps)
-    trans_ps  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'trans_p'] for d in sampleMaps ]).ravel()
-    trans_ps_unique = removeDuplicates(trans_ps)
-    obs_ps  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'obs_p'] for d in sampleMaps ]).ravel()
-    obs_ps_unique = removeDuplicates(obs_ps)
+    trans_ps_unique = np.array([d[1] for d in data if d[0][0] == 'trans_p']).ravel()
+    obs_ps_unique   = np.array([d[1] for d in data if d[0][0] == 'obs_p']).ravel()
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("trans_ps values")
     axs1.set_ylabel("frequency")
@@ -511,18 +492,10 @@ def main():
     axs3.scatter(gammas, ps)
     plt.show()
   if arg == "sir-mh-post":
-    latentStates  = [d[0][0] for d in data]
-    infectedCount = [d[0][1] for d in data]
-    sampleMaps    = [d[1] for d in data]
-    rhos          = np.array([ [ d1[1] for d1 in d if d1[0][0] == '\961'] for d in sampleMaps ]).ravel()
-    rhos_unique = removeDuplicates(rhos)
-    betas         = np.array([ [ d1[1] for d1 in d if d1[0][0] == '\946'] for d in sampleMaps ]).ravel()
-    betas_unique = removeDuplicates(betas)
-    gammas        = np.array([ [ d1[1] for d1 in d if d1[0][0] == '\947'] for d in sampleMaps ]).ravel()
-    gammas_unique = removeDuplicates(gammas)
-    print(rhos_unique)
-    print(betas_unique)
-    print(gammas_unique)
+    print(data)
+    rhos_unique =  np.array([d[1] for d in data if d[0][0] == '\961']).ravel()
+    betas_unique = np.array([d[1] for d in data if d[0][0] == '\946']).ravel()
+    gammas_unique = np.array([d[1] for d in data if d[0][0] == '\947']).ravel()
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("rho values")
     axs1.set_ylabel("frequency")
@@ -539,9 +512,6 @@ def main():
     axs3.hist(gammas_unique, bins=50)
     axs3.set_title('HMM - Metropolis Hastings Posterior (Gamma)')
     plt.show()
-    # print(rhos_unique)
-    # print(betas_unique)
-    # print(gammas_unique)
   if arg == "sir-mh-pred":
     # y axis
     latentStates   = np.array(data[0][1:])
@@ -561,7 +531,6 @@ def main():
     I_ = X_I_Spline(X_)
     R_ = X_R_Spline(X_)
     IC_ = X_InfCount_Spline(X_)
-
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("time steps")
     axs1.set_ylabel("population")
@@ -581,15 +550,13 @@ def main():
     ax.set_xticklabels(ws)
     plt.show()
   if arg == "topic-mh-post":
-    words       = list(np.array([ d[0] for d in data]).ravel())
     ws          = ['DNA', 'evolution', 'parsing', 'phonology']
-    sampleMaps  = [ d[1] for d in data]
-    topic_ps    = np.array([ [ d1[1] for d1 in d if d1[0] == ('topic_ps', 0)] for d in sampleMaps ])
-    topic_0s    = np.array([ [ d1[1] for d1 in d if d1[0] == ('word_ps', 0)] for d in sampleMaps ])
-    topic_1s    = np.array([ [ d1[1] for d1 in d if d1[0] == ('word_ps', 1)] for d in sampleMaps ])
-    topic_p = topic_ps[-1].ravel()
-    topic_0 = topic_0s[-1].ravel()
-    topic_1 = topic_1s[-1].ravel()
+    topic_ps = [d[1] for d in data if d[0] == ('topic_ps', 0)][-1]
+    topic_0s = [d[1] for d in data if d[0] == ('word_ps', 0)][-1]
+    topic_1s = [d[1] for d in data if d[0] == ('word_ps', 1)][-1]
+    topic_p = topic_ps[-1]
+    topic_0 = topic_0s[-1]
+    topic_1 = topic_1s[-1]
     fig, ax = plt.subplots(nrows=1)
     ax.bar(['Topic 0', 'Topic 1'], topic_p, 0.4)
     ax.set_xticklabels(['Topic 0', 'Topic 1'])
@@ -604,41 +571,45 @@ def main():
     plt.title('Topic 1 - Word distribution')
     plt.show()
   if arg == "topics-mh-post":
-    words       = list(np.array([ d[0] for d in data]).ravel())
     ws          = ['DNA', 'evolution', 'parsing', 'phonology']
-    sampleMap   = data[-1][1]
     # Document 0
-    d0_topic_ps    = np.array([ d[1] for d in sampleMap if d[0] == ('topic_ps', 0)]).ravel()
-    d0_topic_0s    = np.array([ d[1] for d in sampleMap if d[0] == ('word_ps',  0)]).ravel()
-    d0_topic_1s    = np.array([ d[1] for d in sampleMap if d[0] == ('word_ps', 1)]).ravel()
+    d0_topic_ps       = [d[1] for d in data if d[0] == ('topic_ps', 0)][-1]
+    d0_topic_0s       = [d[1] for d in data if d[0] == ('word_ps', 0)][-1]
+    d0_topic_1s    = [d[1] for d in data if d[0] == ('word_ps', 1)][-1]
+    d0_topic_p     = d0_topic_ps[-1]
+    d0_topic_0     = d0_topic_0s[-1]
+    d0_topic_1     = d0_topic_1s[-1]
     # # Document 1
-    d1_topic_ps    = np.array([ d[1] for d in sampleMap if d[0] == ('topic_ps', 1)]).ravel()
-    d1_topic_0s    = np.array([ d[1] for d in sampleMap if d[0] == ('word_ps',  2)]).ravel()
-    d1_topic_1s    = np.array([ d[1] for d in sampleMap if d[0] == ('word_ps', 3)]).ravel()
+    d1_topic_ps    = [d[1] for d in data if d[0] == ('topic_ps', 1)][-1]
+    d1_topic_0s    = [d[1] for d in data if d[0] == ('word_ps', 2)][-1]
+    d1_topic_1s    = [d[1] for d in data if d[0] == ('word_ps', 3)][-1]
+    d1_topic_p     = d1_topic_ps[-1]
+    d1_topic_0     = d1_topic_0s[-1]
+    d1_topic_1     = d1_topic_1s[-1]
     # Plot document 0
     fig, ax = plt.subplots(nrows=1)
-    ax.bar(['Topic 0', 'Topic 1'], d0_topic_ps, 0.4)
+    ax.bar(['Topic 0', 'Topic 1'], d0_topic_p, 0.4)
     ax.set_xticklabels(['Topic 0', 'Topic 1'])
     plt.title('Document 0 - Topic distribution')
     fig0, ax0 = plt.subplots(nrows=1)
-    ax0.bar(ws, d0_topic_0s, 0.4)
+    ax0.bar(ws, d0_topic_0, 0.4)
     ax0.set_xticklabels(ws)
     plt.title('Document 0 - Topic 0 - Word distribution')
     fig1, ax1 = plt.subplots(nrows=1)
-    ax1.bar(ws, d0_topic_1s, 0.4)
+    ax1.bar(ws, d0_topic_1, 0.4)
     ax1.set_xticklabels(ws)
     plt.title('Document 0 - Topic 1 - Word distribution')
     # Plot document 1
     fig2, ax2 = plt.subplots(nrows=1)
-    ax2.bar(['Topic 0', 'Topic 1'], d1_topic_ps, 0.4)
+    ax2.bar(['Topic 0', 'Topic 1'], d1_topic_p, 0.4)
     ax2.set_xticklabels(['Topic 0', 'Topic 1'])
     plt.title('Document 1 - Topic distribution')
     fig3, ax3 = plt.subplots(nrows=1)
-    ax3.bar(ws, d1_topic_0s, 0.4)
+    ax3.bar(ws, d1_topic_0, 0.4)
     ax3.set_xticklabels(ws)
     plt.title('Document 1 - Topic 0 - Word distribution')
     fig4, ax4 = plt.subplots(nrows=1)
-    ax4.bar(ws, d1_topic_1s, 0.4)
+    ax4.bar(ws, d1_topic_1, 0.4)
     ax4.set_xticklabels(ws)
     plt.title('Document 1 - Topic 1 - Word distribution')
     plt.show()
@@ -651,25 +622,11 @@ def main():
     plt.scatter(basement_xs, basement_ys, color="r")
     plt.scatter(nobasement_xs, nobasement_ys, color='b')
     plt.show()
-  # if arg == "hlr-mh-post":
-  #   sampleMaps = [d[1] for d in data]
-  #   mu_a       = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'mu_a'] for d in sampleMaps ])
-  #   mu_b       = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'mu_b'] for d in sampleMaps ])
-  #   sigma_a    = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'sigma_a'] for d in sampleMaps ])
-  #   sigma_b    = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'sigma_b'] for d in sampleMaps ])
-  #   mu_a_unique = removeDuplicates(mu_a)
-  #   mu_b_unique = removeDuplicates(mu_b)
-  #   sigma_a_unique = removeDuplicates(sigma_a)
-  #   sigma_b_unique = removeDuplicates(sigma_b)
-  #   print(mu_a_unique)
-  #   print(mu_b_unique)
-  #   print(sigma_a_unique)
-  #   print(sigma_b_unique)
   if arg == "hlr-mh-post":
-    mu_a       = data[0][1]
-    mu_b       = data[1][1]
-    sigma_a    = data[2][1]
-    sigma_b    = data[3][1]
+    mu_a       = [d[1] for d in data if d[0] == ('mu_a', 0)][-1]
+    mu_b       = [d[1] for d in data if d[0] == ('mu_b', 0)][-1]
+    sigma_a    = [d[1] for d in data if d[0] == ('sigma_a', 0)][-1]
+    sigma_b    = [d[1] for d in data if d[0] == ('sigma_b', 0)][-1]
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("mu_a values")
     axs1.set_ylabel("frequency")
@@ -695,10 +652,8 @@ def main():
     sampleMaps = data[1] # Only use last sample
     intercepts = np.array([ d[1] for d in sampleMaps if d[0][0] == 'a' ]).ravel()
     gradients  = np.array([ d[1] for d in sampleMaps if d[0][0] == 'b' ]).ravel()
-
     plt.xticks([0, 1], ["basement", "no basement"])
     plt.ylabel('Log radon level')
-
     for (m, c) in zip(gradients, intercepts):
       x = np.linspace(0, 1, 100)
       y = m * x + c

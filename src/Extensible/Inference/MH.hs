@@ -165,10 +165,11 @@ mhStep env model tags trace = do
              ++ "\nwith α" ++ show α_samp ++ ": "
              ++ show acceptance_ratio ++ " > " ++ show u
             return ((x', samples', logps'):trace)
-    else do liftS $ putStrLn $ "Rejecting " ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
+    else do
+            -- liftS $ putStrLn $ "Rejecting " ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
             -- ++ show logps
-             ++ "\nwith α" ++ show α_samp ++ ": "
-             ++ show acceptance_ratio ++ " < u: " ++ show u
+            --  ++ "\nwith α" ++ show α_samp ++ ": "
+            --  ++ show acceptance_ratio ++ " < u: " ++ show u
             return trace
 
 -- | Run model once under MH
