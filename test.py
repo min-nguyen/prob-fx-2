@@ -58,3 +58,8 @@ plt.hist(data)
 # with unpooled_model:
 #     unpooled_trace = pm.sample(100)
 
+# with pm.Model() as NonCentered_eight:
+#   obs = pm.Normal("obs", mu=0, sigma=sigma)
+
+# with NonCentered_eight:
+#   trace = pm.sample(100)

@@ -421,3 +421,15 @@ gmm k n = do
                    x    <- normal' mu_k 1 #x
                    y    <- normal' mu_k 1 #y
                    return (x, y))
+
+-- | Hierarchical School Model
+
+schoolModel :: HasVar s "y" Double => Int -> [Double] -> Model s es [Double]
+schoolModel n_schools σs = do
+  μ   <- normal 0 10
+  τ   <- halfNormal 10
+  ηs  <- replicateM n_schools (normal 0 1)
+  let θs = map ((μ +) . (τ *)) ηs
+  ys   <- mapM (\(θ, σ) -> normal' θ σ #y) (zip θs σs)
+  let h = ""
+  return ys
