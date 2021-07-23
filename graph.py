@@ -678,12 +678,24 @@ def main():
     axs2.hist(mu_1s, bins=50)
     axs2.set_title('GMM - Metropolis Hastings Posterior (mu_1)')
     plt.show()
-    # mu_0s          = np.array([ [ d1[1] for d1 in d if d1[0] == ('mu', 0)] for d in sampleMaps ]).ravel()
-    # mu_0s_unique = removeDuplicates(mu_0s)
+  if arg == "sch-mh-post":
 
-    # mu_1s          = np.array([ [ d1[1] for d1 in d if d1[0] == ('mu', 1)] for d in sampleMaps ]).ravel()
-    # mu_1s_unique = removeDuplicates(mu_1s)
-    # print(mu_0s_unique, mu_1s_unique)
+    thetas = data[0]
+    thetas_ = [ [ d[i] for d in thetas] for i in range(len(thetas[0]))]
+    print(len(thetas_))
+    samples = data[1]
+    mu_samples_unique = [d[1] for d in samples if d[0] == ('mu', 0)]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("mu values")
+    axs1.set_ylabel("frequency")
+    axs1.hist(mu_samples_unique, bins=50)
+    axs1.set_title('School - Metropolis Hastings Posterior (mu)')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel("theta")
+    axs2.set_ylabel("value")
+    axs2.boxplot(thetas_)
+    axs2.set_title('School - Metropolis Hastings Posterior (thetas)')
+    plt.show()
 if __name__ == "__main__":
   main()
 
