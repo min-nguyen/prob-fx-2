@@ -62,6 +62,7 @@ data DistInfo where
   DiscreteDistI      :: [Double] -> DistInfo
   PoissonDistI       :: Double -> DistInfo
   DirichletDistI     :: [Double] -> DistInfo
+  DeterministicDistI :: OpenSum PrimVal -> DistInfo
   deriving Eq
 
 instance Show DistInfo where
@@ -93,6 +94,8 @@ instance Show DistInfo where
     "BinomialDist(" ++ show n ++ ", " ++ show p ++ ")"
   show (DirichletDistI xs) =
     "DirichletDist(" ++ show xs  ++ ")"
+  show (DeterministicDistI x) =
+    "DeterministicDist(" ++ show x  ++ ")"
 
 toDistInfo :: Dist a -> DistInfo
 toDistInfo (CauchyDist mu sigma y tag) = CauchyDistI mu sigma
@@ -109,6 +112,7 @@ toDistInfo (PoissonDist l y tag) = PoissonDistI l
 toDistInfo (DiscreteDist p y tag) = DiscreteDistI p
 toDistInfo (CategoricalDist xs y tag) = CategoricalDistI (map (\(x, p) -> (OpenSum.inj x, p)) xs)
 toDistInfo (DirichletDist p y tag) = DirichletDistI p
+toDistInfo (DeterministicDist x y tag) = DeterministicDistI (OpenSum.inj x)
 
 data Dist a where
   HalfCauchyDist    :: Double -> Maybe Double -> Maybe String -> Dist Double
@@ -125,6 +129,7 @@ data Dist a where
   DiscreteDist      :: [Double] -> Maybe Int -> Maybe String -> Dist Int
   PoissonDist       :: Double -> Maybe Int -> Maybe String -> Dist Int
   DirichletDist     :: [Double] -> Maybe [Double] -> Maybe String -> Dist [Double]
+  DeterministicDist :: (Eq a, Show a, OpenSum.Member a PrimVal) => a -> Maybe a -> Maybe String -> Dist a
 
 instance Show a => Show (Dist a) where
   show (CauchyDist mu sigma y tag) =
@@ -154,10 +159,31 @@ instance Show a => Show (Dist a) where
   show (CategoricalDist xs y tag) =
    "CategoricalDist(" ++ show xs ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
   show (DirichletDist xs y tag) =
-   "DirichletDistDist(" ++ show xs ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
+   "DirichletDist(" ++ show xs ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
+  show (DeterministicDist x y tag) =
+   "DeterministicDist(" ++ show x ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
 
 type Tag  = String
 type Addr = (Tag, Int)
+
+type TagMap = Map Tag Int
+
+{- Replaces Dists with Sample or Observe and adds address -}
+runDist :: forall rs a. (Member Sample rs, Member Observe rs) => Freer (Dist : rs) a
+        -> Freer rs a
+runDist = loop 0 Map.empty
+  where
+  loop :: (Member Sample rs, Member Observe rs) => Int -> TagMap -> Freer (Dist : rs) a -> Freer rs a
+  loop α_counter tagMap (Pure x) = return x
+  loop α_counter tagMap (Free u k) = case decomp u of
+    Right d
+      -> let tag     = if hasTag d then getTag d else show α_counter
+             tag_i   = Map.findWithDefault 0 tag tagMap
+             tagMap' = Map.insert tag (tag_i + 1) tagMap
+         in if hasObs d
+            then send (Observe d (getObs d) (tag, tag_i)) >>= loop (α_counter + 1) tagMap' . k
+            else send (Sample d (tag, tag_i)) >>= loop (α_counter + 1) tagMap' . k
+    Left  u'  -> Free u' (loop α_counter tagMap. k)
 
 data Sample a where
   Sample  :: Dist a -> Addr -> Sample a
@@ -191,6 +217,7 @@ pattern DistPrimVal d <- (isDistPrimVal -> d)
 
 isDistPrimVal :: OpenSum.Member x PrimVal => Dist x -> Maybe (Dist x)
 isDistPrimVal d@CategoricalDist {} = Just d
+isDistPrimVal d@DeterministicDist {} = Just d
 isDistPrimVal _ = Nothing
 
 isDistDoubles :: Dist x -> Maybe (Dist [Double])
@@ -218,25 +245,6 @@ isDistInt d@DiscreteDist {} = Just d
 isDistInt d@PoissonDist {} = Just d
 isDistInt _ = Nothing
 
-type TagMap = Map Tag Int
-
-{- Replaces Dists with Sample or Observe and adds address -}
-runDist :: forall rs a. (Member Sample rs, Member Observe rs) => Freer (Dist : rs) a
-        -> Freer rs a
-runDist = loop 0 Map.empty
-  where
-  loop :: (Member Sample rs, Member Observe rs) => Int -> TagMap -> Freer (Dist : rs) a -> Freer rs a
-  loop α_counter tagMap (Pure x) = return x
-  loop α_counter tagMap (Free u k) = case decomp u of
-    Right d
-      -> let tag     = if hasTag d then getTag d else show α_counter
-             tag_i   = Map.findWithDefault 0 tag tagMap
-             tagMap' = Map.insert tag (tag_i + 1) tagMap
-         in if hasObs d
-            then send (Observe d (getObs d) (tag, tag_i)) >>= loop (α_counter + 1) tagMap' . k
-            else send (Sample d (tag, tag_i)) >>= loop (α_counter + 1) tagMap' . k
-    Left  u'  -> Free u' (loop α_counter tagMap. k)
-
 hasObs :: Dist a -> Bool
 hasObs d@(HalfCauchyDist _ obs _)     = isJust obs
 hasObs d@(CauchyDist _ _ obs _)       = isJust obs
@@ -252,6 +260,7 @@ hasObs d@(CategoricalDist _ obs _)    = isJust obs
 hasObs d@(DiscreteDist _ obs _)       = isJust obs
 hasObs d@(PoissonDist _ obs _)        = isJust obs
 hasObs d@(DirichletDist _ obs _)      = isJust obs
+hasObs d@(DeterministicDist _ obs _)  = isJust obs
 
 hasTag :: Dist a -> Bool
 hasTag d@(HalfCauchyDist _ _ tag)     = isJust tag
@@ -268,6 +277,7 @@ hasTag d@(CategoricalDist _ _ tag)    = isJust tag
 hasTag d@(DiscreteDist _ _ tag)       = isJust tag
 hasTag d@(PoissonDist _ _ tag)        = isJust tag
 hasTag d@(DirichletDist _ _ tag)      = isJust tag
+hasTag d@(DeterministicDist _ _ tag)      = isJust tag
 
 getObs :: Dist a -> a
 getObs d@(HalfCauchyDist _ obs _)     = fromJust obs
@@ -284,6 +294,7 @@ getObs d@(CategoricalDist _ obs _)    = fromJust obs
 getObs d@(DiscreteDist _ obs _)       = fromJust obs
 getObs d@(PoissonDist _ obs _)        = fromJust obs
 getObs d@(DirichletDist _ obs _)      = fromJust obs
+getObs d@(DeterministicDist _ obs _)  = fromJust obs
 
 getTag :: Dist a -> String
 getTag d@(HalfCauchyDist _ _ tag)     = fromJust tag
@@ -300,6 +311,7 @@ getTag d@(CategoricalDist _ _ tag)    = fromJust tag
 getTag d@(DiscreteDist _ _ tag)       = fromJust tag
 getTag d@(PoissonDist _ _ tag)        = fromJust tag
 getTag d@(DirichletDist _ _ tag)      = fromJust tag
+getTag d@(DeterministicDist _ _ tag)  = fromJust tag
 
 prob :: Dist a -> a -> Double
 prob (DirichletDist xs _ _) ys =
@@ -339,6 +351,8 @@ prob (DiscreteDist ps _ _) y
   = ps !! y
 prob (PoissonDist λ _ _) y
   = probability (poisson λ) y
+prob (DeterministicDist x _ _) y
+  = 1
 
 {- Combines logDensity and logProbability.
    Log probability of double `x` from a distribution -}
@@ -374,3 +388,4 @@ sample (PoissonDist λ obs _) =
   createSampler (samplePoisson λ)
 sample (DirichletDist xs _ _) =
   createSampler (sampleDirichlet xs)
+sample (DeterministicDist x _ _) = return x

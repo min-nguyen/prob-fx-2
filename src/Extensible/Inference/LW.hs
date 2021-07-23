@@ -88,6 +88,8 @@ transformLW = loop
                                                        loop (k x))
               d@CategoricalDist {} -> Free u (\x ->  do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
                                                         loop (k x))
+              d@DeterministicDist {} -> Free u (\x ->  do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
+                                                          loop (k x))
       _ -> Free u (loop . k)
 
 runObserve :: Member Sample rs => Freer (Observe : rs) a -> Freer rs (a, Double)
@@ -116,6 +118,10 @@ runObserve = loop 0
                  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Int) ++ " from " ++ show d ++ " is " ++ show p'
                  loop (p + p') (k y)
             d@CategoricalDist {} ->
+              do let p' = prob d y
+                 prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show p'
+                 loop (p + p') (k y)
+            d@DeterministicDist {} ->
               do let p' = prob d y
                  prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show p'
                  loop (p + p') (k y)

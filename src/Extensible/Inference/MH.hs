@@ -208,6 +208,10 @@ transformMH = loop
                                            (Map.insert α (toDistInfo d, OpenSum.inj x :: OpenSum PrimVal)) >>
                                             modify (updateLogP α d (unsafeCoerce x)) >>
                                             loop (k x))
+              d@DeterministicDist{} -> Free u (\x -> modify
+                                           (Map.insert α (toDistInfo d, OpenSum.inj x :: OpenSum PrimVal)) >>
+                                            modify (updateLogP α d (unsafeCoerce x)) >>
+                                            loop (k x))
               DistDoubles (Just d) -> Free u (\x -> do
                                             modify (updateMapⲬ α d (unsafeCoerce x))
                                             modify (updateLogP α d (unsafeCoerce x))
@@ -239,6 +243,10 @@ runObserve = loop 0
       Right (Observe d y α)
         -> case d of
             d@CategoricalDist {} ->
+              do let p' = prob d y
+                --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: String) ++ " from " ++ show d ++ " is " ++ show p'
+                 loop (p + p') (k y)
+            d@DeterministicDist {} ->
               do let p' = prob d y
                 --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: String) ++ " from " ++ show d ++ " is " ++ show p'
                  loop (p + p') (k y)
@@ -274,6 +282,16 @@ runSample α_samp samples = loop
       Just (Sample d α) ->
         case d of
           d@CategoricalDist {} -> do
+            m <- lookupSample samples d α α_samp
+            case m of
+              Nothing -> do
+                x <- sample d
+                -- liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                (loop . k . unsafeCoerce) x
+              Just x  -> do
+                -- liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
+                (loop . k . unsafeCoerce) x
+          d@DeterministicDist {} -> do
             m <- lookupSample samples d α α_samp
             case m of
               Nothing -> do

@@ -425,16 +425,17 @@ gmm k n = do
 -- | Hierarchical School Model
 
 type SchEnv = '[
-    "mu"  ':> Double,
-    "y"   ':> Double
+    "mu"    ':> Double,
+    "theta" ':> [Double],
+    "y"     ':> Double
   ]
 
-schoolModel :: (HasVar s "mu" Double, HasVar s "y" Double) => Int -> [Double] -> Model s es [Double]
+schoolModel :: (HasVar s "mu" Double, HasVar s "theta" [Double], HasVar s "y" Double) => Int -> [Double] -> Model s es [Double]
 schoolModel n_schools σs = do
   μ   <- normal' 0 10 #mu
   τ   <- halfNormal 10
   ηs  <- replicateM n_schools (normal 0 1)
-  let θs = map ((μ +) . (τ *)) ηs
+  θs  <- deterministic' (map ((μ +) . (τ *)) ηs) #theta
   ys  <- mapM (\(θ, σ) -> normal' θ σ #y) (zip θs σs)
   let h = ""
   return θs

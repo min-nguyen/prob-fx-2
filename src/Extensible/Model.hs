@@ -84,6 +84,20 @@ normalLens mu sigma field =
 
 {- Distribution smart constructors -}
 
+
+
+deterministic :: (Eq a, Show a, OpenSum.Member a PrimVal) => a -> Model s es a
+deterministic x = Model $ do
+  send (DeterministicDist x Nothing Nothing)
+
+deterministic' :: forall s es a k. (Eq a, Show a, OpenSum.Member a PrimVal) => OP.Lookup (OP.AsList s) k [a]
+  => a -> OP.Key k -> Model s es a
+deterministic' x field = Model $ do
+  let tag = Just $ OP.keyToStr field
+      (getter, setter) = OP.mkGetterSetter field :: (Getting [a] (OP.OpenProduct (OP.AsList s)) [a], ASetter (OP.OpenProduct (OP.AsList s)) (OP.OpenProduct (OP.AsList s)) [a] [a])
+  maybe_y <- ask getter setter
+  send (DeterministicDist x maybe_y tag)
+
 dirichlet :: [Double] -> Model s es [Double]
 dirichlet xs = Model $ do
   send (DirichletDist xs Nothing Nothing)

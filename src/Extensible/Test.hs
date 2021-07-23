@@ -715,8 +715,8 @@ testGMMMHPost = do
 
 
 {- School model -}
-mkRecordSch :: ([Double], [Double]) -> LRec Example.SchEnv
-mkRecordSch (mu, ys) = #mu @= mu <: #y @= ys <: nil
+mkRecordSch :: ([Double], [[Double]], [Double]) -> LRec Example.SchEnv
+mkRecordSch (mu, theta, ys) = #mu @= mu <: #theta @= theta <: #y @= ys <: nil
 
 testSchBasic :: Sampler [[Double]]
 testSchBasic = do
@@ -724,17 +724,18 @@ testSchBasic = do
       ys        = [28, 8, -3,   7, -1,  1, 18, 12]
       sigmas    = [15, 10, 16, 11,  9, 11, 10, 18]
   bs <- Basic.basic 1 (Example.schoolModel n_schools)
-          [sigmas] [mkRecordSch ([], ys)]
+          [sigmas] [mkRecordSch ([], [], ys)]
   return $ map fst bs
 
-testSchMHPost :: Sampler ([[Double]], [(Addr, [Double])])
+testSchMHPost :: Sampler ([(Addr, [Double])], [(Addr, [[Double]])])
 testSchMHPost = do
   let n_schools = 8
       ys        = [28, 8, -3,   7, -1,  1, 18, 12]
       sigmas    = [15, 10, 16, 11,  9, 11, 10, 18]
   mhTrace <- MH.mh 2000 (Example.schoolModel n_schools) []
-              [sigmas] [mkRecordSch ([], ys)]
-  let mhTrace' = processMHTrace mhTrace
-      thetas   = map fst3 mhTrace
-      paramTrace = extractPostParams (Proxy @Double) [("mu", 0)] mhTrace'
-  return (thetas, paramTrace)
+              [sigmas] [mkRecordSch ([], [], ys)]
+  let mhTrace'   = processMHTrace mhTrace
+      thetas     = map fst3 mhTrace
+      muTrace    = extractPostParams (Proxy @Double) [("mu", 0)] mhTrace'
+      thetaTrace = extractPostParams (Proxy @[Double]) [("theta", 0)] mhTrace'
+  return (muTrace, thetaTrace)

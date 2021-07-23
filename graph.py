@@ -679,12 +679,9 @@ def main():
     axs2.set_title('GMM - Metropolis Hastings Posterior (mu_1)')
     plt.show()
   if arg == "sch-mh-post":
-
-    thetas = data[0]
-    thetas_ = [ [ d[i] for d in thetas] for i in range(len(thetas[0]))]
-    print(len(thetas_))
-    samples = data[1]
-    mu_samples_unique = [d[1] for d in samples if d[0] == ('mu', 0)]
+    mu_samples_unique   = [d[1]  for d in data[0] if d[0] == ('mu', 0)][0]
+    thetas              = [d[1]  for d in data[1] if d[0] == ('theta', 0)][0]
+    thetas_             = [[d[i] for d in thetas] for i in range(len(thetas[0]))]
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("mu values")
     axs1.set_ylabel("frequency")
