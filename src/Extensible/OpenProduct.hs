@@ -78,6 +78,10 @@ class Lookup (AsList xs) k [v]  => HasVar xs k v where
 
 instance Lookup (AsList xs) k [v] => HasVar xs k v where
 
+type family HasVars xs ks v where
+  HasVars xs (k ': ks) v = (HasVar xs k v, HasVars xs ks v)
+  HasVars xs '[] v = ()
+
 type LRec s = OpenProduct (AsList s)
 
 insert :: UniqueKey key ts ~ 'True
@@ -98,6 +102,9 @@ setOP :: forall key ts . FindElem key ts
     => Key key -> LookupType key ts -> OpenProduct ts -> OpenProduct ts
 setOP _ ft (OpenProduct v) =
   OpenProduct (v V.// [(unP (findElem @key @ts), Any ft)])
+
+mkLens :: forall s k a. Lookup s k a => Key k -> Lens' (OpenProduct s) a
+mkLens k = lens (getOP k) (\s a -> setOP k a s)
 
 mkGetter ::  (s -> a) -> Getting a s a
 mkGetter k = dimap k (contramap k)
