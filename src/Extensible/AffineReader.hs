@@ -36,16 +36,6 @@ ask :: Member (AffReader env) rs => Getting [a] (OP.OpenProduct env) [a]
   -> Freer rs (Maybe a)
 ask g s = Free (inj $ Ask g s) Pure
 
-runReader :: OP.OpenProduct env -> Freer (AffReader env ': rs) a -> Freer rs a
-runReader env = loop where
-  -- loop :: Freer (RecReader env ': rs) a -> Freer rs a
-  loop (Pure x) = return x
-  loop (Free u k) = case decomp u of
-    Right (Ask g s) -> let ys = env ^. g
-                           y  = maybeHead ys
-                       in  loop (k y)
-    Left  u'      -> Free u' (loop . k)
-
 -- | The only purpose of the State (LRec env) effect is to check if all observed values in the environment have been consumed.
 runAffReader :: forall env rs a.
   OP.OpenProduct (OP.AsList env) -> Freer (AffReader (OP.AsList env) ': rs) a -> Freer rs (a, OP.OpenProduct (OP.AsList env) )
@@ -59,3 +49,23 @@ runAffReader env = loop env where
           env' = env & s .~ safeTail ys
       loop env' (k y)
     Left  u'  -> Free u' (loop env . k)
+
+-- Alternative affine reader
+data AffReader' env a where
+  Ask' :: OP.HasVar env k a => OP.Key k -> AffReader' env (Maybe a)
+
+runAffReader' :: forall env rs a.
+  OP.OpenProduct (OP.AsList env) -> Freer (AffReader' env ': rs) a -> Freer rs a
+runAffReader' env = loop env where
+  loop :: OP.OpenProduct (OP.AsList env) -> Freer (AffReader' env  ': rs) a -> Freer rs a
+  loop env (Pure x) = return x
+  loop env (Free u k) = case decomp u of
+    Right (Ask' key) -> do
+      let ys = OP.getOP key env
+          y  = maybeHead ys
+          env' = OP.setOP key (safeTail ys) env
+      loop env' (k y)
+    Left  u'  -> Free u' (loop env . k)
+
+ask' :: forall env f k a. Member (AffReader' env) f => OP.HasVar env k a => OP.Key k -> Freer f (Maybe a)
+ask' k = Free (inj (Ask' k :: AffReader' env (Maybe a))) Pure
