@@ -35,7 +35,7 @@ updateMapⲬ α x = Map.insert α (OpenSum.inj x) :: Ⲭ -> Ⲭ
 
 
 -- | Run LW n times for multiple data points
-lw :: (es ~ '[AffReader (AsList env), Dist, State Ⲭ, Observe, Sample])
+lw :: (es ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample])
    => Int                              -- Number of lw iterations per data point
    -> (b -> Model env es a)            -- Model awaiting input variable
    -> [b]                              -- List of model input variables
@@ -45,7 +45,7 @@ lw n model xs ys = do
   concat <$> zipWithM (\x y -> lwNsteps n y (model x)) xs ys
 
 -- | Run LW n times for a single data point
-lwNsteps :: (es ~ '[AffReader (AsList env), Dist, State Ⲭ, Observe, Sample])
+lwNsteps :: (es ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample])
   => Int
   -> LRec env
   -> Model env es a
@@ -53,11 +53,11 @@ lwNsteps :: (es ~ '[AffReader (AsList env), Dist, State Ⲭ, Observe, Sample])
 lwNsteps n env model = replicateM n (runLW env model)
 
 -- | Run LW once for single data point
-runLW :: es ~ '[AffReader (AsList env), Dist, State Ⲭ, Observe, Sample]
+runLW :: es ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample]
   => LRec env -> Model env es a
   -> Sampler (a, Ⲭ, Double)
 runLW env model = do
-  (((x, ys), samples), p) <- (runSample
+  ((x, samples), p) <- (runSample
                             . runObserve
                             . runState Map.empty
                             . transformLW

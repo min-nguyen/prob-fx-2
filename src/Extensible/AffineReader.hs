@@ -26,46 +26,42 @@ import Control.Lens hiding ((:>))
 import Util
 
 -- A Reader for which it is only possible to access record fields with type [a].
-data AffReader env a where
-  Ask :: Getting [a] (OP.OpenProduct env) [a]
-      -> ASetter (OP.OpenProduct env) (OP.OpenProduct env) [a] [a]
-      -> AffReader env (Maybe a)
+-- data AffReader env a where
+--   Ask :: Getting [a] (OP.OpenProduct env) [a]
+--       -> ASetter (OP.OpenProduct env) (OP.OpenProduct env) [a] [a]
+--       -> AffReader env (Maybe a)
 
-ask :: Member (AffReader env) rs => Getting [a] (OP.OpenProduct env) [a]
-  -> ASetter (OP.OpenProduct env) (OP.OpenProduct env) [a] [a]
-  -> Freer rs (Maybe a)
-ask g s = Free (inj $ Ask g s) Pure
+-- ask :: Member (AffReader env) rs => Getting [a] (OP.OpenProduct env) [a]
+--   -> ASetter (OP.OpenProduct env) (OP.OpenProduct env) [a] [a]
+--   -> Freer rs (Maybe a)
+-- ask g s = Free (inj $ Ask g s) Pure
 
--- | The only purpose of the State (LRec env) effect is to check if all observed values in the environment have been consumed.
-runAffReader :: forall env rs a.
-  OP.OpenProduct (OP.AsList env) -> Freer (AffReader (OP.AsList env) ': rs) a -> Freer rs (a, OP.OpenProduct (OP.AsList env) )
-runAffReader env = loop env where
-  loop :: OP.OpenProduct (OP.AsList env) -> Freer (AffReader (OP.AsList env)  ': rs) a -> Freer rs (a, OP.OpenProduct (OP.AsList env) )
-  loop env (Pure x) = return (x, env)
-  loop env (Free u k) = case decomp u of
-    Right (Ask g s) -> do
-      let ys = env ^. g
-          y  = maybeHead ys
-          env' = env & s .~ safeTail ys
-      loop env' (k y)
-    Left  u'  -> Free u' (loop env . k)
+-- -- | The only purpose of the State (LRec env) effect is to check if all observed values in the environment have been consumed.
+-- runAffReader :: forall env rs a.
+--   OP.OpenProduct (OP.AsList env) -> Freer (AffReader (OP.AsList env) ': rs) a -> Freer rs (a, OP.OpenProduct (OP.AsList env))
+-- runAffReader env (Pure x) = return (x, env)
+-- runAffReader env (Free u k) = case decomp u of
+--   Right (Ask g s) -> do
+--     let ys = env ^. g
+--         y  = maybeHead ys
+--         env' = env & s .~ safeTail ys
+--     runAffReader env' (k y)
+--   Left  u'  -> Free u' (runAffReader env . k)
 
 -- Alternative affine reader
-data AffReader' env a where
-  Ask' :: OP.HasVar env k a => OP.Key k -> AffReader' env (Maybe a)
+data AffReader env a where
+  Ask :: OP.HasVar env k a => OP.Key k -> AffReader env (Maybe a)
 
-runAffReader' :: forall env rs a.
-  OP.OpenProduct (OP.AsList env) -> Freer (AffReader' env ': rs) a -> Freer rs a
-runAffReader' env = loop env where
-  loop :: OP.OpenProduct (OP.AsList env) -> Freer (AffReader' env  ': rs) a -> Freer rs a
-  loop env (Pure x) = return x
-  loop env (Free u k) = case decomp u of
-    Right (Ask' key) -> do
-      let ys = OP.getOP key env
-          y  = maybeHead ys
-          env' = OP.setOP key (safeTail ys) env
-      loop env' (k y)
-    Left  u'  -> Free u' (loop env . k)
+runAffReader :: forall env rs a.
+  OP.OpenProduct (OP.AsList env) -> Freer (AffReader env ': rs) a -> Freer rs a
+runAffReader env (Pure x) = return x
+runAffReader env (Free u k) = case decomp u of
+  Right (Ask key) -> do
+    let ys = OP.getOP key env
+        y  = maybeHead ys
+        env' = OP.setOP key (safeTail ys) env
+    runAffReader env' (k y)
+  Left  u'  -> Free u' (runAffReader env . k)
 
-ask' :: forall env f k a. Member (AffReader' env) f => OP.HasVar env k a => OP.Key k -> Freer f (Maybe a)
-ask' k = Free (inj (Ask' k :: AffReader' env (Maybe a))) Pure
+ask :: forall env f k a. Member (AffReader env) f => OP.HasVar env k a => OP.Key k -> Freer f (Maybe a)
+ask k = Free (inj (Ask k :: AffReader env (Maybe a))) Pure

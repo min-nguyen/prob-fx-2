@@ -107,7 +107,7 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   return $ exp (dom_logα + _X'logα - _Xlogα)
 
 -- | Run MH for multiple data points
-mh :: (es ~ '[AffReader (AsList env), Dist, Observe, State Ⲭ, State LogP, Sample])
+mh :: (es ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
    => Int                              -- Number of mhSteps per data point
    -> (b -> Model env es a)            -- Model awaiting input variable
    -> [Tag]                            -- Tags indicated sample sites of interest
@@ -125,7 +125,7 @@ mh n model tags xs ys = do
   return $ reverse l
 
 -- | Perform n steps of MH for a single data point
-mhNsteps :: (es ~ '[AffReader (AsList env), Dist, Observe, State Ⲭ, State LogP, Sample])
+mhNsteps :: (es ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
   => Int              -- Number of mhSteps
   -> LRec env         -- Model observed variables
   -> Model env es a   -- Model
@@ -136,7 +136,7 @@ mhNsteps n env model tags trace = do
   foldl (>=>) return (replicate n (mhStep env model tags)) trace
 
 -- | Perform one step of MH for a single data point
-mhStep :: (es ~ '[AffReader (AsList env), Dist, Observe, State Ⲭ, State LogP, Sample])
+mhStep :: (es ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
   => LRec env         -- Model observed variable
   -> Model env es a   -- Model
   -> [Tag]            -- Tags indicating sample sites of interest
@@ -173,14 +173,14 @@ mhStep env model tags trace = do
             return trace
 
 -- | Run model once under MH
-runMH :: (es ~ '[AffReader (AsList env), Dist, Observe, State Ⲭ, State LogP, Sample])
+runMH :: (es ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
   => LRec env       -- Model observed variable
   -> Ⲭ              -- Previous mh sample set
   -> Addr           -- Sample address
   -> Model env es a -- Model
   -> Sampler (a, Ⲭ, LogP)
 runMH env samples α_samp m = do
-  (((a, ys), samples'), logps') <-
+  ((a, samples'), logps') <-
                             ( -- This is where the previous run's samples are actually reused.
                               -- We do not reuse logps, we simply recompute them.
                               runSample α_samp samples

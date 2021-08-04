@@ -85,7 +85,7 @@ testLinRegrBasic = do
   bs' <- Basic.basic n_samples Example.linearRegression
                     [0, 1, 2, 3, 4]
                     (map mkRecordLinRegrY [[-0.3], [0.75], [2.43], [3.5], [3.2]])
-  return $ map fst bs
+  return $ bs
 
 
 testLinRegrLWSim :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
@@ -137,7 +137,7 @@ testLinRegrMHPred = do
   bs <- Basic.basic 1 Example.linearRegression
                          (map (/1) [0 .. 100])
                          (repeat $ mkRecordLinRegr ([], mu, c, sigma))
-  return $ map fst bs
+  return $ bs
 
 {- Logistic Regression -}
 mkRecordLogRegr :: ([Bool], [Double], [Double]) -> LRec Example.LogRegrEnv
@@ -159,12 +159,12 @@ testLogRegrBasic = do
   bs' <- Basic.basic 3 Example.logisticRegression
                          [0, 1, 2, 3, 4]
                          (map mkRecordLogRegrL [[False], [False], [True], [False], [True]])
-  return $ map fst bs
+  return $ bs
 
 testLogRegrLWSim :: Sampler [((Double, Bool), [(Addr, OpenSum PrimVal)], Double)]
 testLogRegrLWSim = do
   -- Run logistic model with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
-  bs <- map fst <$> Basic.basic 1 Example.logisticRegression
+  bs <- Basic.basic 1 Example.logisticRegression
                          (map (/50) [(-100) .. 100])
                          (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
   let (xs, ys) = unzip bs
@@ -178,7 +178,7 @@ testLogRegrLWInf :: Sampler [((Double, Bool), [(Addr, OpenSum PrimVal)], Double)
 testLogRegrLWInf = do
   -- Using fixed model parameters, generate some sample data points to learn
   let n_samples = 1
-  bs <- map fst <$> Basic.basic n_samples Example.logisticRegression
+  bs <- Basic.basic n_samples Example.logisticRegression
                          (map (/50) [(-100) .. 100])
                          (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
   let (xs, ys) = (map fst bs, map snd bs)
@@ -190,7 +190,7 @@ testLogRegrLWInf = do
 testLogRegrMHPost :: Sampler [(Addr, [Double])]
 testLogRegrMHPost = do
   let n_samples = 1
-  bs <- map fst <$> Basic.basic n_samples Example.logisticRegression
+  bs <- Basic.basic n_samples Example.logisticRegression
                          (map (/50) [(-100) .. 100])
                          (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
   let (xs, ys) = (map fst bs, map snd bs)
@@ -210,7 +210,7 @@ testLogRegrMHPred = do
   bs <- Basic.basic 1 Example.logisticRegression
                       (map (/50) [(-100) .. 100])
                       (repeat $ mkRecordLogRegr ([], mu, b))
-  return $ map fst bs
+  return $ bs
 
 -- {- Bayesian Neural Network for linear regression -}
 
@@ -232,7 +232,7 @@ testNNLinBasic = do
                          (repeat $ mkRecordNN ([], [1, 5, 8],
                                                    [2, -5, 1],
                                                    [4.0]))
-  return $ map fst bs
+  return $ bs
 
 testNNLinLWSim :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
 testNNLinLWSim = do
@@ -286,7 +286,7 @@ testNNLinMHPred = do
                          (repeat $ mkRecordNN ([], bias,
                                                    weights,
                                                    sigma))
-  return $ map fst bs
+  return $ bs
 
 {- Bayesian neural network v2 -}
 testNNStepBasic :: Sampler  [(Double, Double)]
@@ -297,7 +297,7 @@ testNNStepBasic = do
                               (repeat $ mkRecordNN ([], [1, 5, 8],
                                                         [2, -5, 1],
                                                         [4.0]))
-  return $ map fst bs
+  return $ bs
 
 testNNStepLWSim :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
 testNNStepLWSim = do
@@ -361,7 +361,7 @@ testNNStepMHPred = do
                          (repeat $ mkRecordNN ([], bias,
                                                    weights,
                                                    sigma))
-  return $ map fst bs
+  return $ bs
 
 -- | Another neural network variation for logistic regression
 mkRecordNNLog :: ([Bool], [Double])
@@ -382,7 +382,7 @@ testNNLogBasic = do
   bs <- Basic.basic 1 (Example.nnLogModel 3)
                       nnLogDataX
                       (repeat $ mkRecordNNLog ([], w1 ++ w2 ++ w3))
-  return $ map fst bs
+  return $ bs
 
 testNNLogMHPost :: Sampler [(Addr, [Double])]
 testNNLogMHPost = do
@@ -402,7 +402,7 @@ testNNLogMHPred = do
   bs <- Basic.basic 1 (Example.nnLogModel 3)
                          nnLogDataX
                          (repeat $ mkRecordNNLog ([], weights))
-  return $ map fst bs
+  return $ bs
 
 {- Sine Model -}
 testSinBasic :: Sampler [(Double, Double)]
@@ -411,7 +411,7 @@ testSinBasic = do
   bs <- Basic.basic 1 Example.sineModel
                        (map (/50) [0 .. 200])
                        (repeat $ mkRecordLinRegr ([], [5], [0], [0.1]))
-  return $ map fst bs
+  return $ bs
 
 testSinLWSim :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
 testSinLWSim = do
@@ -428,7 +428,7 @@ testSinLWInf :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
 testSinLWInf = do
   -- Generate data points from sine model with fixed parameters
   let xs = map (/50) [0 .. 200]
-  bs <- map fst <$> Basic.basic 1 Example.sineModel
+  bs <- Basic.basic 1 Example.sineModel
                     xs
                     (repeat $ mkRecordLinRegr ([], [2], [0], [0.1]))
   let (xs, ys) = (map fst bs, map snd bs)
@@ -441,7 +441,7 @@ testSinMHPost :: Sampler [(Addr, [Double])]
 testSinMHPost = do
   -- Generate data points from sine model with fixed parameters
   let xs = map (/50) [0 .. 200]
-  bs <- map fst <$> Basic.basic 1 Example.sineModel
+  bs <- Basic.basic 1 Example.sineModel
                     xs
                     (repeat $ mkRecordLinRegr ([], [5], [-2], [0.1]))
   let (xs, ys) = (map fst bs, map snd bs)
@@ -465,7 +465,7 @@ testSinMHPred = do
   bs <- Basic.basic 1 Example.sineModel
                          xs
                          (repeat $ mkRecordLinRegr ([], mu, c, sigma))
-  return $ map fst bs
+  return $ bs
 
 {- Hidden markov model -}
 
@@ -481,7 +481,7 @@ testHMMBasic = do
       hmm_n_samples = 10
   bs <- Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
                                    [0] [mkRecordHMM ([], 0.5, 0.5)]
-  return $ map fst bs
+  return $ bs
 
 testHMMLWSim :: Sampler [(([Int], [Int]), [(Addr, OpenSum PrimVal)], Double)]
 testHMMLWSim = do
@@ -498,7 +498,7 @@ testHMMLWInf :: Sampler [(([Int], [Int]), [(Addr, OpenSum PrimVal)], Double)]
 testHMMLWInf = do
   let hmm_n_steps   = 10
       hmm_n_samples = 10
-  bs <- map fst <$> Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
+  bs <- Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
                     [0] [mkRecordHMM ([], 0.9, 0.1)]
   let lw_n_iterations = 100
       (_, yss) = unzip bs
@@ -512,7 +512,7 @@ testHMMMHPost :: Sampler [(Addr, [Double])]
 testHMMMHPost = do
   let hmm_n_steps   = 20
       hmm_n_samples = 30
-  bs <- map fst <$> Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
+  bs <- Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
                     [0] [mkRecordHMM ([], 0.8, 0.1)]
   let mh_n_iterations = 1000
       (_, yss)  = unzip bs
@@ -534,14 +534,14 @@ testHMMMHPred = do
   liftS $ print $ "using parameters " ++ show (trans_p, obs_p)
   bs <- Basic.basic hmm_n_samples (Example.hmmNSteps hmm_n_steps)
                     [0] [mkRecordHMM ([], head trans_p, head obs_p)]
-  return $ map fst bs
+  return $ bs
 
 testHMMStBasic :: Sampler [([Int], [Int])]
 testHMMStBasic = do
   bs <- Basic.basic 2
             (runStateM . Example.hmmNStepsSt 0.5 0.5 10)
                          [0] (repeat $ mkRecordHMM ([], 0.5, 0.5))
-  return $ map fst bs
+  return $ bs
 
 {- Hidden markov model : SIR -}
 
@@ -566,7 +566,7 @@ testSIRBasic = do
           (Example.hmmSIRNsteps (fixedParams 763 1) 200)
           [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
           --[mkRecordSIR ([0.29], [0.25], [0.015])]
-  let output = map ((\(xs, ys) -> (map fromLatentState xs, ys)) . fst) bs
+  let output = map (\(xs, ys) -> (map fromLatentState xs, ys)) bs
   return $ head output
 
 testSIRLWInf :: Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum PrimVal)], Double)]
@@ -584,7 +584,7 @@ testSIRLWInf = do
 testSIRMHPost :: Sampler [(Addr, [Double])]
 testSIRMHPost = do
   let sir_n_samples = 10
-  bs <- map fst <$> Basic.basic sir_n_samples
+  bs <- Basic.basic sir_n_samples
           (Example.hmmSIRNsteps (fixedParams 763 1) 30)
           [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
   let infectedData    = map snd bs
@@ -608,8 +608,8 @@ testSIRMHPred = do
   bs <- Basic.basic 1
                     (Example.hmmSIRNsteps (fixedParams 763 1) 200)
                     [latentState 762 1 0] [mkRecordSIR (ρ, β, γ)]
-  let output = map ((\(xs, ys) -> (map fromLatentState xs, ys)) . fst) bs
-  liftS $ print $ show (map fst bs)
+  let output = map (\(xs, ys) -> (map fromLatentState xs, ys)) bs
+  liftS $ print $ show (bs)
   return $ head output
 
 -- | Testing random distributions
@@ -630,7 +630,7 @@ mkRecordTopic (tps, wps, ys) =  #topic_ps @= tps <:  #word_ps @= wps <: #word @=
 
 testTopicBasic :: Sampler [[String]]
 testTopicBasic = do
-  map fst <$> Basic.basic 1 (Example.documentDist vocabulary 2)
+  Basic.basic 1 (Example.documentDist vocabulary 2)
                         [10] [mkRecordTopic ([[0.5, 0.5]], [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],[1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]], [])]
 
 testTopicMHPost :: Sampler [(Addr, [[Double]])]
@@ -647,7 +647,7 @@ testTopicMHPred = do
   let  topic_ps   = drawPredParam "topic_ps" mhTrace
        word_ps    = drawPredParam "word_ps" mhTrace
   liftS $ print $ "Using params " ++ show (topic_ps, word_ps)
-  map fst <$> Basic.basic 1 (Example.documentDist vocabulary 2) [10]
+  Basic.basic 1 (Example.documentDist vocabulary 2) [10]
         [mkRecordTopic (topic_ps,  word_ps, [])]
 
 -- | Topic model over multiple (two) documents
@@ -666,7 +666,7 @@ mkRecordHLR (mua, mub, siga, sigb, a, b, lograds) = #mu_a @= mua <: #mu_b @= mub
 -- testHLRBasic :: Sampler [[Double]]
 testHLRBasic :: Sampler ([Double], [Double])
 testHLRBasic = do
-  bs <- map fst <$> Basic.basic 1 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx)
+  bs <- Basic.basic 1 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx)
                     [()] [mkRecordHLR ([1.45], [-0.68], [0.3], [0.2], [], [], [])]
   let basementIdxs      = findIndexes dataFloorValues 0
       noBasementIdxs    = findIndexes dataFloorValues 1
@@ -701,7 +701,7 @@ mkRecordGMM (mus, mu_ks, xs, ys) = #mu @= mus <: #mu_k @= mu_ks <: #x @= xs <: #
 testGMMBasic :: Sampler [[(Double, Double)]]
 testGMMBasic = do
   bs <- Basic.basic 100 (Example.gmm 2) [50] [mkRecordGMM ([-2.0, 3.5], [], [], [])]
-  return $ map fst bs
+  return $  bs
 
 testGMMMHPost :: Sampler [(Addr, [Double])]
 testGMMMHPost = do
@@ -725,7 +725,7 @@ testSchBasic = do
       sigmas    = [15, 10, 16, 11,  9, 11, 10, 18]
   bs <- Basic.basic 1 (Example.schoolModel n_schools)
           [sigmas] [mkRecordSch ([], [], ys)]
-  return $ map fst bs
+  return $ bs
 
 testSchMHPost :: Sampler ([(Addr, [Double])], [(Addr, [[Double]])])
 testSchMHPost = do

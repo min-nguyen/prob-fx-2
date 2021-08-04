@@ -169,21 +169,24 @@ type Addr = (Tag, Int)
 type TagMap = Map Tag Int
 
 {- Replaces Dists with Sample or Observe and adds address -}
-runDist :: forall rs a. (Member Sample rs, Member Observe rs) => Freer (Dist : rs) a
-        -> Freer rs a
+runDist :: forall rs a. (Member Sample rs, Member Observe rs)
+        => Freer (Dist : rs) a -> Freer rs a
 runDist = loop 0 Map.empty
   where
-  loop :: (Member Sample rs, Member Observe rs) => Int -> TagMap -> Freer (Dist : rs) a -> Freer rs a
-  loop α_counter tagMap (Pure x) = return x
-  loop α_counter tagMap (Free u k) = case decomp u of
-    Right d
-      -> let tag     = if hasTag d then getTag d else show α_counter
-             tag_i   = Map.findWithDefault 0 tag tagMap
-             tagMap' = Map.insert tag (tag_i + 1) tagMap
-         in if hasObs d
-            then send (Observe d (getObs d) (tag, tag_i)) >>= loop (α_counter + 1) tagMap' . k
-            else send (Sample d (tag, tag_i)) >>= loop (α_counter + 1) tagMap' . k
-    Left  u'  -> Free u' (loop α_counter tagMap. k)
+  loop :: (Member Sample rs, Member Observe rs)
+       => Int -> TagMap -> Freer (Dist : rs) a -> Freer rs a
+  loop _ _ (Pure x) = return x
+  loop counter tagMap (Free u k) = case decomp u of
+    Right d ->
+         let tag     = fromMaybe (show counter) (getTag d)
+             tagIdx  = Map.findWithDefault 0 tag tagMap
+             tagMap' = Map.insert tag (tagIdx + 1) tagMap
+         in case getObs d of
+              Just y  -> do x <- send (Observe d y (tag, tagIdx))
+                            loop (counter + 1) tagMap' $ k x
+              Nothing -> do x <- send (Sample d (tag, tagIdx))
+                            loop (counter + 1) tagMap' $ k x
+    Left  u'  -> Free u' (loop counter tagMap . k)
 
 data Sample a where
   Sample  :: Dist a -> Addr -> Sample a
@@ -245,73 +248,39 @@ isDistInt d@DiscreteDist {} = Just d
 isDistInt d@PoissonDist {} = Just d
 isDistInt _ = Nothing
 
-hasObs :: Dist a -> Bool
-hasObs d@(HalfCauchyDist _ obs _)     = isJust obs
-hasObs d@(CauchyDist _ _ obs _)       = isJust obs
-hasObs d@(HalfNormalDist _ obs _)     = isJust obs
-hasObs d@(NormalDist _ _ obs _)       = isJust obs
-hasObs d@(DiscrUniformDist _ _ obs _) = isJust obs
-hasObs d@(UniformDist _ _ obs _)      = isJust obs
-hasObs d@(GammaDist _ _ obs _)        = isJust obs
-hasObs d@(BetaDist _ _ obs _)         = isJust obs
-hasObs d@(BinomialDist _ _ obs _)     = isJust obs
-hasObs d@(BernoulliDist _ obs _)      = isJust obs
-hasObs d@(CategoricalDist _ obs _)    = isJust obs
-hasObs d@(DiscreteDist _ obs _)       = isJust obs
-hasObs d@(PoissonDist _ obs _)        = isJust obs
-hasObs d@(DirichletDist _ obs _)      = isJust obs
-hasObs d@(DeterministicDist _ obs _)  = isJust obs
+getObs :: Dist a -> Maybe a
+getObs d@(HalfCauchyDist _ obs _)     =  obs
+getObs d@(CauchyDist _ _ obs _)       =  obs
+getObs d@(HalfNormalDist _ obs _)     =  obs
+getObs d@(NormalDist _ _ obs _)       =  obs
+getObs d@(DiscrUniformDist _ _ obs _) =  obs
+getObs d@(UniformDist _ _ obs _)      =  obs
+getObs d@(GammaDist _ _ obs _)        =  obs
+getObs d@(BetaDist _ _ obs _)         =  obs
+getObs d@(BinomialDist _ _ obs _)     =  obs
+getObs d@(BernoulliDist _ obs _)      =  obs
+getObs d@(CategoricalDist _ obs _)    =  obs
+getObs d@(DiscreteDist _ obs _)       =  obs
+getObs d@(PoissonDist _ obs _)        =  obs
+getObs d@(DirichletDist _ obs _)      =  obs
+getObs d@(DeterministicDist _ obs _)  =  obs
 
-hasTag :: Dist a -> Bool
-hasTag d@(HalfCauchyDist _ _ tag)     = isJust tag
-hasTag d@(CauchyDist _ _ _ tag)       = isJust tag
-hasTag d@(HalfNormalDist _ _ tag)     = isJust tag
-hasTag d@(NormalDist _ _ _ tag)       = isJust tag
-hasTag d@(DiscrUniformDist _ _ _ tag) = isJust tag
-hasTag d@(UniformDist _ _ _ tag)      = isJust tag
-hasTag d@(GammaDist _ _ _ tag)        = isJust tag
-hasTag d@(BetaDist _ _ _ tag)         = isJust tag
-hasTag d@(BinomialDist _ _ _ tag)     = isJust tag
-hasTag d@(BernoulliDist _ _ tag)      = isJust tag
-hasTag d@(CategoricalDist _ _ tag)    = isJust tag
-hasTag d@(DiscreteDist _ _ tag)       = isJust tag
-hasTag d@(PoissonDist _ _ tag)        = isJust tag
-hasTag d@(DirichletDist _ _ tag)      = isJust tag
-hasTag d@(DeterministicDist _ _ tag)      = isJust tag
-
-getObs :: Dist a -> a
-getObs d@(HalfCauchyDist _ obs _)     = fromJust obs
-getObs d@(CauchyDist _ _ obs _)       = fromJust obs
-getObs d@(HalfNormalDist _ obs _)     = fromJust obs
-getObs d@(NormalDist _ _ obs _)       = fromJust obs
-getObs d@(DiscrUniformDist _ _ obs _) = fromJust obs
-getObs d@(UniformDist _ _ obs _)      = fromJust obs
-getObs d@(GammaDist _ _ obs _)        = fromJust obs
-getObs d@(BetaDist _ _ obs _)         = fromJust obs
-getObs d@(BinomialDist _ _ obs _)     = fromJust obs
-getObs d@(BernoulliDist _ obs _)      = fromJust obs
-getObs d@(CategoricalDist _ obs _)    = fromJust obs
-getObs d@(DiscreteDist _ obs _)       = fromJust obs
-getObs d@(PoissonDist _ obs _)        = fromJust obs
-getObs d@(DirichletDist _ obs _)      = fromJust obs
-getObs d@(DeterministicDist _ obs _)  = fromJust obs
-
-getTag :: Dist a -> String
-getTag d@(HalfCauchyDist _ _ tag)     = fromJust tag
-getTag d@(CauchyDist _ _ _ tag)       = fromJust tag
-getTag d@(HalfNormalDist _ _ tag)     = fromJust tag
-getTag d@(NormalDist _ _ _ tag)       = fromJust tag
-getTag d@(DiscrUniformDist _ _ _ tag) = fromJust tag
-getTag d@(UniformDist _ _ _ tag)      = fromJust tag
-getTag d@(GammaDist _ _ _ tag)        = fromJust tag
-getTag d@(BetaDist _ _ _ tag)         = fromJust tag
-getTag d@(BinomialDist _ _ _ tag)     = fromJust tag
-getTag d@(BernoulliDist _ _ tag)      = fromJust tag
-getTag d@(CategoricalDist _ _ tag)    = fromJust tag
-getTag d@(DiscreteDist _ _ tag)       = fromJust tag
-getTag d@(PoissonDist _ _ tag)        = fromJust tag
-getTag d@(DirichletDist _ _ tag)      = fromJust tag
-getTag d@(DeterministicDist _ _ tag)  = fromJust tag
+getTag :: Dist a -> Maybe String
+getTag d@(HalfCauchyDist _ _ tag)     = tag
+getTag d@(CauchyDist _ _ _ tag)       = tag
+getTag d@(HalfNormalDist _ _ tag)     = tag
+getTag d@(NormalDist _ _ _ tag)       = tag
+getTag d@(DiscrUniformDist _ _ _ tag) = tag
+getTag d@(UniformDist _ _ _ tag)      = tag
+getTag d@(GammaDist _ _ _ tag)        = tag
+getTag d@(BetaDist _ _ _ tag)         = tag
+getTag d@(BinomialDist _ _ _ tag)     = tag
+getTag d@(BernoulliDist _ _ tag)      = tag
+getTag d@(CategoricalDist _ _ tag)    = tag
+getTag d@(DiscreteDist _ _ tag)       = tag
+getTag d@(PoissonDist _ _ tag)        = tag
+getTag d@(DirichletDist _ _ tag)      = tag
+getTag d@(DeterministicDist _ _ tag)  = tag
 
 prob :: Dist a -> a -> Double
 prob (DirichletDist xs _ _) ys =
