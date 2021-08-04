@@ -88,8 +88,6 @@ normalLens mu sigma field =
 
 {- Distribution smart constructors -}
 
-
-
 deterministic :: (Eq a, Show a, OpenSum.Member a PrimVal) => a -> Model s es a
 deterministic x = Model $ do
   send (DeterministicDist x Nothing Nothing)

@@ -25,30 +25,6 @@ import qualified Extensible.OpenProduct as OP
 import Control.Lens hiding ((:>))
 import Util
 
--- A Reader for which it is only possible to access record fields with type [a].
--- data AffReader env a where
---   Ask :: Getting [a] (OP.OpenProduct env) [a]
---       -> ASetter (OP.OpenProduct env) (OP.OpenProduct env) [a] [a]
---       -> AffReader env (Maybe a)
-
--- ask :: Member (AffReader env) rs => Getting [a] (OP.OpenProduct env) [a]
---   -> ASetter (OP.OpenProduct env) (OP.OpenProduct env) [a] [a]
---   -> Freer rs (Maybe a)
--- ask g s = Free (inj $ Ask g s) Pure
-
--- -- | The only purpose of the State (LRec env) effect is to check if all observed values in the environment have been consumed.
--- runAffReader :: forall env rs a.
---   OP.OpenProduct (OP.AsList env) -> Freer (AffReader (OP.AsList env) ': rs) a -> Freer rs (a, OP.OpenProduct (OP.AsList env))
--- runAffReader env (Pure x) = return (x, env)
--- runAffReader env (Free u k) = case decomp u of
---   Right (Ask g s) -> do
---     let ys = env ^. g
---         y  = maybeHead ys
---         env' = env & s .~ safeTail ys
---     runAffReader env' (k y)
---   Left  u'  -> Free u' (runAffReader env . k)
-
--- Alternative affine reader
 data AffReader env a where
   Ask :: OP.HasVar env k a => OP.Key k -> AffReader env (Maybe a)
 
