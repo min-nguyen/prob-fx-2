@@ -193,44 +193,43 @@ runMH env samples α_samp m = do
                             . runModel) m
   return (a, samples', logps')
 
+
 -- | Insert stateful operations for Ⲭ and LogP when either Sample or Observe occur.
 transformMH :: (Member (State Ⲭ) rs, Member (State LogP) rs, Member Sample rs, Member Observe rs) => Freer rs a -> Freer rs a
-transformMH = loop
-  where
-  loop :: (Member (State Ⲭ) rs, Member (State LogP) rs, Member Sample rs, Member Observe rs) => Freer rs a -> Freer rs a
-  loop (Pure x) = return x
-  loop (Free u k) = do
-    case u of
-      Samp d α
-        -> case d of
-              -- We can unsafe coerce x here, because we've inferred the type of x from the distribution's type
-              d@CategoricalDist{} -> Free u (\x -> modify
-                                           (Map.insert α (toDistInfo d, OpenSum.inj x :: OpenSum PrimVal)) >>
-                                            modify (updateLogP α d (unsafeCoerce x)) >>
-                                            loop (k x))
-              d@DeterministicDist{} -> Free u (\x -> modify
-                                           (Map.insert α (toDistInfo d, OpenSum.inj x :: OpenSum PrimVal)) >>
-                                            modify (updateLogP α d (unsafeCoerce x)) >>
-                                            loop (k x))
-              DistDoubles (Just d) -> Free u (\x -> do
-                                            modify (updateMapⲬ α d (unsafeCoerce x))
-                                            modify (updateLogP α d (unsafeCoerce x))
-                                            -- prinT $ "Prob of observing " ++ show (unsafeCoerce x :: [Double]) ++ " from " ++ show (toDistInfo d) ++ " is " ++ show (prob d (unsafeCoerce x))
-                                            loop (k x))
-              DistDouble (Just d) -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
-                                            modify (updateLogP α d (unsafeCoerce x)) >>
-                                            loop (k x))
-              DistBool (Just d)   -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
-                                            modify (updateLogP α d (unsafeCoerce x)) >>
-                                            loop (k x))
-              DistInt (Just d)    -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
-                                            modify (updateLogP α d (unsafeCoerce x)) >>
-                                            loop (k x))
-
-      Obs d y α
-        -> Free u (\x -> modify (updateLogP α d y  :: LogP -> LogP) >>
-                         loop (k x))
-      _ -> Free u (loop . k)
+transformMH (Pure x) = return x
+transformMH (Free u k) = do
+  case u of
+    Samp d α
+      -> case d of
+            -- We can unsafe coerce x here, because we've inferred the type of x from the distribution's type
+            d@CategoricalDist{} -> Free u (\x -> modify
+                                          (Map.insert α (toDistInfo d, OpenSum.inj x :: OpenSum PrimVal)) >>
+                                          modify (updateLogP α d x) >>
+                                          transformMH (k x))
+            d@DeterministicDist{} -> Free u (\x -> modify
+                                          (Map.insert α (toDistInfo d, OpenSum.inj x :: OpenSum PrimVal)) >>
+                                          modify (updateLogP α d x) >>
+                                          transformMH (k x))
+            DistDoubles (Just d) -> Free u (\x -> do
+                                          modify (updateMapⲬ α d (unsafeCoerce x))
+                                          modify (updateLogP α d (unsafeCoerce x))
+                                          -- prinT $ "Prob of observing " ++ show (unsafeCoerce x :: [Double]) ++ " from " ++ show (toDistInfo d) ++ " is " ++ show (prob d (unsafeCoerce x))
+                                          transformMH (k x))
+            DistDouble (Just d) -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
+                                          modify (updateLogP α d (unsafeCoerce x)) >>
+                                          transformMH (k x))
+            DistBool (Just d)   -> Free u (\x -> do
+                                          modify (updateMapⲬ α d (unsafeCoerce x))
+                                          modify (updateLogP α d (unsafeCoerce x))
+                                          transformMH (k x))
+            DistInt (Just d)    -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
+                                          modify (updateLogP α d (unsafeCoerce x)) >>
+                                          transformMH (k x))
+            _ -> undefined
+    Obs d y α
+      -> Free u (\x -> modify (updateLogP α d y  :: LogP -> LogP) >>
+                        transformMH (k x))
+    _ -> Free u (transformMH . k)
 
 -- | Remove Observe occurrences from tree (log p is taken care of by transformMH)
 runObserve :: Member Sample rs => Freer (Observe : rs) a -> Freer rs a
@@ -282,65 +281,25 @@ runSample α_samp samples = loop
       Just (Sample d α) ->
         case d of
           d@CategoricalDist {} -> do
-            m <- lookupSample samples d α α_samp
-            case m of
-              Nothing -> do
-                x <- sample d
-                -- liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
-                (loop . k . unsafeCoerce) x
-              Just x  -> do
-                -- liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
-                (loop . k . unsafeCoerce) x
+            x <- fromMaybe <$> sample d
+                <*> lookupSample samples d α α_samp
+            (loop . k . unsafeCoerce) x
           d@DeterministicDist {} -> do
-            m <- lookupSample samples d α α_samp
-            case m of
-              Nothing -> do
-                x <- sample d
-                -- liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
-                (loop . k . unsafeCoerce) x
-              Just x  -> do
-                -- liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
-                (loop . k . unsafeCoerce) x
+            x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
+            (loop . k . unsafeCoerce) x
           DistDoubles (Just d) -> do
-            m <- lookupSample samples d α α_samp
-            case m of
-              Nothing -> do
-                x <- sample d
-                -- liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
-                (loop . k . unsafeCoerce) x
-              Just x  -> do
-                -- liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
-                (loop . k . unsafeCoerce) x
+            x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
+            (loop . k . unsafeCoerce) x
           DistDouble (Just d) -> do
-            m <- lookupSample samples d α α_samp
-            case m of
-              Nothing -> do
-                x <- sample d
-                -- liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
-                (loop . k . unsafeCoerce) x
-              Just x  -> do
-                -- liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
-                (loop . k . unsafeCoerce) x
+            x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
+            (loop . k . unsafeCoerce) x
           DistBool (Just d) -> do
-            m <- lookupSample samples d α α_samp
-            case m of
-              Nothing -> do
-                x <- sample d
-                -- liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
-                (loop . k . unsafeCoerce) x
-              Just x  -> do
-                -- liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
-                (loop . k . unsafeCoerce) x
+            x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
+            (loop . k . unsafeCoerce) x
           DistInt (Just d) -> do
-            m <- lookupSample samples d α α_samp
-            case m of
-              Nothing -> do
-                x <- sample d
-                -- liftS (putStrLn $ "Drawing new sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
-                (loop . k . unsafeCoerce) x
-              Just x  -> do
-                -- liftS (putStrLn $ "Using old sample for α" ++ show α ++ " dist " ++ show d ++ " x: " ++ show x)
-                (loop . k . unsafeCoerce) x
+            x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
+            (loop . k . unsafeCoerce) x
+          _ -> undefined
       _  -> error "Impossible: Nothing cannot occur"
 
 lookupSample :: OpenSum.Member a PrimVal => Ⲭ -> Dist a -> Addr -> Addr -> Sampler (Maybe a)

@@ -188,9 +188,16 @@ def main():
   if arg == "log-regr-mh-pred":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
-    xs = xys[0]
-    ys = xys[1]
+    xs = np.array([ [x] for x in xys[0] ])
+    ys = np.array([ y for y in xys[1] ])
+    model = linear_model.LogisticRegression(C=1e5, solver='lbfgs')
+    model.fit(xs.reshape(-1,1), ys)
+    x_test = np.linspace(-2.0,2.0,num=100)
+    y_test = x_test * model.coef_ + model.intercept_
+    sigmoid = expit(y_test)
+
     plt.scatter(xs, ys)
+    plt.plot(x_test, sigmoid.ravel(),c="green", label = "logistic fit")
     plt.xlabel('x - axis')
     plt.ylabel('y - axis')
     plt.title('Logistic regression - Metropolis Hastings Predictive')
@@ -494,17 +501,17 @@ def main():
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("rho values")
     axs1.set_ylabel("frequency")
-    axs1.hist(rhos_unique, bins=50)
+    axs1.hist(rhos_unique, bins=25)
     axs1.set_title('SIR - Metropolis Hastings Posterior (Rho)')
     fig2, axs2 = plt.subplots(nrows=1)
     axs2.set_xlabel("beta values")
     axs2.set_ylabel("frequency")
-    axs2.hist(betas_unique, bins=50)
+    axs2.hist(betas_unique, bins=25)
     axs2.set_title('HMM - Metropolis Hastings Posterior (Beta)')
     fig3, axs3 = plt.subplots(nrows=1)
     axs3.set_xlabel("gamma values")
     axs3.set_ylabel("frequency")
-    axs3.hist(gammas_unique, bins=50)
+    axs3.hist(gammas_unique, bins=25)
     axs3.set_title('HMM - Metropolis Hastings Posterior (Gamma)')
     plt.show()
   if arg == "sir-mh-pred":

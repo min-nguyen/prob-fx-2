@@ -29,10 +29,8 @@ type Ⲭ = Map Addr (OpenSum PrimVal)
 
 type TraceLW a = [(a, Ⲭ, Double)]
 
-updateMapⲬ :: OpenSum.Member x PrimVal => Addr -> x -> Ⲭ -> Ⲭ
-updateMapⲬ α x = Map.insert α (OpenSum.inj x) :: Ⲭ -> Ⲭ
-
-
+updateTrace :: forall rs x. (Member (State Ⲭ) rs, OpenSum.Member x PrimVal) => Addr -> x -> Freer rs ()
+updateTrace α x = modify (Map.insert α (OpenSum.inj x) :: Ⲭ -> Ⲭ)
 
 -- | Run LW n times for multiple data points
 lw :: (es ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample])
@@ -53,8 +51,8 @@ lwNsteps :: (es ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample])
 lwNsteps n env model = replicateM n (runLW env model)
 
 -- | Run LW once for single data point
-runLW :: es ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample]
-  => LRec env -> Model env es a
+runLW :: ts ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample]
+  => LRec env -> Model env ts a
   -> Sampler (a, Ⲭ, Double)
 runLW env model = do
   ((x, samples), p) <- (runSample
@@ -66,41 +64,44 @@ runLW env model = do
                             . runModel) model
   return (x, samples, p)
 
+runLWpaper :: ts ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample]
+  => LRec env -> Model env ts a
+  -> Sampler ((a, Ⲭ), Double)
+runLWpaper env =
+  runSample . runObserve . runState Map.empty
+   . transformLW . runDist . runAffReader env . runModel
+
+
 transformLW :: (Member (State Ⲭ) rs, Member Sample rs)
   => Freer rs a -> Freer rs a
-transformLW = loop
-  where
-  loop :: (Member (State Ⲭ) rs, Member Sample rs)
-       => Freer rs a -> Freer rs a
-  loop (Pure x) = return x
-  loop (Free u k) = do
-    case u of
-      Samp d α
-        -> case d of
-              -- We can unsafe coerce x here, because we've inferred the type of x from the distribution's type
-              DistInt (Just d)    -> Free u (\x -> do modify (updateMapⲬ α (unsafeCoerce x :: Int))
-                                                      loop (k x))
-              DistDouble (Just d) -> Free u (\x -> do modify (updateMapⲬ α (unsafeCoerce x :: Double))
-                                                      loop (k x))
-              DistBool (Just d)   -> Free u (\x -> do modify (updateMapⲬ α (unsafeCoerce x :: Bool))
-                                                      loop (k x))
-              DistDoubles (Just d) -> Free u (\x -> do modify (updateMapⲬ α (unsafeCoerce x :: [Double]))
-                                                       loop (k x))
-              d@CategoricalDist {} -> Free u (\x ->  do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
-                                                        loop (k x))
-              d@DeterministicDist {} -> Free u (\x ->  do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
-                                                          loop (k x))
-      _ -> Free u (loop . k)
+transformLW (Pure x) = return x
+transformLW (Free u k) = case prj u of
+    Just (Sample d α) -> case d of
+      DistInt (Just d)    ->
+        Free u (\x -> do  updateTrace α (unsafeCoerce x :: Int)
+                          transformLW (k x))
+      DistDouble (Just d) -> Free u (\x -> do updateTrace α (unsafeCoerce x :: Double)
+                                              transformLW (k x))
+      DistBool (Just d)   -> Free u (\x -> do updateTrace α (unsafeCoerce x :: Bool)
+                                              transformLW (k x))
+      DistDoubles (Just d) -> Free u (\x -> do updateTrace α (unsafeCoerce x :: [Double])
+                                               transformLW (k x))
+      d@CategoricalDist {} -> Free u (\x ->  do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
+                                                transformLW (k x))
+      d@DeterministicDist {} -> Free u (\x ->  do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
+                                                  transformLW (k x))
+      _ -> error "error"
+    _ -> Free u (transformLW . k)
 
 runObserve :: Member Sample rs => Freer (Observe : rs) a -> Freer rs (a, Double)
 runObserve = loop 0
   where
   loop :: Member Sample rs => Double -> Freer (Observe : rs) a -> Freer rs (a, Double)
   loop p (Pure x) = return (x, p)
-  loop p (Free u k) = do
-    case decomp u of
+  loop p (Free u k) = case decomp u of
       Right (Observe d y α)
-        -> case d of
+        -> let r = logProb d y
+           in case d of
             DistDoubles (Just d) ->
               do let p' = prob d (unsafeCoerce y :: [Double])
                  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: [Double]) ++ " from " ++ show d ++ " is " ++ show p'

@@ -38,33 +38,26 @@ basicNsteps :: (es ~ '[Dist, Observe, AffReader env, Sample])
   -> Sampler [a]
 basicNsteps n ys model = replicateM n (runBasic ys model)
 
-runBasic :: (es ~ '[Dist, Observe, AffReader env, Sample]) =>
- LRec env
-  -> Model env es a -> Sampler a
-runBasic ys m
-  = runSample (runAffReader ys $ runObserve $ runDist $ runModel m)
+runBasic :: (es ~ '[Dist, Observe, AffReader env, Sample])
+ => LRec env -> Model env es a -> Sampler a
+runBasic ys
+  = runSample . runAffReader ys . runObserve . runDist . runModel
 
 runObserve :: Freer (Observe : rs) a -> Freer rs  a
-runObserve = loop
-  where
-  loop :: Freer (Observe : rs) a -> Freer rs a
-  loop (Pure x) = return x
-  loop (Free u k) = case decomp u of
-    Right (Observe d y α)
-      -> let p = logProb d y
-         in  loop (k y)
-    Left  u'  -> Free u' (loop . k)
+runObserve (Pure x) = return x
+runObserve (Free u k) = case decomp u of
+  Right (Observe d y α)
+    -> let p = logProb d y
+        in  runObserve (k y)
+  Left  u'  -> Free u' (runObserve . k)
 
 runSample :: Freer '[Sample] a -> Sampler a
-runSample = loop
-  where
-  loop :: Freer '[Sample] a -> Sampler a
-  loop (Pure x) = return x
-  loop (Free u k) = case prj u of
-     Just (Printer s) ->
-       liftS (putStrLn s) >> loop (k ())
-     Just (Sample d α) -> sample d >>= loop . k
-     _        -> error "Impossible: Nothing cannot occur"
+runSample (Pure x) = return x
+runSample (Free u k) = case prj u of
+    Just (Printer s) ->
+      liftS (putStrLn s) >> runSample (k ())
+    Just (Sample d α) -> sample d >>= runSample . k
+    _        -> error "Impossible: Nothing cannot occur"
 
 -- runReader' :: forall env rs a.
 --   (Member (State (LRec env)) rs) =>

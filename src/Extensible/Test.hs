@@ -563,7 +563,7 @@ fromLatentState (Example.LatentState sus inf recov) = (sus, inf, recov)
 testSIRBasic :: Sampler ([(Int, Int, Int)], [Int])
 testSIRBasic = do
   bs <- Basic.basic 1
-          (Example.hmmSIRNsteps (fixedParams 763 1) 200)
+          (Example.hmmSIRNsteps (fixedParams 763 1) 100)
           [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
           --[mkRecordSIR ([0.29], [0.25], [0.015])]
   let output = map (\(xs, ys) -> (map fromLatentState xs, ys)) bs
@@ -588,7 +588,7 @@ testSIRMHPost = do
           (Example.hmmSIRNsteps (fixedParams 763 1) 30)
           [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
   let infectedData    = map snd bs
-      mh_n_iterations = 300
+      mh_n_iterations = 2000
   liftS $ print $ "infected data is " ++ show infectedData
   -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
   mhTrace <- MH.mh mh_n_iterations (Example.hmmSIRNsteps (fixedParams 763 1) 200) ["ρ", "β", "γ"]
@@ -687,7 +687,7 @@ testHLRMHPost = do
 
 testHLRMHPredictive :: Sampler  ([Double], [(Addr, OpenSum PrimVal)], [(Addr, Double)])
 testHLRMHPredictive = do
-  mhTrace <- MH.mh 2000 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx)
+  mhTrace <- MH.mh 1500 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx)
              ["mu_a", "mu_b", "sigma_a", "sigma_b"] [()] [mkRecordHLR ([], [], [], [], [], [], logRadon)]
   let mhTrace' = processMHTrace mhTrace
   liftS $ print $ show $ map snd3 mhTrace'
@@ -712,7 +712,6 @@ testGMMMHPost = do
   let mhTrace'   = processMHTrace mhTrace
       paramTrace = extractPostParams (Proxy @Double)  [("mu", 0), ("mu", 1)] mhTrace'
   return paramTrace
-
 
 {- School model -}
 mkRecordSch :: ([Double], [[Double]], [Double]) -> LRec Example.SchEnv
