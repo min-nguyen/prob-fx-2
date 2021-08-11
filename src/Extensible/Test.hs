@@ -380,15 +380,26 @@ testNNLogBasic = do
       w2 = [0.147, -0.417, -0.278, -1.275,0.568,-0.785,0.074,0.351,0.732]
       w3 = [0.295, 0.414, -0.834]
   bs <- Basic.basic 1 (Example.nnLogModel 3)
-                      nnLogDataX
+                      nnLogX
                       (repeat $ mkRecordNNLog ([], w1 ++ w2 ++ w3))
+  return $ bs
+
+testNNLogBasic' :: Sampler [((Double, Double), Bool)]
+testNNLogBasic' = do
+  let -- Run basic simulation over neural network
+      w1 = [0.18, 0.36, -1.29, 0.094, -1.64, 0.65]
+      w2 = [0.147, -0.417, -0.278, -1.275,0.568,-0.785,0.074,0.351,0.732]
+      w3 = [0.295, 0.414, -0.834]
+  bs <- Basic.basic 1 (Example.nnLogModel 3)
+                      nnLogX
+                      (map (\y -> mkRecordNNLog ([y], w1 ++ w2 ++ w3)) nnLogY)
   return $ bs
 
 testNNLogMHPost :: Sampler [(Addr, [Double])]
 testNNLogMHPost = do
-  mhTrace <- MH.mh 50 (Example.nnLogModel 3) []
-                      nnLogDataX
-                      (map mkRecordNNLogy nnLogDataY)
+  mhTrace <- MH.mh 200 (Example.nnLogModel 3) []
+                      nnLogX
+                      (map mkRecordNNLogy nnLogY)
   let weight_length = 18
       mhTrace'   = processMHTrace mhTrace
       addrs      = [ ("weight", i) | i <- [0..(weight_length - 1)]]
@@ -400,7 +411,7 @@ testNNLogMHPred = do
   mhTrace <- testNNLogMHPost
   let weights = drawPredParam "weight" mhTrace
   bs <- Basic.basic 1 (Example.nnLogModel 3)
-                         nnLogDataX
+                         nnLogX
                          (repeat $ mkRecordNNLog ([], weights))
   return $ bs
 
@@ -572,7 +583,6 @@ testSIRBasic = do
 testSIRLWInf :: Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum PrimVal)], Double)]
 testSIRLWInf = do
   let sir_n_steps    = length sirInfectedData
-
   lwTrace <- LW.lw 100 (Example.hmmSIRNsteps (fixedParams 763 1) sir_n_steps)
                  [latentState 762 1 0] [mkRecordSIRy sirInfectedData]
   let lwTrace' = processLWTrace lwTrace

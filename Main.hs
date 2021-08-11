@@ -22,15 +22,15 @@ import Util
 --   a <- sampleIOFixed prog
 --   writeFile "model-output.txt" (show a)
 
-replaceWord :: String -> String -> String -> String
-replaceWord word replace s =
-  let repl ',' = " , "
-      repl '(' = " ( "
-      repl ')' = " ) "
-      repl x   = [x]
-      s'  = concat $ map repl s
-      s'' = concat $ map (\w -> if w == word then replace else w) $ splitOn " " s'
-  in  s''
+-- replaceWord :: String -> String -> String -> String
+-- replaceWord word replace s =
+--   let repl ',' = " , "
+--       repl '(' = " ( "
+--       repl ')' = " ) "
+--       repl x   = [x]
+--       s'  = concat $ map repl s
+--       s'' = concat $ map (\w -> if w == word then replace else w) $ splitOn " " s'
+--   in  s''
 
 main :: IO ()
 main = do
@@ -56,6 +56,7 @@ main = do
   -- trace <- sampleIOFixed testNNStepMHPost
   -- trace <- sampleIOFixed testNNStepMHPred
   -- trace <- sampleIOFixed testNNLogBasic
+  trace <- sampleIOFixed testNNLogBasic'
   -- trace <- sampleIOFixed testNNLogMHPost
   -- trace <- sampleIOFixed testNNLogMHPred
   -- trace <- sampleIOFixed testSinBasic
@@ -83,7 +84,7 @@ main = do
   -- trace <- sampleIOFixed testHLRMHPredictive
   -- trace <- sampleIOFixed testGMMBasic
   -- trace <- sampleIOFixed testGMMMHPost
-  trace <- sampleIOFixed testSchBasic
+  -- trace <- sampleIOFixed testSchBasic
   -- trace <- sampleIOFixed testSchMHPost
   let traceStr = show trace
   putStrLn traceStr
