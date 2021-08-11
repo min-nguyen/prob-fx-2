@@ -108,7 +108,7 @@ testLinRegrLWInf = do
   let  lw_n_iterations = 100
   lwTrace <- LW.lw lw_n_iterations Example.linearRegression
                     [0 .. 100]
-                    (map (mkRecordLinRegrY . (:[]) ) [0 .. 100])
+                    (map (mkRecordLinRegrY . (:[]) ) (map (*3) [0 .. 100]))
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 

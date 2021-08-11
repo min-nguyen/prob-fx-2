@@ -56,9 +56,9 @@ main = do
   -- trace <- sampleIOFixed testNNStepMHPost
   -- trace <- sampleIOFixed testNNStepMHPred
   -- trace <- sampleIOFixed testNNLogBasic
-  trace <- sampleIOFixed testNNLogBasic'
+  -- trace <- sampleIOFixed testNNLogBasic'
   -- trace <- sampleIOFixed testNNLogMHPost
-  -- trace <- sampleIOFixed testNNLogMHPred
+  -- trace <- sampleIO testNNLogMHPred
   -- trace <- sampleIOFixed testSinBasic
   -- trace <- sampleIOFixed testSinLWSim
   -- trace <- sampleIOFixed testSinLWInf
@@ -78,7 +78,7 @@ main = do
   -- trace <- sampleIOFixed testTopicBasic
   -- trace <- sampleIOFixed testTopicMHPost
   -- trace <- sampleIOFixed testTopicMHPred
-  -- trace <- sampleIOFixed testTopicsMHPost
+  trace <- sampleIOFixed testTopicsMHPost
   -- trace <- sampleIOFixed testHLRBasic
   -- trace <- sampleIOFixed testHLRMHPost
   -- trace <- sampleIOFixed testHLRMHPredictive
@@ -88,6 +88,7 @@ main = do
   -- trace <- sampleIOFixed testSchMHPost
   let traceStr = show trace
   putStrLn traceStr
+  -- print (zip (zip nnLogX0 nnLogX1) nnLogY)
   writeFile "model-output.txt" traceStr
   return ()
 

@@ -73,10 +73,15 @@ def main():
     c_samples_unique = removeDuplicates(c_samples)
     std_samples   = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'σ'] for d in sampleMaps ]).ravel()
     std_samples_unique = removeDuplicates(std_samples)
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel('mu value')
+    axs1.set_ylabel('probability')
+    axs1.scatter(mu_samples, ps)
+    axs1.set_title('Linear regression - Likelihood Weighting')
     fig2, axs2 = plt.subplots(nrows=1)
-    axs2.set_xlabel('mu value')
+    axs2.set_xlabel('c value')
     axs2.set_ylabel('probability')
-    axs2.scatter(mu_samples, ps)
+    axs2.scatter(c_samples, ps)
     axs2.set_title('Linear regression - Likelihood Weighting')
     plt.show()
   if arg == "lin-regr-mh-post":
@@ -552,6 +557,9 @@ def main():
     ax.set_xticklabels(ws)
     plt.show()
   if arg == "topic-mh-post":
+    plt.rcParams.update({'font.family': 'sans'})
+    plt.rcParams.update({'font.weight': 'bold'})
+    plt.rcParams.update({'font.size': 15})
     ws          = ['DNA', 'evolution', 'parsing', 'phonology']
     topic_ps = [d[1] for d in data if d[0] == ('topic_ps', 0)][-1]
     topic_0s = [d[1] for d in data if d[0] == ('word_ps', 0)][-1]
@@ -560,19 +568,25 @@ def main():
     topic_0 = topic_0s[-1]
     topic_1 = topic_1s[-1]
     fig, ax = plt.subplots(nrows=1)
-    ax.bar(['Topic 0', 'Topic 1'], topic_p, 0.4)
+    ax.bar(['Topic 0', 'Topic 1'], topic_p, 0.8)
     ax.set_xticklabels(['Topic 0', 'Topic 1'])
-    plt.title('Document - Topic distribution')
+    plt.title('Document-Topic Distribution', fontname="sans", fontweight="bold")
     fig0, ax0 = plt.subplots(nrows=1)
-    ax0.bar(ws, topic_0, 0.4)
+    ax0.bar(ws, topic_0, 0.8)
     ax0.set_xticklabels(ws)
-    plt.title('Topic 0 - Word distribution')
+    plt.title('Topic-Word Distribution 0', fontname="sans", fontweight="bold")
     fig1, ax1 = plt.subplots(nrows=1)
-    ax1.bar(ws, topic_1, 0.4)
+    ax1.bar(ws, topic_1, 0.8)
     ax1.set_xticklabels(ws)
-    plt.title('Topic 1 - Word distribution')
+    plt.title('Topic-Word Distribution 1',fontname="sans",  fontweight="bold")
     plt.show()
   if arg == "topics-mh-post":
+    font = {'family' : 'normal',
+        'weight' : 'bold',
+        'size'   : 22}
+    plt.rcParams.update({'font.family': 'serif'})
+    plt.rcParams.update({'font.weight': 'bold'})
+    plt.rcParams.update({'font.size': 15})
     ws          = ['DNA', 'evolution', 'parsing', 'phonology']
     # Document 0
     d0_topic_ps       = [d[1] for d in data if d[0] == ('topic_ps', 0)][-1]
@@ -590,28 +604,28 @@ def main():
     d1_topic_1     = d1_topic_1s[-1]
     # Plot document 0
     fig, ax = plt.subplots(nrows=1)
-    ax.bar(['Topic 0', 'Topic 1'], d0_topic_p, 0.4)
+    ax.bar(['Topic 0', 'Topic 1'], d0_topic_p, 0.8)
     ax.set_xticklabels(['Topic 0', 'Topic 1'])
     plt.title('Document 0 - Topic distribution')
     fig0, ax0 = plt.subplots(nrows=1)
-    ax0.bar(ws, d0_topic_0, 0.4)
+    ax0.bar(ws, d0_topic_0, 0.8)
     ax0.set_xticklabels(ws)
     plt.title('Document 0 - Topic 0 - Word distribution')
     fig1, ax1 = plt.subplots(nrows=1)
-    ax1.bar(ws, d0_topic_1, 0.4)
+    ax1.bar(ws, d0_topic_1, 0.8)
     ax1.set_xticklabels(ws)
     plt.title('Document 0 - Topic 1 - Word distribution')
     # Plot document 1
     fig2, ax2 = plt.subplots(nrows=1)
-    ax2.bar(['Topic 0', 'Topic 1'], d1_topic_p, 0.4)
+    ax2.bar(['Topic 0', 'Topic 1'], d1_topic_p, 0.8)
     ax2.set_xticklabels(['Topic 0', 'Topic 1'])
     plt.title('Document 1 - Topic distribution')
     fig3, ax3 = plt.subplots(nrows=1)
-    ax3.bar(ws, d1_topic_0, 0.4)
+    ax3.bar(ws, d1_topic_0, 0.8)
     ax3.set_xticklabels(ws)
     plt.title('Document 1 - Topic 0 - Word distribution')
     fig4, ax4 = plt.subplots(nrows=1)
-    ax4.bar(ws, d1_topic_1, 0.4)
+    ax4.bar(ws, d1_topic_1, 0.8)
     ax4.set_xticklabels(ws)
     plt.title('Document 1 - Topic 1 - Word distribution')
     plt.show()
