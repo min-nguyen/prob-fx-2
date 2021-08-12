@@ -708,15 +708,15 @@ testHLRMHPredictive = do
 mkRecordGMM :: ([Double], [Double], [Double], [Double]) -> LRec Example.GMMEnv
 mkRecordGMM (mus, mu_ks, xs, ys) = #mu @= mus <: #mu_k @= mu_ks <: #x @= xs <: #y @= ys <: nil
 
-testGMMBasic :: Sampler [[(Double, Double)]]
+testGMMBasic :: Sampler [[((Double, Double), Int)]]
 testGMMBasic = do
-  bs <- Basic.basic 100 (Example.gmm 2) [20] [mkRecordGMM ([-2.0, 3.5], [], [], [])]
+  bs <- Basic.basic 10 (Example.gmm 2) [20] [mkRecordGMM ([-2.0, 3.5], [], [], [])]
   return $  bs
 
 testGMMMHPost :: Sampler [(Addr, [Double])]
 testGMMMHPost = do
   bs <- testGMMBasic
-  let xys = map unzip bs
+  let xys = map unzip (map2 fst bs)
   mhTrace <- MH.mh 1000 (Example.gmm 2) [] (repeat 20)
                 (map (\(xs, ys) ->  mkRecordGMM ([], [], xs, ys)) xys)
   let mhTrace'   = processMHTrace mhTrace

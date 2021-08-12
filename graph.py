@@ -677,9 +677,11 @@ def main():
     plt.show()
   if arg == "gmm-basic":
     xyss = data
-    xs  = [[xy[0] for xy in xys] for xys in xyss]
-    ys  = [[xy[1] for xy in xys] for xys in xyss]
-    plt.scatter(xs, ys)
+    x0s  = [[xy[0][0] for xy in xys] for xys in xyss]
+    x1s  = [[xy[0][1] for xy in xys] for xys in xyss]
+    ys   = [[xy[1] for xy in xys] for xys in xyss]
+    print(xyss)
+    plt.scatter(x0s, x1s, c=ys)
     plt.xlabel('x - axis')
     plt.ylabel('y - axis')
     plt.title('Gaussian Mixture Model')

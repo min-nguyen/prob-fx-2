@@ -30,6 +30,7 @@ import Extensible.Sampler
 import Extensible.OpenSum (OpenSum)
 import qualified Extensible.OpenSum as OpenSum
 import Control.Monad
+import Data.List as List
 import Control.Lens hiding ((:>))
 import Unsafe.Coerce
 import Data.Maybe
@@ -38,6 +39,7 @@ import GHC.TypeLits
 import Data.Typeable
 import Extensible.OpenProduct
 import Util
+import Data.Vector.Fusion.Bundle (findIndex)
 
 {- Probabilistic programs -}
 
@@ -411,14 +413,15 @@ type GMMEnv = '[
 gmm :: (HasVar s "mu" Double, HasVar s "mu_k" Double, HasVar s "x" Double, HasVar s "y" Double)
   => Int -- num clusters
   -> Int -- num data points
-  -> Model s es [(Double, Double)]
+  -> Model s es [((Double, Double), Int)]
 gmm k n = do
   cluster_ps <- dirichlet (replicate k 1)
   mus        <- replicateM k (normal' 0 5 #mu)
   replicateM n (do mu_k <- categorical' (zip mus cluster_ps) #mu_k
+                   let i = fromJust $ List.findIndex (==mu_k) mus
                    x    <- normal' mu_k 1 #x
                    y    <- normal' mu_k 1 #y
-                   return (x, y))
+                   return ((x, y), i))
 
 -- | Hierarchical School Model
 
