@@ -333,18 +333,23 @@ wordDist :: HasVar s "word" String =>
 wordDist vocab ps =
   categorical' (zip vocab ps) #word
 
+topicWordPrior :: HasVar s "word_ps" [Double]
+  => [String] -> Model s es [Double]
+topicWordPrior vocab
+  = dirichlet' (replicate (length vocab) 1) #word_ps
+
 -- Probability of each topic in a document
-topicDist :: HasVar s "topic_ps" [Double] => Int -> Model s es [Double]
-topicDist n_topics = dirichlet' (replicate n_topics 1) #topic_ps
+docTopicPrior :: HasVar s "topic_ps" [Double] => Int -> Model s es [Double]
+docTopicPrior n_topics = dirichlet' (replicate n_topics 1) #topic_ps
 
 -- Learns topic model for a single document
-documentDist :: (HasVar s "word_ps" [Double], HasVar s "topic_ps" [Double], HasVar s "word" String) => [String] -> Int -> Int -> Model s es [String]
+documentDist :: (HasVars s '["word_ps", "topic_ps"] [Double], HasVar s "word" String) => [String] -> Int -> Int -> Model s es [String]
 documentDist vocab n_topics n_words = do
   -- Generate distribution over words for each topic
-  topic_word_ps <- replicateM n_topics $ dirichlet' (replicate (length vocab) 1) #word_ps
+  topic_word_ps <- replicateM n_topics $ topicWordPrior vocab
   -- Distribution over topics for a given document
-  topic_ps <- topicDist n_topics
-  replicateM n_words (do  z <- discrete topic_ps
+  doc_topic_ps <- docTopicPrior n_topics
+  replicateM n_words (do  z <- discrete doc_topic_ps
                           let word_ps = topic_word_ps !! z
                           wordDist vocab word_ps)
 
