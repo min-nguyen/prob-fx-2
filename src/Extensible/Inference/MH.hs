@@ -153,7 +153,7 @@ mhStep env model tags trace = do
   -- liftS $ print $ "sample ind is " ++ show α_samp_ind ++ "\n sample sites are " ++ show sampleSites
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
   -- run mh with new sample address
-  -- liftS $ print $ "sample address is " ++ show α_samp
+  liftS $ print $ "sample address is " ++ show α_samp
   (x', samples', logps') <- runMH env samples α_samp model
   -- liftS $ print $ "Second run is: " ++ show (x', samples', logps')
   -- do some acceptance ratio to see if we use samples or samples'
