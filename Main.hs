@@ -82,8 +82,8 @@ main = do
   -- trace <- sampleIOFixed testHLRBasic
   -- trace <- sampleIOFixed testHLRMHPost
   -- trace <- sampleIOFixed testHLRMHPredictive
-  trace <- sampleIOFixed testGMMBasic
-  -- trace <- sampleIOFixed testGMMMHPost
+  -- trace <- sampleIOFixed testGMMBasic
+  trace <- sampleIOFixed testGMMMHPost
   -- trace <- sampleIOFixed testSchBasic
   -- trace <- sampleIOFixed testSchMHPost
   let traceStr = show trace
