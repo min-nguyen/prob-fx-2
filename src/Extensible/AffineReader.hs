@@ -26,7 +26,7 @@ import Control.Lens hiding ((:>))
 import Util
 
 data AffReader env a where
-  Ask :: OP.HasVar env k a => OP.Key k -> AffReader env (Maybe a)
+  Ask :: OP.Observable env k a => OP.Var k -> AffReader env (Maybe a)
 
 runAffReader :: forall env rs a.
   OP.OpenProduct (OP.AsList env) -> Freer (AffReader env ': rs) a -> Freer rs a
@@ -39,5 +39,5 @@ runAffReader env (Free u k) = case decomp u of
     runAffReader env' (k y)
   Left  u'  -> Free u' (runAffReader env . k)
 
-ask :: forall env f k a. Member (AffReader env) f => OP.HasVar env k a => OP.Key k -> Freer f (Maybe a)
+ask :: forall env f k a. Member (AffReader env) f => OP.Observable env k a => OP.Var k -> Freer f (Maybe a)
 ask k = Free (inj (Ask k :: AffReader env (Maybe a))) Pure

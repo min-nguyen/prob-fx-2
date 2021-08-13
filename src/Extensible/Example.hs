@@ -51,9 +51,9 @@ type LinRegrEnv =
         "σ" ':>  Double
      ]
 
-linearRegression :: forall s rs .
-  (HasVar s "y" Double, HasVar s "m" Double, Lookup (AsList s) "c" [Double], HasVar s "σ" Double) =>
-  Double -> Model s rs (Double, Double)
+linearRegression :: forall env rs .
+  Observables env '["y", "m", "c", "σ"] Double =>
+  Double -> Model env rs (Double, Double)
 linearRegression x = do
   m <- normal' 0 3 #m
   c <- normal' 0 2 #c
@@ -71,9 +71,9 @@ type LogRegrEnv =
 sigmoid :: Double -> Double
 sigmoid x = 1 / (1 + exp((-1) * x))
 
-logisticRegression :: forall rs s.
- (HasVar s "label" Bool, HasVar s "m" Double, HasVar s "b" Double) =>
- Double -> Model s rs (Double, Bool)
+logisticRegression :: forall rs env.
+ (Observable env "label" Bool, Observables env '["m", "b"] Double) =>
+ Double -> Model env rs (Double, Bool)
 logisticRegression x = do
   m     <- normal' 0 5 #m
   b     <- normal' 0 1 #b
@@ -104,21 +104,22 @@ forwardNNLin :: NN -> Double -> Double
 forwardNNLin (NN bs ws _) x =
   (ws `dot` map (x -) bs) / 20
 
-likelihoodNNLin :: HasVar s "yObs" Double => NN -> Double -> Model s es Double
+likelihoodNNLin :: Observable env "yObs" Double => NN -> Double -> Model env ts Double
 likelihoodNNLin nn x = do
   let ySigma = sigm nn
       yMean  = forwardNNLin nn x
   normal' yMean ySigma #yObs
 
-priorNN :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double)
-  => Int -> Model s es NN
+priorNN :: (Observables env '["weight", "bias", "sigma"] Double)
+  => Int -> Model env ts NN
 priorNN n_nodes = do
   bias   <- replicateM n_nodes (uniform' 0 10 #bias)
   weight <- replicateM n_nodes (uniform' (-10) 10 #weight)
   sigma  <- uniform' 0.5 1.5 #sigma
   return $ NN bias weight sigma
 
-nnLinModel :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double, HasVar s "yObs" Double) => Int -> Double -> Model s es (Double, Double)
+nnLinModel :: (Observables env '["weight", "bias", "sigma", "yObs"] Double)
+  => Int -> Double -> Model env ts (Double, Double)
 nnLinModel n x = do
   nn <- priorNN n
   y  <- likelihoodNNLin nn x
@@ -130,13 +131,15 @@ forwardNNStep (NN bs ws _) x =
   ws `dot` map (activation . (x -)) bs
   where activation x = if x < 0 then 0 else 1
 
-likelihoodNNStep :: HasVar s "yObs" Double => NN -> Double -> Model s es Double
+likelihoodNNStep :: Observable env "yObs" Double
+ => NN -> Double -> Model env ts Double
 likelihoodNNStep nn x = do
   let ySigma = sigm nn
       yMean  = forwardNNStep nn x
   normal' yMean ySigma #yObs
 
-nnStepModel :: (HasVar s "weight" Double, HasVar s "bias" Double, HasVar s "sigma" Double, HasVar s "yObs" Double) => Int -> Double -> Model s es (Double, Double)
+nnStepModel :: (Observables env '["weight", "bias", "sigma", "yObs"] Double)
+ => Int -> Double -> Model env ts (Double, Double)
 nnStepModel n x = do
   nn <- priorNN n
   y <- likelihoodNNStep nn x
@@ -149,7 +152,8 @@ type NNLogEnv =
         "weight"   ':> Double
      ]
 
-nnLogModel :: (HasVar s "weight" Double, HasVar s "yObs" Bool) => Int -> (Double, Double) -> Model s es ((Double, Double), Bool)
+nnLogModel :: (Observable env "weight" Double, Observable env "yObs" Bool)
+  => Int -> (Double, Double) -> Model env ts ((Double, Double), Bool)
 nnLogModel n_nodes (x, y)  = do
   let xs = [x, y]
   weightsA <- replicateM2 (length xs) n_nodes (normal' 0 1 #weight)
@@ -163,9 +167,9 @@ nnLogModel n_nodes (x, y)  = do
 
 -- | Sine model
 
-sineModel :: forall s rs .
-  (HasVar s "y" Double, HasVar s "m" Double, HasVar s "c" Double, HasVar s "σ" Double) =>
-  Double -> Model s rs (Double, Double)
+sineModel :: forall env rs .
+  Observables env '["y", "m", "c", "σ"] Double =>
+  Double -> Model env rs (Double, Double)
 sineModel x = do
   m <- normal' 0 4 #m
   c <- normal' 0 2 #c
@@ -181,29 +185,29 @@ type HMMEnv =
      "obs_p"   ':> Double
    ]
 
-transitionModel ::  Double -> Int -> Model s es Int
+transitionModel ::  Double -> Int -> Model env ts Int
 transitionModel transition_p x_prev = do
   dX <- boolToInt <$> bernoulli transition_p
   return (dX + x_prev)
 
-observationModel :: (HasVar s "y" Int)
-  => Double -> Int -> Model s es Int
+observationModel :: (Observable env "y" Int)
+  => Double -> Int -> Model env ts Int
 observationModel observation_p x = do
   binomial' x observation_p #y
 
-hmm :: (HasVar s "y" Int)
-  => Double -> Double -> Int -> Model s es (Int, Int)
+hmm :: (Observable env "y" Int)
+  => Double -> Double -> Int -> Model env ts (Int, Int)
 hmm transition_p observation_p x_prev = do
   x_n <- transitionModel  transition_p x_prev
   y_n <- observationModel observation_p x_n
   return (x_n, y_n)
 
-hmm' :: HasVar s "y" Int => Double -> Double -> Int -> Model s es Int
+hmm' :: Observable env "y" Int => Double -> Double -> Int -> Model env ts Int
 hmm' transition_p observation_p =
   observationModel observation_p <=< transitionModel transition_p
 
-hmmNSteps :: (HasVar s "y" Int, HasVar s "obs_p" Double, HasVar s "trans_p" Double)
-  => Int -> (Int -> Model s es ([Int], [Int]))
+hmmNSteps :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
+  => Int -> (Int -> Model env ts ([Int], [Int]))
 hmmNSteps n x = do
   trans_p <- uniform' 0 1 #trans_p
   obs_p   <- uniform' 0 1 #obs_p
@@ -214,27 +218,27 @@ hmmNSteps n x = do
   return (reverse xs, reverse ys)
 
 -- | Hidden Markov Model using State effect
-transitionModelSt ::  Double -> Int -> Model s es Int
+transitionModelSt ::  Double -> Int -> Model env ts Int
 transitionModelSt transition_p x_prev = do
   dX <- boolToInt <$> bernoulli transition_p
   return (dX + x_prev)
 
-observationModelSt :: (HasVar s "y" Int, Member (State [Int]) es)
-  => Double -> Int -> Model s es Int
+observationModelSt :: (Observable env "y" Int, Member (State [Int]) ts)
+  => Double -> Int -> Model env ts Int
 observationModelSt observation_p x = do
   y_n <- binomial' x observation_p #y
   modifyM (y_n:)
   return y_n
 
-hmmSt :: (HasVar s "y" Int, Member (State [Int]) es)
-  => Double -> Double -> [Int] -> Model s es [Int]
+hmmSt :: (Observable env "y" Int, Member (State [Int]) ts)
+  => Double -> Double -> [Int] -> Model env ts [Int]
 hmmSt transition_p observation_p xs = do
   x_n <- transitionModelSt transition_p (head xs)
   y_n <- observationModelSt observation_p x_n
   return (x_n:xs)
 
-hmmNStepsSt :: (HasVar s "y" Int, Member (State [Int]) es)
-  => Double -> Double -> Int -> (Int -> Model s es [Int])
+hmmNStepsSt :: (Observable env "y" Int, Member (State [Int]) ts)
+  => Double -> Double -> Int -> (Int -> Model env ts [Int])
 hmmNStepsSt transition_p observation_p n x =
   foldl (>=>) return
     (replicate n (hmmSt transition_p observation_p)) [x]
@@ -265,12 +269,13 @@ type SIREnv =
 
 type InfectionCount = Int
 
-observeSIR :: HasVar s "infobs" Int => Params -> LatentState -> Model s es Int
+observeSIR :: Observable env "infobs" Int
+  => Params -> LatentState -> Model env ts Int
 observeSIR (Params rho _ _) (LatentState _ inf _) = do
   -- Model $ prinT $ "inf is " ++ show inf
   poisson' (rho * fromIntegral inf) #infobs
 
-transitionSIR :: FixedParams -> Params -> LatentState -> Model s es LatentState
+transitionSIR :: FixedParams -> Params -> LatentState -> Model env ts LatentState
 transitionSIR (FixedParams numPop timeSlices) (Params rho beta gamma) (LatentState sus inf recov)  = do
   let dt   = 1 / fromIntegral timeSlices
       si_p = 1 - exp ((-beta * dt * fromIntegral inf) / fromIntegral numPop)
@@ -282,14 +287,15 @@ transitionSIR (FixedParams numPop timeSlices) (Params rho beta gamma) (LatentSta
       recov' = recov + dN_IR
   return (LatentState sus' inf' recov')
 
-hmmSIR :: HasVar s "infobs" Int => FixedParams -> Params -> LatentState -> Model s es (LatentState, Int)
+hmmSIR :: Observable env "infobs" Int
+  => FixedParams -> Params -> LatentState -> Model env ts (LatentState, Int)
 hmmSIR fixedParams params latentState = do
   latentState'   <- transitionSIR fixedParams params latentState
   infectionCount <- observeSIR params latentState
   return (latentState', infectionCount)
 
-paramsPrior :: (HasVar s "ρ" Double, HasVar s "β" Double, HasVar s "γ" Double) =>
-  Model s es Params
+paramsPrior :: Observables env '["ρ", "β", "γ"] Double
+  => Model env ts Params
 paramsPrior = do
   pRho   <- beta' 2 7 #ρ
   pBeta  <- gamma' 2 1 #β
@@ -297,8 +303,8 @@ paramsPrior = do
   Model $ prinT $ "Using params: " ++ show (pRho, pBeta, pGamma)
   return (Params pRho pBeta pGamma)
 
-hmmSIRNsteps :: (HasVar s "infobs" Int, HasVar s "ρ" Double, HasVar s "β" Double, HasVar s "γ" Double) =>
-  FixedParams -> Int -> LatentState -> Model s es ([LatentState], [Int])
+hmmSIRNsteps :: (Observable env "infobs" Int, Observables env '["ρ", "β", "γ"] Double)
+  => FixedParams -> Int -> LatentState -> Model env ts ([LatentState], [Int])
 hmmSIRNsteps fixedParams n latentState  = do
   params <- paramsPrior
   (xs, ys) <- foldl (>=>) return
@@ -312,9 +318,10 @@ type DirEnv =
   '[ "xs" ':> [Double]
    ]
 
-halfNorm :: HasVar s "xs" [Double] => Int -> Model s es [Double]
+halfNorm :: Observable env "xs" [Double]
+  => Int -> Model env ts [Double]
 halfNorm n = do
-  -- s <- halfNormal 1
+  -- env <- halfNormal 1
   -- x <- cauchy 0 1
   xs <- dirichlet' [0.5, 0.5] #xs
   -- xs <- categorical [("hi", 1), ("bye", 0.5)]
@@ -330,22 +337,24 @@ type TopicEnv =
    ]
 
 -- Probability of each word in a topic
-wordDist :: HasVar s "word" String =>
-  [String] -> [Double] -> Model s es String
+wordDist :: Observable env "word" String =>
+  [String] -> [Double] -> Model env ts String
 wordDist vocab ps =
   categorical' (zip vocab ps) #word
 
-topicWordPrior :: HasVar s "word_ps" [Double]
-  => [String] -> Model s es [Double]
+topicWordPrior :: Observable env "word_ps" [Double]
+  => [String] -> Model env ts [Double]
 topicWordPrior vocab
   = dirichlet' (replicate (length vocab) 1) #word_ps
 
 -- Probability of each topic in a document
-docTopicPrior :: HasVar s "topic_ps" [Double] => Int -> Model s es [Double]
+docTopicPrior :: Observable env "topic_ps" [Double]
+  => Int -> Model env ts [Double]
 docTopicPrior n_topics = dirichlet' (replicate n_topics 1) #topic_ps
 
 -- Learns topic model for a single document
-documentDist :: (HasVars s '["word_ps", "topic_ps"] [Double], HasVar s "word" String) => [String] -> Int -> Int -> Model s es [String]
+documentDist :: (Observables env '["word_ps", "topic_ps"] [Double], Observable env "word" String)
+  => [String] -> Int -> Int -> Model env ts [String]
 documentDist vocab n_topics n_words = do
   -- Generate distribution over words for each topic
   topic_word_ps <- replicateM n_topics $ topicWordPrior vocab
@@ -356,11 +365,11 @@ documentDist vocab n_topics n_words = do
                           wordDist vocab word_ps)
 
 -- Learns topic models for multiple documents
-topicModel :: (HasVar s "word_ps" [Double], HasVar s "topic_ps" [Double], HasVar s "word" String) =>
-  [String] ->
-  Int      ->
-  [Int]    -> -- Number of words per document
-  Model s es [[String]]
+topicModel :: (Observables env '["word_ps", "topic_ps"] [Double], Observable env "word" String)
+  => [String] ->
+     Int      ->
+     [Int]    -> -- Number of words per document
+     Model env ts [[String]]
 topicModel vocab n_topics doc_words = do
   mapM (documentDist vocab n_topics) doc_words
 
@@ -370,7 +379,8 @@ type HLREnv =
   '[ "mu_a" ':> Double, "mu_b" ':> Double, "sigma_a" ':> Double, "sigma_b" ':> Double,
      "a" ':> Double, "b" ':> Double, "log_radon" ':> Double]
 
-hlrPrior :: (HasVar s "mu_a" Double, HasVar s "mu_b" Double, HasVar s "sigma_a" Double, HasVar s "sigma_b" Double) => Model s es (Double, Double, Double, Double)
+hlrPrior :: Observables env '["mu_a", "mu_b", "sigma_a", "sigma_b"] Double
+  => Model env ts (Double, Double, Double, Double)
 hlrPrior = do
   mu_a    <- normal' 0 10 #mu_a
   sigma_a <- halfNormal' 5 #sigma_a
@@ -379,8 +389,8 @@ hlrPrior = do
   return (mu_a, sigma_a, mu_b, sigma_b)
 
 -- n counties = 85, len(floor_x) = 919, len(county_idx) = 919
-hierarchicalLinRegr :: (HasVar s "mu_a" Double, HasVar s "mu_b" Double, HasVar s "sigma_a" Double, HasVar s "sigma_b" Double, HasVar s "a" Double, HasVar s "b" Double, HasVar s "log_radon" Double)
-  => Int -> [Int] -> [Int] -> () -> Model s es [Double]
+hierarchicalLinRegr :: Observables env '["mu_a", "mu_b", "sigma_a", "sigma_b", "a", "b", "log_radon"] Double
+  => Int -> [Int] -> [Int] -> () -> Model env ts [Double]
 hierarchicalLinRegr n_counties floor_x county_idx _ = do
   (mu_a, sigma_a, mu_b, sigma_b) <- hlrPrior
   -- Intercept for each county
@@ -410,10 +420,10 @@ type GMMEnv = '[
     "y"  ':> Double
   ]
 
-gmm :: (HasVar s "mu" Double, HasVar s "mu_k" Double, HasVar s "x" Double, HasVar s "y" Double)
+gmm :: Observables env '["mu", "mu_k", "x", "y"] Double
   => Int -- num clusters
   -> Int -- num data points
-  -> Model s es [((Double, Double), Int)]
+  -> Model env ts [((Double, Double), Int)]
 gmm k n = do
   cluster_ps <- dirichlet (replicate k 1)
   mus        <- replicateM k (normal' 0 5 #mu)
@@ -432,7 +442,8 @@ type SchEnv = '[
   ]
 
 
-schoolModel :: (HasVars s '["mu", "y"] Double, HasVar s "theta" [Double]) => Int -> [Double] -> Model s es [Double]
+schoolModel :: (Observables env '["mu", "y"] Double, Observable env "theta" [Double])
+  => Int -> [Double] -> Model env ts [Double]
 schoolModel n_schools σs = do
   μ   <- normal' 0 10 #mu
   τ   <- halfNormal 10
@@ -441,3 +452,8 @@ schoolModel n_schools σs = do
   ys  <- mapM (\(θ, σ) -> normal' θ σ #y) (zip θs σs)
   let h = ""
   return θs
+
+f :: (forall a b. Num b => a -> b) -> Double -> Double
+f h x = h x
+
+g = f (const 5) 2.2
