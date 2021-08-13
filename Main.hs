@@ -36,7 +36,7 @@ main :: IO ()
 main = do
   -- trace <- sampleIOFixed testLinRegrBasic
   -- trace <- sampleIOFixed testLinRegrLWSim
-  -- trace <- sampleIOFixed testLinRegrLWInf
+  trace <- sampleIOFixed testLinRegrLWInf
   -- trace <- sampleIOFixed testLinRegrMHPost
   -- trace <- sampleIOFixed testLinRegrMHPred
   -- trace <- sampleIOFixed testLogRegrBasic
@@ -83,7 +83,7 @@ main = do
   -- trace <- sampleIOFixed testHLRMHPost
   -- trace <- sampleIOFixed testHLRMHPredictive
   -- trace <- sampleIOFixed testGMMBasic
-  trace <- sampleIOFixed testGMMMHPost
+  -- trace <- sampleIOFixed testGMMMHPost
   -- trace <- sampleIOFixed testSchBasic
   -- trace <- sampleIOFixed testSchMHPost
   let traceStr = show trace

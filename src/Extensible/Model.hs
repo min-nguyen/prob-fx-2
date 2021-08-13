@@ -51,10 +51,6 @@ newtype Model env ts v =
   Model { runModel :: (Member Dist ts, Member (AffReader env) ts, Member Sample ts) => Freer ts v }
   deriving Functor
 
-newtype Model' env ts v =
-  Model' { runModel' :: (Member Dist ts, Member (AffReader  env) ts, Member Sample ts) => Freer ts v }
-  deriving Functor
-
 instance Applicative (Model env ts) where
   pure = Model . pure
   (<*>) = ap

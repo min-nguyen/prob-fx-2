@@ -97,37 +97,37 @@ runObserve :: Member Sample ts => Freer (Observe : ts) a -> Freer ts (a, Double)
 runObserve = loop 0
   where
   loop :: Member Sample ts => Double -> Freer (Observe : ts) a -> Freer ts (a, Double)
-  loop p (Pure x) = return (x, p)
-  loop p (Free u k) = case decomp u of
+  loop logp (Pure x) = return (x, exp logp)
+  loop logp (Free u k) = case decomp u of
       Right (Observe d y α)
         -> let r = logProb d y
            in case d of
             DistDoubles (Just d) ->
-              do let p' = prob d (unsafeCoerce y :: [Double])
-                 prinT $ "Prob of observing " ++ show (unsafeCoerce y :: [Double]) ++ " from " ++ show d ++ " is " ++ show p'
-                 loop (p + p') (k y)
+              do let logp' = logProb d (unsafeCoerce y :: [Double])
+                 prinT $ "Prob of observing " ++ show (unsafeCoerce y :: [Double]) ++ " from " ++ show d ++ " is " ++ show logp'
+                 loop (logp + logp') (k y)
             DistBool (Just d) ->
-              do let p' = prob d (unsafeCoerce y :: Bool)
-                 prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Bool) ++ " from " ++ show d ++ " is " ++ show p'
-                 loop (p + p') (k y)
+              do let logp' = logProb d (unsafeCoerce y :: Bool)
+                 prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Bool) ++ " from " ++ show d ++ " is " ++ show logp'
+                 loop (logp + logp') (k y)
             DistDouble (Just d) ->
-              do  let p' = prob d (unsafeCoerce y :: Double)
-                  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show p'
-                  loop (p + p') (k y)
+              do  let logp' = logProb d (unsafeCoerce y :: Double)
+                  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show logp'
+                  loop (logp + logp') (k y)
             DistInt (Just d) ->
-              do let p' = prob d (unsafeCoerce y :: Int)
-                 prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Int) ++ " from " ++ show d ++ " is " ++ show p'
-                 loop (p + p') (k y)
+              do let logp' = logProb d (unsafeCoerce y :: Int)
+                 prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Int) ++ " from " ++ show d ++ " is " ++ show logp'
+                 loop (logp + logp') (k y)
             d@CategoricalDist {} ->
-              do let p' = prob d y
-                 prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show p'
-                 loop (p + p') (k y)
+              do let logp' = logProb d y
+                 prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp'
+                 loop (logp + logp') (k y)
             d@DeterministicDist {} ->
-              do let p' = prob d y
-                 prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show p'
-                 loop (p + p') (k y)
+              do let logp' = logProb d y
+                 prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp'
+                 loop (logp + logp') (k y)
             _ -> undefined
-      Left  u'  -> Free u' (loop p . k)
+      Left  u'  -> Free u' (loop logp . k)
 
 runSample :: Freer '[Sample] a -> Sampler a
 runSample = loop
