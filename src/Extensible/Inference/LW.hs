@@ -29,13 +29,13 @@ type Ⲭ = Map Addr (OpenSum PrimVal)
 
 type TraceLW a = [(a, Ⲭ, Double)]
 
-updateTrace :: forall rs x. (Member (State Ⲭ) rs, OpenSum.Member x PrimVal) => Addr -> x -> Freer rs ()
+updateTrace :: forall ts x. (Member (State Ⲭ) ts, OpenSum.Member x PrimVal) => Addr -> x -> Freer ts ()
 updateTrace α x = modify (Map.insert α (OpenSum.inj x) :: Ⲭ -> Ⲭ)
 
 -- | Run LW n times for multiple data points
-lw :: (es ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample])
+lw :: (ts ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample])
    => Int                              -- Number of lw iterations per data point
-   -> (b -> Model env es a)            -- Model awaiting input variable
+   -> (b -> Model env ts a)            -- Model awaiting input variable
    -> [b]                              -- List of model input variables
    -> [LRec env]                       -- List of model observed variables
    -> Sampler (TraceLW a)              -- List of n likelihood weightings for each data point
@@ -43,10 +43,10 @@ lw n model xs ys = do
   concat <$> zipWithM (\x y -> lwNsteps n y (model x)) xs ys
 
 -- | Run LW n times for a single data point
-lwNsteps :: (es ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample])
+lwNsteps :: (ts ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample])
   => Int
   -> LRec env
-  -> Model env es a
+  -> Model env ts a
   -> Sampler (TraceLW a)
 lwNsteps n env model = replicateM n (runLW env model)
 
@@ -72,8 +72,8 @@ runLWpaper env =
    . transformLW . runDist . runAffReader env . runModel
 
 
-transformLW :: (Member (State Ⲭ) rs, Member Sample rs)
-  => Freer rs a -> Freer rs a
+transformLW :: (Member (State Ⲭ) ts, Member Sample ts)
+  => Freer ts a -> Freer ts a
 transformLW (Pure x) = return x
 transformLW (Free u k) = case prj u of
     Just (Sample d α) -> case d of
@@ -93,10 +93,10 @@ transformLW (Free u k) = case prj u of
       _ -> error "error"
     _ -> Free u (transformLW . k)
 
-runObserve :: Member Sample rs => Freer (Observe : rs) a -> Freer rs (a, Double)
+runObserve :: Member Sample ts => Freer (Observe : ts) a -> Freer ts (a, Double)
 runObserve = loop 0
   where
-  loop :: Member Sample rs => Double -> Freer (Observe : rs) a -> Freer rs (a, Double)
+  loop :: Member Sample ts => Double -> Freer (Observe : ts) a -> Freer ts (a, Double)
   loop p (Pure x) = return (x, p)
   loop p (Free u k) = case decomp u of
       Right (Observe d y α)

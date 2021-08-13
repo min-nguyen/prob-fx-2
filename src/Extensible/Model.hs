@@ -40,19 +40,19 @@ import qualified System.Random.MWC.Distributions as MWC
 import qualified Data.Vector as V
 import Unsafe.Coerce
 
-type family Maybes (as :: [k]) = (bs :: [k]) | bs -> as where
+type family Maybes (as :: [x]) = (bs :: [x]) | bs -> as where
   Maybes ((f , v) : as) = (f , Maybe v) : Maybes as
-  Maybes (a : as) = Maybe a : Maybes as
+  Maybes (v : as) = Maybe v : Maybes as
   Maybes '[] = '[]
 
 type MRec env = OP.OpenProduct (Maybes env)
 
-newtype Model env ts a =
-  Model { runModel :: (Member Dist ts, Member (AffReader env) ts, Member Sample ts) => Freer ts a }
+newtype Model env ts v =
+  Model { runModel :: (Member Dist ts, Member (AffReader env) ts, Member Sample ts) => Freer ts v }
   deriving Functor
 
-newtype Model' env ts a =
-  Model' { runModel' :: (Member Dist ts, Member (AffReader  env) ts, Member Sample ts) => Freer ts a }
+newtype Model' env ts v =
+  Model' { runModel' :: (Member Dist ts, Member (AffReader  env) ts, Member Sample ts) => Freer ts v }
   deriving Functor
 
 instance Applicative (Model env ts) where
@@ -61,9 +61,9 @@ instance Applicative (Model env ts) where
 
 instance Monad (Model env ts) where
   return = pure
-  Model f >>= k = Model $ do
+  Model f >>= x = Model $ do
     f' <- f
-    runModel $ k f'
+    runModel $ x f'
 
 printM :: Member Sample ts => String -> Model env ts ()
 printM = Model . prinT
@@ -77,23 +77,25 @@ getM = Model get
 modifyM :: Member (State s) ts => (s -> s) -> Model env ts ()
 modifyM = Model . modify
 
-runStateM :: Model env (State [Int]:ts) a -> Model env ts (a, [Int])
+runStateM :: Model env (State [Int] : ts) v -> Model env ts (v, [Int])
 runStateM m = Model $ runState [] $ runModel m
 
-normalLens :: forall env ts a k. (a ~ Double) => OP.Lookup env k a
-  => Double -> Double -> OP.Var k
-  -> Lens' (OP.OpenProduct env) a
+normalLens :: forall env ts x.  OP.Lookup env x Double
+  => Double -> Double -> OP.Var x
+  -> Lens' (OP.OpenProduct env) Double
 normalLens mu sigma field =
   lens (\env -> OP.getOP field env) (\env b -> OP.setOP field b env)
 
 {- Distribution smart constructors -}
 
-deterministic :: (Eq a, Show a, OpenSum.Member a PrimVal) => a -> Model env ts a
+deterministic :: (Eq v, Show v, OpenSum.Member v PrimVal)
+  => v -> Model env ts v
 deterministic x = Model $ do
   send (DeterministicDist x Nothing Nothing)
 
-deterministic' :: forall env ts a k. (Eq a, Show a, OpenSum.Member a PrimVal) => OP.Lookup (OP.AsList env) k [a]
-  => a -> OP.Var k -> Model env ts a
+deterministic' :: forall env ts v x. (Eq v, Show v, OpenSum.Member v PrimVal)
+  => OP.Lookup (OP.AsList env) x [v]
+  => v -> OP.Var x -> Model env ts v
 deterministic' x field = Model $ do
   let tag = Just $ OP.varToStr field
   maybe_y <- ask @env field
@@ -103,8 +105,8 @@ dirichlet :: [Double] -> Model env ts [Double]
 dirichlet xs = Model $ do
   send (DirichletDist xs Nothing Nothing)
 
-dirichlet' :: forall env ts a k. (a ~ [Double]) => OP.Lookup (OP.AsList env) k [a]
-  => [Double] -> OP.Var k
+dirichlet' :: forall env ts x. OP.Lookup (OP.AsList env) x [[Double]]
+  => [Double] -> OP.Var x
   -> Model env ts [Double]
 dirichlet' xs field = Model $ do
   let tag = Just $ OP.varToStr field
@@ -115,21 +117,21 @@ discrete :: [Double] -> Model env ts Int
 discrete xs = Model $ do
   send (DiscreteDist xs Nothing Nothing)
 
-discrete' :: forall env ts a k. (a ~ Int) => OP.Lookup (OP.AsList env) k [a]
-  => [Double] -> OP.Var k
+discrete' :: forall env ts x. OP.Lookup (OP.AsList env) x [Int]
+  => [Double] -> OP.Var x
   -> Model env ts Int
 discrete' xs field = Model $ do
   let tag = Just $ OP.varToStr field
   maybe_y <- ask @env field
   send (DiscreteDist xs maybe_y tag)
 
-categorical :: (Eq a, Show a, OpenSum.Member a PrimVal) => [(a, Double)] -> Model env ts a
+categorical :: (Eq v, Show v, OpenSum.Member v PrimVal) => [(v, Double)] -> Model env ts v
 categorical xs = Model $ do
   send (CategoricalDist xs Nothing Nothing)
 
-categorical' :: forall env ts a k. (Eq a, Show a, OpenSum.Member a PrimVal) => OP.Lookup (OP.AsList env) k [a]
-  => [(a, Double)] -> OP.Var k
-  -> Model env ts a
+categorical' :: forall env ts v x. (Eq v, Show v, OpenSum.Member v PrimVal) => OP.Lookup (OP.AsList env) x [v]
+  => [(v, Double)] -> OP.Var x
+  -> Model env ts v
 categorical' xs field = Model $ do
   let tag = Just $ OP.varToStr field
   maybe_y <- ask @env field
@@ -139,8 +141,8 @@ normal :: Double -> Double -> Model env ts Double
 normal mu sigma = Model $ do
   send (NormalDist mu sigma Nothing Nothing)
 
-normal' :: forall env ts a k. (a ~ Double) => OP.Lookup (OP.AsList env) k [a]
-  => Double -> Double -> OP.Var k
+normal' :: forall env ts x. OP.Lookup (OP.AsList env) x [Double]
+  => Double -> Double -> OP.Var x
   -> Model env ts Double
 normal' mu sigma field = Model $ do
   let tag = Just $ OP.varToStr field
@@ -151,8 +153,8 @@ halfNormal :: Double -> Model env ts Double
 halfNormal sigma = Model $ do
   send (HalfNormalDist sigma Nothing Nothing)
 
-halfNormal' :: forall env ts a k. (a ~ Double) => OP.Lookup (OP.AsList env) k [a]
-  => Double -> OP.Var k
+halfNormal' :: forall env ts x. OP.Lookup (OP.AsList env) x [Double]
+  => Double -> OP.Var x
   -> Model env ts Double
 halfNormal' sigma field = Model $ do
   let tag = Just $ OP.varToStr field
@@ -163,8 +165,8 @@ cauchy :: Double -> Double -> Model env ts Double
 cauchy mu sigma = Model $ do
   send (CauchyDist mu sigma Nothing Nothing)
 
-cauchy' :: forall env ts a k. (a ~ Double) => OP.Lookup (OP.AsList env) k [a]
-  => Double -> Double -> OP.Var k
+cauchy' :: forall env ts x. OP.Lookup (OP.AsList env) x [Double]
+  => Double -> Double -> OP.Var x
   -> Model env ts Double
 cauchy' mu sigma field = Model $ do
   let tag = Just $ OP.varToStr field
@@ -175,8 +177,8 @@ halfCauchy :: Double -> Model env ts Double
 halfCauchy sigma = Model $ do
   send (HalfCauchyDist sigma Nothing Nothing)
 
-halfCauchy' :: forall env ts a k. (a ~ Double) => OP.Lookup (OP.AsList env) k [a]
-  => Double -> OP.Var k
+halfCauchy' :: forall env ts x. OP.Lookup (OP.AsList env) x [Double]
+  => Double -> OP.Var x
   -> Model env ts Double
 halfCauchy' sigma field = Model $ do
   let tag = Just $ OP.varToStr field
@@ -187,8 +189,8 @@ bernoulli :: Double -> Model env ts Bool
 bernoulli p = Model $ do
   send (BernoulliDist p Nothing Nothing)
 
-bernoulli' :: forall env ts a k. (a ~ Bool) => OP.Lookup (OP.AsList env) k [a]
-  => Double -> OP.Var k
+bernoulli' :: forall env ts x. OP.Lookup (OP.AsList env) x [Bool]
+  => Double -> OP.Var x
   -> Model env ts Bool
 bernoulli' p field = Model $ do
   let tag = Just $ OP.varToStr field
@@ -199,8 +201,8 @@ binomial :: Int -> Double -> Model env ts Int
 binomial n p = Model $ do
   send (BinomialDist n p Nothing Nothing)
 
-binomial' :: forall env ts a k. (a ~  Int) => (OP.Lookup (OP.AsList env) k [a])
-  => Int -> Double -> OP.Var k
+binomial' :: forall env ts x. (OP.Lookup (OP.AsList env) x [Int])
+  => Int -> Double -> OP.Var x
   -> Model env ts Int
 binomial' n p field = Model $ do
   let tag = Just $ OP.varToStr field
@@ -208,23 +210,23 @@ binomial' n p field = Model $ do
   send (BinomialDist n p maybe_y tag)
 
 gamma :: Double -> Double -> Model env ts Double
-gamma k θ = Model $ do
-  send (GammaDist k θ Nothing Nothing)
+gamma x θ = Model $ do
+  send (GammaDist x θ Nothing Nothing)
 
-gamma' :: forall env ts a k. (a ~ Double) => (OP.Lookup (OP.AsList env) k [a])
-  => Double -> Double -> OP.Var k
+gamma' :: forall env ts x. (OP.Lookup (OP.AsList env) x [Double])
+  => Double -> Double -> OP.Var x
   -> Model env ts Double
-gamma' k θ field = Model $ do
+gamma' x θ field = Model $ do
   let tag = Just $ OP.varToStr field
   maybe_y <- ask @env field
-  send (GammaDist k θ maybe_y tag)
+  send (GammaDist x θ maybe_y tag)
 
 beta :: Double -> Double -> Model env ts Double
 beta α β = Model $ do
   send (BetaDist α β Nothing Nothing)
 
-beta' :: forall env ts a k. (a ~ Double) => (OP.Lookup (OP.AsList env) k [a])
-  => Double -> Double -> OP.Var k
+beta' :: forall env ts x. (OP.Lookup (OP.AsList env) x [Double])
+  => Double -> Double -> OP.Var x
   -> Model env ts Double
 beta' α β field = Model $ do
   let tag = Just $ OP.varToStr field
@@ -235,8 +237,8 @@ uniform :: Double -> Double -> Model env ts Double
 uniform min max = Model $ do
   send (UniformDist min max Nothing Nothing)
 
-uniform' :: forall env ts a k. (a ~ Double) => (OP.Lookup (OP.AsList env) k [a])
-  => Double -> Double -> OP.Var k
+uniform' :: forall env ts x. (OP.Lookup (OP.AsList env) x [Double])
+  => Double -> Double -> OP.Var x
   -> Model env ts Double
 uniform' min max field = Model $ do
   let tag = Just $ OP.varToStr field
@@ -247,28 +249,28 @@ poisson :: Double -> Model env ts Int
 poisson λ = Model $ do
   send (PoissonDist λ Nothing Nothing)
 
-poisson' :: forall env ts a k. (a ~ Int) => (OP.Lookup (OP.AsList env) k [a])
-  => Double -> OP.Var k
+poisson' :: forall env ts x. (OP.Lookup (OP.AsList env) x [Int])
+  => Double -> OP.Var x
   -> Model env ts Int
 poisson' λ field = Model $ do
   let tag = Just $ OP.varToStr field
   maybe_y <- ask @env field
   send (PoissonDist λ maybe_y tag)
 
--- -- fromFieldOptic :: Lookup (AsList env) k a => KnownSymbol k => Extensible f p t =>
--- --   FieldOptic k -> Lens' (AsList env :& Field Identity) a
+-- -- fromFieldOptic :: Lookup (AsList env) x v => KnownSymbol x => Extensible f p t =>
+-- --   FieldOptic x -> Lens' (AsList env :& Field Identity) v
 -- -- fromFieldOptic l = l
 
--- -- fromFieldOptic :: -- Lookup (AsList env) k a =>
--- --   forall  k xs.
+-- -- fromFieldOptic :: -- Lookup (AsList env) x v =>
+-- --   forall  x xs.
 -- --   (Extensible Identity (->) (:&)
--- --   , ExtensibleConstr (:&) xs (Field Identity) (k ':> Double)
--- --   , Lookup xs k Double
--- --   , Labelling k (->)
+-- --   , ExtensibleConstr (:&) xs (Field Identity) (x ':> Double)
+-- --   , Lookup xs x Double
+-- --   , Labelling x (->)
 -- --   , Wrapper Identity)
--- --   => FieldOptic k -> Lens' (Record xs) Double
+-- --   => FieldOptic x -> Lens' (Record xs) Double
 -- -- fromFieldOptic l = l
 
--- -- toFieldName :: forall env k a. KnownSymbol k => Lookup (AsList env) k a =>
--- --   FieldOptic k -> String -- Lens' (AsList env :& Field Identity) a
--- -- toFieldName l = symbolVal (Proxy @k)
+-- -- toFieldName :: forall env x v. KnownSymbol x => Lookup (AsList env) x v =>
+-- --   FieldOptic x -> String -- Lens' (AsList env :& Field Identity) v
+-- -- toFieldName l = symbolVal (Proxy @x)

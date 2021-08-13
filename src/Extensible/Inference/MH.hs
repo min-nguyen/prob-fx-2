@@ -107,9 +107,9 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   return $ exp (dom_logα + _X'logα - _Xlogα)
 
 -- | Run MH for multiple data points
-mh :: (es ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
+mh :: (ts ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
    => Int                              -- Number of mhSteps per data point
-   -> (b -> Model env es a)            -- Model awaiting input variable
+   -> (b -> Model env ts a)            -- Model awaiting input variable
    -> [Tag]                            -- Tags indicated sample sites of interest
    -> [b]                              -- List of model input variables
    -> [LRec env]                       -- List of model observed variables
@@ -125,10 +125,10 @@ mh n model tags xs ys = do
   return $ reverse l
 
 -- | Perform n steps of MH for a single data point
-mhNsteps :: (es ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
+mhNsteps :: (ts ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
   => Int              -- Number of mhSteps
   -> LRec env         -- Model observed variables
-  -> Model env es a   -- Model
+  -> Model env ts a   -- Model
   -> [Tag]            -- Tags indicating sample sites of interest
   -> TraceMH a        -- Previous mh output
   -> Sampler (TraceMH a)
@@ -136,9 +136,9 @@ mhNsteps n env model tags trace = do
   foldl (>=>) return (replicate n (mhStep env model tags)) trace
 
 -- | Perform one step of MH for a single data point
-mhStep :: (es ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
+mhStep :: (ts ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
   => LRec env         -- Model observed variable
-  -> Model env es a   -- Model
+  -> Model env ts a   -- Model
   -> [Tag]            -- Tags indicating sample sites of interest
   -> TraceMH a        -- Trace of previous mh outputs
   -> Sampler (TraceMH a)
@@ -173,11 +173,11 @@ mhStep env model tags trace = do
             return trace
 
 -- | Run model once under MH
-runMH :: (es ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
+runMH :: (ts ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
   => LRec env       -- Model observed variable
   -> Ⲭ              -- Previous mh sample set
   -> Addr           -- Sample address
-  -> Model env es a -- Model
+  -> Model env ts a -- Model
   -> Sampler (a, Ⲭ, LogP)
 runMH env samples α_samp m = do
   ((a, samples'), logps') <-
@@ -195,7 +195,7 @@ runMH env samples α_samp m = do
 
 
 -- | Insert stateful operations for Ⲭ and LogP when either Sample or Observe occur.
-transformMH :: (Member (State Ⲭ) rs, Member (State LogP) rs, Member Sample rs, Member Observe rs) => Freer rs a -> Freer rs a
+transformMH :: (Member (State Ⲭ) ts, Member (State LogP) ts, Member Sample ts, Member Observe ts) => Freer ts a -> Freer ts a
 transformMH (Pure x) = return x
 transformMH (Free u k) = do
   case u of
@@ -232,10 +232,10 @@ transformMH (Free u k) = do
     _ -> Free u (transformMH . k)
 
 -- | Remove Observe occurrences from tree (log p is taken care of by transformMH)
-runObserve :: Member Sample rs => Freer (Observe : rs) a -> Freer rs a
+runObserve :: Member Sample ts => Freer (Observe : ts) a -> Freer ts a
 runObserve = loop 0
   where
-  loop :: Member Sample rs => Double -> Freer (Observe : rs) a -> Freer rs a
+  loop :: Member Sample ts => Double -> Freer (Observe : ts) a -> Freer ts a
   loop p (Pure x) = return x
   loop p (Free u k) = do
     case decomp u of

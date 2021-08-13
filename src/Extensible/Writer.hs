@@ -20,12 +20,12 @@ import Extensible.Freer
 data Writer w a where
   Tell :: w -> Writer w ()
 
-tell :: Member (Writer w) rs => w -> Freer rs ()
+tell :: Member (Writer w) ts => w -> Freer ts ()
 tell w = Free (inj $ Tell w) Pure
 
-runWriter :: forall w rs a . Monoid w => Freer (Writer w ': rs) a -> Freer rs (a, w)
+runWriter :: forall w ts a . Monoid w => Freer (Writer w ': ts) a -> Freer ts (a, w)
 runWriter m = loop mempty m where
-  loop ::  w -> Freer (Writer w ': rs) a -> Freer rs (a, w)
+  loop ::  w -> Freer (Writer w ': ts) a -> Freer ts (a, w)
   -- At this point, all Reader requests have been handled
   loop w (Pure x) = return (x, w)
   -- Handle if Writer request, else ignore and go through the rest of the tree

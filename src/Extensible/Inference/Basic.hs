@@ -22,28 +22,28 @@ import Extensible.AffineReader
 import Extensible.State
 import Extensible.Example as Example
 
-basic :: (es ~ '[Dist, Observe, AffReader env, Sample])
+basic :: (ts ~ '[Dist, Observe, AffReader env, Sample])
   => Int                             -- Number of iterations per data point
-  -> (b -> Model env es a)           -- Model awaiting input variable
+  -> (b -> Model env ts a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
   -> [LRec env]                      -- List of model observed variables
   -> Sampler [a]
 basic n model xs ys = do
   concat <$> zipWithM (\x y -> basicNsteps n y (model x)) xs ys
 
-basicNsteps :: (es ~ '[Dist, Observe, AffReader env, Sample])
+basicNsteps :: (ts ~ '[Dist, Observe, AffReader env, Sample])
   => Int
   -> LRec env
-  -> Model env es a
+  -> Model env ts a
   -> Sampler [a]
 basicNsteps n ys model = replicateM n (runBasic ys model)
 
-runBasic :: (es ~ '[Dist, Observe, AffReader env, Sample])
- => LRec env -> Model env es a -> Sampler a
+runBasic :: (ts ~ '[Dist, Observe, AffReader env, Sample])
+ => LRec env -> Model env ts a -> Sampler a
 runBasic ys
   = runSample . runAffReader ys . runObserve . runDist . runModel
 
-runObserve :: Freer (Observe : rs) a -> Freer rs  a
+runObserve :: Freer (Observe : ts) a -> Freer ts  a
 runObserve (Pure x) = return x
 runObserve (Free u k) = case decomp u of
   Right (Observe d y α)
@@ -59,11 +59,11 @@ runSample (Free u k) = case prj u of
     Just (Sample d α) -> sample d >>= runSample . k
     _        -> error "Impossible: Nothing cannot occur"
 
--- runReader' :: forall env rs a.
---   (Member (State (LRec env)) rs) =>
---   LRec env -> Freer (RecReader (AsList env) ': rs) a -> Freer rs a
+-- runReader' :: forall env ts a.
+--   (Member (State (LRec env)) ts) =>
+--   LRec env -> Freer (RecReader (AsList env) ': ts) a -> Freer ts a
 -- runReader' env = loop where
---   loop :: Freer (RecReader (AsList env) ': rs) a -> Freer rs a
+--   loop :: Freer (RecReader (AsList env) ': ts) a -> Freer ts a
 --   loop (Pure x) = return x
 --   loop (Free u k) = case decomp u of
 --     Right Ask -> do
@@ -85,11 +85,11 @@ runSample (Free u k) = case prj u of
 -- runBasic ys m
 --   = runSample $ runReader ys $ runObserve $ runDist $ runModel m
 -- or this:
--- runBasic3 :: (Member Observe es, Member Sample es) =>
---  LRec env -> Model env (Dist : AffReader (AsList env) : es) a -> Freer es a
+-- runBasic3 :: (Member Observe ts, Member Sample ts) =>
+--  LRec env -> Model env (Dist : AffReader (AsList env) : ts) a -> Freer ts a
 -- runBasic3 env
 --   =  fmap fst . runAffReader env . runDist . runModel
 
-runInit :: (Member Observe es, Member Sample es)
-          => LRec env -> Model env (Dist : AffReader env : es) a -> Freer es a
+runInit :: (Member Observe ts, Member Sample ts)
+          => LRec env -> Model env (Dist : AffReader env : ts) a -> Freer ts a
 runInit env = runAffReader env . runDist . runModel

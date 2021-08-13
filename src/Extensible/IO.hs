@@ -24,7 +24,7 @@ newtype Lift m a = Lift (m a)
 
 -- By using SetMember, it is possible to assert that the lifted type occurs
 -- only once in the effect list
-lift :: (Member (Lift m) r) => m a -> Freer r a
+lift :: (Member (Lift m) ts) => m a -> Freer ts a
 lift = send . Lift
 
 runLift :: forall m w. Monad m => Freer '[Lift m] w -> m w

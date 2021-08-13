@@ -26,13 +26,13 @@ import qualified Extensible.OpenSum as OpenSum
 {- Extensible effects without Typeable in Union, using Freer monad -}
 
 {- Unions -}
-data Union (rs :: [* -> *]) x where
-  Union :: Int -> t x -> Union rs x
+data Union (ts :: [* -> *]) x where
+  Union :: Int -> t x -> Union ts x
 
--- instance Functor (Union rs) where
+-- instance Functor (Union ts) where
 --   fmap f (Union i tx) = Union i (fmap f tx)
 
-newtype P t rs = P {unP :: Int}
+newtype P t ts = P {unP :: Int}
 
 class FindElem (t :: * -> *) r where
   findElem :: P t r
@@ -47,17 +47,17 @@ instance TypeError ('Text "Cannot unify effect types." ':$$:
   => FindElem t '[] where
   findElem = error "unreachable"
 
-class (FindElem t rs) => Member (t :: * -> *) (rs :: [* -> *]) where
-  inj ::  t x -> Union rs x
-  prj ::  Union rs x -> Maybe (t x)
+class (FindElem t ts) => Member (t :: * -> *) (ts :: [* -> *]) where
+  inj ::  t x -> Union ts x
+  prj ::  Union ts x -> Maybe (t x)
 
--- instance {-# INCOHERENT #-} (t ~ s) => Member t '[s] where
+-- instance {-# INCOHERENT #-} (t ~ ts) => Member t '[ts] where
 --    inj x          = Union 0 x
 --    prj (Union _ x) = Just (unsafeCoerce x)
 
-instance (FindElem t rs) => Member t rs where
-  inj = inj' (unP (findElem :: P t rs))
-  prj = prj' (unP (findElem :: P t rs))
+instance (FindElem t ts) => Member t ts where
+  inj = inj' (unP (findElem :: P t ts))
+  prj = prj' (unP (findElem :: P t ts))
 
 inj' :: Int -> t v -> Union r v
 inj' = Union
@@ -110,5 +110,5 @@ run :: Freer '[] a -> a
 run (Pure x) = x
 run _ = error "'run' isn't defiend for non-pure computations"
 
-send :: Member t rs => t x -> Freer rs x
+send :: Member t ts => t x -> Freer ts x
 send t = Free (inj t) Pure
