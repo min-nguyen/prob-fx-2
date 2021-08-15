@@ -108,17 +108,17 @@ testLinRegrLWInf = do
   let  lw_n_iterations = 100
   lwTrace <- LW.lw lw_n_iterations Example.linearRegression
                     [0 .. 100]
-                    (map (mkRecordLinRegrY . (:[]) ) (map (*3) [0 .. 100]))
+                    (map (mkRecordLinRegrY . (:[]) ) (map ((+2) . (*3)) [0 .. 100]))
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
 -- | Returns trace of model parameter samples
 testLinRegrMHPost :: Sampler [(Addr, [Double])]
 testLinRegrMHPost = do
-  -- Run mh inference over linearRegression for data representing a line with gradient 3 and intercept 0
+  -- Run mh inference over linearRegression for data representing a line with gradient 3 and intercept 2
   let mh_n_iterations = 200
   mhTrace <- MH.mh mh_n_iterations Example.linearRegression [] [0 .. 100]
-                     (map (mkRecordLinRegrY . (:[]) . (*3)) [0 .. 100])
+                     (map (mkRecordLinRegrY . (:[]) . (+2) . (*3)) [0 .. 100])
   -- Reformat MH trace
   let mhTrace'  = processMHTrace mhTrace
       postParams = extractPostParams (Proxy @Double) [("m", 0), ("c", 0), ("σ", 0)] mhTrace'
