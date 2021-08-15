@@ -95,7 +95,7 @@ testLinRegrLWSim = do
       xs  = concat [ replicate 11 x | x <- [0 .. 10]]
   lwTrace <- LW.lw lw_n_iterations Example.linearRegression
                     xs
-                    (concat $ repeat $ map (\y -> mkRecordLinRegr ([y], [1], [2], [2.0]))
+                    (concat $ repeat $ map (\y -> mkRecordLinRegr ([y], [3], [2], [2.5]))
                       [0 .. 10])
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
@@ -108,7 +108,7 @@ testLinRegrLWInf = do
   let  lw_n_iterations = 100
   lwTrace <- LW.lw lw_n_iterations Example.linearRegression
                     [0 .. 100]
-                    (map (mkRecordLinRegrY . (:[]) ) (map (*3) [0 .. 100]))
+                    (map (mkRecordLinRegrY . (:[]) ) (map ((+2) . (3 *)) [0 .. 100]))
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 

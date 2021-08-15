@@ -28,8 +28,10 @@ simulate :: (ts ~ '[Dist, Observe, AffReader env, Sample])
   -> [b]                             -- List of model input variables
   -> [LRec env]                      -- List of model observed variables
   -> Sampler [a]
-simulate n model xs ys = do
-  concat <$> zipWithM (\x y -> simulateNsteps n y (model x)) xs ys
+simulate n model xs envs = do
+  let runN (x, env) = replicateM n (runSimulate env (model x))
+  concat <$> mapM runN (zip xs envs)
+  -- concat <$> zipWithM (\x y -> simulateNsteps n y (model x)) xs envs
 
 simulateNsteps :: (ts ~ '[Dist, Observe, AffReader env, Sample])
   => Int

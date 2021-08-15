@@ -57,7 +57,7 @@ linearRegression :: forall env rs .
   Double -> Model env rs (Double, Double)
 linearRegression x = do
   m <- normal' 0 3 #m
-  c <- normal' 0 2 #c
+  c <- normal' 0 5 #c
   σ <- uniform' 1 3 #σ
   y <- normal' (m * x + c) σ #y
   return (x, y)
@@ -453,3 +453,14 @@ schoolModel n_schools σs = do
   ys  <- mapM (\(θ, σ) -> normal' θ σ #y) (zip θs σs)
   let h = ""
   return θs
+
+data Obj = Obj (forall a. Show a => a)
+
+g :: Obj -> String
+g (Obj x) = show @Int x
+
+f :: (forall a. Show a => a) -> String
+f x = show @Int x
+
+f' :: forall a. Show a => a -> String
+f' x = show x

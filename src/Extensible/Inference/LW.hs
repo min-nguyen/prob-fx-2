@@ -39,16 +39,9 @@ lw :: (ts ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample])
    -> [b]                              -- List of model input variables
    -> [LRec env]                       -- List of model observed variables
    -> Sampler (TraceLW a)              -- List of n likelihood weightings for each data point
-lw n model xs ys = do
-  concat <$> zipWithM (\x y -> lwNsteps n y (model x)) xs ys
-
--- | Run LW n times for a single data point
-lwNsteps :: (ts ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample])
-  => Int
-  -> LRec env
-  -> Model env ts a
-  -> Sampler (TraceLW a)
-lwNsteps n env model = replicateM n (runLW env model)
+lw n model xs envs = do
+  let runN (x, env) = replicateM n (runLW env (model x))
+  concat <$> mapM runN (zip xs envs)
 
 -- | Run LW once for single data point
 runLW :: ts ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample]
