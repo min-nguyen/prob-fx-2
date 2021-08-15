@@ -31,14 +31,6 @@ simulate :: (ts ~ '[Dist, Observe, AffReader env, Sample])
 simulate n model xs envs = do
   let runN (x, env) = replicateM n (runSimulate env (model x))
   concat <$> mapM runN (zip xs envs)
-  -- concat <$> zipWithM (\x y -> simulateNsteps n y (model x)) xs envs
-
-simulateNsteps :: (ts ~ '[Dist, Observe, AffReader env, Sample])
-  => Int
-  -> LRec env
-  -> Model env ts a
-  -> Sampler [a]
-simulateNsteps n ys model = replicateM n (runSimulate ys model)
 
 runSimulate :: (ts ~ '[Dist, Observe, AffReader env, Sample])
  => LRec env -> Model env ts a -> Sampler a
