@@ -29,18 +29,18 @@ simulate :: (ts ~ '[Dist, Observe, AffReader env, Sample])
   -> [LRec env]                      -- List of model observed variables
   -> Sampler [a]
 simulate n model xs ys = do
-  concat <$> zipWithM (\x y -> basicNsteps n y (model x)) xs ys
+  concat <$> zipWithM (\x y -> simulateNsteps n y (model x)) xs ys
 
-basicNsteps :: (ts ~ '[Dist, Observe, AffReader env, Sample])
+simulateNsteps :: (ts ~ '[Dist, Observe, AffReader env, Sample])
   => Int
   -> LRec env
   -> Model env ts a
   -> Sampler [a]
-basicNsteps n ys model = replicateM n (runBasic ys model)
+simulateNsteps n ys model = replicateM n (runSimulate ys model)
 
-runBasic :: (ts ~ '[Dist, Observe, AffReader env, Sample])
+runSimulate :: (ts ~ '[Dist, Observe, AffReader env, Sample])
  => LRec env -> Model env ts a -> Sampler a
-runBasic ys
+runSimulate ys
   = runSample . runAffReader ys . runObserve . runDist . runModel
 
 runObserve :: Freer (Observe : ts) a -> Freer ts  a
