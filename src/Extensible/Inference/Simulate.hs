@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 {-# LANGUAGE AllowAmbiguousTypes #-}
-module Extensible.Inference.Basic where
+module Extensible.Inference.Simulate where
 
 -- import Data.Extensible hiding (Member)
 import Extensible.OpenProduct
@@ -22,13 +22,13 @@ import Extensible.AffineReader
 import Extensible.State
 import Extensible.Example as Example
 
-basic :: (ts ~ '[Dist, Observe, AffReader env, Sample])
+simulate :: (ts ~ '[Dist, Observe, AffReader env, Sample])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env ts a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
   -> [LRec env]                      -- List of model observed variables
   -> Sampler [a]
-basic n model xs ys = do
+simulate n model xs ys = do
   concat <$> zipWithM (\x y -> basicNsteps n y (model x)) xs ys
 
 basicNsteps :: (ts ~ '[Dist, Observe, AffReader env, Sample])

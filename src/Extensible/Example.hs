@@ -40,6 +40,7 @@ import Data.Typeable
 import Extensible.OpenProduct
 import Util
 import Data.Vector.Fusion.Bundle (findIndex)
+import GHC.Show (Show)
 
 {- Probabilistic programs -}
 
@@ -452,8 +453,3 @@ schoolModel n_schools σs = do
   ys  <- mapM (\(θ, σ) -> normal' θ σ #y) (zip θs σs)
   let h = ""
   return θs
-
-f :: (forall a b. Num b => a -> b) -> Double -> Double
-f h x = h x
-
-g = f (const 5) 2.2

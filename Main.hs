@@ -8,7 +8,7 @@ import Data.Tuple
 import qualified Data.Map as Map
 import Extensible.DataSets
 import qualified Extensible.Example as Example
-import qualified Extensible.Inference.Basic as Basic
+import qualified Extensible.Inference.Simulate as Simulate
 import qualified Extensible.Inference.LW as LW
 import qualified Extensible.Inference.MH as MH
 import Extensible.OpenSum as OpenSum

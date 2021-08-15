@@ -69,7 +69,7 @@ library
                       Extensible.OpenProduct,
                       Extensible.Dist,
                       Extensible.Sampler,
-                      Extensible.Inference.Basic,
+                      Extensible.Inference.Simulate,
                       Extensible.Inference.LW,
                       Extensible.Inference.MH,
                       Extensible.Inference.Inf,
