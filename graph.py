@@ -138,7 +138,8 @@ def main():
     x_test = np.linspace(-2.0,2.0,num=100)
     y_test = x_test * model.coef_ + model.intercept_
     sigmoid = expit(y_test)
-
+    plt.yticks([1.0, 0.0], ["True",
+                            "False"])
     plt.scatter(xs, ys)
     plt.plot(x_test, sigmoid.ravel(),c="green", label = "logistic fit")
     plt.xlabel('x - axis')
