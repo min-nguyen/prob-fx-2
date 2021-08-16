@@ -183,7 +183,7 @@ testLogRegrLWInf = do
                          (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
   let (xs, ys) = (map fst bs, map snd bs)
   -- Perform inference against these data points
-  lwTrace <- LW.lw 10 Example.logisticRegression xs (map (mkRecordLogRegrL . (:[])) ys)
+  lwTrace <- LW.lw 5 Example.logisticRegression xs (map (mkRecordLogRegrL . (:[])) ys)
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 

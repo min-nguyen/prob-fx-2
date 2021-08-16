@@ -435,13 +435,11 @@ gmm k n = do
                    return ((x, y), i))
 
 -- | Hierarchical School Model
-
 type SchEnv = '[
     "mu"    ':> Double,
     "theta" ':> [Double],
     "y"     ':> Double
   ]
-
 
 schoolModel :: (Observables env '["mu", "y"] Double, Observable env "theta" [Double])
   => Int -> [Double] -> Model env ts [Double]
@@ -453,14 +451,3 @@ schoolModel n_schools σs = do
   ys  <- mapM (\(θ, σ) -> normal' θ σ #y) (zip θs σs)
   let h = ""
   return θs
-
-data Obj = Obj (forall a. Show a => a)
-
-g :: Obj -> String
-g (Obj x) = show @Int x
-
-f :: (forall a. Show a => a) -> String
-f x = show @Int x
-
-f' :: forall a. Show a => a -> String
-f' x = show x

@@ -114,26 +114,20 @@ mh :: (ts ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
    -> [b]                              -- List of model input variables
    -> [LRec env]                       -- List of model observed variables
    -> Sampler (TraceMH a)              -- Trace of all accepted outputs, samples, and logps
-mh n model tags xs ys = do
+mh n model tags xs envs = do
   -- Perform initial run of mh
-  (x, samples, logps) <- runMH (head ys) Map.empty ("", 0) (model $ head xs)
-  -- Construct list of mhNstep functions, one for each data point
-  let mhs  = zipWith (\x y -> mhNsteps n y (model x) tags) xs ys
+  let x_0 = head xs
+      env_0 = head envs
+      α_0 = ("", 0)
+  (y_0, samples_0, logps_0) <- runMH env_0 Map.empty α_0 (model x_0)
+  -- A function performing n mhsteps for one data point
+  let runN x env = foldl (>=>) return (replicate n (mhStep env (model x) tags))
+  -- Construct list of n mhsteps, one for each data point
+  let mhs  = zipWith runN xs envs
   -- Perform mhNstep for each data point, propagating (x, samples, logps) through
-  l <- foldl (>=>) return mhs [(x, samples, logps)]
+  l <- foldl (>=>) return mhs [(y_0, samples_0, logps_0)]
   -- Return mhTrace in correct order of execution (due to mhStep prepending new results onto head of trace)
   return $ reverse l
-
--- | Perform n steps of MH for a single data point
-mhNsteps :: (ts ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
-  => Int              -- Number of mhSteps
-  -> LRec env         -- Model observed variables
-  -> Model env ts a   -- Model
-  -> [Tag]            -- Tags indicating sample sites of interest
-  -> TraceMH a        -- Previous mh output
-  -> Sampler (TraceMH a)
-mhNsteps n env model tags trace = do
-  foldl (>=>) return (replicate n (mhStep env model tags)) trace
 
 -- | Perform one step of MH for a single data point
 mhStep :: (ts ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
