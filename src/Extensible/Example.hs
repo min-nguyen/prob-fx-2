@@ -383,9 +383,9 @@ type HLREnv =
 hlrPrior :: Observables env '["mu_a", "mu_b", "sigma_a", "sigma_b"] Double
   => Model env ts (Double, Double, Double, Double)
 hlrPrior = do
-  mu_a    <- normal' 0 10 #mu_a
+  mu_a    <- normal' 0 100 #mu_a
   sigma_a <- halfNormal' 5 #sigma_a
-  mu_b    <- normal' 0 10 #mu_b
+  mu_b    <- normal' 0 100 #mu_b
   sigma_b <- halfNormal' 5 #sigma_b
   return (mu_a, sigma_a, mu_b, sigma_b)
 

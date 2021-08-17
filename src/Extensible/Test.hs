@@ -697,8 +697,12 @@ testHLRMHPost = do
 
 testHLRMHPredictive :: Sampler  ([Double], [(Addr, OpenSum PrimVal)], [(Addr, Double)])
 testHLRMHPredictive = do
-  mhTrace <- MH.mh 1500 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx)
+  -- faster convergence but all houses have similar parameters
+  mhTrace <- MH.mh 4000 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx)
              ["mu_a", "mu_b", "sigma_a", "sigma_b"] [()] [mkRecordHLR ([], [], [], [], [], [], logRadon)]
+  -- slower convergence but more realistic individual samples
+  mhTrace <- MH.mh 4000 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx)
+             ["mu_a", "mu_b", "sigma_a", "sigma_b", "a", "b"] [()] [mkRecordHLR ([], [], [], [], [], [], logRadon)]
   let mhTrace' = processMHTrace mhTrace
   liftS $ print $ show $ map snd3 mhTrace'
   -- Only returning the last of the mh trace here
