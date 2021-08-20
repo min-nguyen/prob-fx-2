@@ -37,6 +37,8 @@ main = do
   -- trace <- sampleIOFixed testLinRegrBasic
   -- trace <- sampleIOFixed testLinRegrLWSim
   -- trace <- sampleIOFixed testLinRegrLWInf
+  let t = g
+  print t
   -- trace <- sampleIOFixed testLinRegrMHPost
   -- trace <- sampleIOFixed testLinRegrMHPred
   -- trace <- sampleIOFixed testLogRegrBasic
@@ -81,14 +83,14 @@ main = do
   -- trace <- sampleIOFixed testTopicsMHPost
   -- trace <- sampleIOFixed testHLRBasic
   -- trace <- sampleIOFixed testHLRMHPost
-  trace <- sampleIO testHLRMHPredictive
+  -- trace <- sampleIO testHLRMHPredictive
   -- trace <- sampleIOFixed testGMMBasic
   -- trace <- sampleIOFixed testGMMMHPost
   -- trace <- sampleIOFixed testSchBasic
   -- trace <- sampleIOFixed testSchMHPost
-  let traceStr = show trace
-  putStrLn traceStr
-  -- print (zip (zip nnLogX0 nnLogX1) nnLogY)
-  writeFile "model-output.txt" traceStr
+  -- let traceStr = show trace
+  -- putStrLn traceStr
+  -- -- print (zip (zip nnLogX0 nnLogX1) nnLogY)
+  -- writeFile "model-output.txt" traceStr
   return ()
 

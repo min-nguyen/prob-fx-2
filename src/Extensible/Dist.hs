@@ -42,77 +42,15 @@ import System.Random.MWC
 import Numeric.Log
 import qualified System.Random.MWC.Distributions as MWC
 
+
 type PrimVal = '[Int, Double, [Double], Bool, String]
 
--- instance (OpenSum.Member a PrimVal) => Show a where
---   show os = show (OpenSum.inj os :: OpenSum PrimVal)
+-- maybe have an open sum of 'dist a' types
+data PrimDist where
+  PrimDist :: (forall a. (Show a, OpenSum.Member a PrimVal) => Dist a -> PrimDist)
 
-data DistInfo where
-  CauchyDistI       :: Double -> Double -> DistInfo
-  HalfCauchyDistI   :: Double -> DistInfo
-  NormalDistI        :: Double -> Double -> DistInfo
-  HalfNormalDistI    :: Double -> DistInfo
-  UniformDistI       :: Double -> Double -> DistInfo
-  DiscrUniformDistI  :: Int    -> Int    -> DistInfo
-  GammaDistI         :: Double -> Double -> DistInfo
-  BetaDistI          :: Double -> Double -> DistInfo
-  BinomialDistI      :: Int    -> Double -> DistInfo
-  BernoulliDistI     :: Double -> DistInfo
-  CategoricalDistI   :: [(OpenSum PrimVal, Double)] -> DistInfo
-  DiscreteDistI      :: [Double] -> DistInfo
-  PoissonDistI       :: Double -> DistInfo
-  DirichletDistI     :: [Double] -> DistInfo
-  DeterministicDistI :: OpenSum PrimVal -> DistInfo
-  deriving Eq
-
-instance Show DistInfo where
-  show (CauchyDistI mu sigma ) =
-    "CauchyDist(" ++ show mu ++ ", " ++ show sigma ++ ")"
-  show (HalfCauchyDistI sigma ) =
-    "HalfCauchyDist(" ++ show sigma ++ ")"
-  show (NormalDistI mu sigma ) =
-    "NormalDist(" ++ show mu ++ ", " ++ show sigma ++ ")"
-  show (HalfNormalDistI sigma ) =
-    "HalfNormalDist(" ++ show sigma ++ ")"
-  show (BernoulliDistI p ) =
-    "BernoulliDist(" ++ show p  ++ ")"
-  show (DiscreteDistI ps ) =
-    "DiscreteDist(" ++ show ps ++ ")"
-  show (BetaDistI a b ) =
-    "DiscreteDist(" ++ show a ++ ", " ++ show b ++ ")"
-  show (GammaDistI a b ) =
-    "GammaDist(" ++ show a ++ ", " ++ show b ++ ")"
-  show (UniformDistI a b ) =
-    "UniformDist(" ++ show a ++ ", " ++ show b ++ ")"
-  show (DiscrUniformDistI min max ) =
-    "DiscrUniformDist(" ++ show min ++ ", " ++ show max ++ ")"
-  show (PoissonDistI l) =
-    "PoissonDist(" ++ show l ++ ")"
-  show (CategoricalDistI xs ) =
-    "CategoricalDist(" ++ show xs  ++ ")"
-  show (BinomialDistI n p ) =
-    "BinomialDist(" ++ show n ++ ", " ++ show p ++ ")"
-  show (DirichletDistI xs) =
-    "DirichletDist(" ++ show xs  ++ ")"
-  show (DeterministicDistI x) =
-    "DeterministicDist(" ++ show x  ++ ")"
-
-toDistInfo :: Dist a -> DistInfo
-toDistInfo (CauchyDist mu sigma y tag) = CauchyDistI mu sigma
-toDistInfo (HalfCauchyDist sigma y tag) = HalfCauchyDistI sigma
-toDistInfo (NormalDist mu sigma y tag) = NormalDistI mu sigma
-toDistInfo (HalfNormalDist sigma y tag) = HalfNormalDistI sigma
-toDistInfo (UniformDist min max y tag) = UniformDistI min max
-toDistInfo (DiscrUniformDist min max y tag) = DiscrUniformDistI min max
-toDistInfo (GammaDist a b y tag) = GammaDistI a b
-toDistInfo (BetaDist a b y tag) = BetaDistI a b
-toDistInfo (BinomialDist n p y tag) = BinomialDistI n p
-toDistInfo (BernoulliDist p y tag) = BernoulliDistI p
-toDistInfo (PoissonDist l y tag) = PoissonDistI l
-toDistInfo (DiscreteDist p y tag) = DiscreteDistI p
-toDistInfo (CategoricalDist xs y tag) = CategoricalDistI (map (\(x, p) -> (OpenSum.inj x, p)) xs)
-toDistInfo (DirichletDist p y tag) = DirichletDistI p
-toDistInfo (DeterministicDist x y tag) = DeterministicDistI (OpenSum.inj x)
+instance Show PrimDist where
+  show (PrimDist d) = show d
 
 data Dist a where
   HalfCauchyDist    :: Double -> Maybe Double -> Maybe String -> Dist Double
@@ -130,6 +68,24 @@ data Dist a where
   PoissonDist       :: Double -> Maybe Int -> Maybe String -> Dist Int
   DirichletDist     :: [Double] -> Maybe [Double] -> Maybe String -> Dist [Double]
   DeterministicDist :: (Eq a, Show a, OpenSum.Member a PrimVal) => a -> Maybe a -> Maybe String -> Dist a
+
+instance Eq (Dist a) where
+  (==) (NormalDist m s _ _) (NormalDist m' s' _ _) = m == m' && s == s'
+  (==) (CauchyDist m s _ _) (CauchyDist m' s' _ _) = m == m' && s == s'
+  (==) (HalfCauchyDist s _ _) (HalfCauchyDist s' _ _) = s == s'
+  (==) (HalfNormalDist s _ _) (HalfNormalDist s' _ _) = s == s'
+  (==) (BernoulliDist p _ _) (BernoulliDist p' _ _) = p == p'
+  (==) (BinomialDist n p _ _) (BinomialDist n' p' _ _) = n == n && p == p'
+  (==) (DiscreteDist ps _ _) (DiscreteDist ps' _ _) = ps == ps'
+  (==) (BetaDist a b _ _) (BetaDist a' b' _ _) = a == a' && b == b'
+  (==) (GammaDist a b _ _) (GammaDist a' b' _ _) = a == a' && b == b'
+  (==) (UniformDist a b _ _) (UniformDist a' b' _ _) = a == a' && b == b'
+  (==) (DiscrUniformDist min max _ _) (DiscrUniformDist min' max' _ _) = min == min' && max == max'
+  (==) (PoissonDist l _ _) (PoissonDist l' _ _) = l == l'
+  (==) (CategoricalDist xs _ _) (CategoricalDist xs' _ _) = xs == xs'
+  (==) (DirichletDist xs _ _) (DirichletDist xs' _ _)  = xs == xs'
+  (==) (DeterministicDist x _ _) (DeterministicDist x' _ _) = x == x'
+  (==) _ _ = False
 
 instance Show a => Show (Dist a) where
   show (CauchyDist mu sigma y tag) =

@@ -75,21 +75,21 @@ Repeat:
 -}
 
 
-type LogP = Map Addr Double
-type Ⲭ    = Map Addr (DistInfo, OpenSum PrimVal)
-type TraceMH a = [(a, Ⲭ, LogP)]
+type SMap  = Map Addr (PrimDist, OpenSum PrimVal)
+type LPMap = Map Addr Double
+type TraceMH a = [(a, SMap, LPMap)]
 
+updateSMap :: Show x => OpenSum.Member x PrimVal
+  => Addr -> Dist x -> x -> SMap -> SMap
+updateSMap α d x sMap = Map.insert α (PrimDist d, OpenSum.inj x) sMap
 
-updateMapⲬ :: OpenSum.Member x PrimVal => Addr -> Dist x -> x -> Ⲭ -> Ⲭ
-updateMapⲬ α d x = Map.insert α (toDistInfo d, OpenSum.inj x) :: Ⲭ -> Ⲭ
-
-updateLogP :: Addr -> Dist x -> x -> LogP -> LogP
-updateLogP α d x  = Map.insert α (logProb d x)
+updateLPMap :: Addr -> Dist x -> x -> LPMap -> LPMap
+updateLPMap α d x  = Map.insert α (logProb d x)
 
 -- | Compute acceptance probability
 -- If the log prob from our new samples is better than our old samples, then we always accept.
 -- If the log prob from our new samples is worse than our old samples, then we sometimes accept.
-accept :: Addr -> Ⲭ -> Ⲭ -> LogP -> LogP -> IO Double
+accept :: Addr -> SMap -> SMap -> LPMap -> LPMap -> IO Double
 accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   let _X'sampled = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ' \\ Map.keysSet _Ⲭ)
       _Xsampled  = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ \\ Map.keysSet _Ⲭ')
@@ -107,7 +107,7 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   return $ exp (dom_logα + _X'logα - _Xlogα)
 
 -- | Run MH for multiple data points
-mh :: (ts ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
+mh :: (ts ~ '[AffReader env, Dist, Observe, State SMap, State LPMap, Sample])
    => Int                              -- Number of mhSteps per data point
    -> (b -> Model env ts a)            -- Model awaiting input variable
    -> [Tag]                            -- Tags indicated sample sites of interest
@@ -130,7 +130,7 @@ mh n model tags xs envs = do
   return $ reverse l
 
 -- | Perform one step of MH for a single data point
-mhStep :: (ts ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
+mhStep :: (ts ~ '[AffReader env, Dist, Observe, State SMap, State LPMap, Sample])
   => LRec env         -- Model observed variable
   -> Model env ts a   -- Model
   -> [Tag]            -- Tags indicating sample sites of interest
@@ -167,12 +167,12 @@ mhStep env model tags trace = do
             return trace
 
 -- | Run model once under MH
-runMH :: (ts ~ '[AffReader env, Dist, Observe, State Ⲭ, State LogP, Sample])
+runMH :: (ts ~ '[AffReader env, Dist, Observe, State SMap, State LPMap, Sample])
   => LRec env       -- Model observed variable
-  -> Ⲭ              -- Previous mh sample set
+  -> SMap              -- Previous mh sample set
   -> Addr           -- Sample address
   -> Model env ts a -- Model
-  -> Sampler (a, Ⲭ, LogP)
+  -> Sampler (a, SMap, LPMap)
 runMH env samples α_samp m = do
   ((a, samples'), logps') <-
                             ( -- This is where the previous run's samples are actually reused.
@@ -188,8 +188,8 @@ runMH env samples α_samp m = do
   return (a, samples', logps')
 
 
--- | Insert stateful operations for Ⲭ and LogP when either Sample or Observe occur.
-transformMH :: (Member (State Ⲭ) ts, Member (State LogP) ts, Member Sample ts, Member Observe ts) => Freer ts a -> Freer ts a
+-- | Insert stateful operations for SMap and LPMap when either Sample or Observe occur.
+transformMH :: (Member (State SMap) ts, Member (State LPMap) ts, Member Sample ts, Member Observe ts) => Freer ts a -> Freer ts a
 transformMH (Pure x) = return x
 transformMH (Free u k) = do
   case u of
@@ -197,31 +197,31 @@ transformMH (Free u k) = do
       -> case d of
             -- We can unsafe coerce x here, because we've inferred the type of x from the distribution's type
             d@CategoricalDist{} -> Free u (\x -> modify
-                                          (Map.insert α (toDistInfo d, OpenSum.inj x :: OpenSum PrimVal)) >>
-                                          modify (updateLogP α d x) >>
+                                          (Map.insert α (PrimDist d, OpenSum.inj x :: OpenSum PrimVal)) >>
+                                          modify (updateLPMap α d x) >>
                                           transformMH (k x))
             d@DeterministicDist{} -> Free u (\x -> modify
-                                          (Map.insert α (toDistInfo d, OpenSum.inj x :: OpenSum PrimVal)) >>
-                                          modify (updateLogP α d x) >>
+                                          (Map.insert α (PrimDist d, OpenSum.inj x :: OpenSum PrimVal)) >>
+                                          modify (updateLPMap α d x) >>
                                           transformMH (k x))
             DistDoubles (Just d) -> Free u (\x -> do
-                                          modify (updateMapⲬ α d (unsafeCoerce x))
-                                          modify (updateLogP α d (unsafeCoerce x))
+                                          modify (updateSMap α d (unsafeCoerce x))
+                                          modify (updateLPMap α d (unsafeCoerce x))
                                           -- prinT $ "Prob of observing " ++ show (unsafeCoerce x :: [Double]) ++ " from " ++ show (toDistInfo d) ++ " is " ++ show (prob d (unsafeCoerce x))
                                           transformMH (k x))
-            DistDouble (Just d) -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
-                                          modify (updateLogP α d (unsafeCoerce x)) >>
+            DistDouble (Just d) -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
+                                          modify (updateLPMap α d (unsafeCoerce x)) >>
                                           transformMH (k x))
             DistBool (Just d)   -> Free u (\x -> do
-                                          modify (updateMapⲬ α d (unsafeCoerce x))
-                                          modify (updateLogP α d (unsafeCoerce x))
+                                          modify (updateSMap α d (unsafeCoerce x))
+                                          modify (updateLPMap α d (unsafeCoerce x))
                                           transformMH (k x))
-            DistInt (Just d)    -> Free u (\x -> modify (updateMapⲬ α d (unsafeCoerce x)) >>
-                                          modify (updateLogP α d (unsafeCoerce x)) >>
+            DistInt (Just d)    -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
+                                          modify (updateLPMap α d (unsafeCoerce x)) >>
                                           transformMH (k x))
             _ -> undefined
     Obs d y α
-      -> Free u (\x -> modify (updateLogP α d y  :: LogP -> LogP) >>
+      -> Free u (\x -> modify (updateLPMap α d y  :: LPMap -> LPMap) >>
                         transformMH (k x))
     _ -> Free u (transformMH . k)
 
@@ -263,7 +263,7 @@ runObserve = loop 0
       Left  u'  -> Free u' (loop p . k)
 
 -- | Run Sample occurrences
-runSample :: Addr -> Ⲭ -> Freer '[Sample] a -> Sampler a
+runSample :: Addr -> SMap -> Freer '[Sample] a -> Sampler a
 runSample α_samp samples = loop
   where
   loop :: Freer '[Sample] a -> Sampler a
@@ -296,15 +296,15 @@ runSample α_samp samples = loop
           _ -> undefined
       _  -> error "Impossible: Nothing cannot occur"
 
-lookupSample :: OpenSum.Member a PrimVal => Ⲭ -> Dist a -> Addr -> Addr -> Sampler (Maybe a)
+lookupSample :: OpenSum.Member a PrimVal => SMap -> Dist a -> Addr -> Addr -> Sampler (Maybe a)
 lookupSample samples d α α_samp
   | α == α_samp = return Nothing
   | otherwise   = do
     let m = Map.lookup α samples
     case m of
-      Just (d_info, x) -> do
+      Just (PrimDist d', x) -> do
         --liftS $ print $ "Address : " ++ show α ++ " Current dist : " ++ show (toDistInfo d) ++ " Looked up dist : " ++ show d_info ++ " Are they equal? " ++ show (toDistInfo d == d_info)
-        return $ if toDistInfo d == d_info then OpenSum.prj x else Nothing
+        return $ if d == unsafeCoerce d' then OpenSum.prj x else Nothing
       Nothing -> return Nothing
 
 

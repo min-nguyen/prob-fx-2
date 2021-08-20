@@ -57,6 +57,10 @@ linearRegression :: forall env rs .
   Double -> Model env rs (Double, Double)
 linearRegression x = do
   m <- normal' 0 3 #m
+  if m > 0
+    then normal 0 1
+    else do bernoulli 0.5
+            normal 0 1
   c <- normal' 0 5 #c
   σ <- uniform' 1 3 #σ
   y <- normal' (m * x + c) σ #y
@@ -273,7 +277,6 @@ type InfectionCount = Int
 observeSIR :: Observable env "infobs" Int
   => Params -> LatentState -> Model env ts Int
 observeSIR (Params rho _ _) (LatentState _ inf _) = do
-  -- Model $ prinT $ "inf is " ++ show inf
   poisson' (rho * fromIntegral inf) #infobs
 
 transitionSIR :: FixedParams -> Params -> LatentState -> Model env ts LatentState
@@ -301,7 +304,6 @@ paramsPrior = do
   pRho   <- beta' 2 7 #ρ
   pBeta  <- gamma' 2 1 #β
   pGamma <- gamma' 1 (1/8) #γ
-  Model $ prinT $ "Using params: " ++ show (pRho, pBeta, pGamma)
   return (Params pRho pBeta pGamma)
 
 hmmSIRNsteps :: (Observable env "infobs" Int, Observables env '["ρ", "β", "γ"] Double)

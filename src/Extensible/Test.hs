@@ -32,8 +32,12 @@ import Extensible.AffineReader
 import Extensible.OpenProduct
 import Util
 import Debug.Trace
-
+import Unsafe.Coerce
 {- Util -}
+
+g = let p = NormalDist 0.5 0.1 Nothing Nothing
+        p' = CategoricalDist [([0.5, 0.5], 0.5)] Nothing Nothing :: Dist [Double]
+    in  p == unsafeCoerce p'
 
 -- Draw the most recent sampled parameters from a post param mh trace
 drawPredParam :: Tag -> [(Addr, [a])] -> [a]
@@ -56,7 +60,7 @@ processLWTrace = map (\(xy, samples, prob) ->
         let samples' = Map.toList samples
         in (xy, samples', prob))
 
-processMHTrace :: [(a, Map.Map Addr (DistInfo, OpenSum PrimVal), Map.Map Addr Double)]
+processMHTrace :: [(a, Map.Map Addr (PrimDist, OpenSum PrimVal), Map.Map Addr Double)]
                -> [(a, [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
 processMHTrace = map (\(xy, samples, logps) ->
   let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
@@ -573,8 +577,7 @@ fromLatentState (Example.LatentState sus inf recov) = (sus, inf, recov)
 
 testSIRBasic :: Sampler ([(Int, Int, Int)], [Int])
 testSIRBasic = do
-  bs <- Simulate.simulate 1
-          (Example.hmmSIRNsteps (fixedParams 763 1) 100)
+  bs <- Simulate.simulate 1 (Example.hmmSIRNsteps (fixedParams 763 1) 100)
           [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
           --[mkRecordSIR ([0.29], [0.25], [0.015])]
   let output = map (\(xs, ys) -> (map fromLatentState xs, ys)) bs
