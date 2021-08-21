@@ -45,9 +45,8 @@ import qualified System.Random.MWC.Distributions as MWC
 
 type PrimVal = '[Int, Double, [Double], Bool, String]
 
--- maybe have an open sum of 'dist a' types
 data PrimDist where
-  PrimDist :: (forall a. (Show a, OpenSum.Member a PrimVal) => Dist a -> PrimDist)
+  PrimDist :: (forall a. Show a => Dist a -> PrimDist)
 
 instance Show PrimDist where
   show (PrimDist d) = show d

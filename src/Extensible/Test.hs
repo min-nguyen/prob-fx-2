@@ -639,7 +639,7 @@ testHalfNormal = do
 
 -- | Topic model over single document
 mkRecordTopic :: ([[Double]], [[Double]], [String]) -> LRec Example.TopicEnv
-mkRecordTopic (tps, wps, ys) =  #topic_ps @= tps <:  #word_ps @= wps <: #word @= ys <:nil
+mkRecordTopic (tps, wps, ys) =  #θ @= tps <:  #φ @= wps <: #w @= ys <:nil
 
 testTopicBasic :: Sampler [[String]]
 testTopicBasic = do
@@ -648,17 +648,17 @@ testTopicBasic = do
 
 testTopicMHPost :: Sampler [(Addr, [[Double]])]
 testTopicMHPost = do
-  mhTrace <- MH.mh 100 (Example.documentDist vocabulary 2) ["word_ps", "topic_ps"]
+  mhTrace <- MH.mh 100 (Example.documentDist vocabulary 2) ["φ", "θ"]
                        [10] [mkRecordTopic ([], [], document1)]
   let mhTrace' = processMHTrace mhTrace
-      paramTrace = extractPostParams (Proxy @[Double])  [("topic_ps", 0), ("word_ps", 0), ("word_ps", 1)] mhTrace'
+      paramTrace = extractPostParams (Proxy @[Double])  [("θ", 0), ("φ", 0), ("φ", 1)] mhTrace'
   return paramTrace
 
 testTopicMHPred :: Sampler [[String]]
 testTopicMHPred = do
   mhTrace <- testTopicMHPost
-  let  topic_ps   = drawPredParam "topic_ps" mhTrace
-       word_ps    = drawPredParam "word_ps" mhTrace
+  let  topic_ps   = drawPredParam "θ" mhTrace
+       word_ps    = drawPredParam "φ" mhTrace
   liftS $ print $ "Using params " ++ show (topic_ps, word_ps)
   Simulate.simulate 1 (Example.documentDist vocabulary 2) [10]
         [mkRecordTopic (topic_ps,  word_ps, [])]
@@ -666,10 +666,10 @@ testTopicMHPred = do
 -- | Topic model over multiple (two) documents
 testTopicsMHPost :: Sampler [(Addr, [[Double]])]
 testTopicsMHPost = do
-  mhTrace <- MH.mh 1000 (Example.topicModel vocabulary 2) ["word_ps", "topic_ps"]
+  mhTrace <- MH.mh 1000 (Example.topicModel vocabulary 2) ["φ", "θ"]
                        [[10, 10]] [mkRecordTopic ([], [], concat corpus)]
   let mhTrace' = processMHTrace mhTrace
-      paramTrace = extractPostParams (Proxy @[Double])  [("topic_ps", 0), ("topic_ps", 1), ("word_ps", 0), ("word_ps", 1), ("word_ps", 2), ("word_ps", 3)] mhTrace'
+      paramTrace = extractPostParams (Proxy @[Double])  [("θ", 0), ("θ", 1), ("φ", 0), ("φ", 1), ("φ", 2), ("φ", 3)] mhTrace'
   return paramTrace
 
 -- | Hierchical linear regression

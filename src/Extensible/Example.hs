@@ -334,29 +334,30 @@ halfNorm n = do
 -- | Topic model
 
 type TopicEnv =
-  '[ "topic_ps" ':> [Double],
-     "word_ps" ':> [Double],
-     "word" ':> String
+  '[ "θ" ':> [Double],
+     "φ" ':> [Double],
+     "w" ':> String
    ]
 
 -- Probability of each word in a topic
-wordDist :: Observable env "word" String =>
+wordDist :: Observable env "w" String =>
   [String] -> [Double] -> Model env ts String
 wordDist vocab ps =
-  categorical' (zip vocab ps) #word
+  categorical' (zip vocab ps) #w
 
-topicWordPrior :: Observable env "word_ps" [Double]
+topicWordPrior :: Observable env "φ" [Double]
   => [String] -> Model env ts [Double]
 topicWordPrior vocab
-  = dirichlet' (replicate (length vocab) 1) #word_ps
+  = dirichlet' (replicate (length vocab) 1) #φ
 
 -- Probability of each topic in a document
-docTopicPrior :: Observable env "topic_ps" [Double]
+docTopicPrior :: Observable env "θ" [Double]
   => Int -> Model env ts [Double]
-docTopicPrior n_topics = dirichlet' (replicate n_topics 1) #topic_ps
+docTopicPrior n_topics = dirichlet' (replicate n_topics 1) #θ
 
 -- Learns topic model for a single document
-documentDist :: (Observables env '["word_ps", "topic_ps"] [Double], Observable env "word" String)
+documentDist :: (Observables env '["φ", "θ"] [Double],
+                 Observable env "w" String)
   => [String] -> Int -> Int -> Model env ts [String]
 documentDist vocab n_topics n_words = do
   -- Generate distribution over words for each topic
@@ -368,7 +369,8 @@ documentDist vocab n_topics n_words = do
                           wordDist vocab word_ps)
 
 -- Learns topic models for multiple documents
-topicModel :: (Observables env '["word_ps", "topic_ps"] [Double], Observable env "word" String)
+topicModel :: (Observables env '["φ", "θ"] [Double],
+               Observable env "w" String)
   => [String] ->
      Int      ->
      [Int]    -> -- Number of words per document

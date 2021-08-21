@@ -550,6 +550,7 @@ def main():
     plt.legend()
     plt.show()
   if arg == "topic-basic":
+    print(data)
     words = list(np.array(data).ravel())
     fig, ax = plt.subplots(nrows=1)
     ws = list(set(words))
@@ -562,9 +563,9 @@ def main():
     plt.rcParams.update({'font.weight': 'bold'})
     plt.rcParams.update({'font.size': 15})
     ws          = ['DNA', 'evolution', 'parsing', 'phonology']
-    topic_ps = [d[1] for d in data if d[0] == ('topic_ps', 0)][-1]
-    topic_0s = [d[1] for d in data if d[0] == ('word_ps', 0)][-1]
-    topic_1s = [d[1] for d in data if d[0] == ('word_ps', 1)][-1]
+    topic_ps = [d[1] for d in data if d[0] == ('\952', 0)][-1]
+    topic_0s = [d[1] for d in data if d[0] == ('\966', 0)][-1]
+    topic_1s = [d[1] for d in data if d[0] == ('\966', 1)][-1]
     topic_p = topic_ps[-1]
     topic_0 = topic_0s[-1]
     topic_1 = topic_1s[-1]
@@ -585,21 +586,22 @@ def main():
     font = {'family' : 'normal',
         'weight' : 'bold',
         'size'   : 22}
+    print(data)
     plt.rcParams.update({'font.family': 'serif'})
     plt.rcParams.update({'font.weight': 'bold'})
     plt.rcParams.update({'font.size': 15})
     ws          = ['DNA', 'evolution', 'parsing', 'phonology']
     # Document 0
-    d0_topic_ps       = [d[1] for d in data if d[0] == ('topic_ps', 0)][-1]
-    d0_topic_0s       = [d[1] for d in data if d[0] == ('word_ps', 0)][-1]
-    d0_topic_1s    = [d[1] for d in data if d[0] == ('word_ps', 1)][-1]
+    d0_topic_ps       = [d[1] for d in data if d[0] == ('\952', 0)][-1]
+    d0_topic_0s       = [d[1] for d in data if d[0] == ('\966', 0)][-1]
+    d0_topic_1s    = [d[1] for d in data if d[0] == ('\966', 1)][-1]
     d0_topic_p     = d0_topic_ps[-1]
     d0_topic_0     = d0_topic_0s[-1]
     d0_topic_1     = d0_topic_1s[-1]
     # # Document 1
-    d1_topic_ps    = [d[1] for d in data if d[0] == ('topic_ps', 1)][-1]
-    d1_topic_0s    = [d[1] for d in data if d[0] == ('word_ps', 2)][-1]
-    d1_topic_1s    = [d[1] for d in data if d[0] == ('word_ps', 3)][-1]
+    d1_topic_ps    = [d[1] for d in data if d[0] == ('\952', 1)][-1]
+    d1_topic_0s    = [d[1] for d in data if d[0] == ('\966', 2)][-1]
+    d1_topic_1s    = [d[1] for d in data if d[0] == ('\966', 3)][-1]
     d1_topic_p     = d1_topic_ps[-1]
     d1_topic_0     = d1_topic_0s[-1]
     d1_topic_1     = d1_topic_1s[-1]
