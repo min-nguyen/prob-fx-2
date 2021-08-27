@@ -51,9 +51,9 @@ class (FindElem t ts) => Member (t :: * -> *) (ts :: [* -> *]) where
   inj ::  t x -> Union ts x
   prj ::  Union ts x -> Maybe (t x)
 
--- instance {-# INCOHERENT #-} (t ~ ts) => Member t '[ts] where
---    inj x          = Union 0 x
---    prj (Union _ x) = Just (unsafeCoerce x)
+instance {-# INCOHERENT #-} (t ~ t') => Member t '[t'] where
+   inj x          = Union 0 x
+   prj (Union _ x) = Just (unsafeCoerce x)
 
 instance (FindElem t ts) => Member t ts where
   inj = inj' (unP (findElem :: P t ts))
@@ -71,23 +71,24 @@ decomp :: Union (t ': r) v -> Either (Union r v) (t v)
 decomp (Union 0 tv) = Right $ unsafeCoerce tv
 decomp (Union n rv) = Left  $ Union (n-1) rv
 
-class EQU (a :: k) (b :: k) p | a b -> p
-instance EQU a a 'True
-instance (p ~ 'False) => EQU a b p
+-- | Unique Member
+type family UMember (b :: Bool) (t :: * -> *) (ts :: [* -> *]) :: Bool where
+  UMember 'True t (t ': ts)   = 'False
+  UMember 'True t (t' ': ts)  = UMember 'True t ts
+  UMember 'True t '[]         = 'True
+  UMember 'False t (t ': ts)  = UMember 'True t ts
+  UMember 'False t (t' ': ts) = UMember 'False t ts
+  UMember 'False t '[]        = 'False
 
--- | This class is used for emulating monad transformers
-class Member t r => SetMember (tag :: k -> * -> *) (t :: * -> *) r | tag r -> t
-instance (EQU t1 t2 p, MemberU' p tag t1 (t2 ': r)) => SetMember tag t1 (t2 ': r)
+class    (UMember 'False t ts ~ True) => UniqueMember t ts
+instance (UMember 'False t ts ~ True) => UniqueMember t ts
 
-class Member t r =>
-      MemberU' (f::Bool) (tag :: k -> * -> *) (t :: * -> *) r | tag r -> t
-instance MemberU' 'True tag (tag e) (tag e ': r)
-instance (Member t (t' ': r), SetMember tag t r) =>
-           MemberU' 'False tag t (t' ': r)
+-- | Last effect in effect list
+class Member m effs => LastMember m effs | effs -> m
+instance {-# OVERLAPPABLE #-} LastMember m effs => LastMember m (eff ': effs)
+instance LastMember m (m ': '[])
 
-{- Eff and VE -}
--- data Free f a = Pure a |  Free (Union f (Free f a))
-
+-- | Freer monad
 data Freer f a where
   Pure :: a -> Freer f a
   Free :: Union f x -> (x -> Freer f a) -> Freer f a
@@ -110,7 +111,7 @@ run :: Freer '[] a -> a
 run (Pure x) = x
 run _ = error "'run' isn't defined for non-pure computations"
 
-runM :: forall m a. Monad m => Freer '[m] a -> m a
+runM :: forall m a ts. (Monad m, LastMember m ts) => Freer ts a -> m a
 runM (Pure x) = return x
 runM (Free u k) =
   let x = prj @m u
@@ -120,3 +121,6 @@ runM (Free u k) =
 
 send :: Member t ts => t x -> Freer ts x
 send t = Free (inj t) Pure
+
+sendM :: (Monad m, LastMember m ts) => m a -> Freer ts a
+sendM = send
