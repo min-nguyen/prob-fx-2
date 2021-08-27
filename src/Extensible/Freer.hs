@@ -108,7 +108,15 @@ instance Monad (Freer f) where
 
 run :: Freer '[] a -> a
 run (Pure x) = x
-run _ = error "'run' isn't defiend for non-pure computations"
+run _ = error "'run' isn't defined for non-pure computations"
+
+runM :: forall m a. Monad m => Freer '[m] a -> m a
+runM (Pure x) = return x
+runM (Free u k) =
+  let x = prj @m u
+  in case x of
+      Just mb -> mb >>= runM . k
+      Nothing -> error "Impossible: Nothing cannot occur"
 
 send :: Member t ts => t x -> Freer ts x
 send t = Free (inj t) Pure
