@@ -107,6 +107,17 @@ instance Monad (Freer f) where
   Pure a >>= f      = f a
   Free fx k >>= f = Free fx (k >=> f)
 
+handleRelay ::
+     (a -> Freer ts b)
+  -> (forall x. t x -> (x -> Freer ts b) -> Freer ts b) -- Given an operation tx and continuation k
+  -> Freer (t ': ts) a
+  -> Freer ts b
+handleRelay ret _ (Pure x) = ret x
+handleRelay ret h (Free u k) =
+  case decomp u of
+    Right x  -> h x (handleRelay ret h . k)
+    Left  u' -> Free u' (handleRelay ret h . k)
+
 run :: Freer '[] a -> a
 run (Pure x) = x
 run _ = error "'run' isn't defined for non-pure computations"
