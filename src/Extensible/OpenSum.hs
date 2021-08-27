@@ -42,14 +42,9 @@ instance {-# OVERLAPPING #-}  forall t ts. (Show t, Show (OpenSum ts)) => Show (
     then show (unsafeCoerce t :: t)
     else show (UnsafeOpenSum (i - 1) t :: OpenSum ts)
 
--- type PrimVal = '[Int, Double, [Double], Bool, String]
-
--- instance {-# OVERLAPPING #-} (Member a PrimVal) => Show a where
---   show os = show (inj os :: OpenSum PrimVal)
 
 type Exp a = a -> Type
 type family Eval (e :: Exp a) :: a
-
 -- ## Exp as type-level monad
 data Pure :: a -> Exp a
 data (>>=) :: Exp a -> (a -> Exp b) -> Exp b
@@ -59,7 +54,6 @@ infixl 1 <=<
 type instance Eval (Pure a) = a
 type instance Eval (mx >>= mf) = Eval (mf (Eval mx))
 type instance Eval ((mf <=< mg) a) = Eval (mf (Eval (mg a)))
-
 -- ## A type family for equality between types.
 type family TyEqImpl (a :: k) (b :: k) :: Bool where
   TyEqImpl a a = 'True
@@ -94,7 +88,6 @@ type instance Eval (FindIndex f (x ': xs))
   = Eval (If (Eval (f x))
              (Eval (Pure ('Just 0)))
              (Eval (FindIndex f xs >>= FMap ((+) 1))))
-
 -- ## FindElem
 type FindElem (key :: k) (ts :: [k]) =
   FindIndex (TyEq key) ts >>= FromMaybe Stuck
