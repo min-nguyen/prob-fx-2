@@ -109,7 +109,7 @@ instance Monad (Freer f) where
 
 handleRelay ::
      (a -> Freer ts b)
-  -> (forall x. t x -> (x -> Freer ts b) -> Freer ts b) -- Given an operation tx and continuation k
+  -> (forall x. t x -> (x -> Freer ts b) -> Freer ts b)
   -> Freer (t ': ts) a
   -> Freer ts b
 handleRelay ret _ (Pure x) = ret x
@@ -117,6 +117,12 @@ handleRelay ret h (Free u k) =
   case decomp u of
     Right x  -> h x (handleRelay ret h . k)
     Left  u' -> Free u' (handleRelay ret h . k)
+
+handleRelaySt ::
+     s
+  -> (s -> a -> Freer ts b)
+  -> (forall x. s -> t x -> (s -> x -> Freer ts b) -> Freer effs b)
+handleRelaySt = undefined
 
 run :: Freer '[] a -> a
 run (Pure x) = x

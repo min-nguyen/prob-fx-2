@@ -41,7 +41,7 @@ import Extensible.OpenProduct
 import Util
 import Data.Vector.Fusion.Bundle (findIndex)
 import GHC.Show (Show)
-
+import qualified Data.Map as Map
 {- Probabilistic programs -}
 
 -- | Linear regression

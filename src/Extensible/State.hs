@@ -42,3 +42,7 @@ runState s m = loop s m where
     Right Get      -> loop s (k s)
     Right (Put s') -> loop s' (k ())
     Left  u'       -> Free u' (loop s . k)
+
+-- runState' :: s -> Freer (State s ': ts) a -> Freer ts (a, s)
+-- runState' s0  = handleRelay (\x -> return (x, s0))
+--   (\Get k -> k s0 >>= \(x, s') -> return (x, s'))
