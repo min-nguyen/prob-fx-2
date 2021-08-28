@@ -35,4 +35,8 @@ runWriter = loop mempty where
 
 runWriter' :: Monoid w => Freer (Writer w ': ts) a -> Freer ts (a, w)
 runWriter'  = handleRelay (\x -> return (x, mempty))
-  (\(Tell w) k -> k () >>= \(x, w') -> return (x, w <> w') )
+  (\(Tell w') k -> k () >>= \(x, w) -> return (x, w' <> w))
+
+runWriter'' :: Monoid w => Freer (Writer w ': ts) a -> Freer ts (a, w)
+runWriter'' = handleRelaySt mempty (\w a -> return (a, w))
+  (\w (Tell w') k -> k (w <> w') ())

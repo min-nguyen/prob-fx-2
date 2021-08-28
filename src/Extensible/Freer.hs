@@ -107,9 +107,10 @@ instance Monad (Freer f) where
   Pure a >>= f      = f a
   Free fx k >>= f = Free fx (k >=> f)
 
+-- | Given request, handle or relay it
 handleRelay ::
-     (a -> Freer ts b)
-  -> (forall x. t x -> (x -> Freer ts b) -> Freer ts b)
+     (a -> Freer ts b)                                  -- Return handler
+  -> (forall x. t x -> (x -> Freer ts b) -> Freer ts b) -- Request handler
   -> Freer (t ': ts) a
   -> Freer ts b
 handleRelay ret _ (Pure x) = ret x
@@ -118,11 +119,18 @@ handleRelay ret h (Free u k) =
     Right x  -> h x (handleRelay ret h . k)
     Left  u' -> Free u' (handleRelay ret h . k)
 
+-- | Parameterised version of handleRelay to allow a state to be managed
 handleRelaySt ::
-     s
-  -> (s -> a -> Freer ts b)
-  -> (forall x. s -> t x -> (s -> x -> Freer ts b) -> Freer effs b)
-handleRelaySt = undefined
+     s                                                            -- State
+  -> (s -> a -> Freer ts b)                                       -- Return handler
+  -> (forall x. s -> t x -> (s -> x -> Freer ts b) -> Freer ts b) -- Request handler
+  -> Freer (t ': ts) a
+  -> Freer ts b
+handleRelaySt s ret _ (Pure x) = ret s x
+handleRelaySt s ret h (Free u k) =
+  case decomp u of
+    Right x -> h s x (\s' x -> handleRelaySt s' ret h $ k x)
+    Left u' -> Free u' (handleRelaySt s ret h . k)
 
 run :: Freer '[] a -> a
 run (Pure x) = x
