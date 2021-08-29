@@ -664,6 +664,7 @@ testTopicMHPred = do
         [mkRecordTopic (topic_ps,  word_ps, [])]
 
 -- | Topic model over multiple (two) documents
+--   Note: the topic indexes for each document do not necessarily match
 testTopicsMHPost :: Sampler [(Addr, [[Double]])]
 testTopicsMHPost = do
   mhTrace <- MH.mh 1000 (Example.topicModel vocabulary 2) ["φ", "θ"]
