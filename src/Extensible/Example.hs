@@ -455,3 +455,12 @@ schoolModel n_schools σs = do
   ys  <- mapM (\(θ, σ) -> normal' θ σ #y) (zip θs σs)
   let h = ""
   return θs
+
+-- Just experiments with freer
+
+program :: Freer '[Reader Int, IO] ()
+program = do
+  x :: Int <- ask
+  return ()
+
+-- testProgram = (runM . runReader 5 . runReader'' (5 :: Int) . runReader'' (5 :: Int)) program

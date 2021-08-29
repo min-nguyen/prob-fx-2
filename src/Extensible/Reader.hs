@@ -36,3 +36,11 @@ runReader env = loop where
 
 runReader' :: env -> Freer (Reader env ': ts) a -> Freer ts a
 runReader' env = handleRelay return (\Ask k -> k env)
+
+-- runReader'' :: forall ts env a.
+--   LastMember IO ts =>
+--   Member (Reader env) ts => env -> Freer ts a -> Freer ts a
+-- runReader'' env =
+--   interpose @(Reader env) return
+--   (\Ask k -> do sendM (print "hi")
+--                 k env)

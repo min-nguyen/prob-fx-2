@@ -107,6 +107,24 @@ instance Monad (Freer f) where
   Pure a >>= f      = f a
   Free fx k >>= f = Free fx (k >=> f)
 
+run :: Freer '[] a -> a
+run (Pure x) = x
+run _ = error "'run' isn't defined for non-pure computations"
+
+runM :: forall m a ts. (Monad m, LastMember m ts) => Freer ts a -> m a
+runM (Pure x) = return x
+runM (Free u k) =
+  let x = prj @m u
+  in case x of
+      Just mb -> mb >>= runM . k
+      Nothing -> error "Impossible: Nothing cannot occur"
+
+send :: Member t ts => t x -> Freer ts x
+send t = Free (inj t) Pure
+
+sendM :: (Monad m, LastMember m ts) => m a -> Freer ts a
+sendM = send
+
 -- | Given request, handle or relay it
 handleRelay ::
      (a -> Freer ts b)                                  -- Return handler
@@ -132,20 +150,14 @@ handleRelaySt s ret h (Free u k) =
     Right x -> h s x (\s' x -> handleRelaySt s' ret h $ k x)
     Left u' -> Free u' (handleRelaySt s ret h . k)
 
-run :: Freer '[] a -> a
-run (Pure x) = x
-run _ = error "'run' isn't defined for non-pure computations"
-
-runM :: forall m a ts. (Monad m, LastMember m ts) => Freer ts a -> m a
-runM (Pure x) = return x
-runM (Free u k) =
-  let x = prj @m u
-  in case x of
-      Just mb -> mb >>= runM . k
-      Nothing -> error "Impossible: Nothing cannot occur"
-
-send :: Member t ts => t x -> Freer ts x
-send t = Free (inj t) Pure
-
-sendM :: (Monad m, LastMember m ts) => m a -> Freer ts a
-sendM = send
+-- | Intercept and handle requests from program, but do not discharge effect from type-level
+interpose :: Member t ts =>
+     (a -> Freer ts b)
+  -> (forall x. t x -> (x -> Freer ts b) -> Freer ts b)
+  -> Freer ts a
+  -> Freer ts b
+interpose ret h (Pure x ) = ret x
+interpose ret h (Free u k) =
+  case prj u  of
+    Just x  -> h x (interpose ret h . k)
+    Nothing -> Free u (interpose ret h . k)
