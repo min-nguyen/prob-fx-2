@@ -59,6 +59,16 @@ instance (FindElem t ts) => Member t ts where
   inj = inj' (unP (findElem :: P t ts))
   prj = prj' (unP (findElem :: P t ts))
 
+class Members t (tss :: [* -> *])
+
+instance (FindElem t tss) => Members t tss
+instance (FindElem t tss, Members ts tss) => Members (t ': ts) tss
+instance Members '[] ts
+
+-- type family Members (ts :: [* -> *]) (tss :: [* -> *]) where
+--   Members (t ': ts) tss = (Member t tss, Members ts tss)
+--   Members '[] tss       = ()
+
 inj' :: Int -> t v -> Union r v
 inj' = Union
 
@@ -237,9 +247,9 @@ installPrepend ret h (Free u k) =
     Just tx -> Free (weaken u) (\x -> h x tx (installPrepend ret h . k))
     Nothing -> Free (weaken u) (installPrepend ret h . k)
 
-runRW :: forall ts a . Member (ReaderE Int) ts =>
+runRWPrepend :: forall ts a . Member (ReaderE Int) ts =>
   Freer ts a -> Freer (WriterE [Int] ': ts) a
-runRW = installPrepend @(ReaderE Int) return
+runRWPrepend = installPrepend @(ReaderE Int) return
   (\x tx k ->
       case tx of AskE -> do send (TellE [x])
                             k x)
@@ -256,3 +266,4 @@ install ret h (Free u k) =
     Just tx -> Free u (\x -> h x tx (install @t @t' ret h . k))
     Nothing -> Free u (install @t @t' ret h . k)
 
+-- runRW :: Member (ReaderE Int),

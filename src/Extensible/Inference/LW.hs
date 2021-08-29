@@ -65,7 +65,7 @@ runLWpaper env =
    . transformLW . runDist . runAffReader env . runModel
 
 
-transformLW :: (Member (State Ⲭ) ts, Member Sample ts)
+transformLW :: (Members '[State Ⲭ, Sample] ts)
   => Freer ts a -> Freer ts a
 transformLW (Pure x) = return x
 transformLW (Free u k) = case prj u of
@@ -88,7 +88,7 @@ transformLW (Free u k) = case prj u of
 
 -- transformLW' :: (Member (State Ⲭ) ts, Member Sample ts)
 --   => Freer ts a -> Freer ts a
--- transformLW' = install return undefined
+-- transformLW' = replaceRelay return undefined
 
 runObserve :: Member Sample ts => Freer (Observe : ts) a -> Freer ts (a, Double)
 runObserve = loop 0
