@@ -13,6 +13,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE TypeFamilyDependencies #-}
 
 module Extensible.Freer where
 
@@ -29,9 +30,6 @@ import qualified Extensible.OpenSum as OpenSum
 data Union (ts :: [* -> *]) x where
   Union :: Int -> t x -> Union ts x
 
--- instance Functor (Union ts) where
---   fmap f (Union i tx) = Union i (fmap f tx)
-
 newtype P t ts = P {unP :: Int}
 
 class FindElem (t :: * -> *) r where
@@ -40,7 +38,7 @@ class FindElem (t :: * -> *) r where
 instance {-# INCOHERENT  #-} FindElem t (t ': r) where
   findElem = P 0
 instance {-# OVERLAPPABLE #-} FindElem t r => FindElem t (t' ': r) where
-  findElem = P $ 1 + (unP $ (findElem :: P t r))
+  findElem = P $ 1 + unP (findElem :: P t r)
 instance TypeError ('Text "Cannot unify effect types." ':$$:
                     'Text "Unhandled effect: " ':<>: 'ShowType t ':$$:
                     'Text "Perhaps check the type of effectful computation and the sequence of handlers for concordance?")
@@ -59,15 +57,13 @@ instance (FindElem t ts) => Member t ts where
   inj = inj' (unP (findElem :: P t ts))
   prj = prj' (unP (findElem :: P t ts))
 
-class Members t (tss :: [* -> *])
+-- class Members t (tss :: [* -> *])
+-- instance (Member t tss, Members ts tss) => Members (t ': ts) tss
+-- instance Members '[] ts
 
-instance (FindElem t tss) => Members t tss
-instance (FindElem t tss, Members ts tss) => Members (t ': ts) tss
-instance Members '[] ts
-
--- type family Members (ts :: [* -> *]) (tss :: [* -> *]) where
---   Members (t ': ts) tss = (Member t tss, Members ts tss)
---   Members '[] tss       = ()
+type family Members (ts :: [* -> *]) (tss :: [* -> *]) = (cs :: Constraint) | cs -> ts where
+  Members (t ': ts) tss = (Member t tss, Members ts tss)
+  Members '[] tss       = ()
 
 inj' :: Int -> t v -> Union r v
 inj' = Union
@@ -81,7 +77,7 @@ decomp :: Union (t ': r) v -> Either (Union r v) (t v)
 decomp (Union 0 tv) = Right $ unsafeCoerce tv
 decomp (Union n rv) = Left  $ Union (n-1) rv
 
--- inject new effect type at front
+-- Prepend new effect type at front
 weaken :: Union ts a -> Union (any ': ts) a
 weaken (Union n ta) = Union (n + 1) ta
 
@@ -139,7 +135,7 @@ send t = Free (inj t) Pure
 sendM :: (Monad m, LastMember m ts) => m a -> Freer ts a
 sendM = send
 
--- | Given request, handle or relay it
+-- | Given request, handle or relay it, and discharge it from the list of effects
 handleRelay ::
      (a -> Freer ts b)                                  -- Return handler
   -> (forall x. t x -> (x -> Freer ts b) -> Freer ts b) -- Request handler
@@ -189,6 +185,7 @@ interposeSt s ret h (Free u k) =
     Just tx -> h s tx (\s' x -> interposeSt s' ret h $ k x)
     Nothing -> Free u (interposeSt s ret h . k)
 
+-- | Replace the effect t at the front of the list of effects with a new effect v.
 replaceRelay ::
       (a -> Freer (v ': ts) b)
   ->  (forall x. t x -> (x -> Freer (v ': ts) b) -> Freer (v ': ts) b)
@@ -216,7 +213,7 @@ data WriterE w a where
 data ReaderE env a where
   AskE :: ReaderE env env
 
--- Get effect t from (t ': ts), leave it unhandled, and install new effect t' after every request of t. This adds t' to the front of (t ': ts).
+-- | Get effect t from (t ': ts), leave it unhandled, and install new effect t' after every request of t. This adds t' to the front of (t ': ts).
 installFront ::
      (a -> Freer (t' ': t ': ts) a)
   -> (forall x. x -> t x -> (x -> Freer (t' ': t ': ts) a) -> Freer (t' ': t ': ts) a)
@@ -235,7 +232,8 @@ runRWFront = installFront return
       case tx of AskE -> do send (TellE [x])
                             k x)
 
--- Find some existing effect t in ts, leave it unhandled, and install new effect t' after every request of t. This adds the effect t' to the front of ts.
+-- | Find some existing effect t in ts, leave it unhandled, and install new effect t' after every request of t. This adds the effect t' to the front of ts.
+-- Requires type application on usage to specify which effect is being intercepted, e.g. "installPrepend @(Reader Int)"
 installPrepend :: Member t ts =>
      (a -> Freer (t' ': ts) a)
   -> (forall x. x -> t x -> (x -> Freer (t' ': ts) a) -> Freer (t' ': ts) a)
@@ -254,7 +252,8 @@ runRWPrepend = installPrepend @(ReaderE Int) return
       case tx of AskE -> do send (TellE [x])
                             k x)
 
--- Find some effect t in ts, leave it unhandled, and inject operation for another existing effect t' in ts.
+-- | Find some effect t in ts, leave it unhandled, and inject operation for another existing effect t' in ts.
+-- Requires type application on usage to specify which effect is being intercepted and which is being inserted, e.g. "installPrepend @(Reader Int) @(Writer [Int])"
 install :: forall t t' ts a b. (Member t ts, Member t' ts) =>
      (a -> Freer ts b)
   -> (forall x. x -> t x -> (x -> Freer ts b) -> Freer ts b)
@@ -266,4 +265,9 @@ install ret h (Free u k) =
     Just tx -> Free u (\x -> h x tx (install @t @t' ret h . k))
     Nothing -> Free u (install @t @t' ret h . k)
 
--- runRW :: Member (ReaderE Int),
+runRW :: Members '[ReaderE Int, WriterE [Int]] ts =>
+  Freer ts a -> Freer ts a
+runRW = install @(ReaderE Int) @(WriterE [Int]) return
+  (\x tx k ->
+      case tx of AskE -> do send (TellE [x])
+                            k x)
