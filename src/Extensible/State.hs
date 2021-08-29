@@ -49,3 +49,12 @@ runState' s0  = handleRelaySt s0
   (\s tx k -> case
       tx of Get    -> k s s
             Put s' -> k s' ())
+
+-- installIO :: forall s ts a b.
+--   Member (State s) ts => s ->
+--   Freer ts a -> Freer ts b
+-- installIO s = install ret h
+--   where
+--    ret = (\x -> return x)
+--    h   = (\tx k -> case
+--               tx of Get -> k)

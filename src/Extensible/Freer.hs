@@ -71,6 +71,9 @@ decomp :: Union (t ': r) v -> Either (Union r v) (t v)
 decomp (Union 0 tv) = Right $ unsafeCoerce tv
 decomp (Union n rv) = Left  $ Union (n-1) rv
 
+weaken :: Union ts a -> Union (any ': ts) a
+weaken (Union n ta) = Union (n + 1) ta
+
 -- | Unique Member
 type family UMember (b :: Bool) (t :: * -> *) (ts :: [* -> *]) :: Bool where
   UMember 'True t (t ': ts)   = 'False
@@ -147,7 +150,7 @@ handleRelaySt ::
 handleRelaySt s ret _ (Pure x) = ret s x
 handleRelaySt s ret h (Free u k) =
   case decomp u of
-    Right x -> h s x (\s' x -> handleRelaySt s' ret h $ k x)
+    Right tx -> h s tx (\s' x -> handleRelaySt s' ret h $ k x)
     Left u' -> Free u' (handleRelaySt s ret h . k)
 
 -- | Intercept and handle requests from program, but do not discharge effect from type-level
@@ -159,5 +162,49 @@ interpose :: Member t ts =>
 interpose ret h (Pure x ) = ret x
 interpose ret h (Free u k) =
   case prj u  of
-    Just x  -> h x (interpose ret h . k)
+    Just tx -> h tx (interpose ret h . k)
     Nothing -> Free u (interpose ret h . k)
+
+interposeSt :: Member t ts =>
+     s
+  -> (s -> a -> Freer ts b)
+  -> (forall x. s -> t x -> (s -> x -> Freer ts b) -> Freer ts b)
+  -> Freer ts a
+  -> Freer ts b
+interposeSt s ret h (Pure x ) = ret s x
+interposeSt s ret h (Free u k) =
+  case prj u  of
+    Just tx -> h s tx (\s' x -> interposeSt s' ret h $ k x)
+    Nothing -> Free u (interposeSt s ret h . k)
+
+replaceRelay ::
+      (a -> Freer (v ': ts) b)
+  ->  (forall x. t x -> (x -> Freer (v ': ts) b) -> Freer (v ': ts) b)
+  ->  Freer (t ': ts) a
+  ->  Freer (v ': ts) b
+replaceRelay ret h (Pure x) = ret x
+replaceRelay ret h (Free u k) = case decomp u of
+  Right tx -> h tx (replaceRelay ret h . k)
+  Left  u' -> Free (weaken u') (replaceRelay ret h . k)
+
+replaceRelaySt ::
+      s
+  ->  (s -> a -> Freer (v ': ts) b)
+  ->  (forall x. s -> t x -> (s -> x -> Freer (v ': ts) b) -> Freer (v ': ts) b)
+  ->  Freer (t ': ts) a
+  ->  Freer (v ': ts) b
+replaceRelaySt s ret h (Pure x) = ret s x
+replaceRelaySt s ret h (Free u k) = case decomp u of
+  Right tx -> h s tx (\s' x -> replaceRelaySt s' ret h $ k x)
+  Left  u' -> Free (weaken u') (replaceRelaySt s ret h . k)
+
+-- install :: Member t ts =>
+--      (a -> Freer ts a)
+--   -> (forall x. t x -> (x -> Freer ts a) -> (x -> Freer ts a))
+--   -> Freer ts a
+--   -> Freer ts a
+-- install ret h (Pure x )  = ret x
+-- install ret h (Free u k) =
+--   case prj u  of
+--     Just tx -> Free u (h tx k)
+--     Nothing -> Free u (install ret h . k)

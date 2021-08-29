@@ -73,18 +73,22 @@ transformLW (Free u k) = case prj u of
       DistInt (Just d)    ->
         Free u (\x -> do  updateTrace α (unsafeCoerce x :: Int)
                           transformLW (k x))
-      DistDouble (Just d) -> Free u (\x -> do updateTrace α (unsafeCoerce x :: Double)
-                                              transformLW (k x))
-      DistBool (Just d)   -> Free u (\x -> do updateTrace α (unsafeCoerce x :: Bool)
-                                              transformLW (k x))
+      DistDouble (Just d) -> Free u (\x ->  do updateTrace α (unsafeCoerce x :: Double)
+                                               transformLW (k x))
+      DistBool (Just d)   -> Free u (\x ->  do updateTrace α (unsafeCoerce x :: Bool)
+                                               transformLW (k x))
       DistDoubles (Just d) -> Free u (\x -> do updateTrace α (unsafeCoerce x :: [Double])
                                                transformLW (k x))
-      d@CategoricalDist {} -> Free u (\x ->  do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
-                                                transformLW (k x))
+      d@CategoricalDist {} -> Free u (\x -> do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
+                                               transformLW (k x))
       d@DeterministicDist {} -> Free u (\x ->  do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
                                                   transformLW (k x))
       _ -> error "error"
     _ -> Free u (transformLW . k)
+
+-- transformLW' :: (Member (State Ⲭ) ts, Member Sample ts)
+--   => Freer ts a -> Freer ts a
+-- transformLW' = install return undefined
 
 runObserve :: Member Sample ts => Freer (Observe : ts) a -> Freer ts (a, Double)
 runObserve = loop 0
