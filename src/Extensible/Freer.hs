@@ -71,6 +71,7 @@ decomp :: Union (t ': r) v -> Either (Union r v) (t v)
 decomp (Union 0 tv) = Right $ unsafeCoerce tv
 decomp (Union n rv) = Left  $ Union (n-1) rv
 
+-- inject new effect type at front
 weaken :: Union ts a -> Union (any ': ts) a
 weaken (Union n ta) = Union (n + 1) ta
 
@@ -154,6 +155,7 @@ handleRelaySt s ret h (Free u k) =
     Left u' -> Free u' (handleRelaySt s ret h . k)
 
 -- | Intercept and handle requests from program, but do not discharge effect from type-level
+--   Requires type application on usage to specify which effect is being intercepted, e.g. "interpose @(Reader Int)"
 interpose :: Member t ts =>
      (a -> Freer ts b)
   -> (forall x. t x -> (x -> Freer ts b) -> Freer ts b)
@@ -198,13 +200,59 @@ replaceRelaySt s ret h (Free u k) = case decomp u of
   Right tx -> h s tx (\s' x -> replaceRelaySt s' ret h $ k x)
   Left  u' -> Free (weaken u') (replaceRelaySt s ret h . k)
 
--- install :: Member t ts =>
---      (a -> Freer ts a)
---   -> (forall x. t x -> (x -> Freer ts a) -> (x -> Freer ts a))
---   -> Freer ts a
---   -> Freer ts a
--- install ret h (Pure x )  = ret x
--- install ret h (Free u k) =
---   case prj u  of
---     Just tx -> Free u (h tx k)
---     Nothing -> Free u (install ret h . k)
+data WriterE w a where
+  TellE :: w -> WriterE w ()
+
+data ReaderE env a where
+  AskE :: ReaderE env env
+
+-- Get effect t from (t ': ts), leave it unhandled, and install new effect t' after every request of t. This adds t' to the front of (t ': ts).
+installFront ::
+     (a -> Freer (t' ': t ': ts) a)
+  -> (forall x. x -> t x -> (x -> Freer (t' ': t ': ts) a) -> Freer (t' ': t ': ts) a)
+  -> Freer (t ': ts) a
+  -> Freer (t' ': t ': ts) a
+installFront ret h (Pure x )  = ret x
+installFront ret h (Free u k) =
+  case prj u  of
+    Just tx -> Free (weaken u) (\x -> h x tx (installFront ret h . k))
+    Nothing -> Free (weaken u) (installFront ret h . k)
+
+runRWFront ::
+  Freer (ReaderE Int ': ts) a -> Freer (WriterE [Int] ': ReaderE Int ': ts) a
+runRWFront = installFront return
+  (\x tx k ->
+      case tx of AskE -> do send (TellE [x])
+                            k x)
+
+-- Find some existing effect t in ts, leave it unhandled, and install new effect t' after every request of t. This adds the effect t' to the front of ts.
+installPrepend :: Member t ts =>
+     (a -> Freer (t' ': ts) a)
+  -> (forall x. x -> t x -> (x -> Freer (t' ': ts) a) -> Freer (t' ': ts) a)
+  -> Freer ts a
+  -> Freer (t' ': ts) a
+installPrepend ret h (Pure x )  = ret x
+installPrepend ret h (Free u k) =
+  case prj u  of
+    Just tx -> Free (weaken u) (\x -> h x tx (installPrepend ret h . k))
+    Nothing -> Free (weaken u) (installPrepend ret h . k)
+
+runRW :: forall ts a . Member (ReaderE Int) ts =>
+  Freer ts a -> Freer (WriterE [Int] ': ts) a
+runRW = installPrepend @(ReaderE Int) return
+  (\x tx k ->
+      case tx of AskE -> do send (TellE [x])
+                            k x)
+
+-- Find some effect t in ts, leave it unhandled, and inject operation for another existing effect t' in ts.
+install :: forall t t' ts a b. (Member t ts, Member t' ts) =>
+     (a -> Freer ts b)
+  -> (forall x. x -> t x -> (x -> Freer ts b) -> Freer ts b)
+  -> Freer ts a
+  -> Freer ts b
+install ret h (Pure x )  = ret x
+install ret h (Free u k) =
+  case prj u  of
+    Just tx -> Free u (\x -> h x tx (install @t @t' ret h . k))
+    Nothing -> Free u (install @t @t' ret h . k)
+
