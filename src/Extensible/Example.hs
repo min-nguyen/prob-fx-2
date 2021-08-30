@@ -57,10 +57,11 @@ linearRegression :: forall env rs .
   Double -> Model env rs (Double, Double)
 linearRegression x = do
   m <- normal' 0 3 #m
-  if m > 0
+  {- Some conditional-expression testing
+    if m > 0
     then normal 0 1
     else do bernoulli 0.5
-            normal 0 1
+            normal 0 1 -}
   c <- normal' 0 5 #c
   σ <- uniform' 1 3 #σ
   y <- normal' (m * x + c) σ #y

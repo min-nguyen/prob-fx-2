@@ -16,9 +16,9 @@
 {-# LANGUAGE TypeFamilyDependencies #-}
 
 
-module Extensible.Bug where
+module Extensible.Experiments.Bug where
 
-import Extensible.Freer
+import Extensible.Freer ( Freer(..), Member(..), decomp )
 import Extensible.Dist
 import Extensible.Sampler
 import Data.Extensible hiding (Member)
