@@ -456,11 +456,3 @@ schoolModel n_schools σs = do
   let h = ""
   return θs
 
--- Just experiments with freer
-
-program :: Freer '[Reader Int, IO] ()
-program = do
-  x :: Int <- ask
-  return ()
-
--- testProgram = (runM . runReader 5 . runReader'' (5 :: Int) . runReader'' (5 :: Int)) program

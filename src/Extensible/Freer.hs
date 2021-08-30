@@ -210,8 +210,15 @@ replaceRelaySt s ret h (Free u k) = case decomp u of
 data WriterE w a where
   TellE :: w -> WriterE w ()
 
+runWriterE :: Monoid w => Freer (WriterE w ': ts) a -> Freer ts (a, w)
+runWriterE = handleRelaySt mempty (\w a -> return (a, w))
+  (\w (TellE w') k -> k (w <> w') ())
+
 data ReaderE env a where
   AskE :: ReaderE env env
+
+runReaderE :: env -> Freer (ReaderE env ': ts) a -> Freer ts a
+runReaderE env = handleRelay return (\AskE k -> k env)
 
 -- | Get effect t from (t ': ts), leave it unhandled, and install new effect t' after every request of t. This adds t' to the front of (t ': ts).
 installFront ::

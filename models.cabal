@@ -58,6 +58,7 @@ library
                       Util,
                       Extensible.Freer,
                       Extensible.Example,
+                      Extensible.EffExample,
                       Extensible.Reader,
                       Extensible.DataSets,
                       Extensible.AffineReader,

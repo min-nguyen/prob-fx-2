@@ -8,6 +8,7 @@ import Data.Tuple
 import qualified Data.Map as Map
 import Extensible.DataSets
 import qualified Extensible.Example as Example
+import Extensible.EffExample
 import qualified Extensible.Inference.Simulate as Simulate
 import qualified Extensible.Inference.LW as LW
 import qualified Extensible.Inference.MH as MH
@@ -78,7 +79,7 @@ main = do
   -- trace <- sampleIOFixed testTopicBasic
   -- trace <- sampleIOFixed testTopicMHPost
   -- trace <- sampleIOFixed testTopicMHPred
-  trace <- sampleIOFixed testTopicsMHPost
+  -- trace <- sampleIOFixed testTopicsMHPost
   -- trace <- sampleIOFixed testHLRBasic
   -- trace <- sampleIOFixed testHLRMHPost
   -- trace <- sampleIO testHLRMHPredictive
@@ -86,9 +87,11 @@ main = do
   -- trace <- sampleIOFixed testGMMMHPost
   -- trace <- sampleIOFixed testSchBasic
   -- trace <- sampleIOFixed testSchMHPost
-  let traceStr = show trace
-  putStrLn traceStr
-  -- -- print (zip (zip nnLogX0 nnLogX1) nnLogY)
-  writeFile "model-output.txt" traceStr
+  -- let traceStr = show trace
+  -- putStrLn traceStr
+  -- print (zip (zip nnLogX0 nnLogX1) nnLogY)
+  -- writeFile "model-output.txt" traceStr
+  let f = runProgramRW
+  print f
   return ()
 
