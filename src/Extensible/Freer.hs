@@ -207,19 +207,6 @@ replaceRelaySt s ret h (Free u k) = case decomp u of
   Right tx -> h s tx (\s' x -> replaceRelaySt s' ret h $ k x)
   Left  u' -> Free (weaken u') (replaceRelaySt s ret h . k)
 
-data WriterE w a where
-  TellE :: w -> WriterE w ()
-
-runWriterE :: Monoid w => Freer (WriterE w ': ts) a -> Freer ts (a, w)
-runWriterE = handleRelaySt mempty (\w a -> return (a, w))
-  (\w (TellE w') k -> k (w <> w') ())
-
-data ReaderE env a where
-  AskE :: ReaderE env env
-
-runReaderE :: env -> Freer (ReaderE env ': ts) a -> Freer ts a
-runReaderE env = handleRelay return (\AskE k -> k env)
-
 -- | Get effect t from (t ': ts), leave it unhandled, and install new effect t' after every request of t. This adds t' to the front of (t ': ts).
 installFront ::
      (a -> Freer (t' ': t ': ts) a)
@@ -231,13 +218,6 @@ installFront ret h (Free u k) =
   case prj u  of
     Just tx -> Free (weaken u) (\x -> h x tx (installFront ret h . k))
     Nothing -> Free (weaken u) (installFront ret h . k)
-
-runRWFront ::
-  Freer (ReaderE Int ': ts) a -> Freer (WriterE [Int] ': ReaderE Int ': ts) a
-runRWFront = installFront return
-  (\x tx k ->
-      case tx of AskE -> do send (TellE [x])
-                            k x)
 
 -- | Find some existing effect t in ts, leave it unhandled, and install new effect t' after every request of t. This adds the effect t' to the front of ts.
 -- Requires type application on usage to specify which effect is being intercepted, e.g. "installPrepend @(Reader Int)"
@@ -252,13 +232,6 @@ installPrepend ret h (Free u k) =
     Just tx -> Free (weaken u) (\x -> h x tx (installPrepend ret h . k))
     Nothing -> Free (weaken u) (installPrepend ret h . k)
 
-runRWPrepend :: forall ts a . Member (ReaderE Int) ts =>
-  Freer ts a -> Freer (WriterE [Int] ': ts) a
-runRWPrepend = installPrepend @(ReaderE Int) return
-  (\x tx k ->
-      case tx of AskE -> do send (TellE [x])
-                            k x)
-
 -- | Find some effect t in ts, leave it unhandled, and inject operation for another existing effect t' in ts.
 -- Requires type application on usage to specify which effect is being intercepted and which is being inserted, e.g. "installPrepend @(Reader Int) @(Writer [Int])"
 install :: forall t t' ts a b. (Member t ts, Member t' ts) =>
@@ -271,10 +244,3 @@ install ret h (Free u k) =
   case prj u  of
     Just tx -> Free u (\x -> h x tx (install @t @t' ret h . k))
     Nothing -> Free u (install @t @t' ret h . k)
-
-runRW :: Members '[ReaderE Int, WriterE [Int]] ts =>
-  Freer ts a -> Freer ts a
-runRW = install @(ReaderE Int) @(WriterE [Int]) return
-  (\x tx k ->
-      case tx of AskE -> do send (TellE [x])
-                            k x)
