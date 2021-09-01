@@ -33,7 +33,7 @@ updateTrace :: forall ts x. (Member (State Ⲭ) ts, OpenSum.Member x PrimVal) =>
 updateTrace α x = modify (Map.insert α (OpenSum.inj x) :: Ⲭ -> Ⲭ)
 
 -- | Run LW n times for multiple data points
-lw :: (ts ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample])
+lw :: (ts ~ '[AffReader env, Dist, Observe, Sample])
    => Int                              -- Number of lw iterations per data point
    -> (b -> Model env ts a)            -- Model awaiting input variable
    -> [b]                              -- List of model input variables
@@ -44,7 +44,7 @@ lw n model xs envs = do
   concat <$> mapM runN (zip xs envs)
 
 -- | Run LW once for single data point
-runLW :: ts ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample]
+runLW :: ts ~ '[AffReader env, Dist, Observe, Sample]
   => LRec env -> Model env ts a
   -> Sampler (a, Ⲭ, Double)
 runLW env model = do
@@ -57,34 +57,32 @@ runLW env model = do
                             . runModel) model
   return (x, samples, p)
 
-runLWpaper :: ts ~ '[AffReader env, Dist, State Ⲭ, Observe, Sample]
+runLWpaper :: ts ~ '[AffReader env, Dist,  Observe, Sample]
   => LRec env -> Model env ts a
   -> Sampler ((a, Ⲭ), Double)
 runLWpaper env =
   runSample . runObserve . runState Map.empty
    . transformLW . runDist . runAffReader env . runModel
 
-
-transformLW :: (Members '[State Ⲭ, Sample] ts)
-  => Freer ts a -> Freer ts a
-transformLW (Pure x) = return x
-transformLW (Free u k) = case prj u of
-    Just (Sample d α) -> case d of
-      DistInt (Just d)    ->
-        Free u (\x -> do  updateTrace α (unsafeCoerce x :: Int)
-                          transformLW (k x))
-      DistDouble (Just d) -> Free u (\x ->  do updateTrace α (unsafeCoerce x :: Double)
-                                               transformLW (k x))
-      DistBool (Just d)   -> Free u (\x ->  do updateTrace α (unsafeCoerce x :: Bool)
-                                               transformLW (k x))
-      DistDoubles (Just d) -> Free u (\x -> do updateTrace α (unsafeCoerce x :: [Double])
-                                               transformLW (k x))
-      d@CategoricalDist {} -> Free u (\x -> do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
-                                               transformLW (k x))
-      d@DeterministicDist {} -> Free u (\x ->  do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
-                                                  transformLW (k x))
-      _ -> error "error"
-    _ -> Free u (transformLW . k)
+transformLW :: (Member Sample ts) => Freer ts a -> Freer (State Ⲭ ': ts) a
+transformLW = install return
+  (\x tx k -> case tx of
+      Sample d α -> case d of
+        DistInt (Just d)        -> do updateTrace α (unsafeCoerce x :: Int)
+                                      k x
+        DistDouble (Just d)     -> do updateTrace α (unsafeCoerce x :: Double)
+                                      k x
+        DistBool (Just d)       -> do updateTrace α (unsafeCoerce x :: Bool)
+                                      k x
+        DistDoubles (Just d)    -> do updateTrace α (unsafeCoerce x :: [Double])
+                                      k x
+        d@CategoricalDist {}    -> do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
+                                      k x
+        d@DeterministicDist {}  -> do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
+                                      k x
+        _ -> error ""
+      Printer s  -> k ()
+  )
 
 -- transformLW' :: (Member (State Ⲭ) ts, Member Sample ts)
 --   => Freer ts a -> Freer ts a

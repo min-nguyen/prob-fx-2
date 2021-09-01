@@ -10,6 +10,7 @@ module Extensible.EffExample where
 
 import Extensible.Freer
 import Extensible.Reader
+import Control.Monad.State
 
 data WriterE w a where
   TellE :: w -> WriterE w ()
@@ -33,27 +34,27 @@ runFrontPrependRW = installFront return
 
 runInstallPrependRW :: forall ts a . Member (ReaderE Int) ts =>
   Freer ts a -> Freer (WriterE [Int] ': ts) a
-runInstallPrependRW = installPrepend @(ReaderE Int) return
+runInstallPrependRW = install @(ReaderE Int) return
   (\x tx k ->
       case tx of AskE -> do send (TellE [x])
                             k x)
 
 runInstallRW :: Members '[ReaderE Int, WriterE [Int]] ts =>
   Freer ts a -> Freer ts a
-runInstallRW = install @(ReaderE Int) @(WriterE [Int]) return
+runInstallRW = installExisting @(ReaderE Int) @(WriterE [Int]) return
   (\x tx k ->
       case tx of AskE -> do send (TellE [x])
                             k x)
 
-runReplaceRW :: env -> Freer (ReaderE env ': ts) a -> Freer (WriterE [env] ': ts) a
-runReplaceRW env = replaceRelay return
+runReplaceRW :: forall env ts a. env -> Freer (ReaderE env ': ts) a -> Freer (WriterE [env] ': ts) a
+runReplaceRW env = replaceRelayN @('[WriterE [env]]) return
   (\tx k ->
       case tx of AskE -> do send (TellE [env])
                             k env
                             )
 
 -- Just experiments with freer
-program :: Freer '[Reader Int, IO] ()
+program :: Freer '[Reader Int, State Int, IO] ()
 program = do
   x :: Int <- ask
   y :: Int <- ask

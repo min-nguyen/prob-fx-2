@@ -229,6 +229,31 @@ replaceRelaySt s ret h (Free u k) = case decomp u of
   Right tx -> h s tx (\s' x -> replaceRelaySt s' ret h $ k x)
   Left  u' -> Free (weaken u') (replaceRelaySt s ret h . k)
 
+replaceRelayStN :: forall rs ts s t a b . Weakens rs =>
+      s
+  ->  (s -> a -> Freer (rs :++: ts) b)
+  ->  (forall x. s -> t x -> (s -> x -> Freer (rs :++:  ts) b) -> Freer (rs :++: ts) b)
+  ->  Freer (t ': ts) a
+  ->  Freer (rs :++: ts) b
+replaceRelayStN s ret h (Pure x) = ret s x
+replaceRelayStN s ret h (Free u k) = case decomp u of
+  Right tx -> h s tx (\s' x -> replaceRelayStN @rs s' ret h $ k x)
+  Left  u' -> Free (weakens @rs u') (replaceRelayStN @rs s ret h . k)
+
+
+-- | Find some existing effect t in ts, leave it unhandled, and install new effect t' after every request of t. This adds the effect t' to the front of ts.
+-- Requires type application on usage to specify which effect is being intercepted, e.g. "installPrepend @(Reader Int)"
+install :: Member t ts =>
+     (a -> Freer (t' ': ts) a)
+  -> (forall x. x -> t x -> (x -> Freer (t' ': ts) a) -> Freer (t' ': ts) a)
+  -> Freer ts a
+  -> Freer (t' ': ts) a
+install ret h (Pure x )  = ret x
+install ret h (Free u k) =
+  case prj u  of
+    Just tx -> Free (weaken u) (\x -> h x tx (install ret h . k))
+    Nothing -> Free (weaken u) (install ret h . k)
+
 -- | Get effect t from (t ': ts), leave it unhandled, and install new effect t' after every request of t. This adds t' to the front of (t ': ts).
 installFront ::
      (a -> Freer (t' ': t ': ts) a)
@@ -241,28 +266,15 @@ installFront ret h (Free u k) =
     Just tx -> Free (weaken u) (\x -> h x tx (installFront ret h . k))
     Nothing -> Free (weaken u) (installFront ret h . k)
 
--- | Find some existing effect t in ts, leave it unhandled, and install new effect t' after every request of t. This adds the effect t' to the front of ts.
--- Requires type application on usage to specify which effect is being intercepted, e.g. "installPrepend @(Reader Int)"
-installPrepend :: Member t ts =>
-     (a -> Freer (t' ': ts) a)
-  -> (forall x. x -> t x -> (x -> Freer (t' ': ts) a) -> Freer (t' ': ts) a)
-  -> Freer ts a
-  -> Freer (t' ': ts) a
-installPrepend ret h (Pure x )  = ret x
-installPrepend ret h (Free u k) =
-  case prj u  of
-    Just tx -> Free (weaken u) (\x -> h x tx (installPrepend ret h . k))
-    Nothing -> Free (weaken u) (installPrepend ret h . k)
-
 -- | Find some effect t in ts, leave it unhandled, and inject operation for another existing effect t' in ts.
 -- Requires type application on usage to specify which effect is being intercepted and which is being inserted, e.g. "installPrepend @(Reader Int) @(Writer [Int])"
-install :: forall t t' ts a b. (Member t ts, Member t' ts) =>
+installExisting :: forall t t' ts a b. (Member t ts, Member t' ts) =>
      (a -> Freer ts b)
   -> (forall x. x -> t x -> (x -> Freer ts b) -> Freer ts b)
   -> Freer ts a
   -> Freer ts b
-install ret h (Pure x )  = ret x
-install ret h (Free u k) =
+installExisting ret h (Pure x )  = ret x
+installExisting ret h (Free u k) =
   case prj u  of
-    Just tx -> Free u (\x -> h x tx (install @t @t' ret h . k))
-    Nothing -> Free u (install @t @t' ret h . k)
+    Just tx -> Free u (\x -> h x tx (installExisting @t @t' ret h . k))
+    Nothing -> Free u (installExisting @t @t' ret h . k)

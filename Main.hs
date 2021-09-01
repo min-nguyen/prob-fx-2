@@ -37,7 +37,7 @@ main :: IO ()
 main = do
   -- trace <- sampleIOFixed testLinRegrBasic
   -- trace <- sampleIOFixed testLinRegrLWSim
-  -- trace <- sampleIOFixed testLinRegrLWInf
+  trace <- sampleIOFixed testLinRegrLWInf
   -- trace <- sampleIOFixed testLinRegrMHPost
   -- trace <- sampleIOFixed testLinRegrMHPred
   -- trace <- sampleIOFixed testLogRegrBasic
@@ -88,11 +88,11 @@ main = do
   -- trace <- sampleIOFixed testSchBasic
   -- trace <- sampleIOFixed testSchMHPost
 
-  -- let traceStr = show trace
-  -- putStrLn traceStr
+  let traceStr = show trace
+  putStrLn traceStr
   -- print (zip (zip nnLogX0 nnLogX1) nnLogY)
-  -- writeFile "model-output.txt" traceStr
-  let f = runProgramReplaceRW
-  print f
+  writeFile "model-output.txt" traceStr
+  -- let f = runProgramReplaceRW
+  -- print f
   return ()
 

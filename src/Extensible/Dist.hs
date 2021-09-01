@@ -143,6 +143,8 @@ runDist = loop 0 Map.empty
                             loop (counter + 1) tagMap' $ k x
     Left  u'  -> Free u' (loop counter tagMap . k)
 
+-- runDist :: forall rs a. Freer (Dist ': rs) a -> Freer (Observe ': )
+
 data Sample a where
   Sample  :: Dist a -> Addr -> Sample a
   Printer :: String -> Sample ()
@@ -173,7 +175,7 @@ pattern DistInt d <- (isDistInt -> d)
 pattern DistPrimVal :: OpenSum.Member x PrimVal => Maybe (Dist x) -> Dist x
 pattern DistPrimVal d <- (isDistPrimVal -> d)
 
-isDistPrimVal :: OpenSum.Member x PrimVal => Dist x -> Maybe (Dist x)
+isDistPrimVal :: Dist x -> Maybe (Dist x)
 isDistPrimVal d@CategoricalDist {} = Just d
 isDistPrimVal d@DeterministicDist {} = Just d
 isDistPrimVal _ = Nothing
