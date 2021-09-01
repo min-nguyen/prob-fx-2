@@ -650,7 +650,7 @@ testTopicMHPost :: Sampler [(Addr, [[Double]])]
 testTopicMHPost = do
   mhTrace <- MH.mh 100 (Example.documentDist vocabulary 2) ["φ", "θ"]
                        [10] [mkRecordTopic ([], [], document1)]
-  let mhTrace' = processMHTrace mhTrace
+  let mhTrace'   = processMHTrace mhTrace
       paramTrace = extractPostParams (Proxy @[Double])  [("θ", 0), ("φ", 0), ("φ", 1)] mhTrace'
   return paramTrace
 

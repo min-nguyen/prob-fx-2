@@ -24,40 +24,52 @@ data ReaderE env a where
 runReaderE :: env -> Freer (ReaderE env ': ts) a -> Freer ts a
 runReaderE env = handleRelay return (\AskE k -> k env)
 
-runRWFront ::
+runFrontPrependRW ::
   Freer (ReaderE Int ': ts) a -> Freer (WriterE [Int] ': ReaderE Int ': ts) a
-runRWFront = installFront return
+runFrontPrependRW = installFront return
   (\x tx k ->
       case tx of AskE -> do send (TellE [x])
                             k x)
 
-runRWPrepend :: forall ts a . Member (ReaderE Int) ts =>
+runInstallPrependRW :: forall ts a . Member (ReaderE Int) ts =>
   Freer ts a -> Freer (WriterE [Int] ': ts) a
-runRWPrepend = installPrepend @(ReaderE Int) return
+runInstallPrependRW = installPrepend @(ReaderE Int) return
   (\x tx k ->
       case tx of AskE -> do send (TellE [x])
                             k x)
 
-runRW :: Members '[ReaderE Int, WriterE [Int]] ts =>
+runInstallRW :: Members '[ReaderE Int, WriterE [Int]] ts =>
   Freer ts a -> Freer ts a
-runRW = install @(ReaderE Int) @(WriterE [Int]) return
+runInstallRW = install @(ReaderE Int) @(WriterE [Int]) return
   (\x tx k ->
       case tx of AskE -> do send (TellE [x])
                             k x)
+
+runReplaceRW :: env -> Freer (ReaderE env ': ts) a -> Freer (WriterE [env] ': ts) a
+runReplaceRW env = replaceRelay return
+  (\tx k ->
+      case tx of AskE -> do send (TellE [env])
+                            k env
+                            )
 
 -- Just experiments with freer
 program :: Freer '[Reader Int, IO] ()
 program = do
   x :: Int <- ask
+  y :: Int <- ask
   return ()
 
 testProgram :: IO ()
 testProgram = (runM . runReader 5 . runReader'' (5 :: Int) . runReader'' (5 :: Int)) program
 
-programRW :: Member (WriterE [Int]) ts => Member (ReaderE Int) ts => Freer ts ()
+programRW :: Member (ReaderE Int) ts => Freer ts ()
 programRW = do
   x :: Int <- send AskE
+  y :: Int <- send AskE
   return ()
 
 runProgramRW :: ((), [Int])
-runProgramRW = run $ runWriterE @[Int] $ runReaderE @Int 1 $ runRW programRW
+runProgramRW = run $ runWriterE @[Int] $ runReaderE @Int 1 $ runInstallRW programRW
+
+runProgramReplaceRW :: ((), [Int])
+runProgramReplaceRW = run $ runWriterE @[Int] $ runReplaceRW 1 programRW

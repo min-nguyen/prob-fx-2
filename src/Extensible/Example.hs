@@ -340,12 +340,13 @@ type TopicEnv =
      "w" ':> String
    ]
 
--- Probability of each word in a topic
+-- Assignment of word probabilities to a topic
 wordDist :: Observable env "w" String =>
   [String] -> [Double] -> Model env ts String
 wordDist vocab ps =
   categorical' (zip vocab ps) #w
 
+-- Probability of each word in a topic
 topicWordPrior :: Observable env "φ" [Double]
   => [String] -> Model env ts [Double]
 topicWordPrior vocab
@@ -364,7 +365,7 @@ documentDist vocab n_topics n_words = do
   -- Generate distribution over words for each topic
   topic_word_ps <- replicateM n_topics $ topicWordPrior vocab
   -- Distribution over topics for a given document
-  doc_topic_ps <- docTopicPrior n_topics
+  doc_topic_ps  <- docTopicPrior n_topics
   replicateM n_words (do  z <- discrete doc_topic_ps
                           let word_ps = topic_word_ps !! z
                           wordDist vocab word_ps)

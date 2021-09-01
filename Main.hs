@@ -87,11 +87,12 @@ main = do
   -- trace <- sampleIOFixed testGMMMHPost
   -- trace <- sampleIOFixed testSchBasic
   -- trace <- sampleIOFixed testSchMHPost
+
   -- let traceStr = show trace
   -- putStrLn traceStr
   -- print (zip (zip nnLogX0 nnLogX1) nnLogY)
   -- writeFile "model-output.txt" traceStr
-  let f = runProgramRW
+  let f = runProgramReplaceRW
   print f
   return ()
 

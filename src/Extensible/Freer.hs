@@ -81,6 +81,18 @@ decomp (Union n rv) = Left  $ Union (n-1) rv
 weaken :: Union ts a -> Union (any ': ts) a
 weaken (Union n ta) = Union (n + 1) ta
 
+infixr 5 :++:
+type family xs :++: ys where
+  '[] :++: ys = ys
+  (x ': xs) :++: ys = x ': (xs :++: ys)
+
+class Weakens t where
+  weakens :: Union ts a -> Union (t :++: ts) a
+instance Weakens '[] where
+  weakens = id
+instance Weakens ts => Weakens (t ': ts) where
+  weakens u = weaken (weakens @ts u)
+
 -- | Unique Member
 type family UMember (b :: Bool) (t :: * -> *) (ts :: [* -> *]) :: Bool where
   UMember 'True t (t ': ts)   = 'False
@@ -195,6 +207,16 @@ replaceRelay ret h (Pure x) = ret x
 replaceRelay ret h (Free u k) = case decomp u of
   Right tx -> h tx (replaceRelay ret h . k)
   Left  u' -> Free (weaken u') (replaceRelay ret h . k)
+
+replaceRelayN :: forall rs t ts a b . Weakens rs =>
+      (a -> Freer (rs :++: ts) b)
+  ->  (forall x. t x -> (x -> Freer (rs :++: ts) b) -> Freer (rs :++: ts) b)
+  ->  Freer (t ': ts) a
+  ->  Freer (rs :++: ts) b
+replaceRelayN ret h (Pure x) = ret x
+replaceRelayN ret h (Free u k) = case decomp u of
+  Right tx -> h tx (replaceRelayN @rs ret h . k)
+  Left  u' -> Free (weakens @rs u') (replaceRelayN @rs ret h . k)
 
 replaceRelaySt ::
       s
