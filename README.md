@@ -54,7 +54,7 @@ runAffReader env = loop env where
     Left  u'  -> Free u' (loop env . k)
 ```
 
-- **paper-version**: A cleaned up version of affreader-env for IFL 21. A main implementation difference is that the `HasVar` constraint is renamed to `Observable`, and observable variable names are also no longer converted to lenses; this requires a new definition for `AffReader` where we instead we directly use the variable names with the functions `getOP` and `setOP` on the environment. Additionally, we no longer use the boilerplatey data type `DistInfo` to store distribution information from the gadt `Dist a` in a map during Metropolis-Hastings; instead, we use an existential data type `PrimDist` to wrap the distributions.
+- **paper-version**: A cleaned up (and much preferred) version of affreader-env for IFL 21. A main implementation difference is that the `HasVar` constraint is renamed to `Observable`, and observable variable names are also no longer converted to lenses; this requires a new definition for `AffReader` where we instead we directly use the variable names with the functions `getOP` and `setOP` on the environment. Additionally, we no longer use the boilerplatey data type `DistInfo` to store distribution information from the gadt `Dist a` in a map during Metropolis-Hastings; instead, we use an existential data type `PrimDist` to wrap the distributions.
 ```
 newtype Model env ts v =
   Model { runModel :: (Member Dist ts, Member (AffReader env) ts, Member Sample ts) => Freer ts v }
