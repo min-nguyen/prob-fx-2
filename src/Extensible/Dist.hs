@@ -143,7 +143,11 @@ runDist = loop 0 Map.empty
                             loop (counter + 1) tagMap' $ k x
     Left  u'  -> Free u' (loop counter tagMap . k)
 
--- runDist :: forall rs a. Freer (Dist ': rs) a -> Freer (Observe ': )
+-- runDist :: forall rs a. Freer (Dist ': rs) a -> Freer (Observe ': Sample ': rs) a
+-- runDist = replaceRelayStN @'[Observe, Sample] (0, Map.empty) (\_ x -> return x)
+--   undefined
+
+--  (forall x. s -> t x -> (s -> x -> Freer (rs :++: ts) b) -> Freer (rs :++: ts) b) (Freer (t : ts) a)
 
 data Sample a where
   Sample  :: Dist a -> Addr -> Sample a

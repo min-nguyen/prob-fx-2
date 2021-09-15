@@ -107,7 +107,7 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   return $ exp (dom_logα + _X'logα - _Xlogα)
 
 -- | Run MH for multiple data points
-mh :: (ts ~ '[AffReader env, Dist, Observe, State SMap, State LPMap, Sample])
+mh :: (ts ~ '[AffReader env, Dist, State SMap, State LPMap, Observe, Sample])
    => Int                              -- Number of mhSteps per data point
    -> (b -> Model env ts a)            -- Model awaiting input variable
    -> [Tag]                            -- Tags indicated sample sites of interest
@@ -130,7 +130,7 @@ mh n model tags xs envs = do
   return $ reverse l
 
 -- | Perform one step of MH for a single data point
-mhStep :: (ts ~ '[AffReader env, Dist, Observe, State SMap, State LPMap, Sample])
+mhStep :: (ts ~ '[AffReader env, Dist, State SMap, State LPMap, Observe, Sample])
   => LRec env         -- Model observed variable
   -> Model env ts a   -- Model
   -> [Tag]            -- Tags indicating sample sites of interest
@@ -167,7 +167,7 @@ mhStep env model tags trace = do
             return trace
 
 -- | Run model once under MH
-runMH :: (ts ~ '[AffReader env, Dist, Observe, State SMap, State LPMap, Sample])
+runMH :: (ts ~ '[AffReader env, Dist, State SMap, State LPMap, Observe, Sample])
   => LRec env       -- Model observed variable
   -> SMap              -- Previous mh sample set
   -> Addr           -- Sample address
@@ -178,15 +178,22 @@ runMH env samples α_samp m = do
                             ( -- This is where the previous run's samples are actually reused.
                               -- We do not reuse logps, we simply recompute them.
                               runSample α_samp samples
-                            . runState Map.empty
-                            . runState Map.empty
                             . runObserve
+                            . runState Map.empty
+                            . runState Map.empty
                             . transformMH
                             . runDist
                             . runAffReader env
                             . runModel) m
   return (a, samples', logps')
 
+-- transformMH :: (Member Sample ts, Member Observe ts) =>
+--   Freer ts a -> Freer (State SMap ': State LPMap ': ts) a
+-- transformMH = installN @[State SMap, State LPMap] return
+--   (\x tx k ->
+--       case tx of
+--         Sample d α  -> undefined
+--         Observe d y -> undefined)
 
 -- | Insert stateful operations for SMap and LPMap when either Sample or Observe occur.
 transformMH :: (Member (State SMap) ts, Member (State LPMap) ts, Member Sample ts, Member Observe ts) => Freer ts a -> Freer ts a

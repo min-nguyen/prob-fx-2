@@ -57,6 +57,7 @@ instance (FindElem t ts) => Member t ts where
   inj = inj' (unP (findElem :: P t ts))
   prj = prj' (unP (findElem :: P t ts))
 
+-- | Not possible to implement "Members" as a type class.
 -- class Members t (tss :: [* -> *])
 -- instance (Member t tss, Members ts tss) => Members (t ': ts) tss
 -- instance Members '[] ts
@@ -253,6 +254,17 @@ install ret h (Free u k) =
   case prj u  of
     Just tx -> Free (weaken u) (\x -> h x tx (install ret h . k))
     Nothing -> Free (weaken u) (install ret h . k)
+
+installN :: forall rs ts t a . (Member t ts, Weakens rs) =>
+     (a -> Freer (rs :++: ts) a)
+  -> (forall x. x -> t x -> (x -> Freer (rs :++: ts) a) -> Freer (rs :++: ts) a)
+  -> Freer ts a
+  -> Freer (rs :++: ts) a
+installN ret h (Pure x )  = ret x
+installN ret h (Free u k) =
+  case prj u  of
+    Just tx -> Free (weakens @rs u) (\x -> h x tx (installN @rs ret h . k))
+    Nothing -> Free (weakens @rs u) (installN @rs ret h . k)
 
 -- | Get effect t from (t ': ts), leave it unhandled, and install new effect t' after every request of t. This adds t' to the front of (t ': ts).
 installFront ::

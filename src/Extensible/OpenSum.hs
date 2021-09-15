@@ -42,7 +42,6 @@ instance {-# OVERLAPPING #-}  forall t ts. (Show t, Show (OpenSum ts)) => Show (
     then show (unsafeCoerce t :: t)
     else show (UnsafeOpenSum (i - 1) t :: OpenSum ts)
 
-
 type Exp a = a -> Type
 type family Eval (e :: Exp a) :: a
 -- ## Exp as type-level monad

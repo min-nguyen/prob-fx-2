@@ -64,9 +64,17 @@ type family UniqueKey x xvs where
   UniqueKey x '[] = True
 
 -- | State that we can lookup var 'x' with value type 'a' in list of assocs 'xs'
-class (FindElem x xvs, LookupType x xvs ~ a) => Lookup xvs x a
+class (FindElem x xvs, LookupType x xvs ~ a) => Lookup xvs x a where
+  getOP :: Var x -> OpenProduct xvs -> a
+  setOP :: Var x -> a -> OpenProduct xvs -> OpenProduct xvs
 
-instance (FindElem x xvs, LookupType x xvs ~ a) => Lookup xvs x a
+instance (FindElem x xvs, LookupType x xvs ~ a) => Lookup xvs x a where
+  getOP _ (OpenProduct v) =
+    unAny (V.unsafeIndex v (unP $ findElem @x @xvs))
+    where
+      unAny (Any a) = unsafeCoerce a
+  setOP _ ft (OpenProduct v) =
+    OpenProduct (v V.// [(unP (findElem @x @xvs), Any ft)])
 
 -- | Map the list constructor over a list of assocs
 type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
@@ -92,17 +100,6 @@ infixr 5 <:
 (<:) :: UniqueKey x xvs ~ 'True => Assoc (Var x) v -> OpenProduct xvs -> OpenProduct ((x ':> v) ': xvs)
 (<:) (x :> v) op = insert x v op
 
-getOP :: forall x ts a. FindElem x ts => Var x -> OpenProduct ts -> a
-getOP _ (OpenProduct v) =
-  unAny (V.unsafeIndex v (unP $ findElem @x @ts))
-  where
-    unAny (Any a) = unsafeCoerce a
-
-setOP :: forall x ts . FindElem x ts
-    => Var x -> LookupType x ts -> OpenProduct ts -> OpenProduct ts
-setOP _ ft (OpenProduct v) =
-  OpenProduct (v V.// [(unP (findElem @x @ts), Any ft)])
-
 mkLens :: forall xvs x a. Lookup xvs x a => Var x -> Lens' (OpenProduct xvs) a
 mkLens x = lens (getOP x) (\s a -> setOP x a s)
 
@@ -112,7 +109,7 @@ mkGetter x = dimap x (contramap x)
 mkSetter :: ((a -> b) -> s -> t) -> ASetter s t a b
 mkSetter f g = Identity . f (runIdentity . g)
 
-mkGetterSetter :: (Lookup xvs x v)
+mkGetterSetter :: forall xvs x v . (Lookup xvs x v)
   => Var x -> (Getting v (OpenProduct xvs) v, ASetter (OpenProduct xvs) (OpenProduct xvs) v v)
 mkGetterSetter field =
   let getter' = mkGetter (\s -> getOP field s)
