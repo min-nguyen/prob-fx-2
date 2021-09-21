@@ -142,7 +142,8 @@ runM (Free u k) =
       Just mb -> mb >>= runM . k
       Nothing -> error "Impossible: Nothing cannot occur"
 
-send :: Member t ts => t x -> Freer ts x
+-- send :: (UniqueMember t ts, Member t ts) => t x -> Freer ts x
+send :: (Member t ts) => t x -> Freer ts x
 send t = Free (inj t) Pure
 
 sendM :: (Monad m, LastMember m ts) => m a -> Freer ts a

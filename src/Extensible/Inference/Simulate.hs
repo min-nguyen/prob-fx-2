@@ -34,8 +34,8 @@ simulate n model xs envs = do
 
 runSimulate :: (ts ~ '[Dist, Observe, AffReader env, Sample])
  => LRec env -> Model env ts a -> Sampler a
-runSimulate ys
-  = runSample . runAffReader ys . runObserve . runDist . runModel
+runSimulate ys m
+  = (runSample . runAffReader ys . runObserve . runDist) (runModel m)
 
 runObserve :: Freer (Observe : ts) a -> Freer ts  a
 runObserve (Pure x) = return x
@@ -86,4 +86,8 @@ runSample (Free u k) = case prj u of
 
 runInit :: (Member Observe ts, Member Sample ts)
           => LRec env -> Model env (Dist : AffReader env : ts) a -> Freer ts a
-runInit env = runAffReader env . runDist . runModel
+runInit env m = (runAffReader env . runDist)  (runModel m)
+
+runInit' :: (Member Observe ts, Member Sample ts)
+          => LRec env -> Freer (Dist : AffReader env : ts) a -> Freer ts a
+runInit' env = (runAffReader env . runDist)

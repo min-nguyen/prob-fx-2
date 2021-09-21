@@ -53,16 +53,16 @@ runLW env model = do
                             . runState Map.empty
                             . transformLW
                             . runDist
-                            . runAffReader env
-                            . runModel) model
+                            . runAffReader env)
+                            (runModel model)
   return (x, samples, p)
 
 runLWpaper :: ts ~ '[AffReader env, Dist,  Observe, Sample]
   => LRec env -> Model env ts a
   -> Sampler ((a, Ⲭ), Double)
-runLWpaper env =
-  runSample . runObserve . runState Map.empty
-   . transformLW . runDist . runAffReader env . runModel
+runLWpaper env m =
+  (runSample . runObserve . runState Map.empty
+   . transformLW . runDist . runAffReader env) (runModel m)
 
 transformLW :: (Member Sample ts) => Freer ts a -> Freer (State Ⲭ ': ts) a
 transformLW = install return

@@ -46,7 +46,7 @@ import qualified System.Random.MWC.Distributions as MWC
 type PrimVal = '[Int, Double, [Double], Bool, String]
 
 data PrimDist where
-  PrimDist :: (forall a. Show a => Dist a -> PrimDist)
+  PrimDist :: forall a. Show a => Dist a -> PrimDist
 
 instance Show PrimDist where
   show (PrimDist d) = show d

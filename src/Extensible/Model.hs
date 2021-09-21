@@ -52,7 +52,7 @@ newtype Model env ts v =
   deriving Functor
 
 instance Applicative (Model env ts) where
-  pure = Model . pure
+  pure x = Model $ pure x
   (<*>) = ap
 
 instance Monad (Model env ts) where
@@ -62,16 +62,16 @@ instance Monad (Model env ts) where
     runModel $ x f'
 
 printM :: Member Sample ts => String -> Model env ts ()
-printM = Model . prinT
+printM x = Model $ prinT x
 
 putM :: Member (State s) ts => s -> Model env ts ()
-putM = Model . put
+putM x = Model $ put x
 
 getM :: Member (State s) ts => Model env ts s
 getM = Model get
 
 modifyM :: Member (State s) ts => (s -> s) -> Model env ts ()
-modifyM = Model . modify
+modifyM f = Model $ modify f
 
 runStateM :: Model env (State [Int] : ts) v -> Model env ts (v, [Int])
 runStateM m = Model $ runState [] $ runModel m

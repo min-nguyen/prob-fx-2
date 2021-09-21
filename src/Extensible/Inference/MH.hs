@@ -183,8 +183,7 @@ runMH env samples α_samp m = do
                             . runState Map.empty
                             . transformMH
                             . runDist
-                            . runAffReader env
-                            . runModel) m
+                            . runAffReader env) (runModel m)
   return (a, samples', logps')
 
 -- transformMH :: (Member Sample ts, Member Observe ts) =>

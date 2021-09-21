@@ -96,9 +96,9 @@ insert :: UniqueKey x ts ~ 'True
        => Var x -> t -> OpenProduct ts -> OpenProduct (x ':> t ': ts)
 insert _ t (OpenProduct v) = OpenProduct (V.cons (Any t) v)
 
-infixr 5 <:
-(<:) :: UniqueKey x xvs ~ 'True => Assoc (Var x) v -> OpenProduct xvs -> OpenProduct ((x ':> v) ': xvs)
-(<:) (x :> v) op = insert x v op
+infixr 5 <:>
+(<:>) :: UniqueKey x xvs ~ 'True => Assoc (Var x) v -> OpenProduct xvs -> OpenProduct ((x ':> v) ': xvs)
+(_ :> v) <:> (OpenProduct xvs) = OpenProduct (V.cons (Any v) xvs)
 
 mkLens :: forall xvs x a. Lookup xvs x a => Var x -> Lens' (OpenProduct xvs) a
 mkLens x = lens (getOP x) (\s a -> setOP x a s)
