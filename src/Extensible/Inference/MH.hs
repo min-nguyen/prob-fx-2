@@ -210,19 +210,19 @@ transformMH (Free u k) = do
                                           (Map.insert α (PrimDist d, OpenSum.inj x :: OpenSum PrimVal)) >>
                                           modify (updateLPMap α d x) >>
                                           transformMH (k x))
-            DistDoubles (Just d) -> Free u (\x -> do
+            DistDoubles  d -> Free u (\x -> do
                                           modify (updateSMap α d (unsafeCoerce x))
                                           modify (updateLPMap α d (unsafeCoerce x))
                                           -- prinT $ "Prob of observing " ++ show (unsafeCoerce x :: [Double]) ++ " from " ++ show (toDistInfo d) ++ " is " ++ show (prob d (unsafeCoerce x))
                                           transformMH (k x))
-            DistDouble (Just d) -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
+            DistDouble  d -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
                                           modify (updateLPMap α d (unsafeCoerce x)) >>
                                           transformMH (k x))
-            DistBool (Just d)   -> Free u (\x -> do
+            DistBool  d   -> Free u (\x -> do
                                           modify (updateSMap α d (unsafeCoerce x))
                                           modify (updateLPMap α d (unsafeCoerce x))
                                           transformMH (k x))
-            DistInt (Just d)    -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
+            DistInt  d    -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
                                           modify (updateLPMap α d (unsafeCoerce x)) >>
                                           transformMH (k x))
             _ -> undefined
@@ -249,19 +249,19 @@ runObserve = loop 0
               do let p' = prob d y
                 --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: String) ++ " from " ++ show d ++ " is " ++ show p'
                  loop (p + p') (k y)
-            DistBool (Just d) ->
+            DistBool  d ->
               do let p' = prob d (unsafeCoerce y :: Bool)
                 --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Bool) ++ " from " ++ show d ++ " is " ++ show p'
                  loop (p + p') (k y)
-            DistDoubles (Just d) ->
+            DistDoubles  d ->
               do  let p' = prob d (unsafeCoerce y :: [Double])
                   -- prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show p'
                   loop (p + p') (k y)
-            DistDouble (Just d) ->
+            DistDouble  d ->
               do  let p' = prob d (unsafeCoerce y :: Double)
                   -- prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show p'
                   loop (p + p') (k y)
-            DistInt (Just d) ->
+            DistInt  d ->
               do let p' = prob d (unsafeCoerce y :: Int)
                 --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Int) ++ " from " ++ show d ++ " is " ++ show p'
                  loop (p + p') (k y)
@@ -287,16 +287,16 @@ runSample α_samp samples = loop
           d@DeterministicDist {} -> do
             x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
             (loop . k . unsafeCoerce) x
-          DistDoubles (Just d) -> do
+          DistDoubles ( d) -> do
             x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
             (loop . k . unsafeCoerce) x
-          DistDouble (Just d) -> do
+          DistDouble  d -> do
             x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
             (loop . k . unsafeCoerce) x
-          DistBool (Just d) -> do
+          DistBool  d -> do
             x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
             (loop . k . unsafeCoerce) x
-          DistInt (Just d) -> do
+          DistInt  d -> do
             x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
             (loop . k . unsafeCoerce) x
           _ -> undefined

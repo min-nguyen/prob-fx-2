@@ -150,7 +150,6 @@ runDist = loop 0 Map.empty
 -- runDist :: forall rs a. Freer (Dist ': rs) a -> Freer (Observe ': Sample ': rs) a
 -- runDist = replaceRelayStN @'[Observe, Sample] (0, Map.empty) (\_ x -> return x)
 --   undefined
-
 --  (forall x. s -> t x -> (s -> x -> Freer (rs :++: ts) b) -> Freer (rs :++: ts) b) (Freer (t : ts) a)
 
 data Sample a where
@@ -173,9 +172,14 @@ pattern Samp d α <- (prj -> Just (Sample d α))
 -- pattern SampDouble s <- (prj -> Just s@(Sample (DistDouble (Just d)) α))
 
 -- pattern SampDouble :: Member Sample rs => Dist x -> Addr -> Sample x
-pattern SampDouble :: Dist Double -> Addr -> Sample x
-pattern SampDouble d α <- (Sample (DistDouble (Just d)) α)
+-- pattern SampDouble :: Dist Double -> Addr -> Sample x
+-- pattern SampDouble d α <- (Sample (DistDouble (Just d)) α)
 
+-- pattern SampDoublePrj :: Member Sample rs => Dist Double -> Addr -> Union rs x
+-- pattern SampDoublePrj d α <- (prj -> Just (Sample (DistDouble (Just d)) α))
+
+-- pattern DistDoubleOut :: Member Dist rs => Dist Double -> Union rs x
+-- pattern DistDoubleOut d <- (prj -> Just (DistDouble (Just d)))
 -- sampDouble :: forall rs x. Member Sample rs => Union rs x -> Sample Double
 -- sampDouble :: FindElem Sample rs => Union rs x -> Union rs x
 -- sampDouble :: FindElem Sample ts => Union ts x -> Dist Double
@@ -188,35 +192,35 @@ data Expr a where
 data ExprWrapper a where
     ExprWrapper :: Expr a -> ExprWrapper a
 
--- isExprInt :: Expr a -> Maybe (Expr Int)
--- isExprInt (Num i) = Just (Num i)
--- isExprInt _ = Nothing
+isExprInt :: Expr a -> Maybe (Expr Int)
+isExprInt (Num i) = Just (Num i)
+isExprInt _ = Nothing
 
--- isExprWrapperInt :: ExprWrapper a -> Maybe (ExprWrapper Int)
--- isExprWrapperInt (ExprWrapper (ExprInt e)) =  Just (ExprWrapper e)
+isExprWrapperInt :: ExprWrapper a -> Maybe (ExprWrapper Int)
+isExprWrapperInt (ExprWrapper (ExprInt e)) =  Just (ExprWrapper e)
 
--- pattern ExprInt :: Expr Int -> Expr a
--- pattern ExprInt e <- (isExprInt -> Just e)
+pattern ExprInt :: Expr Int -> Expr a
+pattern ExprInt e <- (isExprInt -> Just e)
 
--- pattern ExprWrapperInt :: ExprWrapper Int -> ExprWrapper a
--- pattern ExprWrapperInt ew <- (isExprWrapperInt -> Just ew)
+pattern ExprWrapperInt :: ExprWrapper Int -> ExprWrapper a
+pattern ExprWrapperInt ew <- (isExprWrapperInt -> Just ew)
 
--- -- pattern ExprIntOut :: Member ExprWrapper rs => ExprWrapper Int -> Union rs x
--- -- pattern ExprIntOut ew <- (isExprWrapperInt -> )
+-- pattern ExprIntOut :: Member ExprWrapper rs => ExprWrapper Int -> Union rs x
+-- pattern ExprIntOut ew <- (prj -> Just (ExprWrapperInt ew))
 
 pattern Obs :: Member Observe rs => Dist x -> x -> Addr -> Union rs x
 pattern Obs d y α <- (prj -> Just (Observe d y α))
 
-pattern DistDoubles :: Maybe (Dist [Double]) -> Dist x
-pattern DistDoubles d <- (isDistDoubles -> d)
-pattern DistDouble :: Maybe (Dist Double) -> Dist x
-pattern DistDouble d <- (isDistDouble -> d)
-pattern DistBool :: Maybe (Dist Bool) -> Dist x
-pattern DistBool d <- (isDistBool -> d)
-pattern DistInt :: Maybe (Dist Int) -> Dist x
-pattern DistInt d <- (isDistInt -> d)
-pattern DistPrimVal :: OpenSum.Member x PrimVal => Maybe (Dist x) -> Dist x
-pattern DistPrimVal d <- (isDistPrimVal -> d)
+pattern DistDoubles :: Dist [Double] -> Dist x
+pattern DistDoubles d <- (isDistDoubles -> Just d)
+pattern DistDouble :: Dist Double -> Dist x
+pattern DistDouble d <- (isDistDouble -> Just d)
+pattern DistBool :: Dist Bool -> Dist x
+pattern DistBool d <- (isDistBool -> Just d)
+pattern DistInt :: Dist Int -> Dist x
+pattern DistInt d <- (isDistInt -> Just d)
+pattern DistPrimVal :: OpenSum.Member x PrimVal => Dist x -> Dist x
+pattern DistPrimVal d <- (isDistPrimVal -> Just d)
 
 isDistPrimVal :: Dist x -> Maybe (Dist x)
 isDistPrimVal d@CategoricalDist {} = Just d
