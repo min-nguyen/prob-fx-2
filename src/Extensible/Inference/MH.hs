@@ -199,6 +199,9 @@ transformMH :: (Member (State SMap) ts, Member (State LPMap) ts, Member Sample t
 transformMH (Pure x) = return x
 transformMH (Free u k) = do
   case u of
+    -- SampDoublePrj d α -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
+    --                                    modify (updateLPMap α d (unsafeCoerce x)) >>
+    --                                    transformMH (k x))
     Samp d α
       -> case d of
             -- We can unsafe coerce x here, because we've inferred the type of x from the distribution's type

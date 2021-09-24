@@ -168,23 +168,15 @@ pattern Print s <- (prj -> Just (Printer s))
 pattern Samp :: Member Sample rs => Dist x -> Addr -> Union rs x
 pattern Samp d α <- (prj -> Just (Sample d α))
 
--- pattern SampDouble :: Member Sample rs => Sample Double -> Union rs x
--- pattern SampDouble s <- (prj -> Just s@(Sample (DistDouble (Just d)) α))
+isSampDouble :: Sample x -> Maybe (Sample Double)
+isSampDouble s@(Sample (DistDouble d) a) = Just (Sample d a)
 
--- pattern SampDouble :: Member Sample rs => Dist x -> Addr -> Sample x
--- pattern SampDouble :: Dist Double -> Addr -> Sample x
--- pattern SampDouble d α <- (Sample (DistDouble (Just d)) α)
+pattern SampDouble :: Sample Double -> Sample x
+pattern SampDouble s <- (isSampDouble -> Just s)
 
--- pattern SampDoublePrj :: Member Sample rs => Dist Double -> Addr -> Union rs x
--- pattern SampDoublePrj d α <- (prj -> Just (Sample (DistDouble (Just d)) α))
+-- pattern SampDoublePrj :: FindElem Sample ts => Dist Double -> Addr -> Union ts x
+pattern SampDoublePrj d α <- (prj -> Just (Sample (DistDouble  d) α))
 
--- pattern DistDoubleOut :: Member Dist rs => Dist Double -> Union rs x
--- pattern DistDoubleOut d <- (prj -> Just (DistDouble (Just d)))
--- sampDouble :: forall rs x. Member Sample rs => Union rs x -> Sample Double
--- sampDouble :: FindElem Sample rs => Union rs x -> Union rs x
--- sampDouble :: FindElem Sample ts => Union ts x -> Dist Double
--- sampDouble u = case prj u of
---   Just (Sample d α) -> case d of NormalDist {} -> d
 data Expr a where
     Num :: Int -> Expr Int
     Str :: String -> Expr String
@@ -203,10 +195,7 @@ pattern ExprInt :: Expr Int -> Expr a
 pattern ExprInt e <- (isExprInt -> Just e)
 
 pattern ExprWrapperInt :: ExprWrapper Int -> ExprWrapper a
-pattern ExprWrapperInt ew <- (isExprWrapperInt -> Just ew)
-
--- pattern ExprIntOut :: Member ExprWrapper rs => ExprWrapper Int -> Union rs x
--- pattern ExprIntOut ew <- (prj -> Just (ExprWrapperInt ew))
+pattern ExprWrapperInt e <- (isExprWrapperInt -> Just e)
 
 pattern Obs :: Member Observe rs => Dist x -> x -> Addr -> Union rs x
 pattern Obs d y α <- (prj -> Just (Observe d y α))
