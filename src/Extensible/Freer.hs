@@ -291,3 +291,35 @@ installExisting ret h (Free u k) =
   case prj u  of
     Just tx -> Free u (\x -> h x tx (installExisting @t @t' ret h . k))
     Nothing -> Free u (installExisting @t @t' ret h . k)
+
+
+data Free f a = Pure' a | Free' (f (Free f a))
+
+instance Functor f => Functor (Free f) where
+   fmap g (Free' fx) = Free' (fmap g <$> fx)
+   fmap g (Pure' x)  = Pure' (g x)
+
+instance (Functor f) => Applicative (Free f) where
+  pure = Pure'
+  Pure' f  <*> as  = fmap f as
+  Free' faf  <*> as  = Free' (fmap (<*> as) faf)
+
+instance (Functor f) => Monad (Free f) where
+   return = Pure'
+   (Free' x) >>= f = Free' (fmap (>>= f) x)
+   (Pure' r) >>= f = f r
+
+data Reader' env a where
+  Ask' :: (env -> a) -> Reader' env a
+  deriving Functor
+
+send' e = Pure' (e Pure')
+
+prog :: Free (Reader' Int) ()
+prog = do
+  send' Ask'
+  return ()
+
+runProg :: Free (Reader' Int) () -> IO ()
+runProg (Free' (Ask' k)) = do
+  runProg (k (4 :: Int))

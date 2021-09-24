@@ -88,6 +88,17 @@ runInit :: (Member Observe ts, Member Sample ts)
           => LRec env -> Model env (Dist : AffReader env : ts) a -> Freer ts a
 runInit env m = (runAffReader env . runDist)  (runModel m)
 
-runInit' :: (Member Observe ts, Member Sample ts)
-          => LRec env -> Freer (Dist : AffReader env : ts) a -> Freer ts a
-runInit' env = (runAffReader env . runDist)
+newtype F ts a = F { runF :: Member Observe ts => Freer ts a }
+
+runInit' :: forall ts a. (Member Observe ts, Member Sample ts)
+          => F ts a -> (Freer ts a)
+            -- Freer ts a
+runInit' f = runF f
+
+-- runInit2 ::
+--             F ts a -> Member Observe rs => Freer rs a
+--             -- Freer ts a
+-- runInit2  = runF
+
+-- runInit3 :: F (Observe : ts) a -> Freer ts a
+-- runInit3  = runObserve . runF

@@ -35,10 +35,10 @@ import Util
 
 main :: IO ()
 main = do
-  trace <- sampleIOFixed testLinRegrBasic
+  -- trace <- sampleIOFixed testLinRegrBasic
   -- trace <- sampleIOFixed testLinRegrLWSim
   -- trace <- sampleIOFixed testLinRegrLWInf
-  -- trace <- sampleIOFixed testLinRegrMHPost
+  trace <- sampleIOFixed testLinRegrMHPost
   -- trace <- sampleIOFixed testLinRegrMHPred
   -- trace <- sampleIOFixed testLogRegrBasic
   -- trace <- sampleIOFixed testLogRegrLWSim

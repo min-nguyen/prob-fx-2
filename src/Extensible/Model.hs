@@ -13,7 +13,7 @@ import Extensible.AffineReader
 import Extensible.OpenSum (OpenSum)
 import qualified Extensible.OpenSum as OpenSum
 import Extensible.Sampler
-import Extensible.State
+import Extensible.State ( State, get, put, modify, runState )
 import Extensible.IO
 import GHC.Generics
 import GHC.Types

@@ -10,6 +10,7 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Extensible.Dist where
 
 -- import Extensible.IO
@@ -42,8 +43,11 @@ import System.Random.MWC
 import Numeric.Log
 import qualified System.Random.MWC.Distributions as MWC
 
+-- data Forall where
+--   F :: (forall a. Show a => a) -> Forall
 
 type PrimVal = '[Int, Double, [Double], Bool, String]
+
 
 data PrimDist where
   PrimDist :: forall a. Show a => Dist a -> PrimDist
@@ -164,6 +168,41 @@ pattern Print s <- (prj -> Just (Printer s))
 
 pattern Samp :: Member Sample rs => Dist x -> Addr -> Union rs x
 pattern Samp d α <- (prj -> Just (Sample d α))
+
+-- pattern SampDouble :: Member Sample rs => Sample Double -> Union rs x
+-- pattern SampDouble s <- (prj -> Just s@(Sample (DistDouble (Just d)) α))
+
+-- pattern SampDouble :: Member Sample rs => Dist x -> Addr -> Sample x
+pattern SampDouble :: Dist Double -> Addr -> Sample x
+pattern SampDouble d α <- (Sample (DistDouble (Just d)) α)
+
+-- sampDouble :: forall rs x. Member Sample rs => Union rs x -> Sample Double
+-- sampDouble :: FindElem Sample rs => Union rs x -> Union rs x
+-- sampDouble :: FindElem Sample ts => Union ts x -> Dist Double
+-- sampDouble u = case prj u of
+--   Just (Sample d α) -> case d of NormalDist {} -> d
+data Expr a where
+    Num :: Int -> Expr Int
+    Str :: String -> Expr String
+
+data ExprWrapper a where
+    ExprWrapper :: Expr a -> ExprWrapper a
+
+-- isExprInt :: Expr a -> Maybe (Expr Int)
+-- isExprInt (Num i) = Just (Num i)
+-- isExprInt _ = Nothing
+
+-- isExprWrapperInt :: ExprWrapper a -> Maybe (ExprWrapper Int)
+-- isExprWrapperInt (ExprWrapper (ExprInt e)) =  Just (ExprWrapper e)
+
+-- pattern ExprInt :: Expr Int -> Expr a
+-- pattern ExprInt e <- (isExprInt -> Just e)
+
+-- pattern ExprWrapperInt :: ExprWrapper Int -> ExprWrapper a
+-- pattern ExprWrapperInt ew <- (isExprWrapperInt -> Just ew)
+
+-- -- pattern ExprIntOut :: Member ExprWrapper rs => ExprWrapper Int -> Union rs x
+-- -- pattern ExprIntOut ew <- (isExprWrapperInt -> )
 
 pattern Obs :: Member Observe rs => Dist x -> x -> Addr -> Union rs x
 pattern Obs d y α <- (prj -> Just (Observe d y α))
