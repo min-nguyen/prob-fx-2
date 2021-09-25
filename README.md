@@ -113,3 +113,51 @@ runAffReader env0 = handleRelaySt env0
                      env' = OP.setOP key (safeTail ys) env
                  in  k env' y)
 ```
+
+- **effect-abstractions-constr-kinds**: Extended version of `effect-abstractions`. Replaced use of most pattern synonyms (previously used to match against existentially quantified 'x' in `Dist x`) with constraint kinds instead as a proof that the parameter of `Dist x` must be a member of `PrimVals`.
+
+Old:
+```
+isDistBool :: Dist x -> Maybe (Dist Bool)
+isDistBool d@BernoulliDist {} = Just d
+isDistBool _ = Nothing
+
+pattern DistBool :: Dist Bool -> Dist x
+pattern DistBool d <- (isDistBool -> Just d)
+
+pattern SampBoolPrj :: Member Sample ts => Dist Bool -> Addr -> Union ts x
+pattern SampBoolPrj d α <- (prj -> Just (Sample (DistBool  d) α))
+
+transformMH (Free u k) = do
+  case u of
+    SampBoolPrj d α -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x :: Bool)) >>
+                                     modify (updateLPMap α d (unsafeCoerce x :: Bool)) >>
+                                     transformMH (k x))
+```
+
+New:
+```
+
+type PrimVal = '[Int, Double, [Double], Bool, String]
+
+data PrimDist where
+  PrimDist :: forall a. Show a => Dist a -> PrimDist
+
+data Dict (a :: Constraint) where
+  Dict :: a => Dict a
+
+distDict :: Dist x -> Dict (Show x, OpenSum.Member x PrimVal)
+distDict = \case
+  HalfCauchyDist {} -> Dict
+  CauchyDist {} -> Dict
+  NormalDist {} -> Dict
+  ...
+ 
+transformMH (Free u k) = do
+  case u of
+    Samp d α -> case distDict d of
+                  Dict -> Free u (\x -> modify (updateSMap α d x) >>
+                                        modify (updateLPMap α d (unsafeCoerce x)) >>
+                                        transformMH (k x))
+ 
+```
