@@ -13,6 +13,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE EmptyCase #-}
+{-# LANGUAGE ConstraintKinds #-}
 module Extensible.Dist where
 
 -- import Extensible.IO
@@ -50,18 +51,31 @@ import qualified System.Random.MWC.Distributions as MWC
 --   F :: (forall a. Show a => a) -> Forall
 
 
-data Dict a where
-  Dict :: Dict a
-
-distDict :: Dist a -> Dict (OpenSum.Member a '[Double, Bool])
-distDict = \case
-  NormalDist {} -> Dict
-  UniformDist {} -> Dict
-
 type PrimVal = '[Int, Double, [Double], Bool, String]
 
 data PrimDist where
   PrimDist :: forall a. Show a => Dist a -> PrimDist
+
+data Dict (a :: Constraint) where
+  Dict :: a => Dict a
+
+distDict :: Dist x -> Dict (OpenSum.Member x PrimVal)
+distDict = \case
+  HalfCauchyDist {} -> Dict
+  CauchyDist {} -> Dict
+  NormalDist {} -> Dict
+  HalfNormalDist  {} -> Dict
+  UniformDist  {} -> Dict
+  DiscrUniformDist {} -> Dict
+  GammaDist {} -> Dict
+  BetaDist {} -> Dict
+  BinomialDist {} -> Dict
+  BernoulliDist {} -> Dict
+  CategoricalDist {} -> Dict
+  DiscreteDist {} -> Dict
+  PoissonDist {} -> Dict
+  DirichletDist {} -> Dict
+  DeterministicDist {} -> Dict
 
 instance Show PrimDist where
   show (PrimDist d) = show d

@@ -300,27 +300,9 @@ runSample α_samp samples = loop
       Just (Printer s) ->
        liftS (putStrLn s) >> loop (k ())
       Just (Sample d α) ->
-        case d of
-          d@CategoricalDist {} -> do
-            x <- fromMaybe <$> sample d
-                <*> lookupSample samples d α α_samp
-            (loop . k . unsafeCoerce) x
-          d@DeterministicDist {} -> do
-            x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
-            (loop . k . unsafeCoerce) x
-          DistDoubles ( d) -> do
-            x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
-            (loop . k . unsafeCoerce) x
-          DistDouble  d -> do
-            x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
-            (loop . k . unsafeCoerce) x
-          DistBool  d -> do
-            x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
-            (loop . k . unsafeCoerce) x
-          DistInt  d -> do
-            x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
-            (loop . k . unsafeCoerce) x
-          _ -> undefined
+        case distDict d of
+          Dict ->  do x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
+                      (loop . k . unsafeCoerce) x
       _  -> error "Impossible: Nothing cannot occur"
 
 lookupSample :: OpenSum.Member a PrimVal => SMap -> Dist a -> Addr -> Addr -> Sampler (Maybe a)
