@@ -64,46 +64,23 @@ runLWpaper env m =
   (runSample . runObserve . runState Map.empty
    . transformLW . runDist . runAffReader env) (runModel m)
 
+transformLW :: (Member Sample ts) => Freer ts a -> Freer (State Ⲭ ': ts) a
+transformLW = install return
+  (\x tx k -> case tx of
+      Sample d α -> case distDict d of
+        Dict -> do updateTrace α (unsafeCoerce x :: Int)
+                   k x
+      Printer s  -> k ()
+  )
+
 transformLW' :: (Member (State Ⲭ) ts, Member Sample ts)
   => Freer ts a -> Freer ts a
 transformLW' (Pure x) = return x
 transformLW' (Free u k) = case u  of
-    Samp d α -> case d of
-      DistInt d    ->
-        Free u (\x -> do  updateTrace α (unsafeCoerce x :: Int)
-                          transformLW' (k x))
-      DistDouble d -> Free u (\x -> do updateTrace α (unsafeCoerce x :: Double)
+    Samp d α -> case distDict d of
+      Dict ->        Free u (\x -> do  updateTrace α x
                                        transformLW' (k x))
-      DistBool  d  -> Free u (\x -> do updateTrace α (unsafeCoerce x :: Bool)
-                                       transformLW' (k x))
-      DistDoubles d -> Free u (\x -> do updateTrace α (unsafeCoerce x :: [Double])
-                                        transformLW' (k x))
-      d@CategoricalDist {} -> Free u (\x ->  do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
-                                                transformLW' (k x))
-      d@DeterministicDist {} -> Free u (\x ->  do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
-                                                  transformLW' (k x))
-      _ -> error "error"
     _ -> Free u (transformLW' . k)
-
-transformLW :: (Member Sample ts) => Freer ts a -> Freer (State Ⲭ ': ts) a
-transformLW = install return
-  (\x tx k -> case tx of
-      Sample d α -> case d of
-        DistInt  d        -> do updateTrace α (unsafeCoerce x :: Int)
-                                k x
-        DistDouble  d     -> do updateTrace α (unsafeCoerce x :: Double)
-                                k x
-        DistBool  d       -> do updateTrace α (unsafeCoerce x :: Bool)
-                                k x
-        DistDoubles  d    -> do updateTrace α (unsafeCoerce x :: [Double])
-                                k x
-        d@CategoricalDist {}    -> do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
-                                      k x
-        d@DeterministicDist {}  -> do modify (Map.insert α (OpenSum.inj x :: OpenSum PrimVal))
-                                      k x
-        _ -> error ""
-      Printer s  -> k ()
-  )
 
 -- transformLW' :: (Member (State Ⲭ) ts, Member Sample ts)
 --   => Freer ts a -> Freer ts a
@@ -117,32 +94,11 @@ runObserve = loop 0
   loop logp (Free u k) = case decomp u of
       Right (Observe d y α)
         -> let r = logProb d y
-           in case d of
-            DistDoubles  d ->
-              do let logp' = logProb d (unsafeCoerce y :: [Double])
-                 prinT $ "Prob of observing " ++ show (unsafeCoerce y :: [Double]) ++ " from " ++ show d ++ " is " ++ show logp'
-                 loop (logp + logp') (k y)
-            DistBool  d ->
-              do let logp' = logProb d (unsafeCoerce y :: Bool)
-                 prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Bool) ++ " from " ++ show d ++ " is " ++ show logp'
-                 loop (logp + logp') (k y)
-            DistDouble  d ->
-              do  let logp' = logProb d (unsafeCoerce y :: Double)
-                  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show logp'
+           in  case distDict d of
+                Dict -> do
+                  let logp' = logProb d y
+                  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: [Double]) ++ " from " ++ show d ++ " is " ++ show logp'
                   loop (logp + logp') (k y)
-            DistInt  d ->
-              do let logp' = logProb d (unsafeCoerce y :: Int)
-                 prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Int) ++ " from " ++ show d ++ " is " ++ show logp'
-                 loop (logp + logp') (k y)
-            d@CategoricalDist {} ->
-              do let logp' = logProb d y
-                 prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp'
-                 loop (logp + logp') (k y)
-            d@DeterministicDist {} ->
-              do let logp' = logProb d y
-                 prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp'
-                 loop (logp + logp') (k y)
-            _ -> undefined
       Left  u'  -> Free u' (loop logp . k)
 
 runSample :: Freer '[Sample] a -> Sampler a

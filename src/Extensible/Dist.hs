@@ -59,7 +59,7 @@ data PrimDist where
 data Dict (a :: Constraint) where
   Dict :: a => Dict a
 
-distDict :: Dist x -> Dict (OpenSum.Member x PrimVal)
+distDict :: Dist x -> Dict (Show x, OpenSum.Member x PrimVal)
 distDict = \case
   HalfCauchyDist {} -> Dict
   CauchyDist {} -> Dict

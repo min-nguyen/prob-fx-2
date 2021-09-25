@@ -205,48 +205,37 @@ transformMH :: (Member (State SMap) ts, Member (State LPMap) ts, Member Sample t
 transformMH (Pure x) = return x
 transformMH (Free u k) = do
   case u of
-    SampDoublePrj d α -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
-                                       modify (updateLPMap α d (unsafeCoerce x)) >>
-                                       transformMH (k x))
-    SampDoublesPrj d α -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
-                                       modify (updateLPMap α d (unsafeCoerce x)) >>
-                                       transformMH (k x))
-    SampIntPrj d α -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
-                                       modify (updateLPMap α d (unsafeCoerce x)) >>
-                                       transformMH (k x))
-    SampBoolPrj d α -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
-                                       modify (updateLPMap α d (unsafeCoerce x)) >>
-                                       transformMH (k x))
-    -- SampPrimVal d α -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
-    --                                    modify (updateLPMap α d (unsafeCoerce x)) >>
-    --                                    transformMH (k x))
-    Samp d α
-      -> case d of
-            -- We can unsafe coerce x here, because we've inferred the type of x from the distribution's type
-            d@CategoricalDist{} -> Free u (\x -> modify
-                                          (Map.insert α (PrimDist d, OpenSum.inj x :: OpenSum PrimVal)) >>
-                                          modify (updateLPMap α d x) >>
-                                          transformMH (k x))
-            d@DeterministicDist{} -> Free u (\x -> modify
-                                          (Map.insert α (PrimDist d, OpenSum.inj x :: OpenSum PrimVal)) >>
-                                          modify (updateLPMap α d x) >>
-                                          transformMH (k x))
-            DistDoubles  d -> Free u (\x -> do
-                                          modify (updateSMap α d (unsafeCoerce x))
-                                          modify (updateLPMap α d (unsafeCoerce x))
-                                          -- prinT $ "Prob of observing " ++ show (unsafeCoerce x :: [Double]) ++ " from " ++ show (toDistInfo d) ++ " is " ++ show (prob d (unsafeCoerce x))
-                                          transformMH (k x))
-            DistDouble  d -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
-                                          modify (updateLPMap α d (unsafeCoerce x)) >>
-                                          transformMH (k x))
-            DistBool  d   -> Free u (\x -> do
-                                          modify (updateSMap α d (unsafeCoerce x))
-                                          modify (updateLPMap α d (unsafeCoerce x))
-                                          transformMH (k x))
-            DistInt  d    -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
-                                          modify (updateLPMap α d (unsafeCoerce x)) >>
-                                          transformMH (k x))
-            _ -> undefined
+    Samp d α -> case distDict d of
+                  Dict -> Free u (\x -> modify (updateSMap α d x) >>
+                                        modify (updateLPMap α d (unsafeCoerce x)) >>
+                                        transformMH (k x))
+    -- Samp d α
+    --   -> case d of
+    --         -- We can unsafe coerce x here, because we've inferred the type of x from the distribution's type
+    --         d@CategoricalDist{} -> Free u (\x -> modify
+    --                                       (Map.insert α (PrimDist d, OpenSum.inj x :: OpenSum PrimVal)) >>
+    --                                       modify (updateLPMap α d x) >>
+    --                                       transformMH (k x))
+    --         d@DeterministicDist{} -> Free u (\x -> modify
+    --                                       (Map.insert α (PrimDist d, OpenSum.inj x :: OpenSum PrimVal)) >>
+    --                                       modify (updateLPMap α d x) >>
+    --                                       transformMH (k x))
+    --         DistDoubles  d -> Free u (\x -> do
+    --                                       modify (updateSMap α d (unsafeCoerce x))
+    --                                       modify (updateLPMap α d (unsafeCoerce x))
+    --                                       -- prinT $ "Prob of observing " ++ show (unsafeCoerce x :: [Double]) ++ " from " ++ show (toDistInfo d) ++ " is " ++ show (prob d (unsafeCoerce x))
+    --                                       transformMH (k x))
+    --         DistDouble  d -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
+    --                                       modify (updateLPMap α d (unsafeCoerce x)) >>
+    --                                       transformMH (k x))
+    --         DistBool  d   -> Free u (\x -> do
+    --                                       modify (updateSMap α d (unsafeCoerce x))
+    --                                       modify (updateLPMap α d (unsafeCoerce x))
+    --                                       transformMH (k x))
+    --         DistInt  d    -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
+    --                                       modify (updateLPMap α d (unsafeCoerce x)) >>
+    --                                       transformMH (k x))
+    --         _ -> undefined
     Obs d y α
       -> Free u (\x -> modify (updateLPMap α d y  :: LPMap -> LPMap) >>
                         transformMH (k x))
@@ -257,36 +246,13 @@ runObserve :: Member Sample ts => Freer (Observe : ts) a -> Freer ts a
 runObserve = loop 0
   where
   loop :: Member Sample ts => Double -> Freer (Observe : ts) a -> Freer ts a
-  loop p (Pure x) = return x
-  loop p (Free u k) = do
-    case decomp u of
+  loop p (Pure x)   = return x
+  loop p (Free u k) = case decomp u of
       Right (Observe d y α)
-        -> case d of
-            d@CategoricalDist {} ->
-              do let p' = prob d y
-                --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: String) ++ " from " ++ show d ++ " is " ++ show p'
-                 loop (p + p') (k y)
-            d@DeterministicDist {} ->
-              do let p' = prob d y
-                --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: String) ++ " from " ++ show d ++ " is " ++ show p'
-                 loop (p + p') (k y)
-            DistBool  d ->
-              do let p' = prob d (unsafeCoerce y :: Bool)
-                --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Bool) ++ " from " ++ show d ++ " is " ++ show p'
-                 loop (p + p') (k y)
-            DistDoubles  d ->
-              do  let p' = prob d (unsafeCoerce y :: [Double])
-                  -- prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show p'
-                  loop (p + p') (k y)
-            DistDouble  d ->
-              do  let p' = prob d (unsafeCoerce y :: Double)
-                  -- prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Double) ++ " from " ++ show d ++ " is " ++ show p'
-                  loop (p + p') (k y)
-            DistInt  d ->
-              do let p' = prob d (unsafeCoerce y :: Int)
-                --  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: Int) ++ " from " ++ show d ++ " is " ++ show p'
-                 loop (p + p') (k y)
-            _ -> undefined
+        -> case distDict d of
+            Dict -> do  let p' = prob d y
+                        -- prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show p'
+                        loop (p + p') (k y)
       Left  u'  -> Free u' (loop p . k)
 
 -- | Run Sample occurrences
