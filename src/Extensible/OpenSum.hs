@@ -35,14 +35,14 @@ instance forall t ts. (Eq t, Eq (OpenSum ts)) => Eq (OpenSum (t ': ts)) where
   UnsafeOpenSum i x == UnsafeOpenSum j y =
     UnsafeOpenSum (i - 1) x == (UnsafeOpenSum (j - 1) y :: OpenSum ts)
 
-instance {-# INCOHERENT #-} Show t => Show (OpenSum '[t]) where
-  show (UnsafeOpenSum i t) = show (unsafeCoerce t :: t)
-
-instance {-# OVERLAPPING #-}  forall t ts. (Show t, Show (OpenSum ts)) => Show (OpenSum (t ': ts)) where
+instance forall t ts. (Show t, Show (OpenSum ts)) => Show (OpenSum (t ': ts)) where
   show (UnsafeOpenSum i t) =
     if i == 0
     then show (unsafeCoerce t :: t)
     else show (UnsafeOpenSum (i - 1) t :: OpenSum ts)
+
+instance {-# OVERLAPPING #-} Show t => Show (OpenSum '[t]) where
+  show (UnsafeOpenSum i t) = show (unsafeCoerce t :: t)
 
 newtype P t ts = P {unP :: Int}
 

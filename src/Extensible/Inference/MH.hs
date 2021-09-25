@@ -209,33 +209,6 @@ transformMH (Free u k) = do
                   Dict -> Free u (\x -> modify (updateSMap α d x) >>
                                         modify (updateLPMap α d (unsafeCoerce x)) >>
                                         transformMH (k x))
-    -- Samp d α
-    --   -> case d of
-    --         -- We can unsafe coerce x here, because we've inferred the type of x from the distribution's type
-    --         d@CategoricalDist{} -> Free u (\x -> modify
-    --                                       (Map.insert α (PrimDist d, OpenSum.inj x :: OpenSum PrimVal)) >>
-    --                                       modify (updateLPMap α d x) >>
-    --                                       transformMH (k x))
-    --         d@DeterministicDist{} -> Free u (\x -> modify
-    --                                       (Map.insert α (PrimDist d, OpenSum.inj x :: OpenSum PrimVal)) >>
-    --                                       modify (updateLPMap α d x) >>
-    --                                       transformMH (k x))
-    --         DistDoubles  d -> Free u (\x -> do
-    --                                       modify (updateSMap α d (unsafeCoerce x))
-    --                                       modify (updateLPMap α d (unsafeCoerce x))
-    --                                       -- prinT $ "Prob of observing " ++ show (unsafeCoerce x :: [Double]) ++ " from " ++ show (toDistInfo d) ++ " is " ++ show (prob d (unsafeCoerce x))
-    --                                       transformMH (k x))
-    --         DistDouble  d -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
-    --                                       modify (updateLPMap α d (unsafeCoerce x)) >>
-    --                                       transformMH (k x))
-    --         DistBool  d   -> Free u (\x -> do
-    --                                       modify (updateSMap α d (unsafeCoerce x))
-    --                                       modify (updateLPMap α d (unsafeCoerce x))
-    --                                       transformMH (k x))
-    --         DistInt  d    -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
-    --                                       modify (updateLPMap α d (unsafeCoerce x)) >>
-    --                                       transformMH (k x))
-    --         _ -> undefined
     Obs d y α
       -> Free u (\x -> modify (updateLPMap α d y  :: LPMap -> LPMap) >>
                         transformMH (k x))
