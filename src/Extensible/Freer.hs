@@ -24,10 +24,11 @@ import GHC.TypeLits
     ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
 import Data.Typeable
 import qualified Extensible.OpenSum as OpenSum
+
 {- Extensible effects without Typeable in Union, using Freer monad -}
 
 {- Unions -}
-data Union (ts :: [* -> *]) x where
+data Union (ts :: [k -> *]) (x :: k) :: * where
   Union :: Int -> t x -> Union ts x
 
 newtype P t ts = P {unP :: Int}

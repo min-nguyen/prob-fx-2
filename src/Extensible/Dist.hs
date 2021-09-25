@@ -11,6 +11,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE EmptyCase #-}
 module Extensible.Dist where
 
 -- import Extensible.IO
@@ -25,6 +27,7 @@ import Control.Monad.State
 import GHC.Float
 import Data.Kind
 import Data.Map (Map)
+import Data.Type.Equality
 import qualified Data.Map as Map
 import Data.Maybe
 import qualified Data.Vector as V
@@ -46,8 +49,16 @@ import qualified System.Random.MWC.Distributions as MWC
 -- data Forall where
 --   F :: (forall a. Show a => a) -> Forall
 
-type PrimVal = '[Int, Double, [Double], Bool, String]
 
+data Dict a where
+  Dict :: Dict a
+
+distDict :: Dist a -> Dict (OpenSum.Member a '[Double, Bool])
+distDict = \case
+  NormalDist {} -> Dict
+  UniformDist {} -> Dict
+
+type PrimVal = '[Int, Double, [Double], Bool, String]
 
 data PrimDist where
   PrimDist :: forall a. Show a => Dist a -> PrimDist
@@ -174,31 +185,23 @@ isSampDouble s@(Sample (DistDouble d) a) = Just (Sample d a)
 pattern SampDouble :: Sample Double -> Sample x
 pattern SampDouble s <- (isSampDouble -> Just s)
 
--- pattern SampDoublePrj :: FindElem Sample ts => Dist Double -> Addr -> Union ts x
+pattern SampDoublePrj :: Member Sample ts => Dist Double -> Addr -> Union ts x
 pattern SampDoublePrj d α <- (prj -> Just (Sample (DistDouble  d) α))
-
-data Expr a where
-    Num :: Int -> Expr Int
-    Str :: String -> Expr String
-
-data ExprWrapper a where
-    ExprWrapper :: Expr a -> ExprWrapper a
-
-isExprInt :: Expr a -> Maybe (Expr Int)
-isExprInt (Num i) = Just (Num i)
-isExprInt _ = Nothing
-
-isExprWrapperInt :: ExprWrapper a -> Maybe (ExprWrapper Int)
-isExprWrapperInt (ExprWrapper (ExprInt e)) =  Just (ExprWrapper e)
-
-pattern ExprInt :: Expr Int -> Expr a
-pattern ExprInt e <- (isExprInt -> Just e)
-
-pattern ExprWrapperInt :: ExprWrapper Int -> ExprWrapper a
-pattern ExprWrapperInt e <- (isExprWrapperInt -> Just e)
+pattern SampDoublesPrj :: Member Sample ts => Dist [Double] -> Addr -> Union ts x
+pattern SampDoublesPrj d α <- (prj -> Just (Sample (DistDoubles  d) α))
+pattern SampIntPrj :: Member Sample ts => Dist Int -> Addr -> Union ts x
+pattern SampIntPrj d α <- (prj -> Just (Sample (DistInt  d) α))
+pattern SampBoolPrj :: Member Sample ts => Dist Bool -> Addr -> Union ts x
+pattern SampBoolPrj d α <- (prj -> Just (Sample (DistBool  d) α))
+pattern SampPrimVal :: (Member Sample ts, OpenSum.Member x PrimVal)
+                      => Dist x -> Addr -> Union ts x
+pattern SampPrimVal d α <- (prj -> Just (Sample (DistPrimVal d) α))
 
 pattern Obs :: Member Observe rs => Dist x -> x -> Addr -> Union rs x
 pattern Obs d y α <- (prj -> Just (Observe d y α))
+
+pattern DistPatt ::  Member Dist rs => Dist x -> Union (Dist ': rs) x
+pattern DistPatt d  <- (decomp -> Right d)
 
 pattern DistDoubles :: Dist [Double] -> Dist x
 pattern DistDoubles d <- (isDistDoubles -> Just d)

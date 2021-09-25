@@ -79,6 +79,12 @@ type SMap  = Map Addr (PrimDist, OpenSum PrimVal)
 type LPMap = Map Addr Double
 type TraceMH a = [(a, SMap, LPMap)]
 
+-- instance OpenSum.Member x PrimVal => Show x where
+--   show
+
+-- -- showPrimVal :: OpenSum.Member x PrimVal => x -> String
+-- -- showPrimVal x = show x
+
 updateSMap :: Show x => OpenSum.Member x PrimVal
   => Addr -> Dist x -> x -> SMap -> SMap
 updateSMap α d x sMap = Map.insert α (PrimDist d, OpenSum.inj x) sMap
@@ -199,7 +205,19 @@ transformMH :: (Member (State SMap) ts, Member (State LPMap) ts, Member Sample t
 transformMH (Pure x) = return x
 transformMH (Free u k) = do
   case u of
-    -- SampDoublePrj d α -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
+    SampDoublePrj d α -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
+                                       modify (updateLPMap α d (unsafeCoerce x)) >>
+                                       transformMH (k x))
+    SampDoublesPrj d α -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
+                                       modify (updateLPMap α d (unsafeCoerce x)) >>
+                                       transformMH (k x))
+    SampIntPrj d α -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
+                                       modify (updateLPMap α d (unsafeCoerce x)) >>
+                                       transformMH (k x))
+    SampBoolPrj d α -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
+                                       modify (updateLPMap α d (unsafeCoerce x)) >>
+                                       transformMH (k x))
+    -- SampPrimVal d α -> Free u (\x -> modify (updateSMap α d (unsafeCoerce x)) >>
     --                                    modify (updateLPMap α d (unsafeCoerce x)) >>
     --                                    transformMH (k x))
     Samp d α
