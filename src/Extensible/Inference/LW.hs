@@ -77,9 +77,8 @@ transformLW' :: (Member (State Ⲭ) ts, Member Sample ts)
   => Freer ts a -> Freer ts a
 transformLW' (Pure x) = return x
 transformLW' (Free u k) = case u  of
-    Samp d α -> case distDict d of
-      Dict ->        Free u (\x -> do  updateTrace α x
-                                       transformLW' (k x))
+    SampPatt d α -> Free u (\x -> do  updateTrace α x
+                                      transformLW' (k x))
     _ -> Free u (transformLW' . k)
 
 -- transformLW' :: (Member (State Ⲭ) ts, Member Sample ts)
@@ -91,15 +90,12 @@ runObserve = loop 0
   where
   loop :: Member Sample ts => Double -> Freer (Observe : ts) a -> Freer ts (a, Double)
   loop logp (Pure x) = return (x, exp logp)
-  loop logp (Free u k) = case decomp u of
-      Right (Observe d y α)
-        -> let r = logProb d y
-           in  case distDict d of
-                Dict -> do
-                  let logp' = logProb d y
-                  prinT $ "Prob of observing " ++ show (unsafeCoerce y :: [Double]) ++ " from " ++ show d ++ " is " ++ show logp'
-                  loop (logp + logp') (k y)
-      Left  u'  -> Free u' (loop logp . k)
+  loop logp (Free u k) = case  u of
+      ObsPatt d y α -> do
+        let logp' = logProb d y
+        prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp'
+        loop (logp + logp') (k y)
+      DecompLeft u' -> Free u' (loop logp . k)
 
 runSample :: Freer '[Sample] a -> Sampler a
 runSample = loop
@@ -107,10 +103,9 @@ runSample = loop
   loop :: Freer '[Sample] a -> Sampler a
   loop (Pure x) = return x
   loop (Free u k) =
-    let x = prj u
-    in case x of
-      (Just (Printer s) :: Maybe (Sample x)) ->
-        liftS (putStrLn s) >> loop (k ())
-      Just (Sample d α) ->
+    case u of
+      SampPatt d α ->
         liftS (putStrLn $ ">> : " ++ show α) >> sample d >>= loop . k
+      PrintPatt s  ->
+        liftS (putStrLn s) >>= loop . k
       _         -> error "Impossible: Nothing cannot occur"

@@ -18,10 +18,11 @@ module Extensible.Dist where
 
 -- import Extensible.IO
 import Extensible.Freer
+    ( Freer(..), Member(..), Union, decomp, send )
 import Extensible.Sampler
 import Extensible.OpenSum (OpenSum)
 import qualified Extensible.OpenSum as OpenSum
-import Util
+import Util ( boolToInt )
 import Data.Coerce
 import Control.Lens hiding ((:>))
 import Control.Monad.State
@@ -187,32 +188,26 @@ prinT s = Free (inj $ Printer s) Pure
 data Observe a where
   Observe :: Dist a -> a -> Addr -> Observe a
 
-pattern Print :: Member Sample rs => String -> Union rs ()
-pattern Print s <- (prj -> Just (Printer s))
+pattern PrintPatt :: (Member Sample rs) => (x ~ ()) => String -> Union rs x
+pattern PrintPatt s <- (prj -> Just (Printer s))
+
+pattern DistDict :: () => (Show x, OpenSum.Member x PrimVal) => Dist x -> Dist x
+pattern DistDict d <- d@(distDict -> Dict)
 
 pattern Samp :: Member Sample rs => Dist x -> Addr -> Union rs x
 pattern Samp d α <- (prj -> Just (Sample d α))
 
-isSampDouble :: Sample x -> Maybe (Sample Double)
-isSampDouble s@(Sample (DistDouble d) a) = Just (Sample d a)
-
-pattern SampDouble :: Sample Double -> Sample x
-pattern SampDouble s <- (isSampDouble -> Just s)
-
-pattern SampDoublePrj :: Member Sample ts => Dist Double -> Addr -> Union ts x
-pattern SampDoublePrj d α <- (prj -> Just (Sample (DistDouble  d) α))
-pattern SampDoublesPrj :: Member Sample ts => Dist [Double] -> Addr -> Union ts x
-pattern SampDoublesPrj d α <- (prj -> Just (Sample (DistDoubles  d) α))
-pattern SampIntPrj :: Member Sample ts => Dist Int -> Addr -> Union ts x
-pattern SampIntPrj d α <- (prj -> Just (Sample (DistInt  d) α))
-pattern SampBoolPrj :: Member Sample ts => Dist Bool -> Addr -> Union ts x
-pattern SampBoolPrj d α <- (prj -> Just (Sample (DistBool  d) α))
-pattern SampPrimVal :: (Member Sample ts, OpenSum.Member x PrimVal)
-                      => Dist x -> Addr -> Union ts x
-pattern SampPrimVal d α <- (prj -> Just (Sample (DistPrimVal d) α))
+pattern SampPatt :: (Member Sample rs) => (Show x, OpenSum.Member x PrimVal) => Dist x -> Addr -> Union rs x
+pattern SampPatt d α <- (Samp (DistDict d) α)
 
 pattern Obs :: Member Observe rs => Dist x -> x -> Addr -> Union rs x
 pattern Obs d y α <- (prj -> Just (Observe d y α))
+
+pattern ObsPatt :: (Member Observe rs) => (Show x, OpenSum.Member x PrimVal) => Dist x -> x -> Addr -> Union rs x
+pattern ObsPatt d y α <- (Obs (DistDict d) y α)
+
+pattern DecompLeft :: Union r v -> Union (t : r) v
+pattern DecompLeft u <- (decomp -> Left u)
 
 pattern DistPatt ::  Member Dist rs => Dist x -> Union (Dist ': rs) x
 pattern DistPatt d  <- (decomp -> Right d)

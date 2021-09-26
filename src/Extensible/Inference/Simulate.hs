@@ -39,18 +39,20 @@ runSimulate ys m
 
 runObserve :: Freer (Observe : ts) a -> Freer ts  a
 runObserve (Pure x) = return x
-runObserve (Free u k) = case decomp u of
-  Right (Observe d y α)
-    -> let p = logProb d y
-        in  runObserve (k y)
-  Left  u'  -> Free u' (runObserve . k)
+runObserve (Free u k) = case u of
+  ObsPatt d y α ->
+    let p = logProb d y
+    in  runObserve (k y)
+  DecompLeft u'  ->
+    Free u' (runObserve . k)
 
 runSample :: Freer '[Sample] a -> Sampler a
 runSample (Pure x) = return x
-runSample (Free u k) = case prj u of
-    Just (Printer s) ->
+runSample (Free u k) = case u of
+    PrintPatt s ->
       liftS (putStrLn s) >> runSample (k ())
-    Just (Sample d α) -> sample d >>= runSample . k
+    SampPatt d α ->
+      sample d >>= runSample . k
     _        -> error "Impossible: Nothing cannot occur"
 
 -- runReader' :: forall env ts a.
@@ -64,7 +66,6 @@ runSample (Free u k) = case prj u of
 --       env' :: LRec env <- get
 --       loop (k env)
 --     Left  u'  -> Free u' (loop . k)
-
 
 -- why doesn't this version work?
 -- runBasic ::

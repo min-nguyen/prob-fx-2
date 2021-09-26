@@ -205,13 +205,13 @@ transformMH :: (Member (State SMap) ts, Member (State LPMap) ts, Member Sample t
 transformMH (Pure x) = return x
 transformMH (Free u k) = do
   case u of
-    Samp d α -> case distDict d of
-                  Dict -> Free u (\x -> modify (updateSMap α d x) >>
-                                        modify (updateLPMap α d (unsafeCoerce x)) >>
-                                        transformMH (k x))
-    Obs d y α
+    SampPatt d α
+      -> Free u (\x -> modify (updateSMap α d x) >>
+                       modify (updateLPMap α d (unsafeCoerce x)) >>
+                       transformMH (k x))
+    ObsPatt d y α
       -> Free u (\x -> modify (updateLPMap α d y  :: LPMap -> LPMap) >>
-                        transformMH (k x))
+                       transformMH (k x))
     _ -> Free u (transformMH . k)
 
 -- | Remove Observe occurrences from tree (log p is taken care of by transformMH)
@@ -220,13 +220,12 @@ runObserve = loop 0
   where
   loop :: Member Sample ts => Double -> Freer (Observe : ts) a -> Freer ts a
   loop p (Pure x)   = return x
-  loop p (Free u k) = case decomp u of
-      Right (Observe d y α)
-        -> case distDict d of
-            Dict -> do  let p' = prob d y
-                        -- prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show p'
-                        loop (p + p') (k y)
-      Left  u'  -> Free u' (loop p . k)
+  loop p (Free u k) = case u of
+      ObsPatt d y α ->
+        do let p' = prob d y
+           prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show p'
+           loop (p + p') (k y)
+      DecompLeft u'  -> Free u' (loop p . k)
 
 -- | Run Sample occurrences
 runSample :: Addr -> SMap -> Freer '[Sample] a -> Sampler a
@@ -234,14 +233,12 @@ runSample α_samp samples = loop
   where
   loop :: Freer '[Sample] a -> Sampler a
   loop (Pure x) = return x
-  loop (Free u k) =
-    case prj u of
-      Just (Printer s) ->
-       liftS (putStrLn s) >> loop (k ())
-      Just (Sample d α) ->
-        case distDict d of
-          Dict ->  do x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
-                      (loop . k . unsafeCoerce) x
+  loop (Free u k) = case u of
+      PrintPatt s ->
+        do liftS (putStrLn s) >> loop (k ())
+      SampPatt d α ->
+        do x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
+           (loop . k . unsafeCoerce) x
       _  -> error "Impossible: Nothing cannot occur"
 
 lookupSample :: OpenSum.Member a PrimVal => SMap -> Dist a -> Addr -> Addr -> Sampler (Maybe a)
