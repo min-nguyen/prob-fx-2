@@ -114,7 +114,7 @@ runAffReader env0 = handleRelaySt env0
                  in  k env' y)
 ```
 
-- **effect-abstractions-constr-kinds**: Extended version of `effect-abstractions`. Replaced use of most pattern synonyms (previously used to match against existentially quantified 'x' in `Dist x`) with constraint kinds instead as a proof that the parameter of `Dist x` must be a member of `PrimVals`.
+- **effect-abstractions-constr-kinds**: Extended version of `effect-abstractions`. Replaced use of some pattern synonyms (previously used to match against existentially quantified 'x' in `Dist x`) with constraint kinds instead as a proof that the parameter of `Dist x` must be a member of `PrimVals`.
 
 Old:
 ```
@@ -153,11 +153,20 @@ distDict = \case
   NormalDist {} -> Dict
   ...
  
+pattern DistDict :: () => (Show x, OpenSum.Member x PrimVal) => Dist x -> Dist x
+pattern DistDict d <- d@(distDict -> Dict)
+
+pattern Samp :: Member Sample rs => Dist x -> Addr -> Union rs x
+pattern Samp d α <- (prj -> Just (Sample d α))
+
+pattern SampPatt :: (Member Sample rs) => (Show x, OpenSum.Member x PrimVal) => Dist x -> Addr -> Union rs x
+pattern SampPatt d α <- (Samp (DistDict d) α)
+
 transformMH (Free u k) = do
   case u of
     Samp d α -> case distDict d of
                   Dict -> Free u (\x -> modify (updateSMap α d x) >>
                                         modify (updateLPMap α d (unsafeCoerce x)) >>
                                         transformMH (k x))
- 
+
 ```
