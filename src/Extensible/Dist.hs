@@ -209,50 +209,6 @@ pattern ObsPatt d y α <- (Obs (DistDict d) y α)
 pattern DecompLeft :: Union r v -> Union (t : r) v
 pattern DecompLeft u <- (decomp -> Left u)
 
-pattern DistPatt ::  Member Dist rs => Dist x -> Union (Dist ': rs) x
-pattern DistPatt d  <- (decomp -> Right d)
-
-pattern DistDoubles :: Dist [Double] -> Dist x
-pattern DistDoubles d <- (isDistDoubles -> Just d)
-pattern DistDouble :: Dist Double -> Dist x
-pattern DistDouble d <- (isDistDouble -> Just d)
-pattern DistBool :: Dist Bool -> Dist x
-pattern DistBool d <- (isDistBool -> Just d)
-pattern DistInt :: Dist Int -> Dist x
-pattern DistInt d <- (isDistInt -> Just d)
-pattern DistPrimVal :: OpenSum.Member x PrimVal => Dist x -> Dist x
-pattern DistPrimVal d <- (isDistPrimVal -> Just d)
-
-isDistPrimVal :: Dist x -> Maybe (Dist x)
-isDistPrimVal d@CategoricalDist {} = Just d
-isDistPrimVal d@DeterministicDist {} = Just d
-isDistPrimVal _ = Nothing
-
-isDistDoubles :: Dist x -> Maybe (Dist [Double])
-isDistDoubles d@DirichletDist {} = Just d
-isDistDoubles _ = Nothing
-
-isDistDouble :: Dist x -> Maybe (Dist Double)
-isDistDouble d@HalfCauchyDist {} = Just d
-isDistDouble d@CauchyDist {} = Just d
-isDistDouble d@HalfNormalDist {} = Just d
-isDistDouble d@NormalDist {} = Just d
-isDistDouble d@BetaDist {} = Just d
-isDistDouble d@GammaDist {} = Just d
-isDistDouble d@UniformDist {} = Just d
-isDistDouble _ = Nothing
-
-isDistBool :: Dist x -> Maybe (Dist Bool)
-isDistBool d@BernoulliDist {} = Just d
-isDistBool _ = Nothing
-
-isDistInt :: Dist x -> Maybe (Dist Int)
-isDistInt d@DiscrUniformDist {} = Just d
-isDistInt d@BinomialDist {} = Just d
-isDistInt d@DiscreteDist {} = Just d
-isDistInt d@PoissonDist {} = Just d
-isDistInt _ = Nothing
-
 getObs :: Dist a -> Maybe a
 getObs d@(HalfCauchyDist _ obs _)     =  obs
 getObs d@(CauchyDist _ _ obs _)       =  obs
