@@ -163,14 +163,13 @@ runDist = loop 0 Map.empty
   loop _ _ (Pure x) = return x
   loop counter tagMap (Free u k) = case decomp u of
     Right d ->
-         let tag     = fromMaybe (show counter) (getTag d)
-             tagIdx  = Map.findWithDefault 0 tag tagMap
-             tagMap' = Map.insert tag (tagIdx + 1) tagMap
-         in case getObs d of
-              Just y  -> do x <- send (Observe d y (tag, tagIdx))
-                            loop (counter + 1) tagMap' $ k x
-              Nothing -> do x <- send (Sample d (tag, tagIdx))
-                            loop (counter + 1) tagMap' $ k x
+         case getObs d of
+              Just y  -> do send (Observe d y (tag, tagIdx)) >>= k'
+              Nothing -> do send (Sample d (tag, tagIdx))    >>= k'
+          where tag     = fromMaybe (show counter) (getTag d)
+                tagIdx  = Map.findWithDefault 0 tag tagMap
+                tagMap' = Map.insert tag (tagIdx + 1) tagMap
+                k'      = loop (counter + 1) tagMap' . k
     Left  u'  -> Free u' (loop counter tagMap . k)
 
 -- runDist :: forall rs a. Freer (Dist ': rs) a -> Freer (Observe ': Sample ': rs) a
@@ -191,6 +190,9 @@ data Observe a where
 pattern PrintPatt :: (Member Sample rs) => (x ~ ()) => String -> Union rs x
 pattern PrintPatt s <- (prj -> Just (Printer s))
 
+pattern DistPatt :: () => (Show x, OpenSum.Member x PrimVal) => Dist x -> Union (Dist : r) x
+pattern DistPatt d <- (decomp -> Right (DistDict d))
+
 pattern DistDict :: () => (Show x, OpenSum.Member x PrimVal) => Dist x -> Dist x
 pattern DistDict d <- d@(distDict -> Dict)
 
@@ -199,6 +201,10 @@ pattern Samp d α <- (prj -> Just (Sample d α))
 
 pattern SampPatt :: (Member Sample rs) => (Show x, OpenSum.Member x PrimVal) => Dist x -> Addr -> Union rs x
 pattern SampPatt d α <- (Samp (DistDict d) α)
+
+pattern SampPatt' :: (Member Sample rs) => (Show x, OpenSum.Member x PrimVal) => Dist x -> Addr -> Union rs x
+pattern SampPatt' d α <- (prj -> Just (Sample d@(distDict -> Dict) α))
+
 
 pattern Obs :: Member Observe rs => Dist x -> x -> Addr -> Union rs x
 pattern Obs d y α <- (prj -> Just (Observe d y α))
