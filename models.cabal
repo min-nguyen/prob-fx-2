@@ -100,7 +100,8 @@ library
                        mwc-random,
                        mwc-probability,
                        dirichlet,
-                       log-domain
+                       log-domain,
+                       some
 
   -- Directories containing source files.
   hs-source-dirs:      src

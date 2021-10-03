@@ -16,7 +16,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 module Extensible.Dist where
 
--- import Extensible.IO
+import Data.GADT.Compare
 import Extensible.Freer
     ( Freer(..), Member(..), Union, decomp, send )
 import Extensible.Sampler
@@ -47,6 +47,7 @@ import Statistics.Distribution.Uniform
 import System.Random.MWC
 import Numeric.Log
 import qualified System.Random.MWC.Distributions as MWC
+import Data.GADT.Compare (GEq)
 
 -- data Forall where
 --   F :: (forall a. Show a => a) -> Forall

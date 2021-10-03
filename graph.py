@@ -559,8 +559,8 @@ def main():
     ax.set_xticklabels(ws)
     plt.show()
   if arg == "topic-mh-post":
-    plt.rcParams.update({'font.family': 'sans'})
-    plt.rcParams.update({'font.weight': 'bold'})
+    plt.rcParams.update({'font.family': 'serif'})
+    # plt.rcParams.update({'font.weight': 'bold'})
     plt.rcParams.update({'font.size': 15})
     ws          = ['DNA', 'evolution', 'parsing', 'phonology']
     topic_ps = [d[1] for d in data if d[0] == ('\952', 0)][-1]
@@ -572,15 +572,15 @@ def main():
     fig, ax = plt.subplots(nrows=1)
     ax.bar(['Topic 0', 'Topic 1'], topic_p, 0.8)
     ax.set_xticklabels(['Topic 0', 'Topic 1'])
-    plt.title('Document-Topic Distribution', fontname="sans", fontweight="bold")
+    plt.title('Document-Topic Distribution', fontname="serif")
     fig0, ax0 = plt.subplots(nrows=1)
     ax0.bar(ws, topic_0, 0.8)
     ax0.set_xticklabels(ws)
-    plt.title('Topic-Word Distribution 0', fontname="sans", fontweight="bold")
+    plt.title('Topic-Word Distribution 0', fontname="serif")
     fig1, ax1 = plt.subplots(nrows=1)
     ax1.bar(ws, topic_1, 0.8)
     ax1.set_xticklabels(ws)
-    plt.title('Topic-Word Distribution 1',fontname="sans",  fontweight="bold")
+    plt.title('Topic-Word Distribution 1', fontname="serif")
     plt.show()
   if arg == "topics-mh-post":
     font = {'family' : 'normal',

@@ -77,9 +77,9 @@ main = do
   -- trace <- sampleIOFixed testSIRMHPred
   -- trace <- sampleIOFixed testHalfNormal
   -- trace <- sampleIOFixed testTopicBasic
-  -- trace <- sampleIOFixed testTopicMHPost
+  trace <- sampleIO testTopicMHPost
   -- trace <- sampleIOFixed testTopicMHPred
-  trace <- sampleIOFixed testTopicsMHPost
+  -- trace <- sampleIOFixed testTopicsMHPost
   -- trace <- sampleIOFixed testHLRBasic
   -- trace <- sampleIOFixed testHLRMHPost
   -- trace <- sampleIO testHLRMHPredictive
