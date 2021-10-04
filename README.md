@@ -170,3 +170,5 @@ transformMH (Free u k) = do
                                         transformMH (k x))
 
 ```
+
+- **effect-abstractions-constr-kinds-dep-map**: Extended version of `effect-abstractions-constr-kinds` which uses dependent maps `DMap (Key Addr)` as sample maps, as opposed to `Map Addr (OpenSum' PrimVal)`.
