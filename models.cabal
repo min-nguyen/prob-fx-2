@@ -90,6 +90,7 @@ library
                        extensible,
                        vector,
                        lens,
+                       aeson < 2,
                        transformers,
                        HMap,
                        mtl,
