@@ -36,7 +36,7 @@ newtype P t ts = P {unP :: Int}
 class FindElem (t :: * -> *) r where
   findElem :: P t r
 
-instance {-# INCOHERENT  #-} FindElem t (t ': r) where
+instance FindElem t (t ': r) where
   findElem = P 0
 instance {-# OVERLAPPABLE #-} FindElem t r => FindElem t (t' ': r) where
   findElem = P $ 1 + unP (findElem :: P t r)

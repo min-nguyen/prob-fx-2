@@ -47,7 +47,7 @@ data Assoc x v = x :> v
 -- | Find index of var 'x' in list of assocs 'kvs'
 class FindElem x xvs where
   findElem :: P x xvs
-instance {-# INCOHERENT  #-} FindElem x ((x ':> v) ': xvs) where
+instance FindElem x ((x ':> v) ': xvs) where
   findElem = P 0
 instance {-# OVERLAPPABLE #-} FindElem x xvs => FindElem x (xv ': xvs) where
   findElem = P $ 1 + unP (findElem :: P x xvs)

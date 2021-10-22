@@ -49,7 +49,7 @@ newtype P t ts = P {unP :: Int}
 class FindElem (t :: *) r where
   findElem :: P t r
 
-instance {-# INCOHERENT  #-} FindElem t (t ': r) where
+instance FindElem t (t ': r) where
   findElem = P 0
 instance {-# OVERLAPPABLE #-} FindElem t r => FindElem t (t' ': r) where
   findElem = P $ 1 + unP (findElem :: P t r)
@@ -63,7 +63,7 @@ class (FindElem t ts) => Member (t :: *) (ts :: [*]) where
   inj ::  t -> OpenSum ts
   prj ::  OpenSum ts  -> Maybe t
 
-instance {-# INCOHERENT #-} (t ~ t') => Member t '[t'] where
+instance (t ~ t') => Member t '[t'] where
    inj x          = UnsafeOpenSum 0 x
    prj (UnsafeOpenSum _ x) = Just (unsafeCoerce x)
 
