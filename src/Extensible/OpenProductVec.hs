@@ -18,80 +18,67 @@ import Unsafe.Coerce
 import Control.Lens hiding ((:>))
 -- import Data.Extensible
 
+data Any where
+  Any :: t -> Any
+
+data OpenProduct (ts :: [Assoc Symbol k])  where
+  OpenProduct :: V.Vector Any -> OpenProduct ts
+
+nil :: OpenProduct '[]
+nil = OpenProduct V.empty
+
+-- data Var (key :: Symbol) = Var
 data Var (x :: Symbol) where
   Var :: KnownSymbol x => Var x
 
 instance (KnownSymbol x, x ~ x') => IsLabel x (Var x') where
   fromLabel = Var
 
-data Assoc x v = x := v
-
-data OpenProduct (ts :: [Assoc Symbol *]) where
-  HNil  :: OpenProduct '[]
-  HCons :: forall a k ts.  a -> OpenProduct ts -> OpenProduct (k := a : ts)
-
 varToStr :: forall x. Var x -> String
 varToStr Var = symbolVal (Proxy @x)
 
-instance (KnownSymbol k, Show v, Show (OpenProduct ts)) => Show (OpenProduct ((k := v) ': ts)) where
-  show (HCons v ts) = varToStr (Var @k) ++ ":=" ++ show v ++ ", " ++ show ts
-
-instance Show (OpenProduct '[]) where
-  show HNil = "[]"
-
-nil :: OpenProduct '[]
-nil = HNil
-
 newtype P t rs = P {unP :: Int}
 
-class FindElem x ts where
-  findElem :: P x ts
-instance FindElem x ((x := v) : ts) where
+data Assoc x v = x :> v
+
+(@=) :: x -> v -> Assoc x v
+(@=) = (:>)
+
+-- | Find index of var 'x' in list of assocs 'kvs'
+class FindElem x xvs where
+  findElem :: P x xvs
+instance FindElem x ((x ':> v) ': xvs) where
   findElem = P 0
-instance {-#  OVERLAPPABLE #-} FindElem x ts => FindElem x (xv ': ts) where
-  findElem = P $ 1 + unP (findElem :: P x ts)
+instance {-# OVERLAPPABLE #-} FindElem x xvs => FindElem x (xv ': xvs) where
+  findElem = P $ 1 + unP (findElem :: P x xvs)
 
-type family LookupType x ts where
-  LookupType x ((x := v) : ts) = v
-  LookupType x ((x' := v) : ts) = LookupType x ts
-
-class (FindElem x ts, LookupType x ts ~ a) => Lookup ts x a where
-  getIdx :: Var x -> OpenProduct ts -> Int
-  getIdx _ (HCons  v ts) =
-    let i = (unP $ findElem @x @ts)
-    in  i
-  getOP  :: Var x -> OpenProduct ts -> a
-  setOP  :: Var x -> a -> OpenProduct ts -> OpenProduct ts
-
-env :: OpenProduct '["r" := Int, "k" := Int]
-env = HCons  5 (HCons  4 HNil)
-
-instance (FindElem x xvs, LookupType x xvs ~ a) => Lookup xvs x a where
-  getIdx _ _ = unP $ findElem @x @xvs
-  getOP _ ts =
-    let idx = unP $ findElem @x @xvs
-        f :: Int -> OpenProduct ts -> a
-        f n (HCons v ts) = if   n == 0
-                           then unsafeCoerce v
-                           else f (n - 1) ts
-    in  f idx ts
-  setOP _ v' ts =
-    let idx = unP $ findElem @x @xvs
-        f :: Int -> OpenProduct ts -> OpenProduct ts
-        f n (HCons v ts) = if   n == 0
-                           then HCons (unsafeCoerce v') ts
-                           else HCons v (f (n - 1) ts)
-    in  f idx ts
+-- | Look up type associated with var 'x' in list of assocs 'kvs'
+type family LookupType x xvs where
+  LookupType x ((x ':> v) : kvs) = v
+  LookupType x ((x' ':> v) : kvs) = LookupType x kvs
 
 -- | Determine whether a var 'x' exists in a list of assocs 'kvs'
 type family UniqueKey x xvs where
-  UniqueKey x ((x ':= v) : xvs) = False
-  UniqueKey x ((x' ':= v) : xvs) = UniqueKey x xvs
+  UniqueKey x ((x ':> v) : xvs) = False
+  UniqueKey x ((x' ':> v) : xvs) = UniqueKey x xvs
   UniqueKey x '[] = True
+
+-- | State that we can lookup var 'x' with value type 'a' in list of assocs 'xs'
+class (FindElem x xvs, LookupType x xvs ~ a) => Lookup xvs x a where
+  getOP :: Var x -> OpenProduct xvs -> a
+  setOP :: Var x -> a -> OpenProduct xvs -> OpenProduct xvs
+
+instance (FindElem x xvs, LookupType x xvs ~ a) => Lookup xvs x a where
+  getOP _ (OpenProduct v) =
+    unAny (V.unsafeIndex v (unP $ findElem @x @xvs))
+    where
+      unAny (Any a) = unsafeCoerce a
+  setOP _ ft (OpenProduct v) =
+    OpenProduct (v V.// [(unP (findElem @x @xvs), Any ft)])
 
 -- | Map the list constructor over a list of assocs
 type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
-  AsList ((x := v) : xvs)   = ((x := [v]) : AsList xvs)
+  AsList ((x :> v) : xvs)   = ((x :> [v]) : AsList xvs)
   AsList '[] = '[]
 
 -- | "Observable xs x v" is shorthand for "Lookup (AsList xs) x [v]""
@@ -106,12 +93,12 @@ type family Observables xvs ks v where
 type LRec s = OpenProduct (AsList s)
 
 insert :: UniqueKey x ts ~ 'True
-       => Var x -> t -> OpenProduct ts -> OpenProduct (x ':= t ': ts)
-insert _ v ts = HCons v ts
+       => Var x -> t -> OpenProduct ts -> OpenProduct (x ':> t ': ts)
+insert _ t (OpenProduct v) = OpenProduct (V.cons (Any t) v)
 
 infixr 5 <:>
-(<:>) :: UniqueKey x xvs ~ 'True => Assoc (Var x) v -> OpenProduct xvs -> OpenProduct ((x ':= v) ': xvs)
-(_ := v) <:> ts = HCons v ts
+(<:>) :: UniqueKey x xvs ~ 'True => Assoc (Var x) v -> OpenProduct xvs -> OpenProduct ((x ':> v) ': xvs)
+(_ :> v) <:> (OpenProduct xvs) = OpenProduct (V.cons (Any v) xvs)
 
 mkLens :: forall xvs x a. Lookup xvs x a => Var x -> Lens' (OpenProduct xvs) a
 mkLens x = lens (getOP x) (\s a -> setOP x a s)
@@ -131,7 +118,7 @@ mkGetterSetter field =
                                    in  setOP field a' s)
   in (getter', setter')
 
--- f = #hi := 5 <: #bye := 5
+-- f = #hi :> 5 <: #bye :> 5
 
 -- data Any where
 --   Any :: t -> Any
@@ -146,12 +133,12 @@ mkGetterSetter field =
 
 -- newtype P t rs = P {unP :: Int}
 
--- data Assoc k v = k := v
+-- data Assoc k v = k :> v
 
 -- class FindElem k r where
 --   findElem :: P k r
 
--- instance {-# INCOHERENT  #-} FindElem k ((k ':= v) ': kvs) where
+-- instance {-# INCOHERENT  #-} FindElem k ((k ':> v) ': kvs) where
 --   findElem = P 0
 -- instance {-# OVERLAPPABLE #-} FindElem k kvs => FindElem k (kv ': kvs) where
 --   findElem = P $ 1 + unP (findElem :: P k kvs)
@@ -163,7 +150,7 @@ mkGetterSetter field =
 --     unAny (Any a) = unsafeCoerce a
 
 -- type family LookupType k kvs where
---   LookupType k ((k ':= v) : kvs) = v
+--   LookupType k ((k ':> v) : kvs) = v
 
 
 -- class (KnownNat (FindElem k xs), a ~ Eval (LookupType k xs))

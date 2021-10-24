@@ -31,7 +31,6 @@ import Extensible.OpenSum (OpenSum)
 import qualified Extensible.OpenSum as OpenSum
 import Control.Monad
 import Data.List as List
-import Control.Lens hiding ((:>))
 import Unsafe.Coerce
 import Data.Maybe
 import Data.Kind (Constraint)
@@ -46,10 +45,10 @@ import qualified Data.Map as Map
 
 -- | Linear regression
 type LinRegrEnv =
-    '[  "y" ':> Double,
-        "m" ':>  Double,
-        "c" ':>  Double,
-        "σ" ':>  Double
+    '[  "y" ':= Double,
+        "m" ':=  Double,
+        "c" ':=  Double,
+        "σ" ':=  Double
      ]
 
 linearRegression :: forall env rs .
@@ -69,9 +68,9 @@ linearRegression x = do
 
 -- | Logistic regression
 type LogRegrEnv =
-    '[  "label" ':> Bool,
-        "m"     ':> Double,
-        "b"     ':> Double
+    '[  "label" ':= Bool,
+        "m"     ':= Double,
+        "b"     ':= Double
      ]
 
 sigmoid :: Double -> Double
@@ -90,10 +89,10 @@ logisticRegression x = do
 
 -- | Bayesian network
 type NNEnv =
-    '[  "yObs"     ':> Double,
-        "weight"   ':> Double,
-        "bias"     ':> Double,
-        "sigma"    ':> Double
+    '[  "yObs"     ':= Double,
+        "weight"   ':= Double,
+        "bias"     ':= Double,
+        "sigma"    ':= Double
      ]
 
 data NN = NN { biases  :: [Double],
@@ -154,8 +153,8 @@ nnStepModel n x = do
 -- | Another neural network formulation
 
 type NNLogEnv =
-    '[  "yObs"     ':> Bool,
-        "weight"   ':> Double
+    '[  "yObs"     ':= Bool,
+        "weight"   ':= Double
      ]
 
 nnLogModel :: (Observable env "weight" Double, Observable env "yObs" Bool)
@@ -186,9 +185,9 @@ sineModel x = do
 
 -- | Hidden Markov Model
 type HMMEnv =
-  '[ "y"       ':> Int,
-     "trans_p" ':> Double,
-     "obs_p"   ':> Double
+  '[ "y"       ':= Int,
+     "trans_p" ':= Double,
+     "obs_p"   ':= Double
    ]
 
 transitionModel ::  Double -> Int -> Model env ts Int
@@ -267,10 +266,10 @@ data LatentState = LatentState {
 } deriving Show
 
 type SIREnv =
-  '[ "infobs" ':> Int,
-     "ρ" ':> Double,
-     "β" ':> Double,
-     "γ" ':> Double
+  '[ "infobs" ':= Int,
+     "ρ" ':= Double,
+     "β" ':= Double,
+     "γ" ':= Double
    ]
 
 type InfectionCount = Int
@@ -319,7 +318,7 @@ hmmSIRNsteps fixedParams n latentState  = do
 
 -- | Random test model
 type DirEnv =
-  '[ "xs" ':> [Double]
+  '[ "xs" ':= [Double]
    ]
 
 halfNorm :: Observable env "xs" [Double]
@@ -335,9 +334,9 @@ halfNorm n = do
 -- | Topic model
 
 type TopicEnv =
-  '[ "θ" ':> [Double],
-     "φ" ':> [Double],
-     "w" ':> String
+  '[ "θ" ':= [Double],
+     "φ" ':= [Double],
+     "w" ':= String
    ]
 
 -- Assignment of word probabilities to a topic
@@ -383,8 +382,8 @@ topicModel vocab n_topics doc_words = do
 -- | Hierarchical Linear Regression
 
 type HLREnv =
-  '[ "mu_a" ':> Double, "mu_b" ':> Double, "sigma_a" ':> Double, "sigma_b" ':> Double,
-     "a" ':> Double, "b" ':> Double, "log_radon" ':> Double]
+  '[ "mu_a" ':= Double, "mu_b" ':= Double, "sigma_a" ':= Double, "sigma_b" ':= Double,
+     "a" ':= Double, "b" ':= Double, "log_radon" ':= Double]
 
 hlrPrior :: Observables env '["mu_a", "mu_b", "sigma_a", "sigma_b"] Double
   => Model env ts (Double, Double, Double, Double)
@@ -421,10 +420,10 @@ hierarchicalLinRegr n_counties floor_x county_idx _ = do
 -- | Gaussian Mixture Model
 
 type GMMEnv = '[
-    "mu" ':> Double,
-    "mu_k" ':> Double,
-    "x"  ':> Double,
-    "y"  ':> Double
+    "mu" ':= Double,
+    "mu_k" ':= Double,
+    "x"  ':= Double,
+    "y"  ':= Double
   ]
 
 gmm :: Observables env '["mu", "mu_k", "x", "y"] Double
@@ -442,9 +441,9 @@ gmm k n = do
 
 -- | Hierarchical School Model
 type SchEnv = '[
-    "mu"    ':> Double,
-    "theta" ':> [Double],
-    "y"     ':> Double
+    "mu"    ':= Double,
+    "theta" ':= [Double],
+    "y"     ':= Double
   ]
 
 schoolModel :: (Observables env '["mu", "y"] Double, Observable env "theta" [Double])
