@@ -14,22 +14,19 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE ImplicitParams #-}
 module Extensible.Dist where
 
-import Data.GADT.Compare
 import Extensible.Freer
     ( Freer(..), Member(..), Union, decomp, send )
 import Extensible.Sampler
 import Extensible.OpenSum (OpenSum)
 import qualified Extensible.OpenSum as OpenSum
 import Util ( boolToInt )
-import Data.Coerce
 import Control.Lens hiding ((:>))
 import Control.Monad.State
-import GHC.Float
 import Data.Kind
 import Data.Map (Map)
-import Data.Type.Equality
 import qualified Data.Map as Map
 import Data.Maybe
 import qualified Data.Vector as V
@@ -44,7 +41,6 @@ import Statistics.Distribution.Gamma
 import Statistics.Distribution.Beta
 import Statistics.Distribution.Binomial
 import Statistics.Distribution.Uniform
-import System.Random.MWC
 import Numeric.Log
 import qualified System.Random.MWC.Distributions as MWC
 import Data.GADT.Compare (GEq)
@@ -206,6 +202,15 @@ pattern SampPatt d α <- (Samp (DistDict d) α)
 pattern SampPatt' :: (Member Sample rs) => (Show x, OpenSum.Member x PrimVal) => Dist x -> Addr -> Union rs x
 pattern SampPatt' d α <- (prj -> Just (Sample d@(distDict -> Dict) α))
 
+isExprInt :: Dist x -> Maybe (Int :~: x)
+isExprInt e@(BinomialDist _ _ _ _) = Just Refl
+isExprInt _         = Nothing
+
+pattern DistInt :: () => x ~ Int => Dist x
+pattern DistInt  <- (isExprInt -> Just Refl)
+
+pattern ExprIntPrj :: Member Dist rs => x ~ Int => Dist x -> Union rs x
+pattern ExprIntPrj e <- (prj -> Just e@DistInt)
 
 pattern Obs :: Member Observe rs => Dist x -> x -> Addr -> Union rs x
 pattern Obs d y α <- (prj -> Just (Observe d y α))
@@ -213,8 +218,17 @@ pattern Obs d y α <- (prj -> Just (Observe d y α))
 pattern ObsPatt :: (Member Observe rs) => (Show x, OpenSum.Member x PrimVal) => Dist x -> x -> Addr -> Union rs x
 pattern ObsPatt d y α <- (Obs (DistDict d) y α)
 
-pattern DecompLeft :: Union r v -> Union (t : r) v
+-- f :: (foralla -> b
+-- f x = x
+
+-- pattern DecompLeft :: Union r v -> Union (t : r) v
+-- pattern DecompLeft :: forall k1 k2 r t v. Union @k1 @k2 r v -> Union @k1 @k2 ((:) @(k1 -> *) t r) v
+pattern DecompLeft :: (k1 ~ k2) => Union @k1 @k2 r v -> Union @k1 @k2 ((:) @(k1 -> *) t r) v
 pattern DecompLeft u <- (decomp -> Left u)
+
+pattern DecompRight :: t v -> Union (t : r) v
+-- pattern DecompLeft :: forall k1 k2 r t v. Union @k1 @k1 r v -> Union @k1 ((:) @(k1 -> *) t r) v
+pattern DecompRight u <- (decomp -> Right u)
 
 getObs :: Dist a -> Maybe a
 getObs d@(HalfCauchyDist _ obs _)     =  obs
