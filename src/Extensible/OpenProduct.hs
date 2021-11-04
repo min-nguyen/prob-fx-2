@@ -28,7 +28,7 @@ data Assoc x v = x := v
 
 data OpenProduct (ts :: [Assoc Symbol *]) where
   HNil  :: OpenProduct '[]
-  HCons :: forall a k ts.  a -> OpenProduct ts -> OpenProduct (k := a : ts)
+  HCons :: forall a k ts. a -> OpenProduct ts -> OpenProduct (k := a : ts)
 
 varToStr :: forall x. Var x -> String
 varToStr Var = symbolVal (Proxy @x)

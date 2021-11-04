@@ -28,7 +28,7 @@ import qualified Extensible.OpenSum as OpenSum
 {- Extensible effects without Typeable in Union, using Freer monad -}
 
 {- Unions -}
-data Union (ts :: [k -> *]) (x :: k) :: * where
+data Union (ts :: [k1 -> *]) (x :: k2) :: * where
   Union :: Int -> t x -> Union ts x
 
 newtype P t ts = P {unP :: Int}

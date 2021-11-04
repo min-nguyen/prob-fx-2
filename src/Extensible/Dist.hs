@@ -218,16 +218,10 @@ pattern Obs d y α <- (prj -> Just (Observe d y α))
 pattern ObsPatt :: (Member Observe rs) => (Show x, OpenSum.Member x PrimVal) => Dist x -> x -> Addr -> Union rs x
 pattern ObsPatt d y α <- (Obs (DistDict d) y α)
 
--- f :: (foralla -> b
--- f x = x
-
--- pattern DecompLeft :: Union r v -> Union (t : r) v
--- pattern DecompLeft :: forall k1 k2 r t v. Union @k1 @k2 r v -> Union @k1 @k2 ((:) @(k1 -> *) t r) v
 pattern DecompLeft :: (k1 ~ k2) => Union @k1 @k2 r v -> Union @k1 @k2 ((:) @(k1 -> *) t r) v
 pattern DecompLeft u <- (decomp -> Left u)
 
 pattern DecompRight :: t v -> Union (t : r) v
--- pattern DecompLeft :: forall k1 k2 r t v. Union @k1 @k1 r v -> Union @k1 ((:) @(k1 -> *) t r) v
 pattern DecompRight u <- (decomp -> Right u)
 
 getObs :: Dist a -> Maybe a
