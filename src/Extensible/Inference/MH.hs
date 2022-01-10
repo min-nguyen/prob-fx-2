@@ -109,8 +109,47 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   let _X'logα    = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ'))
                          0 (Map.keysSet logℙ' \\ _X'sampled)
   -- putStrLn $ " X'logα is " ++ show _X'logα ++ " from " ++ show (logℙ')
-  putStrLn $ " X'logα - Xlogα is " ++ show (_Xlogα , _X'logα)
+  -- putStrLn $ " (X'logα, Xlogα) is " ++ show (_Xlogα , _X'logα)
   return $ exp (dom_logα + _X'logα - _Xlogα)
+
+{-
+Currently we are:
+  1) Taking a list of model inputs "x_0:xs" and a list of observed values "env_0:envs"
+  2) Performing an initial model execution on x_0 and env_0 (with no resample address), to build up an initial trace of a sample map and log probability map
+  3) Creating a function "runN" that performs n mhSteps for a single pair of model input "x" and observed value "env", creating a trace of n sample maps and log probability maps for that single data point.
+  4) Constructing a list of functions that perform n mhSteps, one function per data point, and then passing in an initial trace.
+
+To instead perform Metropolis-Hastings on a model where we only resample after considering/scoring on all of the data, then the model would have to be designed this way.
+For example, instead of:
+
+  linearRegression :: forall env rs .
+    Observables env '["y", "m", "c", "σ"] Double =>
+    Double -> Model env rs (Double, Double)
+  linearRegression x = do
+    m <- normal' 0 3 #m
+    c <- normal' 0 5 #c
+    σ <- uniform' 1 3 #σ
+    y <- normal' (m * x + c) σ #y
+    return (x, y)
+
+We would do:
+
+  linearRegression :: forall env rs .
+    Observables env '["y", "m", "c", "σ"] Double =>
+    [Double] -> Model env rs ([Double], [Double])
+  linearRegression xs = do
+    m <- normal' 0 3 #m
+    c <- normal' 0 5 #c
+    σ <- uniform' 1 3 #σ
+    let loop (x:xs) ys = do
+            y <- normal' (m * x + c) σ #y
+            loop xs (ys ++ [y])
+        loop [] ys     = return ys
+    ys <- loop xs []
+    return (xs, ys)
+
+This is already natural for models such as a HMM.
+-}
 
 -- | Run MH for multiple data points
 mh :: (ts ~ '[AffReader env, Dist, State SMap, State LPMap, Observe, Sample])
@@ -153,17 +192,17 @@ mhStep env model tags trace = do
   -- liftS $ print $ "sample ind is " ++ show α_samp_ind ++ "\n sample sites are " ++ show sampleSites
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
   -- run mh with new sample address
-  liftS $ print $ "sample address is " ++ show α_samp
+  -- liftS $ print $ "sample address is " ++ show α_samp
   (x', samples', logps') <- runMH env samples α_samp model
   -- liftS $ print $ "Second run is: " ++ show (x', samples', logps')
   -- do some acceptance ratio to see if we use samples or samples'
   acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
   u <- sample (UniformDist 0 1 Nothing Nothing)
   if u < acceptance_ratio
-    then do liftS $ putStrLn $ "Accepting " ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
+    then do -- liftS $ putStrLn $ "Accepting " ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
             -- ++ show logps
-             ++ "\nwith α" ++ show α_samp ++ ": "
-             ++ show acceptance_ratio ++ " > " ++ show u
+            -- ++ "\nwith α" ++ show α_samp ++ ": "
+            -- ++ show acceptance_ratio ++ " > " ++ show u
             return ((x', samples', logps'):trace)
     else do
             -- liftS $ putStrLn $ "Rejecting " ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
@@ -223,7 +262,7 @@ runObserve = loop 0
   loop p (Free u k) = case u of
       ObsPatt d y α ->
         do let p' = prob d y
-           prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show p'
+          --  prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show p'
            loop (p + p') (k y)
       DecompLeft u'  -> Free u' (loop p . k)
 

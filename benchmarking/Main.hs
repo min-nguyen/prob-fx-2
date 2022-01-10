@@ -5,5 +5,5 @@ import Extensible.Sampler
 
 main :: IO ()
 main = defaultMain [
-    bgroup "testLR" [bench "" $ whnfIO $ sampleIOFixed testLinRegrMHPost]
+    bgroup "testLR" [bench "" $ nfIO $ sampleIOFixed testLinRegrMHPost ]
   ]
