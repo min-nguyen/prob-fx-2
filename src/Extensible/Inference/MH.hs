@@ -95,6 +95,7 @@ updateLPMap α d x  = Map.insert α (logProb d x)
 -- | Compute acceptance probability
 -- If the log prob from our new samples is better than our old samples, then we always accept.
 -- If the log prob from our new samples is worse than our old samples, then we sometimes accept.
+-- Encountering a probability of 0 (i.e. log probability of -infinity) from any individual sample means that the computed probability of the sample map becomes 0. This results in that sample map being rejected. Performing `exp` on `-Infinity` in Haskell produces 0.
 accept :: Addr -> SMap -> SMap -> LPMap -> LPMap -> IO Double
 accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   let _X'sampled = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ' \\ Map.keysSet _Ⲭ)
@@ -110,6 +111,7 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
                          0 (Map.keysSet logℙ' \\ _X'sampled)
   -- putStrLn $ " X'logα is " ++ show _X'logα ++ " from " ++ show (logℙ')
   -- putStrLn $ " (X'logα, Xlogα) is " ++ show (_Xlogα , _X'logα)
+  -- print $ "dom_logα + _X'logα - _Xlogα is " ++ (show $ dom_logα + _X'logα - _Xlogα)
   return $ exp (dom_logα + _X'logα - _Xlogα)
 
 {-
@@ -197,12 +199,15 @@ mhStep env model tags trace = do
   -- liftS $ print $ "Second run is: " ++ show (x', samples', logps')
   -- do some acceptance ratio to see if we use samples or samples'
   acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
+  -- liftS $ print $ "acceptance ratio" ++ show acceptance_ratio
   u <- sample (UniformDist 0 1 Nothing Nothing)
+
   if u < acceptance_ratio
     then do -- liftS $ putStrLn $ "Accepting " ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
             -- ++ show logps
             -- ++ "\nwith α" ++ show α_samp ++ ": "
             -- ++ show acceptance_ratio ++ " > " ++ show u
+            -- liftS $ print "accepting"
             return ((x', samples', logps'):trace)
     else do
             -- liftS $ putStrLn $ "Rejecting " ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
