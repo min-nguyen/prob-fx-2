@@ -29,6 +29,9 @@ import qualified System.Random.MWC.Distributions as MWC.Dist
 import Statistics.Distribution.CauchyLorentz
 import qualified System.Random.MWC.Probability as MWC.Probability
 import Util
+import System.Random
+import System.Random.MWC
+import GHC.Word
 
 newtype Sampler a = Sampler {runSampler :: ReaderT MWC.GenIO IO a}
   deriving (Functor, Applicative, Monad)
@@ -46,6 +49,9 @@ sampleIO m = MWC.createSystemRandom >>= (runReaderT . runSampler) m
 -- | Takes a Sampler, provides it a fixed generator, and runs the sampler in the IO context
 sampleIOFixed :: Sampler a -> IO a
 sampleIOFixed m = MWC.create >>= (runReaderT . runSampler) m
+
+sampleIOFixedSeed :: Int -> Sampler a -> IO a
+sampleIOFixedSeed n m = initialize (V.singleton (fromIntegral n :: Word32)) >>= (runReaderT . runSampler) m
 
 -- | Takes a distribution which awaits a generator, and returns a Sampler
 createSampler :: (MWC.GenIO -> IO a) -> Sampler a

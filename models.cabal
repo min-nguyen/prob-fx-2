@@ -101,6 +101,7 @@ library
                        split,
                        mwc-random,
                        mwc-probability,
+                       random,
                        dirichlet,
                        log-domain,
                        some
