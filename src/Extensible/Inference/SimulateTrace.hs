@@ -26,13 +26,17 @@ import Extensible.State
 import Extensible.Example as Example
 import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum)
+import Unsafe.Coerce (unsafeCoerce)
 
 type SampleMap = Map Addr (OpenSum PrimVal)
 
 type Trace a = [(a, SampleMap)]
 
-extractSample ::  forall p a. (Eq p, OpenSum.Member p PrimVal) => (Tag, Proxy p) -> SampleMap -> Int
-extractSample (x, typ) = undefined
+extractSamples ::  forall a. (Eq a, OpenSum.Member a PrimVal) => (Tag, Proxy a) -> SampleMap -> [a]
+extractSamples (x, typ)  =
+    map (unsafeCoerce . snd)
+  . Map.toList
+  . Map.filterWithKey  (\(tag, idx) _ -> tag == x)
 
 simulate :: (ts ~ '[Dist, Observe, AffReader env, Sample])
   => Int                             -- Number of iterations per data point
