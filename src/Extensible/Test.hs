@@ -22,7 +22,6 @@ import qualified Extensible.Inference.Simulate as Simulate
 import qualified Extensible.Inference.LW as LW
 import qualified Extensible.Inference.MH as MH
 import Extensible.OpenSum
-import qualified Extensible.OpenSum as OpenSum
 import Extensible.Inference.Inf
 import Extensible.State
 import Extensible.Model

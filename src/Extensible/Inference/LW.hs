@@ -68,7 +68,7 @@ transformLW :: (Member Sample ts) => Freer ts a -> Freer (State Ⲭ ': ts) a
 transformLW = install return
   (\x tx k -> case tx of
       Sample d α -> case distDict d of
-        Dict -> do updateTrace α (unsafeCoerce x :: Int)
+        Dict -> do updateTrace α x
                    k x
       Printer s  -> k ()
   )

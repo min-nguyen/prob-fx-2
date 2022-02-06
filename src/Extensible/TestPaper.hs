@@ -18,7 +18,7 @@ import qualified Data.Map as Map
 import qualified Extensible.ExamplePaper as Example
 import Extensible.DataSets
 import Extensible.Dist
-import qualified Extensible.Inference.Simulate as Simulate
+import qualified Extensible.Inference.SimulateTrace as Simulate
 import qualified Extensible.Inference.LW as LW
 import qualified Extensible.Inference.MH as MH
 import Extensible.OpenSum
@@ -47,9 +47,11 @@ latentState = Example.LatentState
 fromLatentState :: Example.LatentState -> (Int, Int, Int)
 fromLatentState (Example.LatentState sus inf recov) = (sus, inf, recov)
 
-testSIRBasic :: Sampler [(Example.LatentState, [Example.LatentState])]
+-- testSIRBasic :: Sampler [(Example.LatentState, [Example.LatentState])]
+testSIRBasic :: Sampler [((Example.LatentState, [Example.LatentState]), Simulate.SampleMap)]
 testSIRBasic = do
-  bs <- Simulate.simulateWith 1 (Example.hmmSIRNsteps 100) [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])] runWriterM
+  bs :: [((Example.LatentState, [Example.LatentState]), Simulate.SampleMap)]
+      <- Simulate.simulateWith 1 (Example.hmmSIRNsteps 100) [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])] runWriterM
           --[mkRecordSIR ([0.29], [0.25], [0.015])]
-  let sirTrace = map (map fromLatentState . snd) bs
+  -- let sirTrace = map (map fromLatentState . snd) bs
   return bs
