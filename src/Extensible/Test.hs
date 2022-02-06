@@ -492,10 +492,10 @@ mkRecordHMMy ys = #y := ys <:> #trans_p := [] <:> #obs_p := [] <:>  nil
 
 testHMMBasic :: Sampler [([Int], [Int])]
 testHMMBasic = do
-  let hmm_n_steps   = 100
-      hmm_n_samples = 10
+  let hmm_n_steps   = 30
+      hmm_n_samples = 1
   bs <- Simulate.simulate hmm_n_samples (Example.hmmNSteps hmm_n_steps)
-                                   [0] [mkRecordHMM ([], 0.5, 0.5)]
+                                   [0] [mkRecordHMM ([], 0.5, 0.9)]
   return $ bs
 
 testHMMLWSim :: Sampler [(([Int], [Int]), [(Addr, OpenSum PrimVal)], Double)]

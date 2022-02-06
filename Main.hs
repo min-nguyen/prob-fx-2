@@ -68,10 +68,10 @@ main = do
   -- trace <- sampleIOFixed testHMMBasic
   -- trace <- sampleIOFixed testHMMLWSim
   -- trace <- sampleIOFixed testHMMLWInf
-  trace <- sampleIO testHMMMHPost
+  -- trace <- sampleIO testHMMMHPost
   -- trace <- sampleIOFixed testHMMMHPred
   -- trace <- sampleIOFixed testHMMStBasic
-  -- trace <- sampleIOFixed testSIRBasic
+  trace <- sampleIOFixed testSIRBasic
   -- trace <- sampleIOFixed testSIRLWInf
   -- trace <- sampleIOFixed testSIRMHPost
   -- trace <- sampleIOFixed testSIRMHPred

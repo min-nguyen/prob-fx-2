@@ -59,6 +59,7 @@ library
                       Util,
                       Extensible.Freer,
                       Extensible.Example,
+                      Extensible.ExamplePaper,
                       Extensible.EffExample,
                       Extensible.Reader,
                       Extensible.DataSets,
@@ -75,7 +76,8 @@ library
                       Extensible.Inference.LW,
                       Extensible.Inference.MH,
                       Extensible.Inference.Inf,
-                      Extensible.Test
+                      Extensible.Test,
+                      Extensible.TestPaper
 
   -- Modules included in this library but not exported.
   -- other-modules:
