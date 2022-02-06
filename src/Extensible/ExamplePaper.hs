@@ -78,15 +78,20 @@ transSI beta (LatentState sus inf rec) = do
 
 transIR :: Double -> LatentState -> Model env ts LatentState
 transIR gamma (LatentState sus inf rec)  = do
-  dN_IR <- binomial sus (-gamma)
+  dN_IR <- binomial inf (1 - exp (-gamma))
   let inf' = inf - dN_IR
       rec' = rec + dN_IR
   return $ LatentState sus inf' rec'
 
-transSIR ::  Double -> Double -> LatentState ->Model env ts LatentState
-transSIR beta gamma = transSI beta >=> transIR gamma
+transSIR :: Member (Writer [LatentState]) ts
+  => Double -> Double -> LatentState -> Model env ts LatentState
+transSIR beta gamma latentSt = do
+  latentSt' <- (transSI beta >=> transIR gamma) latentSt
+  tellM [latentSt']
+  return latentSt'
 
-hmmSIR :: Observable env "infobs" Int
+hmmSIR :: Member (Writer [LatentState]) ts
+  => Observable env "infobs" Int
   => Params -> LatentState -> Model env ts LatentState
 hmmSIR  (Params beta gamma rho) latentState = do
   latentState'   <- transSIR beta gamma latentState
@@ -99,9 +104,11 @@ paramsPrior = do
   pRho   <- beta' 2 7 #ρ
   pBeta  <- gamma' 2 1 #β
   pGamma <- gamma' 1 (1/8) #γ
-  return (Params pRho pBeta pGamma)
+  return (Params pBeta pGamma pRho)
 
-hmmSIRNsteps :: (Observable env "infobs" Int, Observables env '["ρ", "β", "γ"] Double)
+hmmSIRNsteps ::
+     Member (Writer [LatentState]) ts
+  => (Observable env "infobs" Int, Observables env '["ρ", "β", "γ"] Double)
   => Int -> LatentState -> Model env ts LatentState
 hmmSIRNsteps n latentState  = do
   params       <- paramsPrior

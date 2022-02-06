@@ -37,6 +37,25 @@ runSimulate :: (ts ~ '[Dist, Observe, AffReader env, Sample])
 runSimulate ys m
   = (runSample . runAffReader ys . runObserve . runDist) (runModel m)
 
+simulateWith :: (ts ~ '[Dist, Observe, AffReader env, Sample])
+  => Int                             -- Number of iterations per data point
+  -> (b -> Model env (t:ts) a)       -- Model awaiting input variable
+  -> [b]                             -- List of model input variables
+  -> [LRec env]                      -- List of model observed variables
+  -> (Model env (t:ts) a -> Model env ts c)
+  -> Sampler [c]
+simulateWith n model xs envs h = do
+  let runN (x, env) = replicateM n (runSimulateWith env (model x) h)
+  concat <$> mapM runN (zip xs envs)
+
+runSimulateWith :: (ts ~ '[Dist, Observe, AffReader env, Sample])
+ => LRec env
+ -> Model env (t:ts) a
+ -> (Model env (t:ts) a -> Model env ts c)
+ -> Sampler c
+runSimulateWith ys m h
+  = (runSample . runAffReader ys . runObserve . runDist) (runModel $ h m)
+
 runObserve :: Freer (Observe : ts) a -> Freer ts  a
 runObserve (Pure x) = return x
 runObserve (Free u k) = case u of

@@ -47,8 +47,9 @@ latentState = Example.LatentState
 fromLatentState :: Example.LatentState -> (Int, Int, Int)
 fromLatentState (Example.LatentState sus inf recov) = (sus, inf, recov)
 
-testSIRBasic :: Sampler ([(Int, Int, Int)], [Int])
+testSIRBasic :: Sampler [(Example.LatentState, [Example.LatentState])]
 testSIRBasic = do
-  bs <- Simulate.simulate 1 (Example.hmmSIRNsteps 100) [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
+  bs <- Simulate.simulateWith 1 (Example.hmmSIRNsteps 100) [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])] runWriterM
           --[mkRecordSIR ([0.29], [0.25], [0.015])]
-  undefined
+  let sirTrace = map (map fromLatentState . snd) bs
+  return bs

@@ -14,6 +14,7 @@ import Extensible.OpenSum (OpenSum)
 import qualified Extensible.OpenSum as OpenSum
 import Extensible.Sampler
 import Extensible.State ( State, get, put, modify, runState )
+import Extensible.Writer
 import Extensible.IO
 import GHC.Generics
 import GHC.Types
@@ -63,6 +64,12 @@ instance Monad (Model env ts) where
 
 printM :: Member Sample ts => String -> Model env ts ()
 printM x = Model $ prinT x
+
+tellM :: Member (Writer w) ts => w -> Model env ts ()
+tellM w = Model $ tell w
+
+runWriterM :: Monoid w => Model env (Writer w : ts) v -> Model env ts (v, w)
+runWriterM m = Model $ runWriter $ runModel m
 
 putM :: Member (State s) ts => s -> Model env ts ()
 putM x = Model $ put x

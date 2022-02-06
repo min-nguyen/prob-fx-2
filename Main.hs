@@ -17,6 +17,7 @@ import Extensible.Model
 import Data.Extensible ()
 import Extensible.Sampler
 import Extensible.Test
+import qualified Extensible.TestPaper as TestPaper
 import Util
 -- testAndWrite :: Show a => Sampler a -> IO ()
 -- testAndWrite prog = do
@@ -71,7 +72,7 @@ main = do
   -- trace <- sampleIO testHMMMHPost
   -- trace <- sampleIOFixed testHMMMHPred
   -- trace <- sampleIOFixed testHMMStBasic
-  trace <- sampleIOFixed testSIRBasic
+  -- trace <- sampleIOFixed testSIRBasic
   -- trace <- sampleIOFixed testSIRLWInf
   -- trace <- sampleIOFixed testSIRMHPost
   -- trace <- sampleIOFixed testSIRMHPred
@@ -87,7 +88,7 @@ main = do
   -- trace <- sampleIOFixed testGMMMHPost
   -- trace <- sampleIOFixed testSchBasic
   -- trace <- sampleIOFixed testSchMHPost
-
+  trace <- sampleIOFixed TestPaper.testSIRBasic
   let traceStr = show trace
   putStrLn traceStr
   -- print (zip (zip nnLogX0 nnLogX1) nnLogY)
