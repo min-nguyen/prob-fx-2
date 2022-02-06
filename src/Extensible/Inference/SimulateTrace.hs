@@ -13,7 +13,6 @@ module Extensible.Inference.SimulateTrace where
 -- import Data.Extensible hiding (Member)
 import qualified Data.Map as Map
 import Data.Map (Map)
-import Data.Proxy
 import Extensible.OpenProduct
 import Control.Monad
 import Control.Monad.Trans.Class
@@ -27,6 +26,7 @@ import Extensible.Example as Example
 import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum)
 import Unsafe.Coerce (unsafeCoerce)
+import Util
 
 type SampleMap = Map Addr (OpenSum PrimVal)
 
