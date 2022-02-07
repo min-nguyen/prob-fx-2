@@ -92,7 +92,7 @@ hmmNSteps :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Doub
 hmmNSteps n x = do
   trans_p <- uniform' 0 1 #trans_p
   obs_p   <- uniform' 0 1 #obs_p
-  foldl (>=>) return  (replicate n (hmm trans_p obs_p)) x
+  foldr (<=<) return  (replicate n (hmm trans_p obs_p)) x
 
 {- SIR -}
 data Params = Params {

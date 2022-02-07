@@ -114,7 +114,7 @@ library
 
   -- Base language which the package is written in.
   default-language:    Haskell2010
-
+  ghc-options:         -O2 -rtsopts -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math
 
 executable models
   -- .hs or .lhs file containing the Main module.
@@ -136,7 +136,7 @@ executable models
 
   -- Base language which the package is written in.
   default-language:    Haskell2010
-
+  ghc-options:         -O2 -rtsopts -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math
 
 executable benchmark-program
   -- .hs or .lhs file containing the Main module.
@@ -158,4 +158,4 @@ executable benchmark-program
   hs-source-dirs:      benchmarking
   -- Base language which the package is written in.
   default-language:    Haskell2010
-
+  ghc-options:         -O2 -rtsopts -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math

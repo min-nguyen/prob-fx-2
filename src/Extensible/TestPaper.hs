@@ -68,6 +68,22 @@ testLinRegrMHPost n_samples = do
                    [mkRecordLinRegrY (map ((+2) . (*3)) [0 .. 100])]
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
+{- HMM -}
+
+mkRecordHMM :: ([Int], Double, Double) -> LRec Example.HMMEnv
+mkRecordHMM (ys, transp, obsp) = #y := ys <:> #trans_p := [transp] <:> #obs_p := [obsp] <:>  nil
+
+mkRecordHMMy :: [Int] -> LRec Example.HMMEnv
+mkRecordHMMy ys = #y := ys <:> #trans_p := [] <:> #obs_p := [] <:>  nil
+
+testHMMBasic :: Int -> Sampler [Int]
+testHMMBasic n_samples = do
+  let hmm_length   = 100
+  bs <- Simulate.simulate n_samples (Example.hmmNSteps hmm_length)
+                          [0] [mkRecordHMM ([], 0.5, 0.9)]
+  return $ map fst bs
+
+
 {- SIR -}
 mkRecordSIR :: ([Double], [Double], [Double]) -> LRec Example.SIREnv
 mkRecordSIR (βv, γv, ρv) = #β := βv <:> #γ := γv <:>  #ρ := ρv <:>  #infobs := [] <:> nil

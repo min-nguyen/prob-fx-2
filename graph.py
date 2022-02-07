@@ -374,6 +374,7 @@ def main():
     axs1.set_ylabel("obs state")
     axs1.scatter(xs.ravel(), ys.ravel(), cmap=color_map)
     axs1.set_title('HMM - Simulation')
+
     plt.show()
   if arg == "hmm-lw-sim":
     # Note: not a very useful simulation
