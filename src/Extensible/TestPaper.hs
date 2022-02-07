@@ -36,10 +36,10 @@ import Extensible.Inference.SimulateTrace (extractSamples)
 
 {- Util -}
 mkRecordSIR :: ([Double], [Double], [Double]) -> LRec Example.SIREnv
-mkRecordSIR (ρv, βv, γv) = #infobs := [] <:> #ρ := ρv <:> #β := βv <:> #γ := γv <:> nil
+mkRecordSIR (βv, γv, ρv) = #β := βv <:> #γ := γv <:>  #ρ := ρv <:>  #infobs := [] <:> nil
 
 mkRecordSIRy :: [Int] -> LRec Example.SIREnv
-mkRecordSIRy ys = #infobs := ys <:> #ρ := [] <:> #β := [] <:> #γ := [] <:> nil
+mkRecordSIRy ys = #β := [] <:> #γ := [] <:>  #ρ := [] <:> #infobs := ys <:> nil
 
 latentState :: Int -> Int -> Int -> Example.LatentState
 latentState = Example.LatentState
@@ -55,7 +55,7 @@ testSIRBasic = do
                    Simulate.SampleMap)]   -- trace of samples
                 <- Simulate.simulateWith 1 (Example.hmmSIRNsteps 100)
                    [latentState 762 1 0]
-                   [mkRecordSIR ([0.3], [0.7], [0.009])]
+                   [mkRecordSIR ([0.7], [0.009], [0.3])]
                    runWriterM
   let fstOutput = head simOutputs
       sirLog    :: [Example.LatentState] = (snd . fst) fstOutput
@@ -72,7 +72,7 @@ testSIRBasic' = do
   simOutputs :: [((Example.LatentState, [Example.LatentState]), Simulate.SampleMap)]
                 <- Simulate.simulate 1 (runWriterM . Example.hmmSIRNsteps 100)
                    [latentState 762 1 0]
-                   [mkRecordSIR ([0.3], [0.7], [0.009])]
+                   [mkRecordSIR ([0.7], [0.009], [0.3])]
 
   let fstOutput = head simOutputs
       sirLog    :: [Example.LatentState] = (snd . fst) fstOutput

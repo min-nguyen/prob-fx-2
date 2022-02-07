@@ -55,10 +55,11 @@ data LatentState = LatentState {
 } deriving Show
 
 type SIREnv =
-  '[ "infobs" ':= Int,
-     "ρ" ':= Double,
+  '[
      "β" ':= Double,
-     "γ" ':= Double
+     "γ" ':= Double,
+      "ρ" ':= Double,
+      "infobs" ':= Int
    ]
 
 type InfectionCount = Int
@@ -66,7 +67,8 @@ type InfectionCount = Int
 obsSIR :: Observable env "infobs" Int
   => Double -> LatentState -> Model env ts Int
 obsSIR rho (LatentState _ inf _)  = do
-  poisson' (rho * fromIntegral inf) #infobs
+  i <- poisson' (rho * fromIntegral inf) #infobs
+  return i
 
 transSI :: Double -> LatentState -> Model env ts LatentState
 transSI beta (LatentState sus inf rec) = do
