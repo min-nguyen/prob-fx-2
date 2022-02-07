@@ -51,7 +51,7 @@ def main():
     IC_ = X_InfCount_Spline(X_)
 
     fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("time steps")
+    axs1.set_xlabel("days")
     axs1.set_ylabel("population")
     axs1.plot(X_, S_, color='blue', label='Actual Susceptible')
     axs1.plot(X_, I_, color='red', label='Actual Infected')

@@ -59,8 +59,8 @@ testSIRBasic = do
                    [latState0] [params] runWriterM
   let fstOutput = head simOutputs
       sirLog    :: [Example.LatState] = (snd . fst) fstOutput
-      sampleMap :: Simulate.SampleMap    = snd fstOutput
-      infobs    :: [Int]                 = Simulate.extractSamples ("infobs", Proxy @Int) sampleMap
+      sampleMap :: Simulate.SampleMap = snd fstOutput
+      infobs    :: [Int]              = Simulate.extractSamples (#infob, Proxy @Int) sampleMap
 
       sirLog_tuples :: [(Int, Int, Int)] = map fromLatState sirLog
 
@@ -69,14 +69,13 @@ testSIRBasic = do
 {- Version of SIR simulation which instead directly composes runWriterM with the model, instead of using Simulate.simulateWith -}
 testSIRBasic' :: Sampler [((Example.LatState, [Example.LatState]), Simulate.SampleMap)]
 testSIRBasic' = do
-  simOutputs :: [((Example.LatState, [Example.LatState]), Simulate.SampleMap)]
-                <- Simulate.simulate 1 (runWriterM . Example.hmmSIRNsteps 100)
+  simOutputs <- Simulate.simulate 1 (runWriterM . Example.hmmSIRNsteps 100)
                    [latentState 762 1 0]
                    [mkRecordSIR ([0.7], [0.009], [0.3])]
 
   let fstOutput = head simOutputs
       sirLog    :: [Example.LatState] = (snd . fst) fstOutput
       sampleMap :: Simulate.SampleMap    = snd fstOutput
-      infobs    :: [Int]                 = Simulate.extractSamples ("infobs", Proxy @Int) sampleMap
+      infobs    :: [Int]                 = Simulate.extractSamples (#infobs, Proxy @Int) sampleMap
 
   return simOutputs
