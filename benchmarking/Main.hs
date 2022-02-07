@@ -7,8 +7,10 @@ import Extensible.Sampler
 
 
 main :: IO ()
-main = benchmarkTopicSim
-
+main = do
+  -- benchmarkTopicSim
+  benchmarkTopicLW
+  benchmarkTopicMH
 benchmarkLinRegrSim = defaultMain [
     bgroup "linRegrSim" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testLinRegrBasic 2000),
                         bench "4000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrBasic 4000),
@@ -63,4 +65,21 @@ benchmarkTopicSim = defaultMain [
                       bench "6000 x 100"  $ nfIO $ sampleIOFixed (testTopicBasic 6000),
                       bench "8000 x 100"  $ nfIO $ sampleIOFixed (testTopicBasic 8000),
                       bench "10000 x 100" $ nfIO $ sampleIOFixed (testTopicBasic 10000) ]
+  ]
+
+benchmarkTopicLW = defaultMain [
+    bgroup "topicLW" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testTopicLW 2000),
+                      bench "4000 x 100"  $ nfIO $ sampleIOFixed (testTopicLW 4000),
+                      bench "6000 x 100"  $ nfIO $ sampleIOFixed (testTopicLW 6000),
+                      bench "8000 x 100"  $ nfIO $ sampleIOFixed (testTopicLW 8000),
+                      bench "10000 x 100" $ nfIO $ sampleIOFixed (testTopicLW 10000) ]
+  ]
+
+
+benchmarkTopicMH = defaultMain [
+    bgroup "topicMH" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testTopicMHPost 2000),
+                      bench "4000 x 100"  $ nfIO $ sampleIOFixed (testTopicMHPost 4000),
+                      bench "6000 x 100"  $ nfIO $ sampleIOFixed (testTopicMHPost 6000),
+                      bench "8000 x 100"  $ nfIO $ sampleIOFixed (testTopicMHPost 8000),
+                      bench "10000 x 100" $ nfIO $ sampleIOFixed (testTopicMHPost 10000) ]
   ]

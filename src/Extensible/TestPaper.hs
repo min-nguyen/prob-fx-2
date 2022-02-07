@@ -37,7 +37,6 @@ import Unsafe.Coerce
 import Extensible.Inference.SimulateTrace (extractSamples)
 
 {- Linear Regression -}
-
 mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> LRec Example.LinRegrEnv
 mkRecordLinRegr (y_vals, m_vals, c_vals, σ_vals) =
   (#y := y_vals) <:> (#m := m_vals) <:> (#c := c_vals) <:> (#σ := σ_vals) <:> nil
@@ -71,7 +70,6 @@ testLinRegrMHPost n_samples = do
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
 {- HMM -}
-
 mkRecordHMM :: ([Int], Double, Double) -> LRec Example.HMMEnv
 mkRecordHMM (ys, transp, obsp) = #y := ys <:> #trans_p := [transp] <:> #obs_p := [obsp] <:>  nil
 
@@ -162,7 +160,7 @@ testSIRBasic = do
 
   return (sirLog_tuples, infobs)
 
-{- Version of SIR simulation which instead directly composes runWriterM with the model, instead of using Simulate.simulateWith -}
+-- Version of SIR simulation which instead directly composes runWriterM with the model, instead of using Simulate.simulateWith
 testSIRBasic' :: Sampler [((Example.LatState, [Example.LatState]), Simulate.SampleMap)]
 testSIRBasic' = do
   simOutputs <- Simulate.simulate 1 (runWriterM . Example.hmmSIRNsteps 100)
