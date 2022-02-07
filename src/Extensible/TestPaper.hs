@@ -10,6 +10,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use camelCase" #-}
 
 module Extensible.TestPaper where
 
@@ -98,6 +100,34 @@ testHMMMHPost n_samples = do
   let hmm_n_steps   = 20
   mhTrace <- MH.mh n_samples (Example.hmmNSteps hmm_n_steps) ["trans_p", "obs_p"]
                              [0] [mkRecordHMMy hmm_data]
+  return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
+
+{- Topic model -}
+vocab :: [String]
+vocab = ["DNA", "evolution", "parsing", "phonology"]
+
+doc_words :: [String]
+doc_words     = ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA"]
+
+mkRecordTopic :: ([[Double]], [[Double]], [String]) -> LRec Example.TopicEnv
+mkRecordTopic (tps, wps, ys) =  #θ := tps <:>  #φ := wps <:> #w := ys <:>nil
+
+testTopicBasic :: Int -> Sampler [[String]]
+testTopicBasic n_samples = do
+  bs <- Simulate.simulate n_samples (Example.documentDist vocab 2)
+                        [100] [mkRecordTopic ([[0.5, 0.5]], [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],[1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]], [])]
+  return $ map fst bs
+
+testTopicLW :: Int -> Sampler [([String], Double)]
+testTopicLW n_samples = do
+  lwTrace <- LW.lw n_samples (Example.documentDist vocabulary 2)
+                        [100] [mkRecordTopic ([], [], doc_words)]
+  return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
+
+testTopicMHPost :: Int -> Sampler [([String], MH.LPMap)]
+testTopicMHPost n_samples = do
+  mhTrace <- MH.mh n_samples (Example.documentDist vocabulary 2) ["φ", "θ"]
+                       [100] [mkRecordTopic ([], [], doc_words)]
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
 {- SIR -}
