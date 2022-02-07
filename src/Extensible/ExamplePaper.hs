@@ -48,7 +48,7 @@ data Params = Params {
     rhoP   :: Double -- ^ Rate of detection
 }
 
-data LatentState = LatentState {
+data LatState = LatState {
     sus   :: Int, -- ^ Number of people susceptible to infection
     inf   :: Int, -- ^ Number of people currently infected
     recov :: Int -- ^ Number of people recovered from infection
@@ -65,36 +65,36 @@ type SIREnv =
 type InfectionCount = Int
 
 obsSIR :: Observable env "infobs" Int
-  => Double -> LatentState -> Model env ts Int
-obsSIR rho (LatentState _ inf _)  = do
+  => Double -> LatState -> Model env ts Int
+obsSIR rho (LatState _ inf _)  = do
   i <- poisson' (rho * fromIntegral inf) #infobs
   return i
 
-transSI :: Double -> LatentState -> Model env ts LatentState
-transSI beta (LatentState sus inf rec) = do
+transSI :: Double -> LatState -> Model env ts LatState
+transSI beta (LatState sus inf rec) = do
   let pop = sus + inf + rec
   dN_SI <- binomial sus (1 - exp ((-beta * fromIntegral inf) / fromIntegral pop))
   let sus' = sus - dN_SI
       inf' = inf + dN_SI
-  return $ LatentState sus' inf' rec
+  return $ LatState sus' inf' rec
 
-transIR :: Double -> LatentState -> Model env ts LatentState
-transIR gamma (LatentState sus inf rec)  = do
+transIR :: Double -> LatState -> Model env ts LatState
+transIR gamma (LatState sus inf rec)  = do
   dN_IR <- binomial inf (1 - exp (-gamma))
   let inf' = inf - dN_IR
       rec' = rec + dN_IR
-  return $ LatentState sus inf' rec'
+  return $ LatState sus inf' rec'
 
-transSIR :: Member (Writer [LatentState]) ts
-  => Double -> Double -> LatentState -> Model env ts LatentState
+transSIR :: Member (Writer [LatState]) ts
+  => Double -> Double -> LatState -> Model env ts LatState
 transSIR beta gamma latentSt = do
   latentSt' <- (transSI beta >=> transIR gamma) latentSt
   tellM [latentSt']
   return latentSt'
 
-hmmSIR :: Member (Writer [LatentState]) ts
+hmmSIR :: Member (Writer [LatState]) ts
   => Observable env "infobs" Int
-  => Params -> LatentState -> Model env ts LatentState
+  => Params -> LatState -> Model env ts LatState
 hmmSIR  (Params beta gamma rho) latentState = do
   latentState'   <- transSIR beta gamma latentState
   infectionCount <- obsSIR rho latentState'
@@ -109,9 +109,9 @@ paramsPrior = do
   return (Params pBeta pGamma pRho)
 
 hmmSIRNsteps ::
-     Member (Writer [LatentState]) ts
+     Member (Writer [LatState]) ts
   => (Observable env "infobs" Int, Observables env '["ρ", "β", "γ"] Double)
-  => Int -> LatentState -> Model env ts LatentState
+  => Int -> LatState -> Model env ts LatState
 hmmSIRNsteps n latentState  = do
   params       <- paramsPrior
   latentState' <- foldl (>=>) return (replicate n $ hmmSIR params) latentState

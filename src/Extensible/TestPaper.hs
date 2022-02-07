@@ -41,41 +41,41 @@ mkRecordSIR (βv, γv, ρv) = #β := βv <:> #γ := γv <:>  #ρ := ρv <:>  #in
 mkRecordSIRy :: [Int] -> LRec Example.SIREnv
 mkRecordSIRy ys = #β := [] <:> #γ := [] <:>  #ρ := [] <:> #infobs := ys <:> nil
 
-latentState :: Int -> Int -> Int -> Example.LatentState
-latentState = Example.LatentState
+latentState :: Int -> Int -> Int -> Example.LatState
+latentState = Example.LatState
 
-fromLatentState :: Example.LatentState -> (Int, Int, Int)
-fromLatentState (Example.LatentState sus inf recov) = (sus, inf, recov)
+fromLatState :: Example.LatState -> (Int, Int, Int)
+fromLatState (Example.LatState sus inf recov) = (sus, inf, recov)
 
 testSIRBasic :: Sampler ([(Int, Int, Int)], -- sir values
                           [Int])            -- observed infections
 testSIRBasic = do
-  simOutputs :: [((Example.LatentState,   -- model output
-                  [Example.LatentState]), -- writer effect log of sir latent states
+  let latState0  = Example.LatState { Example.sus = 762, Example.inf = 1, Example.recov = 0 }
+      params     = #β := [0.7] <:> #γ := [0.009] <:>  #ρ := [0.3] <:>  #infobs := [] <:> nil
+  simOutputs :: [((Example.LatState,   -- model output
+                  [Example.LatState]), -- writer effect log of sir latent states
                    Simulate.SampleMap)]   -- trace of samples
                 <- Simulate.simulateWith 1 (Example.hmmSIRNsteps 100)
-                   [latentState 762 1 0]
-                   [mkRecordSIR ([0.7], [0.009], [0.3])]
-                   runWriterM
+                   [latState0] [params] runWriterM
   let fstOutput = head simOutputs
-      sirLog    :: [Example.LatentState] = (snd . fst) fstOutput
+      sirLog    :: [Example.LatState] = (snd . fst) fstOutput
       sampleMap :: Simulate.SampleMap    = snd fstOutput
       infobs    :: [Int]                 = Simulate.extractSamples ("infobs", Proxy @Int) sampleMap
 
-      sirLog_tuples :: [(Int, Int, Int)] = map fromLatentState sirLog
+      sirLog_tuples :: [(Int, Int, Int)] = map fromLatState sirLog
 
   return (sirLog_tuples, infobs)
 
 {- Version of SIR simulation which instead directly composes runWriterM with the model, instead of using Simulate.simulateWith -}
-testSIRBasic' :: Sampler [((Example.LatentState, [Example.LatentState]), Simulate.SampleMap)]
+testSIRBasic' :: Sampler [((Example.LatState, [Example.LatState]), Simulate.SampleMap)]
 testSIRBasic' = do
-  simOutputs :: [((Example.LatentState, [Example.LatentState]), Simulate.SampleMap)]
+  simOutputs :: [((Example.LatState, [Example.LatState]), Simulate.SampleMap)]
                 <- Simulate.simulate 1 (runWriterM . Example.hmmSIRNsteps 100)
                    [latentState 762 1 0]
                    [mkRecordSIR ([0.7], [0.009], [0.3])]
 
   let fstOutput = head simOutputs
-      sirLog    :: [Example.LatentState] = (snd . fst) fstOutput
+      sirLog    :: [Example.LatState] = (snd . fst) fstOutput
       sampleMap :: Simulate.SampleMap    = snd fstOutput
       infobs    :: [Int]                 = Simulate.extractSamples ("infobs", Proxy @Int) sampleMap
 
