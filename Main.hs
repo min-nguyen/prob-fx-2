@@ -88,7 +88,8 @@ main = do
   -- trace <- sampleIOFixed testGMMMHPost
   -- trace <- sampleIOFixed testSchBasic
   -- trace <- sampleIOFixed testSchMHPost
-  trace <- sampleIOFixed TestPaper.testSIRBasic
+  -- trace <- sampleIOFixed TestPaper.testSIRBasic
+  trace <- sampleIOFixed (TestPaper.testLinRegrBasic 200)
   let traceStr = show trace
   putStrLn traceStr
   -- print (zip (zip nnLogX0 nnLogX1) nnLogY)

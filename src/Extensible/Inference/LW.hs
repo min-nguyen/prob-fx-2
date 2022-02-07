@@ -25,12 +25,12 @@ import Extensible.State
 import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum(..))
 
-type Ⲭ = Map Addr (OpenSum PrimVal)
+type SampleMap = Map Addr (OpenSum PrimVal)
 
-type TraceLW a = [(a, Ⲭ, Double)]
+type TraceLW a = [(a, SampleMap, Double)]
 
-updateTrace :: forall ts x. (Member (State Ⲭ) ts, OpenSum.Member x PrimVal) => Addr -> x -> Freer ts ()
-updateTrace α x = modify (Map.insert α (OpenSum.inj x) :: Ⲭ -> Ⲭ)
+updateTrace :: forall ts x. (Member (State SampleMap) ts, OpenSum.Member x PrimVal) => Addr -> x -> Freer ts ()
+updateTrace α x = modify (Map.insert α (OpenSum.inj x) :: SampleMap -> SampleMap)
 
 -- | Run LW n times for multiple data points
 lw :: (ts ~ '[AffReader env, Dist, Observe, Sample])
@@ -46,7 +46,7 @@ lw n model xs envs = do
 -- | Run LW once for single data point
 runLW :: ts ~ '[AffReader env, Dist, Observe, Sample]
   => LRec env -> Model env ts a
-  -> Sampler (a, Ⲭ, Double)
+  -> Sampler (a, SampleMap, Double)
 runLW env model = do
   ((x, samples), p) <- (runSample
                             . runObserve
@@ -59,12 +59,12 @@ runLW env model = do
 
 runLWpaper :: ts ~ '[AffReader env, Dist,  Observe, Sample]
   => LRec env -> Model env ts a
-  -> Sampler ((a, Ⲭ), Double)
+  -> Sampler ((a, SampleMap), Double)
 runLWpaper env m =
   (runSample . runObserve . runState Map.empty
    . transformLW . runDist . runAffReader env) (runModel m)
 
-transformLW :: (Member Sample ts) => Freer ts a -> Freer (State Ⲭ ': ts) a
+transformLW :: (Member Sample ts) => Freer ts a -> Freer (State SampleMap ': ts) a
 transformLW = install return
   (\x tx k -> case tx of
       Sample d α -> case distDict d of
@@ -73,7 +73,7 @@ transformLW = install return
       Printer s  -> k ()
   )
 
-transformLW' :: (Member (State Ⲭ) ts, Member Sample ts)
+transformLW' :: (Member (State SampleMap) ts, Member Sample ts)
   => Freer ts a -> Freer ts a
 transformLW' (Pure x) = return x
 transformLW' (Free u k) = case u  of
@@ -81,7 +81,7 @@ transformLW' (Free u k) = case u  of
                                       transformLW' (k x))
     _ -> Free u (transformLW' . k)
 
--- transformLW' :: (Member (State Ⲭ) ts, Member Sample ts)
+-- transformLW' :: (Member (State SampleMap) ts, Member Sample ts)
 --   => Freer ts a -> Freer ts a
 -- transformLW' = replaceRelay return undefined
 

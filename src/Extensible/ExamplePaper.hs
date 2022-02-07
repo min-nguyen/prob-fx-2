@@ -42,6 +42,27 @@ import Data.Vector.Fusion.Bundle (findIndex)
 import GHC.Show (Show)
 import qualified Data.Map as Map
 
+{- Linear regression -}
+type LinRegrEnv =
+    '[  "y" ':= Double,
+        "m" ':=  Double,
+        "c" ':=  Double,
+        "σ" ':=  Double
+     ]
+
+linearRegression :: forall env rs .
+  Observables env '["y", "m", "c", "σ"] Double =>
+  [Double] -> Model env rs [Double]
+linearRegression xs = do
+  m <- normal' 0 3 #m
+  c <- normal' 0 5 #c
+  σ <- uniform' 1 3 #σ
+  ys <- foldM (\ys x -> do
+                    y <- normal' (m * x + c) σ #y
+                    return (y:ys)) [] xs
+  return ys
+
+{- SIR -}
 data Params = Params {
     betaP  :: Double, -- ^ Mean contact rate between susceptible and infected people
     gammaP :: Double, -- ^ Mean recovery rate
