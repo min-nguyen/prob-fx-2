@@ -62,6 +62,38 @@ linearRegression xs = do
                     return (y:ys)) [] xs
   return ys
 
+{- HMM -}
+
+type HMMEnv =
+  '[ "y"       ':= Int,
+     "trans_p" ':= Double,
+     "obs_p"   ':= Double
+   ]
+
+transitionModel ::  Double -> Int -> Model env ts Int
+transitionModel transition_p x_prev = do
+  dX <- boolToInt <$> bernoulli transition_p
+  return (dX + x_prev)
+
+observationModel :: (Observable env "y" Int)
+  => Double -> Int -> Model env ts Int
+observationModel observation_p x = do
+  binomial' x observation_p #y
+
+hmm :: (Observable env "y" Int)
+  => Double -> Double -> Int -> Model env ts Int
+hmm transition_p observation_p x_prev = do
+  x_n <- transitionModel  transition_p x_prev
+  y_n <- observationModel observation_p x_n
+  return x_n
+
+hmmNSteps :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
+  => Int -> (Int -> Model env ts Int)
+hmmNSteps n x = do
+  trans_p <- uniform' 0 1 #trans_p
+  obs_p   <- uniform' 0 1 #obs_p
+  foldl (>=>) return  (replicate n (hmm trans_p obs_p)) x
+
 {- SIR -}
 data Params = Params {
     betaP  :: Double, -- ^ Mean contact rate between susceptible and infected people

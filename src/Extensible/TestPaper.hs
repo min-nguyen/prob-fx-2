@@ -62,6 +62,12 @@ testLinRegrLWInf n_samples = do
                    [mkRecordLinRegrY (map ((+2) . (*3)) [0 .. 100])]
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
 
+testLinRegrMHPost :: Int -> Sampler [([Double], MH.LPMap)]
+testLinRegrMHPost n_samples = do
+  mhTrace <- MH.mh n_samples Example.linearRegression [] [[0 .. 100]]
+                   [mkRecordLinRegrY (map ((+2) . (*3)) [0 .. 100])]
+  return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
+
 {- SIR -}
 mkRecordSIR :: ([Double], [Double], [Double]) -> LRec Example.SIREnv
 mkRecordSIR (βv, γv, ρv) = #β := βv <:> #γ := γv <:>  #ρ := ρv <:>  #infobs := [] <:> nil

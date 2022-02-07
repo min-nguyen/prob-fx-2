@@ -7,7 +7,7 @@ import Extensible.Sampler
 
 
 main :: IO ()
-main = benchmarkLinRegrLW
+main = benchmarkLinRegrMH
 
 benchmarkLinRegrSim = defaultMain [
     bgroup "linRegrSim" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testLinRegrBasic 2000),
@@ -96,3 +96,11 @@ mean                 1.071 s    (1.018 s .. 1.155 s)
 std dev              78.72 ms   (2.666 ms .. 97.53 ms)
 variance introduced by outliers: 20% (moderately inflated)
 -}
+
+benchmarkLinRegrMH = defaultMain [
+    bgroup "linRegrMH" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testLinRegrMHPost 2000),
+                        bench "4000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrMHPost 4000),
+                        bench "6000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrMHPost 6000),
+                        bench "8000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrMHPost 8000),
+                        bench "10000 x 100" $ nfIO $ sampleIOFixed (testLinRegrMHPost 10000) ]
+  ]
