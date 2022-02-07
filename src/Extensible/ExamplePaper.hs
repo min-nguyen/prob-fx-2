@@ -63,7 +63,6 @@ linearRegression xs = do
   return ys
 
 {- HMM -}
-
 type HMMEnv =
   '[ "y"       ':= Int,
      "trans_p" ':= Double,
@@ -93,6 +92,68 @@ hmmNSteps n x = do
   trans_p <- uniform' 0 1 #trans_p
   obs_p   <- uniform' 0 1 #obs_p
   foldr (<=<) return  (replicate n (hmm trans_p obs_p)) x
+
+{- HMM Loop-}
+hmmForM :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double) =>
+  Int -> Int -> Model env ts Int
+hmmForM n x = do
+  trans_p <- uniform' 0 1 #trans_p
+  obs_p   <- uniform' 0 1 #obs_p
+  let hmmLoop :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double) => Int -> Int -> Model env ts Int
+      hmmLoop 0 x_prev = return x_prev
+      hmmLoop i x_prev = do
+        dX <- boolToInt <$> bernoulli trans_p
+        let x = x_prev + dX
+        binomial' x obs_p #y
+        hmmLoop (i - 1) x
+  hmmLoop n x
+
+{- Topic Model -}
+type TopicEnv =
+  '[ "θ" ':= [Double],
+     "φ" ':= [Double],
+     "w" ':= String
+   ]
+
+-- Assignment of word probabilities to a topic
+wordDist :: Observable env "w" String =>
+  [String] -> [Double] -> Model env ts String
+wordDist vocab ps =
+  categorical' (zip vocab ps) #w
+
+-- Probability of each word in a topic
+topicWordPrior :: Observable env "φ" [Double]
+  => [String] -> Model env ts [Double]
+topicWordPrior vocab
+  = dirichlet' (replicate (length vocab) 1) #φ
+
+-- Probability of each topic in a document
+docTopicPrior :: Observable env "θ" [Double]
+  => Int -> Model env ts [Double]
+docTopicPrior n_topics = dirichlet' (replicate n_topics 1) #θ
+
+-- Learns topic model for a single document
+documentDist :: (Observables env '["φ", "θ"] [Double],
+                 Observable env "w" String)
+  => [String] -> Int -> Int -> Model env ts [String]
+documentDist vocab n_topics n_words = do
+  -- Generate distribution over words for each topic
+  topic_word_ps <- replicateM n_topics $ topicWordPrior vocab
+  -- Distribution over topics for a given document
+  doc_topic_ps  <- docTopicPrior n_topics
+  replicateM n_words (do  z <- discrete doc_topic_ps
+                          let word_ps = topic_word_ps !! z
+                          wordDist vocab word_ps)
+
+-- Learns topic models for multiple documents
+topicModel :: (Observables env '["φ", "θ"] [Double],
+               Observable env "w" String)
+  => [String] ->
+     Int      ->
+     [Int]    -> -- Number of words per document
+     Model env ts [[String]]
+topicModel vocab n_topics doc_words = do
+  mapM (documentDist vocab n_topics) doc_words
 
 {- SIR -}
 data Params = Params {

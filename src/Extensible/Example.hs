@@ -222,20 +222,6 @@ hmmNSteps n x = do
                   return (x_n:xs, y_n:ys))) ([x], [])
   return (reverse xs, reverse ys)
 
-hmmForM :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double) =>
-  Int -> Int -> Model env ts Int
-hmmForM n x = do
-  trans_p <- uniform' 0 1 #trans_p
-  obs_p   <- uniform' 0 1 #obs_p
-  let hmmLoop :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double) => Int -> Int -> Model env ts Int
-      hmmLoop 0 x_prev = return x_prev
-      hmmLoop i x_prev = do
-        dX <- boolToInt <$> bernoulli trans_p
-        let x = x_prev + dX
-        binomial' x obs_p #y
-        hmmLoop (i - 1) x
-  hmmLoop n x
-
 -- | Hidden Markov Model using State effect
 transitionModelSt ::  Double -> Int -> Model env ts Int
 transitionModelSt transition_p x_prev = do
