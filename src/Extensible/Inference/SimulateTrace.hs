@@ -12,6 +12,7 @@ module Extensible.Inference.SimulateTrace where
 
 -- import Data.Extensible hiding (Member)
 import qualified Data.Map as Map
+import Data.Maybe
 import Data.Map (Map)
 import Extensible.OpenProduct
 import Control.Monad
@@ -34,9 +35,9 @@ type Trace a = [(a, SampleMap)]
 
 extractSamples ::  forall a. (Eq a, OpenSum.Member a PrimVal) => (Tag, Proxy a) -> SampleMap -> [a]
 extractSamples (x, typ)  =
-    map (unsafeCoerce . snd)
+    map (fromJust . OpenSum.prj @a . snd)
   . Map.toList
-  . Map.filterWithKey  (\(tag, idx) _ -> tag == x)
+  . Map.filterWithKey (\(tag, idx) _ -> tag == x)
 
 simulate :: (ts ~ '[Dist, Observe, AffReader env, Sample])
   => Int                             -- Number of iterations per data point

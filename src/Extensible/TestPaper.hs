@@ -47,11 +47,11 @@ latentState = Example.LatentState
 fromLatentState :: Example.LatentState -> (Int, Int, Int)
 fromLatentState (Example.LatentState sus inf recov) = (sus, inf, recov)
 
-testSIRBasic :: Sampler [((Example.LatentState,   -- model output
-                          [Example.LatentState]), -- writer effect log of latent states
-                          Simulate.SampleMap)]    -- trace of samples
+testSIRBasic :: Sampler ([Example.LatentState], [Int])
 testSIRBasic = do
-  simOutputs :: [((Example.LatentState, [Example.LatentState]), Simulate.SampleMap)]
+  simOutputs :: [((Example.LatentState,   -- model output
+                  [Example.LatentState]), -- writer effect log of latent states
+                   Simulate.SampleMap)]   -- trace of samples
                 <- Simulate.simulateWith 1 (Example.hmmSIRNsteps 100)
                    [latentState 762 1 0]
                    [mkRecordSIR ([0.3], [0.7], [0.009])]
@@ -61,7 +61,7 @@ testSIRBasic = do
       sampleMap :: Simulate.SampleMap    = snd fstOutput
       infobs    :: [Int]                 = Simulate.extractSamples ("infobs", Proxy @Int) sampleMap
 
-  return simOutputs
+  return (sirLog, infobs)
 
 {- Version of SIR simulation which instead directly composes runWriterM with the model, instead of using Simulate.simulateWith -}
 testSIRBasic' :: Sampler [((Example.LatentState, [Example.LatentState]), Simulate.SampleMap)]
