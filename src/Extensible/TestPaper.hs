@@ -46,21 +46,14 @@ mkRecordLinRegrY y_vals =
 
 testLinRegrBasic :: Int -> Sampler [[Double]]
 testLinRegrBasic n_samples = do
-  -- Run simulate simulation over linearRegression
-      {- This should generate a set of points on the y-axis for each given point on the x-axis -}
-  bs <- Simulate.simulate n_samples Example.linearRegression
+  bs :: [([Double], Simulate.SampleMap)]
+      <- Simulate.simulate n_samples Example.linearRegression
                     [[0 .. 100]]
                     [mkRecordLinRegr ([], [1.0], [0.0], [1.0])]
-      {- This should output the provided fixed set of data points on the x and y axis. -}
-  -- bs' <- Simulate.simulate n_samples Example.linearRegression
-  --                   [0, 1, 2, 3, 4]
-  --                   (map mkRecordLinRegrY [[-0.3], [0.75], [2.43], [3.5], [3.2]])
   return $ map fst bs
 
 testLinRegrLWInf :: Int -> Sampler [([Double], Double)]
 testLinRegrLWInf n_samples = do
-  -- Run likelihood weighting inference over linearRegression
-  {- This should output the provided fixed set of data points on the x and y axis, where each point has a different probability (due to us observing the probability of given y's). Also returns a trace of parameters and their likelihoods -}
   lwTrace :: [([Double],       -- y data points
                 LW.SampleMap,  -- sample trace
                 Double)]       -- likelihood
