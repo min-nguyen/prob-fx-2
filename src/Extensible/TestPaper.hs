@@ -57,18 +57,17 @@ testLinRegrBasic n_samples = do
   --                   (map mkRecordLinRegrY [[-0.3], [0.75], [2.43], [3.5], [3.2]])
   return $ map fst bs
 
-testLinRegrLWInf :: Sampler [([Double], Double)]
-testLinRegrLWInf = do
+testLinRegrLWInf :: Int -> Sampler [([Double], Double)]
+testLinRegrLWInf n_samples = do
   -- Run likelihood weighting inference over linearRegression
   {- This should output the provided fixed set of data points on the x and y axis, where each point has a different probability (due to us observing the probability of given y's). Also returns a trace of parameters and their likelihoods -}
-  let  lw_n_iterations = 100
   lwTrace :: [([Double],       -- y data points
                 LW.SampleMap,  -- sample trace
                 Double)]       -- likelihood
-          <- LW.lw lw_n_iterations Example.linearRegression
-                    [[0 .. 100]]
-                    (map (mkRecordLinRegrY . (:[]) ) (map ((+2) . (*3)) [0 .. 100]))
-  return $ map (\(ys,sampleMap,prob) -> (ys, prob)) lwTrace
+          <- LW.lw n_samples Example.linearRegression
+                   [[0 .. 100]]
+                   [mkRecordLinRegrY (map ((+2) . (*3)) [0 .. 100])]
+  return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
 
 {- SIR -}
 mkRecordSIR :: ([Double], [Double], [Double]) -> LRec Example.SIREnv

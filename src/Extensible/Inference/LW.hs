@@ -93,7 +93,7 @@ runObserve = loop 0
   loop logp (Free u k) = case  u of
       ObsPatt d y α -> do
         let logp' = logProb d y
-        prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp'
+        -- prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp'
         loop (logp + logp') (k y)
       DecompLeft u' -> Free u' (loop logp . k)
 
@@ -105,7 +105,8 @@ runSample = loop
   loop (Free u k) =
     case u of
       SampPatt d α ->
-        liftS (putStrLn $ ">> : " ++ show α) >> sample d >>= loop . k
+        -- liftS (putStrLn $ ">> : " ++ show α) >>
+        sample d >>= loop . k
       PrintPatt s  ->
         liftS (putStrLn s) >>= loop . k
       _         -> error "Impossible: Nothing cannot occur"
