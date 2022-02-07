@@ -83,6 +83,22 @@ testHMMBasic n_samples = do
                           [0] [mkRecordHMM ([], 0.5, 0.9)]
   return $ map fst bs
 
+hmm_data :: [Int]
+hmm_data = [0,1,1,3,4,5,5,5,6,5,6,8,8,9,7,8,9,8,10,10,7,8,10,9,10,10,14,14,14,15,14,15,14,17,17,17,16,17,14,15,16,18,17,19,20,20,20,22,23,22,23,25,21,21,23,25,24,26,28,23,25,23,27,28,28,25,28,29,28,24,27,28,28,32,32,32,33,31,33,34,32,31,33,36,37,39,36,36,32,38,38,38,38,37,40,38,38,39,40,42]
+
+testHMMLWInf :: Int -> Sampler [(Int, Double)]
+testHMMLWInf n_samples = do
+  let hmm_length   = 100
+  lwTrace <- LW.lw n_samples (Example.hmmNSteps hmm_length)
+                             [0] [mkRecordHMMy hmm_data]
+  return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
+
+testHMMMHPost :: Int -> Sampler [(Int, MH.LPMap)]
+testHMMMHPost n_samples = do
+  let hmm_n_steps   = 20
+  mhTrace <- MH.mh n_samples (Example.hmmNSteps hmm_n_steps) ["trans_p", "obs_p"]
+                             [0] [mkRecordHMMy hmm_data]
+  return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
 {- SIR -}
 mkRecordSIR :: ([Double], [Double], [Double]) -> LRec Example.SIREnv
