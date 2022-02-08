@@ -37,7 +37,7 @@ import GHC.Natural
 import GHC.TypeLits (Nat)
 import qualified GHC.TypeLits as TL
 import Unsafe.Coerce
-
+import Util
 {-
 MH(x0, Ⲭ, LogP):
 Perform initial run of MH.
@@ -84,6 +84,12 @@ type TraceMH a = [(a, SMap, LPMap)]
 
 -- -- showPrimVal :: OpenSum.Member x PrimVal => x -> String
 -- -- showPrimVal x = show x
+
+extractSamples ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (Var x, Proxy a) -> SMap -> [a]
+extractSamples (x, typ)  =
+    map (fromJust . OpenSum.prj @a . snd . snd)
+  . Map.toList
+  . Map.filterWithKey (\(tag, idx) _ -> tag == varToStr x)
 
 updateSMap :: Show x => OpenSum.Member x PrimVal
   => Addr -> Dist x -> x -> SMap -> SMap

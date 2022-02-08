@@ -154,11 +154,32 @@ testSIRBasic = do
   let fstOutput = head simOutputs
       sirLog    :: [Example.LatState] = (snd . fst) fstOutput
       sampleMap :: Simulate.SampleMap = snd fstOutput
-      infobs    :: [Int]              = Simulate.extractSamples (#infob, Proxy @Int) sampleMap
+      infobs    :: [Int]              = Simulate.extractSamples (#infobs, Proxy @Int) sampleMap
 
       sirLog_tuples :: [(Int, Int, Int)] = map fromLatState sirLog
 
   return (sirLog_tuples, infobs)
+
+infobs_data :: [Int]
+infobs_data = [0,1,3,3,3,4,13,16,24,35,67,89,133,149,180,209,195,196,188,234,205,179,206,192,187,197,207,185,181,199,179,164,195,181,161,149,156,170,166,170,171,163,162,175,151,201,152,183,160,166,148,184,137,157,159,159,144,168,159,133,141,133,126,132,128,128,139,111,144,135,114,129,111,134,143,129,122,107,107,110,110,128,122,115,116,116,115,111,120,113,100,79,103,110,140,112,106,103,100,108]
+
+testSIRMHPost :: Sampler ([[Double]], [[Double]], [[Double]])
+testSIRMHPost = do
+  let mh_n_iterations = 2000
+  -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
+  mhTrace :: [((Example.LatState, [Example.LatState]), MH.SMap, MH.LPMap)]
+          <- MH.mh mh_n_iterations (runWriterM . Example.hmmSIRNsteps 10) ["ρ", "β", "γ"]
+                        [latentState 762 1 0]
+                        [mkRecordSIRy infobs_data]
+  let mhSampleMaps = map snd3 mhTrace
+      ρs = map (MH.extractSamples (#ρ, Proxy @Double)) mhSampleMaps
+      βs = map (MH.extractSamples (#β, Proxy @Double)) mhSampleMaps
+      γs = map (MH.extractSamples (#γ, Proxy @Double)) mhSampleMaps
+  -- return (ρs, βs, γs)
+  return ([], [],[])
+  -- let mhTrace'    = processMHTrace mhTrace
+  --     postParams  = extractPostParams (Proxy @Double)  [("ρ", 0), ("β", 0), ("γ", 0)] mhTrace'
+  -- return postParams
 
 -- Version of SIR simulation which instead directly composes runWriterM with the model, instead of using Simulate.simulateWith
 testSIRBasic' :: Sampler [((Example.LatState, [Example.LatState]), Simulate.SampleMap)]

@@ -217,9 +217,9 @@ hmmSIR  (Params beta gamma rho) latentState = do
 paramsPrior :: Observables env '["ρ", "β", "γ"] Double
   => Model env ts Params
 paramsPrior = do
-  pRho   <- beta' 2 7 #ρ
   pBeta  <- gamma' 2 1 #β
   pGamma <- gamma' 1 (1/8) #γ
+  pRho   <- beta' 2 7 #ρ
   return (Params pBeta pGamma pRho)
 
 hmmSIRNsteps ::

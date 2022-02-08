@@ -66,7 +66,7 @@ main = do
   -- trace <- sampleIOFixed testSinLWInf
   -- trace <- sampleIOFixed testSinMHPost
   -- trace <- sampleIOFixed testSinMHPred
-  trace <- sampleIOFixed testHMMBasic
+  -- trace <- sampleIOFixed testHMMBasic
   -- trace <- sampleIOFixed testHMMLWSim
   -- trace <- sampleIOFixed testHMMLWInf
   -- trace <- sampleIO testHMMMHPost
@@ -74,7 +74,7 @@ main = do
   -- trace <- sampleIOFixed testHMMStBasic
   -- trace <- sampleIOFixed testSIRBasic
   -- trace <- sampleIOFixed testSIRLWInf
-  -- trace <- sampleIOFixed testSIRMHPost
+  trace <- sampleIOFixed testSIRMHPost
   -- trace <- sampleIOFixed testSIRMHPred
   -- trace <- sampleIOFixed testHalfNormal
   -- trace <- sampleIOFixed testTopicBasic
@@ -89,6 +89,7 @@ main = do
   -- trace <- sampleIOFixed testSchBasic
   -- trace <- sampleIOFixed testSchMHPost
   -- trace <- sampleIOFixed TestPaper.testSIRBasic
+  -- trace <- sampleIOFixed TestPaper.testSIRMHPost
   -- trace <- sampleIOFixed (TestPaper.testLinRegrBasic 200)
   let traceStr = show trace
   putStrLn traceStr
