@@ -8,15 +8,29 @@ import Extensible.Sampler
 
 main :: IO ()
 main = do
+  benchmarkLinRegrSim_SampleSize
+  benchmarkLinRegrLW_SampleSize
+  benchmarkLinRegrMH_SampleSize
+
+  -- benchmarkHMMSim_SampleSize
+  -- benchmarkHMMLW_SampleSize
+  -- benchmarkHMMMH_SampleSize
+
+  -- benchmarkTopicSim_SampleSize
+  -- benchmarkTopicLW_SampleSize
+  -- benchmarkTopicMH_SampleSize
+
   -- benchmarkLinRegrSim_DataSize
   -- benchmarkLinRegrLW_DataSize
   -- benchmarkLinRegrMH_DataSize
+
   -- benchmarkHMMSim_DataSize
   -- benchmarkHMMLW_DataSize
   -- benchmarkHMMMH_DataSize
+
   -- benchmarkTopicSim_DataSize
   -- benchmarkTopicLW_DataSize
-  benchmarkTopicMH_DataSize
+  -- benchmarkTopicMH_DataSize
 
 benchmarkLinRegrSim_SampleSize = defaultMain [
     bgroup "linRegrSim" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testLinRegrBasic 100 2000),
@@ -81,7 +95,6 @@ benchmarkTopicLW_SampleSize = defaultMain [
                       bench "8000 x 100"  $ nfIO $ sampleIOFixed (testTopicLW 100 8000),
                       bench "10000 x 100" $ nfIO $ sampleIOFixed (testTopicLW 100 10000) ]
   ]
-
 
 benchmarkTopicMH_SampleSize = defaultMain [
     bgroup "topicMH" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testTopicMHPost 100 2000),
@@ -159,10 +172,10 @@ benchmarkTopicLW_DataSize = defaultMain [
 
 
 benchmarkTopicMH_DataSize = defaultMain [
-    bgroup "topicMH" [--bench "40 x 200" $ nfIO $ sampleIOFixed (testTopicMHPost 40 2000),
-                      --bench "80 x 200"  $ nfIO $ sampleIOFixed (testTopicMHPost 80 2000),
-                      --bench "120 x 200"  $ nfIO $ sampleIOFixed (testTopicMHPost 120 2000),
-                      --bench "160 x 200"  $ nfIO $ sampleIOFixed (testTopicMHPost 160 2000),
+    bgroup "topicMH" [bench "40 x 200" $ nfIO $ sampleIOFixed (testTopicMHPost 40 2000),
+                      bench "80 x 200"  $ nfIO $ sampleIOFixed (testTopicMHPost 80 2000),
+                      bench "120 x 200"  $ nfIO $ sampleIOFixed (testTopicMHPost 120 2000),
+                      bench "160 x 200"  $ nfIO $ sampleIOFixed (testTopicMHPost 160 2000),
                       bench "200 x 200" $ nfIO $ sampleIOFixed (testTopicMHPost 200 2000) ]
   ]
 
