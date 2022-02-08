@@ -45,28 +45,31 @@ mkRecordLinRegrY :: [Double] -> LRec Example.LinRegrEnv
 mkRecordLinRegrY y_vals =
   (#y := y_vals) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:> nil
 
-testLinRegrBasic :: Int -> Sampler [[Double]]
-testLinRegrBasic n_samples = do
+testLinRegrBasic :: Int -> Int -> Sampler [[Double]]
+testLinRegrBasic n_datapoints n_samples = do
+  let n_datapoints' = fromIntegral n_datapoints
   bs :: [([Double], Simulate.SampleMap)]
       <- Simulate.simulate n_samples Example.linearRegression
-                    [[0 .. 100]]
+                    [[0 .. n_datapoints']]
                     [mkRecordLinRegr ([], [1.0], [0.0], [1.0])]
   return $ map fst bs
 
-testLinRegrLWInf :: Int -> Sampler [([Double], Double)]
-testLinRegrLWInf n_samples = do
+testLinRegrLWInf :: Int -> Int -> Sampler [([Double], Double)]
+testLinRegrLWInf n_datapoints n_samples = do
+  let n_datapoints' = fromIntegral n_datapoints
   lwTrace :: [([Double],       -- y data points
                 LW.SampleMap,  -- sample trace
                 Double)]       -- likelihood
           <- LW.lw n_samples Example.linearRegression
-                   [[0 .. 100]]
-                   [mkRecordLinRegrY (map ((+2) . (*3)) [0 .. 100])]
+                   [[0 .. n_datapoints']]
+                   [mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints'])]
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
 
-testLinRegrMHPost :: Int -> Sampler [([Double], MH.LPMap)]
-testLinRegrMHPost n_samples = do
-  mhTrace <- MH.mh n_samples Example.linearRegression [] [[0 .. 100]]
-                   [mkRecordLinRegrY (map ((+2) . (*3)) [0 .. 100])]
+testLinRegrMHPost :: Int -> Int -> Sampler [([Double], MH.LPMap)]
+testLinRegrMHPost n_datapoints n_samples = do
+  let n_datapoints' = fromIntegral n_datapoints
+  mhTrace <- MH.mh n_samples Example.linearRegression [] [[0 .. n_datapoints']]
+                   [mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints'])]
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
 {- HMM -}
