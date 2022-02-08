@@ -79,9 +79,8 @@ mkRecordHMM (ys, transp, obsp) = #y := ys <:> #trans_p := [transp] <:> #obs_p :=
 mkRecordHMMy :: [Int] -> LRec Example.HMMEnv
 mkRecordHMMy ys = #y := ys <:> #trans_p := [] <:> #obs_p := [] <:>  nil
 
-testHMMBasic :: Int -> Sampler [Int]
-testHMMBasic n_samples = do
-  let hmm_length   = 100
+testHMMBasic :: Int -> Int -> Sampler [Int]
+testHMMBasic hmm_length n_samples = do
   bs <- Simulate.simulate n_samples (Example.hmmNSteps hmm_length)
                           [0] [mkRecordHMM ([], 0.5, 0.9)]
   return $ map fst bs
@@ -89,17 +88,15 @@ testHMMBasic n_samples = do
 hmm_data :: [Int]
 hmm_data = [0,1,1,3,4,5,5,5,6,5,6,8,8,9,7,8,9,8,10,10,7,8,10,9,10,10,14,14,14,15,14,15,14,17,17,17,16,17,14,15,16,18,17,19,20,20,20,22,23,22,23,25,21,21,23,25,24,26,28,23,25,23,27,28,28,25,28,29,28,24,27,28,28,32,32,32,33,31,33,34,32,31,33,36,37,39,36,36,32,38,38,38,38,37,40,38,38,39,40,42]
 
-testHMMLWInf :: Int -> Sampler [(Int, Double)]
-testHMMLWInf n_samples = do
-  let hmm_length   = 100
+testHMMLWInf :: Int -> Int -> Sampler [(Int, Double)]
+testHMMLWInf hmm_length n_samples = do
   lwTrace <- LW.lw n_samples (Example.hmmNSteps hmm_length)
                              [0] [mkRecordHMMy hmm_data]
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
 
-testHMMMHPost :: Int -> Sampler [(Int, MH.LPMap)]
-testHMMMHPost n_samples = do
-  let hmm_n_steps   = 20
-  mhTrace <- MH.mh n_samples (Example.hmmNSteps hmm_n_steps) ["trans_p", "obs_p"]
+testHMMMHPost :: Int -> Int -> Sampler [(Int, MH.LPMap)]
+testHMMMHPost hmm_length n_samples = do
+  mhTrace <- MH.mh n_samples (Example.hmmNSteps hmm_length) ["trans_p", "obs_p"]
                              [0] [mkRecordHMMy hmm_data]
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
@@ -113,22 +110,22 @@ doc_words     = ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","ev
 mkRecordTopic :: ([[Double]], [[Double]], [String]) -> LRec Example.TopicEnv
 mkRecordTopic (tps, wps, ys) =  #θ := tps <:>  #φ := wps <:> #w := ys <:>nil
 
-testTopicBasic :: Int -> Sampler [[String]]
-testTopicBasic n_samples = do
+testTopicBasic :: Int -> Int -> Sampler [[String]]
+testTopicBasic n_words n_samples = do
   bs <- Simulate.simulate n_samples (Example.documentDist vocab 2)
-                        [100] [mkRecordTopic ([[0.5, 0.5]], [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],[1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]], [])]
+                        [n_words] [mkRecordTopic ([[0.5, 0.5]], [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],[1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]], [])]
   return $ map fst bs
 
-testTopicLW :: Int -> Sampler [([String], Double)]
-testTopicLW n_samples = do
+testTopicLW :: Int -> Int -> Sampler [([String], Double)]
+testTopicLW n_words n_samples = do
   lwTrace <- LW.lw n_samples (Example.documentDist vocabulary 2)
-                        [100] [mkRecordTopic ([], [], doc_words)]
+                        [n_words] [mkRecordTopic ([], [], doc_words)]
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
 
-testTopicMHPost :: Int -> Sampler [([String], MH.LPMap)]
-testTopicMHPost n_samples = do
+testTopicMHPost :: Int -> Int -> Sampler [([String], MH.LPMap)]
+testTopicMHPost n_words n_samples = do
   mhTrace <- MH.mh n_samples (Example.documentDist vocabulary 2) ["φ", "θ"]
-                       [100] [mkRecordTopic ([], [], doc_words)]
+                       [n_words] [mkRecordTopic ([], [], doc_words)]
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
 {- SIR -}
