@@ -62,6 +62,9 @@ instance Monad (Model env ts) where
     f' <- f
     runModel $ x f'
 
+printS :: Show a => a -> Sampler ()
+printS x = liftS $ print x
+
 printM :: Member Sample ts => String -> Model env ts ()
 printM x = Model $ prinT x
 

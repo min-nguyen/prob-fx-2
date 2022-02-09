@@ -4,6 +4,7 @@
 
 module Extensible.OpenSum where
 
+import Data.Typeable
 import Data.Kind (Type, Constraint)
 import Data.Proxy
 -- import Fcf
@@ -63,7 +64,7 @@ class (FindElem t ts) => Member (t :: *) (ts :: [*]) where
   inj ::  t -> OpenSum ts
   prj ::  OpenSum ts  -> Maybe t
 
-instance (t ~ t') => Member t '[t'] where
+instance (Typeable t, t ~ t') => Member t '[t'] where
    inj x          = UnsafeOpenSum 0 x
    prj (UnsafeOpenSum _ x) = Just (unsafeCoerce x)
 

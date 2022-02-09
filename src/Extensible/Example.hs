@@ -279,19 +279,22 @@ observeSIR :: Observable env "infobs" Int
 observeSIR (Params rho _ _) (LatentState _ inf _) = do
   poisson' (rho * fromIntegral inf) #infobs
 
-transitionSIR :: FixedParams -> Params -> LatentState -> Model env ts LatentState
+transitionSIR :: Member Sample ts => FixedParams -> Params -> LatentState -> Model env ts LatentState
 transitionSIR (FixedParams numPop timeSlices) (Params rho beta gamma) (LatentState sus inf recov)  = do
   let dt   = 1 / fromIntegral timeSlices
       si_p = 1 - exp ((-beta * dt * fromIntegral inf) / fromIntegral numPop)
+  -- printM $ "si_p is " ++ show si_p
   dN_SI <- binomial sus si_p
   let ir_p = 1 - exp (-gamma * dt)
+
   dN_IR <- binomial inf ir_p
   let sus'   = sus - dN_SI
       inf'   = inf + dN_SI - dN_IR
       recov' = recov + dN_IR
+  -- printM $ "(s,i,r) = " ++ show (LatentState sus' inf' recov') ++ "\n(dN_SI, dN_IR) = " ++ show (dN_SI, dN_IR)
   return (LatentState sus' inf' recov')
 
-hmmSIR :: Observable env "infobs" Int
+hmmSIR :: Member Sample ts =>Observable env "infobs" Int
   => FixedParams -> Params -> LatentState -> Model env ts (LatentState, Int)
 hmmSIR fixedParams params latentState = do
   latentState'   <- transitionSIR fixedParams params latentState
@@ -306,7 +309,7 @@ paramsPrior = do
   pGamma <- gamma' 1 (1/8) #γ
   return (Params pRho pBeta pGamma)
 
-hmmSIRNsteps :: (Observable env "infobs" Int, Observables env '["ρ", "β", "γ"] Double)
+hmmSIRNsteps :: Member Sample ts => (Observable env "infobs" Int, Observables env '["ρ", "β", "γ"] Double)
   => FixedParams -> Int -> LatentState -> Model env ts ([LatentState], [Int])
 hmmSIRNsteps fixedParams n latentState  = do
   params <- paramsPrior

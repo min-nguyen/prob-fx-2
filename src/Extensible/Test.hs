@@ -597,7 +597,7 @@ testSIRMHPost :: Sampler [(Addr, [Double])]
 testSIRMHPost = do
   let sir_n_samples = 10
   bs <- Simulate.simulate sir_n_samples
-          (Example.hmmSIRNsteps (fixedParams 763 1) 30)
+          (Example.hmmSIRNsteps (fixedParams 763 1) 5)
           [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
   let infectedData    = map snd bs
       mh_n_iterations = 2000

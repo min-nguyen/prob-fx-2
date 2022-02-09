@@ -291,15 +291,18 @@ runSample α_samp samples = loop
            (loop . k . unsafeCoerce) x
       _  -> error "Impossible: Nothing cannot occur"
 
-lookupSample :: OpenSum.Member a PrimVal => SMap -> Dist a -> Addr -> Addr -> Sampler (Maybe a)
+lookupSample :: Show a => OpenSum.Member a PrimVal => SMap -> Dist a -> Addr -> Addr -> Sampler (Maybe a)
 lookupSample samples d α α_samp
   | α == α_samp = return Nothing
   | otherwise   = do
     let m = Map.lookup α samples
     case m of
       Just (PrimDist d', x) -> do
-        --liftS $ print $ "Address : " ++ show α ++ " Current dist : " ++ show (toDistInfo d) ++ " Looked up dist : " ++ show d_info ++ " Are they equal? " ++ show (toDistInfo d == d_info)
-        return $ if d == unsafeCoerce d' then OpenSum.prj x else Nothing
+        -- printS $ "comparing " ++ show d ++ " and " ++ show d' ++ " is " ++ show (d == unsafeCoerce d')
+        if d == unsafeCoerce d'
+           then do -- liftS $ print ("retrieving " ++ show x ++ " for " ++ show d')
+                   return (OpenSum.prj x )
+            else return Nothing
       Nothing -> return Nothing
 
 

@@ -101,7 +101,7 @@ instance Eq (Dist a) where
   (==) (HalfCauchyDist s _ _) (HalfCauchyDist s' _ _) = s == s'
   (==) (HalfNormalDist s _ _) (HalfNormalDist s' _ _) = s == s'
   (==) (BernoulliDist p _ _) (BernoulliDist p' _ _) = p == p'
-  (==) (BinomialDist n p _ _) (BinomialDist n' p' _ _) = n == n && p == p'
+  (==) (BinomialDist n p _ _) (BinomialDist n' p' _ _) = n == n' && p == p'
   (==) (DiscreteDist ps _ _) (DiscreteDist ps' _ _) = ps == ps'
   (==) (BetaDist a b _ _) (BetaDist a' b' _ _) = a == a' && b == b'
   (==) (GammaDist a b _ _) (GammaDist a' b' _ _) = a == a' && b == b'
