@@ -60,6 +60,27 @@ def main():
     axs1.set_title('SIR model - Basic Simulation')
     plt.legend()
     plt.show()
+  if arg == "sir-mh-post":
+    print(data)
+    rhos_unique   = data[0]
+    betas_unique  = data[1]
+    gammas_unique = data[2]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("rho values")
+    axs1.set_ylabel("frequency")
+    axs1.hist(rhos_unique, bins=25)
+    axs1.set_title('SIR - Metropolis Hastings Posterior (Rho)')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel("beta values")
+    axs2.set_ylabel("frequency")
+    axs2.hist(betas_unique, bins=25)
+    axs2.set_title('HMM - Metropolis Hastings Posterior (Beta)')
+    fig3, axs3 = plt.subplots(nrows=1)
+    axs3.set_xlabel("gamma values")
+    axs3.set_ylabel("frequency")
+    axs3.hist(gammas_unique, bins=25)
+    axs3.set_title('HMM - Metropolis Hastings Posterior (Gamma)')
+    plt.show()
 if __name__ == "__main__":
   main()
 
