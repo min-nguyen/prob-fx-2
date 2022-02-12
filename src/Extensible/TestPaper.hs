@@ -199,6 +199,23 @@ testSIRBasic' = do
   return simOutputs
 
 
+{- SIR Resusceptible -}
+testSIRSBasic :: Sampler ([(Int, Int, Int)], -- sir values
+                          [Int])
+testSIRSBasic = do
+  simOutputs <- Simulate.simulate 1 (runWriterM . Example.hmmSIRNsteps' 100)
+                   [latentState 762 1 0]
+                   [ #β := [0.2] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #η := [0.05] <:> #infobs := [] <:> nil]
+
+  let fstOutput = head simOutputs
+      sirLog    :: [Example.LatState] = (snd . fst) fstOutput
+      sampleMap :: Simulate.SampleMap = snd fstOutput
+      infobs    :: [Int]              = Simulate.extractSamples (#infobs, Proxy @Int) sampleMap
+
+      sirLog_tuples :: [(Int, Int, Int)] = map fromLatState sirLog
+
+  return (sirLog_tuples, infobs)
+
 {- SIRV -}
 
 fromLatSIRVState :: Example.LatStateSIRV -> (Int, Int, Int, Int)

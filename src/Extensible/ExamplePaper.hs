@@ -214,7 +214,7 @@ hmmSIR  (Params beta gamma rho) latentState = do
   infectionCount <- obsSIR rho latentState'
   return latentState'
 
-paramsPrior :: Observables env '["ρ", "β", "γ"] Double
+paramsPrior :: Observables env '["ρ", "β",  "γ"] Double
   => Model env ts Params
 paramsPrior = do
   pBeta  <- gamma' 2 1 #β
@@ -231,7 +231,49 @@ hmmSIRNsteps n latentState  = do
   latentState' <- foldl (>=>) return (replicate n $ hmmSIR params) latentState
   return latentState'
 
-{- SIRV -}
+{- SIRS (resusceptible) model -}
+
+transRS :: Double -> LatState -> Model env ts LatState
+transRS eta (LatState sus inf rec) = do
+  dN_RS <- binomial rec (1 - exp (-eta))
+  let sus' = sus + dN_RS
+      rec' = rec - dN_RS
+  return $ LatState sus' inf rec'
+
+transSIR' :: Member (Writer [LatState]) ts
+  => Double -> Double -> Double -> LatState -> Model env ts LatState
+transSIR' beta gamma eta latentSt = do
+  latentSt' <- (transSI beta >=> transIR gamma >=> transRS eta) latentSt
+  tellM [latentSt']
+  return latentSt'
+
+paramsPrior' :: Observables env '["ρ", "β", "η", "γ"] Double
+  => Model env ts (Params, Double)
+paramsPrior' = do
+  pBeta  <- gamma' 2 1 #β
+  pGamma <- gamma' 1 (1/8) #γ
+  pEta <- gamma' 1 (1/8) #η
+  pRho   <- beta' 2 7 #ρ
+  return ((Params pBeta pGamma pRho), pEta)
+
+hmmSIR' :: Member (Writer [LatState]) ts
+  => Observable env "infobs" Int
+  => Params -> Double -> LatState -> Model env ts LatState
+hmmSIR'  (Params beta gamma rho) eta latentState = do
+  latentState'   <- transSIR' beta gamma eta latentState
+  infectionCount <- obsSIR rho latentState'
+  return latentState'
+
+hmmSIRNsteps' ::
+     Member (Writer [LatState]) ts
+  => (Observable env "infobs" Int, Observables env '["ρ", "β", "η", "γ"] Double)
+  => Int -> LatState -> Model env ts LatState
+hmmSIRNsteps' n latentState  = do
+  (params, eta)       <- paramsPrior'
+  latentState' <- foldl (>=>) return (replicate n $ hmmSIR' params eta) latentState
+  return latentState'
+
+{- SIRV model -}
 
 data ParamsSIRV = ParamsSIRV {
     beta  :: Double, -- ^ Mean contact rate between susceptible and infected people
@@ -298,9 +340,9 @@ hmmSIRV  (ParamsSIRV beta gamma rho omega) latentState = do
   infectionCount <- obsSIRV rho latentState'
   return latentState'
 
-paramsPrior' :: Observables env '["ρ", "β", "γ", "ω"] Double
+paramsPriorSIRV :: Observables env '["ρ", "β", "γ", "ω"] Double
   => Model env ts ParamsSIRV
-paramsPrior' = do
+paramsPriorSIRV = do
   pBeta  <- gamma' 2 1 #β
   pGamma <- gamma' 1 (1/8) #γ
   pRho   <- beta' 2 7 #ρ
@@ -312,6 +354,6 @@ hmmSIRVNsteps ::
   => (Observable env "infobs" Int, Observables env '["ρ", "β", "γ", "ω"] Double)
   => Int -> LatStateSIRV -> Model env ts LatStateSIRV
 hmmSIRVNsteps n latentState  = do
-  params       <- paramsPrior'
+  params       <- paramsPriorSIRV
   latentState' <- foldl (>=>) return (replicate n $ hmmSIRV params) latentState
   return latentState'
