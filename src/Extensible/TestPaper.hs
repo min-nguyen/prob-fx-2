@@ -129,8 +129,11 @@ testTopicMHPost n_words n_samples = do
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
 {- SIR -}
-mkRecordSIR :: ([Double], [Double], [Double]) -> LRec Example.SIREnv
-mkRecordSIR (βv, γv, ρv) = #β := βv <:> #γ := γv <:>  #ρ := ρv <:>  #infobs := [] <:> nil
+mkRecordSIR :: ([Double], [Double], [Double], [Int]) -> LRec Example.SIREnv
+mkRecordSIR (βv, γv, ρv, infobs) = #β := βv <:> #γ := γv <:>  #ρ := ρv <:>  #infobs := infobs <:> nil
+
+mkRecordSIRparams :: ([Double], [Double], [Double]) -> LRec Example.SIREnv
+mkRecordSIRparams (βv, γv, ρv) = #β := βv <:> #γ := γv <:>  #ρ := ρv <:>  #infobs := [] <:> nil
 
 mkRecordSIRy :: [Int] -> LRec Example.SIREnv
 mkRecordSIRy ys = #β := [] <:> #γ := [] <:>  #ρ := [] <:> #infobs := ys <:> nil
@@ -165,12 +168,12 @@ infobs_data = [0,1,3,3,3,4,13,16,24,35,67,89,133,149,180,209,195,196,188,234,205
 
 testSIRMHPost :: Sampler ([Double], [Double], [Double])
 testSIRMHPost = do
-  let mh_n_iterations = 2000
+  let mh_n_iterations = 100000
   -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
   mhTrace :: [((Example.LatState, [Example.LatState]), MH.SMap, MH.LPMap)]
           <- MH.mh mh_n_iterations (runWriterM . Example.hmmSIRNsteps 10) ["β", "γ", "ρ"]
                         [latentState 762 1 0]
-                        [mkRecordSIRy infobs_data]
+                        [mkRecordSIR ([], [0.009], [0.3], infobs_data)]
   let mhSampleMaps = map snd3 mhTrace
       ρs = concatMap (MH.extractSamples (#ρ, Proxy @Double)) mhSampleMaps
       βs = concatMap (MH.extractSamples (#β, Proxy @Double)) mhSampleMaps
@@ -186,7 +189,7 @@ testSIRBasic' :: Sampler [((Example.LatState, [Example.LatState]), Simulate.Samp
 testSIRBasic' = do
   simOutputs <- Simulate.simulate 1 (runWriterM . Example.hmmSIRNsteps 100)
                    [latentState 762 1 0]
-                   [mkRecordSIR ([0.7], [0.009], [0.3])]
+                   [mkRecordSIRparams ([0.7], [0.009], [0.3])]
 
   let fstOutput = head simOutputs
       sirLog    :: [Example.LatState] = (snd . fst) fstOutput
