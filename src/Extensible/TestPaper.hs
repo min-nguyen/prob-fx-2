@@ -197,3 +197,28 @@ testSIRBasic' = do
       infobs    :: [Int]                 = Simulate.extractSamples (#infobs, Proxy @Int) sampleMap
 
   return simOutputs
+
+
+{- SIRV -}
+
+fromLatSIRVState :: Example.LatStateSIRV -> (Int, Int, Int, Int)
+fromLatSIRVState (Example.LatStateSIRV sus inf recov vacc) = (sus, inf, recov, vacc)
+
+testSIRVBasic :: Sampler ([(Int, Int, Int, Int)], -- sir values
+                          [Int])            -- observed infections
+testSIRVBasic = do
+  let latState0  = Example.LatStateSIRV { Example.s = 762, Example.i = 1, Example.r = 0,  Example.v = 0 }
+      params     = #β := [0.7] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #ω := [0.01] <:> #infobs := [] <:> nil
+  simOutputs :: [((Example.LatStateSIRV,   -- model output
+                  [Example.LatStateSIRV]), -- writer effect log of sir latent states
+                   Simulate.SampleMap)]   -- trace of samples
+                <- Simulate.simulateWith 1 (Example.hmmSIRVNsteps 100)
+                   [latState0] [params] runWriterM
+  let fstOutput = head simOutputs
+      sirLog    :: [Example.LatStateSIRV] = (snd . fst) fstOutput
+      sampleMap :: Simulate.SampleMap = snd fstOutput
+      infobs    :: [Int]              = Simulate.extractSamples (#infobs, Proxy @Int) sampleMap
+
+      sirLog_tuples :: [(Int, Int, Int, Int)] = map fromLatSIRVState sirLog
+
+  return (sirLog_tuples, infobs)

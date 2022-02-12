@@ -81,6 +81,41 @@ def main():
     axs3.hist(gammas_unique, bins=25)
     axs3.set_title('HMM - Metropolis Hastings Posterior (Gamma)')
     plt.show()
+  if arg == "sirv-basic":
+    # we expect data to be in the format of (sir-values :: [(Int, Int, Int)], infected count :: [Int])
+    # y axis
+    sirv_values   = np.array(data[0])
+    obs_infected = np.array(data[1])
+    sus            = np.array([sirv[0] for sirv in sirv_values])
+    inf            = np.array([sirv[1] for sirv in sirv_values])
+    recov          = np.array([sirv[2] for sirv in sirv_values])
+    vacc          = np.array([sirv[3] for sirv in sirv_values])
+    # x axis
+    timeSteps      = np.array([ t for t in range(len(sus))])
+    # interpolate data
+    X_ = np.linspace(timeSteps.min(), timeSteps.max(), 300)
+    X_S_Spline = make_interp_spline(timeSteps.ravel(), sus.ravel())
+    X_I_Spline = make_interp_spline(timeSteps.ravel(), inf.ravel())
+    X_R_Spline = make_interp_spline(timeSteps.ravel(), recov.ravel())
+    X_V_Spline = make_interp_spline(timeSteps.ravel(), vacc.ravel())
+    X_InfCount_Spline = make_interp_spline(timeSteps.ravel(), obs_infected.ravel())
+    S_ = X_S_Spline(X_)
+    I_ = X_I_Spline(X_)
+    R_ = X_R_Spline(X_)
+    V_ = X_V_Spline(X_)
+    IC_ = X_InfCount_Spline(X_)
+
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("days")
+    axs1.set_ylabel("population")
+    axs1.plot(X_, S_, color='blue', label='Actual Susceptible')
+    axs1.plot(X_, I_, color='red', label='Actual Infected')
+    axs1.plot(X_, R_, color='green', label='Actual Recovered')
+    axs1.plot(X_, V_, color='yellow', label='Actual Vaccinated')
+    axs1.plot(X_, IC_, color='black', label='Recorded Infected')
+    axs1.set_title('SIRV model - Basic Simulation')
+    plt.legend()
+    plt.show()
 if __name__ == "__main__":
   main()
 

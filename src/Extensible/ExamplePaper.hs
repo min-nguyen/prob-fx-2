@@ -280,7 +280,7 @@ transSV' :: Double -> LatStateSIRV -> Model env ts LatStateSIRV
 transSV' omega sirv  = do
   dN_SV <- binomial (s sirv) (1 - exp (-omega))
   let s' = (s sirv) - dN_SV
-      v' = (r sirv) + dN_SV
+      v' = (v sirv) + dN_SV
   return $ sirv { s = s', v = v' }
 
 transSIRV :: Member (Writer [LatStateSIRV]) ts
@@ -303,9 +303,9 @@ paramsPrior' :: Observables env '["ρ", "β", "γ", "ω"] Double
 paramsPrior' = do
   pBeta  <- gamma' 2 1 #β
   pGamma <- gamma' 1 (1/8) #γ
-  pOmega <- gamma' 1 (1/8) #ω
   pRho   <- beta' 2 7 #ρ
-  return (ParamsSIRV pBeta pGamma pOmega pRho )
+  pOmega <- gamma' 1 (1/8) #ω
+  return (ParamsSIRV pBeta pGamma pRho pOmega)
 
 hmmSIRVNsteps ::
      Member (Writer [LatStateSIRV]) ts
