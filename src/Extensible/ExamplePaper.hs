@@ -361,9 +361,8 @@ hmmSIRVNsteps n latentState  = do
 
 {- Generic SIR model -}
 
-type TransModel env ts params lat constr = constr => params -> lat -> Model env ts lat
-type ObsModel   env ts params lat obs constr = constr => params -> lat -> Model env ts obs
-
+type TransModel env ts params lat     = params -> lat -> Model env ts lat
+type ObsModel   env ts params lat obs = params -> lat -> Model env ts obs
 
 obsSIRGen :: forall env ts. Observable env "infobs" Int
   => Params -> LatState -> Model env ts Int
@@ -376,17 +375,21 @@ transSIRGen (Params beta gamma _) latentSt = do
   latentSt' <- (transSI beta >=> transIR gamma) latentSt
   return latentSt'
 
-
-hmmNodeGen :: forall constrA constrB env params lat  ts obs. (constrA, constrB) => params -> lat -> TransModel env ts params lat constrA -> ObsModel env ts params lat obs constrB -> Model env ts lat
-hmmNodeGen params lat transModel obsModel = do
+hmmNodeGen :: params -> TransModel env ts params lat -> ObsModel env ts params lat obs -> lat -> Model env ts lat
+hmmNodeGen params  transModel obsModel lat = do
   lat' <- transModel params lat
   obs' <- obsModel params lat'
   return lat'
 
--- hmmGen :: a
-hmmGen :: forall env ts. Observable env "infobs" Int => Model env ts LatState
-hmmGen =  hmmNodeGen @() @(Observable env "infobs" Int) (Params 0 0 0) (LatState 0 0 0) transSIRGen obsSIRGen
+hmmNodeSIR :: forall env ts. Observable env "infobs" Int => Model env ts LatState
+hmmNodeSIR =  hmmNodeGen (Params 0 0 0) transSIRGen obsSIRGen (LatState 0 0 0)
 
+hmmGen :: Model env ts params -> lat -> TransModel env ts params lat -> ObsModel env ts params lat obs -> Int -> Model env ts lat
+hmmGen prior lat transModel obsModel n = do
+  params <- prior
+  foldl (>=>) return (replicate n (hmmNodeGen params transModel obsModel)) lat
+
+{- Testing generic functions -}
 
 f :: forall ts a. Member (Writer [Int]) ts => a -> Freer ts Int
 f a = return 5
