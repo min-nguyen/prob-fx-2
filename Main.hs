@@ -8,6 +8,7 @@ import Data.Tuple
 import qualified Data.Map as Map
 import Extensible.DataSets
 import qualified Extensible.Example as Example
+import qualified Extensible.ExamplePaper as ExamplePaper
 import Extensible.EffExample
 import qualified Extensible.Inference.Simulate as Simulate
 import qualified Extensible.Inference.LW as LW
@@ -91,13 +92,12 @@ main = do
   -- trace <- sampleIOFixed TestPaper.testSIRBasic
   -- trace <- sampleIOFixed TestPaper.testSIRMHPost
   -- trace <- sampleIOFixed TestPaper.testSIRVBasic
-  trace <- sampleIOFixed TestPaper.testSIRSBasic
+  -- trace <- sampleIOFixed TestPaper.testSIRSBasic
   -- trace <- sampleIOFixed (TestPaper.testLinRegrBasic 200)
-  let traceStr = show trace
-  putStrLn traceStr
-  -- print (zip (zip nnLogX0 nnLogX1) nnLogY)
-  writeFile "model-output.txt" traceStr
-  -- let f = runProgramReplaceRW
-  -- print f
+  let i = ExamplePaper.i'
+  print i
+  -- let traceStr = show trace
+  -- putStrLn traceStr
+  -- writeFile "model-output.txt" traceStr
   return ()
 

@@ -41,6 +41,7 @@ import Util
 import Data.Vector.Fusion.Bundle (findIndex)
 import GHC.Show (Show)
 import qualified Data.Map as Map
+import Control.Lens.Combinators (isn't)
 
 {- Linear regression -}
 type LinRegrEnv =
@@ -79,9 +80,9 @@ observationModel :: (Observable env "y" Int)
 observationModel observation_p x = do
   binomial' x observation_p #y
 
-hmm :: (Observable env "y" Int)
+hmmNode :: (Observable env "y" Int)
   => Double -> Double -> Int -> Model env ts Int
-hmm transition_p observation_p x_prev = do
+hmmNode transition_p observation_p x_prev = do
   x_n <- transitionModel  transition_p x_prev
   y_n <- observationModel observation_p x_n
   return x_n
@@ -91,7 +92,7 @@ hmmNSteps :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Doub
 hmmNSteps n x = do
   trans_p <- uniform' 0 1 #trans_p
   obs_p   <- uniform' 0 1 #obs_p
-  foldr (<=<) return  (replicate n (hmm trans_p obs_p)) x
+  foldr (<=<) return  (replicate n (hmmNode trans_p obs_p)) x
 
 {- HMM Loop-}
 hmmForM :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double) =>
@@ -357,3 +358,52 @@ hmmSIRVNsteps n latentState  = do
   params       <- paramsPriorSIRV
   latentState' <- foldl (>=>) return (replicate n $ hmmSIRV params) latentState
   return latentState'
+
+{- Generic SIR model -}
+
+type TransModel env ts params lat constr = constr => params -> lat -> Model env ts lat
+type ObsModel   env ts params lat obs constr = constr => params -> lat -> Model env ts obs
+
+
+obsSIRGen :: forall env ts. Observable env "infobs" Int
+  => Params -> LatState -> Model env ts Int
+obsSIRGen (Params _ _ rho) (LatState _ inf _)  = do
+  i <- poisson' (rho * fromIntegral inf) #infobs
+  return i
+
+transSIRGen :: forall env ts. Params -> LatState -> Model env ts LatState
+transSIRGen (Params beta gamma _) latentSt = do
+  latentSt' <- (transSI beta >=> transIR gamma) latentSt
+  return latentSt'
+
+
+hmmNodeGen :: forall constrA constrB env params lat  ts obs. (constrA, constrB) => params -> lat -> TransModel env ts params lat constrA -> ObsModel env ts params lat obs constrB -> Model env ts lat
+hmmNodeGen params lat transModel obsModel = do
+  lat' <- transModel params lat
+  obs' <- obsModel params lat'
+  return lat'
+
+-- hmmGen :: a
+hmmGen :: forall env ts. Observable env "infobs" Int => Model env ts LatState
+hmmGen =  hmmNodeGen @() @(Observable env "infobs" Int) (Params 0 0 0) (LatState 0 0 0) transSIRGen obsSIRGen
+
+
+f :: forall ts a. Member (Writer [Int]) ts => a -> Freer ts Int
+f a = return 5
+
+g :: forall constr ts  a. constr => (constr => a -> Freer ts Int) -> a -> Freer ts Int
+g foo a = foo a
+
+h :: forall ts. Member (Writer [Int]) ts => Freer ts Int
+h = g @(Member (Writer [Int]) ts) f 3
+
+i' = run $ runWriter h
+
+f' :: Member (Writer [Int]) es => a -> Freer es Int
+f' _ = return 0
+
+g' :: (a -> Freer es Int) -> a -> Freer es Int
+g' f = f
+
+h' :: Member (Writer [Int]) es => a -> Freer es Int
+h' = g' f'
