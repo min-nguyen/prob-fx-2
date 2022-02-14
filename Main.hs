@@ -91,13 +91,11 @@ main = do
   -- trace <- sampleIOFixed testSchMHPost
   -- trace <- sampleIOFixed TestPaper.testSIRBasic
   -- trace <- sampleIOFixed TestPaper.testSIRMHPost
-  -- trace <- sampleIOFixed TestPaper.testSIRVBasic
+  trace <- sampleIOFixed TestPaper.testSIRVBasic
   -- trace <- sampleIOFixed TestPaper.testSIRSBasic
   -- trace <- sampleIOFixed (TestPaper.testLinRegrBasic 200)
-  let i = ExamplePaper.i'
-  print i
-  -- let traceStr = show trace
-  -- putStrLn traceStr
-  -- writeFile "model-output.txt" traceStr
+  let traceStr = show trace
+  putStrLn traceStr
+  writeFile "model-output.txt" traceStr
   return ()
 

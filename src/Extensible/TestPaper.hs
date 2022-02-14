@@ -225,7 +225,7 @@ testSIRVBasic :: Sampler ([(Int, Int, Int, Int)], -- sir values
                           [Int])            -- observed infections
 testSIRVBasic = do
   let latState0  = Example.LatStateSIRV { Example.s = 762, Example.i = 1, Example.r = 0,  Example.v = 0 }
-      params     = #β := [0.7] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #ω := [0.01] <:> #infobs := [] <:> nil
+      params     = #β := [0.7] <:> #γ := [0.019] <:>  #ρ := [0.3] <:> #ω := [] <:>  #η := [] <:> #infobs := [] <:> nil
   simOutputs :: [((Example.LatStateSIRV,   -- model output
                   [Example.LatStateSIRV]), -- writer effect log of sir latent states
                    Simulate.SampleMap)]   -- trace of samples
