@@ -41,6 +41,7 @@ import Util
 import Data.Vector.Fusion.Bundle (findIndex)
 import GHC.Show (Show)
 import qualified Data.Map as Map
+import Control.Lens.Combinators (isn't)
 
 {- Linear regression -}
 type LinRegrEnv =
@@ -79,9 +80,9 @@ observationModel :: (Observable env "y" Int)
 observationModel observation_p x = do
   binomial' x observation_p #y
 
-hmm :: (Observable env "y" Int)
+hmmNode :: (Observable env "y" Int)
   => Double -> Double -> Int -> Model env ts Int
-hmm transition_p observation_p x_prev = do
+hmmNode transition_p observation_p x_prev = do
   x_n <- transitionModel  transition_p x_prev
   y_n <- observationModel observation_p x_n
   return x_n
@@ -91,7 +92,7 @@ hmmNSteps :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Doub
 hmmNSteps n x = do
   trans_p <- uniform' 0 1 #trans_p
   obs_p   <- uniform' 0 1 #obs_p
-  foldr (<=<) return  (replicate n (hmm trans_p obs_p)) x
+  foldr (<=<) return  (replicate n (hmmNode trans_p obs_p)) x
 
 {- HMM Loop-}
 hmmForM :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double) =>
@@ -214,7 +215,7 @@ hmmSIR  (Params beta gamma rho) latentState = do
   infectionCount <- obsSIR rho latentState'
   return latentState'
 
-paramsPrior :: Observables env '["ρ", "β", "γ"] Double
+paramsPrior :: Observables env '["ρ", "β",  "γ"] Double
   => Model env ts Params
 paramsPrior = do
   pBeta  <- gamma' 2 1 #β
@@ -230,3 +231,177 @@ hmmSIRNsteps n latentState  = do
   params       <- paramsPrior
   latentState' <- foldl (>=>) return (replicate n $ hmmSIR params) latentState
   return latentState'
+
+{- SIRS (resusceptible) model -}
+
+transRS :: Double -> LatState -> Model env ts LatState
+transRS eta (LatState sus inf rec) = do
+  dN_RS <- binomial rec (1 - exp (-eta))
+  let sus' = sus + dN_RS
+      rec' = rec - dN_RS
+  return $ LatState sus' inf rec'
+
+transSIR' :: Member (Writer [LatState]) ts
+  => Double -> Double -> Double -> LatState -> Model env ts LatState
+transSIR' beta gamma eta latentSt = do
+  latentSt' <- (transSI beta >=> transIR gamma >=> transRS eta) latentSt
+  tellM [latentSt']
+  return latentSt'
+
+paramsPrior' :: Observables env '["ρ", "β", "η", "γ"] Double
+  => Model env ts (Params, Double)
+paramsPrior' = do
+  pBeta  <- gamma' 2 1 #β
+  pGamma <- gamma' 1 (1/8) #γ
+  pEta <- gamma' 1 (1/8) #η
+  pRho   <- beta' 2 7 #ρ
+  return ((Params pBeta pGamma pRho), pEta)
+
+hmmSIR' :: Member (Writer [LatState]) ts
+  => Observable env "infobs" Int
+  => Params -> Double -> LatState -> Model env ts LatState
+hmmSIR'  (Params beta gamma rho) eta latentState = do
+  latentState'   <- transSIR' beta gamma eta latentState
+  infectionCount <- obsSIR rho latentState'
+  return latentState'
+
+hmmSIRNsteps' ::
+     Member (Writer [LatState]) ts
+  => (Observable env "infobs" Int, Observables env '["ρ", "β", "η", "γ"] Double)
+  => Int -> LatState -> Model env ts LatState
+hmmSIRNsteps' n latentState  = do
+  (params, eta)       <- paramsPrior'
+  latentState' <- foldl (>=>) return (replicate n $ hmmSIR' params eta) latentState
+  return latentState'
+
+{- Generic HMM -}
+
+type TransModel env ts params lat     = params -> lat -> Model env ts lat
+type ObsModel   env ts params lat obs = params -> lat -> Model env ts obs
+
+hmmNodeGen :: params -> TransModel env ts params lat -> ObsModel env ts params lat obs -> lat -> Model env ts lat
+hmmNodeGen params  transModel obsModel lat = do
+  lat' <- transModel params lat
+  obs' <- obsModel params lat'
+  return lat'
+
+hmmGen :: Model env ts params -> TransModel env ts params lat -> ObsModel env ts params lat obs -> Int -> lat ->  Model env ts lat
+hmmGen prior transModel obsModel n lat = do
+  params <- prior
+  foldl (>=>) return (replicate n (hmmNodeGen params transModel obsModel)) lat
+
+{-  SIR model using Generic HMM -}
+
+priorSIRGen :: Observables env '["ρ", "β", "γ"] Double
+  => Model env ts Params
+priorSIRGen = do
+  pBeta  <- gamma' 2 1 #β
+  pGamma <- gamma' 1 (1/8) #γ
+  pRho   <- beta' 2 7 #ρ
+  return (Params pBeta pGamma pRho)
+
+obsSIRGen :: forall env ts. Observable env "infobs" Int
+  => Params -> LatState -> Model env ts Int
+obsSIRGen (Params _ _ rho) (LatState _ inf _)  = poisson' (rho * fromIntegral inf) #infobs
+
+transSIRGen :: forall env ts. Params -> LatState -> Model env ts LatState
+transSIRGen (Params beta gamma _) = transSI beta >=> transIR gamma
+
+sirGen :: (Observable env "infobs" Int, Observables env '["ρ", "β", "γ"] Double) => Int -> LatState -> Model env ts LatState
+sirGen = hmmGen priorSIRGen transSIRGen obsSIRGen
+
+{- SIRV model with resusceptible, using Generic HMM -}
+
+data ParamsSIRV = ParamsSIRV {
+    beta_  :: Double, -- ^ Mean contact rate between susceptible and infected people
+    gamma_ :: Double, -- ^ Mean recovery rate
+    rho_   :: Double, -- ^ Rate of detection
+    omega_ :: Double, -- ^ Vaccination rate
+    eta_   :: Double  -- ^ Resusceptible rate
+}
+
+data LatStateSIRV = LatStateSIRV {
+    s :: Int, -- ^ Number of people susceptible to infection
+    i :: Int, -- ^ Number of people currently infected
+    r :: Int, -- ^ Number of people recovered from infection
+    v :: Int  -- ^ Number of vaccinated people
+} deriving Show
+
+transSI' :: Double -> LatStateSIRV -> Model env ts LatStateSIRV
+transSI' beta sirv@(LatStateSIRV {s = s, i = i}) = do
+  let pop = s + i + r sirv + v sirv
+  dN_SI <- binomial s (1 - exp ((-beta * fromIntegral i) / fromIntegral pop))
+  let s' = s - dN_SI
+      i' = i + dN_SI
+  return $ sirv { s = s', i = i' }
+
+transIR' :: Double -> LatStateSIRV -> Model env ts LatStateSIRV
+transIR' gamma sirv@(LatStateSIRV {i = i, r = r})  = do
+  dN_IR <- binomial i (1 - exp (-gamma))
+  let i' = i  - dN_IR
+      r' = r  + dN_IR
+  return $ sirv { i = i', r = r' }
+
+transSV' :: Double -> LatStateSIRV -> Model env ts LatStateSIRV
+transSV' omega sirv@(LatStateSIRV {s = s, v = v})  = do
+  dN_SV <- binomial s (1 - exp (-omega))
+  let s' = s - dN_SV
+      v' = v + dN_SV
+  return $ sirv { s = s', v = v' }
+
+transRS' :: Double -> LatStateSIRV -> Model env ts LatStateSIRV
+transRS' eta sirv@(LatStateSIRV {r = r, s = s}) = do
+  dN_RS <- binomial r (1 - exp (-eta))
+  let s' = s + dN_RS
+      r' = r - dN_RS
+  return $ sirv {s = s', r = r'}
+
+transSIRV :: Member (Writer [LatStateSIRV]) ts => TransModel env ts ParamsSIRV LatStateSIRV
+transSIRV (ParamsSIRV {beta_ = beta, gamma_ = gamma, omega_ = omega, eta_ = eta}) latentSt = do
+  latentSt' <- (transSI' beta  >=>
+                transIR' gamma >=>
+                transRS' eta   >=>
+                transSV' omega) latentSt
+  tellM [latentSt']
+  return latentSt'
+
+obsSIRV :: Observable env "infobs" Int => ObsModel env ts ParamsSIRV LatStateSIRV Int
+obsSIRV (ParamsSIRV {rho_ = rho}) sirv  = poisson' (rho * fromIntegral (i sirv)) #infobs
+
+priorSIRV :: Observables env '["ρ", "β", "γ", "ω", "η"] Double
+  => Model env ts ParamsSIRV
+priorSIRV = do
+  pBeta  <- gamma' 2 1 #β
+  pGamma <- gamma' 1 (1/8) #γ
+  pRho   <- beta' 2 7 #ρ
+  pOmega <- gamma' 1 (1/16) #ω
+  pEta <- gamma' 1 (1/8) #η
+  return (ParamsSIRV pBeta pGamma pRho pOmega pEta)
+
+hmmSIRVNsteps ::
+     Member (Writer [LatStateSIRV]) ts
+  => (Observable env "infobs" Int, Observables env '["ρ", "β", "γ", "ω", "η"] Double)
+  => Int -> LatStateSIRV -> Model env ts LatStateSIRV
+hmmSIRVNsteps  = hmmGen priorSIRV transSIRV obsSIRV
+
+{- Testing generic functions -}
+
+f :: forall ts a. Member (Writer [Int]) ts => a -> Freer ts Int
+f a = return 5
+
+g :: forall constr ts  a. constr => (constr => a -> Freer ts Int) -> a -> Freer ts Int
+g foo a = foo a
+
+h :: forall ts. Member (Writer [Int]) ts => Freer ts Int
+h = g @(Member (Writer [Int]) ts) f 3
+
+i' = run $ runWriter h
+
+f' :: Member (Writer [Int]) es => a -> Freer es Int
+f' _ = return 0
+
+g' :: (a -> Freer es Int) -> a -> Freer es Int
+g' f = f
+
+h' :: Member (Writer [Int]) es => a -> Freer es Int
+h' = g' f'
