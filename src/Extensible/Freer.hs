@@ -67,6 +67,8 @@ type family Members (ts :: [* -> *]) (tss :: [* -> *]) = (cs :: Constraint) | cs
   Members (t ': ts) tss = (Member t tss, Members ts tss)
   Members '[] tss       = ()
 
+pattern Other u <- (decomp -> Left u)
+
 inj' :: Int -> t v -> Union r v
 inj' = Union
 
