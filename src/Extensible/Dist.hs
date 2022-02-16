@@ -187,7 +187,7 @@ data Observe a where
 pattern PrintPatt :: (Member Sample rs) => (x ~ ()) => String -> Union rs x
 pattern PrintPatt s <- (prj -> Just (Printer s))
 
-pattern DistPatt :: () => (Show x, OpenSum.Member x PrimVal) => Dist x -> Union (Dist : r) x
+-- pattern DistPatt :: () => (Show x, OpenSum.Member x PrimVal) => Dist x -> Union (Dist : r) x
 pattern DistPatt d <- (decomp -> Right (DistDict d))
 
 pattern DistDict :: () => (Show x, OpenSum.Member x PrimVal) => Dist x -> Dist x
