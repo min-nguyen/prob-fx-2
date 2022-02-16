@@ -32,6 +32,16 @@ simulate n model xs envs = do
   let runN (x, env) = replicateM n (runSimulate env (model x))
   concat <$> mapM runN (zip xs envs)
 
+-- Simulate multiple model inputs under same environment
+simulateSameEnv :: (ts ~ '[Dist, Observe, AffReader env, Sample])
+  => Int                             -- Number of iterations per data point
+  -> (b -> Model env ts a)           -- Model awaiting input variable
+  -> [b]                             -- List of model input variables
+  -> LRec env                        -- List of model observed variables
+  -> Sampler [a]
+simulateSameEnv n model xs env =
+  concat <$> mapM (replicateM n . runSimulate env . model) xs
+
 runSimulate :: (ts ~ '[Dist, Observe, AffReader env, Sample])
  => LRec env -> Model env ts a -> Sampler a
 runSimulate ys m

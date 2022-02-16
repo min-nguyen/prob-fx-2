@@ -99,7 +99,7 @@ class Lookup (AsList xvs) x [v]  => Observable xvs x v where
 
 instance Lookup (AsList xvs) x [v] => Observable xvs x v where
 
-type family Observables xvs ks v where
+type family Observables xvs ks v :: Constraint where
   Observables xvs (x ': xs) v = (Observable xvs x v, Observables xvs xs v)
   Observables xvs '[] v = ()
 
