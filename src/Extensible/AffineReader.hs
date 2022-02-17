@@ -14,6 +14,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Extensible.AffineReader where
 

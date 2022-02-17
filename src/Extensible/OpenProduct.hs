@@ -90,7 +90,7 @@ type family UniqueKey x xvs where
   UniqueKey x '[] = True
 
 -- | Map the list constructor over a list of assocs
-type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
+type family AsList (as :: [Assoc Symbol Type]) = (bs :: [Assoc Symbol Type]) | bs -> as where
   AsList ((x := v) : xvs)   = ((x := [v]) : AsList xvs)
   AsList '[] = '[]
 
@@ -99,8 +99,8 @@ class Lookup (AsList xvs) x [v]  => Observable xvs x v where
 
 instance Lookup (AsList xvs) x [v] => Observable xvs x v where
 
-type family Observables xvs ks v :: Constraint where
-  Observables xvs (x ': xs) v = (Observable xvs x v, Observables xvs xs v)
+type family Observables xvs (ks :: [Symbol]) v :: Constraint where
+  Observables xvs (x ': xs) v = (Lookup (AsList xvs) x [v], Observables xvs xs v)
   Observables xvs '[] v = ()
 
 type LRec s = OpenProduct (AsList s)
