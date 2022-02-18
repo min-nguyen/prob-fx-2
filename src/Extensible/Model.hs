@@ -9,7 +9,7 @@ import Util
 import Extensible.Dist
 import Extensible.Freer
 -- import Extensible.Reader
-import Extensible.AffineReader
+import Extensible.ObsReader
 import Extensible.OpenSum (OpenSum)
 import qualified Extensible.OpenSum as OpenSum
 import Extensible.Sampler
@@ -49,7 +49,7 @@ type family Maybes (as :: [x]) = (bs :: [x]) | bs -> as where
 type MRec env = OP.OpenProduct (Maybes env)
 
 newtype Model env ts v =
-  Model { runModel :: (Member Dist ts, Member (AffReader env) ts, Member Sample ts) => Freer ts v }
+  Model { runModel :: (Member Dist ts, Member (ObsReader env) ts, Member Sample ts) => Freer ts v }
   deriving Functor
 
 instance Applicative (Model env ts) where

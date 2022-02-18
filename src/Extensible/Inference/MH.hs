@@ -31,7 +31,7 @@ import Extensible.Model hiding (runModelFree)
 import Extensible.Sampler
 import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum(..))
-import Extensible.AffineReader
+import Extensible.ObsReader
 import Extensible.State
 import GHC.Natural
 import GHC.TypeLits (Nat)
@@ -160,7 +160,7 @@ This is already natural for models such as a HMM.
 -}
 
 -- | Run MH for multiple data points
-mh :: (ts ~ '[AffReader env, Dist, State SMap, State LPMap, Observe, Sample])
+mh :: (ts ~ '[ObsReader env, Dist, State SMap, State LPMap, Observe, Sample])
    => Int                              -- Number of mhSteps per data point
    -> (b -> Model env ts a)            -- Model awaiting input variable
    -> [Tag]                            -- Tags indicated sample sites of interest
@@ -183,7 +183,7 @@ mh n model tags xs envs = do
   return $ reverse l
 
 -- | Perform one step of MH for a single data point
-mhStep :: (ts ~ '[AffReader env, Dist, State SMap, State LPMap, Observe, Sample])
+mhStep :: (ts ~ '[ObsReader env, Dist, State SMap, State LPMap, Observe, Sample])
   => LRec env         -- Model observed variable
   -> Model env ts a   -- Model
   -> [Tag]            -- Tags indicating sample sites of interest
@@ -223,7 +223,7 @@ mhStep env model tags trace = do
             return trace
 
 -- | Run model once under MH
-runMH :: (ts ~ '[AffReader env, Dist, State SMap, State LPMap, Observe, Sample])
+runMH :: (ts ~ '[ObsReader env, Dist, State SMap, State LPMap, Observe, Sample])
   => LRec env       -- Model observed variable
   -> SMap              -- Previous mh sample set
   -> Addr           -- Sample address
@@ -239,7 +239,7 @@ runMH env samples α_samp m = do
                             . runState Map.empty
                             . transformMH
                             . runDist
-                            . runAffReader env) (runModel m)
+                            . runObsReader env) (runModel m)
   return (a, samples', logps')
 
 -- transformMH :: (Member Sample ts, Member Observe ts) =>

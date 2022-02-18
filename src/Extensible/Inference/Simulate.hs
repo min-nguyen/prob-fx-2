@@ -18,11 +18,11 @@ import Extensible.Dist
 import Extensible.Freer
 import Extensible.Model
 import Extensible.Sampler
-import Extensible.AffineReader
+import Extensible.ObsReader
 import Extensible.State
 import Extensible.Example as Example
 
-simulate :: (ts ~ '[Dist, Observe, AffReader env, Sample])
+simulate :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env ts a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
@@ -33,7 +33,7 @@ simulate n model xs envs = do
   concat <$> mapM runN (zip xs envs)
 
 -- Simulate multiple model inputs under same environment
-simulateSameEnv :: (ts ~ '[Dist, Observe, AffReader env, Sample])
+simulateSameEnv :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env ts a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
@@ -42,12 +42,12 @@ simulateSameEnv :: (ts ~ '[Dist, Observe, AffReader env, Sample])
 simulateSameEnv n model xs env =
   concat <$> mapM (replicateM n . runSimulate env . model) xs
 
-runSimulate :: (ts ~ '[Dist, Observe, AffReader env, Sample])
+runSimulate :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
  => LRec env -> Model env ts a -> Sampler a
 runSimulate ys m
-  = (runSample . runAffReader ys . runObserve . runDist) (runModel m)
+  = (runSample . runObsReader ys . runObserve . runDist) (runModel m)
 
-simulateWith :: (ts ~ '[Dist, Observe, AffReader env, Sample])
+simulateWith :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env (t:ts) a)       -- Model awaiting input variable
   -> [b]                             -- List of model input variables
@@ -58,13 +58,13 @@ simulateWith n model xs envs h = do
   let runN (x, env) = replicateM n (runSimulateWith env (model x) h)
   concat <$> mapM runN (zip xs envs)
 
-runSimulateWith :: (ts ~ '[Dist, Observe, AffReader env, Sample])
+runSimulateWith :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
  => LRec env
  -> Model env (t:ts) a
  -> (Model env (t:ts) a -> Model env ts c)
  -> Sampler c
 runSimulateWith ys m h
-  = (runSample . runAffReader ys . runObserve . runDist) (runModel $ h m)
+  = (runSample . runObsReader ys . runObserve . runDist) (runModel $ h m)
 
 runObserve :: Freer (Observe : ts) a -> Freer ts  a
 runObserve (Pure x) = return x
@@ -110,13 +110,13 @@ runSample (Free u k) = case u of
 --   = runSample $ runReader ys $ runObserve $ runDist $ runModel m
 -- or this:
 -- runBasic3 :: (Member Observe ts, Member Sample ts) =>
---  LRec env -> Model env (Dist : AffReader (AsList env) : ts) a -> Freer ts a
+--  LRec env -> Model env (Dist : ObsReader (AsList env) : ts) a -> Freer ts a
 -- runBasic3 env
---   =  fmap fst . runAffReader env . runDist . runModel
+--   =  fmap fst . runObsReader env . runDist . runModel
 
 runInit :: (Member Observe ts, Member Sample ts)
-          => LRec env -> Model env (Dist : AffReader env : ts) a -> Freer ts a
-runInit env m = (runAffReader env . runDist)  (runModel m)
+          => LRec env -> Model env (Dist : ObsReader env : ts) a -> Freer ts a
+runInit env m = (runObsReader env . runDist)  (runModel m)
 
 newtype F ts a = F { runF :: Member Observe ts => Freer ts a }
 

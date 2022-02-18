@@ -63,7 +63,7 @@ library
                       Extensible.EffExample,
                       Extensible.Reader,
                       Extensible.DataSets,
-                      Extensible.AffineReader,
+                      Extensible.ObsReader,
                       Extensible.Writer,
                       Extensible.State,
                       Extensible.IO,

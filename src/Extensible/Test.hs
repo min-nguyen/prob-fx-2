@@ -26,7 +26,7 @@ import Extensible.Inference.Inf
 import Extensible.State
 import Extensible.Model
 import Extensible.Sampler
-import Extensible.AffineReader
+import Extensible.ObsReader
 -- import Data.Extensible
 import Extensible.OpenProduct
 import Util

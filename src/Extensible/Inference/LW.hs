@@ -12,7 +12,7 @@ module Extensible.Inference.LW where
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Extensible.OpenProduct
-import Extensible.AffineReader
+import Extensible.ObsReader
 import Control.Monad
 import Control.Monad.Trans.Class
 import Unsafe.Coerce
@@ -33,7 +33,7 @@ updateTrace :: forall ts x. (Member (State SampleMap) ts, OpenSum.Member x PrimV
 updateTrace α x = modify (Map.insert α (OpenSum.inj x) :: SampleMap -> SampleMap)
 
 -- | Run LW n times for multiple data points
-lw :: (ts ~ '[AffReader env, Dist, Observe, Sample])
+lw :: (ts ~ '[ObsReader env, Dist, Observe, Sample])
    => Int                              -- Number of lw iterations per data point
    -> (b -> Model env ts a)            -- Model awaiting input variable
    -> [b]                              -- List of model input variables
@@ -44,7 +44,7 @@ lw n model xs envs = do
   concat <$> mapM runN (zip xs envs)
 
 -- | Run LW once for single data point
-runLW :: ts ~ '[AffReader env, Dist, Observe, Sample]
+runLW :: ts ~ '[ObsReader env, Dist, Observe, Sample]
   => LRec env -> Model env ts a
   -> Sampler (a, SampleMap, Double)
 runLW env model = do
@@ -53,16 +53,16 @@ runLW env model = do
                             . runState Map.empty
                             . transformLW
                             . runDist
-                            . runAffReader env)
+                            . runObsReader env)
                             (runModel model)
   return (x, samples, p)
 
-runLWpaper :: ts ~ '[AffReader env, Dist,  Observe, Sample]
+runLWpaper :: ts ~ '[ObsReader env, Dist,  Observe, Sample]
   => LRec env -> Model env ts a
   -> Sampler ((a, SampleMap), Double)
 runLWpaper env m =
   (runSample . runObserve . runState Map.empty
-   . transformLW . runDist . runAffReader env) (runModel m)
+   . transformLW . runDist . runObsReader env) (runModel m)
 
 transformLW :: (Member Sample ts) => Freer ts a -> Freer (State SampleMap ': ts) a
 transformLW = install return

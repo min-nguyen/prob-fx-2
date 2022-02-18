@@ -14,9 +14,8 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
-module Extensible.AffineReader where
+module Extensible.ObsReader where
 
 import Extensible.State
 import Extensible.Freer
@@ -26,35 +25,35 @@ import qualified Extensible.OpenProduct as OP
 import Control.Lens hiding ((:>))
 import Util
 
-data AffReader env a where
-  Ask :: OP.Observable env x a => OP.Var x -> AffReader env (Maybe a)
+data ObsReader env a where
+  Ask :: OP.Observable env x a => OP.Var x -> ObsReader env (Maybe a)
 
-ask :: forall env ts x a. Member (AffReader env) ts => OP.Observable env x a => OP.Var x -> Freer ts (Maybe a)
-ask k = Free (inj (Ask k :: AffReader env (Maybe a))) Pure
+ask :: forall env ts x a. Member (ObsReader env) ts => OP.Observable env x a => OP.Var x -> Freer ts (Maybe a)
+ask k = Free (inj (Ask k :: ObsReader env (Maybe a))) Pure
 
-pattern AskPatt :: () => ((v :: *) ~ (Maybe a :: *), OP.Observable env x a) => OP.Var x -> Union ((AffReader env) ': r) v
+pattern AskPatt :: () => ((v :: *) ~ (Maybe a :: *), OP.Observable env x a) => OP.Var x -> Union ((ObsReader env) ': r) v
 pattern AskPatt x <- (decomp -> Right (Ask x))
 
-runAffReader' :: forall env ts a.
-  OP.OpenProduct (OP.AsList env) -> Freer (AffReader env ': ts) a -> Freer ts a
-runAffReader' env (Pure x) = return x
-runAffReader' env (Free (AskPatt key) k) = do
+runObsReader' :: forall env ts a.
+  OP.OpenProduct (OP.AsList env) -> Freer (ObsReader env ': ts) a -> Freer ts a
+runObsReader' env (Pure x) = return x
+runObsReader' env (Free (AskPatt key) k) = do
     let ys = OP.getOP key env
         y  = maybeHead ys
         env' = OP.setOP key (safeTail ys) env
-    runAffReader env' (k y)
-runAffReader' env (Free (Other u) k) = Free u (runAffReader' env . k)
--- runAffReader' env (Free u k) = case decomp u of
+    runObsReader env' (k y)
+runObsReader' env (Free (Other u) k) = Free u (runObsReader' env . k)
+-- runObsReader' env (Free u k) = case decomp u of
 --   (Right (Ask key)) -> do
 --     let ys = OP.getOP key env
 --         y  = maybeHead ys
 --         env' = OP.setOP key (safeTail ys) env
---     runAffReader env' (k y)
---   Left u -> Free u (runAffReader env . k)
+--     runObsReader env' (k y)
+--   Left u -> Free u (runObsReader env . k)
 
-runAffReader :: forall env ts a.
-  OP.OpenProduct (OP.AsList env) -> Freer (AffReader env ': ts) a -> Freer ts a
-runAffReader env0 = handleRelaySt env0
+runObsReader :: forall env ts a.
+  OP.OpenProduct (OP.AsList env) -> Freer (ObsReader env ': ts) a -> Freer ts a
+runObsReader env0 = handleRelaySt env0
   (\env x    -> return x)
   (\env tx k ->
     case tx of
@@ -65,4 +64,4 @@ runAffReader env0 = handleRelaySt env0
 
 
 -- pattern AskPatt :: OP.Observable env x a =>  OP.Var x -> Union ts x
--- pattern AskPatt :: FindElem (AffReader env) ts => (OP.Observable env x a) => OP.Var x1 -> Union ts a
+-- pattern AskPatt :: FindElem (ObsReader env) ts => (OP.Observable env x a) => OP.Var x1 -> Union ts a

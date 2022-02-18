@@ -21,7 +21,7 @@ import Extensible.Dist
 import Extensible.Freer
 import Extensible.Model
 import Extensible.Sampler
-import Extensible.AffineReader
+import Extensible.ObsReader
 import Extensible.State
 import Extensible.Example as Example
 import qualified Extensible.OpenSum as OpenSum
@@ -39,7 +39,7 @@ extractSamples (x, typ)  =
   . Map.toList
   . Map.filterWithKey (\(tag, idx) _ -> tag == varToStr x)
 
-simulate :: (ts ~ '[Dist, Observe, AffReader env, Sample])
+simulate :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env ts a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
@@ -49,12 +49,12 @@ simulate n model xs envs = do
   let runN (x, env) = replicateM n (runSimulate env (model x))
   concat <$> mapM runN (zip xs envs)
 
-runSimulate :: (ts ~ '[Dist, Observe, AffReader env, Sample])
+runSimulate :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
  => LRec env -> Model env ts a -> Sampler (a, SampleMap)
 runSimulate ys m
-  = (runSample Map.empty . runAffReader ys . runObserve . runDist) (runModel m)
+  = (runSample Map.empty . runObsReader ys . runObserve . runDist) (runModel m)
 
-simulateWith :: (ts ~ '[Dist, Observe, AffReader env, Sample])
+simulateWith :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env (t:ts) a)       -- Model awaiting input variable
   -> [b]                             -- List of model input variables
@@ -65,13 +65,13 @@ simulateWith n model xs envs h = do
   let runN (x, env) = replicateM n (runSimulateWith env (model x) h)
   concat <$> mapM runN (zip xs envs)
 
-runSimulateWith :: (ts ~ '[Dist, Observe, AffReader env, Sample])
+runSimulateWith :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
  => LRec env
  -> Model env (t:ts) a
  -> (Model env (t:ts) a -> Model env ts c)
  -> Sampler (c, SampleMap)
 runSimulateWith ys m h
-  = (runSample Map.empty . runAffReader ys . runObserve . runDist) (runModel $ h m)
+  = (runSample Map.empty . runObsReader ys . runObserve . runDist) (runModel $ h m)
 
 runObserve :: Freer (Observe : ts) a -> Freer ts  a
 runObserve (Pure x) = return x

@@ -9,10 +9,10 @@ module Extensible.Experiments.ModelTypeSynonym where
 import Extensible.Dist
 import Extensible.Freer
 import qualified Extensible.OpenProduct as OP
-import Extensible.AffineReader
+import Extensible.ObsReader
 
 -- | Type synonym version of Model
-type Model env ts v = (Member Dist ts, Member (AffReader env) ts, Member Sample ts) => Freer ts v
+type Model env ts v = (Member Dist ts, Member (ObsReader env) ts, Member Sample ts) => Freer ts v
 
 normal :: Double -> Double -> Model env ts Double
 normal mu sigma = do
@@ -28,7 +28,7 @@ normal' mu sigma field = do
 
 -- | The reason we need to use type applications to apply the type 'env' to 'normal' is because the "constructors" of Model are exactly the constructors of Freer, which can't possibly provide an appropriate typeclass dictionary.
 
-f :: forall env ts .  OP.Observables env '["y", "m", "c", "σ"] Double => (Member Dist ts, Member (AffReader env) ts, Member Sample ts) => Freer ts ()
+f :: forall env ts .  OP.Observables env '["y", "m", "c", "σ"] Double => (Member Dist ts, Member (ObsReader env) ts, Member Sample ts) => Freer ts ()
 f = do
   normal' @env 0 3 #y
   return ()
