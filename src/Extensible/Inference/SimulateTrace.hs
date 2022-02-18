@@ -33,7 +33,7 @@ type SampleMap = Map Addr (OpenSum PrimVal)
 
 type Trace a = [(a, SampleMap)]
 
-extractSamples ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (Var x, Proxy a) -> SampleMap -> [a]
+extractSamples ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (ObsVar x, Proxy a) -> SampleMap -> [a]
 extractSamples (x, typ)  =
     map (fromJust . OpenSum.prj @a . snd)
   . Map.toList

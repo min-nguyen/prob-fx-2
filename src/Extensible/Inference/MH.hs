@@ -85,7 +85,7 @@ type TraceMH a = [(a, SMap, LPMap)]
 -- -- showPrimVal :: OpenSum.Member x PrimVal => x -> String
 -- -- showPrimVal x = show x
 
-extractSamples ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (Var x, Proxy a) -> SMap -> [a]
+extractSamples ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (ObsVar x, Proxy a) -> SMap -> [a]
 extractSamples (x, typ)  =
     map (fromJust . OpenSum.prj @a . snd . snd)
   . Map.toList

@@ -19,7 +19,7 @@ normal mu sigma = do
   send (NormalDist mu sigma Nothing Nothing)
 
 normal' :: forall env ts x. OP.Lookup (OP.AsList env) x [Double]
-  => Double -> Double -> OP.Var x
+  => Double -> Double -> OP.ObsVar x
   -> Model env ts Double
 normal' mu sigma field = do
   let tag = Just $ OP.varToStr field
