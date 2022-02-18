@@ -14,7 +14,7 @@ module Extensible.Inference.SimulateTrace where
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Map (Map)
-import Extensible.OpenProduct
+import Extensible.ModelEnv
 import Control.Monad
 import Control.Monad.Trans.Class
 import Extensible.Dist
@@ -43,14 +43,14 @@ simulate :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env ts a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
-  -> [LRec env]                      -- List of model observed variables
+  -> [ModelEnv env]                      -- List of model observed variables
   -> Sampler [(a, SampleMap)]
 simulate n model xs envs = do
   let runN (x, env) = replicateM n (runSimulate env (model x))
   concat <$> mapM runN (zip xs envs)
 
 runSimulate :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
- => LRec env -> Model env ts a -> Sampler (a, SampleMap)
+ => ModelEnv env -> Model env ts a -> Sampler (a, SampleMap)
 runSimulate ys m
   = (runSample Map.empty . runObsReader ys . runObserve . runDist) (runModel m)
 
@@ -58,7 +58,7 @@ simulateWith :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env (t:ts) a)       -- Model awaiting input variable
   -> [b]                             -- List of model input variables
-  -> [LRec env]                      -- List of model observed variables
+  -> [ModelEnv env]                      -- List of model observed variables
   -> (Model env (t:ts) a -> Model env ts c)
   -> Sampler [(c, SampleMap)]
 simulateWith n model xs envs h = do
@@ -66,7 +66,7 @@ simulateWith n model xs envs h = do
   concat <$> mapM runN (zip xs envs)
 
 runSimulateWith :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
- => LRec env
+ => ModelEnv env
  -> Model env (t:ts) a
  -> (Model env (t:ts) a -> Model env ts c)
  -> Sampler (c, SampleMap)

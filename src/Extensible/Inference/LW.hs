@@ -11,7 +11,7 @@ module Extensible.Inference.LW where
 
 import qualified Data.Map as Map
 import Data.Map (Map)
-import Extensible.OpenProduct
+import Extensible.ModelEnv
 import Extensible.ObsReader
 import Control.Monad
 import Control.Monad.Trans.Class
@@ -37,7 +37,7 @@ lw :: (ts ~ '[ObsReader env, Dist, Observe, Sample])
    => Int                              -- Number of lw iterations per data point
    -> (b -> Model env ts a)            -- Model awaiting input variable
    -> [b]                              -- List of model input variables
-   -> [LRec env]                       -- List of model observed variables
+   -> [ModelEnv env]                       -- List of model observed variables
    -> Sampler (TraceLW a)              -- List of n likelihood weightings for each data point
 lw n model xs envs = do
   let runN (x, env) = replicateM n (runLW env (model x))
@@ -45,7 +45,7 @@ lw n model xs envs = do
 
 -- | Run LW once for single data point
 runLW :: ts ~ '[ObsReader env, Dist, Observe, Sample]
-  => LRec env -> Model env ts a
+  => ModelEnv env -> Model env ts a
   -> Sampler (a, SampleMap, Double)
 runLW env model = do
   ((x, samples), p) <- (runSample
@@ -58,7 +58,7 @@ runLW env model = do
   return (x, samples, p)
 
 runLWpaper :: ts ~ '[ObsReader env, Dist,  Observe, Sample]
-  => LRec env -> Model env ts a
+  => ModelEnv env -> Model env ts a
   -> Sampler ((a, SampleMap), Double)
 runLWpaper env m =
   (runSample . runObserve . runState Map.empty

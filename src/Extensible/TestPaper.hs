@@ -30,18 +30,18 @@ import Extensible.State
 import Extensible.Model
 import Extensible.Sampler
 import Extensible.ObsReader
-import Extensible.OpenProduct
+import Extensible.ModelEnv
 import Util
 import Debug.Trace
 import Unsafe.Coerce
 import Extensible.Inference.SimulateTrace (extractSamples)
 
 {- Linear Regression -}
-mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> LRec Example.LinRegrEnv
+mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> ModelEnv Example.LinRegrEnv
 mkRecordLinRegr (y_vals, m_vals, c_vals, σ_vals) =
   (#y := y_vals) <:> (#m := m_vals) <:> (#c := c_vals) <:> (#σ := σ_vals) <:> nil
 
-mkRecordLinRegrY :: [Double] -> LRec Example.LinRegrEnv
+mkRecordLinRegrY :: [Double] -> ModelEnv Example.LinRegrEnv
 mkRecordLinRegrY y_vals =
   (#y := y_vals) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:> nil
 
@@ -73,10 +73,10 @@ testLinRegrMHPost n_datapoints n_samples = do
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
 {- HMM -}
-mkRecordHMM :: ([Int], Double, Double) -> LRec Example.HMMEnv
+mkRecordHMM :: ([Int], Double, Double) -> ModelEnv Example.HMMEnv
 mkRecordHMM (ys, transp, obsp) = #y := ys <:> #trans_p := [transp] <:> #obs_p := [obsp] <:>  nil
 
-mkRecordHMMy :: [Int] -> LRec Example.HMMEnv
+mkRecordHMMy :: [Int] -> ModelEnv Example.HMMEnv
 mkRecordHMMy ys = #y := ys <:> #trans_p := [] <:> #obs_p := [] <:>  nil
 
 testHMMBasic :: Int -> Int -> Sampler [Int]
@@ -107,7 +107,7 @@ vocab = ["DNA", "evolution", "parsing", "phonology"]
 doc_words :: [String]
 doc_words     = ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA"]
 
-mkRecordTopic :: ([[Double]], [[Double]], [String]) -> LRec Example.TopicEnv
+mkRecordTopic :: ([[Double]], [[Double]], [String]) -> ModelEnv Example.TopicEnv
 mkRecordTopic (tps, wps, ys) =  #θ := tps <:>  #φ := wps <:> #w := ys <:>nil
 
 testTopicBasic :: Int -> Int -> Sampler [[String]]
@@ -129,13 +129,13 @@ testTopicMHPost n_words n_samples = do
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
 {- SIR -}
-mkRecordSIR :: ([Double], [Double], [Double], [Int]) -> LRec Example.SIREnv
+mkRecordSIR :: ([Double], [Double], [Double], [Int]) -> ModelEnv Example.SIREnv
 mkRecordSIR (βv, γv, ρv, infobs) = #β := βv <:> #γ := γv <:>  #ρ := ρv <:>  #infobs := infobs <:> nil
 
-mkRecordSIRparams :: ([Double], [Double], [Double]) -> LRec Example.SIREnv
+mkRecordSIRparams :: ([Double], [Double], [Double]) -> ModelEnv Example.SIREnv
 mkRecordSIRparams (βv, γv, ρv) = #β := βv <:> #γ := γv <:>  #ρ := ρv <:>  #infobs := [] <:> nil
 
-mkRecordSIRy :: [Int] -> LRec Example.SIREnv
+mkRecordSIRy :: [Int] -> ModelEnv Example.SIREnv
 mkRecordSIRy ys = #β := [] <:> #γ := [] <:>  #ρ := [] <:> #infobs := ys <:> nil
 
 latentState :: Int -> Int -> Int -> Example.LatState

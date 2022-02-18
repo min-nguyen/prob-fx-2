@@ -20,7 +20,7 @@ module Extensible.ObsReader where
 import Extensible.State
 import Extensible.Freer
 -- import Data.Extensible hiding (Member)
-import qualified Extensible.OpenProduct as OP
+import qualified Extensible.ModelEnv as OP
 -- import Extensible.Model
 import Control.Lens hiding ((:>))
 import Util
@@ -35,7 +35,7 @@ pattern AskPatt :: () => ((v :: *) ~ (Maybe a :: *), OP.Observable env x a) => O
 pattern AskPatt x <- (decomp -> Right (Ask x))
 
 runObsReader :: forall env ts a.
-  OP.OpenProduct (OP.AsList env) -> Freer (ObsReader env ': ts) a -> Freer ts a
+  OP.ModelEnv env -> Freer (ObsReader env ': ts) a -> Freer ts a
 runObsReader env (Pure x) = return x
 runObsReader env (Free (AskPatt key) k) = do
     let ys = OP.getOP key env
@@ -52,7 +52,7 @@ runObsReader env (Free (Other u) k) = Free u (runObsReader env . k)
 --   Left u -> Free u (runObsReader env . k)
 
 runObsReader' :: forall env ts a.
-  OP.OpenProduct (OP.AsList env) -> Freer (ObsReader env ': ts) a -> Freer ts a
+  OP.ModelEnv env -> Freer (ObsReader env ': ts) a -> Freer ts a
 runObsReader' env0 = handleRelaySt env0
   (\env x    -> return x)
   (\env tx k ->

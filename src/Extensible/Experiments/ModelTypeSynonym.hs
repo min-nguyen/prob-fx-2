@@ -8,7 +8,7 @@ module Extensible.Experiments.ModelTypeSynonym where
 
 import Extensible.Dist
 import Extensible.Freer
-import qualified Extensible.OpenProduct as OP
+import qualified Extensible.ModelEnv as OP
 import Extensible.ObsReader
 
 -- | Type synonym version of Model

@@ -36,7 +36,7 @@ import Data.Maybe
 import Data.Kind (Constraint)
 import GHC.TypeLits
 import Data.Typeable
-import Extensible.OpenProduct
+import Extensible.ModelEnv
 import Util
 import Data.Vector.Fusion.Bundle (findIndex)
 import GHC.Show (Show)

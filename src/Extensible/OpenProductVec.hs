@@ -3,7 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
-module Extensible.OpenProduct where
+module Extensible.ModelEnv where
 
 import Data.Kind
 -- import Data.Functor.Identity
@@ -21,11 +21,11 @@ import Control.Lens hiding ((:>))
 data Any where
   Any :: t -> Any
 
-data OpenProduct (ts :: [Assoc Symbol k])  where
-  OpenProduct :: V.Vector Any -> OpenProduct ts
+data ModelEnv (ts :: [Assoc Symbol k])  where
+  ModelEnv :: V.Vector Any -> ModelEnv ts
 
-nil :: OpenProduct '[]
-nil = OpenProduct V.empty
+nil :: ModelEnv '[]
+nil = ModelEnv V.empty
 
 -- data Var (key :: Symbol) = Var
 data Var (x :: Symbol) where
@@ -65,16 +65,16 @@ type family UniqueKey x xvs where
 
 -- | State that we can lookup var 'x' with value type 'a' in list of assocs 'xs'
 class (FindElem x xvs, LookupType x xvs ~ a) => Lookup xvs x a where
-  getOP :: Var x -> OpenProduct xvs -> a
-  setOP :: Var x -> a -> OpenProduct xvs -> OpenProduct xvs
+  getOP :: Var x -> ModelEnv xvs -> a
+  setOP :: Var x -> a -> ModelEnv xvs -> ModelEnv xvs
 
 instance (FindElem x xvs, LookupType x xvs ~ a) => Lookup xvs x a where
-  getOP _ (OpenProduct v) =
+  getOP _ (ModelEnv v) =
     unAny (V.unsafeIndex v (unP $ findElem @x @xvs))
     where
       unAny (Any a) = unsafeCoerce a
-  setOP _ ft (OpenProduct v) =
-    OpenProduct (v V.// [(unP (findElem @x @xvs), Any ft)])
+  setOP _ ft (ModelEnv v) =
+    ModelEnv (v V.// [(unP (findElem @x @xvs), Any ft)])
 
 -- | Map the list constructor over a list of assocs
 type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
@@ -90,17 +90,17 @@ type family Observables xvs ks v where
   Observables xvs (x ': xs) v = (Observable xvs x v, Observables xvs xs v)
   Observables xvs '[] v = ()
 
-type LRec s = OpenProduct (AsList s)
+type LRec s = ModelEnv (AsList s)
 
 insert :: UniqueKey x ts ~ 'True
-       => Var x -> t -> OpenProduct ts -> OpenProduct (x ':> t ': ts)
-insert _ t (OpenProduct v) = OpenProduct (V.cons (Any t) v)
+       => Var x -> t -> ModelEnv ts -> ModelEnv (x ':> t ': ts)
+insert _ t (ModelEnv v) = ModelEnv (V.cons (Any t) v)
 
 infixr 5 <:>
-(<:>) :: UniqueKey x xvs ~ 'True => Assoc (Var x) v -> OpenProduct xvs -> OpenProduct ((x ':> v) ': xvs)
-(_ :> v) <:> (OpenProduct xvs) = OpenProduct (V.cons (Any v) xvs)
+(<:>) :: UniqueKey x xvs ~ 'True => Assoc (Var x) v -> ModelEnv xvs -> ModelEnv ((x ':> v) ': xvs)
+(_ :> v) <:> (ModelEnv xvs) = ModelEnv (V.cons (Any v) xvs)
 
-mkLens :: forall xvs x a. Lookup xvs x a => Var x -> Lens' (OpenProduct xvs) a
+mkLens :: forall xvs x a. Lookup xvs x a => Var x -> Lens' (ModelEnv xvs) a
 mkLens x = lens (getOP x) (\s a -> setOP x a s)
 
 mkGetter ::  (s -> a) -> Getting a s a
@@ -110,7 +110,7 @@ mkSetter :: ((a -> b) -> s -> t) -> ASetter s t a b
 mkSetter f g = Identity . f (runIdentity . g)
 
 mkGetterSetter :: forall xvs x v . (Lookup xvs x v)
-  => Var x -> (Getting v (OpenProduct xvs) v, ASetter (OpenProduct xvs) (OpenProduct xvs) v v)
+  => Var x -> (Getting v (ModelEnv xvs) v, ASetter (ModelEnv xvs) (ModelEnv xvs) v v)
 mkGetterSetter field =
   let getter' = mkGetter (\s -> getOP field s)
       setter' = mkSetter (\f s ->  let a = s ^. getter'
@@ -123,11 +123,11 @@ mkGetterSetter field =
 -- data Any where
 --   Any :: t -> Any
 
--- data OpenProduct (ts :: [(Symbol, k)])  where
---   OpenProduct :: V.Vector Any -> OpenProduct ts
+-- data ModelEnv (ts :: [(Symbol, k)])  where
+--   ModelEnv :: V.Vector Any -> ModelEnv ts
 
--- nil :: OpenProduct '[]
--- nil = OpenProduct V.empty
+-- nil :: ModelEnv '[]
+-- nil = ModelEnv V.empty
 
 -- data Var (key :: Symbol) = Var
 
@@ -143,8 +143,8 @@ mkGetterSetter field =
 -- instance {-# OVERLAPPABLE #-} FindElem k kvs => FindElem k (kv ': kvs) where
 --   findElem = P $ 1 + unP (findElem :: P k kvs)
 
--- getOP :: forall key ts a. FindElem key ts => Var key -> OpenProduct ts -> a
--- getOP _ (OpenProduct v) =
+-- getOP :: forall key ts a. FindElem key ts => Var key -> ModelEnv ts -> a
+-- getOP _ (ModelEnv v) =
 --   unAny (V.unsafeIndex v (unP $ findElem @key @ts))
 --   where
 --     unAny (Any a) = unsafeCoerce a
@@ -160,11 +160,11 @@ mkGetterSetter field =
 --  = Filter (TyEq key <=< Fst) ts >>= Null
 
 -- insert :: Eval (UniqueKey key ts) ~ 'True
---        => Var key -> t -> OpenProduct ts -> OpenProduct ('(key, t) ': ts)
--- insert _ t (OpenProduct v) = OpenProduct (V.cons (Any t) v)
+--        => Var key -> t -> ModelEnv ts -> ModelEnv ('(key, t) ': ts)
+-- insert _ t (ModelEnv v) = ModelEnv (V.cons (Any t) v)
 
 -- infixr 5 <:>
--- (<:>) :: Eval (UniqueKey key ts) ~ 'True => (Var key, t) -> OpenProduct ts -> OpenProduct ('(key, t) ': ts)
+-- (<:>) :: Eval (UniqueKey key ts) ~ 'True => (Var key, t) -> ModelEnv ts -> ModelEnv ('(key, t) ': ts)
 -- (<:>) (k, v) op = insert k v op
 
 -- -- # Projection
@@ -195,16 +195,16 @@ mkGetterSetter field =
 --   LookUp key ts >>= FromMaybe Stuck
 
 -- getOP :: forall key ts  . KnownNat (FindElem key ts)
---     => Var key -> OpenProduct ts -> (Eval (LookupType key ts))
--- getOP _ (OpenProduct v) =
+--     => Var key -> ModelEnv ts -> (Eval (LookupType key ts))
+-- getOP _ (ModelEnv v) =
 --   unAny (V.unsafeIndex v (findElem @key @ts))
 --   where
 --     unAny (Any a) = unsafeCoerce a
 
 -- setOP :: forall key ts . KnownNat (FindElem key ts)
---     => Var key -> Eval (LookupType key ts) -> OpenProduct  ts -> OpenProduct ts
--- setOP _ ft (OpenProduct v) =
---   OpenProduct (v V.// [(findElem @key @ts, Any ft)])
+--     => Var key -> Eval (LookupType key ts) -> ModelEnv  ts -> ModelEnv ts
+-- setOP _ ft (ModelEnv v) =
+--   ModelEnv (v V.// [(findElem @key @ts, Any ft)])
 
 -- instance (key ~ key') => IsLabel key (Var key') where
 --   fromLabel = Var
@@ -212,14 +212,14 @@ mkGetterSetter field =
 -- class (KnownNat (FindElem k xs), a ~ Eval (LookupType k xs))
 --   => Lookup xs k a  where
 
--- getLens :: OpenProduct xs -> Getting a (OpenProduct  xs) a -> a
+-- getLens :: ModelEnv xs -> Getting a (ModelEnv  xs) a -> a
 -- getLens record k = record ^. k
 
 -- keyGetter :: (KnownNat (FindElem k xs), a ~ Eval (FromMaybe Stuck (Eval (LookUp k xs))))
---   => Var k -> OpenProduct xs -> a
+--   => Var k -> ModelEnv xs -> a
 -- keyGetter k = (\s -> getOP k s)
 
--- makeGetter :: forall a xs k. (KnownNat (FindElem k xs), a ~ Eval (FromMaybe Stuck (Eval (LookUp k xs)))) => Var k -> Getting a (OpenProduct  xs) a
+-- makeGetter :: forall a xs k. (KnownNat (FindElem k xs), a ~ Eval (FromMaybe Stuck (Eval (LookUp k xs)))) => Var k -> Getting a (ModelEnv  xs) a
 -- makeGetter k' = to (keyGetter k')
 
 -- to' ::  (s -> a) -> Getting a s a
@@ -228,13 +228,13 @@ mkGetterSetter field =
 -- sets' :: ((a -> b) -> s -> t) -> ASetter s t a b
 -- sets' f g = Identity . f (runIdentity . g)
 
--- lens' :: (OpenProduct s -> a) -> (OpenProduct s -> a -> OpenProduct s) -> Lens' (OpenProduct s) a
+-- lens' :: (ModelEnv s -> a) -> (ModelEnv s -> a -> ModelEnv s) -> Lens' (ModelEnv s) a
 -- lens' sa sbt afb s = sbt s <$> afb (sa s)
 
--- keyLens :: Lookup s k a => Var k -> Lens' (OpenProduct s) a
+-- keyLens :: Lookup s k a => Var k -> Lens' (ModelEnv s) a
 -- keyLens k = lens (\s -> getOP k s) (\s b -> setOP k b s)
 
--- mkGetterSetter :: (KnownNat (FindElem k xs), [a] ~ Eval (FromMaybe Stuck (Eval (LookUp k xs)))) => Var k -> (Getting [a] (OpenProduct  xs) [a], ASetter (OpenProduct  xs) (OpenProduct xs) [a] [a])
+-- mkGetterSetter :: (KnownNat (FindElem k xs), [a] ~ Eval (FromMaybe Stuck (Eval (LookUp k xs)))) => Var k -> (Getting [a] (ModelEnv  xs) [a], ASetter (ModelEnv  xs) (ModelEnv xs) [a] [a])
 -- mkGetterSetter field =
 --   let getter' = to' (\s -> getOP field s)
 --       setter' = sets' (\f s ->  let a = s ^. getter'
@@ -246,17 +246,17 @@ mkGetterSetter field =
 -- keyTest :: IsLabel "k" (Var a) => Var a
 -- keyTest = #k
 
--- ex :: OpenProduct  '[ '("bye", Int) , '("hi", Int)]
+-- ex :: ModelEnv  '[ '("bye", Int) , '("hi", Int)]
 -- ex = (#bye, 5) <:> (#hi, 5) <:> nil
 
 -- getEx ::  Int
 -- getEx = getOP #hi ex
 
--- getField :: (Lookup xs "key" a) => OpenProduct  xs ->  a
+-- getField :: (Lookup xs "key" a) => ModelEnv  xs ->  a
 -- getField record = getOP #key record
 
 -- bye :: KnownNat (FindElem "bye" xs) =>
---   Getting (Eval (LookupType "bye" xs)) (OpenProduct  xs) (Eval (LookupType "bye" xs))
+--   Getting (Eval (LookupType "bye" xs)) (ModelEnv  xs) (Eval (LookupType "bye" xs))
 -- bye = makeGetter #bye
 
 -- getEx' :: Int

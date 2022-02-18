@@ -11,7 +11,7 @@
 module Extensible.Inference.Simulate where
 
 -- import Data.Extensible hiding (Member)
-import Extensible.OpenProduct
+import Extensible.ModelEnv
 import Control.Monad
 import Control.Monad.Trans.Class
 import Extensible.Dist
@@ -26,7 +26,7 @@ simulate :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env ts a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
-  -> [LRec env]                      -- List of model observed variables
+  -> [ModelEnv env]                      -- List of model observed variables
   -> Sampler [a]
 simulate n model xs envs = do
   let runN (x, env) = replicateM n (runSimulate env (model x))
@@ -37,13 +37,13 @@ simulateSameEnv :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env ts a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
-  -> LRec env                        -- List of model observed variables
+  -> ModelEnv env                        -- List of model observed variables
   -> Sampler [a]
 simulateSameEnv n model xs env =
   concat <$> mapM (replicateM n . runSimulate env . model) xs
 
 runSimulate :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
- => LRec env -> Model env ts a -> Sampler a
+ => ModelEnv env -> Model env ts a -> Sampler a
 runSimulate ys m
   = (runSample . runObsReader ys . runObserve . runDist) (runModel m)
 
@@ -51,7 +51,7 @@ simulateWith :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env (t:ts) a)       -- Model awaiting input variable
   -> [b]                             -- List of model input variables
-  -> [LRec env]                      -- List of model observed variables
+  -> [ModelEnv env]                      -- List of model observed variables
   -> (Model env (t:ts) a -> Model env ts c)
   -> Sampler [c]
 simulateWith n model xs envs h = do
@@ -59,7 +59,7 @@ simulateWith n model xs envs h = do
   concat <$> mapM runN (zip xs envs)
 
 runSimulateWith :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
- => LRec env
+ => ModelEnv env
  -> Model env (t:ts) a
  -> (Model env (t:ts) a -> Model env ts c)
  -> Sampler c
@@ -115,7 +115,7 @@ runSample (Free u k) = case u of
 --   =  fmap fst . runObsReader env . runDist . runModel
 
 runInit :: (Member Observe ts, Member Sample ts)
-          => LRec env -> Model env (Dist : ObsReader env : ts) a -> Freer ts a
+          => ModelEnv env -> Model env (Dist : ObsReader env : ts) a -> Freer ts a
 runInit env m = (runObsReader env . runDist)  (runModel m)
 
 newtype F ts a = F { runF :: Member Observe ts => Freer ts a }

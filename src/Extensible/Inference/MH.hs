@@ -22,7 +22,7 @@ import qualified Data.Set as Set
 import Data.Set (Set, (\\))
 import Data.Maybe
 -- import Data.Extensible hiding (Member)
-import Extensible.OpenProduct
+import Extensible.ModelEnv
 import Control.Monad
 import Control.Monad.Trans.Class
 import Extensible.Dist
@@ -165,7 +165,7 @@ mh :: (ts ~ '[ObsReader env, Dist, State SMap, State LPMap, Observe, Sample])
    -> (b -> Model env ts a)            -- Model awaiting input variable
    -> [Tag]                            -- Tags indicated sample sites of interest
    -> [b]                              -- List of model input variables
-   -> [LRec env]                       -- List of model observed variables
+   -> [ModelEnv env]                       -- List of model observed variables
    -> Sampler (TraceMH a)              -- Trace of all accepted outputs, samples, and logps
 mh n model tags xs envs = do
   -- Perform initial run of mh
@@ -184,7 +184,7 @@ mh n model tags xs envs = do
 
 -- | Perform one step of MH for a single data point
 mhStep :: (ts ~ '[ObsReader env, Dist, State SMap, State LPMap, Observe, Sample])
-  => LRec env         -- Model observed variable
+  => ModelEnv env         -- Model observed variable
   -> Model env ts a   -- Model
   -> [Tag]            -- Tags indicating sample sites of interest
   -> TraceMH a        -- Trace of previous mh outputs
@@ -224,7 +224,7 @@ mhStep env model tags trace = do
 
 -- | Run model once under MH
 runMH :: (ts ~ '[ObsReader env, Dist, State SMap, State LPMap, Observe, Sample])
-  => LRec env       -- Model observed variable
+  => ModelEnv env       -- Model observed variable
   -> SMap              -- Previous mh sample set
   -> Addr           -- Sample address
   -> Model env ts a -- Model
