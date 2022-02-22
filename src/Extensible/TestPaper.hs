@@ -44,7 +44,6 @@ testLinRegrOneBasic n_datapoints n_samples = do
   bs <- Simulate.simulate n_samples Example.linearRegressionOne
                     [0 .. (fromIntegral n_datapoints)]
                     (repeat $ mkRecordLinRegr ([], [1.0], [0.0], [1.0]))
-  printS $ show (length $ map fst bs)
   return $ map fst bs
 
 testLinRegrOneLWInf :: Int -> Int -> Sampler [((Double, Double), Double)]
@@ -81,7 +80,6 @@ testLinRegrBasic n_datapoints n_samples = do
       <- Simulate.simulate n_samples Example.linearRegression
                     [[0 .. n_datapoints']]
                     [mkRecordLinRegr ([], [1.0], [0.0], [1.0])]
-  printS $ show (length $ concat $ map fst bs)
   return $ map fst bs
 
 testLinRegrLWInf :: Int -> Int -> Sampler [([Double], Double)]

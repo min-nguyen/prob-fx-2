@@ -9,9 +9,11 @@ import Extensible.Sampler
 main :: IO ()
 main = do
   benchmarkLinRegrOneSim_SampleSize
-  benchmarkLinRegrSim_SampleSize
-  benchmarkLinRegrLW_SampleSize
-  benchmarkLinRegrMH_SampleSize
+  benchmarkLinRegrOneLW_SampleSize
+  benchmarkLinRegrOneMH_SampleSize
+  -- benchmarkLinRegrSim_SampleSize
+  -- benchmarkLinRegrLW_SampleSize
+  -- benchmarkLinRegrMH_SampleSize
 
   -- benchmarkHMMSim_SampleSize
   -- benchmarkHMMLW_SampleSize
@@ -20,7 +22,9 @@ main = do
   -- benchmarkTopicSim_SampleSize
   -- benchmarkTopicLW_SampleSize
   -- benchmarkTopicMH_SampleSize
-
+  benchmarkLinRegrOneSim_DataSize
+  benchmarkLinRegrOneLW_DataSize
+  benchmarkLinRegrOneMH_DataSize
   -- benchmarkLinRegrSim_DataSize
   -- benchmarkLinRegrLW_DataSize
   -- benchmarkLinRegrMH_DataSize
@@ -40,6 +44,21 @@ benchmarkLinRegrOneSim_SampleSize = defaultMain [
                         bench "8000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrOneBasic 100 8000),
                         bench "10000 x 100" $ nfIO $ sampleIOFixed (testLinRegrOneBasic 100 10000) ]
   ]
+benchmarkLinRegrOneLW_SampleSize = defaultMain [
+    bgroup "linRegrOneLW" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testLinRegrOneLWInf 100 2000),
+                        bench "4000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrOneLWInf 100 4000),
+                        bench "6000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrOneLWInf 100 6000),
+                        bench "8000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrOneLWInf 100 8000),
+                        bench "10000 x 100" $ nfIO $ sampleIOFixed (testLinRegrOneLWInf 100 10000) ]
+  ]
+benchmarkLinRegrOneMH_SampleSize = defaultMain [
+    bgroup "linRegrOneMH" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testLinRegrOneMHPost 100 2000),
+                        bench "4000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrOneMHPost 100 4000),
+                        bench "6000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrOneMHPost 100 6000),
+                        bench "8000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrOneMHPost 100 8000),
+                        bench "10000 x 100" $ nfIO $ sampleIOFixed (testLinRegrOneMHPost 100 10000) ]
+  ]
+
 
 benchmarkLinRegrSim_SampleSize = defaultMain [
     bgroup "linRegrSim" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testLinRegrBasic 100 2000),
@@ -114,6 +133,27 @@ benchmarkTopicMH_SampleSize = defaultMain [
   ]
 
 ---------------------------------
+benchmarkLinRegrOneSim_DataSize = defaultMain [
+    bgroup "linRegrOneSim" [bench "200 x 200" $ nfIO $ sampleIOFixed (testLinRegrOneBasic 200 2000),
+                        bench "400 x 200"  $ nfIO $ sampleIOFixed (testLinRegrOneBasic 400 2000),
+                        bench "600 x 200"  $ nfIO $ sampleIOFixed (testLinRegrOneBasic 600 2000),
+                        bench "800 x 200"  $ nfIO $ sampleIOFixed (testLinRegrOneBasic 800 2000),
+                        bench "1000 x 200" $ nfIO $ sampleIOFixed (testLinRegrOneBasic 1000 2000) ]
+  ]
+benchmarkLinRegrOneLW_DataSize = defaultMain [
+    bgroup "linRegrOneLW" [bench "200 x 200" $ nfIO $ sampleIOFixed (testLinRegrOneLWInf 200 2000),
+                        bench "400 x 200"  $ nfIO $ sampleIOFixed (testLinRegrOneLWInf 400 2000),
+                        bench "600 x 200"  $ nfIO $ sampleIOFixed (testLinRegrOneLWInf 600 2000),
+                        bench "800 x 200"  $ nfIO $ sampleIOFixed (testLinRegrOneLWInf 800 2000),
+                        bench "1000 x 200" $ nfIO $ sampleIOFixed (testLinRegrOneLWInf 1000 2000) ]
+  ]
+benchmarkLinRegrOneMH_DataSize = defaultMain [
+    bgroup "linRegrOneMH" [bench "200 x 200" $ nfIO $ sampleIOFixed (testLinRegrOneMHPost 200 2000),
+                        bench "400 x 200"  $ nfIO $ sampleIOFixed (testLinRegrOneMHPost 400 2000),
+                        bench "600 x 200"  $ nfIO $ sampleIOFixed (testLinRegrOneMHPost 600 2000),
+                        bench "800 x 200"  $ nfIO $ sampleIOFixed (testLinRegrOneMHPost 800 2000),
+                        bench "1000 x 200" $ nfIO $ sampleIOFixed (testLinRegrOneMHPost 1000 2000) ]
+  ]
 
 benchmarkLinRegrSim_DataSize = defaultMain [
     bgroup "linRegrSim" [bench "200 x 200" $ nfIO $ sampleIOFixed (testLinRegrBasic 200 2000),
