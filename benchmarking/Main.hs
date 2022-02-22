@@ -8,6 +8,7 @@ import Extensible.Sampler
 
 main :: IO ()
 main = do
+  benchmarkLinRegrOneSim_SampleSize
   benchmarkLinRegrSim_SampleSize
   benchmarkLinRegrLW_SampleSize
   benchmarkLinRegrMH_SampleSize
@@ -31,6 +32,14 @@ main = do
   -- benchmarkTopicSim_DataSize
   -- benchmarkTopicLW_DataSize
   -- benchmarkTopicMH_DataSize
+
+benchmarkLinRegrOneSim_SampleSize = defaultMain [
+    bgroup "linRegrOneSim" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testLinRegrOneBasic 100 2000),
+                        bench "4000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrOneBasic 100 4000),
+                        bench "6000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrOneBasic 100 6000),
+                        bench "8000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrOneBasic 100 8000),
+                        bench "10000 x 100" $ nfIO $ sampleIOFixed (testLinRegrOneBasic 100 10000) ]
+  ]
 
 benchmarkLinRegrSim_SampleSize = defaultMain [
     bgroup "linRegrSim" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testLinRegrBasic 100 2000),

@@ -36,6 +36,35 @@ import Debug.Trace
 import Unsafe.Coerce
 import Extensible.Inference.SimulateTrace (extractSamples)
 
+{- Linear Regression One -- faster than linRegr -}
+testLinRegrOneBasic :: Int -> Int -> Sampler [(Double, Double)]
+testLinRegrOneBasic n_datapoints n_samples = do
+      -- Run simulate simulation over linearRegression
+      {- This should generate a set of points on the y-axis for each given point on the x-axis -}
+  bs <- Simulate.simulate n_samples Example.linearRegressionOne
+                    [0 .. (fromIntegral n_datapoints)]
+                    (repeat $ mkRecordLinRegr ([], [1.0], [0.0], [1.0]))
+  printS $ show (length $ map fst bs)
+  return $ map fst bs
+
+testLinRegrOneLWInf :: Int -> Int -> Sampler [((Double, Double), Double)]
+testLinRegrOneLWInf n_datapoints n_samples = do
+  -- Run likelihood weighting inference over linearRegression
+  {- This should output the provided fixed set of data points on the x and y axis, where each point has a different probability (due to us observing the probability of given y's). Also returns a trace of parameters and their likelihoods -}
+  lwTrace <- LW.lw n_samples Example.linearRegressionOne
+                    [0 .. (fromIntegral n_datapoints)]
+                    (map (mkRecordLinRegrY . (:[]) ) (map ((+2) . (*3)) [0 .. 100]))
+  return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
+
+testLinRegrOneMHPost :: Int -> Int -> Sampler [((Double, Double), MH.LPMap)]
+testLinRegrOneMHPost n_datapoints n_samples = do
+  -- Run mh inference over linearRegression for data representing a line with gradient 3 and intercept 4
+  mhTrace <- MH.mh n_samples Example.linearRegressionOne [] [0 .. (fromIntegral n_datapoints)]
+                    (map (mkRecordLinRegrY . (:[]) ) (map ((+2) . (*3)) [0 .. 100]))
+  -- Reformat MH trace
+  return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
+
+
 {- Linear Regression -}
 mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> ModelEnv Example.LinRegrEnv
 mkRecordLinRegr (y_vals, m_vals, c_vals, σ_vals) =
@@ -52,6 +81,7 @@ testLinRegrBasic n_datapoints n_samples = do
       <- Simulate.simulate n_samples Example.linearRegression
                     [[0 .. n_datapoints']]
                     [mkRecordLinRegr ([], [1.0], [0.0], [1.0])]
+  printS $ show (length $ concat $ map fst bs)
   return $ map fst bs
 
 testLinRegrLWInf :: Int -> Int -> Sampler [([Double], Double)]
@@ -72,6 +102,8 @@ testLinRegrMHPost n_datapoints n_samples = do
                    [mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints'])]
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
+
+{- Log Regr -}
 mkRecordLogRegr :: ([Bool], [Double], [Double]) -> ModelEnv Example.LogRegrEnv
 mkRecordLogRegr (label_vals, m_vals, b_vals) =
   #label := label_vals <:> #m := m_vals <:> #b := b_vals <:> nil
@@ -90,6 +122,18 @@ testLogRegrBasic n_datapoints n_samples = do
                          [mkRecordLogRegr ([], [2], [-0.15])]
   return $ map fst bs
 
+-- logRegrData :: [Bool]
+-- logRegrData = [True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,False,True,True,True,True,True,False,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,False,True,True,True,True,True,True,True,True,False,True,True,True,True,True,True,True,True,False,True,False,True,True,True,False,True,True,True,True,False,True,False,False,True,False,True,True,False,False,True,True,False,False,True,False,True,True,False,True,True,False,True,False,True,False,False,False,False,False,False,False,True,False,False,False,False,False,False,False,False,False,True,False,False,True,False,False,False,False,True,False,False,False,False,False,True,False,False,False,False,True,False,False,True,False,False,False,True,True,False,False,False,False,False,False,False,False,False,False,False,False,False,False,True,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False]
+
+-- testLogRegrLWInf :: Int -> Int -> Sampler [((Double, Bool), [(Addr, OpenSum PrimVal)], Double)]
+-- testLogRegrLWInf n_datapoints n_samples =  do
+--   -- Using fixed model parameters, generate some sample data points to learn
+--   let incr = 200/fromIntegral n_datapoints
+--       xs = [ (-100 + (fromIntegral x)*incr)/50 | x <- [0 .. n_datapoints]]
+--   -- Perform inference against these data points
+--   lwTrace <- LW.lw 5 Example.logisticRegression xs [(mkRecordLogRegrL . (:[])) ys]
+--   let lwTrace' = processLWTrace lwTrace
+--   return lwTrace'
 
 {- HMM -}
 mkRecordHMM :: ([Int], Double, Double) -> ModelEnv Example.HMMEnv
