@@ -36,11 +36,9 @@ import Debug.Trace
 import Unsafe.Coerce
 import Extensible.Inference.SimulateTrace (extractSamples)
 
-{- Linear Regression One -- faster than linRegr -}
+{- Linear Regression One -- slower than linRegr for LW and MH -}
 testLinRegrOneBasic :: Int -> Int -> Sampler [(Double, Double)]
 testLinRegrOneBasic n_datapoints n_samples = do
-      -- Run simulate simulation over linearRegression
-      {- This should generate a set of points on the y-axis for each given point on the x-axis -}
   bs <- Simulate.simulate n_samples Example.linearRegressionOne
                     [0 .. (fromIntegral n_datapoints)]
                     (repeat $ mkRecordLinRegr ([], [1.0], [0.0], [1.0]))
@@ -48,8 +46,6 @@ testLinRegrOneBasic n_datapoints n_samples = do
 
 testLinRegrOneLWInf :: Int -> Int -> Sampler [((Double, Double), Double)]
 testLinRegrOneLWInf n_datapoints n_samples = do
-  -- Run likelihood weighting inference over linearRegression
-  {- This should output the provided fixed set of data points on the x and y axis, where each point has a different probability (due to us observing the probability of given y's). Also returns a trace of parameters and their likelihoods -}
   lwTrace <- LW.lw n_samples Example.linearRegressionOne
                     [0 .. (fromIntegral n_datapoints)]
                     (map (mkRecordLinRegrY . (:[]) ) (map ((+2) . (*3)) [0 .. 100]))
@@ -57,12 +53,9 @@ testLinRegrOneLWInf n_datapoints n_samples = do
 
 testLinRegrOneMHPost :: Int -> Int -> Sampler [((Double, Double), MH.LPMap)]
 testLinRegrOneMHPost n_datapoints n_samples = do
-  -- Run mh inference over linearRegression for data representing a line with gradient 3 and intercept 4
   mhTrace <- MH.mh n_samples Example.linearRegressionOne [] [0 .. (fromIntegral n_datapoints)]
                     (map (mkRecordLinRegrY . (:[]) ) (map ((+2) . (*3)) [0 .. 100]))
-  -- Reformat MH trace
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
-
 
 {- Linear Regression -}
 mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> ModelEnv Example.LinRegrEnv
