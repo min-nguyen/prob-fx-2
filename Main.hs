@@ -89,9 +89,10 @@ main = do
   -- trace <- sampleIOFixed testGMMMHPost
   -- trace <- sampleIOFixed testSchBasic
   -- trace <- sampleIOFixed testSchMHPost
+  trace <- sampleIOFixed $ TestPaper.testLogRegrBasic 200 1
   -- trace <- sampleIOFixed TestPaper.testSIRBasic
   -- trace <- sampleIOFixed TestPaper.testSIRMHPost
-  trace <- sampleIOFixed TestPaper.testSIRVBasic
+  -- trace <- sampleIOFixed TestPaper.testSIRVBasic
   -- trace <- sampleIOFixed TestPaper.testSIRSBasic
   -- trace <- sampleIOFixed (TestPaper.testLinRegrBasic 200)
   let traceStr = show trace

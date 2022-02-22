@@ -63,6 +63,29 @@ linearRegression xs = do
                     return (y:ys)) [] xs
   return ys
 
+type LogRegrEnv =
+    '[  "label" ':= Bool,
+        "m"     ':= Double,
+        "b"     ':= Double
+     ]
+
+sigmoid :: Double -> Double
+sigmoid x = 1 / (1 + exp((-1) * x))
+
+logisticRegression :: forall rs env.
+ (Observable env "label" Bool, Observables env '["m", "b"] Double) =>
+ [Double] -> Model env rs ([Double], [Bool])
+logisticRegression xs = do
+  m     <- normal' 0 5 #m
+  b     <- normal' 0 1 #b
+  sigma <- gamma 1 1
+  ls    <- foldM (\ls x -> do
+                     y <- normal (m * x + b) sigma
+                     l <- bernoulli' (sigmoid y) #label
+                     return (l:ls)) [] xs
+  return (xs, ls)
+
+
 {- HMM -}
 type HMMEnv =
   '[ "y"       ':= Int,

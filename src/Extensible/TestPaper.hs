@@ -72,6 +72,25 @@ testLinRegrMHPost n_datapoints n_samples = do
                    [mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints'])]
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
+mkRecordLogRegr :: ([Bool], [Double], [Double]) -> ModelEnv Example.LogRegrEnv
+mkRecordLogRegr (label_vals, m_vals, b_vals) =
+  #label := label_vals <:> #m := m_vals <:> #b := b_vals <:> nil
+
+mkRecordLogRegrL :: [Bool] -> ModelEnv Example.LogRegrEnv
+mkRecordLogRegrL label_val =
+ #label := label_val <:> #m := [] <:> #b := [] <:> nil
+
+testLogRegrBasic :: Int -> Int -> Sampler [([Double], [Bool])]
+testLogRegrBasic n_datapoints n_samples = do
+  -- This should generate a set of points on the y-axis for each given point on the x-axis
+  let incr = 200/fromIntegral n_datapoints
+      xs = [ (-100 + (fromIntegral x)*incr)/50 | x <- [0 .. n_datapoints]]
+  bs <- Simulate.simulate n_samples Example.logisticRegression
+                         [xs]
+                         [mkRecordLogRegr ([], [2], [-0.15])]
+  return $ map fst bs
+
+
 {- HMM -}
 mkRecordHMM :: ([Int], Double, Double) -> ModelEnv Example.HMMEnv
 mkRecordHMM (ys, transp, obsp) = #y := ys <:> #trans_p := [transp] <:> #obs_p := [obsp] <:>  nil
