@@ -113,7 +113,7 @@ def main():
     axs1.plot(X_, S_, color='blue', label='Actual Susceptible')
     axs1.plot(X_, I_, color='red', label='Actual Infected')
     axs1.plot(X_, R_, color='green', label='Actual Recovered')
-    axs1.plot(X_, V_, color='yellow', label='Actual Vaccinated')
+    axs1.plot(X_, V_, color='orange', label='Actual Vaccinated')
     axs1.plot(X_, IC_, color='black', label='Reported Infected')
     axs1.set_title('SIRV model - Basic Simulation')
     plt.xlim([0,100])
