@@ -27,7 +27,22 @@ def main():
 
   data = ast.literal_eval(f.read().replace('-Infinity', '-2e308')) #
   color_map = plt.cm.get_cmap('Blues')
-
+  if arg == "log-regr-basic":
+    xs = np.array([ xys[0] for xys in data]).ravel()
+    ys = np.array([ xys[1] for xys in data]).ravel()
+    model = linear_model.LogisticRegression(C=1e5, solver='lbfgs')
+    model.fit(xs.reshape(-1,1), ys)
+    x_test = np.linspace(-2.0,2.0,num=100)
+    y_test = x_test * model.coef_ + model.intercept_
+    sigmoid = expit(y_test)
+    plt.yticks([1.0, 0.0], ["True",
+                            "False"])
+    plt.scatter(xs, ys)
+    plt.plot(x_test, sigmoid.ravel(),c="green", label = "logistic fit")
+    plt.xlabel('x - axis')
+    plt.ylabel('y - axis')
+    plt.title('Logistic regression - basic simulation')
+    plt.show()
   if arg == "sir-basic":
     # we expect data to be in the format of (sir-values :: [(Int, Int, Int)], infected count :: [Int])
 

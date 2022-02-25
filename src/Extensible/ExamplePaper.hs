@@ -51,6 +51,16 @@ type LinRegrEnv =
         "σ" ':=  Double
      ]
 
+linearRegressionOne :: forall env rs .
+  Observables env '["y", "m", "c", "σ"] Double =>
+  Double -> Model env rs (Double, Double)
+linearRegressionOne x = do
+  m <- normal' 0 3 #m
+  c <- normal' 0 5 #c
+  σ <- uniform' 1 3 #σ
+  y <- normal' (m * x + c) σ #y
+  return (x, y)
+
 linearRegression :: forall env rs .
   Observables env '["y", "m", "c", "σ"] Double =>
   [Double] -> Model env rs [Double]
@@ -62,6 +72,29 @@ linearRegression xs = do
                     y <- normal' (m * x + c) σ #y
                     return (y:ys)) [] xs
   return ys
+
+type LogRegrEnv =
+    '[  "label" ':= Bool,
+        "m"     ':= Double,
+        "b"     ':= Double
+     ]
+
+sigmoid :: Double -> Double
+sigmoid x = 1 / (1 + exp((-1) * x))
+
+logisticRegression :: forall rs env.
+ (Observable env "label" Bool, Observables env '["m", "b"] Double) =>
+ [Double] -> Model env rs ([Double], [Bool])
+logisticRegression xs = do
+  m     <- normal' 0 5 #m
+  b     <- normal' 0 1 #b
+  sigma <- gamma 1 1
+  ls    <- foldM (\ls x -> do
+                     y <- normal (m * x + b) sigma
+                     l <- bernoulli' (sigmoid y) #label
+                     return (l:ls)) [] xs
+  return (xs, ls)
+
 
 {- HMM -}
 type HMMEnv =
