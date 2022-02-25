@@ -148,7 +148,7 @@ testSIRBasic :: Sampler ([(Int, Int, Int)], -- sir values
                           [Int])            -- observed infections
 testSIRBasic = do
   let latState0  = Example.LatState { Example.sus = 762, Example.inf = 1, Example.recov = 0 }
-      params     = #β := [0.7] <:> #γ := [0.009] <:>  #ρ := [0.3] <:>  #infobs := [] <:> nil
+      params     = #β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:>  #infobs := [] <:> nil
   simOutputs :: [((Example.LatState,   -- model output
                   [Example.LatState]), -- writer effect log of sir latent states
                    Simulate.SampleMap)]   -- trace of samples
@@ -205,7 +205,7 @@ testSIRSBasic :: Sampler ([(Int, Int, Int)], -- sir values
 testSIRSBasic = do
   simOutputs <- Simulate.simulate 1 (runWriterM . Example.hmmSIRNsteps' 100)
                    [latentState 762 1 0]
-                   [ #β := [0.2] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #η := [0.05] <:> #infobs := [] <:> nil]
+                   [ #β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #η := [0.05] <:> #infobs := [] <:> nil]
 
   let fstOutput = head simOutputs
       sirLog    :: [Example.LatState] = (snd . fst) fstOutput
@@ -225,7 +225,7 @@ testSIRVBasic :: Sampler ([(Int, Int, Int, Int)], -- sir values
                           [Int])            -- observed infections
 testSIRVBasic = do
   let latState0  = Example.LatStateSIRV { Example.s = 762, Example.i = 1, Example.r = 0,  Example.v = 0 }
-      params     = #β := [0.7] <:> #γ := [0.019] <:>  #ρ := [0.3] <:> #ω := [] <:>  #η := [] <:> #infobs := [] <:> nil
+      params     = #β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #ω := [0.04] <:>  #η := [0.05] <:> #infobs := [] <:> nil
   simOutputs :: [((Example.LatStateSIRV,   -- model output
                   [Example.LatStateSIRV]), -- writer effect log of sir latent states
                    Simulate.SampleMap)]   -- trace of samples
