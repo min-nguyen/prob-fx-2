@@ -44,6 +44,8 @@ instance Show (ModelEnv '[]) where
 nil :: ModelEnv '[]
 nil = HNil
 
+-- getEnvVars :: ModelEnv env -> []
+
 newtype P t rs = P {unP :: Int}
 
 class FindElem x ts where

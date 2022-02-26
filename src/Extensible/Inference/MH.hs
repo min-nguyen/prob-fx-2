@@ -209,7 +209,7 @@ mhStep env model tags trace = do
   u <- sample (UniformDist 0 1 Nothing Nothing)
 
   if u < acceptance_ratio
-    then do liftS $ putStrLn $ "Accepting " -- ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
+    then do -- liftS $ putStrLn $ "Accepting " -- ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
             -- ++ show logps
             -- ++ "\nwith α" ++ show α_samp ++ ": "
             -- ++ show acceptance_ratio ++ " > " ++ show u

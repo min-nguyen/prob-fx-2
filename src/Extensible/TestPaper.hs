@@ -218,16 +218,16 @@ testSIRBasic = do
   return (sirLog_tuples, infobs)
 
 infobs_data :: [Int]
-infobs_data = [0,1,3,3,3,4,13,16,24,35,67,89,133,149,180,209,195,196,188,234,205,179,206,192,187,197,207,185,181,199,179,164,195,181,161,149,156,170,166,170,171,163,162,175,151,201,152,183,160,166,148,184,137,157,159,159,144,168,159,133,141,133,126,132,128,128,139,111,144,135,114,129,111,134,143,129,122,107,107,110,110,128,122,115,116,116,115,111,120,113,100,79,103,110,140,112,106,103,100,108]
+infobs_data = [0,1,4,2,1,3,3,5,10,11,30,23,48,50,91,94,129,151,172,173,198,193,214,179,229,172,205,211,191,212,185,184,173,211,185,197,176,169,198,174,163,197,152,198,153,164,154,167,178,174,160,149,140,172,169,144,137,151,166,151,147,149,159,150,151,139,137,182,121,119,133,146,141,136,126,131,124,110,120,113,117,102,120,117,122,121,110,125,127,117,117,98,109,108,108,120,98,103,104,103]
 
 testSIRMHPost :: Sampler ([Double], [Double], [Double])
 testSIRMHPost = do
-  let mh_n_iterations = 100000
+  let mh_n_iterations = 50000
   -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
   mhTrace :: [((Example.LatState, [Example.LatState]), MH.SMap, MH.LPMap)]
-          <- MH.mh mh_n_iterations (runWriterM . Example.hmmSIRNsteps 10) ["β", "γ", "ρ"]
+          <- MH.mh mh_n_iterations (runWriterM . Example.hmmSIRNsteps 20) ["β", "γ", "ρ"]
                         [latentState 762 1 0]
-                        [mkRecordSIR ([], [0.009], [0.3], infobs_data)]
+                        [mkRecordSIR ([], [0.009], [], infobs_data)]
   let mhSampleMaps = map snd3 mhTrace
       ρs = concatMap (MH.extractSamples (#ρ, Proxy @Double)) mhSampleMaps
       βs = concatMap (MH.extractSamples (#β, Proxy @Double)) mhSampleMaps

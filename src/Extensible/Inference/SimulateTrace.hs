@@ -8,6 +8,9 @@
 {-# LANGUAGE TypeOperators #-}
 
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Extensible.Inference.SimulateTrace where
 
 -- import Data.Extensible hiding (Member)
@@ -28,10 +31,20 @@ import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum)
 import Unsafe.Coerce (unsafeCoerce)
 import Util
+import GHC.TypeLits
 
 type SampleMap = Map Addr (OpenSum PrimVal)
 
 type Trace a = [(a, SampleMap)]
+
+class SMapEnv a  where
+  sMapToEnv :: SampleMap -> ModelEnv a
+
+instance SMapEnv '[] where
+  sMapToEnv _ = nil
+
+instance (KnownSymbol x, Eq v, OpenSum.Member v PrimVal, SMapEnv env) => SMapEnv ((x := v : env) :: [Assoc Symbol *]) where
+  sMapToEnv sMap = HCons (extractSamples (ObsVar @x, Proxy @v) sMap) (sMapToEnv sMap)
 
 extractSamples ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (ObsVar x, Proxy a) -> SampleMap -> [a]
 extractSamples (x, typ)  =
