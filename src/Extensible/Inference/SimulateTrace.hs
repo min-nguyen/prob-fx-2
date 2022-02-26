@@ -52,15 +52,17 @@ extractSamples (x, typ)  =
   . Map.toList
   . Map.filterWithKey (\(tag, idx) _ -> tag == varToStr x)
 
-simulate :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
+simulate :: forall env ts b a. (SMapEnv env, ts ~ '[Dist, Observe, ObsReader env, Sample])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env ts a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
   -> [ModelEnv env]                      -- List of model observed variables
-  -> Sampler [(a, SampleMap)]
+  -> Sampler [(a, ModelEnv env)]
 simulate n model xs envs = do
   let runN (x, env) = replicateM n (runSimulate env (model x))
-  concat <$> mapM runN (zip xs envs)
+  outputs_smaps <- concat <$> mapM runN (zip xs envs)
+  let outputs_envs = map (fmap (sMapToEnv @env)) outputs_smaps
+  return outputs_envs
 
 runSimulate :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
  => ModelEnv env -> Model env ts a -> Sampler (a, SampleMap)

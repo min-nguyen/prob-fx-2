@@ -66,14 +66,14 @@ mkRecordLinRegrY :: [Double] -> ModelEnv Example.LinRegrEnv
 mkRecordLinRegrY y_vals =
   (#y := y_vals) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:> nil
 
-testLinRegrBasic :: Int -> Int -> Sampler [[Double]]
-testLinRegrBasic n_datapoints n_samples = do
-  let n_datapoints' = fromIntegral n_datapoints
-  bs :: [([Double], Simulate.SampleMap)]
-      <- Simulate.simulate n_samples Example.linearRegression
-                    [[0 .. n_datapoints']]
-                    [mkRecordLinRegr ([], [1.0], [0.0], [1.0])]
-  return $ map fst bs
+-- testLinRegrBasic :: Int -> Int -> Sampler [[Double]]
+-- testLinRegrBasic n_datapoints n_samples = do
+--   let n_datapoints' = fromIntegral n_datapoints
+--   bs :: [([Double], Simulate.SampleMap)]
+--       <- Simulate.simulate n_samples Example.linearRegression
+--                     [[0 .. n_datapoints']]
+--                     [mkRecordLinRegr ([], [1.0], [0.0], [1.0])]
+--   return $ map fst bs
 
 testLinRegrLWInf :: Int -> Int -> Sampler [([Double], Double)]
 testLinRegrLWInf n_datapoints n_samples = do
@@ -91,6 +91,7 @@ testLinRegrMHPost n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
   mhTrace <- MH.mh n_samples Example.linearRegression [] [[0 .. n_datapoints']]
                    [mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints'])]
+
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
 
@@ -239,36 +240,37 @@ testSIRMHPost = do
   -- return postParams
 
 -- Version of SIR simulation which instead directly composes runWriterM with the model, instead of using Simulate.simulateWith
-testSIRBasic' :: Sampler [((Example.LatState, [Example.LatState]), Simulate.SampleMap)]
+testSIRBasic' :: Sampler ([(Int, Int, Int)], [Int])
 testSIRBasic' = do
   simOutputs <- Simulate.simulate 1 (runWriterM . Example.hmmSIRNsteps 100)
                    [latentState 762 1 0]
                    [mkRecordSIRparams ([0.7], [0.009], [0.3])]
 
   let fstOutput = head simOutputs
-      sirLog    :: [Example.LatState] = (snd . fst) fstOutput
-      sampleMap :: Simulate.SampleMap    = snd fstOutput
-      infobs    :: [Int]                 = Simulate.extractSamples (#infobs, Proxy @Int) sampleMap
+      sirLog    :: [Example.LatState]       = (snd . fst) fstOutput
+      env_strace :: ModelEnv Example.SIREnv = snd fstOutput
+      infobs    :: [Int]                    = getOP #infobs env_strace
+      sirLog_tuples :: [(Int, Int, Int)]    = map fromLatState sirLog
 
-  return simOutputs
+  return (sirLog_tuples, infobs)
 
 
 {- SIR Resusceptible -}
-testSIRSBasic :: Sampler ([(Int, Int, Int)], -- sir values
-                          [Int])
-testSIRSBasic = do
-  simOutputs <- Simulate.simulate 1 (runWriterM . Example.hmmSIRNsteps' 100)
-                   [latentState 762 1 0]
-                   [ #β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #η := [0.05] <:> #infobs := [] <:> nil]
+-- testSIRSBasic :: Sampler ([(Int, Int, Int)], -- sir values
+--                           [Int])
+-- testSIRSBasic = do
+--   simOutputs <- Simulate.simulate 1 (runWriterM . Example.hmmSIRNsteps' 100)
+--                    [latentState 762 1 0]
+--                    [ #β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #η := [0.05] <:> #infobs := [] <:> nil]
 
-  let fstOutput = head simOutputs
-      sirLog    :: [Example.LatState] = (snd . fst) fstOutput
-      sampleMap :: Simulate.SampleMap = snd fstOutput
-      infobs    :: [Int]              = Simulate.extractSamples (#infobs, Proxy @Int) sampleMap
+--   let fstOutput = head simOutputs
+--       sirLog    :: [Example.LatState] = (snd . fst) fstOutput
+--       sampleMap :: Simulate.SampleMap = snd fstOutput
+--       infobs    :: [Int]              = Simulate.extractSamples (#infobs, Proxy @Int) sampleMap
 
-      sirLog_tuples :: [(Int, Int, Int)] = map fromLatState sirLog
+--       sirLog_tuples :: [(Int, Int, Int)] = map fromLatState sirLog
 
-  return (sirLog_tuples, infobs)
+--   return (sirLog_tuples, infobs)
 
 {- SIRV -}
 
