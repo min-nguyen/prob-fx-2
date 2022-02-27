@@ -34,7 +34,8 @@ import Extensible.ModelEnv
 import Util
 import Debug.Trace
 import Unsafe.Coerce
-import Extensible.Inference.SimulateTrace (extractSamples)
+import Extensible.Inference.SimulateTrace
+import Extensible.STrace
 
 {- Linear Regression One -- slower than linRegr for LW and MH -}
 testLinRegrOneBasic :: Int -> Int -> Sampler [(Double, Double)]
@@ -66,20 +67,20 @@ mkRecordLinRegrY :: [Double] -> ModelEnv Example.LinRegrEnv
 mkRecordLinRegrY y_vals =
   (#y := y_vals) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:> nil
 
--- testLinRegrBasic :: Int -> Int -> Sampler [[Double]]
--- testLinRegrBasic n_datapoints n_samples = do
---   let n_datapoints' = fromIntegral n_datapoints
---   bs :: [([Double], Simulate.SampleMap)]
---       <- Simulate.simulate n_samples Example.linearRegression
---                     [[0 .. n_datapoints']]
---                     [mkRecordLinRegr ([], [1.0], [0.0], [1.0])]
---   return $ map fst bs
+testLinRegrBasic :: Int -> Int -> Sampler [[Double]]
+testLinRegrBasic n_datapoints n_samples = do
+  let n_datapoints' = fromIntegral n_datapoints
+  bs :: [([Double], ModelEnv Example.LinRegrEnv)]
+      <- Simulate.simulate n_samples Example.linearRegression
+                    [[0 .. n_datapoints']]
+                    [mkRecordLinRegr ([], [1.0], [0.0], [1.0])]
+  return $ map fst bs
 
 testLinRegrLWInf :: Int -> Int -> Sampler [([Double], Double)]
 testLinRegrLWInf n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
   lwTrace :: [([Double],       -- y data points
-                LW.SampleMap,  -- sample trace
+                STrace,  -- sample trace
                 Double)]       -- likelihood
           <- LW.lw n_samples Example.linearRegression
                    [[0 .. n_datapoints']]
@@ -206,13 +207,13 @@ testSIRBasic = do
       params     = #β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:>  #infobs := [] <:> nil
   simOutputs :: [((Example.LatState,   -- model output
                   [Example.LatState]), -- writer effect log of sir latent states
-                   Simulate.SampleMap)]   -- trace of samples
+                   STrace)]   -- trace of samples
                 <- Simulate.simulateWith 1 (Example.hmmSIRNsteps 100)
                    [latState0] [params] runWriterM
   let fstOutput = head simOutputs
       sirLog    :: [Example.LatState] = (snd . fst) fstOutput
-      sampleMap :: Simulate.SampleMap = snd fstOutput
-      infobs    :: [Int]              = Simulate.extractSamples (#infobs, Proxy @Int) sampleMap
+      sampleMap :: STrace             = snd fstOutput
+      infobs    :: [Int]              = extractSamples (#infobs, Proxy @Int) sampleMap
 
       sirLog_tuples :: [(Int, Int, Int)] = map fromLatState sirLog
 
@@ -265,7 +266,7 @@ testSIRBasic' = do
 
 --   let fstOutput = head simOutputs
 --       sirLog    :: [Example.LatState] = (snd . fst) fstOutput
---       sampleMap :: Simulate.SampleMap = snd fstOutput
+--       sampleMap :: STrace = snd fstOutput
 --       infobs    :: [Int]              = Simulate.extractSamples (#infobs, Proxy @Int) sampleMap
 
 --       sirLog_tuples :: [(Int, Int, Int)] = map fromLatState sirLog
@@ -284,13 +285,13 @@ testSIRVBasic = do
       params     = #β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #ω := [0.04] <:>  #η := [0.05] <:> #infobs := [] <:> nil
   simOutputs :: [((Example.LatStateSIRV,   -- model output
                   [Example.LatStateSIRV]), -- writer effect log of sir latent states
-                   Simulate.SampleMap)]   -- trace of samples
+                   STrace)]   -- trace of samples
                 <- Simulate.simulateWith 1 (Example.hmmSIRVNsteps 100)
                    [latState0] [params] runWriterM
   let fstOutput = head simOutputs
       sirLog    :: [Example.LatStateSIRV] = (snd . fst) fstOutput
-      sampleMap :: Simulate.SampleMap = snd fstOutput
-      infobs    :: [Int]              = Simulate.extractSamples (#infobs, Proxy @Int) sampleMap
+      sampleMap :: STrace                 = snd fstOutput
+      infobs    :: [Int]                  = extractSamples (#infobs, Proxy @Int) sampleMap
 
       sirLog_tuples :: [(Int, Int, Int, Int)] = map fromLatSIRVState sirLog
 

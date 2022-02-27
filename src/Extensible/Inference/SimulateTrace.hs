@@ -26,6 +26,7 @@ import Extensible.Model
 import Extensible.Sampler
 import Extensible.ObsReader
 import Extensible.State
+import Extensible.STrace
 import Extensible.Example as Example
 import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum)
@@ -33,26 +34,7 @@ import Unsafe.Coerce (unsafeCoerce)
 import Util
 import GHC.TypeLits
 
-type SampleMap = Map Addr (OpenSum PrimVal)
-
-type Trace a = [(a, SampleMap)]
-
-class SMapEnv a  where
-  sMapToEnv :: SampleMap -> ModelEnv a
-
-instance SMapEnv '[] where
-  sMapToEnv _ = nil
-
-instance (KnownSymbol x, Eq v, OpenSum.Member v PrimVal, SMapEnv env) => SMapEnv ((x := v : env) :: [Assoc Symbol *]) where
-  sMapToEnv sMap = HCons (extractSamples (ObsVar @x, Proxy @v) sMap) (sMapToEnv sMap)
-
-extractSamples ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (ObsVar x, Proxy a) -> SampleMap -> [a]
-extractSamples (x, typ)  =
-    map (fromJust . OpenSum.prj @a . snd)
-  . Map.toList
-  . Map.filterWithKey (\(tag, idx) _ -> tag == varToStr x)
-
-simulate :: forall env ts b a. (SMapEnv env, ts ~ '[Dist, Observe, ObsReader env, Sample])
+simulate :: forall env ts b a. (FromSTrace env, ts ~ '[Dist, Observe, ObsReader env, Sample])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env ts a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
@@ -61,11 +43,11 @@ simulate :: forall env ts b a. (SMapEnv env, ts ~ '[Dist, Observe, ObsReader env
 simulate n model xs envs = do
   let runN (x, env) = replicateM n (runSimulate env (model x))
   outputs_smaps <- concat <$> mapM runN (zip xs envs)
-  let outputs_envs = map (fmap (sMapToEnv @env)) outputs_smaps
+  let outputs_envs = map (fmap (fromSTrace @env)) outputs_smaps
   return outputs_envs
 
 runSimulate :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
- => ModelEnv env -> Model env ts a -> Sampler (a, SampleMap)
+ => ModelEnv env -> Model env ts a -> Sampler (a, STrace)
 runSimulate ys m
   = (runSample Map.empty . runObsReader ys . runObserve . runDist) (runModel m)
 
@@ -75,7 +57,7 @@ simulateWith :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
   -> [b]                             -- List of model input variables
   -> [ModelEnv env]                      -- List of model observed variables
   -> (Model env (t:ts) a -> Model env ts c)
-  -> Sampler [(c, SampleMap)]
+  -> Sampler [(c, STrace)]
 simulateWith n model xs envs h = do
   let runN (x, env) = replicateM n (runSimulateWith env (model x) h)
   concat <$> mapM runN (zip xs envs)
@@ -84,7 +66,7 @@ runSimulateWith :: (ts ~ '[Dist, Observe, ObsReader env, Sample])
  => ModelEnv env
  -> Model env (t:ts) a
  -> (Model env (t:ts) a -> Model env ts c)
- -> Sampler (c, SampleMap)
+ -> Sampler (c, STrace)
 runSimulateWith ys m h
   = (runSample Map.empty . runObsReader ys . runObserve . runDist) (runModel $ h m)
 
@@ -97,13 +79,13 @@ runObserve (Free u k) = case u of
   DecompLeft u' ->
     Free u' (runObserve . k)
 
-runSample :: SampleMap -> Freer '[Sample] a -> Sampler (a, SampleMap)
-runSample sampleMap (Pure x)  = return (x, sampleMap)
-runSample sampleMap (Free u k) = case u of
+runSample :: STrace -> Freer '[Sample] a -> Sampler (a, STrace)
+runSample sTrace (Pure x)  = return (x, sTrace)
+runSample sTrace (Free u k) = case u of
     PrintPatt s ->
-      liftS (putStrLn s) >> runSample sampleMap (k ())
+      liftS (putStrLn s) >> runSample sTrace (k ())
     SampPatt d α -> do
       x <- sample d
-      let sampleMap' = Map.insert α (OpenSum.inj x) sampleMap
-      (runSample sampleMap' . k) x
+      let sTrace' = Map.insert α (OpenSum.inj x) sTrace
+      (runSample sTrace' . k) x
     _        -> error "Impossible: Nothing cannot occur"

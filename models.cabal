@@ -72,6 +72,7 @@ library
                       Extensible.ModelEnv,
                       Extensible.Dist,
                       Extensible.Sampler,
+                      Extensible.STrace,
                       Extensible.Inference.Simulate,
                       Extensible.Inference.SimulateTrace,
                       Extensible.Inference.LW,

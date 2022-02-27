@@ -21,16 +21,15 @@ import qualified Extensible.Example as Example
 import Extensible.Freer
 import Extensible.Model hiding (runModelFree)
 import Extensible.Sampler
-import Extensible.State
+import Extensible.State ( modify, runState, State )
+import Extensible.STrace
 import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum(..))
 
-type SampleMap = Map Addr (OpenSum PrimVal)
+type TraceLW a = [(a, STrace, Double)]
 
-type TraceLW a = [(a, SampleMap, Double)]
-
-updateTrace :: forall ts x. (Member (State SampleMap) ts, OpenSum.Member x PrimVal) => Addr -> x -> Freer ts ()
-updateTrace α x = modify (Map.insert α (OpenSum.inj x) :: SampleMap -> SampleMap)
+updateTrace :: forall ts x. (Member (State STrace) ts, OpenSum.Member x PrimVal) => Addr -> x -> Freer ts ()
+updateTrace α x = modify (Map.insert α (OpenSum.inj x) :: STrace -> STrace)
 
 -- | Run LW n times for multiple data points
 lw :: (ts ~ '[ObsReader env, Dist, Observe, Sample])
@@ -46,7 +45,7 @@ lw n model xs envs = do
 -- | Run LW once for single data point
 runLW :: ts ~ '[ObsReader env, Dist, Observe, Sample]
   => ModelEnv env -> Model env ts a
-  -> Sampler (a, SampleMap, Double)
+  -> Sampler (a, STrace, Double)
 runLW env model = do
   ((x, samples), p) <- (runSample
                             . runObserve
@@ -59,12 +58,12 @@ runLW env model = do
 
 runLWpaper :: ts ~ '[ObsReader env, Dist,  Observe, Sample]
   => ModelEnv env -> Model env ts a
-  -> Sampler ((a, SampleMap), Double)
+  -> Sampler ((a, STrace), Double)
 runLWpaper env m =
   (runSample . runObserve . runState Map.empty
    . transformLW . runDist . runObsReader env) (runModel m)
 
-transformLW :: (Member Sample ts) => Freer ts a -> Freer (State SampleMap ': ts) a
+transformLW :: (Member Sample ts) => Freer ts a -> Freer (State STrace ': ts) a
 transformLW = install return
   (\x tx k -> case tx of
       Sample d α -> case distDict d of
@@ -73,7 +72,7 @@ transformLW = install return
       Printer s  -> k ()
   )
 
-transformLW' :: (Member (State SampleMap) ts, Member Sample ts)
+transformLW' :: (Member (State STrace) ts, Member Sample ts)
   => Freer ts a -> Freer ts a
 transformLW' (Pure x) = return x
 transformLW' (Free u k) = case u  of
@@ -81,7 +80,7 @@ transformLW' (Free u k) = case u  of
                                       transformLW' (k x))
     _ -> Free u (transformLW' . k)
 
--- transformLW' :: (Member (State SampleMap) ts, Member Sample ts)
+-- transformLW' :: (Member (State STrace) ts, Member Sample ts)
 --   => Freer ts a -> Freer ts a
 -- transformLW' = replaceRelay return undefined
 
