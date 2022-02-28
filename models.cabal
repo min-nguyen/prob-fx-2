@@ -70,6 +70,7 @@ library
                       Extensible.Model,
                       Extensible.OpenSum,
                       Extensible.ModelEnv,
+                      Extensible.Member,
                       Extensible.Dist,
                       Extensible.Sampler,
                       Extensible.STrace,

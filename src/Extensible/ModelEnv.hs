@@ -16,7 +16,7 @@ import GHC.TypeLits
 import qualified GHC.TypeLits as TL
 import Unsafe.Coerce
 import Control.Lens hiding ((:>))
--- import Data.Extensible
+import Extensible.Member
 
 data ObsVar (x :: Symbol) where
   ObsVar :: KnownSymbol x => ObsVar x
@@ -24,16 +24,14 @@ data ObsVar (x :: Symbol) where
 instance (KnownSymbol x, x ~ x') => IsLabel x (ObsVar x') where
   fromLabel = ObsVar
 
-data Assign x v = x := v
+varToStr :: forall x. ObsVar x -> String
+varToStr ObsVar = symbolVal (Proxy @x)
 
--- type ModelEnv env = ModelEnv env
+data Assign x v = x := v
 
 data ModelEnv (ts :: [Assign Symbol *]) where
   HNil  :: ModelEnv '[]
   HCons :: forall a k ts. [a] -> ModelEnv ts -> ModelEnv (k := a : ts)
-
-varToStr :: forall x. ObsVar x -> String
-varToStr ObsVar = symbolVal (Proxy @x)
 
 instance (KnownSymbol k, Show v, Show (ModelEnv ts)) => Show (ModelEnv ((k := v) ': ts)) where
   show (HCons v ts) = varToStr (ObsVar @k) ++ ":=" ++ show v ++ ", " ++ show ts
@@ -41,19 +39,11 @@ instance (KnownSymbol k, Show v, Show (ModelEnv ts)) => Show (ModelEnv ((k := v)
 instance Show (ModelEnv '[]) where
   show HNil = "[]"
 
-nil :: ModelEnv '[]
-nil = HNil
-
--- getEnvVars :: ModelEnv env -> []
-
-newtype P t rs = P {unP :: Int}
-
-class FindElem x ts where
-  findElem :: P x ts
 instance FindElem x ((x := v) : ts) where
   findElem = P 0
-instance {-#  OVERLAPPABLE #-} FindElem x ts => FindElem x (xv ': ts) where
-  findElem = P $ 1 + unP (findElem :: P x ts)
+
+instance {-# OVERLAPPABLE #-} FindElem x ts => FindElem x ((x' := v) : ts) where
+  findElem =  P $ 1 + unP (findElem :: P x ts)
 
 type family LookupType x ts where
   LookupType x ((x := v) : ts) = v
@@ -92,9 +82,8 @@ type family UniqueKey x env where
   UniqueKey x ((x' ':= v) : env) = UniqueKey x env
   UniqueKey x '[] = True
 
-insert :: UniqueKey x ts ~ 'True
-       => ObsVar x -> [t] -> ModelEnv ts -> ModelEnv (x ':= t ': ts)
-insert _ v ts = HCons v ts
+nil :: ModelEnv '[]
+nil = HNil
 
 infixr 5 <:>
 (<:>) :: UniqueKey x env ~ 'True => Assign (ObsVar x) [v] -> ModelEnv env -> ModelEnv ((x ':= v) ': env)

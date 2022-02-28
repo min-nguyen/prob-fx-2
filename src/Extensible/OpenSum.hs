@@ -12,7 +12,7 @@ import GHC.Natural
 import GHC.TypeLits (Nat, KnownNat, natVal, TypeError, ErrorMessage (Text, (:$$:), (:<>:), ShowType))
 import qualified GHC.TypeLits as TL
 import Unsafe.Coerce
-
+import Extensible.Member
 
 data OpenSum (ts :: [k]) where
   UnsafeOpenSum :: Int -> t -> OpenSum ts
@@ -45,15 +45,12 @@ instance forall t ts. (Show t, Show (OpenSum ts)) => Show (OpenSum (t ': ts)) wh
 instance {-# OVERLAPPING #-} Show t => Show (OpenSum '[t]) where
   show (UnsafeOpenSum i t) = show (unsafeCoerce t :: t)
 
-newtype P t ts = P {unP :: Int}
-
-class FindElem (t :: *) r where
-  findElem :: P t r
-
-instance FindElem t (t ': r) where
+instance {-#  OVERLAPPABLE #-} FindElem t (t ': r) where
   findElem = P 0
-instance {-# OVERLAPPABLE #-} FindElem t r => FindElem t (t' ': r) where
-  findElem = P $ 1 + unP (findElem :: P t r)
+
+instance {-#  OVERLAPPABLE #-} FindElem x ts => FindElem x (xv ': ts) where
+  findElem = P $ 1 + unP (findElem :: P x ts)
+
 instance TypeError ('Text "Cannot unify effect types." ':$$:
                     'Text "Unhandled effect: " ':<>: 'ShowType t ':$$:
                     'Text "Perhaps check the type of effectful computation and the sequence of handlers for concordance?")
