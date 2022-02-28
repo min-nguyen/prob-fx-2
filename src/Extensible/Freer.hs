@@ -23,28 +23,14 @@ import Data.Kind (Constraint)
 import GHC.TypeLits
     ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
 import Data.Typeable
-import qualified Extensible.OpenSum as OpenSum
+-- import qualified Extensible.OpenSum as OpenSum
+import Extensible.Member
 
 {- Extensible effects without Typeable in Union, using Freer monad -}
 
 {- Unions -}
 data Union (ts :: [k1 -> *]) (x :: k2) :: * where
   Union :: Int -> t x -> Union ts x
-
-newtype P t ts = P {unP :: Int}
-
-class FindElem (t :: * -> *) r where
-  findElem :: P t r
-
-instance FindElem t (t ': r) where
-  findElem = P 0
-instance {-# OVERLAPPABLE #-} FindElem t r => FindElem t (t' ': r) where
-  findElem = P $ 1 + unP (findElem :: P t r)
-instance TypeError ('Text "Cannot unify effect types." ':$$:
-                    'Text "Unhandled effect: " ':<>: 'ShowType t ':$$:
-                    'Text "Perhaps check the type of effectful computation and the sequence of handlers for concordance?")
-  => FindElem t '[] where
-  findElem = error "unreachable"
 
 class (FindElem t ts) => Member (t :: * -> *) (ts :: [* -> *]) where
   inj ::  t x -> Union ts x

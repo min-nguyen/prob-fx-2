@@ -35,15 +35,13 @@ data ModelEnv (ts :: [Assign Symbol *]) where
 
 instance (KnownSymbol k, Show v, Show (ModelEnv ts)) => Show (ModelEnv ((k := v) ': ts)) where
   show (HCons v ts) = varToStr (ObsVar @k) ++ ":=" ++ show v ++ ", " ++ show ts
-
 instance Show (ModelEnv '[]) where
   show HNil = "[]"
 
 instance FindElem x ((x := v) : ts) where
   findElem = P 0
-
 instance {-# OVERLAPPABLE #-} FindElem x ts => FindElem x ((x' := v) : ts) where
-  findElem =  P $ 1 + unP (findElem :: P x ts)
+  findElem = P $ 1 + unP (findElem :: P x ts)
 
 type family LookupType x ts where
   LookupType x ((x := v) : ts) = v

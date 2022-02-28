@@ -45,18 +45,6 @@ instance forall t ts. (Show t, Show (OpenSum ts)) => Show (OpenSum (t ': ts)) wh
 instance {-# OVERLAPPING #-} Show t => Show (OpenSum '[t]) where
   show (UnsafeOpenSum i t) = show (unsafeCoerce t :: t)
 
-instance {-#  OVERLAPPABLE #-} FindElem t (t ': r) where
-  findElem = P 0
-
-instance {-#  OVERLAPPABLE #-} FindElem x ts => FindElem x (xv ': ts) where
-  findElem = P $ 1 + unP (findElem :: P x ts)
-
-instance TypeError ('Text "Cannot unify effect types." ':$$:
-                    'Text "Unhandled effect: " ':<>: 'ShowType t ':$$:
-                    'Text "Perhaps check the type of effectful computation and the sequence of handlers for concordance?")
-  => FindElem t '[] where
-  findElem = error "unreachable"
-
 class (FindElem t ts) => Member (t :: *) (ts :: [*]) where
   inj ::  t -> OpenSum ts
   prj ::  OpenSum ts  -> Maybe t
