@@ -2,7 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 
-module Extensible.Member where
+module Extensible.FindElem where
 import GHC.TypeLits
     ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
 

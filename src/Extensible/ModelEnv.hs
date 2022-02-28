@@ -16,7 +16,7 @@ import GHC.TypeLits
 import qualified GHC.TypeLits as TL
 import Unsafe.Coerce
 import Control.Lens hiding ((:>))
-import Extensible.Member
+import Extensible.FindElem
 
 data ObsVar (x :: Symbol) where
   ObsVar :: KnownSymbol x => ObsVar x

@@ -12,7 +12,7 @@ import GHC.Natural
 import GHC.TypeLits (Nat, KnownNat, natVal, TypeError, ErrorMessage (Text, (:$$:), (:<>:), ShowType))
 import qualified GHC.TypeLits as TL
 import Unsafe.Coerce
-import Extensible.Member
+import Extensible.FindElem
 
 data OpenSum (ts :: [k]) where
   UnsafeOpenSum :: Int -> t -> OpenSum ts

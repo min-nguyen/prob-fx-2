@@ -24,7 +24,7 @@ import GHC.TypeLits
     ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
 import Data.Typeable
 -- import qualified Extensible.OpenSum as OpenSum
-import Extensible.Member
+import Extensible.FindElem
 
 {- Extensible effects without Typeable in Union, using Freer monad -}
 
