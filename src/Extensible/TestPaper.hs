@@ -12,6 +12,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use camelCase" #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 
 module Extensible.TestPaper where
 

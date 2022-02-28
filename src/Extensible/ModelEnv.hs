@@ -24,11 +24,11 @@ data ObsVar (x :: Symbol) where
 instance (KnownSymbol x, x ~ x') => IsLabel x (ObsVar x') where
   fromLabel = ObsVar
 
-data Assoc x v = x := v
+data Assign x v = x := v
 
 -- type ModelEnv env = ModelEnv env
 
-data ModelEnv (ts :: [Assoc Symbol *]) where
+data ModelEnv (ts :: [Assign Symbol *]) where
   HNil  :: ModelEnv '[]
   HCons :: forall a k ts. [a] -> ModelEnv ts -> ModelEnv (k := a : ts)
 
@@ -97,7 +97,7 @@ insert :: UniqueKey x ts ~ 'True
 insert _ v ts = HCons v ts
 
 infixr 5 <:>
-(<:>) :: UniqueKey x env ~ 'True => Assoc (ObsVar x) [v] -> ModelEnv env -> ModelEnv ((x ':= v) ': env)
+(<:>) :: UniqueKey x env ~ 'True => Assign (ObsVar x) [v] -> ModelEnv env -> ModelEnv ((x ':= v) ': env)
 (_ := v) <:> ts = HCons v ts
 
 mkLens :: forall env x a. Observable env x a => ObsVar x -> Lens' (ModelEnv env) [a]

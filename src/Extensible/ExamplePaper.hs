@@ -15,6 +15,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 module Extensible.ExamplePaper where
 
 import Statistics.Distribution
@@ -203,11 +204,11 @@ data LatState = LatState {
 } deriving Show
 
 type SIREnv =
-  '[
-     "β" ':= Double,
-     "γ" ':= Double,
-      "ρ" ':= Double,
-      "infobs" ':= Int
+  [
+     "β" := Double,
+     "γ" := Double,
+      "ρ" := Double,
+      "infobs" := Int
    ]
 
 type InfectionCount = Int
@@ -258,7 +259,7 @@ paramsPrior = do
 
 hmmSIRNsteps ::
      Member (Writer [LatState]) ts
-  => (Observable env "infobs" Int, Observables env '["ρ", "β", "γ"] Double)
+  => (Observables env '["infobs"] Int, Observables env '["ρ", "β", "γ"] Double)
   => Int -> LatState -> Model env ts LatState
 hmmSIRNsteps n latentState  = do
   params       <- paramsPrior
