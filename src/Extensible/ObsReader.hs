@@ -28,31 +28,31 @@ import Util
 data ObsReader env a where
   Ask :: Observable env x a => ObsVar x -> ObsReader env (Maybe a)
 
-ask :: forall env ts x a. Member (ObsReader env) ts => Observable env x a => ObsVar x -> Freer ts (Maybe a)
-ask k = Free (inj (Ask k :: ObsReader env (Maybe a))) Pure
+ask :: forall env ts x a. Member (ObsReader env) ts => Observable env x a => ObsVar x -> Prog ts (Maybe a)
+ask k = Op (inj (Ask k :: ObsReader env (Maybe a))) Val
 
 pattern AskPatt :: () => ((v :: *) ~ (Maybe a :: *), Observable env x a) => ObsVar x -> EffectSum (ObsReader env ': r) v
 pattern AskPatt x <- (decomp -> Right (Ask x))
 
 runObsReader :: forall env ts a.
-  ModelEnv env -> Freer (ObsReader env ': ts) a -> Freer ts a
-runObsReader env (Pure x) = return x
-runObsReader env (Free (AskPatt key) k) = do
+  ModelEnv env -> Prog (ObsReader env ': ts) a -> Prog ts a
+runObsReader env (Val x) = return x
+runObsReader env (Op (AskPatt key) k) = do
     let ys = getOP key env
         y  = maybeHead ys
         env' = setOP key (safeTail ys) env
     runObsReader env' (k y)
-runObsReader env (Free (Other u) k) = Free u (runObsReader env . k)
--- runObsReader' env (Free u k) = case decomp u of
+runObsReader env (Op (Other u) k) = Op u (runObsReader env . k)
+-- runObsReader' env (Op u k) = case decomp u of
 --   (Right (Ask key)) -> do
 --     let ys = getOP key env
 --         y  = maybeHead ys
 --         env' = setOP key (safeTail ys) env
 --     runObsReader env' (k y)
---   Left u -> Free u (runObsReader env . k)
+--   Left u -> Op u (runObsReader env . k)
 
 runObsReader' :: forall env ts a.
-  ModelEnv env -> Freer (ObsReader env ': ts) a -> Freer ts a
+  ModelEnv env -> Prog (ObsReader env ': ts) a -> Prog ts a
 runObsReader' env0 = handleRelaySt env0
   (\env x    -> return x)
   (\env tx k ->

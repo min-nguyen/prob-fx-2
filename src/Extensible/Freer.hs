@@ -26,50 +26,50 @@ import Data.Typeable
 -- import qualified Extensible.OpenSum as OpenSum
 import Extensible.FindElem
 
-{- Extensible effects without Typeable in EffectSum, using Freer monad -}
+{- Extensible effects without Typeable in EffectSum, using Prog monad -}
 
 {- Unions -}
-data EffectSum (ts :: [k1 -> *]) (x :: k2) :: * where
-  EffectSum :: Int -> t x -> EffectSum ts x
+data EffectSum (es :: [k1 -> *]) (x :: k2) :: * where
+  EffectSum :: Int -> e x -> EffectSum es x
 
-class (FindElem t ts) => Member (t :: * -> *) (ts :: [* -> *]) where
-  inj ::  t x -> EffectSum ts x
-  prj ::  EffectSum ts x -> Maybe (t x)
+class (FindElem e es) => Member (e :: * -> *) (es :: [* -> *]) where
+  inj ::  e x -> EffectSum es x
+  prj ::  EffectSum es x -> Maybe (e x)
 
-instance {-# INCOHERENT #-} (t ~ t') => Member t '[t'] where
+instance {-# INCOHERENT #-} (e ~ e') => Member e '[e'] where
    inj x          = EffectSum 0 x
    prj (EffectSum _ x) = Just (unsafeCoerce x)
 
-instance (FindElem t ts) => Member t ts where
-  inj = inj' (unP (findElem :: P t ts))
-  prj = prj' (unP (findElem :: P t ts))
+instance (FindElem e es) => Member e es where
+  inj = inj' (unP (findElem :: P e es))
+  prj = prj' (unP (findElem :: P e es))
 
 -- | Not possible to implement "Members" as a type class.
--- class Members t (tss :: [* -> *])
--- instance (Member t tss, Members ts tss) => Members (t ': ts) tss
--- instance Members '[] ts
+-- class Members e (tss :: [* -> *])
+-- instance (Member e tss, Members es tss) => Members (e ': es) tss
+-- instance Members '[] es
 
-type family Members (ts :: [* -> *]) (tss :: [* -> *]) = (cs :: Constraint) | cs -> ts where
-  Members (t ': ts) tss = (Member t tss, Members ts tss)
+type family Members (es :: [* -> *]) (tss :: [* -> *]) = (cs :: Constraint) | cs -> es where
+  Members (e ': es) tss = (Member e tss, Members es tss)
   Members '[] tss       = ()
 
-pattern Other :: EffectSum @k1 @k1 r v -> EffectSum @k1 @k1 ( t ': r) v
+pattern Other :: EffectSum @k1 @k1 es v -> EffectSum @k1 @k1 (e ': es) v
 pattern Other u <- (decomp -> Left u)
 
-inj' :: Int -> t v -> EffectSum r v
+inj' :: Int -> e v -> EffectSum es v
 inj' = EffectSum
 
-prj' :: Int -> EffectSum r v -> Maybe (t v)
+prj' :: Int -> EffectSum es v -> Maybe (e v)
 prj' n (EffectSum n' x) | n == n'   = Just (unsafeCoerce x)
                     | otherwise = Nothing
 
-{- We want to handle a request of type t, where we state that t must be at the front of the list of requests (we know that the index is 0). If the request tv is indeed of type t (its index is 0), then we can unsafe coerce the tv to be of type 't v'. Otherwise, we return rv which is a request of a different type, and we can safely remove the request 't' from the front of the union at _this_ level of the free monad.  -}
-decomp :: EffectSum (t ': r) v -> Either (EffectSum r v) (t v)
+{- We want to handle a request of type e, where we state that e must be at the front of the list of requests (we know that the index is 0). If the request tv is indeed of type e (its index is 0), then we can unsafe coerce the tv to be of type 'e v'. Otherwise, we return rv which is a request of a different type, and we can safely remove the request 'e' from the front of the union at _this_ level of the free monad.  -}
+decomp :: EffectSum (e ': es) v -> Either (EffectSum es v) (e v)
 decomp (EffectSum 0 tv) = Right $ unsafeCoerce tv
 decomp (EffectSum n rv) = Left  $ EffectSum (n-1) rv
 
 -- Prepend new effect type at front
-weaken :: EffectSum ts a -> EffectSum (any ': ts) a
+weaken :: EffectSum es a -> EffectSum (any ': es) a
 weaken (EffectSum n ta) = EffectSum (n + 1) ta
 
 infixr 5 :++:
@@ -77,239 +77,239 @@ type family xs :++: ys where
   '[] :++: ys = ys
   (x ': xs) :++: ys = x ': (xs :++: ys)
 
-class Weakens t where
-  weakens :: EffectSum ts a -> EffectSum (t :++: ts) a
+class Weakens e where
+  weakens :: EffectSum es a -> EffectSum (e :++: es) a
 instance Weakens '[] where
   weakens = id
-instance Weakens ts => Weakens (t ': ts) where
-  weakens u = weaken (weakens @ts u)
+instance Weakens es => Weakens (e ': es) where
+  weakens u = weaken (weakens @es u)
 
 -- | Unique Member
-type family UMember (b :: Bool) (t :: * -> *) (ts :: [* -> *]) :: Bool where
-  UMember 'True t (t ': ts)   = 'False
-  UMember 'True t (t' ': ts)  = UMember 'True t ts
-  UMember 'True t '[]         = 'True
-  UMember 'False t (t ': ts)  = UMember 'True t ts
-  UMember 'False t (t' ': ts) = UMember 'False t ts
-  UMember 'False t '[]        = 'False
+type family UMember (b :: Bool) (e :: * -> *) (es :: [* -> *]) :: Bool where
+  UMember 'True e (e ': es)   = 'False
+  UMember 'True e (e' ': es)  = UMember 'True e es
+  UMember 'True e '[]         = 'True
+  UMember 'False e (e ': es)  = UMember 'True e es
+  UMember 'False e (e' ': es) = UMember 'False e es
+  UMember 'False e '[]        = 'False
 
-class    (UMember 'False t ts ~ True) => UniqueMember t ts
-instance (UMember 'False t ts ~ True) => UniqueMember t ts
+class    (UMember 'False e es ~ True) => UniqueMember e es
+instance (UMember 'False e es ~ True) => UniqueMember e es
 
 -- | Last effect in effect list
 class Member m effs => LastMember m effs | effs -> m
 instance {-# OVERLAPPABLE #-} LastMember m effs => LastMember m (eff ': effs)
 instance LastMember m (m ': '[])
 
--- | Freer monad
-data Freer f a where
-  Pure :: a -> Freer f a
-  Free :: EffectSum f x -> (x -> Freer f a) -> Freer f a
+-- | Prog monad
+data Prog f a where
+  Val :: a -> Prog f a
+  Op :: EffectSum f x -> (x -> Prog f a) -> Prog f a
 
-instance Functor (Freer f) where
-  fmap f (Pure a) = Pure (f a)
-  fmap f (Free fx k) = Free fx (fmap f . k)
+instance Functor (Prog f) where
+  fmap f (Val a) = Val (f a)
+  fmap f (Op fx k) = Op fx (fmap f . k)
 
-instance Applicative (Freer f) where
-  pure = Pure
-  Pure f <*> x = fmap f x
-  (Free fx k) <*> x = Free fx ((<*> x) . k)
+instance Applicative (Prog f) where
+  pure = Val
+  Val f <*> x = fmap f x
+  (Op fx k) <*> x = Op fx ((<*> x) . k)
 
-instance Monad (Freer f) where
-  return            = Pure
-  Pure a >>= f      = f a
-  Free fx k >>= f = Free fx (k >=> f)
+instance Monad (Prog f) where
+  return            = Val
+  Val a >>= f      = f a
+  Op fx k >>= f = Op fx (k >=> f)
 
-run :: Freer '[] a -> a
-run (Pure x) = x
-run _ = error "'run' isn't defined for non-pure computations"
+run :: Prog '[] a -> a
+run (Val x) = x
+run _ = error "'run' isn'e defined for non-pure computations"
 
-runM :: forall m a ts. (Monad m, LastMember m ts) => Freer ts a -> m a
-runM (Pure x) = return x
-runM (Free u k) =
+runM :: forall m a es. (Monad m, LastMember m es) => Prog es a -> m a
+runM (Val x) = return x
+runM (Op u k) =
   let x = prj @m u
   in case x of
       Just mb -> mb >>= runM . k
       Nothing -> error "Impossible: Nothing cannot occur"
 
--- send :: (UniqueMember t ts, Member t ts) => t x -> Freer ts x
-send :: (Member t ts) => t x -> Freer ts x
-send t = Free (inj t) Pure
+-- send :: (UniqueMember e es, Member e es) => e x -> Prog es x
+send :: (Member e es) => e x -> Prog es x
+send e = Op (inj e) Val
 
-sendM :: (Monad m, LastMember m ts) => m a -> Freer ts a
+sendM :: (Monad m, LastMember m es) => m a -> Prog es a
 sendM = send
 
 -- | Given request, handle or relay it, and discharge it from the list of effects
 handleRelay ::
-     (a -> Freer ts b)                                  -- Return handler
-  -> (forall x. t x -> (x -> Freer ts b) -> Freer ts b) -- Request handler
-  -> Freer (t ': ts) a
-  -> Freer ts b
-handleRelay ret _ (Pure x) = ret x
-handleRelay ret h (Free u k) =
+     (a -> Prog es b)                                  -- Return handler
+  -> (forall x. e x -> (x -> Prog es b) -> Prog es b) -- Request handler
+  -> Prog (e ': es) a
+  -> Prog es b
+handleRelay ret _ (Val x) = ret x
+handleRelay ret h (Op u k) =
   case decomp u of
     Right x  -> h x (handleRelay ret h . k)
-    Left  u' -> Free u' (handleRelay ret h . k)
+    Left  u' -> Op u' (handleRelay ret h . k)
 
 -- | Parameterised version of handleRelay to allow a state to be managed
 handleRelaySt ::
      s                                                            -- State
-  -> (s -> a -> Freer ts b)                                       -- Return handler
-  -> (forall x. s -> t x -> (s -> x -> Freer ts b) -> Freer ts b) -- Request handler
-  -> Freer (t ': ts) a
-  -> Freer ts b
-handleRelaySt s ret _ (Pure x) = ret s x
-handleRelaySt s ret h (Free u k) =
+  -> (s -> a -> Prog es b)                                       -- Return handler
+  -> (forall x. s -> e x -> (s -> x -> Prog es b) -> Prog es b) -- Request handler
+  -> Prog (e ': es) a
+  -> Prog es b
+handleRelaySt s ret _ (Val x) = ret s x
+handleRelaySt s ret h (Op u k) =
   case decomp u of
     Right tx -> h s tx (\s' x -> handleRelaySt s' ret h $ k x)
-    Left u' -> Free u' (handleRelaySt s ret h . k)
+    Left u' -> Op u' (handleRelaySt s ret h . k)
 
 -- | Intercept and handle requests from program, but do not discharge effect from type-level
 --   Requires type application on usage to specify which effect is being intercepted, e.g. "interpose @(Reader Int)"
-interpose :: Member t ts =>
-     (a -> Freer ts b)
-  -> (forall x. t x -> (x -> Freer ts b) -> Freer ts b)
-  -> Freer ts a
-  -> Freer ts b
-interpose ret h (Pure x ) = ret x
-interpose ret h (Free u k) =
+interpose :: Member e es =>
+     (a -> Prog es b)
+  -> (forall x. e x -> (x -> Prog es b) -> Prog es b)
+  -> Prog es a
+  -> Prog es b
+interpose ret h (Val x ) = ret x
+interpose ret h (Op u k) =
   case prj u  of
     Just tx -> h tx (interpose ret h . k)
-    Nothing -> Free u (interpose ret h . k)
+    Nothing -> Op u (interpose ret h . k)
 
-interposeSt :: Member t ts =>
+interposeSt :: Member e es =>
      s
-  -> (s -> a -> Freer ts b)
-  -> (forall x. s -> t x -> (s -> x -> Freer ts b) -> Freer ts b)
-  -> Freer ts a
-  -> Freer ts b
-interposeSt s ret h (Pure x ) = ret s x
-interposeSt s ret h (Free u k) =
+  -> (s -> a -> Prog es b)
+  -> (forall x. s -> e x -> (s -> x -> Prog es b) -> Prog es b)
+  -> Prog es a
+  -> Prog es b
+interposeSt s ret h (Val x ) = ret s x
+interposeSt s ret h (Op u k) =
   case prj u  of
     Just tx -> h s tx (\s' x -> interposeSt s' ret h $ k x)
-    Nothing -> Free u (interposeSt s ret h . k)
+    Nothing -> Op u (interposeSt s ret h . k)
 
--- | Replace the effect t at the front of the list of effects with a new effect v.
+-- | Replace the effect e at the front of the list of effects with a new effect v.
 replaceRelay ::
-      (a -> Freer (v ': ts) b)
-  ->  (forall x. t x -> (x -> Freer (v ': ts) b) -> Freer (v ': ts) b)
-  ->  Freer (t ': ts) a
-  ->  Freer (v ': ts) b
-replaceRelay ret h (Pure x) = ret x
-replaceRelay ret h (Free u k) = case decomp u of
+      (a -> Prog (v ': es) b)
+  ->  (forall x. e x -> (x -> Prog (v ': es) b) -> Prog (v ': es) b)
+  ->  Prog (e ': es) a
+  ->  Prog (v ': es) b
+replaceRelay ret h (Val x) = ret x
+replaceRelay ret h (Op u k) = case decomp u of
   Right tx -> h tx (replaceRelay ret h . k)
-  Left  u' -> Free (weaken u') (replaceRelay ret h . k)
+  Left  u' -> Op (weaken u') (replaceRelay ret h . k)
 
-replaceRelayN :: forall rs t ts a b . Weakens rs =>
-      (a -> Freer (rs :++: ts) b)
-  ->  (forall x. t x -> (x -> Freer (rs :++: ts) b) -> Freer (rs :++: ts) b)
-  ->  Freer (t ': ts) a
-  ->  Freer (rs :++: ts) b
-replaceRelayN ret h (Pure x) = ret x
-replaceRelayN ret h (Free u k) = case decomp u of
+replaceRelayN :: forall rs e es a b . Weakens rs =>
+      (a -> Prog (rs :++: es) b)
+  ->  (forall x. e x -> (x -> Prog (rs :++: es) b) -> Prog (rs :++: es) b)
+  ->  Prog (e ': es) a
+  ->  Prog (rs :++: es) b
+replaceRelayN ret h (Val x) = ret x
+replaceRelayN ret h (Op u k) = case decomp u of
   Right tx -> h tx (replaceRelayN @rs ret h . k)
-  Left  u' -> Free (weakens @rs u') (replaceRelayN @rs ret h . k)
+  Left  u' -> Op (weakens @rs u') (replaceRelayN @rs ret h . k)
 
 replaceRelaySt ::
       s
-  ->  (s -> a -> Freer (v ': ts) b)
-  ->  (forall x. s -> t x -> (s -> x -> Freer (v ': ts) b) -> Freer (v ': ts) b)
-  ->  Freer (t ': ts) a
-  ->  Freer (v ': ts) b
-replaceRelaySt s ret h (Pure x) = ret s x
-replaceRelaySt s ret h (Free u k) = case decomp u of
+  ->  (s -> a -> Prog (v ': es) b)
+  ->  (forall x. s -> e x -> (s -> x -> Prog (v ': es) b) -> Prog (v ': es) b)
+  ->  Prog (e ': es) a
+  ->  Prog (v ': es) b
+replaceRelaySt s ret h (Val x) = ret s x
+replaceRelaySt s ret h (Op u k) = case decomp u of
   Right tx -> h s tx (\s' x -> replaceRelaySt s' ret h $ k x)
-  Left  u' -> Free (weaken u') (replaceRelaySt s ret h . k)
+  Left  u' -> Op (weaken u') (replaceRelaySt s ret h . k)
 
-replaceRelayStN :: forall rs ts s t a b . Weakens rs =>
+replaceRelayStN :: forall rs es s e a b . Weakens rs =>
       s
-  ->  (s -> a -> Freer (rs :++: ts) b)
-  ->  (forall x. s -> t x -> (s -> x -> Freer (rs :++:  ts) b) -> Freer (rs :++: ts) b)
-  ->  Freer (t ': ts) a
-  ->  Freer (rs :++: ts) b
-replaceRelayStN s ret h (Pure x) = ret s x
-replaceRelayStN s ret h (Free u k) = case decomp u of
+  ->  (s -> a -> Prog (rs :++: es) b)
+  ->  (forall x. s -> e x -> (s -> x -> Prog (rs :++:  es) b) -> Prog (rs :++: es) b)
+  ->  Prog (e ': es) a
+  ->  Prog (rs :++: es) b
+replaceRelayStN s ret h (Val x) = ret s x
+replaceRelayStN s ret h (Op u k) = case decomp u of
   Right tx -> h s tx (\s' x -> replaceRelayStN @rs s' ret h $ k x)
-  Left  u' -> Free (weakens @rs u') (replaceRelayStN @rs s ret h . k)
+  Left  u' -> Op (weakens @rs u') (replaceRelayStN @rs s ret h . k)
 
 
--- | Find some existing effect t in ts, leave it unhandled, and install new effect t' after every request of t. This adds the effect t' to the front of ts.
+-- | Find some existing effect e in es, leave it unhandled, and install new effect e' after every request of e. This adds the effect e' to the front of es.
 -- Requires type application on usage to specify which effect is being intercepted, e.g. "installPrepend @(Reader Int)"
-install :: Member t ts =>
-     (a -> Freer (t' ': ts) a)
-  -> (forall x. x -> t x -> (x -> Freer (t' ': ts) a) -> Freer (t' ': ts) a)
-  -> Freer ts a
-  -> Freer (t' ': ts) a
-install ret h (Pure x )  = ret x
-install ret h (Free u k) =
+install :: Member e es =>
+     (a -> Prog (e' ': es) a)
+  -> (forall x. x -> e x -> (x -> Prog (e' ': es) a) -> Prog (e' ': es) a)
+  -> Prog es a
+  -> Prog (e' ': es) a
+install ret h (Val x )  = ret x
+install ret h (Op u k) =
   case prj u  of
-    Just tx -> Free (weaken u) (\x -> h x tx (install ret h . k))
-    Nothing -> Free (weaken u) (install ret h . k)
+    Just tx -> Op (weaken u) (\x -> h x tx (install ret h . k))
+    Nothing -> Op (weaken u) (install ret h . k)
 
-installN :: forall rs ts t a . (Member t ts, Weakens rs) =>
-     (a -> Freer (rs :++: ts) a)
-  -> (forall x. x -> t x -> (x -> Freer (rs :++: ts) a) -> Freer (rs :++: ts) a)
-  -> Freer ts a
-  -> Freer (rs :++: ts) a
-installN ret h (Pure x )  = ret x
-installN ret h (Free u k) =
+installN :: forall rs es e a . (Member e es, Weakens rs) =>
+     (a -> Prog (rs :++: es) a)
+  -> (forall x. x -> e x -> (x -> Prog (rs :++: es) a) -> Prog (rs :++: es) a)
+  -> Prog es a
+  -> Prog (rs :++: es) a
+installN ret h (Val x )  = ret x
+installN ret h (Op u k) =
   case prj u  of
-    Just tx -> Free (weakens @rs u) (\x -> h x tx (installN @rs ret h . k))
-    Nothing -> Free (weakens @rs u) (installN @rs ret h . k)
+    Just tx -> Op (weakens @rs u) (\x -> h x tx (installN @rs ret h . k))
+    Nothing -> Op (weakens @rs u) (installN @rs ret h . k)
 
--- | Get effect t from (t ': ts), leave it unhandled, and install new effect t' after every request of t. This adds t' to the front of (t ': ts).
+-- | Get effect e from (e ': es), leave it unhandled, and install new effect e' after every request of e. This adds e' to the front of (e ': es).
 installFront ::
-     (a -> Freer (t' ': t ': ts) a)
-  -> (forall x. x -> t x -> (x -> Freer (t' ': t ': ts) a) -> Freer (t' ': t ': ts) a)
-  -> Freer (t ': ts) a
-  -> Freer (t' ': t ': ts) a
-installFront ret h (Pure x )  = ret x
-installFront ret h (Free u k) =
+     (a -> Prog (e' ': e ': es) a)
+  -> (forall x. x -> e x -> (x -> Prog (e' ': e ': es) a) -> Prog (e' ': e ': es) a)
+  -> Prog (e ': es) a
+  -> Prog (e' ': e ': es) a
+installFront ret h (Val x )  = ret x
+installFront ret h (Op u k) =
   case prj u  of
-    Just tx -> Free (weaken u) (\x -> h x tx (installFront ret h . k))
-    Nothing -> Free (weaken u) (installFront ret h . k)
+    Just tx -> Op (weaken u) (\x -> h x tx (installFront ret h . k))
+    Nothing -> Op (weaken u) (installFront ret h . k)
 
--- | Find some effect t in ts, leave it unhandled, and inject operation for another existing effect t' in ts.
+-- | Find some effect e in es, leave it unhandled, and inject operation for another existing effect e' in es.
 -- Requires type application on usage to specify which effect is being intercepted and which is being inserted, e.g. "installPrepend @(Reader Int) @(Writer [Int])"
-installExisting :: forall t t' ts a b. (Member t ts, Member t' ts) =>
-     (a -> Freer ts b)
-  -> (forall x. x -> t x -> (x -> Freer ts b) -> Freer ts b)
-  -> Freer ts a
-  -> Freer ts b
-installExisting ret h (Pure x )  = ret x
-installExisting ret h (Free u k) =
+installExisting :: forall e e' es a b. (Member e es, Member e' es) =>
+     (a -> Prog es b)
+  -> (forall x. x -> e x -> (x -> Prog es b) -> Prog es b)
+  -> Prog es a
+  -> Prog es b
+installExisting ret h (Val x )  = ret x
+installExisting ret h (Op u k) =
   case prj u  of
-    Just tx -> Free u (\x -> h x tx (installExisting @t @t' ret h . k))
-    Nothing -> Free u (installExisting @t @t' ret h . k)
+    Just tx -> Op u (\x -> h x tx (installExisting @e @e' ret h . k))
+    Nothing -> Op u (installExisting @e @e' ret h . k)
 
 
-data Free f a = Pure' a | Free' (f (Free f a))
+data Op f a = Val' a | Op' (f (Op f a))
 
-instance Functor f => Functor (Free f) where
-   fmap g (Free' fx) = Free' (fmap g <$> fx)
-   fmap g (Pure' x)  = Pure' (g x)
+instance Functor f => Functor (Op f) where
+   fmap g (Op' fx) = Op' (fmap g <$> fx)
+   fmap g (Val' x)  = Val' (g x)
 
-instance (Functor f) => Applicative (Free f) where
-  pure = Pure'
-  Pure' f  <*> as  = fmap f as
-  Free' faf  <*> as  = Free' (fmap (<*> as) faf)
+instance (Functor f) => Applicative (Op f) where
+  pure = Val'
+  Val' f  <*> as  = fmap f as
+  Op' faf  <*> as  = Op' (fmap (<*> as) faf)
 
-instance (Functor f) => Monad (Free f) where
-   return = Pure'
-   (Free' x) >>= f = Free' (fmap (>>= f) x)
-   (Pure' r) >>= f = f r
+instance (Functor f) => Monad (Op f) where
+   return = Val'
+   (Op' x) >>= f = Op' (fmap (>>= f) x)
+   (Val' es) >>= f = f es
 
 data Reader' env a where
   Ask' :: (env -> a) -> Reader' env a
   deriving Functor
 
-send' e = Pure' (e Pure')
+send' e = Val' (e Val')
 
-prog :: Free (Reader' Int) ()
+prog :: Op (Reader' Int) ()
 prog = do
   send' Ask'
   return ()
 
-runProg :: Free (Reader' Int) () -> IO ()
-runProg (Free' (Ask' k)) = do
+runProg :: Op (Reader' Int) () -> IO ()
+runProg (Op' (Ask' k)) = do
   runProg (k (4 :: Int))

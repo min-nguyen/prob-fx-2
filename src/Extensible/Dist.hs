@@ -18,7 +18,7 @@
 module Extensible.Dist where
 
 import Extensible.Freer
-    ( Freer(..), Member(..), EffectSum, decomp, send )
+    ( Prog(..), Member(..), EffectSum, decomp, send )
 import Extensible.Sampler
 import Extensible.OpenSum (OpenSum)
 import qualified Extensible.OpenSum as OpenSum
@@ -152,13 +152,13 @@ type TagMap = Map Tag Int
 
 {- Replaces Dists with Sample or Observe and adds address -}
 runDist :: forall rs a. (Member Sample rs, Member Observe rs)
-        => Freer (Dist : rs) a -> Freer rs a
+        => Prog (Dist : rs) a -> Prog rs a
 runDist = loop 0 Map.empty
   where
   loop :: (Member Sample rs, Member Observe rs)
-       => Int -> TagMap -> Freer (Dist : rs) a -> Freer rs a
-  loop _ _ (Pure x) = return x
-  loop counter tagMap (Free u k) = case decomp u of
+       => Int -> TagMap -> Prog (Dist : rs) a -> Prog rs a
+  loop _ _ (Val x) = return x
+  loop counter tagMap (Op u k) = case decomp u of
     Right d ->
          case getObs d of
               Just y  -> do send (Observe d y (tag, tagIdx)) >>= k'
@@ -167,19 +167,19 @@ runDist = loop 0 Map.empty
                 tagIdx  = Map.findWithDefault 0 tag tagMap
                 tagMap' = Map.insert tag (tagIdx + 1) tagMap
                 k'      = loop (counter + 1) tagMap' . k
-    Left  u'  -> Free u' (loop counter tagMap . k)
+    Left  u'  -> Op u' (loop counter tagMap . k)
 
--- runDist :: forall rs a. Freer (Dist ': rs) a -> Freer (Observe ': Sample ': rs) a
+-- runDist :: forall rs a. Prog (Dist ': rs) a -> Prog (Observe ': Sample ': rs) a
 -- runDist = replaceRelayStN @'[Observe, Sample] (0, Map.empty) (\_ x -> return x)
 --   undefined
---  (forall x. s -> t x -> (s -> x -> Freer (rs :++: ts) b) -> Freer (rs :++: ts) b) (Freer (t : ts) a)
+--  (forall x. s -> t x -> (s -> x -> Prog (rs :++: ts) b) -> Prog (rs :++: ts) b) (Prog (t : ts) a)
 
 data Sample a where
   Sample  :: Dist a -> Addr -> Sample a
   Printer :: String -> Sample ()
 
-prinT :: Member Sample es => String -> Freer es ()
-prinT s = Free (inj $ Printer s) Pure
+prinT :: Member Sample es => String -> Prog es ()
+prinT s = Op (inj $ Printer s) Val
 
 data Observe a where
   Observe :: Dist a -> a -> Addr -> Observe a

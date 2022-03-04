@@ -47,7 +47,7 @@ type family Maybes (as :: [x]) = (bs :: [x]) | bs -> as where
   Maybes '[] = '[]
 
 newtype Model env ts v =
-  Model { runModel :: (Member Dist ts, Member (ObsReader env) ts, Member Sample ts) => Freer ts v }
+  Model { runModel :: (Member Dist ts, Member (ObsReader env) ts, Member Sample ts) => Prog ts v }
   deriving Functor
 
 instance Applicative (Model env ts) where
