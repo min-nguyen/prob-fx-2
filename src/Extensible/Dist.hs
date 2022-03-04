@@ -8,21 +8,27 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE EmptyCase #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE ImplicitParams #-}
 module Extensible.Dist where
 
--- import Extensible.IO
 import Extensible.Freer
+    ( Prog(..), Member(..), EffectSum, decomp, send )
 import Extensible.Sampler
-import Util
-import Data.Coerce
+import Extensible.OpenSum (OpenSum)
+import qualified Extensible.OpenSum as OpenSum
+import Util ( boolToInt )
 import Control.Lens hiding ((:>))
 import Control.Monad.State
-import GHC.Float
 import Data.Kind
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe
-import Data.Extensible hiding (wrap, Head, Member)
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
 import Statistics.Distribution
@@ -35,73 +41,42 @@ import Statistics.Distribution.Gamma
 import Statistics.Distribution.Beta
 import Statistics.Distribution.Binomial
 import Statistics.Distribution.Uniform
-import System.Random.MWC
 import Numeric.Log
 import qualified System.Random.MWC.Distributions as MWC
+import Data.GADT.Compare (GEq)
+
+-- data Forall where
+--   F :: (forall a. Show a => a) -> Forall
 
 
-data DistInfo where
-  CauchyDistI       :: Double -> Double -> DistInfo
-  HalfCauchyDistI   :: Double -> DistInfo
-  NormalDistI        :: Double -> Double -> DistInfo
-  HalfNormalDistI    :: Double -> DistInfo
-  UniformDistI       :: Double -> Double -> DistInfo
-  DiscrUniformDistI  :: Int    -> Int    -> DistInfo
-  GammaDistI         :: Double -> Double -> DistInfo
-  BetaDistI          :: Double -> Double -> DistInfo
-  BinomialDistI      :: Int    -> Double -> DistInfo
-  BernoulliDistI     :: Double -> DistInfo
-  CategoricalDistI   :: [(String, Double)] -> DistInfo
-  DiscreteDistI      :: [Double] -> DistInfo
-  PoissonDistI       :: Double -> DistInfo
-  DirichletDistI     :: [Double] -> DistInfo
-  deriving Eq
+type PrimVal = '[Int, Double, [Double], Bool, String]
 
-instance Show DistInfo where
-  show (CauchyDistI mu sigma ) =
-    "CauchyDist(" ++ show mu ++ ", " ++ show sigma ++ ")"
-  show (HalfCauchyDistI sigma ) =
-    "HalfCauchyDist(" ++ show sigma ++ ")"
-  show (NormalDistI mu sigma ) =
-    "NormalDist(" ++ show mu ++ ", " ++ show sigma ++ ")"
-  show (HalfNormalDistI sigma ) =
-    "HalfNormalDist(" ++ show sigma ++ ")"
-  show (BernoulliDistI p ) =
-    "BernoulliDist(" ++ show p  ++ ")"
-  show (DiscreteDistI ps ) =
-    "DiscreteDist(" ++ show ps ++ ")"
-  show (BetaDistI a b ) =
-    "DiscreteDist(" ++ show a ++ ", " ++ show b ++ ")"
-  show (GammaDistI a b ) =
-    "GammaDist(" ++ show a ++ ", " ++ show b ++ ")"
-  show (UniformDistI a b ) =
-    "UniformDist(" ++ show a ++ ", " ++ show b ++ ")"
-  show (DiscrUniformDistI min max ) =
-    "DiscrUniformDist(" ++ show min ++ ", " ++ show max ++ ")"
-  show (PoissonDistI l) =
-    "PoissonDist(" ++ show l ++ ")"
-  show (CategoricalDistI xs ) =
-    "CategoricalDist(" ++ show xs  ++ ")"
-  show (BinomialDistI n p ) =
-    "BinomialDist(" ++ show n ++ ", " ++ show p ++ ")"
-  show (DirichletDistI xs) =
-    "DirichletDist(" ++ show xs  ++ ")"
+data PrimDist where
+  PrimDist :: forall a. Show a => Dist a -> PrimDist
 
-toDistInfo :: Dist a -> DistInfo
-toDistInfo (CauchyDist mu sigma y tag) = CauchyDistI mu sigma
-toDistInfo (HalfCauchyDist sigma y tag) = HalfCauchyDistI sigma
-toDistInfo (NormalDist mu sigma y tag) = NormalDistI mu sigma
-toDistInfo (HalfNormalDist sigma y tag) = HalfNormalDistI sigma
-toDistInfo (UniformDist min max y tag) = UniformDistI min max
-toDistInfo (DiscrUniformDist min max y tag) = DiscrUniformDistI min max
-toDistInfo (GammaDist a b y tag) = GammaDistI a b
-toDistInfo (BetaDist a b y tag) = BetaDistI a b
-toDistInfo (BinomialDist n p y tag) = BinomialDistI n p
-toDistInfo (BernoulliDist p y tag) = BernoulliDistI p
-toDistInfo (PoissonDist l y tag) = PoissonDistI l
-toDistInfo (DiscreteDist p y tag) = DiscreteDistI p
-toDistInfo (CategoricalDist p y tag) = CategoricalDistI p
-toDistInfo (DirichletDist p y tag) = DirichletDistI p
+data Dict (a :: Constraint) where
+  Dict :: a => Dict a
+
+distDict :: Dist x -> Dict (Show x, OpenSum.Member x PrimVal)
+distDict = \case
+  HalfCauchyDist {} -> Dict
+  CauchyDist {} -> Dict
+  NormalDist {} -> Dict
+  HalfNormalDist  {} -> Dict
+  UniformDist  {} -> Dict
+  DiscrUniformDist {} -> Dict
+  GammaDist {} -> Dict
+  BetaDist {} -> Dict
+  BinomialDist {} -> Dict
+  BernoulliDist {} -> Dict
+  CategoricalDist {} -> Dict
+  DiscreteDist {} -> Dict
+  PoissonDist {} -> Dict
+  DirichletDist {} -> Dict
+  DeterministicDist {} -> Dict
+
+instance Show PrimDist where
+  show (PrimDist d) = show d
 
 data Dist a where
   HalfCauchyDist    :: Double -> Maybe Double -> Maybe String -> Dist Double
@@ -114,10 +89,29 @@ data Dist a where
   BetaDist          :: Double -> Double -> Maybe Double -> Maybe String ->  Dist Double
   BinomialDist      :: Int    -> Double -> Maybe Int -> Maybe String -> Dist Int
   BernoulliDist     :: Double -> Maybe Bool -> Maybe String -> Dist Bool
-  CategoricalDist   :: [(String, Double)] -> Maybe String -> Maybe String -> Dist String
+  CategoricalDist   :: (Eq a, Show a, OpenSum.Member a PrimVal) => [(a, Double)] -> Maybe a -> Maybe String -> Dist a
   DiscreteDist      :: [Double] -> Maybe Int -> Maybe String -> Dist Int
   PoissonDist       :: Double -> Maybe Int -> Maybe String -> Dist Int
   DirichletDist     :: [Double] -> Maybe [Double] -> Maybe String -> Dist [Double]
+  DeterministicDist :: (Eq a, Show a, OpenSum.Member a PrimVal) => a -> Maybe a -> Maybe String -> Dist a
+
+instance Eq (Dist a) where
+  (==) (NormalDist m s _ _) (NormalDist m' s' _ _) = m == m' && s == s'
+  (==) (CauchyDist m s _ _) (CauchyDist m' s' _ _) = m == m' && s == s'
+  (==) (HalfCauchyDist s _ _) (HalfCauchyDist s' _ _) = s == s'
+  (==) (HalfNormalDist s _ _) (HalfNormalDist s' _ _) = s == s'
+  (==) (BernoulliDist p _ _) (BernoulliDist p' _ _) = p == p'
+  (==) (BinomialDist n p _ _) (BinomialDist n' p' _ _) = n == n' && p == p'
+  (==) (DiscreteDist ps _ _) (DiscreteDist ps' _ _) = ps == ps'
+  (==) (BetaDist a b _ _) (BetaDist a' b' _ _) = a == a' && b == b'
+  (==) (GammaDist a b _ _) (GammaDist a' b' _ _) = a == a' && b == b'
+  (==) (UniformDist a b _ _) (UniformDist a' b' _ _) = a == a' && b == b'
+  (==) (DiscrUniformDist min max _ _) (DiscrUniformDist min' max' _ _) = min == min' && max == max'
+  (==) (PoissonDist l _ _) (PoissonDist l' _ _) = l == l'
+  (==) (CategoricalDist xs _ _) (CategoricalDist xs' _ _) = xs == xs'
+  (==) (DirichletDist xs _ _) (DirichletDist xs' _ _)  = xs == xs'
+  (==) (DeterministicDist x _ _) (DeterministicDist x' _ _) = x == x'
+  (==) _ _ = False
 
 instance Show a => Show (Dist a) where
   show (CauchyDist mu sigma y tag) =
@@ -147,232 +141,122 @@ instance Show a => Show (Dist a) where
   show (CategoricalDist xs y tag) =
    "CategoricalDist(" ++ show xs ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
   show (DirichletDist xs y tag) =
-   "DirichletDistDist(" ++ show xs ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
+   "DirichletDist(" ++ show xs ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
+  show (DeterministicDist x y tag) =
+   "DeterministicDist(" ++ show x ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
 
 type Tag  = String
 type Addr = (Tag, Int)
+
+type TagMap = Map Tag Int
+
+{- Replaces Dists with Sample or Observe and adds address -}
+runDist :: forall es a. (Member Sample es, Member Observe es)
+        => Prog (Dist : es) a -> Prog es a
+runDist = loop 0 Map.empty
+  where
+  loop :: (Member Sample es, Member Observe es)
+       => Int -> TagMap -> Prog (Dist : es) a -> Prog es a
+  loop _ _ (Val x) = return x
+  loop counter tagMap (Op u k) = case decomp u of
+    Right d ->
+         case getObs d of
+              Just y  -> do send (Observe d y (tag, tagIdx)) >>= k'
+              Nothing -> do send (Sample d (tag, tagIdx))    >>= k'
+          where tag     = fromMaybe (show counter) (getTag d)
+                tagIdx  = Map.findWithDefault 0 tag tagMap
+                tagMap' = Map.insert tag (tagIdx + 1) tagMap
+                k'      = loop (counter + 1) tagMap' . k
+    Left  u'  -> Op u' (loop counter tagMap . k)
+
+-- runDist :: forall es a. Prog (Dist ': es) a -> Prog (Observe ': Sample ': es) a
+-- runDist = replaceRelayStN @'[Observe, Sample] (0, Map.empty) (\_ x -> return x)
+--   undefined
+--  (forall x. s -> t x -> (s -> x -> Prog (es :++: ts) b) -> Prog (es :++: ts) b) (Prog (t : ts) a)
 
 data Sample a where
   Sample  :: Dist a -> Addr -> Sample a
   Printer :: String -> Sample ()
 
-prinT :: Member Sample es => String -> Freer es ()
-prinT s = Free (inj $ Printer s) Pure
+prinT :: Member Sample es => String -> Prog es ()
+prinT s = Op (inj $ Printer s) Val
 
 data Observe a where
   Observe :: Dist a -> a -> Addr -> Observe a
 
-pattern Print :: Member Sample rs => String -> Union rs ()
-pattern Print s <- (prj -> Just (Printer s))
+pattern PrintPatt :: (Member Sample es) => (x ~ ()) => String -> EffectSum es x
+pattern PrintPatt s <- (prj -> Just (Printer s))
 
-pattern Samp :: Member Sample rs => Dist x -> Addr -> Union rs x
+pattern DistPatt :: () => (Show x, OpenSum.Member x PrimVal) => Dist x -> EffectSum (Dist : r) x
+pattern DistPatt d <- (decomp -> Right (DistDict d))
+
+pattern DistDict :: () => (Show x, OpenSum.Member x PrimVal) => Dist x -> Dist x
+pattern DistDict d <- d@(distDict -> Dict)
+
+pattern Samp :: Member Sample es => Dist x -> Addr -> EffectSum es x
 pattern Samp d α <- (prj -> Just (Sample d α))
 
-pattern Obs :: Member Observe rs => Dist x -> x -> Addr -> Union rs x
+pattern SampPatt :: (Member Sample es) => (Show x, OpenSum.Member x PrimVal) => Dist x -> Addr -> EffectSum es x
+pattern SampPatt d α <- (Samp (DistDict d) α)
+
+pattern SampPatt' :: (Member Sample es) => (Show x, OpenSum.Member x PrimVal) => Dist x -> Addr -> EffectSum es x
+pattern SampPatt' d α <- (prj -> Just (Sample d@(distDict -> Dict) α))
+
+isExprInt :: Dist x -> Maybe (Int :~: x)
+isExprInt e@(BinomialDist _ _ _ _) = Just Refl
+isExprInt _         = Nothing
+
+pattern DistInt :: () => x ~ Int => Dist x
+pattern DistInt  <- (isExprInt -> Just Refl)
+
+pattern ExprIntPrj :: Member Dist es => x ~ Int => Dist x -> EffectSum es x
+pattern ExprIntPrj e <- (prj -> Just e@DistInt)
+
+pattern Obs :: Member Observe es => Dist x -> x -> Addr -> EffectSum es x
 pattern Obs d y α <- (prj -> Just (Observe d y α))
 
-pattern DistDoubles :: Maybe (Dist [Double]) -> Dist x
-pattern DistDoubles d <- (isDistDoubles -> d)
-pattern DistDouble :: Maybe (Dist Double) -> Dist x
-pattern DistDouble d <- (isDistDouble -> d)
-pattern DistBool :: Maybe (Dist Bool) -> Dist x
-pattern DistBool d <- (isDistBool -> d)
-pattern DistInt :: Maybe (Dist Int) -> Dist x
-pattern DistInt d <- (isDistInt -> d)
-pattern DistString :: Maybe (Dist String) -> Dist x
-pattern DistString d <- (isDistString -> d)
+pattern ObsPatt :: (Member Observe es) => (Show x, OpenSum.Member x PrimVal) => Dist x -> x -> Addr -> EffectSum es x
+pattern ObsPatt d y α <- (Obs (DistDict d) y α)
 
-isDistString :: Dist x -> Maybe (Dist String)
-isDistString d@CategoricalDist {} = Just d
-isDistString _ = Nothing
+pattern DecompLeft :: EffectSum es a -> EffectSum ((:) e es) a
+pattern DecompLeft u <- (decomp -> Left u)
 
-isDistDoubles :: Dist x -> Maybe (Dist [Double])
-isDistDoubles d@DirichletDist {} = Just d
-isDistDoubles _ = Nothing
+pattern DecompRight :: e a -> EffectSum (e : es) a
+pattern DecompRight u <- (decomp -> Right u)
 
-isDistDouble :: Dist x -> Maybe (Dist Double)
-isDistDouble d@HalfCauchyDist {} = Just d
-isDistDouble d@CauchyDist {} = Just d
-isDistDouble d@HalfNormalDist {} = Just d
-isDistDouble d@NormalDist {} = Just d
-isDistDouble d@BetaDist {} = Just d
-isDistDouble d@GammaDist {} = Just d
-isDistDouble d@UniformDist {} = Just d
-isDistDouble _ = Nothing
+getObs :: Dist a -> Maybe a
+getObs d@(HalfCauchyDist _ obs _)     =  obs
+getObs d@(CauchyDist _ _ obs _)       =  obs
+getObs d@(HalfNormalDist _ obs _)     =  obs
+getObs d@(NormalDist _ _ obs _)       =  obs
+getObs d@(DiscrUniformDist _ _ obs _) =  obs
+getObs d@(UniformDist _ _ obs _)      =  obs
+getObs d@(GammaDist _ _ obs _)        =  obs
+getObs d@(BetaDist _ _ obs _)         =  obs
+getObs d@(BinomialDist _ _ obs _)     =  obs
+getObs d@(BernoulliDist _ obs _)      =  obs
+getObs d@(CategoricalDist _ obs _)    =  obs
+getObs d@(DiscreteDist _ obs _)       =  obs
+getObs d@(PoissonDist _ obs _)        =  obs
+getObs d@(DirichletDist _ obs _)      =  obs
+getObs d@(DeterministicDist _ obs _)  =  obs
 
-isDistBool :: Dist x -> Maybe (Dist Bool)
-isDistBool d@BernoulliDist {} = Just d
-isDistBool _ = Nothing
-
-isDistInt :: Dist x -> Maybe (Dist Int)
-isDistInt d@DiscrUniformDist {} = Just d
-isDistInt d@BinomialDist {} = Just d
-isDistInt d@DiscreteDist {} = Just d
-isDistInt d@PoissonDist {} = Just d
-isDistInt _ = Nothing
-
-type TagMap = Map Tag Int
-
-{- Replaces Dists with Sample or Observe and adds address -}
-runDist :: forall rs a. (Member Sample rs, Member Observe rs) => Freer (Dist : rs) a
-        -> Freer rs a
-runDist = loop 0 Map.empty
-  where
-  loop :: (Member Sample rs, Member Observe rs) => Int -> TagMap -> Freer (Dist : rs) a -> Freer rs a
-  loop α_counter tagMap (Pure x) = return x
-  loop α_counter tagMap (Free u k) = case decomp u of
-    Right d
-      -> let tag     = if hasTag d then getTag d else show α_counter
-             tag_i   = Map.findWithDefault 0 tag tagMap
-             tagMap' = Map.insert tag (tag_i + 1) tagMap
-         in if hasObs d
-            then send (Observe d (getObs d) (tag, tag_i)) >>= loop (α_counter + 1) tagMap' . k
-            else send (Sample d (tag, tag_i)) >>= loop (α_counter + 1) tagMap' . k
-    Left  u'  -> Free u' (loop α_counter tagMap. k)
-
-{- Replaces Dists with Sample or Observe and adds address -}
--- runDist :: forall rs a. (Member Sample rs, Member Observe rs) => Freer (Dist : rs) a
---         -> Freer rs a
--- runDist = loop 0
---   where
---   loop :: (Member Sample rs, Member Observe rs) => Int -> Freer (Dist : rs) a -> Freer rs a
---   loop α_counter (Pure x) = return x
---   loop α_counter (Free u k) = case decomp u of
---     Right d
---       -> let α = if hasTag d then getTag d else show α_counter
---          in if hasObs d
---             then send (Observe d (getObs d) α) >>= loop (α_counter + 1) . k
---             else send (Sample d α) >>= loop (α_counter + 1). k
---     Left  u'  -> Free u' (loop α_counter . k)
-
-
-instance Distribution (Dist a) where
-  -- cumulative (HalfNormalDist σ _ _) x
-  --   = if x <= μ then 0 else
-  --     (cumulative (normalDistr μ σ) x - cumulative (normalDistr μ σ) μ) * 2
-  cumulative (CauchyDist μ σ _ _) x
-    = cumulative (cauchyDistribution μ σ) x
-  cumulative (NormalDist μ σ _ _) x
-    = cumulative (normalDistr μ σ) x
-  cumulative (UniformDist min max _ _) x
-    = cumulative (uniformDistr min max) x
-  cumulative (GammaDist k θ _ _) x
-    = cumulative (gammaDistr k θ) x
-  cumulative (BetaDist α β _ _) x
-    = cumulative (betaDistr α β) x
-  cumulative (BinomialDist n p _ _) x
-    = cumulative (binomial n p) x
-  cumulative (BernoulliDist p _ _) x
-    = cumulative (binomial 1 p) x
-  cumulative (CategoricalDist ps _ _) x
-    = undefined -- foldr (\(a, ap) p -> if fromIntegral a <= x then p + ap else p) 0 ps
-  cumulative (DiscreteDist ps _ _) x
-    = cumulative (uniformDistr 0 (fromIntegral $ length ps)) x
-  cumulative (PoissonDist λ _ _) x
-    = cumulative (poisson λ) x
-  cumulative (DiscrUniformDist min max _ _) x
-    = cumulative (uniformDistr (fromIntegral min) (fromIntegral max)) x
-
-instance ContDistr (Dist a) where
-  density (HalfCauchyDist σ _ _)
-    =  \x -> if x < 0 then 0 else
-              2 * density (CauchyDist 0 σ Nothing Nothing) x
-  density (CauchyDist μ σ _ _) = density (cauchyDistribution μ σ)
-  density (HalfNormalDist σ _ _)
-    =  \x -> if x < 0 then 0 else
-              2 * density (NormalDist 0 σ Nothing Nothing) x
-  density (NormalDist μ σ _ _)          = density (normalDistr μ σ)
-  density (UniformDist min max _ _)     = density (uniformDistr min max)
-  density (GammaDist k θ _ _)           = density (gammaDistr k θ)
-  density (BetaDist α β _ _)            = density (betaDistr α β)
-  logDensity (NormalDist μ σ _ _)       = logDensity (normalDistr μ σ)
-  logDensity (UniformDist min max _ _)  = logDensity (uniformDistr min max)
-  logDensity (GammaDist k θ _ _)        = logDensity (gammaDistr k θ)
-  logDensity (BetaDist α β _ _)         = logDensity (betaDistr α β)
-  quantile (NormalDist μ σ _ _)         = quantile (normalDistr μ σ)
-  quantile (UniformDist min max _ _)    = quantile (uniformDistr min max)
-  quantile (GammaDist k θ _ _)          = quantile (gammaDistr k θ)
-  quantile (BetaDist α β _ _)           = quantile (betaDistr α β)
-
-instance DiscreteDistr (Dist a) where
-  -- binomial: probability of `i` successful outcomes
-  probability (BinomialDist n p _ _) i            = probability (binomial n p) i
-  probability (BernoulliDist p _ _) i             = probability (binomial 1 p) i
-  probability (CategoricalDist ps _ _) i          = snd (ps !! i)
-  probability (DiscreteDist ps _ _) i             = (ps !! i)
-  probability (DiscrUniformDist min max _ _) i    = probability (discreteUniformAB min max) i
-  probability (PoissonDist λ _ _) i               = probability (poisson λ) i
-  logProbability (BinomialDist n p _ _) i         = logProbability (binomial n p) i
-  logProbability (BernoulliDist p _ _) i          = logProbability (binomial 1 p) i
-  logProbability (CategoricalDist ps _ _) i       = (log . snd) (ps !! i)
-  logProbability (DiscreteDist ps _ _) i          = (log ) (ps !! i)
-  logProbability (DiscrUniformDist min max _ _) i = logProbability (discreteUniformAB min max) i
-  logProbability (PoissonDist λ _ _) i = logProbability (poisson λ) i
-
-hasObs :: Dist a -> Bool
-hasObs d@(HalfCauchyDist _ obs _)       = isJust obs
-hasObs d@(CauchyDist _ _ obs _)       = isJust obs
-hasObs d@(HalfNormalDist _ obs _)       = isJust obs
-hasObs d@(NormalDist _ _ obs _)       = isJust obs
-hasObs d@(DiscrUniformDist _ _ obs _) = isJust obs
-hasObs d@(UniformDist _ _ obs _)      = isJust obs
-hasObs d@(GammaDist _ _ obs _)        = isJust obs
-hasObs d@(BetaDist _ _ obs _)         = isJust obs
-hasObs d@(BinomialDist _ _ obs _)     = isJust obs
-hasObs d@(BernoulliDist _ obs _)      = isJust obs
-hasObs d@(CategoricalDist _ obs _)    = isJust obs
-hasObs d@(DiscreteDist _ obs _)       = isJust obs
-hasObs d@(PoissonDist _ obs _)        = isJust obs
-hasObs d@(DirichletDist _ obs _)      = isJust obs
-
-hasTag :: Dist a -> Bool
-hasTag d@(HalfCauchyDist _ _ tag)       = isJust tag
-hasTag d@(CauchyDist _ _ _ tag)       = isJust tag
-hasTag d@(HalfNormalDist _ _ tag)       = isJust tag
-hasTag d@(NormalDist _ _ _ tag)       = isJust tag
-hasTag d@(DiscrUniformDist _ _ _ tag) = isJust tag
-hasTag d@(UniformDist _ _ _ tag)      = isJust tag
-hasTag d@(GammaDist _ _ _ tag)        = isJust tag
-hasTag d@(BetaDist _ _ _ tag)         = isJust tag
-hasTag d@(BinomialDist _ _ _ tag)     = isJust tag
-hasTag d@(BernoulliDist _ _ tag)      = isJust tag
-hasTag d@(CategoricalDist _ _ tag)    = isJust tag
-hasTag d@(DiscreteDist _ _ tag)       = isJust tag
-hasTag d@(PoissonDist _ _ tag)        = isJust tag
-hasTag d@(DirichletDist _ _ tag)      = isJust tag
-
-getObs :: Dist a -> a
-getObs d@(HalfCauchyDist _ obs _)     = fromJust obs
-getObs d@(CauchyDist _ _ obs _)       = fromJust obs
-getObs d@(HalfNormalDist _ obs _)     = fromJust obs
-getObs d@(NormalDist _ _ obs _)       = fromJust obs
-getObs d@(DiscrUniformDist _ _ obs _) = fromJust obs
-getObs d@(UniformDist _ _ obs _)      = fromJust obs
-getObs d@(GammaDist _ _ obs _)        = fromJust obs
-getObs d@(BetaDist _ _ obs _)         = fromJust obs
-getObs d@(BinomialDist _ _ obs _)     = fromJust obs
-getObs d@(BernoulliDist _ obs _)      = fromJust obs
-getObs d@(CategoricalDist _ obs _)    = fromJust obs
-getObs d@(DiscreteDist _ obs _)       = fromJust obs
-getObs d@(PoissonDist _ obs _)        = fromJust obs
-getObs d@(DirichletDist _ obs _)      = fromJust obs
-
-getTag :: Dist a -> String
-getTag d@(HalfCauchyDist _ _ tag)     = fromJust tag
-getTag d@(CauchyDist _ _ _ tag)       = fromJust tag
-getTag d@(HalfNormalDist _ _ tag)     = fromJust tag
-getTag d@(NormalDist _ _ _ tag)       = fromJust tag
-getTag d@(DiscrUniformDist _ _ _ tag) = fromJust tag
-getTag d@(UniformDist _ _ _ tag)      = fromJust tag
-getTag d@(GammaDist _ _ _ tag)        = fromJust tag
-getTag d@(BetaDist _ _ _ tag)         = fromJust tag
-getTag d@(BinomialDist _ _ _ tag)     = fromJust tag
-getTag d@(BernoulliDist _ _ tag)      = fromJust tag
-getTag d@(CategoricalDist _ _ tag)    = fromJust tag
-getTag d@(DiscreteDist _ _ tag)       = fromJust tag
-getTag d@(PoissonDist _ _ tag)        = fromJust tag
-getTag d@(DirichletDist _ _ tag)      = fromJust tag
-
+getTag :: Dist a -> Maybe String
+getTag d@(HalfCauchyDist _ _ tag)     = tag
+getTag d@(CauchyDist _ _ _ tag)       = tag
+getTag d@(HalfNormalDist _ _ tag)     = tag
+getTag d@(NormalDist _ _ _ tag)       = tag
+getTag d@(DiscrUniformDist _ _ _ tag) = tag
+getTag d@(UniformDist _ _ _ tag)      = tag
+getTag d@(GammaDist _ _ _ tag)        = tag
+getTag d@(BetaDist _ _ _ tag)         = tag
+getTag d@(BinomialDist _ _ _ tag)     = tag
+getTag d@(BernoulliDist _ _ tag)      = tag
+getTag d@(CategoricalDist _ _ tag)    = tag
+getTag d@(DiscreteDist _ _ tag)       = tag
+getTag d@(PoissonDist _ _ tag)        = tag
+getTag d@(DirichletDist _ _ tag)      = tag
+getTag d@(DeterministicDist _ _ tag)  = tag
 
 prob :: Dist a -> a -> Double
 prob (DirichletDist xs _ _) ys =
@@ -382,34 +266,38 @@ prob (DirichletDist xs _ _) ys =
       of Left e -> error "dirichlet error"
          Right d -> let Exp p = dirichletDensity d (UV.fromList ys)
                         in  exp p
-prob d@HalfCauchyDist {} y
-  = density d y
-prob d@CauchyDist {} y
-  = density d y
-prob d@HalfNormalDist {} y
-  = density d y
-prob d@NormalDist {} y
-  = density d y
-prob d@DiscrUniformDist {} y
-  = probability d y
-prob d@UniformDist {} y
-  = density d y
-prob d@GammaDist {} y
-  = density d y
-prob d@BetaDist {}  y
-  = density d y
-prob d@BinomialDist {} y
-  = probability d y
-prob d@BernoulliDist {} y
-  = probability d (boolToInt y)
+prob (HalfCauchyDist σ _ _) y
+  = if y < 0 then 0 else
+            2 * density (cauchyDistribution 0 σ) y
+prob (CauchyDist μ σ _ _) y
+  = density (cauchyDistribution μ σ) y
+prob (HalfNormalDist σ _ _) y
+  = if y < 0 then 0 else
+            2 * density (normalDistr 0 σ) y
+prob (NormalDist μ σ _ _) y
+  = density (normalDistr μ σ) y
+prob (UniformDist min max _ _) y
+  = density (uniformDistr min max) y
+prob (GammaDist k θ _ _) y
+  = density (gammaDistr k θ) y
+prob  (BetaDist α β _ _) y
+  = density (betaDistr α β) y
+prob (DiscrUniformDist min max _ _) y
+  = probability (discreteUniformAB min max) y
+prob (BinomialDist n p _ _) y
+  = probability (binomial n p) y
+prob (BernoulliDist p _ _) i
+  = probability (binomial 1 p) (boolToInt i)
 prob d@(CategoricalDist ps _ _) y
   = case lookup y ps of
       Nothing -> error $ "Couldn't find " ++ show y ++ " in categorical dist"
       Just p  -> p
-prob d@DiscreteDist {} y
-  = probability d y
-prob d@PoissonDist {} y
-  = probability d y
+prob (DiscreteDist ps _ _) y
+  = ps !! y
+prob (PoissonDist λ _ _) y
+  = probability (poisson λ) y
+prob (DeterministicDist x _ _) y
+  = 1
 
 {- Combines logDensity and logProbability.
    Log probability of double `x` from a distribution -}
@@ -445,3 +333,4 @@ sample (PoissonDist λ obs _) =
   createSampler (samplePoisson λ)
 sample (DirichletDist xs _ _) =
   createSampler (sampleDirichlet xs)
+sample (DeterministicDist x _ _) = return x

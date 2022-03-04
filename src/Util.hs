@@ -2,11 +2,15 @@
 
 module Util where
 
+import Control.Monad
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.List
 
 data Proxy p = Proxy
+
+replicateM2 :: Applicative m => Int -> Int -> m a -> m [[a]]
+replicateM2 n m = replicateM n . replicateM m
 
 removeDuplicates :: Eq a => [a] -> [a]
 removeDuplicates = foldr (\x seen -> if x `elem` seen then seen else x : seen) []

@@ -53,14 +53,14 @@ hmm transition_p observation_p x_prev = do
   y_n <- observationModel observation_p x_n
   return x_n
 
-hmm' :: HasVar s "y" Int => Double -> Double -> Int -> Model s Int
-hmm' transition_p observation_p =
-  observationModel observation_p <=< transitionModel transition_p
+-- hmm' :: HasVar s "y" Int => Double -> Double -> Int -> Model s Int
+-- hmm' transition_p observation_p =
+--   observationModel observation_p <=< transitionModel transition_p
 
-hmmNSteps :: (HasVar s "y" Int)
-  => Double -> Double -> Int -> (Int -> Model s Int)
-hmmNSteps transition_p observation_p n =
-  foldl (>=>) return (replicate n (hmm transition_p observation_p))
+-- hmmNSteps :: (HasVar s "y" Int)
+--   => Double -> Double -> Int -> (Int -> Model s Int)
+-- hmmNSteps transition_p observation_p n =
+--   foldl (>=>) return (replicate n (hmm transition_p observation_p))
 
 -- Hidden markov model (with parameter y :: Int and state monad)
 transitionModelSt :: Double -> Int -> ModelT s (StateT [Int]) Int
@@ -82,10 +82,10 @@ hmmSt transition_p observation_p x_prev = do
   lift $ modify (++ [y_n])
   return x_n
 
-hmmNStepsSt :: (HasVar s "y" Int)
-  => Double -> Double -> Int -> (Int -> ModelT s (StateT [Int]) Int)
-hmmNStepsSt transition_p observation_p n =
-  foldl (>=>) return (replicate n (hmmSt transition_p observation_p))
+-- hmmNStepsSt :: (HasVar s "y" Int)
+--   => Double -> Double -> Int -> (Int -> ModelT s (StateT [Int]) Int)
+-- hmmNStepsSt transition_p observation_p n =
+--   foldl (>=>) return (replicate n (hmmSt transition_p observation_p))
 
 -- Hidden markov model (with parameter ys :: [Int])
 transitionModel' :: Double -> Int -> Model s Int

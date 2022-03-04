@@ -23,18 +23,24 @@ import Data.Extensible hiding (Member)
 data Reader env a where
   Ask :: Reader env env
 
-ask :: (Member (Reader env) rs) => Freer rs env
-ask = Free (inj Ask) Pure
+ask :: (Member (Reader env) es) => Prog es env
+ask = Op (inj Ask) Val
 
--- ask' :: (Member (Reader env) rs) => Freer (rs ++ '[Reader env]) env
--- ask' = Free (inj Ask) Pure
-
-runReader :: forall env rs a. env -> Freer (Reader env ': rs) a -> Freer rs a
-runReader env m = loop m where
-  loop :: Freer (Reader env ': rs) a -> Freer rs a
-  -- At this point, all Reader requests have been handled
-  loop (Pure x) = return x
-  -- Handle if Reader request, else ignore and go through the rest of the tree (by leaving the request's continuation k there to handle it, but also composing this with 'loop' so that the reader handler can then carry on afterwards).
-  loop (Free u k) = case decomp u of
+runReader :: forall env es a. env -> Prog (Reader env ': es) a -> Prog es a
+runReader env = loop where
+  loop :: Prog (Reader env ': es) a -> Prog es a
+  loop (Val x) = return x
+  loop (Op u k) = case decomp u of
     Right Ask -> loop (k env)
-    Left  u'  -> Free u' (loop . k)
+    Left  u'  -> Op u' (loop . k)
+
+runReader' :: env -> Prog (Reader env ': es) a -> Prog es a
+runReader' env = handleRelay return (\Ask k -> k env)
+
+runReader'' :: forall es env a.
+  LastMember IO es =>
+  Member (Reader env) es => env -> Prog es a -> Prog es a
+runReader'' env =
+  interpose @(Reader env) return
+  (\Ask k -> do sendM (print "hi")
+                k env)
