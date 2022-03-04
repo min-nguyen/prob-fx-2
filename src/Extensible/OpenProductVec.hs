@@ -39,28 +39,28 @@ varToStr ObsVar = symbolVal (Proxy @x)
 
 newtype P t rs = P {unP :: Int}
 
-data Assoc x v = x :> v
+data Assoc x a = x :> a
 
-(@=) :: x -> v -> Assoc x v
+(@=) :: x -> a -> Assoc x a
 (@=) = (:>)
 
 -- | Find index of var 'x' in list of assocs 'kvs'
 class FindElem x env where
   findElem :: P x env
-instance FindElem x ((x ':> v) ': env) where
+instance FindElem x ((x ':> a) ': env) where
   findElem = P 0
 instance {-# OVERLAPPABLE #-} FindElem x env => FindElem x (xv ': env) where
   findElem = P $ 1 + unP (findElem :: P x env)
 
 -- | Look up type associated with var 'x' in list of assocs 'kvs'
 type family LookupType x env where
-  LookupType x ((x ':> v) : kvs) = v
-  LookupType x ((x' ':> v) : kvs) = LookupType x kvs
+  LookupType x ((x ':> a) : kvs) = a
+  LookupType x ((x' ':> a) : kvs) = LookupType x kvs
 
 -- | Determine whether a var 'x' exists in a list of assocs 'kvs'
 type family UniqueKey x env where
-  UniqueKey x ((x ':> v) : env) = False
-  UniqueKey x ((x' ':> v) : env) = UniqueKey x env
+  UniqueKey x ((x ':> a) : env) = False
+  UniqueKey x ((x' ':> a) : env) = UniqueKey x env
   UniqueKey x '[] = True
 
 -- | State that we can lookup var 'x' with value type 'a' in list of assocs 'xs'
@@ -69,36 +69,36 @@ class (FindElem x env, LookupType x env ~ a) => Lookup env x a where
   setOP :: ObsVar x -> a -> ModelEnv env -> ModelEnv env
 
 instance (FindElem x env, LookupType x env ~ a) => Lookup env x a where
-  getOP _ (ModelEnv v) =
-    unAny (V.unsafeIndex v (unP $ findElem @x @env))
+  getOP _ (ModelEnv a) =
+    unAny (V.unsafeIndex a (unP $ findElem @x @env))
     where
       unAny (Any a) = unsafeCoerce a
-  setOP _ ft (ModelEnv v) =
-    ModelEnv (v V.// [(unP (findElem @x @env), Any ft)])
+  setOP _ ft (ModelEnv a) =
+    ModelEnv (a V.// [(unP (findElem @x @env), Any ft)])
 
 -- | Map the list constructor over a list of assocs
 type family AsList (as :: [k]) = (bs :: [k]) | bs -> as where
-  AsList ((x :> v) : env)   = ((x :> [v]) : AsList env)
+  AsList ((x :> a) : env)   = ((x :> [a]) : AsList env)
   AsList '[] = '[]
 
--- | "Observable xs x v" is shorthand for "Lookup (AsList xs) x [v]""
-class Lookup (AsList env) x [v]  => Observable env x v where
+-- | "Observable xs x a" is shorthand for "Lookup (AsList xs) x [a]""
+class Lookup (AsList env) x [a]  => Observable env x a where
 
-instance Lookup (AsList env) x [v] => Observable env x v where
+instance Lookup (AsList env) x [a] => Observable env x a where
 
-type family Observables env ks v where
-  Observables env (x ': xs) v = (Observable env x v, Observables env xs v)
-  Observables env '[] v = ()
+type family Observables env ks a where
+  Observables env (x ': xs) a = (Observable env x a, Observables env xs a)
+  Observables env '[] a = ()
 
 type LRec s = ModelEnv (AsList s)
 
 insert :: UniqueKey x ts ~ 'True
        => ObsVar x -> t -> ModelEnv ts -> ModelEnv (x ':> t ': ts)
-insert _ t (ModelEnv v) = ModelEnv (V.cons (Any t) v)
+insert _ t (ModelEnv a) = ModelEnv (V.cons (Any t) a)
 
 infixr 5 <:>
-(<:>) :: UniqueKey x env ~ 'True => Assoc (ObsVar x) v -> ModelEnv env -> ModelEnv ((x ':> v) ': env)
-(_ :> v) <:> (ModelEnv env) = ModelEnv (V.cons (Any v) env)
+(<:>) :: UniqueKey x env ~ 'True => Assoc (ObsVar x) a -> ModelEnv env -> ModelEnv ((x ':> a) ': env)
+(_ :> a) <:> (ModelEnv env) = ModelEnv (V.cons (Any a) env)
 
 mkLens :: forall env x a. Lookup env x a => ObsVar x -> Lens' (ModelEnv env) a
 mkLens x = lens (getOP x) (\s a -> setOP x a s)
@@ -109,8 +109,8 @@ mkGetter x = dimap x (contramap x)
 mkSetter :: ((a -> b) -> s -> t) -> ASetter s t a b
 mkSetter f g = Identity . f (runIdentity . g)
 
-mkGetterSetter :: forall env x v . (Lookup env x v)
-  => ObsVar x -> (Getting v (ModelEnv env) v, ASetter (ModelEnv env) (ModelEnv env) v v)
+mkGetterSetter :: forall env x a . (Lookup env x a)
+  => ObsVar x -> (Getting a (ModelEnv env) a, ASetter (ModelEnv env) (ModelEnv env) a a)
 mkGetterSetter field =
   let getter' = mkGetter (\s -> getOP field s)
       setter' = mkSetter (\f s ->  let a = s ^. getter'
@@ -133,24 +133,24 @@ mkGetterSetter field =
 
 -- newtype P t rs = P {unP :: Int}
 
--- data Assoc k v = k :> v
+-- data Assoc k a = k :> a
 
 -- class FindElem k r where
 --   findElem :: P k r
 
--- instance {-# INCOHERENT  #-} FindElem k ((k ':> v) ': kvs) where
+-- instance {-# INCOHERENT  #-} FindElem k ((k ':> a) ': kvs) where
 --   findElem = P 0
 -- instance {-# OVERLAPPABLE #-} FindElem k kvs => FindElem k (kv ': kvs) where
 --   findElem = P $ 1 + unP (findElem :: P k kvs)
 
 -- getOP :: forall key ts a. FindElem key ts => ObsVar key -> ModelEnv ts -> a
--- getOP _ (ModelEnv v) =
---   unAny (V.unsafeIndex v (unP $ findElem @key @ts))
+-- getOP _ (ModelEnv a) =
+--   unAny (V.unsafeIndex a (unP $ findElem @key @ts))
 --   where
 --     unAny (Any a) = unsafeCoerce a
 
 -- type family LookupType k kvs where
---   LookupType k ((k ':> v) : kvs) = v
+--   LookupType k ((k ':> a) : kvs) = a
 
 
 -- class (KnownNat (FindElem k xs), a ~ Eval (LookupType k xs))
@@ -161,11 +161,11 @@ mkGetterSetter field =
 
 -- insert :: Eval (UniqueKey key ts) ~ 'True
 --        => ObsVar key -> t -> ModelEnv ts -> ModelEnv ('(key, t) ': ts)
--- insert _ t (ModelEnv v) = ModelEnv (V.cons (Any t) v)
+-- insert _ t (ModelEnv a) = ModelEnv (V.cons (Any t) a)
 
 -- infixr 5 <:>
 -- (<:>) :: Eval (UniqueKey key ts) ~ 'True => (ObsVar key, t) -> ModelEnv ts -> ModelEnv ('(key, t) ': ts)
--- (<:>) (k, v) op = insert k v op
+-- (<:>) (k, a) op = insert k a op
 
 -- -- # Projection
 -- data FindIndex :: (a -> Exp Bool) -> [a] -> Exp (Maybe Nat)
@@ -196,15 +196,15 @@ mkGetterSetter field =
 
 -- getOP :: forall key ts  . KnownNat (FindElem key ts)
 --     => ObsVar key -> ModelEnv ts -> (Eval (LookupType key ts))
--- getOP _ (ModelEnv v) =
---   unAny (V.unsafeIndex v (findElem @key @ts))
+-- getOP _ (ModelEnv a) =
+--   unAny (V.unsafeIndex a (findElem @key @ts))
 --   where
 --     unAny (Any a) = unsafeCoerce a
 
 -- setOP :: forall key ts . KnownNat (FindElem key ts)
 --     => ObsVar key -> Eval (LookupType key ts) -> ModelEnv  ts -> ModelEnv ts
--- setOP _ ft (ModelEnv v) =
---   ModelEnv (v V.// [(findElem @key @ts, Any ft)])
+-- setOP _ ft (ModelEnv a) =
+--   ModelEnv (a V.// [(findElem @key @ts, Any ft)])
 
 -- instance (key ~ key') => IsLabel key (ObsVar key') where
 --   fromLabel = ObsVar
