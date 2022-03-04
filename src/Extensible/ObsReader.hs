@@ -32,7 +32,7 @@ ask :: forall env es x a. Member (ObsReader env) es => Observable env x a => Obs
 ask k = Op (inj (Ask k :: ObsReader env (Maybe a))) Val
 
 -- pattern AskPatt :: () => (Observable env x a) => ObsVar x -> EffectSum (ObsReader env ': es) (Maybe a)
-pattern AskPatt :: () => ((v :: *) ~ (Maybe a :: *), Observable env x a) => ObsVar x -> EffectSum (ObsReader env : es) v
+pattern AskPatt :: () => (v ~ Maybe a, Observable env x a) => ObsVar x -> EffectSum (ObsReader env : es) v
 pattern AskPatt x <- (decomp -> Right (Ask x))
 
 runObsReader :: forall env es a.
