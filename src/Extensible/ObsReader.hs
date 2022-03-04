@@ -31,7 +31,7 @@ data ObsReader env a where
 ask :: forall env ts x a. Member (ObsReader env) ts => Observable env x a => ObsVar x -> Freer ts (Maybe a)
 ask k = Free (inj (Ask k :: ObsReader env (Maybe a))) Pure
 
-pattern AskPatt :: () => ((v :: *) ~ (Maybe a :: *), Observable env x a) => ObsVar x -> Union (ObsReader env ': r) v
+pattern AskPatt :: () => ((v :: *) ~ (Maybe a :: *), Observable env x a) => ObsVar x -> EffectSum (ObsReader env ': r) v
 pattern AskPatt x <- (decomp -> Right (Ask x))
 
 runObsReader :: forall env ts a.
@@ -63,5 +63,5 @@ runObsReader' env0 = handleRelaySt env0
                  in  k env' y)
 
 
--- pattern AskPatt :: Observable env x a =>  ObsVar x -> Union ts x
--- pattern AskPatt :: FindElem (ObsReader env) ts => (Observable env x a) => ObsVar x1 -> Union ts a
+-- pattern AskPatt :: Observable env x a =>  ObsVar x -> EffectSum ts x
+-- pattern AskPatt :: FindElem (ObsReader env) ts => (Observable env x a) => ObsVar x1 -> EffectSum ts a

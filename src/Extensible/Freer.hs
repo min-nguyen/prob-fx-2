@@ -26,19 +26,19 @@ import Data.Typeable
 -- import qualified Extensible.OpenSum as OpenSum
 import Extensible.FindElem
 
-{- Extensible effects without Typeable in Union, using Freer monad -}
+{- Extensible effects without Typeable in EffectSum, using Freer monad -}
 
 {- Unions -}
-data Union (ts :: [k1 -> *]) (x :: k2) :: * where
-  Union :: Int -> t x -> Union ts x
+data EffectSum (ts :: [k1 -> *]) (x :: k2) :: * where
+  EffectSum :: Int -> t x -> EffectSum ts x
 
 class (FindElem t ts) => Member (t :: * -> *) (ts :: [* -> *]) where
-  inj ::  t x -> Union ts x
-  prj ::  Union ts x -> Maybe (t x)
+  inj ::  t x -> EffectSum ts x
+  prj ::  EffectSum ts x -> Maybe (t x)
 
 instance {-# INCOHERENT #-} (t ~ t') => Member t '[t'] where
-   inj x          = Union 0 x
-   prj (Union _ x) = Just (unsafeCoerce x)
+   inj x          = EffectSum 0 x
+   prj (EffectSum _ x) = Just (unsafeCoerce x)
 
 instance (FindElem t ts) => Member t ts where
   inj = inj' (unP (findElem :: P t ts))
@@ -53,24 +53,24 @@ type family Members (ts :: [* -> *]) (tss :: [* -> *]) = (cs :: Constraint) | cs
   Members (t ': ts) tss = (Member t tss, Members ts tss)
   Members '[] tss       = ()
 
-pattern Other :: Union @k1 @k1 r v -> Union @k1 @k1 ( t ': r) v
+pattern Other :: EffectSum @k1 @k1 r v -> EffectSum @k1 @k1 ( t ': r) v
 pattern Other u <- (decomp -> Left u)
 
-inj' :: Int -> t v -> Union r v
-inj' = Union
+inj' :: Int -> t v -> EffectSum r v
+inj' = EffectSum
 
-prj' :: Int -> Union r v -> Maybe (t v)
-prj' n (Union n' x) | n == n'   = Just (unsafeCoerce x)
+prj' :: Int -> EffectSum r v -> Maybe (t v)
+prj' n (EffectSum n' x) | n == n'   = Just (unsafeCoerce x)
                     | otherwise = Nothing
 
 {- We want to handle a request of type t, where we state that t must be at the front of the list of requests (we know that the index is 0). If the request tv is indeed of type t (its index is 0), then we can unsafe coerce the tv to be of type 't v'. Otherwise, we return rv which is a request of a different type, and we can safely remove the request 't' from the front of the union at _this_ level of the free monad.  -}
-decomp :: Union (t ': r) v -> Either (Union r v) (t v)
-decomp (Union 0 tv) = Right $ unsafeCoerce tv
-decomp (Union n rv) = Left  $ Union (n-1) rv
+decomp :: EffectSum (t ': r) v -> Either (EffectSum r v) (t v)
+decomp (EffectSum 0 tv) = Right $ unsafeCoerce tv
+decomp (EffectSum n rv) = Left  $ EffectSum (n-1) rv
 
 -- Prepend new effect type at front
-weaken :: Union ts a -> Union (any ': ts) a
-weaken (Union n ta) = Union (n + 1) ta
+weaken :: EffectSum ts a -> EffectSum (any ': ts) a
+weaken (EffectSum n ta) = EffectSum (n + 1) ta
 
 infixr 5 :++:
 type family xs :++: ys where
@@ -78,7 +78,7 @@ type family xs :++: ys where
   (x ': xs) :++: ys = x ': (xs :++: ys)
 
 class Weakens t where
-  weakens :: Union ts a -> Union (t :++: ts) a
+  weakens :: EffectSum ts a -> EffectSum (t :++: ts) a
 instance Weakens '[] where
   weakens = id
 instance Weakens ts => Weakens (t ': ts) where
@@ -104,7 +104,7 @@ instance LastMember m (m ': '[])
 -- | Freer monad
 data Freer f a where
   Pure :: a -> Freer f a
-  Free :: Union f x -> (x -> Freer f a) -> Freer f a
+  Free :: EffectSum f x -> (x -> Freer f a) -> Freer f a
 
 instance Functor (Freer f) where
   fmap f (Pure a) = Pure (f a)
