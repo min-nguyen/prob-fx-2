@@ -53,18 +53,18 @@ type family Members (es :: [* -> *]) (tss :: [* -> *]) = (cs :: Constraint) | cs
   Members (e ': es) tss = (Member e tss, Members es tss)
   Members '[] tss       = ()
 
-pattern Other :: EffectSum  es v -> EffectSum  (e ': es) v
+pattern Other :: EffectSum es x -> EffectSum  (e ': es) x
 pattern Other u <- (decomp -> Left u)
 
-inj' :: Int -> e v -> EffectSum es v
+inj' :: Int -> e x -> EffectSum es x
 inj' = EffectSum
 
-prj' :: Int -> EffectSum es v -> Maybe (e v)
+prj' :: Int -> EffectSum es x -> Maybe (e x)
 prj' n (EffectSum n' x) | n == n'   = Just (unsafeCoerce x)
                     | otherwise = Nothing
 
-{- We want to handle a request of type e, where we state that e must be at the front of the list of requests (we know that the index is 0). If the request tv is indeed of type e (its index is 0), then we can unsafe coerce the tv to be of type 'e v'. Otherwise, we return rv which is a request of a different type, and we can safely remove the request 'e' from the front of the union at _this_ level of the free monad.  -}
-decomp :: EffectSum (e ': es) v -> Either (EffectSum es v) (e v)
+{- We want to handle a request of type e, where we state that e must be at the front of the list of requests (we know that the index is 0). If the request tv is indeed of type e (its index is 0), then we can unsafe coerce the tv to be of type 'e x'. Otherwise, we return rv which is a request of a different type, and we can safely remove the request 'e' from the front of the union at _this_ level of the free monad.  -}
+decomp :: EffectSum (e ': es) x -> Either (EffectSum es x) (e x)
 decomp (EffectSum 0 tv) = Right $ unsafeCoerce tv
 decomp (EffectSum n rv) = Left  $ EffectSum (n-1) rv
 
@@ -189,12 +189,12 @@ interposeSt s ret h (Op u k) =
     Just tx -> h s tx (\s' x -> interposeSt s' ret h $ k x)
     Nothing -> Op u (interposeSt s ret h . k)
 
--- | Replace the effect e at the front of the list of effects with a new effect v.
+-- | Replace the effect e at the front of the list of effects with a new effect e.
 replaceRelay ::
-      (a -> Prog (v ': es) b)
-  ->  (forall x. e x -> (x -> Prog (v ': es) b) -> Prog (v ': es) b)
+      (a -> Prog (e ': es) b)
+  ->  (forall x. e x -> (x -> Prog (e ': es) b) -> Prog (e ': es) b)
   ->  Prog (e ': es) a
-  ->  Prog (v ': es) b
+  ->  Prog (e ': es) b
 replaceRelay ret h (Val x) = ret x
 replaceRelay ret h (Op u k) = case decomp u of
   Right tx -> h tx (replaceRelay ret h . k)
@@ -212,10 +212,10 @@ replaceRelayN ret h (Op u k) = case decomp u of
 
 replaceRelaySt ::
       s
-  ->  (s -> a -> Prog (v ': es) b)
-  ->  (forall x. s -> e x -> (s -> x -> Prog (v ': es) b) -> Prog (v ': es) b)
+  ->  (s -> a -> Prog (e ': es) b)
+  ->  (forall x. s -> e x -> (s -> x -> Prog (e ': es) b) -> Prog (e ': es) b)
   ->  Prog (e ': es) a
-  ->  Prog (v ': es) b
+  ->  Prog (e ': es) b
 replaceRelaySt s ret h (Val x) = ret s x
 replaceRelaySt s ret h (Op u k) = case decomp u of
   Right tx -> h s tx (\s' x -> replaceRelaySt s' ret h $ k x)
