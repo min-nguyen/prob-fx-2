@@ -31,7 +31,6 @@ data ObsReader env (a :: *) where
 ask :: forall env es x a. Member (ObsReader env) es => Observable env x a => ObsVar x -> Prog es (Maybe a)
 ask k = Op (inj (Ask k :: ObsReader env (Maybe a))) Val
 
--- pattern AskPatt :: () => (Observable env x a) => ObsVar x -> EffectSum (ObsReader env ': es) (Maybe a)
 pattern AskPatt :: () => (v ~ Maybe a, Observable env x a) => ObsVar x -> EffectSum (ObsReader env : es) v
 pattern AskPatt x <- (decomp -> Right (Ask x))
 
