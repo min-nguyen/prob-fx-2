@@ -25,17 +25,18 @@ import Extensible.ModelEnv
 import Control.Lens hiding ((:>))
 import Util
 
-data ObsReader env a where
+data ObsReader env (a :: *) where
   Ask :: Observable env x a => ObsVar x -> ObsReader env (Maybe a)
 
-ask :: forall env ts x a. Member (ObsReader env) ts => Observable env x a => ObsVar x -> Prog ts (Maybe a)
+ask :: forall env es x a. Member (ObsReader env) es => Observable env x a => ObsVar x -> Prog es (Maybe a)
 ask k = Op (inj (Ask k :: ObsReader env (Maybe a))) Val
 
-pattern AskPatt :: () => ((v :: *) ~ (Maybe a :: *), Observable env x a) => ObsVar x -> EffectSum (ObsReader env ': r) v
+-- pattern AskPatt :: () => (Observable env x a) => ObsVar x -> EffectSum (ObsReader env ': es) (Maybe a)
+pattern AskPatt :: () => ((v :: *) ~ (Maybe a :: *), Observable env x a) => ObsVar x -> EffectSum (ObsReader env : es) v
 pattern AskPatt x <- (decomp -> Right (Ask x))
 
-runObsReader :: forall env ts a.
-  ModelEnv env -> Prog (ObsReader env ': ts) a -> Prog ts a
+runObsReader :: forall env es a.
+  ModelEnv env -> Prog (ObsReader env ': es) a -> Prog es a
 runObsReader env (Val x) = return x
 runObsReader env (Op (AskPatt key) k) = do
     let ys = getOP key env
@@ -51,8 +52,8 @@ runObsReader env (Op (Other u) k) = Op u (runObsReader env . k)
 --     runObsReader env' (k y)
 --   Left u -> Op u (runObsReader env . k)
 
-runObsReader' :: forall env ts a.
-  ModelEnv env -> Prog (ObsReader env ': ts) a -> Prog ts a
+runObsReader' :: forall env es a.
+  ModelEnv env -> Prog (ObsReader env ': es) a -> Prog es a
 runObsReader' env0 = handleRelaySt env0
   (\env x    -> return x)
   (\env tx k ->
@@ -63,5 +64,5 @@ runObsReader' env0 = handleRelaySt env0
                  in  k env' y)
 
 
--- pattern AskPatt :: Observable env x a =>  ObsVar x -> EffectSum ts x
--- pattern AskPatt :: FindElem (ObsReader env) ts => (Observable env x a) => ObsVar x1 -> EffectSum ts a
+-- pattern AskPatt :: Observable env x a =>  ObsVar x -> EffectSum es x
+-- pattern AskPatt :: FindElem (ObsReader env) es => (Observable env x a) => ObsVar x1 -> EffectSum es a

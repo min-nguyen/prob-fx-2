@@ -151,12 +151,12 @@ type Addr = (Tag, Int)
 type TagMap = Map Tag Int
 
 {- Replaces Dists with Sample or Observe and adds address -}
-runDist :: forall rs a. (Member Sample rs, Member Observe rs)
-        => Prog (Dist : rs) a -> Prog rs a
+runDist :: forall es a. (Member Sample es, Member Observe es)
+        => Prog (Dist : es) a -> Prog es a
 runDist = loop 0 Map.empty
   where
-  loop :: (Member Sample rs, Member Observe rs)
-       => Int -> TagMap -> Prog (Dist : rs) a -> Prog rs a
+  loop :: (Member Sample es, Member Observe es)
+       => Int -> TagMap -> Prog (Dist : es) a -> Prog es a
   loop _ _ (Val x) = return x
   loop counter tagMap (Op u k) = case decomp u of
     Right d ->
@@ -169,10 +169,10 @@ runDist = loop 0 Map.empty
                 k'      = loop (counter + 1) tagMap' . k
     Left  u'  -> Op u' (loop counter tagMap . k)
 
--- runDist :: forall rs a. Prog (Dist ': rs) a -> Prog (Observe ': Sample ': rs) a
+-- runDist :: forall es a. Prog (Dist ': es) a -> Prog (Observe ': Sample ': es) a
 -- runDist = replaceRelayStN @'[Observe, Sample] (0, Map.empty) (\_ x -> return x)
 --   undefined
---  (forall x. s -> t x -> (s -> x -> Prog (rs :++: ts) b) -> Prog (rs :++: ts) b) (Prog (t : ts) a)
+--  (forall x. s -> t x -> (s -> x -> Prog (es :++: ts) b) -> Prog (es :++: ts) b) (Prog (t : ts) a)
 
 data Sample a where
   Sample  :: Dist a -> Addr -> Sample a
@@ -184,22 +184,22 @@ prinT s = Op (inj $ Printer s) Val
 data Observe a where
   Observe :: Dist a -> a -> Addr -> Observe a
 
-pattern PrintPatt :: (Member Sample rs) => (x ~ ()) => String -> EffectSum rs x
+pattern PrintPatt :: (Member Sample es) => (x ~ ()) => String -> EffectSum es x
 pattern PrintPatt s <- (prj -> Just (Printer s))
 
--- pattern DistPatt :: () => (Show x, OpenSum.Member x PrimVal) => Dist x -> EffectSum (Dist : r) x
+pattern DistPatt :: () => (Show x, OpenSum.Member x PrimVal) => Dist x -> EffectSum (Dist : r) x
 pattern DistPatt d <- (decomp -> Right (DistDict d))
 
 pattern DistDict :: () => (Show x, OpenSum.Member x PrimVal) => Dist x -> Dist x
 pattern DistDict d <- d@(distDict -> Dict)
 
-pattern Samp :: Member Sample rs => Dist x -> Addr -> EffectSum rs x
+pattern Samp :: Member Sample es => Dist x -> Addr -> EffectSum es x
 pattern Samp d α <- (prj -> Just (Sample d α))
 
-pattern SampPatt :: (Member Sample rs) => (Show x, OpenSum.Member x PrimVal) => Dist x -> Addr -> EffectSum rs x
+pattern SampPatt :: (Member Sample es) => (Show x, OpenSum.Member x PrimVal) => Dist x -> Addr -> EffectSum es x
 pattern SampPatt d α <- (Samp (DistDict d) α)
 
-pattern SampPatt' :: (Member Sample rs) => (Show x, OpenSum.Member x PrimVal) => Dist x -> Addr -> EffectSum rs x
+pattern SampPatt' :: (Member Sample es) => (Show x, OpenSum.Member x PrimVal) => Dist x -> Addr -> EffectSum es x
 pattern SampPatt' d α <- (prj -> Just (Sample d@(distDict -> Dict) α))
 
 isExprInt :: Dist x -> Maybe (Int :~: x)
@@ -209,19 +209,19 @@ isExprInt _         = Nothing
 pattern DistInt :: () => x ~ Int => Dist x
 pattern DistInt  <- (isExprInt -> Just Refl)
 
-pattern ExprIntPrj :: Member Dist rs => x ~ Int => Dist x -> EffectSum rs x
+pattern ExprIntPrj :: Member Dist es => x ~ Int => Dist x -> EffectSum es x
 pattern ExprIntPrj e <- (prj -> Just e@DistInt)
 
-pattern Obs :: Member Observe rs => Dist x -> x -> Addr -> EffectSum rs x
+pattern Obs :: Member Observe es => Dist x -> x -> Addr -> EffectSum es x
 pattern Obs d y α <- (prj -> Just (Observe d y α))
 
-pattern ObsPatt :: (Member Observe rs) => (Show x, OpenSum.Member x PrimVal) => Dist x -> x -> Addr -> EffectSum rs x
+pattern ObsPatt :: (Member Observe es) => (Show x, OpenSum.Member x PrimVal) => Dist x -> x -> Addr -> EffectSum es x
 pattern ObsPatt d y α <- (Obs (DistDict d) y α)
 
-pattern DecompLeft :: (k1 ~ k2) => EffectSum @k1 @k2 r v -> EffectSum @k1 @k2 ((:) @(k1 -> *) t r) v
+pattern DecompLeft :: EffectSum es a -> EffectSum ((:) e es) a
 pattern DecompLeft u <- (decomp -> Left u)
 
-pattern DecompRight :: t v -> EffectSum (t : r) v
+pattern DecompRight :: e a -> EffectSum (e : es) a
 pattern DecompRight u <- (decomp -> Right u)
 
 getObs :: Dist a -> Maybe a

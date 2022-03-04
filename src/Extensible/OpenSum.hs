@@ -14,8 +14,8 @@ import qualified GHC.TypeLits as TL
 import Unsafe.Coerce
 import Extensible.FindElem
 
-data OpenSum (ts :: [k]) where
-  UnsafeOpenSum :: Int -> t -> OpenSum ts
+data OpenSum (as :: [k]) where
+  UnsafeOpenSum :: Int -> a -> OpenSum as
 
 instance Eq (OpenSum '[]) where
   x == _ = case x of {}
@@ -26,50 +26,50 @@ testOpenSum =
       os2 = inj (True :: Bool) :: OpenSum '[Int, Bool]
   in  os1 == os2
 
-instance forall t ts. (Eq t, Eq (OpenSum ts)) => Eq (OpenSum (t ': ts)) where
-  -- If their types aren't the same, return false
+instance forall a as. (Eq a, Eq (OpenSum as)) => Eq (OpenSum (a ': as)) where
+  -- If their types aren'a the same, return false
   UnsafeOpenSum i _ == UnsafeOpenSum j _ | i /= j = False
-  -- If their types are both t, then unsafe coerce both and compare
+  -- If their types are both a, then unsafe coerce both and compare
   UnsafeOpenSum 0 x == UnsafeOpenSum 0 y =
-    unsafeCoerce x == (unsafeCoerce y :: t)
-  -- If their types are still to be determined (in ts), then compare the same values but with the type OpenSum ts
+    unsafeCoerce x == (unsafeCoerce y :: a)
+  -- If their types are still to be determined (in as), then compare the same values but with the type OpenSum as
   UnsafeOpenSum i x == UnsafeOpenSum j y =
-    UnsafeOpenSum (i - 1) x == (UnsafeOpenSum (j - 1) y :: OpenSum ts)
+    UnsafeOpenSum (i - 1) x == (UnsafeOpenSum (j - 1) y :: OpenSum as)
 
-instance forall t ts. (Show t, Show (OpenSum ts)) => Show (OpenSum (t ': ts)) where
-  show (UnsafeOpenSum i t) =
+instance forall a as. (Show a, Show (OpenSum as)) => Show (OpenSum (a ': as)) where
+  show (UnsafeOpenSum i a) =
     if i == 0
-    then show (unsafeCoerce t :: t)
-    else show (UnsafeOpenSum (i - 1) t :: OpenSum ts)
+    then show (unsafeCoerce a :: a)
+    else show (UnsafeOpenSum (i - 1) a :: OpenSum as)
 
-instance {-# OVERLAPPING #-} Show t => Show (OpenSum '[t]) where
-  show (UnsafeOpenSum i t) = show (unsafeCoerce t :: t)
+instance {-# OVERLAPPING #-} Show a => Show (OpenSum '[a]) where
+  show (UnsafeOpenSum i a) = show (unsafeCoerce a :: a)
 
-class (FindElem t ts) => Member (t :: *) (ts :: [*]) where
-  inj ::  t -> OpenSum ts
-  prj ::  OpenSum ts  -> Maybe t
+class (FindElem a as) => Member (a :: *) (as :: [*]) where
+  inj ::  a -> OpenSum as
+  prj ::  OpenSum as  -> Maybe a
 
-instance (Typeable t, t ~ t') => Member t '[t'] where
+instance (Typeable a, a ~ a') => Member a '[a'] where
    inj x          = UnsafeOpenSum 0 x
    prj (UnsafeOpenSum _ x) = Just (unsafeCoerce x)
 
-instance (FindElem t ts) => Member t ts where
-  inj = inj' (unP (findElem :: P t ts))
-  prj = prj' (unP (findElem :: P t ts))
+instance (FindElem a as) => Member a as where
+  inj = inj' (unP (findElem :: P a as))
+  prj = prj' (unP (findElem :: P a as))
 
 -- | Not possible to implement "Members" as a type class.
--- class Members t (tss :: [* -> *])
--- instance (Member t tss, Members ts tss) => Members (t ': ts) tss
--- instance Members '[] ts
+-- class Members a (tss :: [* -> *])
+-- instance (Member a tss, Members as tss) => Members (a ': as) tss
+-- instance Members '[] as
 
-type family Members (ts :: [* ]) (tss :: [* ]) = (cs :: Constraint) | cs -> ts where
-  Members (t ': ts) tss = (Member t tss, Members ts tss)
+type family Members (as :: [* ]) (tss :: [* ]) = (cs :: Constraint) | cs -> as where
+  Members (a ': as) tss = (Member a tss, Members as tss)
   Members '[] tss       = ()
 
-inj' :: Int -> t  -> OpenSum ts
+inj' :: Int -> a  -> OpenSum as
 inj' = UnsafeOpenSum
 
-prj' :: Int -> OpenSum ts  -> Maybe t
+prj' :: Int -> OpenSum as  -> Maybe a
 prj' n (UnsafeOpenSum n' x) | n == n'   = Just (unsafeCoerce x)
                     | otherwise = Nothing
 
@@ -119,19 +119,19 @@ prj' n (UnsafeOpenSum n' x) | n == n'   = Just (unsafeCoerce x)
 --              (Eval (Pure ('Just 0)))
 --              (Eval (FindIndex f xs >>= FMap ((+) 1))))
 -- -- ## FindElem
--- type FindElem (key :: k) (ts :: [k]) =
---   FindIndex (TyEq key) ts >>= FromMaybe Stuck
+-- type FindElem (key :: k) (as :: [k]) =
+--   FindIndex (TyEq key) as >>= FromMaybe Stuck
 
--- type Member t ts = KnownNat (Eval (FindElem t ts))
+-- type Member a as = KnownNat (Eval (FindElem a as))
 
--- findElem :: forall t ts. Member t ts => Int
--- findElem = fromIntegral $ natVal (Proxy @(Eval (FindElem t ts)))
+-- findElem :: forall a as. Member a as => Int
+-- findElem = fromIntegral $ natVal (Proxy @(Eval (FindElem a as)))
 
--- inj :: forall  t ts. Member t ts => t -> OpenSum ts
--- inj ft = UnsafeOpenSum (findElem @t @ts) ft
+-- inj :: forall  a as. Member a as => a -> OpenSum as
+-- inj ft = UnsafeOpenSum (findElem @a @as) ft
 
--- prj :: forall  t ts. Member t ts => OpenSum ts -> Maybe t
+-- prj :: forall  a as. Member a as => OpenSum as -> Maybe a
 -- prj (UnsafeOpenSum i ft) =
---   if i == findElem @t @ts
+--   if i == findElem @a @as
 --   then Just $ unsafeCoerce ft
 --   else Nothing

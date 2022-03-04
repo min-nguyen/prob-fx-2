@@ -29,7 +29,7 @@ import Extensible.FindElem
 {- Extensible effects without Typeable in EffectSum, using Prog monad -}
 
 {- Unions -}
-data EffectSum (es :: [k1 -> *]) (x :: k2) :: * where
+data EffectSum (es :: [* -> *]) (x :: *) :: * where
   EffectSum :: Int -> e x -> EffectSum es x
 
 class (FindElem e es) => Member (e :: * -> *) (es :: [* -> *]) where
@@ -53,7 +53,7 @@ type family Members (es :: [* -> *]) (tss :: [* -> *]) = (cs :: Constraint) | cs
   Members (e ': es) tss = (Member e tss, Members es tss)
   Members '[] tss       = ()
 
-pattern Other :: EffectSum @k1 @k1 es v -> EffectSum @k1 @k1 (e ': es) v
+pattern Other :: EffectSum  es v -> EffectSum  (e ': es) v
 pattern Other u <- (decomp -> Left u)
 
 inj' :: Int -> e v -> EffectSum es v
@@ -102,20 +102,20 @@ instance {-# OVERLAPPABLE #-} LastMember m effs => LastMember m (eff ': effs)
 instance LastMember m (m ': '[])
 
 -- | Prog monad
-data Prog f a where
-  Val :: a -> Prog f a
-  Op :: EffectSum f x -> (x -> Prog f a) -> Prog f a
+data Prog es a where
+  Val :: a -> Prog es a
+  Op :: EffectSum es x -> (x -> Prog es a) -> Prog es a
 
-instance Functor (Prog f) where
+instance Functor (Prog es) where
   fmap f (Val a) = Val (f a)
   fmap f (Op fx k) = Op fx (fmap f . k)
 
-instance Applicative (Prog f) where
+instance Applicative (Prog es) where
   pure = Val
   Val f <*> x = fmap f x
   (Op fx k) <*> x = Op fx ((<*> x) . k)
 
-instance Monad (Prog f) where
+instance Monad (Prog es) where
   return            = Val
   Val a >>= f      = f a
   Op fx k >>= f = Op fx (k >=> f)
@@ -283,18 +283,18 @@ installExisting ret h (Op u k) =
     Nothing -> Op u (installExisting @e @e' ret h . k)
 
 
-data Op f a = Val' a | Op' (f (Op f a))
+data Free f a = Val' a | Op' (f (Free f a))
 
-instance Functor f => Functor (Op f) where
+instance Functor f => Functor (Free f) where
    fmap g (Op' fx) = Op' (fmap g <$> fx)
    fmap g (Val' x)  = Val' (g x)
 
-instance (Functor f) => Applicative (Op f) where
+instance (Functor f) => Applicative (Free f) where
   pure = Val'
   Val' f  <*> as  = fmap f as
   Op' faf  <*> as  = Op' (fmap (<*> as) faf)
 
-instance (Functor f) => Monad (Op f) where
+instance (Functor f) => Monad (Free f) where
    return = Val'
    (Op' x) >>= f = Op' (fmap (>>= f) x)
    (Val' es) >>= f = f es
@@ -305,11 +305,11 @@ data Reader' env a where
 
 send' e = Val' (e Val')
 
-prog :: Op (Reader' Int) ()
+prog :: Free (Reader' Int) ()
 prog = do
   send' Ask'
   return ()
 
-runProg :: Op (Reader' Int) () -> IO ()
+runProg :: Free (Reader' Int) () -> IO ()
 runProg (Op' (Ask' k)) = do
   runProg (k (4 :: Int))
