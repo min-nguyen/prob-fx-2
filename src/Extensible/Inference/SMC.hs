@@ -24,12 +24,12 @@ import Extensible.State
 import Extensible.STrace
 import Extensible.Sampler
 
-runSample :: Freer '[Sample] a -> Sampler a
+runSample :: Prog '[Sample] a -> Sampler a
 runSample = loop
   where
-  loop :: Freer '[Sample] a -> Sampler a
-  loop (Pure x) = return x
-  loop (Free u k) =
+  loop :: Prog '[Sample] a -> Sampler a
+  loop (Val x) = return x
+  loop (Op u k) =
     case u of
       SampPatt d α ->
         sample d >>= loop . k

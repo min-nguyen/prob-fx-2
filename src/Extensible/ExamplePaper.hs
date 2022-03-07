@@ -21,7 +21,8 @@ module Extensible.ExamplePaper where
 import Statistics.Distribution
 import GHC.OverloadedLabels
 import Extensible.Freer
-import Extensible.Reader
+-- import Extensible.Reader
+import Extensible.ObsReader
 import Extensible.State
 import Extensible.Writer
 import Extensible.Model
@@ -43,6 +44,21 @@ import Data.Vector.Fusion.Bundle (findIndex)
 import GHC.Show (Show)
 import qualified Data.Map as Map
 import Control.Lens.Combinators (isn't)
+
+coinFlip :: (Observables env '["p"] Double, Observables env '[ "y"] Bool) => Model env es Bool
+coinFlip = do
+  p <- uniform' 0 1 #p
+  y <- bernoulli' p #y
+  return y
+
+coinFlip' :: forall env es. (Observables env '["p"] Double, Observables env '[ "y"] Bool) => Model env es Bool
+coinFlip' = Model $ do
+  maybe_p  <- send (Ask @env #p)
+  p       <- send (UniformDist 0 1 maybe_p (Just "p"))
+  maybe_y <- send (Ask @env #y)
+  y       <- send (BernoulliDist p maybe_y (Just "p") )
+  return y
+
 
 {- Linear regression -}
 type LinRegrEnv =
@@ -419,23 +435,3 @@ hmmSIRVNsteps ::
 hmmSIRVNsteps  = hmmGen priorSIRV transSIRV obsSIRV
 
 {- Testing generic functions -}
-
-f :: forall ts a. Member (Writer [Int]) ts => a -> Prog ts Int
-f a = return 5
-
-g :: forall constr ts  a. constr => (constr => a -> Prog ts Int) -> a -> Prog ts Int
-g foo a = foo a
-
-h :: forall ts. Member (Writer [Int]) ts => Prog ts Int
-h = g @(Member (Writer [Int]) ts) f 3
-
-i' = run $ runWriter h
-
-f' :: Member (Writer [Int]) es => a -> Prog es Int
-f' _ = return 0
-
-g' :: (a -> Prog es Int) -> a -> Prog es Int
-g' f = f
-
-h' :: Member (Writer [Int]) es => a -> Prog es Int
-h' = g' f'

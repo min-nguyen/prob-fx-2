@@ -14,7 +14,7 @@ class FindElem x ts where
 instance FindElem t (t ': r) where
   findElem = P 0
 
-instance {-# OVERLAPPABLE #-} FindElem t r => FindElem t (t' ': r) where
+instance {-# OVERLAPPABLE #-} FindElem t r => FindElem t (t' : r) where
   findElem = P $ 1 + unP (findElem :: P t r)
 
 instance TypeError ('Text "Cannot unify effect types." ':$$:
