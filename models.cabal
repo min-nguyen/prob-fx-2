@@ -82,7 +82,8 @@ library
                       Extensible.Inference.SMC,
                       Extensible.Inference.Inf,
                       Extensible.Test,
-                      Extensible.TestPaper
+                      Extensible.TestPaper,
+                      Extensible.TestNew
 
   -- Modules included in this library but not exported.
   -- other-modules:
