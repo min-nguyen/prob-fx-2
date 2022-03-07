@@ -5,7 +5,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -23,31 +22,27 @@ import Control.Monad
 import Extensible.Freer
 
 data NonDet a where
-  NNil  :: NonDet a
-  NCons :: a -> a -> NonDet a
+  Empty  :: NonDet a
+  Choose :: NonDet Bool
 
-infixr 5 :|:
+pattern Choose' :: () => (x ~ Bool) => EffectSum (NonDet : es) x
+pattern Choose' <- (decomp -> Right Choose)
 
-pattern (:|:) :: x -> x -> EffectSum (NonDet : es) x
-pattern p :|: q <- (decomp -> Right (NCons p q))
+pattern Empty' :: EffectSum (NonDet : es) x
+pattern Empty' <- (decomp -> Right Empty)
 
-pattern NNil' <- (decomp -> Right NNil)
-
--- instance Member NonDet es => Alternative (Prog es) where
---   empty  = send Fail
---   (<|>)  = (:|:)
+instance Member NonDet es => Alternative (Prog es) where
+  empty  = send Empty
+  m1 <|> m2 = do b <- send Choose
+                 if b then m1 else m2
 
 runNonDet :: Prog (NonDet ': es) a -> Prog es [a]
 runNonDet (Val x) = return [x]
-runNonDet (Op op k) = case  op of
-   (p :|: q) -> do ps <- runNonDet (k p)
-                   qs <- runNonDet (k q)
-                   return (ps ++ qs)
-   NNil'     -> return []
+runNonDet (Op op k) = case op of
+   Choose' -> (<|>) <$> runNonDet (k True) <*> runNonDet (k False)
+   Empty'  -> return []
    Other op  -> Op op (runNonDet . k)
-  --  ()
-                -- in  map runNonDet ps
-  -- runNonDet p
+
 
 
 
