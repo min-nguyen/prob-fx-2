@@ -47,7 +47,8 @@ cabal-version:       >=1.10
 
 
 library
-  ghc-options:        -fprint-explicit-kinds
+  ghc-options:
+  -- -fprint-explicit-kinds
   -- Modules exported by the library.
   exposed-modules:    Trans.Model,
                       Trans.ModelF,
