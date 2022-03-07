@@ -62,6 +62,7 @@ library
                       Extensible.ExamplePaper,
                       Extensible.EffExample,
                       Extensible.Reader,
+                      Extensible.NonDet,
                       Extensible.DataSets,
                       Extensible.ObsReader,
                       Extensible.Writer,
@@ -78,6 +79,7 @@ library
                       Extensible.Inference.SimulateTrace,
                       Extensible.Inference.LW,
                       Extensible.Inference.MH,
+                      Extensible.Inference.SMC,
                       Extensible.Inference.Inf,
                       Extensible.Test,
                       Extensible.TestPaper
