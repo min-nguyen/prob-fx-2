@@ -44,21 +44,18 @@ loopSMC model env = do
   prinT (show probs)
   return []
 
-runLoopSMC' :: Model env '[ObsReader env, Dist, Observe, NonDet, Sample] a -> ModelEnv env -> Sampler [a]
+runLoopSMC' :: Model env '[ObsReader env, Dist, Observe, NonDet, Sample] a -> ModelEnv env -> Sampler [(a, Double)]
 runLoopSMC' m env = do
   let prog = (runTwice . runDist . runObsReader env) (runModel m)
   runSample (loopSMC' (prog, 0))
 
-loopSMC' :: (Prog '[Observe, NonDet, Sample] a, Double) -> Prog '[Sample] [a]
-loopSMC' (Val x, p) = Val [x]
+loopSMC' :: Member Sample es => (Prog (Observe : NonDet : es) a, Double) -> Prog es [(a, Double)]
+loopSMC' (Val x, p) = Val [(x, p)]
 loopSMC' (prog, p)  = do
   -- The first iteration will have two results, but because we don't apply 'runTwice' again, every subsequent iteration will have one result (because there are no more non-deterministic operations).
   progs_probs <- (runNonDet . runObserveSMC 0) prog
-  let progs  = map fst progs_probs
-  let probs  = map snd progs_probs
-      probs' = map (+p) probs
-      progs_probs' = zip progs probs'
-  prinT (show probs')
+  let progs_probs' = map (fmap (+p)) progs_probs
+  prinT (show $ map snd progs_probs')
   concat <$> (sequence $ map loopSMC' (progs_probs'))
 
 -- When discharging Observe, return the rest of the program, and the log probability
