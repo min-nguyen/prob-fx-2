@@ -15,38 +15,38 @@ import Control.Monad.State
 data WriterE w a where
   TellE :: w -> WriterE w ()
 
-runWriterE :: Monoid w => Freer (WriterE w ': ts) a -> Freer ts (a, w)
+runWriterE :: Monoid w => Prog (WriterE w ': es) a -> Prog es (a, w)
 runWriterE = handleRelaySt mempty (\w a -> return (a, w))
   (\w (TellE w') k -> k (w <> w') ())
 
 data ReaderE env a where
   AskE :: ReaderE env env
 
-runReaderE :: env -> Freer (ReaderE env ': ts) a -> Freer ts a
+runReaderE :: env -> Prog (ReaderE env ': es) a -> Prog es a
 runReaderE env = handleRelay return (\AskE k -> k env)
 
 runFrontPrependRW ::
-  Freer (ReaderE Int ': ts) a -> Freer (WriterE [Int] ': ReaderE Int ': ts) a
+  Prog (ReaderE Int ': es) a -> Prog (WriterE [Int] ': ReaderE Int ': es) a
 runFrontPrependRW = installFront return
   (\x tx k ->
       case tx of AskE -> do send (TellE [x])
                             k x)
 
-runInstallPrependRW :: forall ts a . Member (ReaderE Int) ts =>
-  Freer ts a -> Freer (WriterE [Int] ': ts) a
+runInstallPrependRW :: forall es a . Member (ReaderE Int) es =>
+  Prog es a -> Prog (WriterE [Int] ': es) a
 runInstallPrependRW = install @(ReaderE Int) return
   (\x tx k ->
       case tx of AskE -> do send (TellE [x])
                             k x)
 
-runInstallRW :: Members '[ReaderE Int, WriterE [Int]] ts =>
-  Freer ts a -> Freer ts a
+runInstallRW :: Members '[ReaderE Int, WriterE [Int]] es =>
+  Prog es a -> Prog es a
 runInstallRW = installExisting @(ReaderE Int) @(WriterE [Int]) return
   (\x tx k ->
       case tx of AskE -> do send (TellE [x])
                             k x)
 
-runReplaceRW :: forall env ts a. env -> Freer (ReaderE env ': ts) a -> Freer (WriterE [env] ': ts) a
+runReplaceRW :: forall env es a. env -> Prog (ReaderE env ': es) a -> Prog (WriterE [env] ': es) a
 runReplaceRW env = replaceRelayN @('[WriterE [env]]) return
   (\tx k ->
       case tx of AskE -> do send (TellE [env])
@@ -54,7 +54,7 @@ runReplaceRW env = replaceRelayN @('[WriterE [env]]) return
                             )
 
 -- Just experiments with freer
-program :: Freer '[Reader Int, State Int, IO] ()
+program :: Prog '[Reader Int, State Int, IO] ()
 program = do
   x :: Int <- ask
   y :: Int <- ask
@@ -63,7 +63,7 @@ program = do
 testProgram :: IO ()
 testProgram = (runM . runReader 5 . runReader'' (5 :: Int) . runReader'' (5 :: Int)) program
 
-programRW :: Member (ReaderE Int) ts => Freer ts ()
+programRW :: Member (ReaderE Int) es => Prog es ()
 programRW = do
   x :: Int <- send AskE
   y :: Int <- send AskE

@@ -24,11 +24,11 @@ newtype Lift m a = Lift (m a)
 
 -- By using SetMember, it is possible to assert that the lifted type occurs
 -- only once in the effect list
-lift :: (Member (Lift m) ts) => m a -> Freer ts a
+lift :: (Member (Lift m) es) => m a -> Prog es a
 lift = send . Lift
 
-runLift :: forall m w. Monad m => Freer '[Lift m] w -> m w
-runLift (Pure x) = return x
-runLift (Free u q) = case prj u of
+runLift :: forall m w. Monad m => Prog '[Lift m] w -> m w
+runLift (Val x) = return x
+runLift (Op u q) = case prj u of
      Just (Lift m) -> m >>= runLift . q
      Nothing -> error "Impossible: Nothing cannot occur"

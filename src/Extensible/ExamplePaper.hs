@@ -420,22 +420,22 @@ hmmSIRVNsteps  = hmmGen priorSIRV transSIRV obsSIRV
 
 {- Testing generic functions -}
 
-f :: forall ts a. Member (Writer [Int]) ts => a -> Freer ts Int
+f :: forall ts a. Member (Writer [Int]) ts => a -> Prog ts Int
 f a = return 5
 
-g :: forall constr ts  a. constr => (constr => a -> Freer ts Int) -> a -> Freer ts Int
+g :: forall constr ts  a. constr => (constr => a -> Prog ts Int) -> a -> Prog ts Int
 g foo a = foo a
 
-h :: forall ts. Member (Writer [Int]) ts => Freer ts Int
+h :: forall ts. Member (Writer [Int]) ts => Prog ts Int
 h = g @(Member (Writer [Int]) ts) f 3
 
 i' = run $ runWriter h
 
-f' :: Member (Writer [Int]) es => a -> Freer es Int
+f' :: Member (Writer [Int]) es => a -> Prog es Int
 f' _ = return 0
 
-g' :: (a -> Freer es Int) -> a -> Freer es Int
+g' :: (a -> Prog es Int) -> a -> Prog es Int
 g' f = f
 
-h' :: Member (Writer [Int]) es => a -> Freer es Int
+h' :: Member (Writer [Int]) es => a -> Prog es Int
 h' = g' f'
