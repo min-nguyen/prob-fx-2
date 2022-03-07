@@ -68,13 +68,14 @@ type LinRegrEnv =
         "σ" ':=  Double
      ]
 
-linearRegressionOne :: forall env rs .
+linearRegressionOne :: forall env rs . Member Sample rs =>
   Observables env '["y", "m", "c", "σ"] Double =>
   Double -> Model env rs (Double, Double)
 linearRegressionOne x = do
   m <- normal' 0 3 #m
   c <- normal' 0 5 #c
   σ <- uniform' 1 3 #σ
+  -- printM $ "(m * x + c) is " ++ show (m * x + c)
   y <- normal' (m * x + c) σ #y
   return (x, y)
 
