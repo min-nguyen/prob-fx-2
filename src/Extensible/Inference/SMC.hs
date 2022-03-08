@@ -32,73 +32,38 @@ logMeanExp :: [Double] -> Double
 logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
                      in  log ( (1.0/fromIntegral _L) * (sum (map exp logWₙₛ₁)))
 
-smc :: (es ~ '[ObsReader env, Dist, Observe, NonDet, Sample]) => Model env es a -> ModelEnv env -> Sampler [(a, Double)]
-smc model env = (runSample . runNonDet . runObserve . runTwice . runDist . runObsReader env) (runModel model)
+smc :: Show a => Int -> Model env '[ObsReader env, Dist, Observe, NonDet, Sample] a -> ModelEnv env -> Sampler [(a, Double)]
+smc n_particles model  env = do
+  let prog = (branch n_particles . runDist . runObsReader env) (runModel model)
+  runSample (loopSMC n_particles (prog, 0))
 
-runTwice :: Member NonDet es => Prog es a -> Prog es a
-runTwice m = do
-  m <|> m
-
-runLoopSMC :: Model env '[ObsReader env, Dist, Observe, NonDet, Sample] a -> ModelEnv env -> Sampler [(a, Double)]
-runLoopSMC m env = runSample (loopSMC m env)
-
-loopSMC :: (es ~ '[ObsReader env, Dist, Observe, NonDet, Sample]) => Model env es a -> ModelEnv env -> Prog '[Sample] [(a, Double)]
-loopSMC model env = do
-  let prog = (runTwice . runDist . runObsReader env) (runModel model)
-  progs_probs <- (runNonDet . runObserveSMC 0) prog
-  let probs = map snd progs_probs
-  prinT (show probs)
-  return []
-
-runLoopSMC' :: Model env '[ObsReader env, Dist, Observe, NonDet, Sample] a -> ModelEnv env -> Sampler [(a, Double)]
-runLoopSMC' m env = do
-  let prog = (runTwice . runDist . runObsReader env) (runModel m)
-  runSample (loopSMC' 2 (prog, 0))
-
-loopSMC' :: forall es a. Member Sample es => Int -> (Prog (Observe : NonDet : es) a, Double) -> Prog es [(a, Double)]
-loopSMC' n_particles (Val x, p) = Val [(x, p)]
-loopSMC' n_particles (prog, logZ)  = do
-  -- The first iteration will have two results, but because we don't apply 'runTwice' again, every subsequent iteration will have one result (because there are no more non-deterministic operations).
-  progs_probs <- (runNonDet . runObserveSMC 0) prog
-  let progs = map fst progs_probs
-      logWs = map snd progs_probs
-      logZ' = logZ + logMeanExp logWs
-  prinT (show logZ')
-  particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map exp logWs) Nothing Nothing) undefined)
-  -- prinT ("alphas: " ++ show particle_idxs)
-  prinT ("length: " ++ show (length progs_probs))
-  let progs' = asum (map (\idx -> fst $ progs_probs !! idx) particle_idxs)
-  -- concat <$> (sequence $ map (\prog' -> loopSMC' n_particles ( prog', logZ')) progs')
-  progs_probs <- (runNonDet . runObserveSMC 0) progs'
-  prinT ("length: " ++ show (length progs_probs))
-  undefined
-
-  -- undefined
-  -- let progs' = map (\idx -> fst $ progs_probs' !! idx) particle_idx
-  --     prog' = asum progs'
-  -- prinT ("alphas: " ++ show particle_idxs)
-  -- loopSMC' n_particles (prog', logZ')
+loopSMC :: forall es a. Show a => Member Sample es => Int -> (Prog (Observe : NonDet : es) a, Double) -> Prog es [(a, Double)]
+loopSMC n_particles (Val x, p) = Val [(x, p)]
+loopSMC n_particles (prog, logZ)  = do
+  progs_probs <- (runNonDet . runObserve) prog
+  let -- get log probabilities of each particle since between previous observe operation
+      (progs, ps) = unzip progs_probs
+      -- compute normalized importance weights of each particle
+      logWs       = map (+ logZ) ps
+      -- set logZ to be log mean exp of all particle's normalized importance weights
+      logZ'       = logZ + logMeanExp logWs
+  case foldVals progs of
+    -- if all programs have finished, return with their normalized importance weights
+    Right vals  -> (`zip` logWs) <$> vals
+    Left  progs -> do particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map exp logWs) Nothing Nothing) undefined)
+                      prinT ("alphas: " ++ show particle_idxs)
+                      let prog' = asum (map (progs !!) particle_idxs)
+                      loopSMC n_particles (prog', logZ')
 
 -- When discharging Observe, return the rest of the program, and the log probability
-runObserveSMC :: Member Sample es => Double -> Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, Double)
-runObserveSMC logp (Val x) = return (Val x, exp logp)
-runObserveSMC logp (Op op k) = case op of
+runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, Double)
+runObserve  (Val x) = return (Val x, 0)
+runObserve  (Op op k) = case op of
       ObsPatt d y α -> do
-        let logp' = logProb d y
-        prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp'
-        Val (k y, (logp + logp'))
-      Other op -> Op op (runObserveSMC logp . k)
-
-runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es (a, Double)
-runObserve = loop 0
-  where
-  loop :: Member Sample es => Double -> Prog (Observe : es) a -> Prog es (a, Double)
-  loop logp (Val x) = return (x, exp logp)
-  loop logp (Op op k) = case op of
-      ObsPatt d y α -> do
-        let logp' = logProb d y
-        loop (logp + logp') (k y)
-      Other op -> Op op (loop logp . k)
+        let logp = logProb d y
+        prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp
+        Val (k y, logp)
+      Other op -> Op op (runObserve . k)
 
 runSample :: Prog '[Sample] a -> Sampler a
 runSample = loop

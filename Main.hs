@@ -99,8 +99,8 @@ main = do
   -- trace <- sampleIOFixed TestPaper.testSIRVBasic
   -- trace <- sampleIOFixed (TestPaper.testLinRegrBasic 200)
   -- trace <- sampleIO TestNew.testLinRegrSMC
-  -- trace <- sampleIO TestNew.testLinRegrSMC'
-  let trace = (Experiment.run')
+  trace <- sampleIO TestNew.testLinRegrSMC'
+  -- let trace = (Experiment.run')
   let traceStr = show trace
   putStrLn traceStr
   writeFile "model-output.txt" traceStr

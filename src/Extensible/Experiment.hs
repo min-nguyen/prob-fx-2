@@ -45,7 +45,7 @@ handleProgram prog = do
   let progs = foldVals (map fst progs_ws)
   case progs
     of Right xs -> xs
-       Left  ys -> handleProgram ys
+       Left  ys -> handleProgram (asum ys)
 
 mergeVals :: Show a => [Prog es' a] -> Prog es (Maybe [a])
 mergeVals (Val x:vs) = do trace ("Val is " ++ show x) return ()

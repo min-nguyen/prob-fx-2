@@ -46,13 +46,16 @@ runNonDet (Op op k) = case op of
    Empty'  -> Val []
    Other op  -> Op op (runNonDet . k)
 
+branch :: Member NonDet es => Int -> Prog es a -> Prog es a
+branch n prog = asum (replicate n prog)
+
 -- Given a list of programs, check whether they all terminate.
--- If a program is unfinished, merge into a single non-deterministic program using asum
+-- If a program is unfinished, return all programs
 -- If all finished, return a single program that returns all results
-foldVals :: Member NonDet es' => Show a => [Prog es' a] -> Either  (Prog es' a) (Prog es [a])
+foldVals :: Member NonDet es' => Show a => [Prog es' a] -> Either [Prog es' a] (Prog es [a])
 foldVals ps  = loop ps where
   loop (Val x:vs) = do trace ("Val is " ++ show x) return ()
                        xs <- loop vs
                        Right ((x:) <$> xs)
   loop [] = Right (Val [])
-  loop vs = Left (asum ps)
+  loop vs = Left ps
