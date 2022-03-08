@@ -31,7 +31,7 @@ import Extensible.Writer
 import Debug.Trace
 
 run' :: [Int]
-run' = run $ handleProgram @_ @String (runTwice program)
+run' = run $ handleProgram @_ @String (program1 <|> program2)
 
 runTwice :: Member NonDet es => Prog es a -> Prog es a
 runTwice m = do
@@ -42,22 +42,28 @@ handleProgram (Val x) = return [x]
 handleProgram prog = do
   progs_ws <- (runNonDet . runWriterX) prog
   -- When all of progs_ws are Vals, asum will produce Val <|> Val
-  progs <- mergeVals (map fst progs_ws)
+  let progs = foldVals (map fst progs_ws)
   case progs
-    of Just xs -> return xs
-       Nothing -> let progs' = asum (map fst progs_ws)
-                  in  handleProgram progs'
+    of Right xs -> xs
+       Left  ys -> handleProgram ys
 
-mergeVals :: [Prog es' a] -> Prog es (Maybe [a])
-mergeVals (Val x:vs) = do xs <- mergeVals vs
+mergeVals :: Show a => [Prog es' a] -> Prog es (Maybe [a])
+mergeVals (Val x:vs) = do trace ("Val is " ++ show x) return ()
+                          xs <- mergeVals vs
                           Val ((x:) <$> xs)
 mergeVals [] = Val (Just [])
-mergeVals vs = Val Nothing
+mergeVals vs = do trace ("Val is " ++ "Nothing") return ()
+                  Val Nothing
 
-program :: Member (Writer String) es => Prog es Int
-program = do
-  -- tell "hi"
+program1 :: Member (Writer String) es => Prog es Int
+program1 = do
   return 5
+
+program2 :: Member (Writer String) es => Prog es Int
+program2 = do
+  tell "hi"
+  tell "hi"
+  return 6
 
 runWriterX :: forall w ts a . Monoid w => Prog (Writer w ': ts) a -> Prog ts (Prog (Writer w ': ts) a, w)
 runWriterX = loop mempty where

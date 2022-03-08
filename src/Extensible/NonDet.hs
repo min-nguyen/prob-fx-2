@@ -18,8 +18,11 @@
 module Extensible.NonDet where
 
 import Control.Applicative
+import Data.Foldable
 import Control.Monad
 import Extensible.Freer
+import Extensible.Writer
+import Debug.Trace
 
 data NonDet a where
   Empty  :: NonDet a
@@ -43,16 +46,13 @@ runNonDet (Op op k) = case op of
    Empty'  -> Val []
    Other op  -> Op op (runNonDet . k)
 
-
-(<||>) :: Prog es a -> Prog es a -> Prog es [a]
-(Val x) <||> (Val y) = Val [x,y]
-
--- handleRelay' :: Prog (NonDet ': es) a -> Prog es [a]
--- handleRelay'   (Val x) = pure [x]
--- handleRelay'   (Op u k) =
---   case decomp u of
---     Right op -> h op (handleRelay'  . k)
---     Left  u' -> Op u' (handleRelay'  . k)
---   where h op k = case op of
---           NNil -> pure []
---           NCons p q -> concat <$> sequence [k p, k q]
+-- Given a list of programs, check whether they all terminate.
+-- If a program is unfinished, merge into a single non-deterministic program using asum
+-- If all finished, return a single program that returns all results
+foldVals :: Member NonDet es' => Show a => [Prog es' a] -> Either  (Prog es' a) (Prog es [a])
+foldVals ps  = loop ps where
+  loop (Val x:vs) = do trace ("Val is " ++ show x) return ()
+                       xs <- loop vs
+                       Right ((x:) <$> xs)
+  loop [] = Right (Val [])
+  loop vs = Left (asum ps)
