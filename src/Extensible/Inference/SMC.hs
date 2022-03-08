@@ -27,6 +27,11 @@ import Extensible.State
 import Extensible.STrace
 import Extensible.Sampler
 import Extensible.Writer
+import qualified Extensible.OpenSum as OpenSum
+import Extensible.OpenSum (OpenSum)
+
+updateTrace :: forall es x. (Member (State STrace) es, OpenSum.Member x PrimVal) => Addr -> x -> Prog es ()
+updateTrace α x = modify (Map.insert α (OpenSum.inj x) :: STrace -> STrace)
 
 logMeanExp :: [Double] -> Double
 logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
@@ -54,6 +59,14 @@ loopSMC n_particles (prog, logZ)  = do
                       prinT ("alphas: " ++ show particle_idxs)
                       let prog' = asum (map (progs !!) particle_idxs)
                       loopSMC n_particles (prog', logZ')
+
+traceSamples :: (Member Sample es, Member (State STrace) es) => Prog es a -> Prog es a
+traceSamples  (Val x)  = return x
+traceSamples  (Op u k) = case u of
+    SampPatt d α ->  Op u (\x -> do updateTrace α x
+                                    traceSamples (k x))
+    _   -> Op u (traceSamples . k)
+
 
 -- When discharging Observe, return the rest of the program, and the log probability
 runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, Double)
