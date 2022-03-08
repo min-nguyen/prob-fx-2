@@ -3,11 +3,13 @@
 module Util where
 
 import Control.Monad
+import Control.Applicative
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.List
 
 data Proxy p = Proxy
+
 
 replicateM2 :: Applicative m => Int -> Int -> m a -> m [[a]]
 replicateM2 n m = replicateM n . replicateM m

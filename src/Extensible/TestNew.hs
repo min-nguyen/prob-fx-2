@@ -62,7 +62,7 @@ testLinRegrSMC' = do
       -- Run simulate simulation over linearRegression
       {- This should generate a set of points on the y-axis for each given point on the x-axis -}
   bs <- SMC.runLoopSMC' (Example.linearRegressionOne 0.1)
-                    (mkRecordLinRegr ([0.3], [], [2], [1.0]))
+                    (mkRecordLinRegr ([0.3], [], [], [1.0]))
       {- This should output the provided fixed set of data points on the x and y axis. -}
   -- bs' <- Simulate.simulate n_samples Example.linearRegression
   --                   [0, 1, 2, 3, 4]

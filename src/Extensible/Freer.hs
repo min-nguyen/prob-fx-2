@@ -104,7 +104,7 @@ instance LastMember m (m ': '[])
 -- | Prog monad
 data Prog es a where
   Val :: a -> Prog es a
-  Op :: EffectSum es x -> (x -> Prog es a) -> Prog es a
+  Op  :: EffectSum es x -> (x -> Prog es a) -> Prog es a
 
 instance Functor (Prog es) where
   fmap f (Val a) = Val (f a)
