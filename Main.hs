@@ -13,6 +13,7 @@ import Extensible.EffExample
 import qualified Extensible.Inference.Simulate as Simulate
 import qualified Extensible.Inference.LW as LW
 import qualified Extensible.Inference.MH as MH
+import qualified Extensible.Experiment as Experiment
 import Extensible.OpenSum as OpenSum
 import Extensible.Model
 import Data.Extensible ()
@@ -98,7 +99,8 @@ main = do
   -- trace <- sampleIOFixed TestPaper.testSIRVBasic
   -- trace <- sampleIOFixed (TestPaper.testLinRegrBasic 200)
   -- trace <- sampleIO TestNew.testLinRegrSMC
-  trace <- sampleIO TestNew.testLinRegrSMC'
+  -- trace <- sampleIO TestNew.testLinRegrSMC'
+  let trace = (Experiment.run')
   let traceStr = show trace
   putStrLn traceStr
   writeFile "model-output.txt" traceStr

@@ -26,6 +26,7 @@ import Extensible.ObsReader
 import Extensible.State
 import Extensible.STrace
 import Extensible.Sampler
+import Extensible.Writer
 
 logMeanExp :: [Double] -> Double
 logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
@@ -66,8 +67,12 @@ loopSMC' n_particles (prog, logZ)  = do
   particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map exp logWs) Nothing Nothing) undefined)
   -- prinT ("alphas: " ++ show particle_idxs)
   prinT ("length: " ++ show (length progs_probs))
-  let progs' = map (\idx -> fst $ progs_probs !! idx) particle_idxs
-  concat <$> (sequence $ map (\prog' -> loopSMC' n_particles ( prog', logZ')) progs')
+  let progs' = asum (map (\idx -> fst $ progs_probs !! idx) particle_idxs)
+  -- concat <$> (sequence $ map (\prog' -> loopSMC' n_particles ( prog', logZ')) progs')
+  progs_probs <- (runNonDet . runObserveSMC 0) progs'
+  prinT ("length: " ++ show (length progs_probs))
+  undefined
+
   -- undefined
   -- let progs' = map (\idx -> fst $ progs_probs' !! idx) particle_idx
   --     prog' = asum progs'

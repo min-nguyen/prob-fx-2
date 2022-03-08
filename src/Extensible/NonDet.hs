@@ -40,11 +40,12 @@ runNonDet :: Prog (NonDet ': es) a -> Prog es [a]
 runNonDet (Val x) = return [x]
 runNonDet (Op op k) = case op of
    Choose' -> (<|>) <$> runNonDet (k True) <*> runNonDet (k False)
-   Empty'  -> return []
+   Empty'  -> Val []
    Other op  -> Op op (runNonDet . k)
 
 
-
+(<||>) :: Prog es a -> Prog es a -> Prog es [a]
+(Val x) <||> (Val y) = Val [x,y]
 
 -- handleRelay' :: Prog (NonDet ': es) a -> Prog es [a]
 -- handleRelay'   (Val x) = pure [x]

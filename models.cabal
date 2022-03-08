@@ -83,6 +83,7 @@ library
                       Extensible.Inference.SMC,
                       Extensible.Inference.Inf,
                       Extensible.Test,
+                      Extensible.Experiment,
                       Extensible.TestPaper,
                       Extensible.TestNew
 
