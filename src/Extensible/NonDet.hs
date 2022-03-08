@@ -39,6 +39,10 @@ instance Member NonDet es => Alternative (Prog es) where
   m1 <|> m2 = do b <- send Choose
                  if b then m1 else m2
 
+-- runNonDet' :: Functor ctx => ctx (Prog (NonDet ': es) a) -> Prog es [ctx a]
+-- -- runNonDet' (Val x) = return [x]
+-- runNonDet' ctxop = fmap (runNonDet) ctxop
+
 runNonDet :: Prog (NonDet ': es) a -> Prog es [a]
 runNonDet (Val x) = return [x]
 runNonDet (Op op k) = case op of

@@ -57,6 +57,9 @@ map2 = map . map
 ones :: Int -> Int -> [[Int]]
 ones m n = replicate m $ replicate n 1
 
+untuple3 :: [((a, b), c)] -> [(a, b, c)]
+untuple3 = map (\((a, b), c) -> (a, b, c))
+
 data Address =
   Address { -- The address of the previous sample statement
             prevSamp  :: String,
