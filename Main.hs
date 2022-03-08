@@ -20,7 +20,7 @@ import Data.Extensible ()
 import Extensible.Sampler
 import Extensible.Test
 import qualified Extensible.TestPaper as TestPaper
-import qualified Extensible.TestNew as TestNew
+import qualified Extensible.TestSMC as TestSMC
 import Util
 -- testAndWrite :: Show a => Sampler a -> IO ()
 -- testAndWrite prog = do
@@ -99,7 +99,7 @@ main = do
   -- trace <- sampleIOFixed TestPaper.testSIRVBasic
   -- trace <- sampleIOFixed (TestPaper.testLinRegrBasic 200)
   -- trace <- sampleIO TestNew.testLinRegrSMC
-  trace <- sampleIO TestNew.testLinRegrSMC'
+  trace <- sampleIO TestSMC.testLinRegrSMC'
   -- let trace = (Experiment.run')
   let traceStr = show trace
   putStrLn traceStr

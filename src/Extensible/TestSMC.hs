@@ -11,7 +11,7 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module Extensible.TestNew where
+module Extensible.TestSMC where
 
 import Data.Maybe
 import qualified Data.Map as Map

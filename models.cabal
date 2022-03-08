@@ -85,7 +85,7 @@ library
                       Extensible.Test,
                       Extensible.Experiment,
                       Extensible.TestPaper,
-                      Extensible.TestNew
+                      Extensible.TestSMC
 
   -- Modules included in this library but not exported.
   -- other-modules:
