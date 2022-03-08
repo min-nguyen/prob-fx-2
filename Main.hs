@@ -19,6 +19,7 @@ import Data.Extensible ()
 import Extensible.Sampler
 import Extensible.Test
 import qualified Extensible.TestPaper as TestPaper
+import qualified Extensible.TestNew as TestNew
 import Util
 -- testAndWrite :: Show a => Sampler a -> IO ()
 -- testAndWrite prog = do
@@ -91,11 +92,13 @@ main = do
   -- trace <- sampleIOFixed testSchMHPost
   -- trace <- sampleIOFixed $ TestPaper.testLinRegrOneBasic 200 100
   -- trace <- sampleIOFixed TestPaper.testSIRBasic
-  trace <- sampleIOFixed TestPaper.testSIRBasic'
+  -- trace <- sampleIOFixed TestPaper.testSIRBasic'
   -- trace <- sampleIOFixed TestPaper.testSIRMHPost
   -- trace <- sampleIOFixed TestPaper.testSIRSBasic
   -- trace <- sampleIOFixed TestPaper.testSIRVBasic
   -- trace <- sampleIOFixed (TestPaper.testLinRegrBasic 200)
+  -- trace <- sampleIO TestNew.testLinRegrSMC
+  trace <- sampleIO TestNew.testLinRegrSMC'
   let traceStr = show trace
   putStrLn traceStr
   writeFile "model-output.txt" traceStr

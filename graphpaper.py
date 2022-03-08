@@ -133,7 +133,7 @@ def main():
     axs1.set_title('SIRV model - Basic Simulation')
     plt.xlim([0,100])
     plt.ylim([0,800])
-    plt.legend()
+    plt.legend(prop={'size': 14})
     plt.show()
 if __name__ == "__main__":
   main()

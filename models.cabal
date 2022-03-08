@@ -47,7 +47,8 @@ cabal-version:       >=1.10
 
 
 library
-  ghc-options:        -fprint-explicit-kinds
+  ghc-options:
+  -- -fprint-explicit-kinds
   -- Modules exported by the library.
   exposed-modules:    Trans.Model,
                       Trans.ModelF,
@@ -62,6 +63,7 @@ library
                       Extensible.ExamplePaper,
                       Extensible.EffExample,
                       Extensible.Reader,
+                      Extensible.NonDet,
                       Extensible.DataSets,
                       Extensible.ObsReader,
                       Extensible.Writer,
@@ -78,9 +80,11 @@ library
                       Extensible.Inference.SimulateTrace,
                       Extensible.Inference.LW,
                       Extensible.Inference.MH,
+                      Extensible.Inference.SMC,
                       Extensible.Inference.Inf,
                       Extensible.Test,
-                      Extensible.TestPaper
+                      Extensible.TestPaper,
+                      Extensible.TestNew
 
   -- Modules included in this library but not exported.
   -- other-modules:
