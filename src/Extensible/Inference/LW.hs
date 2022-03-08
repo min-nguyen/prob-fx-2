@@ -28,9 +28,6 @@ import Extensible.OpenSum (OpenSum(..))
 
 type TraceLW a = [(a, STrace, Double)]
 
-updateTrace :: forall es x. (Member (State STrace) es, OpenSum.Member x PrimVal) => Addr -> x -> Prog es ()
-updateTrace α x = modify (Map.insert α (OpenSum.inj x) :: STrace -> STrace)
-
 -- | Run LW n times for multiple data points
 lw :: (es ~ '[ObsReader env, Dist, Observe, Sample])
    => Int                              -- Number of lw iterations per data point
@@ -67,7 +64,7 @@ transformLW :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
 transformLW = install return
   (\x tx k -> case tx of
       Sample d α -> case distDict d of
-        Dict -> do updateTrace α x
+        Dict -> do updateSTrace α x
                    k x
       Printer s  -> k ()
   )
@@ -76,7 +73,7 @@ transformLW' :: (Member (State STrace) es, Member Sample es)
   => Prog es a -> Prog es a
 transformLW' (Val x) = return x
 transformLW' (Op u k) = case u  of
-    SampPatt d α -> Op u (\x -> do  updateTrace α x
+    SampPatt d α -> Op u (\x -> do  updateSTrace α x
                                     transformLW' (k x))
     _ -> Op u (transformLW' . k)
 

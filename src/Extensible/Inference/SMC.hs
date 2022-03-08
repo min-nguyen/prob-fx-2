@@ -32,26 +32,23 @@ import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum)
 import Util
 
-updateTrace :: forall es x. (Member (State STrace) es, OpenSum.Member x PrimVal) => Addr -> x -> Prog es ()
-updateTrace α x = modify (Map.insert α (OpenSum.inj x) :: STrace -> STrace)
-
 logMeanExp :: [Double] -> Double
 logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
                      in  log ( (1.0/fromIntegral _L) * (sum (map exp logWₙₛ₁)))
 
-smc :: Show a => Int -> Model env '[ObsReader env, Dist,  Observe, State STrace, NonDet, Sample] a -> ModelEnv env -> Sampler [(a, STrace, Double)]
-smc n_particles model  env = do
+smc :: Show a => Int -> Model env '[ObsReader env, Dist, Observe, State STrace, NonDet, Sample] a -> ModelEnv env -> Sampler [(a, STrace, Double)]
+smc n_particles model env = do
   let prog = (branch n_particles . traceSamples . runDist . runObsReader env) (runModel model)
-      -- fromSTraces = first (second fromSTrace)
   runSample (loopSMC n_particles (prog, 0, repeat Map.empty))
 
-loopSMC :: forall es a. Show a => Member Sample es => Int -> (Prog ( Observe : State STrace : NonDet : es) a, Double, [STrace]) -> Prog es [(a, STrace, Double)]
+loopSMC :: Show a => Member Sample es => Int -> (Prog (Observe : State STrace : NonDet : es) a, Double, [STrace]) -> Prog es [(a, STrace, Double)]
 loopSMC n_particles (prog, logZ, straces_accum)  = do
   progs_probs <- (runNonDet . runState Map.empty . runObserve) prog
   let -- get log probabilities of each particle since between previous observe operation
       (progs, ps, straces) = (unzip3 . untuple3) progs_probs
       -- compute normalized importance weights of each particle
       logWs               = map (+ logZ) ps
+      -- accumulate sample traces of each particle
       straces_accum'      = zipWith Map.union straces straces_accum
   prinT $ show straces_accum'
   case foldVals progs of
@@ -68,7 +65,7 @@ loopSMC n_particles (prog, logZ, straces_accum)  = do
 traceSamples :: (Member Sample es, Member (State STrace) es) => Prog es a -> Prog es a
 traceSamples  (Val x)  = return x
 traceSamples  (Op u k) = case u of
-    SampPatt d α ->  Op u (\x -> do updateTrace α x
+    SampPatt d α ->  Op u (\x -> do updateSTrace α x
                                     traceSamples (k x))
     _   -> Op u (traceSamples . k)
 
