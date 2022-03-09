@@ -22,6 +22,7 @@ import qualified Extensible.Inference.Simulate as Simulate
 import qualified Extensible.Inference.LW as LW
 import qualified Extensible.Inference.MH as MH
 import qualified Extensible.Inference.SMC as SMC
+import qualified Extensible.Inference.SMC_SIS as SMC_SIS
 import qualified Extensible.Inference.SIS as SIS
 import Extensible.OpenSum
 import Extensible.State
@@ -54,12 +55,11 @@ testLinRegrSMC n_datapoints n_particles = do
       mus  = concatMap (getOP #m) envs
   return mus
 
-
 testLinRegrSIS :: Int -> Int -> Sampler [Double]
 testLinRegrSIS n_datapoints n_particles = do
   let n_datapoints' = fromIntegral n_datapoints
-  bs <- SIS.smc n_particles (Example.linearRegression [0 .. n_datapoints'])
-                    (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints']))
+  bs <- SMC_SIS.smc n_particles (Example.linearRegression [0 .. n_datapoints'])
+                    (mkRecordLinRegrY (map ((+2) . (*5)) [0 .. n_datapoints']))
   let envs = map (\(a, prob, env) -> env) bs
       mus  = concatMap (getOP #m) envs
   return mus

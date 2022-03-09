@@ -81,6 +81,7 @@ library
                       Extensible.Inference.LW,
                       Extensible.Inference.MH,
                       Extensible.Inference.SMC,
+                      Extensible.Inference.SMC_SIS,
                       Extensible.Inference.SIS,
                       Extensible.Inference.Inf,
                       Extensible.Test,
