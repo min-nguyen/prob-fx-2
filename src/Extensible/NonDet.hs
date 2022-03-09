@@ -18,7 +18,6 @@
 module Extensible.NonDet where
 
 import Control.Applicative
-import Data.Foldable
 import Control.Monad
 import Extensible.Freer
 import Extensible.Writer
@@ -42,6 +41,9 @@ instance Member NonDet es => Alternative (Prog es) where
 -- runNonDet' :: Functor ctx => ctx (Prog (NonDet ': es) a) -> Prog es [ctx a]
 -- -- runNonDet' (Val x) = return [x]
 -- runNonDet' ctxop = fmap (runNonDet) ctxop
+
+asum :: Member NonDet es => [Prog es a] -> Prog es a
+asum progs = foldr (<|>) (send Empty) progs
 
 runNonDet :: Prog (NonDet ': es) a -> Prog es [a]
 runNonDet (Val x) = return [x]
