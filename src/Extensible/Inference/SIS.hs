@@ -83,12 +83,26 @@ loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
     Left  progs -> do let (progs'', ctxs'') = resampler (progs', ctxs)
                       loopSIS n_particles resampler populationHandler (progs'', ctxs'')
 
-traceSamples :: (Member Sample es, Member (State STrace) es) => Prog es a -> Prog es a
+smcPopulationHandler :: Member Observe es => Member Sample es => Prog (NonDet : es) a -> Prog es [(Prog (NonDet : es) a, Double)]
+smcPopulationHandler prog = do
+  let prog'  = traceSamples prog
+      prog'' = breakObserve prog'
+  progs_ps <- (runNonDet . runState Map.empty . runObserve) prog''
+  undefined
+
+traceSamples :: (Member Sample es) => Prog es a -> Prog (State STrace : es) a
 traceSamples  (Val x)  = return x
 traceSamples  (Op u k) = case u of
-    SampPatt d α ->  Op u (\x -> do updateSTrace α x
-                                    traceSamples (k x))
-    _   -> Op u (traceSamples . k)
+    SampPatt d α ->  Op (weaken u) (\x -> do updateSTrace α x
+                                             traceSamples (k x))
+    _   -> Op (weaken u) (traceSamples . k)
+
+breakObserve :: (Member Observe es) => Prog es a -> Prog (Observe : es) a
+breakObserve  (Val x)   = return x
+breakObserve  (Op op k) = Op (weaken op) (breakObserve . k)
+
+data Break a where
+  Break :: Break a
 
 injResample :: Prog es a -> Prog es a
 injResample = undefined
