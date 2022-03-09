@@ -57,44 +57,43 @@ loopSIS :: (Show a, Show ctx, Monoid ctx) => Members [Sample, NonDet] es' => Mem
   => Int
   -> Resampler ctx es es' a
   -> (Prog es' a -> Prog es [(Prog es' a, ctx)])
-  -> ([Prog es' a], [ctx])
+  -> ([Prog es' a], [ctx])   -- Particles and corresponding contexts
   -> Prog es [(a, ctx)]
 loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
-  progs_ctxs <- populationHandler (asum progs_0)
-  prinT $ "ctxs_0 " ++ show ctxs_0
-  let (progs', ctxs) = unzip progs_ctxs
-      -- merge contexts
-      ctxs' = zipWith mappend ctxs ctxs_0
-  prinT $ "ctxs " ++ show ctxs
-  case foldVals progs' of
-  --   -- if all programs have finished, return with their normalized importance weights
-    Right vals  -> (`zip` ctxs') <$> vals
+  -- Run to next checkpoint
+  progs_ctxs_1 <- populationHandler (asum progs_0)
+  let (progs_1, ctxs_1) = unzip progs_ctxs_1
+  case foldVals progs_1 of
+  --   -- if all programs have finished, return with accumulated context
+    Right vals  -> do let ctxs' = zipWith mappend ctxs_1 ctxs_0
+                      (`zip` ctxs') <$> vals
   --   -- otherwise, pick programs to continue with
-    Left  progs -> do (progs'', ctxs'') <- resampler ctxs_0 (progs', ctxs)
-                      loopSIS n_particles resampler populationHandler (progs'', ctxs'')
+    Left  progs -> do (progs', ctxs') <- resampler ctxs_0 (progs_1, ctxs_1)
+                      loopSIS n_particles resampler populationHandler (progs', ctxs')
 
 smcPopulationHandler :: Member Sample es =>
-  Prog (Observe : State STrace : NonDet : es) a -> Prog es [(Prog (Observe : State STrace : NonDet : es) a, (Double, STrace))]
+     Prog (Observe : State STrace : NonDet : es) a
+  -> Prog es [(Prog (Observe : State STrace : NonDet : es) a, (Double, STrace))]
 smcPopulationHandler prog = do
-  let prog'  = traceSamples prog
-  progs_ctxs <- (runNonDet . runState Map.empty . runObserve) prog'
+  progs_ctxs <- (runNonDet . runState Map.empty . runObserve . traceSamples) prog
   let progs_ctxs' = map (\((prog, p), strace) -> (prog, (p, strace))) progs_ctxs
   return progs_ctxs'
 
 smcResampler :: Member Sample es => Int -> Resampler (Double, STrace) es es' a
-smcResampler n_particles probs_straces_0 (progs, probs_straces) = do
+smcResampler n_particles probs_straces_0 (progs_1, probs_straces_1) = do
   let (probs_0, straces_0) = unzip probs_straces_0
-      (probs_1, straces_1) = unzip probs_straces
-      logZ  = logMeanExp probs_0
+      (probs_1, straces_1) = unzip probs_straces_1
+      -- Merge sample traces
       straces = zipWith mappend straces_1 straces_0
-  prinT $ "straces_0 " ++ show straces_0
-  prinT $ "straces " ++ show straces
-  -- prinT $ "logZ " ++ show logZ
-  let logWs = map (+ logZ) probs_1
-  -- prinT $ "LogWs " ++ show logWs
+      -- Compute log mean exp of previous probabilities
+      logZ  = logMeanExp probs_0
+      -- Compute normalized log probabilities of particles
+      logWs = map (+ logZ) probs_1
+  prinT $ "LogWs " ++ show logWs
+  -- Select particles to continue with
   particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map exp logWs) Nothing Nothing) undefined)
   prinT $ "particle idx " ++ show particle_idxs
-  let progs'         = map (progs !!) particle_idxs
+  let progs'         = map (progs_1 !!) particle_idxs
       logWs'         = map (logWs !!) particle_idxs
       straces'       = map (straces !!) particle_idxs
   return (progs', zip logWs' straces')
