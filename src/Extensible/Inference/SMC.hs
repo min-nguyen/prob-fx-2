@@ -35,18 +35,18 @@ import Util
 
 logMeanExp :: [Double] -> Double
 logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
-                     in   ( (1.0/fromIntegral _L) * (sum ( logWₙₛ₁)))
+                     in   log ( (1.0/fromIntegral _L) * (sum (map exp logWₙₛ₁)))
 
 smc :: forall a env. (FromSTrace env, Show a) =>
   Int -> Model env '[ObsReader env, Dist, Observe, State STrace, NonDet, Sample] a -> ModelEnv env -> Sampler [(a, ModelEnv env, Double)]
 smc n_particles model env = do
   let prog = (branch n_particles . traceSamples . runDist . runObsReader env) (runModel model)
-  particles <- runSample (loopSMC n_particles (prog, 0, repeat Map.empty))
+  particles <- runSample (loopSMC n_particles 0 (repeat Map.empty) prog)
   let particles' = map (\(a, strace, prob) -> (a, fromSTrace @env strace, prob)) particles
   return particles'
 
-loopSMC :: Show a => Member Sample es => Int -> (Prog (Observe : State STrace : NonDet : es) a, Double, [STrace]) -> Prog es [(a, STrace, Double)]
-loopSMC n_particles (prog, logZ, straces_accum)  = do
+loopSMC :: Show a => Member Sample es => Int -> Double -> [STrace] -> Prog (Observe : State STrace : NonDet : es) a -> Prog es [(a, STrace, Double)]
+loopSMC n_particles logZ straces_accum prog  = do
   progs_probs <- (runNonDet . runState Map.empty . runObserve) prog
   let -- get log probabilities of each particle since between previous observe operation
       (progs, ps, straces) = (unzip3 . untuple3) progs_probs
@@ -63,10 +63,10 @@ loopSMC n_particles (prog, logZ, straces_accum)  = do
     Left  progs -> do particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map exp logWs) Nothing Nothing) undefined)
                       prinT ("particle indexes: " ++ show particle_idxs ++ " ")
                       let -- set logZ to be log mean exp of all particle's normalized importance weights
-                          logZ' = logZ + logMeanExp logWs
-                          prog' = asum (map (progs !!) particle_idxs)
+                          logZ'           = logMeanExp logWs
+                          prog'           = asum (map (progs !!) particle_idxs)
                           straces_accum'' = map (straces_accum' !!) particle_idxs
-                      loopSMC n_particles (prog', logZ', straces_accum'')
+                      loopSMC n_particles logZ' straces_accum'' prog'
 
 traceSamples :: (Member Sample es, Member (State STrace) es) => Prog es a -> Prog es a
 traceSamples  (Val x)  = return x
