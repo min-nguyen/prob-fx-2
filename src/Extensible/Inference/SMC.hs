@@ -44,7 +44,8 @@ smc n_particles model env = do
   let particles' = map (\(a, strace, prob) -> (a, fromSTrace @env strace, prob)) particles
   return particles'
 
-loopSMC :: Show a => Member Sample es => Int -> Double -> [STrace] -> Prog (Observe : State STrace : NonDet : es) a -> Prog es [(a, STrace, Double)]
+loopSMC :: Show a => Member Sample es
+  => Int -> Double -> [STrace] -> Prog (Observe : State STrace : NonDet : es) a -> Prog es [(a, STrace, Double)]
 loopSMC n_particles logZ straces_accum prog  = do
   progs_probs <- (runNonDet . runState Map.empty . runObserve) prog
   let -- get log probabilities of each particle since between previous observe operation

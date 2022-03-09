@@ -60,13 +60,13 @@ sis :: forall a env ctx es'.
 sis n_particles resampler pophdl model env = do
   let prog_0  = (runDist . runObsReader env) (runModel model)
       progs   = replicate n_particles prog_0
-      ctxs :: [ctx]   = replicate n_particles aempty
+      ctxs    = replicate n_particles aempty
   runSample (loopSIS n_particles resampler pophdl (progs, ctxs))
 
 loopSIS :: (Show a, Show ctx, Accum ctx) => Members [Sample, NonDet] es' => Member Sample es
   => Int
-  -> Resampler ctx es es' a
-  -> ([Prog es' a] -> Prog es [(Prog es' a, ctx)])
+  -> Resampler       ctx es es' a
+  -> ParticleHandler ctx es es' a
   -> ([Prog es' a], [ctx])   -- Particles and corresponding contexts
   -> Prog es [(a, ctx)]
 loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
