@@ -7,6 +7,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Extensible.Inference.SIS where
 -- import Data.Extensible hiding (Member)
@@ -51,10 +52,10 @@ logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
 --   particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map exp logWs) Nothing Nothing) undefined)
 --   undefined
 
-loopSIS :: Show a => Member Sample es => Member NonDet es => Member NonDet es' => Monoid ctx
+loopSIS :: Show a => Member Sample es => Member NonDet es' => Monoid ctx
   => Int
   -> Resampler ctx es' a
-  -> (Prog  es' a -> Prog es [(Prog es' a, ctx)])
+  -> (Prog es' a -> Prog es [(Prog es' a, ctx)])
   -> ([Prog es' a], [ctx]) -> Prog es [(a, ctx)]
 loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
   progs_ctxs <- populationHandler (asum progs_0)
@@ -82,28 +83,33 @@ loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
     Left  progs -> do let (progs'', ctxs'') = resampler (progs', ctxs)
                       loopSIS n_particles resampler populationHandler (progs'', ctxs'')
 
-smcPopulationHandler :: Member Observe es => Member Sample es =>
-  Prog (NonDet : es) a -> Prog es [(Prog (Observe : State STrace : NonDet : es) a, (Double, STrace))]
+smcPopulationHandler :: Member Sample es =>
+  Prog (Observe : State STrace : NonDet : es) a -> Prog es [(Prog (Observe : State STrace : NonDet : es) a, (Double, STrace))]
 smcPopulationHandler prog = do
   let prog'  = traceSamples prog
-      prog'' = breakObserve prog'
-  progs_ctxs <- (runNonDet . runState Map.empty . runObserve) prog''
+  progs_ctxs <- (runNonDet . runState Map.empty . runObserve) prog'
   let progs_ctxs' = map (\((prog, p), strace) -> (prog, (p, strace))) progs_ctxs
   return progs_ctxs'
 
--- f :: (Resampler (Double)) -> Prog GHC.Types.Any [(GHC.Types.Any, GHC.Types.Any)]
--- f = loopSIS 0 undefined undefined
+f :: Show a => (es' ~ (Observe : State STrace : NonDet : es)) => Member Sample es =>
+      Resampler (Double, STrace) es' a ->
+     ([Prog es' a], [(Double, STrace)]) -> Prog es [(a, (Double, STrace))]
+f resampler = loopSIS 0 resampler smcPopulationHandler
 
-traceSamples :: (Member Sample es) => Prog es a -> Prog (State STrace : es) a
+instance Semigroup Double where
+  (<>) = (+)
+
+instance Monoid Double where
+  mempty = 0
+  mappend = (<>)
+
+traceSamples :: (Member Sample es, Member (State STrace) es) => Prog es a -> Prog (es) a
 traceSamples  (Val x)  = return x
 traceSamples  (Op u k) = case u of
-    SampPatt d α ->  Op (weaken u) (\x -> do updateSTrace α x
-                                             traceSamples (k x))
-    _   -> Op (weaken u) (traceSamples . k)
+    SampPatt d α ->  Op ( u) (\x -> do updateSTrace α x
+                                       traceSamples (k x))
+    _   -> Op ( u) (traceSamples . k)
 
-breakObserve :: (Member Observe es) => Prog es a -> Prog (Observe : es) a
-breakObserve  (Val x)   = return x
-breakObserve  (Op op k) = Op (weaken op) (breakObserve . k)
 
 data Break a where
   Break :: Break a
