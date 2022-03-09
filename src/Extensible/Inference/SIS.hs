@@ -13,7 +13,6 @@ module Extensible.Inference.SIS where
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Bifunctor
-import Data.Foldable
 import Data.Map (Map)
 import Extensible.ModelEnv
 import Control.Monad
@@ -52,11 +51,11 @@ logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
 --   particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map exp logWs) Nothing Nothing) undefined)
 --   undefined
 
-loopSIS :: Show a => Member Sample es => Monoid ctx
+loopSIS :: Show a => Member Sample es => Member NonDet es => Member NonDet es' => Monoid ctx
   => Int
-  -> Resampler ctx (NonDet : es) a
-  -> (Prog (NonDet : es) a -> Prog es [(Prog (NonDet : es) a, ctx)])
-  -> ([Prog (NonDet : es) a], [ctx]) -> Prog es [(a, ctx)]
+  -> Resampler ctx es' a
+  -> (Prog  es' a -> Prog es [(Prog es' a, ctx)])
+  -> ([Prog es' a], [ctx]) -> Prog es [(a, ctx)]
 loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
   progs_ctxs <- populationHandler (asum progs_0)
   let (progs', ctxs) = unzip progs_ctxs
@@ -83,12 +82,17 @@ loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
     Left  progs -> do let (progs'', ctxs'') = resampler (progs', ctxs)
                       loopSIS n_particles resampler populationHandler (progs'', ctxs'')
 
-smcPopulationHandler :: Member Observe es => Member Sample es => Prog (NonDet : es) a -> Prog es [(Prog (NonDet : es) a, Double)]
+smcPopulationHandler :: Member Observe es => Member Sample es =>
+  Prog (NonDet : es) a -> Prog es [(Prog (Observe : State STrace : NonDet : es) a, (Double, STrace))]
 smcPopulationHandler prog = do
   let prog'  = traceSamples prog
       prog'' = breakObserve prog'
-  progs_ps <- (runNonDet . runState Map.empty . runObserve) prog''
-  undefined
+  progs_ctxs <- (runNonDet . runState Map.empty . runObserve) prog''
+  let progs_ctxs' = map (\((prog, p), strace) -> (prog, (p, strace))) progs_ctxs
+  return progs_ctxs'
+
+-- f :: (Resampler (Double)) -> Prog GHC.Types.Any [(GHC.Types.Any, GHC.Types.Any)]
+-- f = loopSIS 0 undefined undefined
 
 traceSamples :: (Member Sample es) => Prog es a -> Prog (State STrace : es) a
 traceSamples  (Val x)  = return x

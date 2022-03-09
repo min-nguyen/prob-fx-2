@@ -13,7 +13,6 @@ module Extensible.Inference.SMC where
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Bifunctor
-import Data.Foldable
 import Data.Map (Map)
 import Extensible.ModelEnv
 import Control.Monad

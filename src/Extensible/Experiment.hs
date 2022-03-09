@@ -12,7 +12,6 @@ module Extensible.Experiment where
 -- import Data.Extensible hiding (Member)
 import qualified Data.Map as Map
 import Data.Maybe
-import Data.Foldable
 import Data.Map (Map)
 import Extensible.ModelEnv
 import Control.Monad
