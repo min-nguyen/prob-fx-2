@@ -33,7 +33,7 @@ import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum)
 import Util
 
-type Resampler ctx es a = ([Prog es a], [ctx]) -> ([Prog es a], [ctx])
+type Resampler ctx es es' a = ([Prog es' a], [ctx]) -> Prog es ([Prog es' a], [ctx])
 
 logMeanExp :: [Double] -> Double
 logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
@@ -54,7 +54,7 @@ logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
 
 loopSIS :: Show a => Member Sample es => Member NonDet es' => Monoid ctx
   => Int
-  -> Resampler ctx es' a
+  -> Resampler ctx es es' a
   -> (Prog es' a -> Prog es [(Prog es' a, ctx)])
   -> ([Prog es' a], [ctx]) -> Prog es [(a, ctx)]
 loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
@@ -80,7 +80,7 @@ loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
   --   -- if all programs have finished, return with their normalized importance weights
     Right vals  -> (`zip` ctxs') <$> vals
   --   -- otherwise, pick programs to continue with
-    Left  progs -> do let (progs'', ctxs'') = resampler (progs', ctxs)
+    Left  progs -> do (progs'', ctxs'') <- resampler (progs', ctxs)
                       loopSIS n_particles resampler populationHandler (progs'', ctxs'')
 
 smcPopulationHandler :: Member Sample es =>
@@ -91,10 +91,19 @@ smcPopulationHandler prog = do
   let progs_ctxs' = map (\((prog, p), strace) -> (prog, (p, strace))) progs_ctxs
   return progs_ctxs'
 
-f :: Show a => (es' ~ (Observe : State STrace : NonDet : es)) => Member Sample es =>
-      Resampler (Double, STrace) es' a ->
+smcResampler :: Member Sample es => Int -> Resampler (Double, STrace) es es' a
+smcResampler n_particles (progs, probs_straces) = do
+  let logWs = map fst probs_straces
+  particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map exp logWs) Nothing Nothing) undefined)
+  let progs'         = map (progs !!) particle_idxs
+      probs_straces' = map (probs_straces !!) particle_idxs
+  return (progs, probs_straces')
+
+smc :: Show a => (es' ~ (Observe : State STrace : NonDet : es)) => Member Sample es =>
+      Int ->
+      Resampler (Double, STrace) es es' a ->
      ([Prog es' a], [(Double, STrace)]) -> Prog es [(a, (Double, STrace))]
-f resampler = loopSIS 0 resampler smcPopulationHandler
+smc n_particles resampler = loopSIS n_particles (smcResampler n_particles) smcPopulationHandler
 
 instance Semigroup Double where
   (<>) = (+)
