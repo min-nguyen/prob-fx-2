@@ -99,7 +99,8 @@ main = do
   -- trace <- sampleIOFixed TestPaper.testSIRVBasic
   -- trace <- sampleIOFixed (TestPaper.testLinRegrBasic 200)
   -- trace <- sampleIO TestNew.testLinRegrSMC
-  trace <- sampleIO (TestSMC.testLinRegrSMC 5 100)
+  -- trace <- sampleIO (TestSMC.testLinRegrSMC 20 101)
+  trace <- sampleIO (TestSMC.testLinRegrSIS 20 100)
   -- let trace = (Experiment.run')
   let traceStr = show trace
   putStrLn traceStr

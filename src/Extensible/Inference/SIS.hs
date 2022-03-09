@@ -33,54 +33,44 @@ import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum)
 import Util
 
-type Resampler ctx es es' a = ([Prog es' a], [ctx]) -> Prog es ([Prog es' a], [ctx])
+type Resampler ctx es es' a = [ctx] -> ([Prog es' a], [ctx]) -> Prog es ([Prog es' a], [ctx])
 
 logMeanExp :: [Double] -> Double
 logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
                      in   log ( (1.0/fromIntegral _L) * (sum (map exp logWₙₛ₁)))
 
--- sis :: forall a env ctx. (Monoid ctx, FromSTrace env, Show a) =>
---   Int -> Resampler  (Observe : State STrace : NonDet : Sample : '[]) a
---   -> PopulationHdl ctx (Observe : State STrace : NonDet : Sample : '[]) '[Sample] a
---   -> Model env '[ObsReader env, Dist, Observe, State STrace, NonDet, Sample] a -> ModelEnv env -> Sampler [(ctx, a)]
--- sis n_particles resampler pophdl model env = do
---   let prog    = (branch n_particles . traceSamples . runDist . runObsReader env) (runModel model)
---   runSample (loopSIS  n_particles resampler pophdl (prog, repeat mempty ))
+sis :: forall a env ctx es'. (Monoid ctx,Show ctx,  FromSTrace env, Show a)
+  => Members [Observe, Sample, NonDet] es'
+  => Int
+  -> Resampler ctx '[Sample] es' a
+  -> (Prog es' a -> Prog '[Sample] [(Prog es' a, ctx)])
+  -> Model env (ObsReader env : Dist : es') a
+  -> ModelEnv env
+  -> Sampler [(a, ctx)]
+sis n_particles resampler pophdl model env = do
+  let prog_0  = (runDist . runObsReader env) (runModel model)
+      progs   = replicate n_particles prog_0
+      ctxs :: [ctx]   = replicate n_particles mempty
+  runSample (loopSIS n_particles resampler pophdl (progs, ctxs))
 
--- resampleSMC :: Resampler es a
--- resampleSMC  ctxs_progs = do
---   particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map exp logWs) Nothing Nothing) undefined)
---   undefined
-
-loopSIS :: Show a => Member Sample es => Member NonDet es' => Monoid ctx
+loopSIS :: (Show a, Show ctx, Monoid ctx) => Members [Sample, NonDet] es' => Member Sample es
   => Int
   -> Resampler ctx es es' a
   -> (Prog es' a -> Prog es [(Prog es' a, ctx)])
-  -> ([Prog es' a], [ctx]) -> Prog es [(a, ctx)]
+  -> ([Prog es' a], [ctx])
+  -> Prog es [(a, ctx)]
 loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
   progs_ctxs <- populationHandler (asum progs_0)
+  prinT $ "ctxs_0 " ++ show ctxs_0
   let (progs', ctxs) = unzip progs_ctxs
-      -- merge sample traces
+      -- merge contexts
       ctxs' = zipWith mappend ctxs ctxs_0
-      -- -- compute mean of previous log weights
-      -- logZ     = logMeanExp logWs_0
-      -- -- compute normalized log weights
-      -- logWs'   = map (+ logZ) ps
-      progs_ctxs' =  zip progs' ctxs'
-      -- get log probabilities of each particle since between previous observe operation
-      -- (ps, straces, progs) = (unzip3 . untuple3) progs_probs
-      -- compute normalized importance weights of each particle
-      -- logWs'  = map (+ logZ) ps
-      -- accumulate sample traces of each particle
-      -- straces_accum'      = zipWith Map.union straces straces_accum
-  -- prinT $ "logWs: "  ++  show logZ
-  -- prinT $ show straces_accum'
-  undefined
+  prinT $ "ctxs " ++ show ctxs
   case foldVals progs' of
   --   -- if all programs have finished, return with their normalized importance weights
     Right vals  -> (`zip` ctxs') <$> vals
   --   -- otherwise, pick programs to continue with
-    Left  progs -> do (progs'', ctxs'') <- resampler (progs', ctxs)
+    Left  progs -> do (progs'', ctxs'') <- resampler ctxs_0 (progs', ctxs)
                       loopSIS n_particles resampler populationHandler (progs'', ctxs'')
 
 smcPopulationHandler :: Member Sample es =>
@@ -92,18 +82,29 @@ smcPopulationHandler prog = do
   return progs_ctxs'
 
 smcResampler :: Member Sample es => Int -> Resampler (Double, STrace) es es' a
-smcResampler n_particles (progs, probs_straces) = do
-  let logWs = map fst probs_straces
+smcResampler n_particles probs_straces_0 (progs, probs_straces) = do
+  let (probs_0, straces_0) = unzip probs_straces_0
+      (probs_1, straces_1) = unzip probs_straces
+      logZ  = logMeanExp probs_0
+      straces = zipWith mappend straces_1 straces_0
+  prinT $ "straces_0 " ++ show straces_0
+  prinT $ "straces " ++ show straces
+  -- prinT $ "logZ " ++ show logZ
+  let logWs = map (+ logZ) probs_1
+  -- prinT $ "LogWs " ++ show logWs
   particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map exp logWs) Nothing Nothing) undefined)
+  prinT $ "particle idx " ++ show particle_idxs
   let progs'         = map (progs !!) particle_idxs
-      probs_straces' = map (probs_straces !!) particle_idxs
-  return (progs, probs_straces')
+      logWs'         = map (logWs !!) particle_idxs
+      straces'       = map (straces !!) particle_idxs
+  return (progs', zip logWs' straces')
 
-smc :: Show a => (es' ~ (Observe : State STrace : NonDet : es)) => Member Sample es =>
-      Int ->
-      Resampler (Double, STrace) es es' a ->
-     ([Prog es' a], [(Double, STrace)]) -> Prog es [(a, (Double, STrace))]
-smc n_particles resampler = loopSIS n_particles (smcResampler n_particles) smcPopulationHandler
+smc :: forall env es' a. (FromSTrace env, Show a) =>
+  (es' ~ (ObsReader env : Dist : Observe : State STrace : NonDet : Sample : '[])) =>
+  Int -> Model env es' a -> ModelEnv env -> Sampler [(a, Double, ModelEnv env)]
+smc n_particles model env = do
+  as_ps_straces <- sis n_particles (smcResampler n_particles) smcPopulationHandler model env
+  return $ map (\(a, (p, strace)) -> (a, p, fromSTrace @env strace)) as_ps_straces
 
 instance Semigroup Double where
   (<>) = (+)
@@ -119,27 +120,13 @@ traceSamples  (Op u k) = case u of
                                        traceSamples (k x))
     _   -> Op ( u) (traceSamples . k)
 
-
-data Break a where
-  Break :: Break a
-
-injResample :: Prog es a -> Prog es a
-injResample = undefined
-
--- runNonDet :: Prog (NonDet ': es) a -> Prog es [a]
--- runNonDet (Val x) = return [x]
--- runNonDet (Op op k) = case op of
---    Choose' -> (<|>) <$> runNonDet (k True) <*> runNonDet (k False)
---    Empty'  -> Val []
---    Other op  -> Op op (runNonDet . k)
-
 -- When discharging Observe, return the rest of the program, and the log probability
 runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, Double)
 runObserve  (Val x) = return (Val x, 0)
 runObserve  (Op op k) = case op of
       ObsPatt d y α -> do
         let logp = logProb d y
-        prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp
+        -- prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp
         Val (k y, logp)
       Other op -> Op op (runObserve . k)
 

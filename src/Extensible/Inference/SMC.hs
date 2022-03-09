@@ -34,7 +34,7 @@ import Util
 
 logMeanExp :: [Double] -> Double
 logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
-                     in   log ( (1.0/fromIntegral _L) * (sum (map exp logWₙₛ₁)))
+                     in   ( (1/fromIntegral _L) * (sum ( logWₙₛ₁)))
 
 smc :: forall a env. (FromSTrace env, Show a) =>
   Int -> Model env '[ObsReader env, Dist, Observe, State STrace, NonDet, Sample] a -> ModelEnv env -> Sampler [(a, ModelEnv env, Double)]
@@ -53,7 +53,7 @@ loopSMC n_particles logZ straces_accum prog  = do
       logWs               = map (+ logZ) ps
       -- accumulate sample traces of each particle
       straces_accum'      = zipWith Map.union straces straces_accum
-  prinT $ "logWs: "  ++  show logZ
+  prinT $ "logWs: "  ++  show logWs
   -- prinT $ show straces_accum'
   case foldVals progs of
     -- if all programs have finished, return with their normalized importance weights
@@ -65,6 +65,7 @@ loopSMC n_particles logZ straces_accum prog  = do
                           logZ'           = logMeanExp logWs
                           prog'           = asum (map (progs !!) particle_idxs)
                           straces_accum'' = map (straces_accum' !!) particle_idxs
+                      prinT $ "logZ': "  ++  show logZ'
                       loopSMC n_particles logZ' straces_accum'' prog'
 
 traceSamples :: (Member Sample es, Member (State STrace) es) => Prog es a -> Prog es a
@@ -80,7 +81,7 @@ runObserve  (Val x) = return (Val x, 0)
 runObserve  (Op op k) = case op of
       ObsPatt d y α -> do
         let logp = logProb d y
-        prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp
+        -- prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp
         Val (k y, logp)
       Other op -> Op op (runObserve . k)
 
