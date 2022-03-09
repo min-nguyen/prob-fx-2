@@ -27,6 +27,14 @@ def main():
 
   data = ast.literal_eval(f.read().replace('-Infinity', '-2e308')) #
   color_map = plt.cm.get_cmap('Blues')
+  if arg == "lin-regr-smc":
+    mus = data
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("mu values", fontsize=12)
+    axs1.set_ylabel("frequency")
+    axs1.hist(mus, bins=25)
+    axs1.set_title('Lin Regr - Mu SMC Posterior')
+    plt.show()
   if arg == "log-regr-basic":
     xs = np.array([ xys[0] for xys in data]).ravel()
     ys = np.array([ xys[1] for xys in data]).ravel()

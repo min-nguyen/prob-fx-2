@@ -44,15 +44,20 @@ mkRecordLinRegrY y_vals =
   (#y := y_vals) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:> nil
 
 -- testLinRegrSMC' :: Sampler [((Double, Double), Double)]
-testLinRegrSMC' :: Sampler [((Double, Double), STrace, Double)]
-testLinRegrSMC' = do
-  let n_samples = 1
-      -- Run simulate simulation over linearRegression
-      {- This should generate a set of points on the y-axis for each given point on the x-axis -}
-  bs <- SMC.smc 8 (Example.linearRegressionOne 0.1)
-                    (mkRecordLinRegr ([0.3], [], [1.0], []))
-      {- This should output the provided fixed set of data points on the x and y axis. -}
-  -- bs' <- Simulate.simulate n_samples Example.linearRegression
-  --                   [0, 1, 2, 3, 4]
-  --                   (map mkRecordLinRegrY [[-0.3], [0.75], [2.43], [3.5], [3.2]])
-  return $ bs
+testLinRegrSMC :: Int -> Int -> Sampler [Double]
+testLinRegrSMC n_datapoints n_particles = do
+  let n_datapoints' = fromIntegral n_datapoints
+  bs <- SMC.smc n_particles (Example.linearRegression [0 .. n_datapoints'])
+                    (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints']))
+  let envs = map (\(a, env, prob) -> env) bs
+      mus  = concatMap (getOP #m) envs
+  return mus
+
+-- testLinRegrBasic :: Int -> Int -> Sampler [[Double]]
+-- testLinRegrBasic n_datapoints n_samples = do
+--   let n_datapoints' = fromIntegral n_datapoints
+--   bs :: [([Double], ModelEnv Example.LinRegrEnv)]
+--       <- Simulate.simulate n_samples Example.linearRegression
+--                     [[0 .. n_datapoints']]
+--                     [mkRecordLinRegr ([], [1.0], [0.0], [1.0])]
+--   return $ map fst bs

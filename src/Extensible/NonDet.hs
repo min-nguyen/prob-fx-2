@@ -58,7 +58,7 @@ branch n prog = asum (replicate n prog)
 -- If all finished, return a single program that returns all results
 foldVals :: Member NonDet es' => Show a => [Prog es' a] -> Either [Prog es' a] (Prog es [a])
 foldVals ps  = loop ps where
-  loop (Val x:vs) = do trace ("Val is " ++ show x) return ()
+  loop (Val x:vs) = do -- trace ("Val is " ++ show x) return ()
                        xs <- loop vs
                        Right ((x:) <$> xs)
   loop [] = Right (Val [])

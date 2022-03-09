@@ -6,6 +6,7 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Extensible.Inference.SMC where
 -- import Data.Extensible hiding (Member)
@@ -34,12 +35,15 @@ import Util
 
 logMeanExp :: [Double] -> Double
 logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
-                     in  log ( (1.0/fromIntegral _L) * (sum (map exp logWₙₛ₁)))
+                     in   ( (1.0/fromIntegral _L) * (sum ( logWₙₛ₁)))
 
-smc :: Show a => Int -> Model env '[ObsReader env, Dist, Observe, State STrace, NonDet, Sample] a -> ModelEnv env -> Sampler [(a, STrace, Double)]
+smc :: forall a env. (FromSTrace env, Show a) =>
+  Int -> Model env '[ObsReader env, Dist, Observe, State STrace, NonDet, Sample] a -> ModelEnv env -> Sampler [(a, ModelEnv env, Double)]
 smc n_particles model env = do
   let prog = (branch n_particles . traceSamples . runDist . runObsReader env) (runModel model)
-  runSample (loopSMC n_particles (prog, 0, repeat Map.empty))
+  particles <- runSample (loopSMC n_particles (prog, 0, repeat Map.empty))
+  let particles' = map (\(a, strace, prob) -> (a, fromSTrace @env strace, prob)) particles
+  return particles'
 
 loopSMC :: Show a => Member Sample es => Int -> (Prog (Observe : State STrace : NonDet : es) a, Double, [STrace]) -> Prog es [(a, STrace, Double)]
 loopSMC n_particles (prog, logZ, straces_accum)  = do
@@ -50,17 +54,19 @@ loopSMC n_particles (prog, logZ, straces_accum)  = do
       logWs               = map (+ logZ) ps
       -- accumulate sample traces of each particle
       straces_accum'      = zipWith Map.union straces straces_accum
-  prinT $ show straces_accum'
+  prinT $ "logWs: "  ++  show logZ
+  -- prinT $ show straces_accum'
   case foldVals progs of
     -- if all programs have finished, return with their normalized importance weights
     Right vals  -> (\val -> zip3 val straces_accum' logWs) <$> vals
     -- otherwise, pick programs to continue with
     Left  progs -> do particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map exp logWs) Nothing Nothing) undefined)
-                      -- prinT ("particle indexes: " ++ show particle_idxs)
+                      prinT ("particle indexes: " ++ show particle_idxs ++ " ")
                       let -- set logZ to be log mean exp of all particle's normalized importance weights
                           logZ' = logZ + logMeanExp logWs
                           prog' = asum (map (progs !!) particle_idxs)
-                      loopSMC n_particles (prog', logZ', straces_accum')
+                          straces_accum'' = map (straces_accum' !!) particle_idxs
+                      loopSMC n_particles (prog', logZ', straces_accum'')
 
 traceSamples :: (Member Sample es, Member (State STrace) es) => Prog es a -> Prog es a
 traceSamples  (Val x)  = return x
