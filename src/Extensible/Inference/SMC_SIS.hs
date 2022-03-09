@@ -30,17 +30,18 @@ import Extensible.State
 import Extensible.STrace
 import Extensible.Sampler
 import Extensible.Writer
-import Extensible.Inference.SIS (sis, Resampler)
+import Extensible.Inference.SIS (sis, Accum(..), Resampler)
 import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum)
 import Util
 
-instance Semigroup Double where
-  (<>) = (+)
+instance Accum Double where
+  aempty = 0
+  accum  = (+)
 
-instance Monoid Double where
-  mempty = 0
-  mappend = (<>)
+instance Ord k => Accum (Map k a) where
+  aempty = Map.empty
+  accum  = Map.union
 
 logMeanExp :: [Double] -> Double
 logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
