@@ -33,7 +33,7 @@ import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum)
 import Util
 
-type Resampler es a = [(Prog es a, STrace, Double)] -> [(Prog es a, STrace, Double)]
+type Resampler ctx es a = ([Prog es a], [ctx]) -> ([Prog es a], [ctx])
 
 logMeanExp :: [Double] -> Double
 logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
@@ -52,20 +52,21 @@ logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
 --   particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map exp logWs) Nothing Nothing) undefined)
 --   undefined
 
-loopSIS :: Show a => Member Sample es
+loopSIS :: Show a => Member Sample es => Monoid ctx
   => Int
-  -> Resampler (NonDet : es) a
-  -> (Prog (Observe : State STrace : NonDet : es) a, [STrace], [Double]) -> Prog es [(a, STrace, Double)]
-loopSIS n_particles resampler (prog_0, straces_0, logWs_0)  = do
-  progs_straces_logWs <- (runNonDet . runState Map.empty . runObserve) prog_0
-  let (progs, ps, straces) = (unzip3 . untuple3) progs_straces_logWs
+  -> Resampler ctx (NonDet : es) a
+  -> (Prog (NonDet : es) a -> Prog es [(Prog (NonDet : es) a, ctx)])
+  -> ([Prog (NonDet : es) a], [ctx]) -> Prog es [(a, ctx)]
+loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
+  progs_ctxs <- populationHandler (asum progs_0)
+  let (progs', ctxs) = unzip progs_ctxs
       -- merge sample traces
-      straces' = zipWith Map.union straces straces_0
-      -- compute mean of previous log weights
-      logZ     = logMeanExp logWs_0
-      -- compute normalized log weights
-      logWs'   = map (+ logZ) ps
-      ctx_progs' =  zip3 progs straces' logWs'
+      ctxs' = zipWith mappend ctxs ctxs_0
+      -- -- compute mean of previous log weights
+      -- logZ     = logMeanExp logWs_0
+      -- -- compute normalized log weights
+      -- logWs'   = map (+ logZ) ps
+      progs_ctxs' =  zip progs' ctxs'
       -- get log probabilities of each particle since between previous observe operation
       -- (ps, straces, progs) = (unzip3 . untuple3) progs_probs
       -- compute normalized importance weights of each particle
@@ -75,13 +76,12 @@ loopSIS n_particles resampler (prog_0, straces_0, logWs_0)  = do
   -- prinT $ "logWs: "  ++  show logZ
   -- prinT $ show straces_accum'
   undefined
-  -- case foldVals progs of
+  case foldVals progs' of
   --   -- if all programs have finished, return with their normalized importance weights
-  --   Right vals  -> (\as -> zip3 as straces' logWs') <$> vals
+    Right vals  -> (`zip` ctxs') <$> vals
   --   -- otherwise, pick programs to continue with
-  --   Left  progs -> do let prog'_straces'_logWs' = resampler  ctx_progs'
-  --                         prog' = asum $ map fst3 prog'_straces'_logWs'
-  --                     loopSIS n_particles resampler (prog', straces', logWs')
+    Left  progs -> do let (progs'', ctxs'') = resampler (progs', ctxs)
+                      loopSIS n_particles resampler populationHandler (progs'', ctxs'')
 
 traceSamples :: (Member Sample es, Member (State STrace) es) => Prog es a -> Prog es a
 traceSamples  (Val x)  = return x
