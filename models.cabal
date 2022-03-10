@@ -60,7 +60,6 @@ library
                       Util,
                       Extensible.Freer,
                       Extensible.Example,
-                      Extensible.ExamplePaper,
                       Extensible.EffExample,
                       Extensible.Reader,
                       Extensible.NonDet,
@@ -77,7 +76,6 @@ library
                       Extensible.Sampler,
                       Extensible.STrace,
                       Extensible.Inference.Simulate,
-                      Extensible.Inference.SimulateTrace,
                       Extensible.Inference.LW,
                       Extensible.Inference.MH,
                       Extensible.Inference.SMC,
@@ -85,7 +83,6 @@ library
                       Extensible.Inference.SIS,
                       Extensible.Test,
                       Extensible.Experiment,
-                      Extensible.TestPaper,
                       Extensible.TestSMC
 
   -- Modules included in this library but not exported.

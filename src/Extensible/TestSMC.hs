@@ -15,10 +15,9 @@ module Extensible.TestSMC where
 
 import Data.Maybe
 import qualified Data.Map as Map
-import qualified Extensible.ExamplePaper as Example
+import qualified Extensible.Example as Example
 import Extensible.DataSets
 import Extensible.Dist
-import qualified Extensible.Inference.Simulate as Simulate
 import qualified Extensible.Inference.LW as LW
 import qualified Extensible.Inference.MH as MH
 import qualified Extensible.Inference.SMC as SMC
@@ -35,7 +34,6 @@ import Util
 import Debug.Trace
 import Unsafe.Coerce
 import Extensible.STrace
-
 
 mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> ModelEnv Example.LinRegrEnv
 mkRecordLinRegr (y_vals, m_vals, c_vals, σ_vals) =

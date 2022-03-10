@@ -15,12 +15,14 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 module Extensible.Example where
 
 import Statistics.Distribution
 import GHC.OverloadedLabels
 import Extensible.Freer
-import Extensible.Reader
+-- import Extensible.Reader
+import Extensible.ObsReader
 import Extensible.State
 import Extensible.Writer
 import Extensible.Model
@@ -41,9 +43,15 @@ import Util
 import Data.Vector.Fusion.Bundle (findIndex)
 import GHC.Show (Show)
 import qualified Data.Map as Map
-{- Probabilistic programs -}
+import Control.Lens.Combinators (isn't)
 
--- | Linear regression
+coinFlip :: (Observables env '["p"] Double, Observables env '[ "y"] Bool) => Model env es Bool
+coinFlip = do
+  p <- uniform' 0 1 #p
+  y <- bernoulli' p #y
+  return y
+
+{- Linear regression -}
 type LinRegrEnv =
     '[  "y" ':= Double,
         "m" ':=  Double,
@@ -74,7 +82,6 @@ linearRegression xs = do
                     return (y:ys)) [] xs
   return (zip xs ys)
 
--- | Logistic regression
 type LogRegrEnv =
     '[  "label" ':= Bool,
         "m"     ':= Double,
@@ -84,279 +91,67 @@ type LogRegrEnv =
 sigmoid :: Double -> Double
 sigmoid x = 1 / (1 + exp((-1) * x))
 
-logisticRegressionOne :: forall rs env.
+logisticRegression :: forall rs env.
  (Observable env "label" Bool, Observables env '["m", "b"] Double) =>
- Double -> Model env rs (Double, Bool)
-logisticRegressionOne x = do
-  m     <- normal' 0 5 #m
-  b     <- normal' 0 1 #b
-  sigma <- gamma 1 1
-  y     <- normal (m * x + b) sigma
-  l     <- bernoulli' (sigmoid y) #label
-  return (x, l)
-
-logisticRegression :: forall env rs .
- (Observable env "label" Bool, Observables env '["m", "b"] Double) =>
- [Double] -> Model env rs [(Double, Bool)]
+ [Double] -> Model env rs ([Double], [Bool])
 logisticRegression xs = do
   m     <- normal' 0 5 #m
   b     <- normal' 0 1 #b
   sigma <- gamma 1 1
-  ys <- foldM (\ys x -> do
-                    y <- normal (m * x + b) sigma
-                    l <- bernoulli' (sigmoid y) #label
-                    return ((x, l):ys)) [] xs
-  return ys
+  ls    <- foldM (\ls x -> do
+                     y <- normal (m * x + b) sigma
+                     l <- bernoulli' (sigmoid y) #label
+                     return (l:ls)) [] xs
+  return (xs, ls)
 
--- | Bayesian network
-type NNEnv =
-    '[  "yObs"     ':= Double,
-        "weight"   ':= Double,
-        "bias"     ':= Double,
-        "sigma"    ':= Double
-     ]
 
-data NN = NN { biases  :: [Double],
-               weights :: [Double],
-               sigm    :: Double } deriving Show
-
-dot :: [Double] -> [Double] -> Double
-dot [] _ = 0
-dot _ [] = 0
-dot (x:xs) (y:ys) = x * y + dot xs ys
-
--- | Neural network formulation for linear regression
-forwardNNLin :: NN -> Double -> Double
-forwardNNLin (NN bs ws _) x =
-  (ws `dot` map (x -) bs) / 20
-
-likelihoodNNLin :: Observable env "yObs" Double => NN -> Double -> Model env es Double
-likelihoodNNLin nn x = do
-  let ySigma = sigm nn
-      yMean  = forwardNNLin nn x
-  normal' yMean ySigma #yObs
-
-priorNN :: (Observables env '["weight", "bias", "sigma"] Double)
-  => Int -> Model env es NN
-priorNN n_nodes = do
-  bias   <- replicateM n_nodes (uniform' 0 10 #bias)
-  weight <- replicateM n_nodes (uniform' (-10) 10 #weight)
-  sigma  <- uniform' 0.5 1.5 #sigma
-  return $ NN bias weight sigma
-
-nnLinModel :: (Observables env '["weight", "bias", "sigma", "yObs"] Double)
-  => Int -> Double -> Model env es (Double, Double)
-nnLinModel n x = do
-  nn <- priorNN n
-  y  <- likelihoodNNLin nn x
-  return (x, y)
-
--- | Alternative neural network formulation using activation
-forwardNNStep :: NN -> Double -> Double
-forwardNNStep (NN bs ws _) x =
-  ws `dot` map (activation . (x -)) bs
-  where activation x = if x < 0 then 0 else 1
-
-likelihoodNNStep :: Observable env "yObs" Double
- => NN -> Double -> Model env es Double
-likelihoodNNStep nn x = do
-  let ySigma = sigm nn
-      yMean  = forwardNNStep nn x
-  normal' yMean ySigma #yObs
-
-nnStepModel :: (Observables env '["weight", "bias", "sigma", "yObs"] Double)
- => Int -> Double -> Model env es (Double, Double)
-nnStepModel n x = do
-  nn <- priorNN n
-  y <- likelihoodNNStep nn x
-  return (x, y)
-
--- | Another neural network formulation
-
-type NNLogEnv =
-    '[  "yObs"     ':= Bool,
-        "weight"   ':= Double
-     ]
-
-nnLogModel :: (Observable env "weight" Double, Observable env "yObs" Bool)
-  => Int -> (Double, Double) -> Model env es ((Double, Double), Bool)
-nnLogModel n_nodes (x, y)  = do
-  let xs = [x, y]
-  weightsA <- replicateM2 (length xs) n_nodes (normal' 0 1 #weight)
-  let outputA = map2 tanh (dotProd [xs] weightsA)
-  weightsB <- replicateM2 n_nodes n_nodes (normal' 0 1 #weight)
-  let outputB = map2 tanh (dotProd outputA weightsB)
-  weightsC <- replicateM2 n_nodes 1 (normal' 0 1 #weight)
-  let outputC =  sigmoid . head . head $ dotProd outputB weightsC
-  label <- bernoulli' outputC #yObs
-  return ((x, y), label)
-
--- | Sine model
-
-sineModel :: forall env rs .
-  Observables env '["y", "m", "c", "σ"] Double =>
-  Double -> Model env rs (Double, Double)
-sineModel x = do
-  m <- normal' 0 4 #m
-  c <- normal' 0 2 #c
-  σ <- uniform' 1 3 #σ
-  -- Model $ prinT $ "mean is " ++ (show $ sin $ m * x + c)
-  y <- normal' (sin $ m * x + c) σ #y
-  return (x, y)
-
--- | Hidden Markov Model
+{- HMM -}
 type HMMEnv =
   '[ "y"       ':= Int,
      "trans_p" ':= Double,
      "obs_p"   ':= Double
    ]
 
-transitionModel ::  Double -> Int -> Model env es Int
+transitionModel ::  Double -> Int -> Model env ts Int
 transitionModel transition_p x_prev = do
   dX <- boolToInt <$> bernoulli transition_p
   return (dX + x_prev)
 
 observationModel :: (Observable env "y" Int)
-  => Double -> Int -> Model env es Int
+  => Double -> Int -> Model env ts Int
 observationModel observation_p x = do
   binomial' x observation_p #y
 
-hmm :: (Observable env "y" Int)
-  => Double -> Double -> Int -> Model env es (Int, Int)
-hmm transition_p observation_p x_prev = do
+hmmNode :: (Observable env "y" Int)
+  => Double -> Double -> Int -> Model env ts Int
+hmmNode transition_p observation_p x_prev = do
   x_n <- transitionModel  transition_p x_prev
   y_n <- observationModel observation_p x_n
-  return (x_n, y_n)
-
-hmm' :: Observable env "y" Int => Double -> Double -> Int -> Model env es Int
-hmm' transition_p observation_p =
-  observationModel observation_p <=< transitionModel transition_p
+  return x_n
 
 hmmNSteps :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
-  => Int -> (Int -> Model env es ([Int], [Int]))
+  => Int -> (Int -> Model env ts Int)
 hmmNSteps n x = do
   trans_p <- uniform' 0 1 #trans_p
   obs_p   <- uniform' 0 1 #obs_p
-  (xs, ys) <- foldl (>=>) return
-                (replicate n (\(xs, ys) -> do
-                  (x_n, y_n) <- hmm trans_p obs_p (head xs)
-                  return (x_n:xs, y_n:ys))) ([x], [])
-  return (reverse xs, reverse ys)
+  foldr (<=<) return  (replicate n (hmmNode trans_p obs_p)) x
 
--- | Hidden Markov Model using State effect
-transitionModelSt ::  Double -> Int -> Model env es Int
-transitionModelSt transition_p x_prev = do
-  dX <- boolToInt <$> bernoulli transition_p
-  return (dX + x_prev)
+{- HMM Loop-}
+hmmForM :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double) =>
+  Int -> Int -> Model env ts Int
+hmmForM n x = do
+  trans_p <- uniform' 0 1 #trans_p
+  obs_p   <- uniform' 0 1 #obs_p
+  let hmmLoop :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double) => Int -> Int -> Model env ts Int
+      hmmLoop 0 x_prev = return x_prev
+      hmmLoop i x_prev = do
+        dX <- boolToInt <$> bernoulli trans_p
+        let x = x_prev + dX
+        binomial' x obs_p #y
+        hmmLoop (i - 1) x
+  hmmLoop n x
 
-observationModelSt :: (Observable env "y" Int, Member (State [Int]) es)
-  => Double -> Int -> Model env es Int
-observationModelSt observation_p x = do
-  y_n <- binomial' x observation_p #y
-  modifyM (y_n:)
-  return y_n
-
-hmmSt :: (Observable env "y" Int, Member (State [Int]) es)
-  => Double -> Double -> [Int] -> Model env es [Int]
-hmmSt transition_p observation_p xs = do
-  x_n <- transitionModelSt transition_p (head xs)
-  y_n <- observationModelSt observation_p x_n
-  return (x_n:xs)
-
-hmmNStepsSt :: (Observable env "y" Int, Member (State [Int]) es)
-  => Double -> Double -> Int -> (Int -> Model env es [Int])
-hmmNStepsSt transition_p observation_p n x =
-  foldl (>=>) return
-    (replicate n (hmmSt transition_p observation_p)) [x]
-
--- | Hidden Markov Model - SIR
-
-data FixedParams = FixedParams {
-    numPop :: Int,
-    timeSlices :: Int
-}
-data Params = Params {
-    rhoP   :: Double, -- ^ Rate of detection
-    betaP  :: Double, -- ^ Mean contact rate between susceptible and infected people
-    gammaP :: Double -- ^ Mean recovery rate
-}
-data LatentState = LatentState {
-    sus :: Int, -- ^ Number of people susceptible to infection
-    inf :: Int, -- ^ Number of people currently infected
-    recov :: Int -- ^ Number of people recovered from infection
-} deriving Show
-
-type SIREnv =
-  '[ "infobs" ':= Int,
-     "ρ" ':= Double,
-     "β" ':= Double,
-     "γ" ':= Double
-   ]
-
-type InfectionCount = Int
-
-observeSIR :: Observable env "infobs" Int
-  => Params -> LatentState -> Model env es Int
-observeSIR (Params rho _ _) (LatentState _ inf _) = do
-  poisson' (rho * fromIntegral inf) #infobs
-
-transitionSIR :: FixedParams -> Params -> LatentState -> Model env es LatentState
-transitionSIR (FixedParams numPop timeSlices) (Params rho beta gamma) (LatentState sus inf recov)  = do
-  let dt   = 1 / fromIntegral timeSlices
-      si_p = 1 - exp ((-beta * dt * fromIntegral inf) / fromIntegral numPop)
-  -- printM $ "si_p is " ++ show si_p
-  dN_SI <- binomial sus si_p
-  let ir_p = 1 - exp (-gamma * dt)
-
-  dN_IR <- binomial inf ir_p
-  let sus'   = sus - dN_SI
-      inf'   = inf + dN_SI - dN_IR
-      recov' = recov + dN_IR
-  -- printM $ "(s,i,r) = " ++ show (LatentState sus' inf' recov') ++ "\n(dN_SI, dN_IR) = " ++ show (dN_SI, dN_IR)
-  return (LatentState sus' inf' recov')
-
-hmmSIR :: Observable env "infobs" Int
-  => FixedParams -> Params -> LatentState -> Model env es (LatentState, Int)
-hmmSIR fixedParams params latentState = do
-  latentState'   <- transitionSIR fixedParams params latentState
-  infectionCount <- observeSIR params latentState
-  return (latentState', infectionCount)
-
-paramsPrior :: Observables env '["ρ", "β", "γ"] Double
-  => Model env es Params
-paramsPrior = do
-  pRho   <- beta' 2 7 #ρ
-  pBeta  <- gamma' 2 1 #β
-  pGamma <- gamma' 1 (1/8) #γ
-  return (Params pRho pBeta pGamma)
-
-hmmSIRNsteps :: (Observable env "infobs" Int, Observables env '["ρ", "β", "γ"] Double)
-  => FixedParams -> Int -> LatentState -> Model env es ([LatentState], [Int])
-hmmSIRNsteps fixedParams n latentState  = do
-  params <- paramsPrior
-  (xs, ys) <- foldl (>=>) return
-          (replicate n (\(xs, ys) -> do
-                  (x_n, y_n) <- hmmSIR fixedParams params (head xs)
-                  return (x_n:xs, y_n:ys))) ([latentState], [])
-  return (reverse xs, reverse ys)
-
--- | Random test model
-type DirEnv =
-  '[ "xs" ':= [Double]
-   ]
-
-halfNorm :: Observable env "xs" [Double]
-  => Int -> Model env es [Double]
-halfNorm n = do
-  -- env <- halfNormal 1
-  -- x <- cauchy 0 1
-  xs <- dirichlet' [0.5, 0.5] #xs
-  -- xs <- categorical [("hi", 1), ("bye", 0.5)]
-  -- topics   <- replicateM 2 $ dirichlet (replicate 4 1)
-  return xs
-
--- | Topic model
-
+{- Topic Model -}
 type TopicEnv =
   '[ "θ" ':= [Double],
      "φ" ':= [Double],
@@ -365,25 +160,25 @@ type TopicEnv =
 
 -- Assignment of word probabilities to a topic
 wordDist :: Observable env "w" String =>
-  [String] -> [Double] -> Model env es String
+  [String] -> [Double] -> Model env ts String
 wordDist vocab ps =
   categorical' (zip vocab ps) #w
 
 -- Probability of each word in a topic
 topicWordPrior :: Observable env "φ" [Double]
-  => [String] -> Model env es [Double]
+  => [String] -> Model env ts [Double]
 topicWordPrior vocab
   = dirichlet' (replicate (length vocab) 1) #φ
 
 -- Probability of each topic in a document
 docTopicPrior :: Observable env "θ" [Double]
-  => Int -> Model env es [Double]
+  => Int -> Model env ts [Double]
 docTopicPrior n_topics = dirichlet' (replicate n_topics 1) #θ
 
 -- Learns topic model for a single document
 documentDist :: (Observables env '["φ", "θ"] [Double],
                  Observable env "w" String)
-  => [String] -> Int -> Int -> Model env es [String]
+  => [String] -> Int -> Int -> Model env ts [String]
 documentDist vocab n_topics n_words = do
   -- Generate distribution over words for each topic
   topic_word_ps <- replicateM n_topics $ topicWordPrior vocab
@@ -399,85 +194,254 @@ topicModel :: (Observables env '["φ", "θ"] [Double],
   => [String] ->
      Int      ->
      [Int]    -> -- Number of words per document
-     Model env es [[String]]
+     Model env ts [[String]]
 topicModel vocab n_topics doc_words = do
   mapM (documentDist vocab n_topics) doc_words
 
--- | Hierarchical Linear Regression
+{- SIR -}
+data Params = Params {
+    betaP  :: Double, -- ^ Mean contact rate between susceptible and infected people
+    gammaP :: Double, -- ^ Mean recovery rate
+    rhoP   :: Double -- ^ Rate of detection
+}
 
-type HLREnv =
-  '[ "mu_a" ':= Double, "mu_b" ':= Double, "sigma_a" ':= Double, "sigma_b" ':= Double,
-     "a" ':= Double, "b" ':= Double, "log_radon" ':= Double]
+data LatState = LatState {
+    sus   :: Int, -- ^ Number of people susceptible to infection
+    inf   :: Int, -- ^ Number of people currently infected
+    recov :: Int -- ^ Number of people recovered from infection
+} deriving Show
 
-hlrPrior :: Observables env '["mu_a", "mu_b", "sigma_a", "sigma_b"] Double
-  => Model env es (Double, Double, Double, Double)
-hlrPrior = do
-  mu_a    <- normal' 0 100 #mu_a
-  sigma_a <- halfNormal' 5 #sigma_a
-  mu_b    <- normal' 0 100 #mu_b
-  sigma_b <- halfNormal' 5 #sigma_b
-  return (mu_a, sigma_a, mu_b, sigma_b)
+type SIREnv =
+  [
+     "β" := Double,
+     "γ" := Double,
+      "ρ" := Double,
+      "infobs" := Int
+   ]
 
--- n counties = 85, len(floor_x) = 919, len(county_idx) = 919
-hierarchicalLinRegr :: Observables env '["mu_a", "mu_b", "sigma_a", "sigma_b", "a", "b", "log_radon"] Double
-  => Int -> [Int] -> [Int] -> () -> Model env es [Double]
-hierarchicalLinRegr n_counties floor_x county_idx _ = do
-  (mu_a, sigma_a, mu_b, sigma_b) <- hlrPrior
-  -- Intercept for each county
-  a <- replicateM n_counties (normal' mu_a sigma_a #a)  -- length = 85
-  -- Gradient for each county
-  b <- replicateM n_counties (normal' mu_b sigma_b #b)  -- length = 85
-  -- Model error
-  eps <- halfCauchy 5
-  let -- Get county intercept for each datapoint
-      a_county_idx = map (a !!) county_idx
-      -- Get county gradient for each datapoint
-      b_county_idx = map (b !!) county_idx
-      floor_values = map fromIntegral floor_x
-      -- Get radon estimate for each data point
-      radon_est = zipWith (+) a_county_idx (zipWith (*) b_county_idx floor_values)
-  -- Sample radon amount for each data point
-  radon_like <- mapM (\rad_est -> normal' rad_est eps #log_radon) radon_est
-  let f = ""
-  return radon_like
+type InfectionCount = Int
 
--- | Gaussian Mixture Model
+obsSIR :: Observable env "infobs" Int
+  => Double -> LatState -> Model env ts Int
+obsSIR rho (LatState _ inf _)  = do
+  i <- poisson' (rho * fromIntegral inf) #infobs
+  return i
 
-type GMMEnv = '[
-    "mu" ':= Double,
-    "mu_k" ':= Double,
-    "x"  ':= Double,
-    "y"  ':= Double
-  ]
+transSI :: Double -> LatState -> Model env ts LatState
+transSI beta (LatState sus inf rec) = do
+  let pop = sus + inf + rec
+  dN_SI <- binomial sus (1 - exp ((-beta * fromIntegral inf) / fromIntegral pop))
+  let sus' = sus - dN_SI
+      inf' = inf + dN_SI
+  return $ LatState sus' inf' rec
 
-gmm :: Observables env '["mu", "mu_k", "x", "y"] Double
-  => Int -- num clusters
-  -> Int -- num data points
-  -> Model env es [((Double, Double), Int)]
-gmm k n = do
-  cluster_ps <- dirichlet (replicate k 1)
-  mus        <- replicateM k (normal' 0 5 #mu)
-  replicateM n (do mu_k <- categorical' (zip mus cluster_ps) #mu_k
-                   let i = fromJust $ List.findIndex (==mu_k) mus
-                   x    <- normal' mu_k 1 #x
-                   y    <- normal' mu_k 1 #y
-                   return ((x, y), i))
+transIR :: Double -> LatState -> Model env ts LatState
+transIR gamma (LatState sus inf rec)  = do
+  dN_IR <- binomial inf (1 - exp (-gamma))
+  let inf' = inf - dN_IR
+      rec' = rec + dN_IR
+  return $ LatState sus inf' rec'
 
--- | Hierarchical School Model
-type SchEnv = '[
-    "mu"    ':= Double,
-    "theta" ':= [Double],
-    "y"     ':= Double
-  ]
+transSIR :: Member (Writer [LatState]) ts
+  => Double -> Double -> LatState -> Model env ts LatState
+transSIR beta gamma latentSt = do
+  latentSt' <- (transSI beta >=> transIR gamma) latentSt
+  tellM [latentSt']
+  return latentSt'
 
-schoolModel :: (Observables env '["mu", "y"] Double, Observable env "theta" [Double])
-  => Int -> [Double] -> Model env es [Double]
-schoolModel n_schools σs = do
-  μ   <- normal' 0 10 #mu
-  τ   <- halfNormal 10
-  ηs  <- replicateM n_schools (normal 0 1)
-  θs  <- deterministic' (map ((μ +) . (τ *)) ηs) #theta
-  ys  <- mapM (\(θ, σ) -> normal' θ σ #y) (zip θs σs)
-  let h = ""
-  return θs
+hmmSIR :: Member (Writer [LatState]) ts
+  => Observable env "infobs" Int
+  => Params -> LatState -> Model env ts LatState
+hmmSIR  (Params beta gamma rho) latentState = do
+  latentState'   <- transSIR beta gamma latentState
+  infectionCount <- obsSIR rho latentState'
+  return latentState'
 
+paramsPrior :: Observables env '["ρ", "β",  "γ"] Double
+  => Model env ts Params
+paramsPrior = do
+  pBeta  <- gamma' 2 1 #β
+  pGamma <- gamma' 1 (1/8) #γ
+  pRho   <- beta' 2 7 #ρ
+  return (Params pBeta pGamma pRho)
+
+hmmSIRNsteps ::
+     Member (Writer [LatState]) ts
+  => (Observables env '["infobs"] Int, Observables env '["ρ", "β", "γ"] Double)
+  => Int -> LatState -> Model env ts LatState
+hmmSIRNsteps n latentState  = do
+  params       <- paramsPrior
+  latentState' <- foldl (>=>) return (replicate n $ hmmSIR params) latentState
+  return latentState'
+
+{- SIRS (resusceptible) model -}
+type SIRSEnv =
+  [
+     "β" := Double,
+     "γ" := Double,
+     "ρ" := Double,
+     "η" := Double,
+     "infobs" := Int
+   ]
+
+transRS :: Double -> LatState -> Model env ts LatState
+transRS eta (LatState sus inf rec) = do
+  dN_RS <- binomial rec (1 - exp (-eta))
+  let sus' = sus + dN_RS
+      rec' = rec - dN_RS
+  return $ LatState sus' inf rec'
+
+transSIRS :: Member (Writer [LatState]) ts
+  => Double -> Double -> Double -> LatState -> Model env ts LatState
+transSIRS beta gamma eta latentSt = do
+  latentSt' <- (transSI beta >=> transIR gamma >=> transRS eta) latentSt
+  tellM [latentSt']
+  return latentSt'
+
+paramsPrior' :: Observables env '["ρ", "β", "η", "γ"] Double
+  => Model env ts (Params, Double)
+paramsPrior' = do
+  pBeta  <- gamma' 2 1 #β
+  pGamma <- gamma' 1 (1/8) #γ
+  pEta <- gamma' 1 (1/8) #η
+  pRho   <- beta' 2 7 #ρ
+  return ((Params pBeta pGamma pRho), pEta)
+
+hmmSIRS :: Member (Writer [LatState]) ts
+  => Observable env "infobs" Int
+  => Params -> Double -> LatState -> Model env ts LatState
+hmmSIRS  (Params beta gamma rho) eta latentState = do
+  latentState'   <- transSIRS beta gamma eta latentState
+  infectionCount <- obsSIR rho latentState'
+  return latentState'
+
+hmmSIRSNsteps ::
+     Member (Writer [LatState]) ts
+  => (Observable env "infobs" Int, Observables env '["ρ", "β", "η", "γ"] Double)
+  => Int -> LatState -> Model env ts LatState
+hmmSIRSNsteps n latentState  = do
+  (params, eta)       <- paramsPrior'
+  latentState' <- foldl (>=>) return (replicate n $ hmmSIRS params eta) latentState
+  return latentState'
+
+{- Generic HMM -}
+
+type TransModel env ts params lat     = params -> lat -> Model env ts lat
+type ObsModel   env ts params lat obs = params -> lat -> Model env ts obs
+
+hmmNodeGen :: params -> TransModel env ts params lat -> ObsModel env ts params lat obs -> lat -> Model env ts lat
+hmmNodeGen params  transModel obsModel lat = do
+  lat' <- transModel params lat
+  obs' <- obsModel params lat'
+  return lat'
+
+hmmGen :: Model env ts params -> TransModel env ts params lat -> ObsModel env ts params lat obs -> Int -> lat ->  Model env ts lat
+hmmGen prior transModel obsModel n lat = do
+  params <- prior
+  foldl (>=>) return (replicate n (hmmNodeGen params transModel obsModel)) lat
+
+{-  SIR model using Generic HMM -}
+
+priorSIRGen :: Observables env '["ρ", "β", "γ"] Double
+  => Model env ts Params
+priorSIRGen = do
+  pBeta  <- gamma' 2 1 #β
+  pGamma <- gamma' 1 (1/8) #γ
+  pRho   <- beta' 2 7 #ρ
+  return (Params pBeta pGamma pRho)
+
+obsSIRGen :: forall env ts. Observable env "infobs" Int
+  => Params -> LatState -> Model env ts Int
+obsSIRGen (Params _ _ rho) (LatState _ inf _)  = poisson' (rho * fromIntegral inf) #infobs
+
+transSIRGen :: forall env ts. Params -> LatState -> Model env ts LatState
+transSIRGen (Params beta gamma _) = transSI beta >=> transIR gamma
+
+sirGen :: (Observable env "infobs" Int, Observables env '["ρ", "β", "γ"] Double) => Int -> LatState -> Model env ts LatState
+sirGen = hmmGen priorSIRGen transSIRGen obsSIRGen
+
+{- SIRV model with resusceptible, using Generic HMM -}
+
+data ParamsSIRV = ParamsSIRV {
+    beta_  :: Double, -- ^ Mean contact rate between susceptible and infected people
+    gamma_ :: Double, -- ^ Mean recovery rate
+    rho_   :: Double, -- ^ Rate of detection
+    omega_ :: Double, -- ^ Vaccination rate
+    eta_   :: Double  -- ^ Resusceptible rate
+}
+
+data LatStateSIRV = LatStateSIRV {
+    s :: Int, -- ^ Number of people susceptible to infection
+    i :: Int, -- ^ Number of people currently infected
+    r :: Int, -- ^ Number of people recovered from infection
+    v :: Int  -- ^ Number of vaccinated people
+} deriving Show
+
+transSI' :: Double -> LatStateSIRV -> Model env ts LatStateSIRV
+transSI' beta sirv@(LatStateSIRV {s = s, i = i}) = do
+  let pop = s + i + r sirv + v sirv
+  dN_SI <- binomial s (1 - exp ((-beta * fromIntegral i) / fromIntegral pop))
+  let s' = s - dN_SI
+      i' = i + dN_SI
+  return $ sirv { s = s', i = i' }
+
+transIR' :: Double -> LatStateSIRV -> Model env ts LatStateSIRV
+transIR' gamma sirv@(LatStateSIRV {i = i, r = r})  = do
+  dN_IR <- binomial i (1 - exp (-gamma))
+  let i' = i  - dN_IR
+      r' = r  + dN_IR
+  return $ sirv { i = i', r = r' }
+
+transSV' :: Double -> LatStateSIRV -> Model env ts LatStateSIRV
+transSV' omega sirv@(LatStateSIRV {s = s, v = v})  = do
+  dN_SV <- binomial s (1 - exp (-omega))
+  let s' = s - dN_SV
+      v' = v + dN_SV
+  return $ sirv { s = s', v = v' }
+
+transRS' :: Double -> LatStateSIRV -> Model env ts LatStateSIRV
+transRS' eta sirv@(LatStateSIRV {r = r, s = s}) = do
+  dN_RS <- binomial r (1 - exp (-eta))
+  let s' = s + dN_RS
+      r' = r - dN_RS
+  return $ sirv {s = s', r = r'}
+
+transSIRV :: Member (Writer [LatStateSIRV]) ts => TransModel env ts ParamsSIRV LatStateSIRV
+transSIRV (ParamsSIRV {beta_ = beta, gamma_ = gamma, omega_ = omega, eta_ = eta}) latentSt = do
+  latentSt' <- (transSI' beta  >=>
+                transIR' gamma >=>
+                transRS' eta   >=>
+                transSV' omega) latentSt
+  tellM [latentSt']
+  return latentSt'
+
+obsSIRV :: Observable env "infobs" Int => ObsModel env ts ParamsSIRV LatStateSIRV Int
+obsSIRV (ParamsSIRV {rho_ = rho}) sirv  = poisson' (rho * fromIntegral (i sirv)) #infobs
+
+type SIRVEnv =
+  [
+     "β" := Double,
+     "γ" := Double,
+     "ρ" := Double,
+     "ω" := Double,
+     "η" := Double,
+     "infobs" := Int
+   ]
+
+priorSIRV :: Observables env '["ρ", "β", "γ", "ω", "η"] Double
+  => Model env ts ParamsSIRV
+priorSIRV = do
+  pBeta  <- gamma' 2 1 #β
+  pGamma <- gamma' 1 (1/8) #γ
+  pRho   <- beta' 2 7 #ρ
+  pOmega <- gamma' 1 (1/16) #ω
+  pEta <- gamma' 1 (1/8) #η
+  return (ParamsSIRV pBeta pGamma pRho pOmega pEta)
+
+hmmSIRVNsteps ::
+     Member (Writer [LatStateSIRV]) ts
+  => (Observable env "infobs" Int, Observables env '["ρ", "β", "γ", "ω", "η"] Double)
+  => Int -> LatStateSIRV -> Model env ts LatStateSIRV
+hmmSIRVNsteps  = hmmGen priorSIRV transSIRV obsSIRV
+
+{- Testing generic functions -}
