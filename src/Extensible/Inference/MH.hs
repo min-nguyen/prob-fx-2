@@ -159,7 +159,7 @@ We would do:
 This is already natural for models such as a HMM.
 -}
 
--- | Run MH for multiple data points
+-- | Run MH for one input and environment
 mh :: (es ~ '[ObsReader env, Dist])
    => Int                              -- Number of mhSteps per data point
    -> (b -> Model env es a)            -- Model awaiting input variable
@@ -170,9 +170,26 @@ mh :: (es ~ '[ObsReader env, Dist])
 mh n model tags x_0 env_0 = do
   -- Perform initial run of mh
   let α_0 = ("", 0)
-  (y_0, samples_0, logps_0) <- runMH env_0 Map.empty α_0 (model x_0)
+      prog = (runDist . runObsReader env_0) (runModel (model x_0))
+  (y_0, samples_0, logps_0) <- runMH Map.empty α_0 prog
+  -- A function performing n mhsteps for one input and environment
+  let mhs  = foldl (>=>) return (replicate n (mhStep prog tags))
+  -- Perform mhNstep for each data point, propagating (x, samples, logps) through
+  l <- mhs [(y_0, samples_0, logps_0)]
+  -- Return mhTrace in correct order of execution (due to mhStep prepending new results onto head of trace)
+  return $ reverse l
+
+mh' :: (es ~ '[Observe, Sample])
+   => Int                              -- Number of mhSteps per data point
+   -> (Prog es a)            -- Model awaiting input variable
+   -> [Tag]                            -- Tags indicated sample sites of interest
+   -> Sampler (TraceMH a)              -- Trace of all accepted outputs, samples, and logps
+mh' n prog tags = do
+  -- Perform initial run of mh
+  let α_0 = ("", 0)
+  (y_0, samples_0, logps_0) <- runMH Map.empty α_0 prog
   -- A function performing n mhsteps for one data point
-  let mhs  = foldl (>=>) return (replicate n (mhStep env_0 (model x_0) tags))
+  let mhs  = foldl (>=>) return (replicate n (mhStep prog tags))
   -- Construct list of n mhsteps, one for each data point
   -- Perform mhNstep for each data point, propagating (x, samples, logps) through
   l <- mhs [(y_0, samples_0, logps_0)]
@@ -180,13 +197,12 @@ mh n model tags x_0 env_0 = do
   return $ reverse l
 
 -- | Perform one step of MH for a single data point
-mhStep :: (es ~ '[ObsReader env, Dist])
-  => ModelEnv env         -- Model observed variable
-  -> Model env es a   -- Model
+mhStep :: (es ~ '[Observe, Sample])
+  => Prog es a   -- Model
   -> [Tag]            -- Tags indicating sample sites of interest
   -> TraceMH a        -- Trace of previous mh outputs
   -> Sampler (TraceMH a)
-mhStep env model tags trace = do
+mhStep model tags trace = do
   let -- Get previous mh output
       (x, samples, logps) = head trace
   -- α_samp <- sample $ DiscrUniformDist 0 2 Nothing
@@ -198,7 +214,7 @@ mhStep env model tags trace = do
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
   -- run mh with new sample address
   -- liftS $ print $ "sample address is " ++ show α_samp
-  (x', samples', logps') <- runMH env samples α_samp model
+  (x', samples', logps') <- runMH samples α_samp model
   -- liftS $ print $ "Second run is: " ++ show (x', samples', logps')
   -- do some acceptance ratio to see if we use samples or samples'
   acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
@@ -220,13 +236,12 @@ mhStep env model tags trace = do
             return trace
 
 -- | Run model once under MH
-runMH :: (es ~ '[ObsReader env, Dist])
-  => ModelEnv env       -- Model observed variable
-  -> SMap              -- Previous mh sample set
-  -> Addr           -- Sample address
-  -> Model env es a -- Model
+runMH :: (es ~ '[Observe, Sample])
+  => SMap      -- Previous mh sample set
+  -> Addr      -- Sample address
+  -> Prog es a -- Model
   -> Sampler (a, SMap, LPMap)
-runMH env samples α_samp m = do
+runMH samples α_samp m = do
   ((a, samples'), logps') <-
                             ( -- This is where the previous run's samples are actually reused.
                               -- We do not reuse logps, we simply recompute them.
@@ -234,9 +249,7 @@ runMH env samples α_samp m = do
                             . runObserve
                             . runState Map.empty
                             . runState Map.empty
-                            . transformMH
-                            . runDist
-                            . runObsReader env) (runModel m)
+                            . transformMH) m
   return (a, samples', logps')
 
 -- transformMH :: (Member Sample es, Member Observe es) =>

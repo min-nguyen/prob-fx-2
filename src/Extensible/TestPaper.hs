@@ -206,7 +206,7 @@ infobs_data = [0,1,4,2,1,3,3,5,10,11,30,23,48,50,91,94,129,151,172,173,198,193,2
 
 testSIRMHPost :: Sampler ([Double], [Double], [Double])
 testSIRMHPost = do
-  let mh_n_iterations = 50000
+  let mh_n_iterations = 5000
   -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
   mhTrace :: [((Example.LatState, [Example.LatState]), MH.SMap, MH.LPMap)]
           <- MH.mh mh_n_iterations (runWriterM . Example.hmmSIRNsteps 20) ["β", "γ", "ρ"]
