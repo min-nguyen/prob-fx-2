@@ -81,7 +81,7 @@ testLinRegrBasic = do
   let n_samples = 1
       -- Run simulate simulation over linearRegression
       {- This should generate a set of points on the y-axis for each given point on the x-axis -}
-  bs <- Simulate.simulate n_samples Example.linearRegression
+  bs <- Simulate.simulate n_samples Example.linearRegressionOne
                     [0 .. 100]
                     (repeat $ mkRecordLinRegr ([], [1.0], [0.0], [1.0]))
       {- This should output the provided fixed set of data points on the x and y axis. -}
@@ -96,7 +96,7 @@ testLinRegrLWSim = do
   -- Run linear model with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
   let lw_n_iterations = 3
       xs  = concat [ replicate 11 x | x <- [0 .. 10]]
-  lwTrace <- LW.lw lw_n_iterations Example.linearRegression
+  lwTrace <- LW.lw lw_n_iterations Example.linearRegressionOne
                     xs
                     (concat $ repeat $ map (\y -> mkRecordLinRegr ([y], [3], [2], [2.5]))
                       [0 .. 10])
@@ -109,7 +109,7 @@ testLinRegrLWInf = do
   -- Run likelihood weighting inference over linearRegression
   {- This should output the provided fixed set of data points on the x and y axis, where each point has a different probability (due to us observing the probability of given y's). Also returns a trace of parameters and their likelihoods -}
   let  lw_n_iterations = 100
-  lwTrace <- LW.lw lw_n_iterations Example.linearRegression
+  lwTrace <- LW.lw lw_n_iterations Example.linearRegressionOne
                     [0 .. 100]
                     (map (mkRecordLinRegrY . (:[]) ) (map ((+2) . (*3)) [0 .. 100]))
   let lwTrace' = processLWTrace lwTrace
@@ -121,9 +121,9 @@ testLinRegrMHPost = do
   -- Run mh inference over linearRegression for data representing a line with gradient 3 and intercept 4
   let mh_n_iterations = 500
   mhTrace <- MH.mh mh_n_iterations Example.linearRegression [] [0 .. 100]
-                    (map (mkRecordLinRegrY . (:[]) ) (map ((+4) . (*3)) [0 .. 100]))
+                        (mkRecordLinRegrY $ map ((+4) . (*3)) [0 .. 100])
   -- Reformat MH trace
-  let mhTrace'  = processMHTrace mhTrace
+  let mhTrace'   = processMHTrace mhTrace
       postParams = extractPostParams (Proxy @Double) [("m", 0), ("c", 0), ("σ", 0)] mhTrace'
   return postParams
 
@@ -137,7 +137,7 @@ testLinRegrMHPred = do
       sigma      = drawPredParam "σ" mhTrace
   liftS $ print $ "Using parameters " ++ show (mu, c, sigma)
   -- Using these parameters, simulate data from the predictive.
-  bs <- Simulate.simulate 1 Example.linearRegression
+  bs <- Simulate.simulate 1 Example.linearRegressionOne
                          (map (/1) [0 .. 100])
                          (repeat $ mkRecordLinRegr ([], mu, c, sigma))
   return $ bs
@@ -155,11 +155,11 @@ testLogRegrBasic :: Sampler [(Double, Bool)]
 testLogRegrBasic = do
   -- This should generate a set of points on the y-axis for each given point on the x-axis
   let n_samples = 1
-  bs <- Simulate.simulate n_samples Example.logisticRegression
+  bs <- Simulate.simulate n_samples Example.logisticRegressionOne
                          (map (/50) [(-100) .. 100])
                          (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
   -- This should output the provided fixed set of data points on the x and y axis.
-  bs' <- Simulate.simulate 3 Example.logisticRegression
+  bs' <- Simulate.simulate 3 Example.logisticRegressionOne
                          [0, 1, 2, 3, 4]
                          (map mkRecordLogRegrL [[False], [False], [True], [False], [True]])
   return $ bs
@@ -167,12 +167,12 @@ testLogRegrBasic = do
 testLogRegrLWSim :: Sampler [((Double, Bool), [(Addr, OpenSum PrimVal)], Double)]
 testLogRegrLWSim = do
   -- Run logistic model with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
-  bs <- Simulate.simulate 1 Example.logisticRegression
+  bs <- Simulate.simulate 1 Example.logisticRegressionOne
                          (map (/50) [(-100) .. 100])
                          (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
   let (xs, ys) = unzip bs
   let lw_n_iterations = 3
-  lwTrace <- LW.lw lw_n_iterations Example.logisticRegression
+  lwTrace <- LW.lw lw_n_iterations Example.logisticRegressionOne
              xs (map (\y -> mkRecordLogRegr ([y], [2], [-0.15])) ys)
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
@@ -181,25 +181,25 @@ testLogRegrLWInf :: Sampler [((Double, Bool), [(Addr, OpenSum PrimVal)], Double)
 testLogRegrLWInf = do
   -- Using fixed model parameters, generate some sample data points to learn
   let n_samples = 1
-  bs <- Simulate.simulate n_samples Example.logisticRegression
+  bs <- Simulate.simulate n_samples Example.logisticRegressionOne
                          (map (/50) [(-100) .. 100])
                          (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
   let (xs, ys) = (map fst bs, map snd bs)
   -- Perform inference against these data points
-  lwTrace <- LW.lw 5 Example.logisticRegression xs (map (mkRecordLogRegrL . (:[])) ys)
+  lwTrace <- LW.lw 5 Example.logisticRegressionOne xs (map (mkRecordLogRegrL . (:[])) ys)
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
 testLogRegrMHPost :: Sampler [(Addr, [Double])]
 testLogRegrMHPost = do
   let n_samples = 1
-  bs <- Simulate.simulate n_samples Example.logisticRegression
-                         (map (/50) [(-100) .. 100])
-                         (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
+  bs <- concat <$> Simulate.simulate n_samples Example.logisticRegression
+                                  [(map (/50) [(-100) .. 100])]
+                                  [(mkRecordLogRegr ([], [2], [-0.15]))]
   let (xs, ys) = (map fst bs, map snd bs)
       mh_n_iterations = 70
   mhTrace <- MH.mh mh_n_iterations Example.logisticRegression []
-                   xs (map (mkRecordLogRegrL . (:[])) ys)
+                   xs (mkRecordLogRegrL ys)
   let mhTrace' = processMHTrace mhTrace
       postParams = extractPostParams (Proxy @Double) [("m", 0), ("b", 0)] mhTrace'
   return postParams
@@ -210,8 +210,8 @@ testLogRegrMHPred = do
   let mu         = drawPredParam "m" mhTrace
       b          = drawPredParam "b" mhTrace
   liftS $ print $ "Using parameters " ++ show (mu, b)
-  bs <- Simulate.simulate 1 Example.logisticRegression
-                      (map (/50) [(-100) .. 100])
+  bs <- concat <$> Simulate.simulate 1 Example.logisticRegression
+                      [(map (/50) [(-100) .. 100])]
                       (repeat $ mkRecordLogRegr ([], mu, b))
   return $ bs
 
@@ -260,36 +260,36 @@ testNNLinLWInf = do
   return lwTrace'
 
 -- Run this with nn-simulate, as it returns a predictive distribution rather than a posterior one.
-testNNLinMHPost :: Sampler [(Addr, [Double])]
-testNNLinMHPost = do
-  -- Run mh over data representing a line with gradient 1 and intercept 0
-  let mh_n_iterations = 40
-  mhTrace <- MH.mh mh_n_iterations (Example.nnLinModel 3) []
-                    (map (/50) [0 .. 300])
-                    (map mkRecordNNy [ x | x <- map (/50) [0 .. 300] ])
-  let mhTrace' = processMHTrace mhTrace
-      matrix_size = 3
-      addrs      = [ ("weight", i) | i <- [0..(matrix_size - 1)]] ++
-                   [ ("bias", i)   | i <- [0..(matrix_size - 1)]] ++
-                   [ ("sigma", 0)]
-      postParams = extractPostParams (Proxy @Double) addrs mhTrace'
-  return postParams
+-- testNNLinMHPost :: Sampler [(Addr, [Double])]
+-- testNNLinMHPost = do
+--   -- Run mh over data representing a line with gradient 1 and intercept 0
+--   let mh_n_iterations = 40
+--   mhTrace <- MH.mh mh_n_iterations (Example.nnLinModel 3) []
+--                     (map (/50) [0 .. 300])
+--                     (map mkRecordNNy [ x | x <- map (/50) [0 .. 300] ])
+--   let mhTrace' = processMHTrace mhTrace
+--       matrix_size = 3
+--       addrs      = [ ("weight", i) | i <- [0..(matrix_size - 1)]] ++
+--                    [ ("bias", i)   | i <- [0..(matrix_size - 1)]] ++
+--                    [ ("sigma", 0)]
+--       postParams = extractPostParams (Proxy @Double) addrs mhTrace'
+--   return postParams
 
-testNNLinMHPred :: Sampler [(Double, Double)]
-testNNLinMHPred = do
-  mhTrace <- testNNLinMHPost
-  -- Get the most recent accepted model parameters from the posterior
-  let weights    = drawPredParam "weight" mhTrace
-      bias       = drawPredParam "bias" mhTrace
-      sigma      = drawPredParam "sigma" mhTrace
-  liftS $ print $ "Using parameters: " ++ show (weights, bias, sigma)
-  -- Using these parameters, simulate data from the predictive. We can see that the predictive data becomes more accurate with more mh steps.
-  bs <- Simulate.simulate 1 (Example.nnLinModel 3)
-                         (map (/1) [0 .. 300])
-                         (repeat $ mkRecordNN ([], bias,
-                                                   weights,
-                                                   sigma))
-  return $ bs
+-- testNNLinMHPred :: Sampler [(Double, Double)]
+-- testNNLinMHPred = do
+--   mhTrace <- testNNLinMHPost
+--   -- Get the most recent accepted model parameters from the posterior
+--   let weights    = drawPredParam "weight" mhTrace
+--       bias       = drawPredParam "bias" mhTrace
+--       sigma      = drawPredParam "sigma" mhTrace
+--   liftS $ print $ "Using parameters: " ++ show (weights, bias, sigma)
+--   -- Using these parameters, simulate data from the predictive. We can see that the predictive data becomes more accurate with more mh steps.
+--   bs <- Simulate.simulate 1 (Example.nnLinModel 3)
+--                          (map (/1) [0 .. 300])
+--                          (repeat $ mkRecordNN ([], bias,
+--                                                    weights,
+--                                                    sigma))
+--   return $ bs
 
 {- Bayesian neural network v2 -}
 testNNStepBasic :: Sampler  [(Double, Double)]
@@ -336,36 +336,6 @@ testNNStepLWInf = do
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
-testNNStepMHPost :: Sampler [(Addr, [Double])]
-testNNStepMHPost = do
-  mhTrace <- MH.mh 20  (Example.nnStepModel 3) []
-                       (map (/20) [-200 .. 200])
-                       (map mkRecordNNy
-                           [  x | x <- map (/20) [-200 .. 200] ])
-  let mhTrace' = processMHTrace mhTrace
-      matrix_size = 3
-      addrs      = [ ("weight", i) | i <- [0..(matrix_size - 1)]] ++
-                   [ ("bias", i)   | i <- [0..(matrix_size - 1)]] ++
-                   [ ("sigma", 0)]
-      postParams = extractPostParams (Proxy @Double) addrs mhTrace'
-  return postParams
-
-testNNStepMHPred :: Sampler [(Double, Double)]
-testNNStepMHPred = do
-  mhTrace <- testNNStepMHPost
-  -- Get the most recent accepted model parameters from the posterior
-  let weights    = drawPredParam "weight" mhTrace
-      bias       = drawPredParam "bias" mhTrace
-      sigma      = drawPredParam "sigma" mhTrace
-  -- Using these parameters, simulate data from the predictive.
-  liftS $ print $ "Using parameters: " ++ show (weights, bias, sigma)
-  bs <- Simulate.simulate 1 (Example.nnStepModel 3)
-                         [-200 .. 200]
-                         (repeat $ mkRecordNN ([], bias,
-                                                   weights,
-                                                   sigma))
-  return $ bs
-
 -- | Another neural network variation for logistic regression
 mkRecordNNLog :: ([Bool], [Double])
            -> ModelEnv Example.NNLogEnv
@@ -398,25 +368,6 @@ testNNLogBasic' = do
                       (map (\y -> mkRecordNNLog ([y], w1 ++ w2 ++ w3)) nnLogY)
   return $ bs
 
-testNNLogMHPost :: Sampler [(Addr, [Double])]
-testNNLogMHPost = do
-  mhTrace <- MH.mh 200 (Example.nnLogModel 3) []
-                      nnLogX
-                      (map mkRecordNNLogy nnLogY)
-  let weight_length = 18
-      mhTrace'   = processMHTrace mhTrace
-      addrs      = [ ("weight", i) | i <- [0..(weight_length - 1)]]
-      postParams = extractPostParams (Proxy @Double) addrs mhTrace'
-  return postParams
-
-testNNLogMHPred :: Sampler [((Double, Double), Bool)]
-testNNLogMHPred = do
-  mhTrace <- testNNLogMHPost
-  let weights = drawPredParam "weight" mhTrace
-  bs <- Simulate.simulate 1 (Example.nnLogModel 3)
-                         nnLogX
-                         (repeat $ mkRecordNNLog ([], weights))
-  return $ bs
 
 {- Sine Model -}
 testSinBasic :: Sampler [(Double, Double)]
@@ -450,36 +401,6 @@ testSinLWInf = do
   lwTrace <- LW.lw 3 Example.sineModel xs (map (mkRecordLinRegrY . (:[])) ys)
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
-
-testSinMHPost :: Sampler [(Addr, [Double])]
-testSinMHPost = do
-  -- Generate data points from sine model with fixed parameters
-  let xs = map (/50) [0 .. 200]
-  bs <- Simulate.simulate 1 Example.sineModel
-                    xs
-                    (repeat $ mkRecordLinRegr ([], [5], [-2], [0.1]))
-  let (xs, ys) = (map fst bs, map snd bs)
-  -- Run mh over data representing a sine wave
-  mhTrace <- MH.mh 100 Example.sineModel [] xs (map (mkRecordLinRegrY . (:[])) ys)
-  let mhTrace'   = processMHTrace mhTrace
-      postParams = extractPostParams (Proxy @Double)  [("m", 0), ("c", 0), ("σ", 0)] mhTrace'
-  return postParams
-
--- | Use mh posterior to output predictive distribution
-testSinMHPred :: Sampler [(Double, Double)]
-testSinMHPred = do
-  mhTrace <- testSinMHPost
-  -- Get the most recent accepted model parameters from the posterior
-  let mu         = drawPredParam "m" mhTrace
-      c          = drawPredParam "c" mhTrace
-      sigma      = drawPredParam "σ" mhTrace
-      xs         = map (/50) [0 .. 200]
-  liftS $ putStrLn $ "mu c sigma" ++ show (mu, c, sigma)
-  -- Using these parameters, simulate data from the predictive.
-  bs <- Simulate.simulate 1 Example.sineModel
-                         xs
-                         (repeat $ mkRecordLinRegr ([], mu, c, sigma))
-  return $ bs
 
 {- Hidden markov model -}
 
@@ -525,14 +446,13 @@ testHMMLWInf = do
 testHMMMHPost :: Sampler [(Addr, [Double])]
 testHMMMHPost = do
   let hmm_n_steps   = 20
-      hmm_n_samples = 30
-  bs <- Simulate.simulate hmm_n_samples (Example.hmmNSteps hmm_n_steps)
+  bs <- Simulate.simulate 1 (Example.hmmNSteps hmm_n_steps)
                     [0] [mkRecordHMM ([], 0.8, 0.1)]
   let mh_n_iterations = 1000
-      (_, yss)  = unzip bs
+      (_, yss)  = head bs
   mhTrace <- MH.mh mh_n_iterations (Example.hmmNSteps hmm_n_steps) ["trans_p", "obs_p"]
-                                   (replicate hmm_n_samples 0)
-                                   (map mkRecordHMMy yss)
+                                   0
+                                   (mkRecordHMMy yss)
   let mhTrace'   = processMHTrace mhTrace
       postParams = extractPostParams (Proxy @Double)  [("trans_p", 0), ("obs_p", 0)] mhTrace'
   liftS $ print $ "trace is " ++ show (map snd3 mhTrace')
@@ -574,55 +494,55 @@ latentState = Example.LatentState
 fromLatentState :: Example.LatentState -> (Int, Int, Int)
 fromLatentState (Example.LatentState sus inf recov) = (sus, inf, recov)
 
-testSIRBasic :: Sampler ([(Int, Int, Int)], [Int])
-testSIRBasic = do
-  bs <- Simulate.simulate 1 (Example.hmmSIRNsteps (fixedParams 763 1) 100)
-          [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
-          --[mkRecordSIR ([0.29], [0.25], [0.015])]
-  let output = map (\(xs, ys) -> (map fromLatentState xs, ys)) bs
-  return $ head output
+-- testSIRBasic :: Sampler ([(Int, Int, Int)], [Int])
+-- testSIRBasic = do
+--   bs <- Simulate.simulate 1 (Example.hmmSIRNsteps (fixedParams 763 1) 100)
+--           [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
+--           --[mkRecordSIR ([0.29], [0.25], [0.015])]
+--   let output = map (\(xs, ys) -> (map fromLatentState xs, ys)) bs
+--   return $ head output
 
-testSIRLWInf :: Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum PrimVal)], Double)]
-testSIRLWInf = do
-  let sir_n_steps    = length sirInfectedData
-  lwTrace <- LW.lw 100 (Example.hmmSIRNsteps (fixedParams 763 1) sir_n_steps)
-                 [latentState 762 1 0] [mkRecordSIRy sirInfectedData]
-  let lwTrace' = processLWTrace lwTrace
-  liftS $ print $ show lwTrace'
-  let output' =
-        map (\((xs, ys), sampleMap, p) -> ((map fromLatentState xs, ys), sampleMap, p)) lwTrace'
-  return output'
+-- testSIRLWInf :: Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum PrimVal)], Double)]
+-- testSIRLWInf = do
+--   let sir_n_steps    = length sirInfectedData
+--   lwTrace <- LW.lw 100 (Example.hmmSIRNsteps (fixedParams 763 1) sir_n_steps)
+--                  [latentState 762 1 0] [mkRecordSIRy sirInfectedData]
+--   let lwTrace' = processLWTrace lwTrace
+--   liftS $ print $ show lwTrace'
+--   let output' =
+--         map (\((xs, ys), sampleMap, p) -> ((map fromLatentState xs, ys), sampleMap, p)) lwTrace'
+--   return output'
 
-testSIRMHPost :: Sampler [(Addr, [Double])]
-testSIRMHPost = do
-  let sir_n_samples = 10
-  bs <- Simulate.simulate sir_n_samples
-          (Example.hmmSIRNsteps (fixedParams 763 1) 5)
-          [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
-  let infectedData    = map snd bs
-      mh_n_iterations = 2000
-  liftS $ print $ "infected data is " ++ show infectedData
-  -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
-  mhTrace <- MH.mh mh_n_iterations (Example.hmmSIRNsteps (fixedParams 763 1) 200) ["ρ", "β", "γ"]
-                        (replicate sir_n_samples $ latentState 762 1 0)
-                        (map mkRecordSIRy infectedData)
-  let mhTrace'    = processMHTrace mhTrace
-      postParams  = extractPostParams (Proxy @Double)  [("ρ", 0), ("β", 0), ("γ", 0)] mhTrace'
-  return postParams
+-- testSIRMHPost :: Sampler [(Addr, [Double])]
+-- testSIRMHPost = do
+--   let sir_n_samples = 10
+--   bs <- Simulate.simulate sir_n_samples
+--           (Example.hmmSIRNsteps (fixedParams 763 1) 5)
+--           [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
+--   let infectedData    = map snd bs
+--       mh_n_iterations = 2000
+--   liftS $ print $ "infected data is " ++ show infectedData
+--   -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
+--   mhTrace <- MH.mh mh_n_iterations (Example.hmmSIRNsteps (fixedParams 763 1) 200) ["ρ", "β", "γ"]
+--                         (replicate sir_n_samples $ latentState 762 1 0)
+--                         (map mkRecordSIRy infectedData)
+--   let mhTrace'    = processMHTrace mhTrace
+--       postParams  = extractPostParams (Proxy @Double)  [("ρ", 0), ("β", 0), ("γ", 0)] mhTrace'
+--   return postParams
 
-testSIRMHPred :: Sampler ([(Int, Int, Int)], [Int])
-testSIRMHPred = do
-  mhTrace <- testSIRMHPost
-  let ρ    = drawPredParam "ρ" mhTrace
-      β    = drawPredParam "β" mhTrace
-      γ    = drawPredParam "γ" mhTrace
-  liftS $ print $ show (ρ, β, γ)
-  bs <- Simulate.simulate 1
-                    (Example.hmmSIRNsteps (fixedParams 763 1) 200)
-                    [latentState 762 1 0] [mkRecordSIR (ρ, β, γ)]
-  let output = map (\(xs, ys) -> (map fromLatentState xs, ys)) bs
-  liftS $ print $ show (bs)
-  return $ head output
+-- testSIRMHPred :: Sampler ([(Int, Int, Int)], [Int])
+-- testSIRMHPred = do
+--   mhTrace <- testSIRMHPost
+--   let ρ    = drawPredParam "ρ" mhTrace
+--       β    = drawPredParam "β" mhTrace
+--       γ    = drawPredParam "γ" mhTrace
+--   liftS $ print $ show (ρ, β, γ)
+--   bs <- Simulate.simulate 1
+--                     (Example.hmmSIRNsteps (fixedParams 763 1) 200)
+--                     [latentState 762 1 0] [mkRecordSIR (ρ, β, γ)]
+--   let output = map (\(xs, ys) -> (map fromLatentState xs, ys)) bs
+--   liftS $ print $ show (bs)
+  -- return $ head output
 
 -- | Testing random distributions
 mkRecordDir :: [[Double]] -> ModelEnv Example.DirEnv
@@ -648,7 +568,7 @@ testTopicBasic = do
 testTopicMHPost :: Sampler [(Addr, [[Double]])]
 testTopicMHPost = do
   mhTrace <- MH.mh 100 (Example.documentDist vocabulary 2) ["φ", "θ"]
-                       [10] [mkRecordTopic ([], [], document1)]
+                       10 (mkRecordTopic ([], [], document1))
   let mhTrace'   = processMHTrace mhTrace
       paramTrace = extractPostParams (Proxy @[Double])  [("θ", 0), ("φ", 0), ("φ", 1)] mhTrace'
   return paramTrace
@@ -667,7 +587,7 @@ testTopicMHPred = do
 testTopicsMHPost :: Sampler [(Addr, [[Double]])]
 testTopicsMHPost = do
   mhTrace <- MH.mh 1000 (Example.topicModel vocabulary 2) ["φ", "θ"]
-                       [[10, 10]] [mkRecordTopic ([], [], concat corpus)]
+                       [10, 10] (mkRecordTopic ([], [], concat corpus))
   let mhTrace' = processMHTrace mhTrace
       paramTrace = extractPostParams (Proxy @[Double])  [("θ", 0), ("θ", 1), ("φ", 0), ("φ", 1), ("φ", 2), ("φ", 3)] mhTrace'
   return paramTrace
@@ -691,7 +611,7 @@ testHLRBasic = do
 testHLRMHPost :: Sampler  [(Addr, [Double])]
 testHLRMHPost = do
   mhTrace <- MH.mh 3000 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx) ["mu_a", "mu_b", "sigma_a", "sigma_b"]
-                    [()] [mkRecordHLR ([], [], [], [], [], [], logRadon)]
+                    () (mkRecordHLR ([], [], [], [], [], [], logRadon))
   let mhTrace' = processMHTrace mhTrace
   -- liftS $ print $ show $ map snd3 mhTrace'
   let paramTrace = extractPostParams (Proxy @Double)  [("mu_a", 0), ("mu_b", 0), ("sigma_a", 0), ("sigma_b", 0) ] mhTrace'
@@ -702,10 +622,10 @@ testHLRMHPredictive :: Sampler  ([Double], [(Addr, OpenSum PrimVal)], [(Addr, Do
 testHLRMHPredictive = do
   -- faster convergence but all houses have similar parameters
   mhTrace <- MH.mh 4000 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx)
-             ["mu_a", "mu_b", "sigma_a", "sigma_b"] [()] [mkRecordHLR ([], [], [], [], [], [], logRadon)]
+             ["mu_a", "mu_b", "sigma_a", "sigma_b"] () (mkRecordHLR ([], [], [], [], [], [], logRadon))
   -- slower convergence but more realistic individual samples
   mhTrace <- MH.mh 4000 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx)
-             ["mu_a", "mu_b", "sigma_a", "sigma_b", "a", "b"] [()] [mkRecordHLR ([], [], [], [], [], [], logRadon)]
+             ["mu_a", "mu_b", "sigma_a", "sigma_b", "a", "b"] () (mkRecordHLR ([], [], [], [], [], [], logRadon))
   let mhTrace' = processMHTrace mhTrace
   liftS $ print $ show $ map snd3 mhTrace'
   -- Only returning the last of the mh trace here
@@ -719,16 +639,6 @@ testGMMBasic :: Sampler [[((Double, Double), Int)]]
 testGMMBasic = do
   bs <- Simulate.simulate 30 (Example.gmm 2) [20] [mkRecordGMM ([-2.0, 3.5], [], [], [])]
   return $  bs
-
-testGMMMHPost :: Sampler [(Addr, [Double])]
-testGMMMHPost = do
-  bs <- testGMMBasic
-  let xys = map unzip (map2 fst bs)
-  mhTrace <- MH.mh 2000 (Example.gmm 2) [] (repeat 20)
-                (map (\(xs, ys) ->  mkRecordGMM ([], [], xs, ys)) xys)
-  let mhTrace'   = processMHTrace mhTrace
-      paramTrace = extractPostParams (Proxy @Double)  [("mu", 0), ("mu", 1)] mhTrace'
-  return paramTrace
 
 {- School model -}
 mkRecordSch :: ([Double], [[Double]], [Double]) -> ModelEnv Example.SchEnv
@@ -749,7 +659,7 @@ testSchMHPost = do
       ys        = [28, 8, -3,   7, -1,  1, 18, 12]
       sigmas    = [15, 10, 16, 11,  9, 11, 10, 18]
   mhTrace <- MH.mh 2000 (Example.schoolModel n_schools) []
-              [sigmas] [mkRecordSch ([], [], ys)]
+              sigmas (mkRecordSch ([], [], ys))
   let mhTrace'   = processMHTrace mhTrace
       thetas     = map fst3 mhTrace
       muTrace    = extractPostParams (Proxy @Double) [("mu", 0)] mhTrace'

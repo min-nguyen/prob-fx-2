@@ -39,26 +39,6 @@ import Unsafe.Coerce
 import Extensible.Inference.SimulateTrace
 import Extensible.STrace
 
-{- Linear Regression One -- slower than linRegr for LW and MH -}
-testLinRegrOneBasic :: Int -> Int -> Sampler [(Double, Double)]
-testLinRegrOneBasic n_datapoints n_samples = do
-  bs <- Simulate.simulate n_samples Example.linearRegressionOne
-                    [0 .. (fromIntegral n_datapoints)]
-                    (repeat $ mkRecordLinRegr ([], [1.0], [0.0], [1.0]))
-  return $ map fst bs
-
-testLinRegrOneLWInf :: Int -> Int -> Sampler [((Double, Double), Double)]
-testLinRegrOneLWInf n_datapoints n_samples = do
-  lwTrace <- LW.lw n_samples Example.linearRegressionOne
-                    [0 .. (fromIntegral n_datapoints)]
-                    (map (mkRecordLinRegrY . (:[]) ) (map ((+2) . (*3)) [0 .. 100]))
-  return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
-
-testLinRegrOneMHPost :: Int -> Int -> Sampler [((Double, Double), MH.LPMap)]
-testLinRegrOneMHPost n_datapoints n_samples = do
-  mhTrace <- MH.mh n_samples Example.linearRegressionOne [] [0 .. (fromIntegral n_datapoints)]
-                    (map (mkRecordLinRegrY . (:[]) ) (map ((+2) . (*3)) [0 .. 100]))
-  return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
 {- Linear Regression -}
 mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> ModelEnv Example.LinRegrEnv
@@ -92,8 +72,8 @@ testLinRegrLWInf n_datapoints n_samples = do
 testLinRegrMHPost :: Int -> Int -> Sampler [([Double], MH.LPMap)]
 testLinRegrMHPost n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
-  mhTrace <- MH.mh n_samples Example.linearRegression [] [[0 .. n_datapoints']]
-                   [mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints'])]
+  mhTrace <- MH.mh n_samples Example.linearRegression [] [0 .. n_datapoints']
+                   (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints']))
 
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
@@ -155,7 +135,7 @@ testHMMLWInf hmm_length n_samples = do
 testHMMMHPost :: Int -> Int -> Sampler [(Int, MH.LPMap)]
 testHMMMHPost hmm_length n_samples = do
   mhTrace <- MH.mh n_samples (Example.hmmNSteps hmm_length) ["trans_p", "obs_p"]
-                             [0] [mkRecordHMMy hmm_data]
+                             0 (mkRecordHMMy hmm_data)
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
 {- Topic model -}
@@ -183,7 +163,7 @@ testTopicLW n_words n_samples = do
 testTopicMHPost :: Int -> Int -> Sampler [([String], MH.LPMap)]
 testTopicMHPost n_words n_samples = do
   mhTrace <- MH.mh n_samples (Example.documentDist vocabulary 2) ["φ", "θ"]
-                       [n_words] [mkRecordTopic ([], [], doc_words)]
+                        n_words (mkRecordTopic ([], [], doc_words))
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
 {- SIR -}
@@ -230,8 +210,8 @@ testSIRMHPost = do
   -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
   mhTrace :: [((Example.LatState, [Example.LatState]), MH.SMap, MH.LPMap)]
           <- MH.mh mh_n_iterations (runWriterM . Example.hmmSIRNsteps 20) ["β", "γ", "ρ"]
-                        [latentState 762 1 0]
-                        [mkRecordSIR ([], [0.009], [], infobs_data)]
+                        (latentState 762 1 0)
+                        (mkRecordSIR ([], [0.009], [], infobs_data))
   let mhSampleMaps = map snd3 mhTrace
       ρs = concatMap (MH.extractSamples (#ρ, Proxy @Double)) mhSampleMaps
       βs = concatMap (MH.extractSamples (#β, Proxy @Double)) mhSampleMaps

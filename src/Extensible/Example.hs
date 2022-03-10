@@ -51,20 +51,28 @@ type LinRegrEnv =
         "σ" ':=  Double
      ]
 
-linearRegression :: forall env rs .
+linearRegressionOne :: forall env rs .
   Observables env '["y", "m", "c", "σ"] Double =>
   Double -> Model env rs (Double, Double)
-linearRegression x = do
+linearRegressionOne x = do
   m <- normal' 0 3 #m
-  {- Some conditional-expression testing
-    if m > 0
-    then normal 0 1
-    else do bernoulli 0.5
-            normal 0 1 -}
   c <- normal' 0 5 #c
   σ <- uniform' 1 3 #σ
+  -- printM $ "(m * x + c) is " ++ show (m * x + c)
   y <- normal' (m * x + c) σ #y
   return (x, y)
+
+linearRegression :: forall env rs .
+  Observables env '["y", "m", "c", "σ"] Double =>
+  [Double] -> Model env rs [Double]
+linearRegression xs = do
+  m <- normal' 0 3 #m
+  c <- normal' 0 5 #c
+  σ <- uniform' 1 3 #σ
+  ys <- foldM (\ys x -> do
+                    y <- normal' (m * x + c) σ #y
+                    return (y:ys)) [] xs
+  return ys
 
 -- | Logistic regression
 type LogRegrEnv =
@@ -76,16 +84,29 @@ type LogRegrEnv =
 sigmoid :: Double -> Double
 sigmoid x = 1 / (1 + exp((-1) * x))
 
-logisticRegression :: forall rs env.
+logisticRegressionOne :: forall rs env.
  (Observable env "label" Bool, Observables env '["m", "b"] Double) =>
  Double -> Model env rs (Double, Bool)
-logisticRegression x = do
+logisticRegressionOne x = do
   m     <- normal' 0 5 #m
   b     <- normal' 0 1 #b
   sigma <- gamma 1 1
   y     <- normal (m * x + b) sigma
   l     <- bernoulli' (sigmoid y) #label
   return (x, l)
+
+logisticRegression :: forall env rs .
+ (Observable env "label" Bool, Observables env '["m", "b"] Double) =>
+ [Double] -> Model env rs [(Double, Bool)]
+logisticRegression xs = do
+  m     <- normal' 0 5 #m
+  b     <- normal' 0 1 #b
+  sigma <- gamma 1 1
+  ys <- foldM (\ys x -> do
+                    y <- normal (m * x + b) sigma
+                    l <- bernoulli' (sigmoid y) #label
+                    return ((x, l):ys)) [] xs
+  return ys
 
 -- | Bayesian network
 type NNEnv =

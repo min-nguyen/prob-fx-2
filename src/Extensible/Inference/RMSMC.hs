@@ -36,11 +36,11 @@ import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum)
 import Util
 
-loopSIS :: (Show a, Show ctx, Accum ctx) => Members [Sample, NonDet] es' => Member Sample es
+loopSIS :: (Show a, Show ctx, Accum ctx) => Member Sample es
   => Int
-  -> Resampler       ctx es es' a
-  -> ParticleHandler ctx es es' a
-  -> ([Prog es' a], [ctx])   -- Particles and corresponding contexts
+  -> Resampler       ctx es a
+  -> ParticleHandler ctx es a
+  -> ([Prog (NonDet : es) a], [ctx])   -- Particles and corresponding contexts
   -> Prog es [(a, ctx)]
 loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
   -- Run particles to next checkpoint
@@ -55,12 +55,12 @@ loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
 
 -- type Resampler       ctx es es' a = [ctx] -> [ctx] -> [Prog es' a] -> Prog es ([Prog es' a], [ctx])
 
-rmsmcResampler :: Members [Observe, Sample] es0 => es ~ ObsReader env : Dist : es0 =>
-  Model env es a -> ModelEnv env -> [(Addr, STrace, Double)] -> [(Addr, STrace, Double)] -> [Prog es' a] -> Prog es ([Prog es' a], [ctx])
-rmsmcResampler model env ctx_0 ctx_1 progs_1 = do
+rmsmcResampler :: 
+  Prog '[Observe, Sample] a -> [(Addr, STrace, Double)] -> [(Addr, STrace, Double)] -> [Prog es' a] -> Prog es ([Prog es' a], [ctx])
+rmsmcResampler model ctx_0 ctx_1 progs_1 = do
   let breakpoint = fst3 (head ctx_0)
-      model'     = Model $ (runDist . runObsReader env) (runModel model)
-  let f = mhStep env model'
+
+  -- let f = mhStep env model'
   undefined
 
 

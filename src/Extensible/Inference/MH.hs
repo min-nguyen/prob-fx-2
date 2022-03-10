@@ -164,21 +164,18 @@ mh :: (es ~ '[ObsReader env, Dist])
    => Int                              -- Number of mhSteps per data point
    -> (b -> Model env es a)            -- Model awaiting input variable
    -> [Tag]                            -- Tags indicated sample sites of interest
-   -> [b]                              -- List of model input variables
-   -> [ModelEnv env]                       -- List of model observed variables
+   -> b                                -- List of model input variables
+   -> ModelEnv env                     -- List of model observed variables
    -> Sampler (TraceMH a)              -- Trace of all accepted outputs, samples, and logps
-mh n model tags xs envs = do
+mh n model tags x_0 env_0 = do
   -- Perform initial run of mh
-  let x_0 = head xs
-      env_0 = head envs
-      α_0 = ("", 0)
+  let α_0 = ("", 0)
   (y_0, samples_0, logps_0) <- runMH env_0 Map.empty α_0 (model x_0)
   -- A function performing n mhsteps for one data point
-  let runN x env = foldl (>=>) return (replicate n (mhStep env (model x) tags))
+  let mhs  = foldl (>=>) return (replicate n (mhStep env_0 (model x_0) tags))
   -- Construct list of n mhsteps, one for each data point
-  let mhs  = zipWith runN xs envs
   -- Perform mhNstep for each data point, propagating (x, samples, logps) through
-  l <- foldl (>=>) return mhs [(y_0, samples_0, logps_0)]
+  l <- mhs [(y_0, samples_0, logps_0)]
   -- Return mhTrace in correct order of execution (due to mhStep prepending new results onto head of trace)
   return $ reverse l
 
