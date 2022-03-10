@@ -64,7 +64,7 @@ branchWeaken n (Val x)   = asum $ replicate n (Val x)
 -- Given a list of programs, check whether they all terminate.
 -- If a program is unfinished, return all programs
 -- If all finished, return a single program that returns all results
-foldVals :: Member NonDet es' => Show a => [Prog es' a] -> Either [Prog es' a] (Prog es [a])
+foldVals :: Show a => [Prog es' a] -> Either [Prog es' a] (Prog es [a])
 foldVals ps  = loop ps where
   loop (Val x:vs) = do -- trace ("Val is " ++ show x) return ()
                        xs <- loop vs

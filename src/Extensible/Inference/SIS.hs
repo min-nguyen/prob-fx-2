@@ -50,20 +50,20 @@ instance (Accum ctx1, Accum ctx2) => Accum (ctx1, ctx2) where
 
 sis :: forall a env ctx es'.
      (Accum ctx, Show ctx, FromSTrace env, Show a)
-  => Member NonDet es'
+  -- => Member NonDet es'
   => Int
-  -> Resampler       ctx '[Sample] (Observe : Sample : es') a
-  -> ParticleHandler ctx '[Sample] (Observe : Sample : es') a
-  -> Model env (ObsReader env : Dist : es') a
+  -> Resampler       ctx '[Observe,Sample] [Observe, Sample] a
+  -> ParticleHandler ctx '[Observe, Sample] [Observe, Sample] a
+  -> Model env [ObsReader env, Dist] a
   -> ModelEnv env
   -> Sampler [(a, ctx)]
 sis n_particles resampler pophdl model env = do
   let prog_0  = (runDist . runObsReader env) (runModel model)
       progs   = replicate n_particles prog_0
       ctxs    = replicate n_particles aempty
-  runSample (loopSIS n_particles resampler pophdl (progs, ctxs))
+  (runSample . runObserve ) (loopSIS n_particles resampler pophdl (progs, ctxs))
 
-loopSIS :: (Show a, Show ctx, Accum ctx) => Members [Sample, NonDet] es' => Member Sample es
+loopSIS :: (Show a, Show ctx, Accum ctx)
   => Int
   -> Resampler       ctx es es' a
   -> ParticleHandler ctx es es' a
@@ -93,3 +93,10 @@ runSample = loop
       PrintPatt s  ->
         liftS (putStrLn s) >>= loop . k
       _         -> error "Impossible: Nothing cannot occur"
+
+runObserve :: Prog (Observe : es) a -> Prog es a
+runObserve  (Val x) = return x
+runObserve  (Op op k) = case op of
+      ObsPatt d y α -> do
+        runObserve (k y)
+      Other op -> Op op (runObserve . k)
