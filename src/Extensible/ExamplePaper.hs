@@ -68,7 +68,7 @@ type LinRegrEnv =
         "σ" ':=  Double
      ]
 
-linearRegressionOne :: forall env rs . Member Sample rs =>
+linearRegressionOne :: forall env rs .
   Observables env '["y", "m", "c", "σ"] Double =>
   Double -> Model env rs (Double, Double)
 linearRegressionOne x = do

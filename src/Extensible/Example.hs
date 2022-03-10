@@ -172,14 +172,14 @@ nnLogModel n_nodes (x, y)  = do
 
 -- | Sine model
 
-sineModel :: forall env rs . Member Sample rs =>
+sineModel :: forall env rs .
   Observables env '["y", "m", "c", "σ"] Double =>
   Double -> Model env rs (Double, Double)
 sineModel x = do
   m <- normal' 0 4 #m
   c <- normal' 0 2 #c
   σ <- uniform' 1 3 #σ
-  Model $ prinT $ "mean is " ++ (show $ sin $ m * x + c)
+  -- Model $ prinT $ "mean is " ++ (show $ sin $ m * x + c)
   y <- normal' (sin $ m * x + c) σ #y
   return (x, y)
 
@@ -279,7 +279,7 @@ observeSIR :: Observable env "infobs" Int
 observeSIR (Params rho _ _) (LatentState _ inf _) = do
   poisson' (rho * fromIntegral inf) #infobs
 
-transitionSIR :: Member Sample es => FixedParams -> Params -> LatentState -> Model env es LatentState
+transitionSIR :: FixedParams -> Params -> LatentState -> Model env es LatentState
 transitionSIR (FixedParams numPop timeSlices) (Params rho beta gamma) (LatentState sus inf recov)  = do
   let dt   = 1 / fromIntegral timeSlices
       si_p = 1 - exp ((-beta * dt * fromIntegral inf) / fromIntegral numPop)
@@ -294,7 +294,7 @@ transitionSIR (FixedParams numPop timeSlices) (Params rho beta gamma) (LatentSta
   -- printM $ "(s,i,r) = " ++ show (LatentState sus' inf' recov') ++ "\n(dN_SI, dN_IR) = " ++ show (dN_SI, dN_IR)
   return (LatentState sus' inf' recov')
 
-hmmSIR :: Member Sample es =>Observable env "infobs" Int
+hmmSIR :: Observable env "infobs" Int
   => FixedParams -> Params -> LatentState -> Model env es (LatentState, Int)
 hmmSIR fixedParams params latentState = do
   latentState'   <- transitionSIR fixedParams params latentState
@@ -309,7 +309,7 @@ paramsPrior = do
   pGamma <- gamma' 1 (1/8) #γ
   return (Params pRho pBeta pGamma)
 
-hmmSIRNsteps :: Member Sample es => (Observable env "infobs" Int, Observables env '["ρ", "β", "γ"] Double)
+hmmSIRNsteps :: (Observable env "infobs" Int, Observables env '["ρ", "β", "γ"] Double)
   => FixedParams -> Int -> LatentState -> Model env es ([LatentState], [Int])
 hmmSIRNsteps fixedParams n latentState  = do
   params <- paramsPrior

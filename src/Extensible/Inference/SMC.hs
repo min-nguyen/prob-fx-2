@@ -39,15 +39,15 @@ logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
 smc :: forall a env. (FromSTrace env, Show a) => -- , Observe, State STrace, NonDet, Sample
   Int -> Model env '[ObsReader env, Dist] a -> ModelEnv env -> Sampler [(a, ModelEnv env, Double)]
 smc n_particles model env = do
-  let prog = (traceSamples . runDist . runObsReader env) (runModel model)
-  particles <- runSample (loopSMC n_particles 0 (repeat Map.empty) prog)
+  let prog = (traceSamples . branchWeaken 2 . runDist . runObsReader env) (runModel model)
+  particles <- (runSample . runObserve) (loopSMC n_particles 0 (repeat Map.empty) prog)
   let particles' = map (\(a, strace, prob) -> (a, fromSTrace @env strace, prob)) particles
   return particles'
 
-loopSMC :: Show a => Member Sample es
-  => Int -> Double -> [STrace] -> Prog (Observe : State STrace : NonDet : es) a -> Prog es [(a, STrace, Double)]
+loopSMC :: Show a => Members [Observe, Sample] es
+  => Int -> Double -> [STrace] -> Prog (State STrace : NonDet : es) a -> Prog es [(a, STrace, Double)]
 loopSMC n_particles logZ straces_accum prog  = do
-  progs_probs <- (runNonDet . runState Map.empty . runObserve) prog
+  progs_probs <- (runNonDet . runState Map.empty . breakObserve) prog
   let -- get log probabilities of each particle since between previous observe operation
       (progs, ps, straces) = (unzip3 . untuple3) progs_probs
       -- compute normalized importance weights of each particle
@@ -77,13 +77,20 @@ traceSamples  (Op u k) = case u of
     _   -> Op (weaken u) (traceSamples . k)
 
 -- When discharging Observe, return the rest of the program, and the log probability
-runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, Double)
-runObserve  (Val x) = return (Val x, 0)
-runObserve  (Op op k) = case op of
+breakObserve :: Member Observe es => Prog es a -> Prog es (Prog es a, Double)
+breakObserve  (Val x) = return (Val x, 0)
+breakObserve  (Op op k) = case op of
       ObsPatt d y α -> do
         let logp = logProb d y
         -- prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp
         Val (k y, logp)
+      _ -> Op op (breakObserve . k)
+
+runObserve :: Prog (Observe : es) a -> Prog es a
+runObserve  (Val x) = return x
+runObserve  (Op op k) = case op of
+      ObsPatt d y α -> do
+        runObserve (k y)
       Other op -> Op op (runObserve . k)
 
 runSample :: Prog '[Sample] a -> Sampler a
