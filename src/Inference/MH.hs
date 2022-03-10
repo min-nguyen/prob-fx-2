@@ -154,15 +154,7 @@ mh :: (es ~ '[ObsReader env, Dist])
    -> Sampler (TraceMH a)              -- Trace of all accepted outputs, samples, and logps
 mh n model tags x_0 env_0 = do
   -- Perform initial run of mh
-  let α_0 = ("", 0)
-      prog = (runDist . runObsReader env_0) (runModel (model x_0))
-  (y_0, samples_0, logps_0) <- runMH Map.empty α_0 prog
-  -- A function performing n mhsteps for one input and environment
-  let mhs  = foldl (>=>) return (replicate n (mhStep prog tags))
-  -- Perform mhNstep for each data point, propagating (x, samples, logps) through
-  l <- mhs [(y_0, samples_0, logps_0)]
-  -- Return mhTrace in correct order of execution (due to mhStep prepending new results onto head of trace)
-  return $ reverse l
+  mh' n (runDist . runObsReader env_0 $ runModel (model x_0)) Map.empty tags
 
 mh' :: (es ~ '[Observe, Sample])
    => Int                              -- Number of mhSteps per data point

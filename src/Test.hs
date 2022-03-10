@@ -37,6 +37,23 @@ import Debug.Trace
 import Unsafe.Coerce
 import STrace
 
+-- Returns a list of (addr, [p]) of all unique samples for addresses of interest in the mh trace
+extractPostParams :: forall p a. (Eq p, Member p PrimVal) => Proxy p -> [Addr] -> [(a, [(Addr, OpenSum PrimVal)], [(Addr, Double)])] -> [(Addr, [p])]
+extractPostParams _ addrs mhTrace =
+  let sampleMap = map snd3 mhTrace
+      paramTrace = [ (addr, xs) | addr <- addrs,
+        let xs = map (\smap -> let p = fromJust $ lookup addr smap
+                                   d = fromJust $ prj @p p
+                               in  d) sampleMap ]
+      paramTraceUnique = map (\(addr, xs) -> (addr, removeDuplicates xs)) paramTrace
+  in  paramTraceUnique
+
+processMHTrace :: [(a, Map.Map Addr (PrimDist, OpenSum PrimVal), Map.Map Addr Double)]
+               -> [(a, [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
+processMHTrace = map (\(xy, samples, logps) ->
+  let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
+      logps'   = Map.toList logps
+  in  (xy, samples', logps') )
 
 {- Linear Regression -}
 mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> ModelEnv Example.LinRegrEnv
@@ -67,12 +84,15 @@ testLinRegrLWInf n_datapoints n_samples = do
                    (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints']))
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
 
-testLinRegrMHPost :: Int -> Int -> Sampler [([(Double, Double)], LPTrace)]
+testLinRegrMHPost :: Int -> Int -> Sampler [(Addr, [Double])]
 testLinRegrMHPost n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
   mhTrace <- MH.mh n_samples Example.linearRegression [] [0 .. n_datapoints']
                    (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints']))
-  return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
+  let mhTrace'   = processMHTrace mhTrace
+      postParams = extractPostParams (Proxy @Double) [("m", 0), ("c", 0), ("σ", 0)] mhTrace'
+  return postParams
+  -- return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
 {- Log Regr -}
 mkRecordLogRegr :: ([Bool], [Double], [Double]) -> ModelEnv Example.LogRegrEnv

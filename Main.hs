@@ -24,14 +24,14 @@ import Util
 main :: IO ()
 main = do
   -- trace <- sampleIOFixed $ testLinRegrBasic 200 100
-  -- trace <- sampleIOFixed $ testLinRegrMHPost 200 100
+  trace <- sampleIOFixed $ testLinRegrMHPost 10 2000
   -- trace <- sampleIOFixed $ testLogRegrBasic 200 100
   -- trace <- sampleIOFixed testSIRBasic
   -- trace <- sampleIOFixed testSIRMHPost
   -- trace <- sampleIOFixed testSIRSBasic
   -- trace <- sampleIOFixed testSIRVBasic
   -- trace <- sampleIO (TestSMC.testLinRegrSMC 20 101)
-  trace <- sampleIO (TestSMC.testLinRegrSIS 6 100)
+  -- trace <- sampleIO (TestSMC.testLinRegrSIS 6 100)
   let traceStr = show trace
   putStrLn traceStr
   writeFile "model-output.txt" traceStr
