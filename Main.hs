@@ -40,23 +40,18 @@ import Util
 main :: IO ()
 main = do
   -- trace <- sampleIOFixed testLinRegrBasic
-  -- trace <- sampleIOFixed testLinRegrLWSim
-  -- trace <- sampleIOFixed testLinRegrLWInf
+  -- trace <- sampleIO testLinRegrLWInf
   -- trace <- sampleIOFixed testLinRegrMHPost
   -- trace <- sampleIOFixed testLinRegrMHPred
   -- trace <- sampleIOFixed testLogRegrBasic
-  -- trace <- sampleIOFixed testLogRegrLWSim
   -- trace <- sampleIOFixed testLogRegrLWInf
   -- trace <- sampleIOFixed testLogRegrMHPost
   -- trace <- sampleIOFixed testLogRegrMHPred
   -- trace <- sampleIOFixed testNNLinBasic
-  -- trace <- sampleIOFixed testNNLinLWSim
   -- trace <- sampleIOFixed testNNLinLWInf
   -- trace <- sampleIOFixed testNNLinMHPost
   -- trace <- sampleIOFixed testNNLinMHPred
   -- trace <- sampleIOFixed testNNStepBasic
-  -- trace <- sampleIOFixed testNNStepLWSim
-  -- trace <- sampleIOFixed testNNStepLWSim2
   -- trace <- sampleIOFixed testNNStepLWInf
   -- trace <- sampleIOFixed testNNStepMHPost
   -- trace <- sampleIOFixed testNNStepMHPred
@@ -65,19 +60,17 @@ main = do
   -- trace <- sampleIOFixed testNNLogMHPost
   -- trace <- sampleIO testNNLogMHPred
   -- trace <- sampleIOFixed testSinBasic
-  -- trace <- sampleIOFixed testSinLWSim
   -- trace <- sampleIOFixed testSinLWInf
   -- trace <- sampleIOFixed testSinMHPost
   -- trace <- sampleIOFixed testSinMHPred
   -- trace <- sampleIOFixed testHMMBasic
-  -- trace <- sampleIOFixed testHMMLWSim
   -- trace <- sampleIOFixed testHMMLWInf
   -- trace <- sampleIO testHMMMHPost
   -- trace <- sampleIOFixed testHMMMHPred
   -- trace <- sampleIOFixed testHMMStBasic
   -- trace <- sampleIOFixed testSIRBasic
   -- trace <- sampleIOFixed testSIRLWInf
-  trace <- sampleIOFixed testSIRMHPost
+  -- trace <- sampleIOFixed testSIRMHPost
   -- trace <- sampleIOFixed testSIRMHPred
   -- trace <- sampleIOFixed testHalfNormal
   -- trace <- sampleIOFixed testTopicBasic
@@ -101,7 +94,7 @@ main = do
   -- trace <- sampleIOFixed (TestPaper.testLinRegrBasic 200)
   -- trace <- sampleIO TestNew.testLinRegrSMC
   -- trace <- sampleIO (TestSMC.testLinRegrSMC 20 101)
-  -- trace <- sampleIO (TestSMC.testLinRegrSIS 6 100)
+  trace <- sampleIO (TestSMC.testLinRegrSIS 6 100)
   -- let trace = (Experiment.run')
   let traceStr = show trace
   putStrLn traceStr

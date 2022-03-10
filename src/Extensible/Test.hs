@@ -81,35 +81,24 @@ testLinRegrBasic = do
   let n_samples = 1
       -- Run simulate simulation over linearRegression
       {- This should generate a set of points on the y-axis for each given point on the x-axis -}
-  bs <- Simulate.simulate n_samples Example.linearRegressionOne
+  bs <- concat <$> Simulate.simulate n_samples Example.linearRegression
                     [0 .. 100]
-                    (repeat $ mkRecordLinRegr ([], [1.0], [0.0], [1.0]))
+                    (mkRecordLinRegr ([], [1.0], [0.0], [1.0]))
       {- This should output the provided fixed set of data points on the x and y axis. -}
   -- bs' <- Simulate.simulate n_samples Example.linearRegression
   --                   [0, 1, 2, 3, 4]
   --                   (map mkRecordLinRegrY [[-0.3], [0.75], [2.43], [3.5], [3.2]])
   return $ bs
 
-testLinRegrLWSim :: Sampler [([(Double, Double)], [(Addr, OpenSum PrimVal)], Double)]
-testLinRegrLWSim = do
-  -- Run linear model with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
-  let lw_n_iterations = 3
-      xs  = concat [ replicate 11 x | x <- [0 .. 10]]
-  lwTrace <- LW.lw lw_n_iterations Example.linearRegression
-                    xs
-                    (mkRecordLinRegr ([0 .. 10], [3], [2], [2.5]))
-  let lwTrace' = processLWTrace lwTrace
-  return lwTrace'
-
 -- | [(datapoints, samples, likelihood)]
 testLinRegrLWInf :: Sampler [([(Double, Double)], [(Addr, OpenSum PrimVal)], Double)]
 testLinRegrLWInf = do
   -- Run likelihood weighting inference over linearRegression
   {- This should output the provided fixed set of data points on the x and y axis, where each point has a different probability (due to us observing the probability of given y's). Also returns a trace of parameters and their likelihoods -}
-  let  lw_n_iterations = 100
+  let  lw_n_iterations = 1000
   lwTrace <- LW.lw lw_n_iterations Example.linearRegression
-                    [0 .. 100]
-                    (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. 100]))
+                    [0 .. 10]
+                    (mkRecordLinRegrY (map ((+2) . (*5)) [0 .. 10]))
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
@@ -135,9 +124,9 @@ testLinRegrMHPred = do
       sigma      = drawPredParam "σ" mhTrace
   liftS $ print $ "Using parameters " ++ show (mu, c, sigma)
   -- Using these parameters, simulate data from the predictive.
-  bs <- Simulate.simulate 1 Example.linearRegressionOne
+  bs <- concat <$> Simulate.simulate 1 Example.linearRegression
                          (map (/1) [0 .. 100])
-                         (repeat $ mkRecordLinRegr ([], mu, c, sigma))
+                         (mkRecordLinRegr ([], mu, c, sigma))
   return $ bs
 
 {- Logistic Regression -}
@@ -153,38 +142,21 @@ testLogRegrBasic :: Sampler [(Double, Bool)]
 testLogRegrBasic = do
   -- This should generate a set of points on the y-axis for each given point on the x-axis
   let n_samples = 1
-  bs <- Simulate.simulate n_samples Example.logisticRegressionOne
+  bs <- concat <$> Simulate.simulate n_samples Example.logisticRegression
                          (map (/50) [(-100) .. 100])
-                         (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
-  -- This should output the provided fixed set of data points on the x and y axis.
-  bs' <- Simulate.simulate 3 Example.logisticRegressionOne
-                         [0, 1, 2, 3, 4]
-                         (map mkRecordLogRegrL [[False], [False], [True], [False], [True]])
+                         (mkRecordLogRegr ([], [2], [-0.15]))
   return $ bs
-
-testLogRegrLWSim :: Sampler [([(Double, Bool)], [(Addr, OpenSum PrimVal)], Double)]
-testLogRegrLWSim = do
-  -- Run logistic model with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
-  bs <- Simulate.simulate 1 Example.logisticRegressionOne
-                         (map (/50) [(-100) .. 100])
-                         (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
-  let (xs, ys) = unzip bs
-  let lw_n_iterations = 3
-  lwTrace <- LW.lw lw_n_iterations Example.logisticRegression
-             xs (mkRecordLogRegr (ys, [2], [-0.15]))
-  let lwTrace' = processLWTrace lwTrace
-  return lwTrace'
 
 testLogRegrLWInf :: Sampler [([(Double, Bool)], [(Addr, OpenSum PrimVal)], Double)]
 testLogRegrLWInf = do
   -- Using fixed model parameters, generate some sample data points to learn
   let n_samples = 1
-  bs <- Simulate.simulate n_samples Example.logisticRegressionOne
+  bs <- concat <$> Simulate.simulate n_samples Example.logisticRegression
                          (map (/50) [(-100) .. 100])
-                         (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
+                         (mkRecordLogRegr ([], [2], [-0.15]))
   let (xs, ys) = (map fst bs, map snd bs)
   -- Perform inference against these data points
-  lwTrace <- LW.lw 5 Example.logisticRegression xs (mkRecordLogRegrL ys)
+  lwTrace <- LW.lw 1000 Example.logisticRegression xs (mkRecordLogRegrL ys)
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
@@ -192,8 +164,8 @@ testLogRegrMHPost :: Sampler [(Addr, [Double])]
 testLogRegrMHPost = do
   let n_samples = 1
   bs <- concat <$> Simulate.simulate n_samples Example.logisticRegression
-                                  [(map (/50) [(-100) .. 100])]
-                                  [(mkRecordLogRegr ([], [2], [-0.15]))]
+                                  (map (/50) [(-100) .. 100])
+                                  (mkRecordLogRegr ([], [2], [-0.15]))
   let (xs, ys) = (map fst bs, map snd bs)
       mh_n_iterations = 70
   mhTrace <- MH.mh mh_n_iterations Example.logisticRegression []
@@ -209,8 +181,8 @@ testLogRegrMHPred = do
       b          = drawPredParam "b" mhTrace
   liftS $ print $ "Using parameters " ++ show (mu, b)
   bs <- concat <$> Simulate.simulate 1 Example.logisticRegression
-                      [(map (/50) [(-100) .. 100])]
-                      (repeat $ mkRecordLogRegr ([], mu, b))
+                      (map (/50) [(-100) .. 100])
+                      (mkRecordLogRegr ([], mu, b))
   return $ bs
 
 {- Hidden markov model -}
@@ -226,24 +198,14 @@ testHMMBasic = do
   let hmm_n_steps   = 30
       hmm_n_samples = 1
   bs <- Simulate.simulate hmm_n_samples (Example.hmmNSteps hmm_n_steps)
-                                   [0] [mkRecordHMM ([], 0.5, 0.9)]
+                                   0 (mkRecordHMM ([], 0.5, 0.9))
   return $ bs
-
-testHMMLWSim :: Sampler [(([Int], [Int]), [(Addr, OpenSum PrimVal)], Double)]
-testHMMLWSim = do
-  let hmm_n_steps    = 10
-      hmm_n_samples  = 10
-  lwTrace <- LW.lw hmm_n_samples (Example.hmmNSteps hmm_n_steps)
-                    0
-                    (mkRecordHMM ([0 .. hmm_n_steps], 0.5, 0.5))
-  let lwTrace' = processLWTrace lwTrace
-  return lwTrace'
 
 testHMMLWInf :: Sampler [(([Int], [Int]), [(Addr, OpenSum PrimVal)], Double)]
 testHMMLWInf = do
   let hmm_n_steps   = 10
   bs <- Simulate.simulate 1 (Example.hmmNSteps hmm_n_steps)
-                    [0] [mkRecordHMM ([], 0.9, 0.1)]
+                    0 (mkRecordHMM ([], 0.9, 0.1))
   let lw_n_iterations = 100
       (_, yss) = head bs
   lwTrace <- LW.lw lw_n_iterations (Example.hmmNSteps hmm_n_steps)
@@ -256,7 +218,7 @@ testHMMMHPost :: Sampler [(Addr, [Double])]
 testHMMMHPost = do
   let hmm_n_steps   = 20
   bs <- Simulate.simulate 1 (Example.hmmNSteps hmm_n_steps)
-                    [0] [mkRecordHMM ([], 0.8, 0.1)]
+                    0 (mkRecordHMM ([], 0.8, 0.1))
   let mh_n_iterations = 1000
       (_, yss)  = head bs
   mhTrace <- MH.mh mh_n_iterations (Example.hmmNSteps hmm_n_steps) ["trans_p", "obs_p"]
@@ -276,14 +238,14 @@ testHMMMHPred = do
       obs_p      = drawPredParam "obs_p" mhTrace
   liftS $ print $ "using parameters " ++ show (trans_p, obs_p)
   bs <- Simulate.simulate hmm_n_samples (Example.hmmNSteps hmm_n_steps)
-                    [0] [mkRecordHMM ([], head trans_p, head obs_p)]
+                    0 (mkRecordHMM ([], head trans_p, head obs_p))
   return $ bs
 
 testHMMStBasic :: Sampler [([Int], [Int])]
 testHMMStBasic = do
   bs <- Simulate.simulate 2
             (runStateM . Example.hmmNStepsSt 0.5 0.5 10)
-                         [0] (repeat $ mkRecordHMM ([], 0.5, 0.5))
+                         0 (mkRecordHMM ([], 0.5, 0.5))
   return $ bs
 
 {- Hidden markov model : SIR -}
@@ -306,7 +268,7 @@ fromLatentState (Example.LatentState sus inf recov) = (sus, inf, recov)
 testSIRBasic :: Sampler ([(Int, Int, Int)], [Int])
 testSIRBasic = do
   bs <- Simulate.simulate 1 (Example.hmmSIRNsteps (fixedParams 763 1) 100)
-          [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
+          (latentState 762 1 0) (mkRecordSIR ([0.3], [0.7], [0.009]))
           --[mkRecordSIR ([0.29], [0.25], [0.015])]
   let output = map (\(xs, ys) -> (map fromLatentState xs, ys)) bs
   return $ head output
@@ -326,7 +288,7 @@ testSIRMHPost :: Sampler [(Addr, [Double])]
 testSIRMHPost = do
   bs <- Simulate.simulate 1
           (Example.hmmSIRNsteps (fixedParams 763 1) 5)
-          [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
+          (latentState 762 1 0) (mkRecordSIR ([0.3], [0.7], [0.009]))
   let infectedData    = snd (head bs)
       mh_n_iterations = 2000
   liftS $ print $ "infected data is " ++ show infectedData
@@ -347,7 +309,7 @@ testSIRMHPred = do
   liftS $ print $ show (ρ, β, γ)
   bs <- Simulate.simulate 1
                     (Example.hmmSIRNsteps (fixedParams 763 1) 200)
-                    [latentState 762 1 0] [mkRecordSIR (ρ, β, γ)]
+                    (latentState 762 1 0) (mkRecordSIR (ρ, β, γ))
   let output = map (\(xs, ys) -> (map fromLatentState xs, ys)) bs
   liftS $ print $ show (bs)
   return $ head output
@@ -363,7 +325,7 @@ mkRecordTopic (tps, wps, ys) =  #θ := tps <:>  #φ := wps <:> #w := ys <:>nil
 testTopicBasic :: Sampler [[String]]
 testTopicBasic = do
   Simulate.simulate 1 (Example.documentDist vocabulary 2)
-                        [10] [mkRecordTopic ([[0.5, 0.5]], [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],[1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]], [])]
+                        10 (mkRecordTopic ([[0.5, 0.5]], [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],[1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]], []))
 
 testTopicMHPost :: Sampler [(Addr, [[Double]])]
 testTopicMHPost = do
@@ -379,8 +341,7 @@ testTopicMHPred = do
   let  topic_ps   = drawPredParam "θ" mhTrace
        word_ps    = drawPredParam "φ" mhTrace
   liftS $ print $ "Using params " ++ show (topic_ps, word_ps)
-  Simulate.simulate 1 (Example.documentDist vocabulary 2) [10]
-        [mkRecordTopic (topic_ps,  word_ps, [])]
+  Simulate.simulate 1 (Example.documentDist vocabulary 2) 10 (mkRecordTopic (topic_ps,  word_ps, []))
 
 -- | Topic model over multiple (two) documents
 --   Note: the topic indexes for each document do not necessarily match
@@ -400,7 +361,7 @@ mkRecordHLR (mua, mub, siga, sigb, a, b, lograds) = #mu_a := mua <:> #mu_b := mu
 testHLRBasic :: Sampler ([Double], [Double])
 testHLRBasic = do
   bs <- Simulate.simulate 1 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx)
-                    [()] [mkRecordHLR ([1.45], [-0.68], [0.3], [0.2], [], [], [])]
+                    () (mkRecordHLR ([1.45], [-0.68], [0.3], [0.2], [], [], []))
   let basementIdxs      = findIndexes dataFloorValues 0
       noBasementIdxs    = findIndexes dataFloorValues 1
       basementPoints    = map (head bs !!) basementIdxs
@@ -437,7 +398,7 @@ mkRecordGMM (mus, mu_ks, xs, ys) = #mu := mus <:> #mu_k := mu_ks <:> #x := xs <:
 
 testGMMBasic :: Sampler [[((Double, Double), Int)]]
 testGMMBasic = do
-  bs <- Simulate.simulate 30 (Example.gmm 2) [20] [mkRecordGMM ([-2.0, 3.5], [], [], [])]
+  bs <- Simulate.simulate 30 (Example.gmm 2) 20 (mkRecordGMM ([-2.0, 3.5], [], [], []))
   return $  bs
 
 {- School model -}
@@ -449,8 +410,7 @@ testSchBasic = do
   let n_schools = 8
       ys        = [28, 8, -3,   7, -1,  1, 18, 12]
       sigmas    = [15, 10, 16, 11,  9, 11, 10, 18]
-  bs <- Simulate.simulate 1 (Example.schoolModel n_schools)
-          [sigmas] [mkRecordSch ([], [], ys)]
+  bs <- Simulate.simulate 1 (Example.schoolModel n_schools) sigmas (mkRecordSch ([], [], ys))
   return $ bs
 
 testSchMHPost :: Sampler ([(Addr, [Double])], [(Addr, [[Double]])])

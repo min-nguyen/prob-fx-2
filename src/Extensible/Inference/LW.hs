@@ -28,7 +28,7 @@ import Extensible.OpenSum (OpenSum(..))
 
 type TraceLW a = [(a, STrace, Double)]
 
--- | Run LW n times for multiple data points
+-- | Run LW n times for one input and environment
 lw :: (es ~ '[ObsReader env, Dist])
    => Int                              -- Number of lw iterations per data point
    -> (b -> Model env es a)            -- Model awaiting input variable

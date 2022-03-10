@@ -50,17 +50,6 @@ def main():
     plt.ylabel('y - axis')
     plt.title('Linear regression')
     plt.show()
-  if arg == "lin-regr-lw-sim":
-    xys        = [ d[0] for d in data]
-    ps         = [ d[2] for d in data]
-    xs = [x[0] for x in xys]
-    ys = [y[1] for y in xys]
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("x axis")
-    axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap=color_map)
-    axs1.set_title('Linear regression - Likelihood Weighting')
-    plt.show()
   if arg == "lin-regr-lw-inf":
     xys        = [ d[0] for d in data]
     sampleMaps = [ d[1] for d in data]
@@ -146,17 +135,6 @@ def main():
     plt.ylabel('y - axis')
     plt.title('Logistic regression - basic simulation')
     plt.show()
-  if arg == "log-regr-lw-sim":
-    xys        = [ d[0] for d in data]
-    ps         = [ d[2] for d in data]
-    xs = [x[0] for x in xys]
-    ys = [y[1] for y in xys]
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("x axis")
-    axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap=color_map)
-    axs1.set_title('Logistic regression - likelihood weighting')
-    plt.show()
   if arg == "log-regr-lw-inf":
     xys        = [ d[0] for d in data]
     sampleMaps = [ d[1] for d in data]
@@ -218,17 +196,6 @@ def main():
     plt.ylabel('y - axis')
     plt.title('Neural network')
     plt.show()
-  if arg == "nn-lin-lw-sim":
-    xys        = [ d[0] for d in data]
-    ps         = [ d[2] for d in data]
-    xs = [x[0] for x in xys]
-    ys = [y[1] for y in xys]
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("x axis")
-    axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap=color_map)
-    axs1.set_title('Bayesian neural network')
-    plt.show()
   if arg == "nn-lin-mh-pred":
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
@@ -249,18 +216,6 @@ def main():
     plt.xlabel('x - axis')
     plt.ylabel('y - axis')
     plt.title('Neural network')
-    plt.show()
-  if arg == "nn-step-lw-sim":
-    xys        = [ d[0] for d in data]
-    sampleMaps = [ d[1] for d in data]
-    ps         = [ d[2] for d in data]
-    xs = [x[0] for x in xys]
-    ys = [y[1] for y in xys]
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("x axis")
-    axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap=color_map)
-    axs1.set_title('Bayesian (step) neural network - Likelihood Weighting Simulation')
     plt.show()
   if arg == "nn-step-mh-pred":
     xys =  [[ i for i, j in data ],
@@ -311,17 +266,6 @@ def main():
     axs1.set_ylabel("y axis")
     axs1.scatter(xs, ys, cmap=color_map)
     axs1.set_title('Sine model - Simulation')
-    plt.show()
-  if arg == "sin-lw-sim":
-    xys        = [ d[0] for d in data]
-    ps         = [ d[2] for d in data]
-    xs = [x[0] for x in xys]
-    ys = [y[1] for y in xys]
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("x axis")
-    axs1.set_ylabel("y axis")
-    axs1.scatter(xs, ys, c=ps, cmap=color_map)
-    axs1.set_title('Sine model - Likelihood Weighting')
     plt.show()
   if arg == "sin-lw-inf":
     xys        = [ d[0] for d in data]
@@ -374,25 +318,6 @@ def main():
     axs1.set_ylabel("obs state")
     axs1.scatter(xs.ravel(), ys.ravel(), cmap=color_map)
     axs1.set_title('HMM - Simulation')
-
-    plt.show()
-  if arg == "hmm-lw-sim":
-    # Note: not a very useful simulation
-    xys        = [ d[0] for d in data]
-    ps         = [ d[2] for d in data]
-    xs = [xs[0][1:] for xs in xys]
-    ys = [ys[1] for ys in xys]
-
-    ps    = [ [p for i in range(len(ys[0]))] for p in ps ]
-    print(xs)
-    print(ys)
-    print(ps)
-
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("trans state")
-    axs1.set_ylabel("obs state")
-    axs1.scatter(xs, ys, c=ps, cmap=color_map)
-    axs1.set_title('HMM - Likelihood Weighting')
     plt.show()
   if arg == "hmm-lw-inf":
     # Note : this inference method knowingly doesn't work well for this model

@@ -26,12 +26,11 @@ import Extensible.IO
 simulate :: (es ~ '[ObsReader env, Dist])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env es a)           -- Model awaiting input variable
-  -> [b]                             -- List of model input variables
-  -> [ModelEnv env]                      -- List of model observed variables
+  -> b                             -- List of model input variables
+  -> ModelEnv env                      -- List of model observed variables
   -> Sampler [a]
-simulate n model xs envs = do
-  let runN (x, env) = replicateM n (runSimulate env (model x))
-  concat <$> mapM runN (zip xs envs)
+simulate n model x env = do
+  replicateM n (runSimulate env (model x))
 
 -- Simulate multiple model inputs under same environment
 simulateSameEnv :: (es ~ '[ObsReader env, Dist])
