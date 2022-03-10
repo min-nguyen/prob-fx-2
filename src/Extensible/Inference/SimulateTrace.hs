@@ -34,7 +34,7 @@ import Unsafe.Coerce (unsafeCoerce)
 import Util
 import GHC.TypeLits
 
-simulate :: forall env es b a. (FromSTrace env, es ~ '[Dist, Observe, ObsReader env, Sample])
+simulate :: forall env es b a. (FromSTrace env, es ~ '[ObsReader env, Dist])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env es a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
@@ -46,12 +46,12 @@ simulate n model xs envs = do
   let outputs_envs = map (fmap (fromSTrace @env)) outputs_smaps
   return outputs_envs
 
-runSimulate :: (es ~ '[Dist, Observe, ObsReader env, Sample])
+runSimulate :: (es ~ '[ObsReader env, Dist])
  => ModelEnv env -> Model env es a -> Sampler (a, STrace)
 runSimulate ys m
-  = (runSample Map.empty . runObsReader ys . runObserve . runDist) (runModel m)
+  = (runSample Map.empty . runObserve . runDist . runObsReader ys) (runModel m)
 
-simulateWith :: (es ~ '[Dist, Observe, ObsReader env, Sample])
+simulateWith :: (es ~ '[ObsReader env, Dist])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env (e:es) a)       -- Model awaiting input variable
   -> [b]                             -- List of model input variables
@@ -62,13 +62,13 @@ simulateWith n model xs envs h = do
   let runN (x, env) = replicateM n (runSimulateWith env (model x) h)
   concat <$> mapM runN (zip xs envs)
 
-runSimulateWith :: (es ~ '[Dist, Observe, ObsReader env, Sample])
+runSimulateWith :: (es ~ '[ObsReader env, Dist])
  => ModelEnv env
  -> Model env (e:es) a
  -> (Model env (e:es) a -> Model env es c)
  -> Sampler (c, STrace)
 runSimulateWith ys m h
-  = (runSample Map.empty . runObsReader ys . runObserve . runDist) (runModel $ h m)
+  = (runSample Map.empty . runObserve . runDist . runObsReader ys  ) (runModel $ h m)
 
 runObserve :: Prog (Observe : es) a -> Prog es  a
 runObserve (Val x) = return x

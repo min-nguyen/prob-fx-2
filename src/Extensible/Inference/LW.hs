@@ -29,7 +29,7 @@ import Extensible.OpenSum (OpenSum(..))
 type TraceLW a = [(a, STrace, Double)]
 
 -- | Run LW n times for multiple data points
-lw :: (es ~ '[ObsReader env, Dist, Observe, Sample])
+lw :: (es ~ '[ObsReader env, Dist])
    => Int                              -- Number of lw iterations per data point
    -> (b -> Model env es a)            -- Model awaiting input variable
    -> [b]                              -- List of model input variables
@@ -40,7 +40,7 @@ lw n model xs envs = do
   concat <$> mapM runN (zip xs envs)
 
 -- | Run LW once for single data point
-runLW :: es ~ '[ObsReader env, Dist, Observe, Sample]
+runLW :: es ~ '[ObsReader env, Dist]
   => ModelEnv env -> Model env es a
   -> Sampler (a, STrace, Double)
 runLW env model = do
@@ -53,12 +53,12 @@ runLW env model = do
                             (runModel model)
   return (x, samples, p)
 
-runLWpaper :: es ~ '[ObsReader env, Dist,  Observe, Sample]
+runLWpaper :: es ~ '[ObsReader env, Dist]
   => ModelEnv env -> Model env es a
   -> Sampler ((a, STrace), Double)
 runLWpaper env m =
   (runSample . runObserve . runState Map.empty
-   . transformLW . runDist . runObsReader env) (runModel m)
+    . transformLW . runDist . runObsReader env) (runModel m)
 
 transformLW :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
 transformLW = install return

@@ -50,10 +50,10 @@ instance (Accum ctx1, Accum ctx2) => Accum (ctx1, ctx2) where
 
 sis :: forall a env ctx es'.
      (Accum ctx, Show ctx, FromSTrace env, Show a)
-  => Members [Observe, Sample, NonDet] es'
+  => Member NonDet es'
   => Int
-  -> Resampler       ctx '[Sample] es' a
-  -> ParticleHandler ctx '[Sample] es' a
+  -> Resampler       ctx '[Sample] (Observe : Sample : es') a
+  -> ParticleHandler ctx '[Sample] (Observe : Sample : es') a
   -> Model env (ObsReader env : Dist : es') a
   -> ModelEnv env
   -> Sampler [(a, ctx)]

@@ -160,7 +160,7 @@ This is already natural for models such as a HMM.
 -}
 
 -- | Run MH for multiple data points
-mh :: (es ~ '[ObsReader env, Dist, State SMap, State LPMap, Observe, Sample])
+mh :: (es ~ '[ObsReader env, Dist])
    => Int                              -- Number of mhSteps per data point
    -> (b -> Model env es a)            -- Model awaiting input variable
    -> [Tag]                            -- Tags indicated sample sites of interest
@@ -183,7 +183,7 @@ mh n model tags xs envs = do
   return $ reverse l
 
 -- | Perform one step of MH for a single data point
-mhStep :: (es ~ '[ObsReader env, Dist, State SMap, State LPMap, Observe, Sample])
+mhStep :: (es ~ '[ObsReader env, Dist])
   => ModelEnv env         -- Model observed variable
   -> Model env es a   -- Model
   -> [Tag]            -- Tags indicating sample sites of interest
@@ -223,7 +223,7 @@ mhStep env model tags trace = do
             return trace
 
 -- | Run model once under MH
-runMH :: (es ~ '[ObsReader env, Dist, State SMap, State LPMap, Observe, Sample])
+runMH :: (es ~ '[ObsReader env, Dist])
   => ModelEnv env       -- Model observed variable
   -> SMap              -- Previous mh sample set
   -> Addr           -- Sample address
@@ -251,18 +251,19 @@ runMH env samples α_samp m = do
 --         Observe d y -> undefined)
 
 -- | Insert stateful operations for SMap and LPMap when either Sample or Observe occur.
-transformMH :: (Member (State SMap) es, Member (State LPMap) es, Member Sample es, Member Observe es) => Prog es a -> Prog es a
+transformMH :: (Member Sample es, Member Observe es) =>
+  Prog es a -> Prog (State SMap: State LPMap: es) a
 transformMH (Val x) = return x
 transformMH (Op u k) = do
   case u of
     SampPatt d α
-      -> Op u (\x -> modify (updateSMap α d x) >>
-                       modify (updateLPMap α d (unsafeCoerce x)) >>
-                       transformMH (k x))
+      -> Op (weaken $ weaken u) (\x -> modify (updateSMap α d x) >>
+                                        modify (updateLPMap α d (unsafeCoerce x)) >>
+                                        transformMH (k x))
     ObsPatt d y α
-      -> Op u (\x -> modify (updateLPMap α d y  :: LPMap -> LPMap) >>
+      -> Op (weaken $ weaken u) (\x -> modify (updateLPMap α d y  :: LPMap -> LPMap) >>
                        transformMH (k x))
-    _ -> Op u (transformMH . k)
+    _ -> Op (weaken $ weaken u) (transformMH . k)
 
 -- | Remove Observe occurrences from tree (log p is taken care of by transformMH)
 runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es a

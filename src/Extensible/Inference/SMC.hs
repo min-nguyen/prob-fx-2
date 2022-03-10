@@ -36,10 +36,10 @@ logMeanExp :: [Double] -> Double
 logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
                      in   ( (1/fromIntegral _L) * (sum ( logWₙₛ₁)))
 
-smc :: forall a env. (FromSTrace env, Show a) =>
-  Int -> Model env '[ObsReader env, Dist, Observe, State STrace, NonDet, Sample] a -> ModelEnv env -> Sampler [(a, ModelEnv env, Double)]
+smc :: forall a env. (FromSTrace env, Show a) => -- , Observe, State STrace, NonDet, Sample
+  Int -> Model env '[ObsReader env, Dist] a -> ModelEnv env -> Sampler [(a, ModelEnv env, Double)]
 smc n_particles model env = do
-  let prog = (branch n_particles . traceSamples . runDist . runObsReader env) (runModel model)
+  let prog = (traceSamples . runDist . runObsReader env) (runModel model)
   particles <- runSample (loopSMC n_particles 0 (repeat Map.empty) prog)
   let particles' = map (\(a, strace, prob) -> (a, fromSTrace @env strace, prob)) particles
   return particles'
@@ -69,12 +69,12 @@ loopSMC n_particles logZ straces_accum prog  = do
                       prinT $ "logZ': "  ++  show logZ'
                       loopSMC n_particles logZ' straces_accum'' prog'
 
-traceSamples :: (Member Sample es, Member (State STrace) es) => Prog es a -> Prog es a
+traceSamples :: (Member Sample es) => Prog es a -> Prog (State STrace : es) a
 traceSamples  (Val x)  = return x
 traceSamples  (Op u k) = case u of
-    SampPatt d α ->  Op u (\x -> do updateSTrace α x
-                                    traceSamples (k x))
-    _   -> Op u (traceSamples . k)
+    SampPatt d α ->  Op (weaken u) (\x -> do updateSTrace α x
+                                             traceSamples (k x))
+    _   -> Op (weaken u) (traceSamples . k)
 
 -- When discharging Observe, return the rest of the program, and the log probability
 runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, Double)

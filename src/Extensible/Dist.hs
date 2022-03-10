@@ -18,7 +18,7 @@
 module Extensible.Dist where
 
 import Extensible.Freer
-    ( Prog(..), Member(..), EffectSum, decomp, send )
+    ( Prog(..), Member(..), EffectSum, decomp, send, weaken )
 import Extensible.Sampler
 import Extensible.OpenSum (OpenSum)
 import qualified Extensible.OpenSum as OpenSum
@@ -151,12 +151,10 @@ type Addr = (Tag, Int)
 type TagMap = Map Tag Int
 
 {- Replaces Dists with Sample or Observe and adds address -}
-runDist :: forall es a. (Member Sample es, Member Observe es)
-        => Prog (Dist : es) a -> Prog es a
+runDist :: forall es a. Prog (Dist : es) a -> Prog (Observe : Sample : es) a
 runDist = loop 0 Map.empty
   where
-  loop :: (Member Sample es, Member Observe es)
-       => Int -> TagMap -> Prog (Dist : es) a -> Prog es a
+  loop :: Int -> TagMap -> Prog (Dist : es) a -> Prog (Observe : Sample : es) a
   loop _ _ (Val x) = return x
   loop counter tagMap (Op u k) = case decomp u of
     Right d ->
@@ -167,7 +165,7 @@ runDist = loop 0 Map.empty
                 tagIdx  = Map.findWithDefault 0 tag tagMap
                 tagMap' = Map.insert tag (tagIdx + 1) tagMap
                 k'      = loop (counter + 1) tagMap' . k
-    Left  u'  -> Op u' (loop counter tagMap . k)
+    Left  u'  -> Op (weaken $ weaken u') (loop counter tagMap . k)
 
 -- runDist :: forall es a. Prog (Dist ': es) a -> Prog (Observe ': Sample ': es) a
 -- runDist = replaceRelayStN @'[Observe, Sample] (0, Map.empty) (\_ x -> return x)

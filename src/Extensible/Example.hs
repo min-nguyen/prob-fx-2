@@ -172,7 +172,7 @@ nnLogModel n_nodes (x, y)  = do
 
 -- | Sine model
 
-sineModel :: forall env rs .
+sineModel :: forall env rs . Member Sample rs =>
   Observables env '["y", "m", "c", "σ"] Double =>
   Double -> Model env rs (Double, Double)
 sineModel x = do

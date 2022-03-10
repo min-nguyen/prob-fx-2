@@ -22,7 +22,7 @@ import Extensible.ObsReader
 import Extensible.State
 import Extensible.Example as Example
 
-simulate :: (es ~ '[Dist, Observe, ObsReader env, Sample])
+simulate :: (es ~ '[ObsReader env, Dist])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env es a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
@@ -33,7 +33,7 @@ simulate n model xs envs = do
   concat <$> mapM runN (zip xs envs)
 
 -- Simulate multiple model inputs under same environment
-simulateSameEnv :: (es ~ '[Dist, Observe, ObsReader env, Sample])
+simulateSameEnv :: (es ~ '[ObsReader env, Dist])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env es a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
@@ -42,12 +42,12 @@ simulateSameEnv :: (es ~ '[Dist, Observe, ObsReader env, Sample])
 simulateSameEnv n model xs env =
   concat <$> mapM (replicateM n . runSimulate env . model) xs
 
-runSimulate :: (es ~ '[Dist, Observe, ObsReader env, Sample])
+runSimulate :: (es ~ '[ObsReader env, Dist])
  => ModelEnv env -> Model env es a -> Sampler a
 runSimulate ys m
-  = (runSample . runObsReader ys . runObserve . runDist) (runModel m)
+  = (runSample . runObserve . runDist. runObsReader ys ) (runModel m)
 
-simulateWith :: (es ~ '[Dist, Observe, ObsReader env, Sample])
+simulateWith :: (es ~ '[ObsReader env, Dist])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env (e:es) a)       -- Model awaiting input variable
   -> [b]                             -- List of model input variables
@@ -58,13 +58,13 @@ simulateWith n model xs envs h = do
   let runN (x, env) = replicateM n (runSimulateWith env (model x) h)
   concat <$> mapM runN (zip xs envs)
 
-runSimulateWith :: (es ~ '[Dist, Observe, ObsReader env, Sample])
+runSimulateWith :: (es ~ '[ObsReader env, Dist])
  => ModelEnv env
  -> Model env (e:es) a
  -> (Model env (e:es) a -> Model env es c)
  -> Sampler c
 runSimulateWith ys m h
-  = (runSample . runObsReader ys . runObserve . runDist) (runModel $ h m)
+  = (runSample . runObserve . runDist . runObsReader ys) (runModel $ h m)
 
 runObserve :: Prog (Observe : es) a -> Prog es  a
 runObserve (Val x) = return x
@@ -114,9 +114,8 @@ runSample (Op u k) = case u of
 -- runBasic3 env
 --   =  fmap fst . runObsReader env . runDist . runModel
 
-runInit :: (Member Observe es, Member Sample es)
-          => ModelEnv env -> Model env (Dist : ObsReader env : es) a -> Prog es a
-runInit env m = (runObsReader env . runDist)  (runModel m)
+runInit :: ModelEnv env -> Model env (ObsReader env : Dist : es) a -> Prog (Observe : Sample : es) a
+runInit env m = (runDist . runObsReader env)   (runModel m)
 
 newtype F es a = F { runF :: Member Observe es => Prog es a }
 

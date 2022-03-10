@@ -55,6 +55,12 @@ runNonDet (Op op k) = case op of
 branch :: Member NonDet es => Int -> Prog es a -> Prog es a
 branch n prog = asum (replicate n prog)
 
+branchWeaken :: Int -> Prog es a -> Prog (NonDet : es) a
+branchWeaken n (Op op k) = asum $ replicate n (Op (weaken op) (weaken' . k))
+  where weaken' (Op op k) = Op (weaken op) (weaken' . k)
+        weaken' (Val x)   = Val x
+branchWeaken n (Val x)   = asum $ replicate n (Val x)
+
 -- Given a list of programs, check whether they all terminate.
 -- If a program is unfinished, return all programs
 -- If all finished, return a single program that returns all results
