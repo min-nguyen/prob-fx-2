@@ -51,25 +51,6 @@ runSimulate :: (es ~ '[ObsReader env, Dist])
 runSimulate ys m
   = (runLift . runSample Map.empty . runObserve . runDist . runObsReader ys) (runModel m)
 
-simulateWith :: (es ~ '[ObsReader env, Dist])
-  => Int                             -- Number of iterations per data point
-  -> (b -> Model env (e:es) a)       -- Model awaiting input variable
-  -> [b]                             -- List of model input variables
-  -> [ModelEnv env]                      -- List of model observed variables
-  -> (Model env (e:es) a -> Model env es c)
-  -> Sampler [(c, STrace)]
-simulateWith n model xs envs h = do
-  let runN (x, env) = replicateM n (runSimulateWith env (model x) h)
-  concat <$> mapM runN (zip xs envs)
-
-runSimulateWith :: (es ~ '[ObsReader env, Dist])
- => ModelEnv env
- -> Model env (e:es) a
- -> (Model env (e:es) a -> Model env es c)
- -> Sampler (c, STrace)
-runSimulateWith ys m h
-  = (runLift . runSample Map.empty . runObserve . runDist . runObsReader ys  ) (runModel $ h m)
-
 runObserve :: Prog (Observe : es) a -> Prog es  a
 runObserve (Val x) = return x
 runObserve (Op u k) = case u of

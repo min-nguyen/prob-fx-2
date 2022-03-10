@@ -27,7 +27,6 @@ import qualified Extensible.Inference.LW as LW
 import qualified Extensible.Inference.MH as MH
 import Extensible.OpenSum
 import qualified Extensible.OpenSum as OpenSum
-import Extensible.Inference.Inf
 import Extensible.State
 import Extensible.Model
 import Extensible.Sampler
@@ -174,13 +173,13 @@ testSIRBasic = do
       params     = #β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:>  #infobs := [] <:> nil
   simOutputs :: [((Example.LatState,   -- model output
                   [Example.LatState]), -- writer effect log of sir latent states
-                   STrace)]   -- trace of samples
-                <- Simulate.simulateWith 1 (Example.hmmSIRNsteps 100)
-                   [latState0] [params] runWriterM
+                   ModelEnv Example.SIREnv)]   -- trace of samples
+                <- Simulate.simulate 1 (runWriterM . Example.hmmSIRNsteps 100)
+                   [latState0] [params]
   let fstOutput = head simOutputs
       sirLog    :: [Example.LatState] = (snd . fst) fstOutput
-      sampleMap :: STrace             = snd fstOutput
-      infobs    :: [Int]              = extractSamples (#infobs, Proxy @Int) sampleMap
+      sampleMap :: ModelEnv Example.SIREnv = snd fstOutput
+      infobs    :: [Int]                   = getOP #infobs sampleMap
 
       sirLog_tuples :: [(Int, Int, Int)] = map fromLatState sirLog
 
@@ -203,62 +202,42 @@ testSIRMHPost = do
       γs = concatMap (MH.extractSamples (#γ, Proxy @Double)) mhSampleMaps
   -- printS $ show (ρs, βs, γs)
   return (ρs, βs, γs)
-  -- let mhTrace'    = processMHTrace mhTrace
-  --     postParams  = extractPostParams (Proxy @Double)  [("ρ", 0), ("β", 0), ("γ", 0)] mhTrace'
-  -- return postParams
 
--- Version of SIR simulation which instead directly composes runWriterM with the model, instead of using Simulate.simulateWith
-testSIRBasic' :: Sampler ([(Int, Int, Int)], [Int])
-testSIRBasic' = do
-  simOutputs <- Simulate.simulate 1 (runWriterM . Example.hmmSIRNsteps 100)
+{- SIR Resusceptible -}
+testSIRSBasic :: Sampler ([(Int, Int, Int)], -- sir values
+                          [Int])
+testSIRSBasic = do
+  simOutputs <- Simulate.simulate 1 (runWriterM . Example.hmmSIRSNsteps 100)
                    [latentState 762 1 0]
-                   [mkRecordSIRparams ([0.7], [0.009], [0.3])]
+                   [#β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #η := [0.05] <:> #infobs := [] <:> nil]
 
   let fstOutput = head simOutputs
-      sirLog    :: [Example.LatState]       = (snd . fst) fstOutput
-      env_strace :: ModelEnv Example.SIREnv = snd fstOutput
-      infobs    :: [Int]                    = getOP #infobs env_strace
-      sirLog_tuples :: [(Int, Int, Int)]    = map fromLatState sirLog
+      sirLog    :: [Example.LatState]         = (snd . fst) fstOutput
+      sampleMap :: ModelEnv Example.SIRSEnv   = snd fstOutput
+      infobs    :: [Int]                      = getOP #infobs sampleMap
+
+      sirLog_tuples :: [(Int, Int, Int)] = map fromLatState sirLog
 
   return (sirLog_tuples, infobs)
 
-
-{- SIR Resusceptible -}
--- testSIRSBasic :: Sampler ([(Int, Int, Int)], -- sir values
---                           [Int])
--- testSIRSBasic = do
---   simOutputs <- Simulate.simulate 1 (runWriterM . Example.hmmSIRNsteps' 100)
---                    [latentState 762 1 0]
---                    [ #β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #η := [0.05] <:> #infobs := [] <:> nil]
-
---   let fstOutput = head simOutputs
---       sirLog    :: [Example.LatState] = (snd . fst) fstOutput
---       sampleMap :: STrace = snd fstOutput
---       infobs    :: [Int]              = Simulate.extractSamples (#infobs, Proxy @Int) sampleMap
-
---       sirLog_tuples :: [(Int, Int, Int)] = map fromLatState sirLog
-
---   return (sirLog_tuples, infobs)
-
 {- SIRV -}
-
 fromLatSIRVState :: Example.LatStateSIRV -> (Int, Int, Int, Int)
 fromLatSIRVState (Example.LatStateSIRV sus inf recov vacc) = (sus, inf, recov, vacc)
 
 testSIRVBasic :: Sampler ([(Int, Int, Int, Int)], -- sir values
-                          [Int])            -- observed infections
+                          [Int])                  -- observed infections
 testSIRVBasic = do
   let latState0  = Example.LatStateSIRV { Example.s = 762, Example.i = 1, Example.r = 0,  Example.v = 0 }
       params     = #β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #ω := [0.04] <:>  #η := [0.05] <:> #infobs := [] <:> nil
-  simOutputs :: [((Example.LatStateSIRV,   -- model output
-                  [Example.LatStateSIRV]), -- writer effect log of sir latent states
-                   STrace)]   -- trace of samples
-                <- Simulate.simulateWith 1 (Example.hmmSIRVNsteps 100)
-                   [latState0] [params] runWriterM
+  simOutputs :: [((Example.LatStateSIRV,        -- model output
+                  [Example.LatStateSIRV]),      -- writer effect log of sir latent states
+                   ModelEnv Example.SIRVEnv)]   -- trace of samples
+                <- Simulate.simulate 1 (runWriterM . Example.hmmSIRVNsteps 100)
+                   [latState0] [params]
   let fstOutput = head simOutputs
-      sirLog    :: [Example.LatStateSIRV] = (snd . fst) fstOutput
-      sampleMap :: STrace                 = snd fstOutput
-      infobs    :: [Int]                  = extractSamples (#infobs, Proxy @Int) sampleMap
+      sirLog    :: [Example.LatStateSIRV]   = (snd . fst) fstOutput
+      sampleMap :: ModelEnv Example.SIRVEnv = snd fstOutput
+      infobs    :: [Int]                    = getOP #infobs sampleMap
 
       sirLog_tuples :: [(Int, Int, Int, Int)] = map fromLatSIRVState sirLog
 

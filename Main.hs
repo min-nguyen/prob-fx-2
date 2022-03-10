@@ -84,17 +84,17 @@ main = do
   -- trace <- sampleIOFixed testGMMMHPost
   -- trace <- sampleIOFixed testSchBasic
   -- trace <- sampleIOFixed testSchMHPost
-  -- trace <- sampleIOFixed $ TestPaper.testLinRegrOneBasic 200 100
+  -- trace <- sampleIOFixed $ TestPaper.testLinRegrBasic 200 100
   -- trace <- sampleIOFixed $ TestPaper.testLinRegrMHPost 200 100
+  trace <- sampleIOFixed $ TestPaper.testLogRegrBasic 200 100
   -- trace <- sampleIOFixed TestPaper.testSIRBasic
-  -- trace <- sampleIOFixed TestPaper.testSIRBasic'
   -- trace <- sampleIOFixed TestPaper.testSIRMHPost
   -- trace <- sampleIOFixed TestPaper.testSIRSBasic
   -- trace <- sampleIOFixed TestPaper.testSIRVBasic
   -- trace <- sampleIOFixed (TestPaper.testLinRegrBasic 200)
   -- trace <- sampleIO TestNew.testLinRegrSMC
   -- trace <- sampleIO (TestSMC.testLinRegrSMC 20 101)
-  trace <- sampleIO (TestSMC.testLinRegrSIS 6 100)
+  -- trace <- sampleIO (TestSMC.testLinRegrSIS 6 100)
   -- let trace = (Experiment.run')
   let traceStr = show trace
   putStrLn traceStr

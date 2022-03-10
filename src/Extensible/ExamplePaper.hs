@@ -284,6 +284,14 @@ hmmSIRNsteps n latentState  = do
   return latentState'
 
 {- SIRS (resusceptible) model -}
+type SIRSEnv =
+  [
+     "β" := Double,
+     "γ" := Double,
+     "ρ" := Double,
+     "η" := Double,
+     "infobs" := Int
+   ]
 
 transRS :: Double -> LatState -> Model env ts LatState
 transRS eta (LatState sus inf rec) = do
@@ -292,9 +300,9 @@ transRS eta (LatState sus inf rec) = do
       rec' = rec - dN_RS
   return $ LatState sus' inf rec'
 
-transSIR' :: Member (Writer [LatState]) ts
+transSIRS :: Member (Writer [LatState]) ts
   => Double -> Double -> Double -> LatState -> Model env ts LatState
-transSIR' beta gamma eta latentSt = do
+transSIRS beta gamma eta latentSt = do
   latentSt' <- (transSI beta >=> transIR gamma >=> transRS eta) latentSt
   tellM [latentSt']
   return latentSt'
@@ -308,21 +316,21 @@ paramsPrior' = do
   pRho   <- beta' 2 7 #ρ
   return ((Params pBeta pGamma pRho), pEta)
 
-hmmSIR' :: Member (Writer [LatState]) ts
+hmmSIRS :: Member (Writer [LatState]) ts
   => Observable env "infobs" Int
   => Params -> Double -> LatState -> Model env ts LatState
-hmmSIR'  (Params beta gamma rho) eta latentState = do
-  latentState'   <- transSIR' beta gamma eta latentState
+hmmSIRS  (Params beta gamma rho) eta latentState = do
+  latentState'   <- transSIRS beta gamma eta latentState
   infectionCount <- obsSIR rho latentState'
   return latentState'
 
-hmmSIRNsteps' ::
+hmmSIRSNsteps ::
      Member (Writer [LatState]) ts
   => (Observable env "infobs" Int, Observables env '["ρ", "β", "η", "γ"] Double)
   => Int -> LatState -> Model env ts LatState
-hmmSIRNsteps' n latentState  = do
+hmmSIRSNsteps n latentState  = do
   (params, eta)       <- paramsPrior'
-  latentState' <- foldl (>=>) return (replicate n $ hmmSIR' params eta) latentState
+  latentState' <- foldl (>=>) return (replicate n $ hmmSIRS params eta) latentState
   return latentState'
 
 {- Generic HMM -}
@@ -418,6 +426,16 @@ transSIRV (ParamsSIRV {beta_ = beta, gamma_ = gamma, omega_ = omega, eta_ = eta}
 
 obsSIRV :: Observable env "infobs" Int => ObsModel env ts ParamsSIRV LatStateSIRV Int
 obsSIRV (ParamsSIRV {rho_ = rho}) sirv  = poisson' (rho * fromIntegral (i sirv)) #infobs
+
+type SIRVEnv =
+  [
+     "β" := Double,
+     "γ" := Double,
+     "ρ" := Double,
+     "ω" := Double,
+     "η" := Double,
+     "infobs" := Int
+   ]
 
 priorSIRV :: Observables env '["ρ", "β", "γ", "ω", "η"] Double
   => Model env ts ParamsSIRV
