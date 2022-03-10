@@ -74,9 +74,7 @@ testLinRegrMHPost n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
   mhTrace <- MH.mh n_samples Example.linearRegression [] [0 .. n_datapoints']
                    (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints']))
-
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
-
 
 {- Log Regr -}
 mkRecordLogRegr :: ([Bool], [Double], [Double]) -> ModelEnv Example.LogRegrEnv
@@ -96,19 +94,6 @@ testLogRegrBasic n_datapoints n_samples = do
                          [xs]
                          [mkRecordLogRegr ([], [2], [-0.15])]
   return $ map fst bs
-
--- logRegrData :: [Bool]
--- logRegrData = [True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,False,True,True,True,True,True,False,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,True,False,True,True,True,True,True,True,True,True,False,True,True,True,True,True,True,True,True,False,True,False,True,True,True,False,True,True,True,True,False,True,False,False,True,False,True,True,False,False,True,True,False,False,True,False,True,True,False,True,True,False,True,False,True,False,False,False,False,False,False,False,True,False,False,False,False,False,False,False,False,False,True,False,False,True,False,False,False,False,True,False,False,False,False,False,True,False,False,False,False,True,False,False,True,False,False,False,True,True,False,False,False,False,False,False,False,False,False,False,False,False,False,False,True,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False,False]
-
--- testLogRegrLWInf :: Int -> Int -> Sampler [((Double, Bool), [(Addr, OpenSum PrimVal)], Double)]
--- testLogRegrLWInf n_datapoints n_samples =  do
---   -- Using fixed model parameters, generate some sample data points to learn
---   let incr = 200/fromIntegral n_datapoints
---       xs = [ (-100 + (fromIntegral x)*incr)/50 | x <- [0 .. n_datapoints]]
---   -- Perform inference against these data points
---   lwTrace <- LW.lw 5 Example.logisticRegression xs [(mkRecordLogRegrL . (:[])) ys]
---   let lwTrace' = processLWTrace lwTrace
---   return lwTrace'
 
 {- HMM -}
 mkRecordHMM :: ([Int], Double, Double) -> ModelEnv Example.HMMEnv

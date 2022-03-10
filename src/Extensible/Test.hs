@@ -259,38 +259,6 @@ testNNLinLWInf = do
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
--- Run this with nn-simulate, as it returns a predictive distribution rather than a posterior one.
--- testNNLinMHPost :: Sampler [(Addr, [Double])]
--- testNNLinMHPost = do
---   -- Run mh over data representing a line with gradient 1 and intercept 0
---   let mh_n_iterations = 40
---   mhTrace <- MH.mh mh_n_iterations (Example.nnLinModel 3) []
---                     (map (/50) [0 .. 300])
---                     (map mkRecordNNy [ x | x <- map (/50) [0 .. 300] ])
---   let mhTrace' = processMHTrace mhTrace
---       matrix_size = 3
---       addrs      = [ ("weight", i) | i <- [0..(matrix_size - 1)]] ++
---                    [ ("bias", i)   | i <- [0..(matrix_size - 1)]] ++
---                    [ ("sigma", 0)]
---       postParams = extractPostParams (Proxy @Double) addrs mhTrace'
---   return postParams
-
--- testNNLinMHPred :: Sampler [(Double, Double)]
--- testNNLinMHPred = do
---   mhTrace <- testNNLinMHPost
---   -- Get the most recent accepted model parameters from the posterior
---   let weights    = drawPredParam "weight" mhTrace
---       bias       = drawPredParam "bias" mhTrace
---       sigma      = drawPredParam "sigma" mhTrace
---   liftS $ print $ "Using parameters: " ++ show (weights, bias, sigma)
---   -- Using these parameters, simulate data from the predictive. We can see that the predictive data becomes more accurate with more mh steps.
---   bs <- Simulate.simulate 1 (Example.nnLinModel 3)
---                          (map (/1) [0 .. 300])
---                          (repeat $ mkRecordNN ([], bias,
---                                                    weights,
---                                                    sigma))
---   return $ bs
-
 {- Bayesian neural network v2 -}
 testNNStepBasic :: Sampler  [(Double, Double)]
 testNNStepBasic = do
@@ -494,67 +462,58 @@ latentState = Example.LatentState
 fromLatentState :: Example.LatentState -> (Int, Int, Int)
 fromLatentState (Example.LatentState sus inf recov) = (sus, inf, recov)
 
--- testSIRBasic :: Sampler ([(Int, Int, Int)], [Int])
--- testSIRBasic = do
---   bs <- Simulate.simulate 1 (Example.hmmSIRNsteps (fixedParams 763 1) 100)
---           [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
---           --[mkRecordSIR ([0.29], [0.25], [0.015])]
---   let output = map (\(xs, ys) -> (map fromLatentState xs, ys)) bs
---   return $ head output
+testSIRBasic :: Sampler ([(Int, Int, Int)], [Int])
+testSIRBasic = do
+  bs <- Simulate.simulate 1 (Example.hmmSIRNsteps (fixedParams 763 1) 100)
+          [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
+          --[mkRecordSIR ([0.29], [0.25], [0.015])]
+  let output = map (\(xs, ys) -> (map fromLatentState xs, ys)) bs
+  return $ head output
 
--- testSIRLWInf :: Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum PrimVal)], Double)]
--- testSIRLWInf = do
---   let sir_n_steps    = length sirInfectedData
---   lwTrace <- LW.lw 100 (Example.hmmSIRNsteps (fixedParams 763 1) sir_n_steps)
---                  [latentState 762 1 0] [mkRecordSIRy sirInfectedData]
---   let lwTrace' = processLWTrace lwTrace
---   liftS $ print $ show lwTrace'
---   let output' =
---         map (\((xs, ys), sampleMap, p) -> ((map fromLatentState xs, ys), sampleMap, p)) lwTrace'
---   return output'
+testSIRLWInf :: Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum PrimVal)], Double)]
+testSIRLWInf = do
+  let sir_n_steps    = length sirInfectedData
+  lwTrace <- LW.lw 100 (Example.hmmSIRNsteps (fixedParams 763 1) sir_n_steps)
+                 [latentState 762 1 0] [mkRecordSIRy sirInfectedData]
+  let lwTrace' = processLWTrace lwTrace
+  liftS $ print $ show lwTrace'
+  let output' =
+        map (\((xs, ys), sampleMap, p) -> ((map fromLatentState xs, ys), sampleMap, p)) lwTrace'
+  return output'
 
--- testSIRMHPost :: Sampler [(Addr, [Double])]
--- testSIRMHPost = do
---   let sir_n_samples = 10
---   bs <- Simulate.simulate sir_n_samples
---           (Example.hmmSIRNsteps (fixedParams 763 1) 5)
---           [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
---   let infectedData    = map snd bs
---       mh_n_iterations = 2000
---   liftS $ print $ "infected data is " ++ show infectedData
---   -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
---   mhTrace <- MH.mh mh_n_iterations (Example.hmmSIRNsteps (fixedParams 763 1) 200) ["ρ", "β", "γ"]
---                         (replicate sir_n_samples $ latentState 762 1 0)
---                         (map mkRecordSIRy infectedData)
---   let mhTrace'    = processMHTrace mhTrace
---       postParams  = extractPostParams (Proxy @Double)  [("ρ", 0), ("β", 0), ("γ", 0)] mhTrace'
---   return postParams
+testSIRMHPost :: Sampler [(Addr, [Double])]
+testSIRMHPost = do
+  bs <- Simulate.simulate 1
+          (Example.hmmSIRNsteps (fixedParams 763 1) 5)
+          [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
+  let infectedData    = snd (head bs)
+      mh_n_iterations = 2000
+  liftS $ print $ "infected data is " ++ show infectedData
+  -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
+  mhTrace <- MH.mh mh_n_iterations (Example.hmmSIRNsteps (fixedParams 763 1) 200) ["ρ", "β", "γ"]
+                        (latentState 762 1 0)
+                        (mkRecordSIRy infectedData)
+  let mhTrace'    = processMHTrace mhTrace
+      postParams  = extractPostParams (Proxy @Double)  [("ρ", 0), ("β", 0), ("γ", 0)] mhTrace'
+  return postParams
 
--- testSIRMHPred :: Sampler ([(Int, Int, Int)], [Int])
--- testSIRMHPred = do
---   mhTrace <- testSIRMHPost
---   let ρ    = drawPredParam "ρ" mhTrace
---       β    = drawPredParam "β" mhTrace
---       γ    = drawPredParam "γ" mhTrace
---   liftS $ print $ show (ρ, β, γ)
---   bs <- Simulate.simulate 1
---                     (Example.hmmSIRNsteps (fixedParams 763 1) 200)
---                     [latentState 762 1 0] [mkRecordSIR (ρ, β, γ)]
---   let output = map (\(xs, ys) -> (map fromLatentState xs, ys)) bs
---   liftS $ print $ show (bs)
-  -- return $ head output
+testSIRMHPred :: Sampler ([(Int, Int, Int)], [Int])
+testSIRMHPred = do
+  mhTrace <- testSIRMHPost
+  let ρ    = drawPredParam "ρ" mhTrace
+      β    = drawPredParam "β" mhTrace
+      γ    = drawPredParam "γ" mhTrace
+  liftS $ print $ show (ρ, β, γ)
+  bs <- Simulate.simulate 1
+                    (Example.hmmSIRNsteps (fixedParams 763 1) 200)
+                    [latentState 762 1 0] [mkRecordSIR (ρ, β, γ)]
+  let output = map (\(xs, ys) -> (map fromLatentState xs, ys)) bs
+  liftS $ print $ show (bs)
+  return $ head output
 
 -- | Testing random distributions
 mkRecordDir :: [[Double]] -> ModelEnv Example.DirEnv
 mkRecordDir ds = #xs := ds <:> nil
-
--- testHalfNormal :: Sampler [String]
-testHalfNormal = do
---  map fst <$> Simulate.simulate 5 Example.halfNorm [1] [mkRecordDir [0.3889326877819943,0.6110673122180057]]
-  LW.lw 1 Example.halfNorm [1] [mkRecordDir [[0.3889326877819943,0.6110673122180057]]]
-  -- let p = prob (HalfNormalDist 1 Nothing Nothing) (0)
-  -- let p' = prob (NormalDist 0 1 Nothing Nothing) 0
-  -- return (p, p')
 
 -- | Topic model over single document
 mkRecordTopic :: ([[Double]], [[Double]], [String]) -> ModelEnv Example.TopicEnv
