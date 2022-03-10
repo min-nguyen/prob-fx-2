@@ -181,7 +181,7 @@ mh n model tags x_0 env_0 = do
 
 mh' :: (es ~ '[Observe, Sample])
    => Int                              -- Number of mhSteps per data point
-   -> (Prog es a)            -- Model awaiting input variable
+   -> Prog es a
    -> [Tag]                            -- Tags indicated sample sites of interest
    -> Sampler (TraceMH a)              -- Trace of all accepted outputs, samples, and logps
 mh' n prog tags = do
