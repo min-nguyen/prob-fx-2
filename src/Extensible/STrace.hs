@@ -48,8 +48,17 @@ extractSamples (x, typ)  =
 
 type SDTrace  = Map Addr (PrimDist, OpenSum PrimVal)
 
+updateSDTrace :: Show x => (Member (State SDTrace) es, OpenSum.Member x PrimVal)
+  => Addr -> Dist x -> x -> Prog es ()
+updateSDTrace α d x  = modify (Map.insert α (PrimDist d, OpenSum.inj x) :: SDTrace -> SDTrace)
+
 fromSDTrace :: FromSTrace env => SDTrace -> ModelEnv env
 fromSDTrace sdtrace = fromSTrace $ snd <$> sdtrace
+
+type LPTrace = Map Addr Double
+
+updateLPTrace :: (Member (State LPTrace) es) => Addr -> Dist x -> x -> Prog es ()
+updateLPTrace α d x  = modify (Map.insert α (logProb d x) :: LPTrace -> LPTrace)
 
 -- instance (UniqueKey x env ~ 'True, KnownSymbol x, Eq a, OpenSum.Member a PrimVal, FromSTrace env) => FromSTrace ((x := a) : env) where
 --   fromSTrace sMap = HCons (extractSamples (ObsVar @x, Proxy @a) sMap) (fromSTrace sMap)

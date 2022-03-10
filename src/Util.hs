@@ -48,6 +48,9 @@ fst3 (a, b, c) = a
 snd3 :: (a, b, c) -> b
 snd3 (a, b, c) = b
 
+thrd3 :: (a, b, c) -> c
+thrd3 (_, _, c) = c
+
 fstsnd3 :: (a, b, c) -> (a, b)
 fstsnd3 (a, b, c) = (a, b)
 
@@ -59,6 +62,7 @@ ones m n = replicate m $ replicate n 1
 
 untuple3 :: [((a, b), c)] -> [(a, b, c)]
 untuple3 = map (\((a, b), c) -> (a, b, c))
+
 
 data Address =
   Address { -- The address of the previous sample statement

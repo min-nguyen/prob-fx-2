@@ -24,11 +24,12 @@ import Data.Maybe
 -- import Data.Extensible hiding (Member)
 import Extensible.ModelEnv
 import Control.Monad
-import Control.Monad.Trans.Class
+import Extensible.IO
 import Extensible.Dist
 import Extensible.Freer
 import Extensible.Model hiding (runModelFree)
 import Extensible.Sampler
+import Extensible.STrace
 import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum(..))
 import Extensible.ObsReader
@@ -74,52 +75,6 @@ Repeat:
    The acceptance ratio is then: i) * ii) / iii)
 -}
 
-
-type SMap  = Map Addr (PrimDist, OpenSum PrimVal)
-type LPMap = Map Addr Double
-type TraceMH a = [(a, SMap, LPMap)]
-
--- instance OpenSum.Member x PrimVal => Show x where
---   show
-
--- -- showPrimVal :: OpenSum.Member x PrimVal => x -> String
--- -- showPrimVal x = show x
-
-extractSamples ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (ObsVar x, Proxy a) -> SMap -> [a]
-extractSamples (x, typ)  =
-    map (fromJust . OpenSum.prj @a . snd . snd)
-  . Map.toList
-  . Map.filterWithKey (\(tag, idx) _ -> tag == varToStr x)
-
-updateSMap :: Show x => OpenSum.Member x PrimVal
-  => Addr -> Dist x -> x -> SMap -> SMap
-updateSMap α d x sMap = Map.insert α (PrimDist d, OpenSum.inj x) sMap
-
-updateLPMap :: Addr -> Dist x -> x -> LPMap -> LPMap
-updateLPMap α d x  = Map.insert α (logProb d x)
-
--- | Compute acceptance probability
--- If the log prob from our new samples is better than our old samples, then we always accept.
--- If the log prob from our new samples is worse than our old samples, then we sometimes accept.
--- Encountering a probability of 0 (i.e. log probability of -infinity) from any individual sample means that the computed probability of the sample map becomes 0. This results in that sample map being rejected. Performing `exp` on `-Infinity` in Haskell produces 0.
-accept :: Addr -> SMap -> SMap -> LPMap -> LPMap -> IO Double
-accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
-  let _X'sampled = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ' \\ Map.keysSet _Ⲭ)
-      _Xsampled  = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ \\ Map.keysSet _Ⲭ')
-  -- putStrLn $ " Xsampled is " ++ show _Xsampled
-  -- putStrLn $ " X'sampled is " ++ show  _X'sampled
-  let dom_logα   = log (fromIntegral $ Map.size _Ⲭ) - log (fromIntegral $ Map.size _Ⲭ')
-  -- putStrLn $ " dom_logα is " ++ show dom_logα
-  let _Xlogα     = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ))
-                         0 (Map.keysSet logℙ \\ _Xsampled)
-  -- putStrLn $ " Xlogα is " ++ show _Xlogα ++ " from " ++ show (logℙ)
-  let _X'logα    = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ'))
-                         0 (Map.keysSet logℙ' \\ _X'sampled)
-  -- putStrLn $ " X'logα is " ++ show _X'logα ++ " from " ++ show (logℙ')
-  -- putStrLn $ " (X'logα, Xlogα) is " ++ show (_Xlogα , _X'logα)
-  -- print $ "dom_logα + _X'logα - _Xlogα is " ++ (show $ dom_logα + _X'logα - _Xlogα)
-  return $ exp (dom_logα + _X'logα - _Xlogα)
-
 {-
 Currently we are:
   1) Taking a list of model inputs "x_0:xs" and a list of observed values "env_0:envs"
@@ -159,6 +114,36 @@ We would do:
 This is already natural for models such as a HMM.
 -}
 
+type TraceMH a = [(a, SDTrace, LPTrace)]
+
+extractSamples ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (ObsVar x, Proxy a) -> SDTrace -> [a]
+extractSamples (x, typ)  =
+    map (fromJust . OpenSum.prj @a . snd . snd)
+  . Map.toList
+  . Map.filterWithKey (\(tag, idx) _ -> tag == varToStr x)
+
+-- | Compute acceptance probability
+-- If the log prob from our new samples is better than our old samples, then we always accept.
+-- If the log prob from our new samples is worse than our old samples, then we sometimes accept.
+-- Encountering a probability of 0 (i.e. log probability of -infinity) from any individual sample means that the computed probability of the sample map becomes 0. This results in that sample map being rejected. Performing `exp` on `-Infinity` in Haskell produces 0.
+accept :: Addr -> SDTrace -> SDTrace -> LPTrace -> LPTrace -> IO Double
+accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
+  let _X'sampled = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ' \\ Map.keysSet _Ⲭ)
+      _Xsampled  = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ \\ Map.keysSet _Ⲭ')
+  -- putStrLn $ " Xsampled is " ++ show _Xsampled
+  -- putStrLn $ " X'sampled is " ++ show  _X'sampled
+  let dom_logα   = log (fromIntegral $ Map.size _Ⲭ) - log (fromIntegral $ Map.size _Ⲭ')
+  -- putStrLn $ " dom_logα is " ++ show dom_logα
+  let _Xlogα     = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ))
+                         0 (Map.keysSet logℙ \\ _Xsampled)
+  -- putStrLn $ " Xlogα is " ++ show _Xlogα ++ " from " ++ show (logℙ)
+  let _X'logα    = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ'))
+                         0 (Map.keysSet logℙ' \\ _X'sampled)
+  -- putStrLn $ " X'logα is " ++ show _X'logα ++ " from " ++ show (logℙ')
+  -- putStrLn $ " (X'logα, Xlogα) is " ++ show (_Xlogα , _X'logα)
+  -- print $ "dom_logα + _X'logα - _Xlogα is " ++ (show $ dom_logα + _X'logα - _Xlogα)
+  return $ exp (dom_logα + _X'logα - _Xlogα)
+
 -- | Run MH for one input and environment
 mh :: (es ~ '[ObsReader env, Dist])
    => Int                              -- Number of mhSteps per data point
@@ -182,12 +167,13 @@ mh n model tags x_0 env_0 = do
 mh' :: (es ~ '[Observe, Sample])
    => Int                              -- Number of mhSteps per data point
    -> Prog es a
+   -> SDTrace
    -> [Tag]                            -- Tags indicated sample sites of interest
    -> Sampler (TraceMH a)              -- Trace of all accepted outputs, samples, and logps
-mh' n prog tags = do
+mh' n prog samples_0 tags = do
   -- Perform initial run of mh
   let α_0 = ("", 0)
-  (y_0, samples_0, logps_0) <- runMH Map.empty α_0 prog
+  (y_0, samples_0, logps_0) <- runMH samples_0 α_0 prog
   -- A function performing n mhsteps for one data point
   let mhs  = foldl (>=>) return (replicate n (mhStep prog tags))
   -- Construct list of n mhsteps, one for each data point
@@ -208,7 +194,7 @@ mhStep model tags trace = do
   -- α_samp <- sample $ DiscrUniformDist 0 2 Nothing
   let sampleSites = if null tags then samples
                     else  Map.filterWithKey (\(tag, i) _ -> tag `elem` tags) samples
-  α_samp_ind <- sample $ DiscrUniformDist 0 (Map.size sampleSites - 1) Nothing Nothing
+  α_samp_ind <- (sample (DiscrUniformDist 0 (Map.size sampleSites - 1) Nothing Nothing))
   -- liftS $ print $ "α_samp_ind is " ++ show α_samp_ind ++ " Map.size samples is " ++ show (Map.size samples)
   -- liftS $ print $ "sample ind is " ++ show α_samp_ind ++ "\n sample sites are " ++ show sampleSites
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
@@ -237,41 +223,34 @@ mhStep model tags trace = do
 
 -- | Run model once under MH
 runMH :: (es ~ '[Observe, Sample])
-  => SMap      -- Previous mh sample set
+  => SDTrace      -- Previous mh sample set
   -> Addr      -- Sample address
   -> Prog es a -- Model
-  -> Sampler (a, SMap, LPMap)
+  -> Sampler (a, SDTrace, LPTrace)
 runMH samples α_samp m = do
   ((a, samples'), logps') <-
                             ( -- This is where the previous run's samples are actually reused.
                               -- We do not reuse logps, we simply recompute them.
-                              runSample α_samp samples
+                              runLift
+                            . runSample α_samp samples
                             . runObserve
                             . runState Map.empty
                             . runState Map.empty
                             . transformMH) m
   return (a, samples', logps')
 
--- transformMH :: (Member Sample es, Member Observe es) =>
---   Prog es a -> Prog (State SMap ': State LPMap ': es) a
--- transformMH = installN @[State SMap, State LPMap] return
---   (\x tx k ->
---       case tx of
---         Sample d α  -> undefined
---         Observe d y -> undefined)
-
--- | Insert stateful operations for SMap and LPMap when either Sample or Observe occur.
+-- | Insert stateful operations for SDTrace and LPTrace when either Sample or Observe occur.
 transformMH :: (Member Sample es, Member Observe es) =>
-  Prog es a -> Prog (State SMap: State LPMap: es) a
+  Prog es a -> Prog (State SDTrace: State LPTrace: es) a
 transformMH (Val x) = return x
 transformMH (Op u k) = do
   case u of
     SampPatt d α
-      -> Op (weaken $ weaken u) (\x -> modify (updateSMap α d x) >>
-                                        modify (updateLPMap α d (unsafeCoerce x)) >>
-                                        transformMH (k x))
+      -> Op (weaken $ weaken u) (\x -> updateSDTrace α d x >>
+                                       updateLPTrace α d x >>
+                                       transformMH (k x))
     ObsPatt d y α
-      -> Op (weaken $ weaken u) (\x -> modify (updateLPMap α d y  :: LPMap -> LPMap) >>
+      -> Op (weaken $ weaken u) (\x -> updateLPTrace α d x >>
                        transformMH (k x))
     _ -> Op (weaken $ weaken u) (transformMH . k)
 
@@ -288,23 +267,28 @@ runObserve = loop 0
            loop (p + p') (k y)
       DecompLeft u'  -> Op u' (loop p . k)
 
+data SampleMH a where
+  SampleMH  :: Dist a -> Addr -> SampleMH a
+
 -- | Run Sample occurrences
-runSample :: Addr -> SMap -> Prog '[Sample] a -> Sampler a
+runSample :: Addr -> SDTrace -> Prog '[Sample] a -> Prog '[Lift Sampler] a
 runSample α_samp samples = loop
   where
-  loop :: Prog '[Sample] a -> Sampler a
+  loop :: Prog '[Sample] a -> Prog '[Lift Sampler] a
   loop (Val x) = return x
   loop (Op u k) = case u of
-      PrintPatt s ->
-        do liftS (putStrLn s) >> loop (k ())
+      -- PrintPatt s ->
+      --   do liftS (putStrLn s) >> loop (k ())
       SampPatt d α ->
-        do x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
-           (loop . k . unsafeCoerce) x
+        do let maybe_y = lookupSample samples d α α_samp
+           case maybe_y of
+             Nothing -> lift (sample d) >>= (loop . k)
+             Just x  -> (loop . k) x
       _  -> error "Impossible: Nothing cannot occur"
 
-lookupSample :: Show a => OpenSum.Member a PrimVal => SMap -> Dist a -> Addr -> Addr -> Sampler (Maybe a)
+lookupSample :: Show a => OpenSum.Member a PrimVal => SDTrace -> Dist a -> Addr -> Addr -> Maybe a
 lookupSample samples d α α_samp
-  | α == α_samp = return Nothing
+  | α == α_samp = Nothing
   | otherwise   = do
     let m = Map.lookup α samples
     case m of
@@ -312,9 +296,9 @@ lookupSample samples d α α_samp
         -- printS $ "comparing " ++ show d ++ " and " ++ show d' ++ " is " ++ show (d == unsafeCoerce d')
         if d == unsafeCoerce d'
            then do -- liftS $ print ("retrieving " ++ show x ++ " for " ++ show d')
-                   return (OpenSum.prj x )
-            else return Nothing
-      Nothing -> return Nothing
+                   OpenSum.prj x
+            else Nothing
+      Nothing -> Nothing
 
 
 

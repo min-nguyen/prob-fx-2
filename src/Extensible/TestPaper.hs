@@ -69,7 +69,7 @@ testLinRegrLWInf n_datapoints n_samples = do
                    [mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints'])]
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
 
-testLinRegrMHPost :: Int -> Int -> Sampler [([Double], MH.LPMap)]
+testLinRegrMHPost :: Int -> Int -> Sampler [([Double], LPTrace)]
 testLinRegrMHPost n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
   mhTrace <- MH.mh n_samples Example.linearRegression [] [0 .. n_datapoints']
@@ -132,7 +132,7 @@ testHMMLWInf hmm_length n_samples = do
                              [0] [mkRecordHMMy hmm_data]
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
 
-testHMMMHPost :: Int -> Int -> Sampler [(Int, MH.LPMap)]
+testHMMMHPost :: Int -> Int -> Sampler [(Int, LPTrace)]
 testHMMMHPost hmm_length n_samples = do
   mhTrace <- MH.mh n_samples (Example.hmmNSteps hmm_length) ["trans_p", "obs_p"]
                              0 (mkRecordHMMy hmm_data)
@@ -160,7 +160,7 @@ testTopicLW n_words n_samples = do
                         [n_words] [mkRecordTopic ([], [], doc_words)]
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
 
-testTopicMHPost :: Int -> Int -> Sampler [([String], MH.LPMap)]
+testTopicMHPost :: Int -> Int -> Sampler [([String], LPTrace)]
 testTopicMHPost n_words n_samples = do
   mhTrace <- MH.mh n_samples (Example.documentDist vocabulary 2) ["φ", "θ"]
                         n_words (mkRecordTopic ([], [], doc_words))
@@ -208,7 +208,7 @@ testSIRMHPost :: Sampler ([Double], [Double], [Double])
 testSIRMHPost = do
   let mh_n_iterations = 5000
   -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
-  mhTrace :: [((Example.LatState, [Example.LatState]), MH.SMap, MH.LPMap)]
+  mhTrace :: [((Example.LatState, [Example.LatState]), SDTrace, LPTrace)]
           <- MH.mh mh_n_iterations (runWriterM . Example.hmmSIRNsteps 20) ["β", "γ", "ρ"]
                         (latentState 762 1 0)
                         (mkRecordSIR ([], [0.009], [], infobs_data))

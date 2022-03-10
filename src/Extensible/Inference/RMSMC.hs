@@ -36,6 +36,8 @@ import qualified Extensible.OpenSum as OpenSum
 import Extensible.OpenSum (OpenSum)
 import Util
 
+
+
 loopSIS :: (Show a, Show ctx, Accum ctx) => Member Sample es
   => Int
   -> Resampler       ctx es a
@@ -55,7 +57,7 @@ loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
 
 rmsmcPopulationHandler :: Members [Observe, Sample] es
   =>         [Prog (NonDet:es) a]
-  -> Prog es [(Prog (NonDet:es) a, (Addr, Double, STrace))]
+  -> Prog es [(Prog (NonDet:es) a, (Addr, Double, SDTrace))]
 rmsmcPopulationHandler progs = do
   -- Merge particles into single non-deterministic program using 'asum', and run to next checkpoint
   progs_ctxs <- (runNonDet . runState Map.empty . traceSamples . breakObserves ) (asum progs)
@@ -63,17 +65,20 @@ rmsmcPopulationHandler progs = do
   return progs_ctxs'
 
 rmsmcResampler :: 
-  Prog '[Observe, Sample] a -> [(Addr, Double, STrace)] -> [(Addr, Double, STrace)] -> [Prog es' a] -> Prog es ([Prog es' a], [ctx])
+     Prog '[Observe, Sample] a -> [(Addr, Double, SDTrace)] -> [(Addr, Double, SDTrace)] -> [Prog es' a]
+  -> Prog '[Observe, Sample] ([Prog es' a], [ctx])
 rmsmcResampler model ctx_0 ctx_1 progs_1 = do
   let α_break       = fst3 (head ctx_0)
   let partial_model = insertBreakpoint α_break model
-
+      straces_accum = zipWith Map.union (map thrd3 ctx_0) (map thrd3 ctx_1)
+      f = map (\sdtrace -> mh' 10 partial_model sdtrace [])  straces_accum
   -- let f = mhStep env model'
   undefined
-traceSamples :: (Member Sample es) => Prog es a -> Prog (State STrace : es) a
+
+traceSamples :: (Member Sample es) => Prog es a -> Prog (State SDTrace : es) a
 traceSamples  (Val x)  = return x
 traceSamples  (Op u k) = case u of
-    SampPatt d α ->  Op (weaken u) (\x -> do updateSTrace α x
+    SampPatt d α ->  Op (weaken u) (\x -> do updateSDTrace α d x
                                              traceSamples (k x))
     _   -> Op (weaken u) (traceSamples . k)
 
