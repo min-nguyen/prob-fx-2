@@ -172,3 +172,8 @@ transformMH (Free u k) = do
 ```
 
 - **effect-abstractions-constr-kinds-dep-map**: Extended version of `effect-abstractions-constr-kinds` which uses dependent maps `DMap (Key Addr)` as sample maps, as opposed to `Map Addr (OpenSum' PrimVal)`.
+
+- **icfp22-version**:
+Extended **effect-abstractions-constr-kinds** and cleaned up. 
+
+- **weakened-handlers**: extended icfp22-version, which reimplements handlers to use `weaken`
