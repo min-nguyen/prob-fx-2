@@ -72,6 +72,10 @@ decomp (EffectSum n rv) = Left  $ EffectSum (n-1) rv
 weaken :: EffectSum es a -> EffectSum (any ': es) a
 weaken (EffectSum n ta) = EffectSum (n + 1) ta
 
+weaken' :: Prog es a -> Prog (any : es) a
+weaken' (Op op k) = Op (weaken op) (weaken' . k)
+weaken' (Val x)   = Val x
+
 infixr 5 :++:
 type family xs :++: ys where
   '[] :++: ys = ys

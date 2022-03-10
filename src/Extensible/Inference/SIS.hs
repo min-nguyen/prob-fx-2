@@ -36,9 +36,9 @@ import Util
 
 {- Takes previous contexts of particles, the contexts of particles since previous execution, and the current particles,
   , and decides which particles and contexts to continue with. -}
-type Resampler       ctx es es' a = [ctx] -> [ctx] -> [Prog es' a] -> Prog es ([Prog es' a], [ctx])
+type Resampler       ctx es a = [ctx] -> [ctx] -> [Prog (NonDet : es) a] -> Prog es ([Prog (NonDet : es) a], [ctx])
 {- Takes list of particles and runs them to the next step, producing a list of particles and their yielded contexts -}
-type ParticleHandler ctx es es' a = [Prog es' a] -> Prog es [(Prog es' a, ctx)]
+type ParticleHandler ctx es a = [Prog (NonDet : es) a] -> Prog es [(Prog (NonDet : es) a, ctx)]
 
 class Accum ctx where
   accum  :: ctx -> ctx -> ctx
@@ -52,22 +52,22 @@ sis :: forall a env ctx es'.
      (Accum ctx, Show ctx, FromSTrace env, Show a)
   -- => Member NonDet es'
   => Int
-  -> Resampler       ctx '[Observe,Sample] [Observe, Sample] a
-  -> ParticleHandler ctx '[Observe, Sample] [Observe, Sample] a
+  -> Resampler       ctx '[Observe, Sample]  a
+  -> ParticleHandler ctx '[Observe, Sample] a
   -> Model env [ObsReader env, Dist] a
   -> ModelEnv env
   -> Sampler [(a, ctx)]
 sis n_particles resampler pophdl model env = do
   let prog_0  = (runDist . runObsReader env) (runModel model)
-      progs   = replicate n_particles prog_0
+      progs   = replicate n_particles (weaken' prog_0)
       ctxs    = replicate n_particles aempty
   (runSample . runObserve ) (loopSIS n_particles resampler pophdl (progs, ctxs))
 
 loopSIS :: (Show a, Show ctx, Accum ctx)
   => Int
-  -> Resampler       ctx es es' a
-  -> ParticleHandler ctx es es' a
-  -> ([Prog es' a], [ctx])   -- Particles and corresponding contexts
+  -> Resampler       ctx es  a
+  -> ParticleHandler ctx es a
+  -> ([Prog (NonDet:es) a], [ctx])   -- Particles and corresponding contexts
   -> Prog es [(a, ctx)]
 loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
   -- Run particles to next checkpoint

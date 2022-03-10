@@ -47,26 +47,23 @@ logMeanExp :: [Double] -> Double
 logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
                      in   log ( (1.0/fromIntegral _L) * (sum (map exp logWₙₛ₁)))
 
---  : Observe : State STrace : NonDet : Sample
-
 smc :: forall env es' a. (FromSTrace env, Show a) =>
-  (es' ~ (ObsReader env : Dist : '[])) =>
+  (es' ~ [ObsReader env, Dist]) =>
   Int -> Model env es' a -> ModelEnv env -> Sampler [(a, Double, ModelEnv env)]
 smc n_particles model env = do
   as_ps_straces <- sis n_particles smcResampler smcPopulationHandler model env
   return $ map (\(a, (p, strace)) -> (a, p, fromSTrace @env strace)) as_ps_straces
 
 smcPopulationHandler :: Members [Observe, Sample] es
-  =>         [Prog es a]
-  -> Prog es [(Prog es a, (Double, STrace))]
+  =>         [Prog (NonDet:es) a]
+  -> Prog es [(Prog (NonDet:es) a, (Double, STrace))]
 smcPopulationHandler progs = do
   -- Merge particles into single non-deterministic program using 'asum', and run to next checkpoint
-  let p = (asum $ map (branchWeaken 1) progs)
-  progs_ctxs <- (runNonDet . runState Map.empty . traceSamples . breakObserve ) (asum $ map (branchWeaken 1) progs)
+  progs_ctxs <- (runNonDet . runState Map.empty . traceSamples . breakObserve ) (asum progs)
   let progs_ctxs' = map (\((prog, p), strace) -> (prog, (p, strace))) progs_ctxs
   return progs_ctxs'
 
-smcResampler :: Member Sample es => Resampler (Double, STrace) es es' a
+smcResampler :: Member Sample es => Resampler (Double, STrace) es a
 smcResampler logWs_straces_0 logWs_straces_1sub0 progs = do
   let -- Get log weights and sample traces from previous particle run
       (logWs_0    , straces_0)      = unzip logWs_straces_0
