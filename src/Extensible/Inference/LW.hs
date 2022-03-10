@@ -32,12 +32,11 @@ type TraceLW a = [(a, STrace, Double)]
 lw :: (es ~ '[ObsReader env, Dist])
    => Int                              -- Number of lw iterations per data point
    -> (b -> Model env es a)            -- Model awaiting input variable
-   -> [b]                              -- List of model input variables
-   -> [ModelEnv env]                       -- List of model observed variables
+   -> b                              -- List of model input variables
+   -> ModelEnv env                       -- List of model observed variables
    -> Sampler (TraceLW a)              -- List of n likelihood weightings for each data point
-lw n model xs envs = do
-  let runN (x, env) = replicateM n (runLW env (model x))
-  concat <$> mapM runN (zip xs envs)
+lw n model x env = do
+  replicateM n (runLW env (model x))
 
 -- | Run LW once for single data point
 runLW :: es ~ '[ObsReader env, Dist]

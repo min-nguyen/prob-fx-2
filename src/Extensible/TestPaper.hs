@@ -49,27 +49,27 @@ mkRecordLinRegrY :: [Double] -> ModelEnv Example.LinRegrEnv
 mkRecordLinRegrY y_vals =
   (#y := y_vals) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:> nil
 
-testLinRegrBasic :: Int -> Int -> Sampler [[Double]]
+testLinRegrBasic :: Int -> Int -> Sampler [[(Double, Double)]]
 testLinRegrBasic n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
-  bs :: [([Double], ModelEnv Example.LinRegrEnv)]
+  bs :: [([(Double, Double)], ModelEnv Example.LinRegrEnv)]
       <- Simulate.simulate n_samples Example.linearRegression
                     [[0 .. n_datapoints']]
                     [mkRecordLinRegr ([], [1.0], [0.0], [1.0])]
   return $ map fst bs
 
-testLinRegrLWInf :: Int -> Int -> Sampler [([Double], Double)]
+testLinRegrLWInf :: Int -> Int -> Sampler [([(Double, Double)], Double)]
 testLinRegrLWInf n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
-  lwTrace :: [([Double],       -- y data points
+  lwTrace :: [([(Double, Double)],       -- y data points
                 STrace,  -- sample trace
                 Double)]       -- likelihood
           <- LW.lw n_samples Example.linearRegression
-                   [[0 .. n_datapoints']]
-                   [mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints'])]
+                   [0 .. n_datapoints']
+                   (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints']))
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
 
-testLinRegrMHPost :: Int -> Int -> Sampler [([Double], LPTrace)]
+testLinRegrMHPost :: Int -> Int -> Sampler [([(Double, Double)], LPTrace)]
 testLinRegrMHPost n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
   mhTrace <- MH.mh n_samples Example.linearRegression [] [0 .. n_datapoints']
@@ -114,7 +114,7 @@ hmm_data = [0,1,1,3,4,5,5,5,6,5,6,8,8,9,7,8,9,8,10,10,7,8,10,9,10,10,14,14,14,15
 testHMMLWInf :: Int -> Int -> Sampler [(Int, Double)]
 testHMMLWInf hmm_length n_samples = do
   lwTrace <- LW.lw n_samples (Example.hmmNSteps hmm_length)
-                             [0] [mkRecordHMMy hmm_data]
+                             0 (mkRecordHMMy hmm_data)
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
 
 testHMMMHPost :: Int -> Int -> Sampler [(Int, LPTrace)]
@@ -142,7 +142,7 @@ testTopicBasic n_words n_samples = do
 testTopicLW :: Int -> Int -> Sampler [([String], Double)]
 testTopicLW n_words n_samples = do
   lwTrace <- LW.lw n_samples (Example.documentDist vocabulary 2)
-                        [n_words] [mkRecordTopic ([], [], doc_words)]
+                        n_words (mkRecordTopic ([], [], doc_words))
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
 
 testTopicMHPost :: Int -> Int -> Sampler [([String], LPTrace)]

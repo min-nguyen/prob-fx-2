@@ -90,28 +90,26 @@ testLinRegrBasic = do
   --                   (map mkRecordLinRegrY [[-0.3], [0.75], [2.43], [3.5], [3.2]])
   return $ bs
 
-
-testLinRegrLWSim :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
+testLinRegrLWSim :: Sampler [([(Double, Double)], [(Addr, OpenSum PrimVal)], Double)]
 testLinRegrLWSim = do
   -- Run linear model with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
   let lw_n_iterations = 3
       xs  = concat [ replicate 11 x | x <- [0 .. 10]]
-  lwTrace <- LW.lw lw_n_iterations Example.linearRegressionOne
+  lwTrace <- LW.lw lw_n_iterations Example.linearRegression
                     xs
-                    (concat $ repeat $ map (\y -> mkRecordLinRegr ([y], [3], [2], [2.5]))
-                      [0 .. 10])
+                    (mkRecordLinRegr ([0 .. 10], [3], [2], [2.5]))
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
 -- | [(datapoints, samples, likelihood)]
-testLinRegrLWInf :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
+testLinRegrLWInf :: Sampler [([(Double, Double)], [(Addr, OpenSum PrimVal)], Double)]
 testLinRegrLWInf = do
   -- Run likelihood weighting inference over linearRegression
   {- This should output the provided fixed set of data points on the x and y axis, where each point has a different probability (due to us observing the probability of given y's). Also returns a trace of parameters and their likelihoods -}
   let  lw_n_iterations = 100
-  lwTrace <- LW.lw lw_n_iterations Example.linearRegressionOne
+  lwTrace <- LW.lw lw_n_iterations Example.linearRegression
                     [0 .. 100]
-                    (map (mkRecordLinRegrY . (:[]) ) (map ((+2) . (*3)) [0 .. 100]))
+                    (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. 100]))
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
@@ -164,7 +162,7 @@ testLogRegrBasic = do
                          (map mkRecordLogRegrL [[False], [False], [True], [False], [True]])
   return $ bs
 
-testLogRegrLWSim :: Sampler [((Double, Bool), [(Addr, OpenSum PrimVal)], Double)]
+testLogRegrLWSim :: Sampler [([(Double, Bool)], [(Addr, OpenSum PrimVal)], Double)]
 testLogRegrLWSim = do
   -- Run logistic model with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
   bs <- Simulate.simulate 1 Example.logisticRegressionOne
@@ -172,12 +170,12 @@ testLogRegrLWSim = do
                          (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
   let (xs, ys) = unzip bs
   let lw_n_iterations = 3
-  lwTrace <- LW.lw lw_n_iterations Example.logisticRegressionOne
-             xs (map (\y -> mkRecordLogRegr ([y], [2], [-0.15])) ys)
+  lwTrace <- LW.lw lw_n_iterations Example.logisticRegression
+             xs (mkRecordLogRegr (ys, [2], [-0.15]))
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
-testLogRegrLWInf :: Sampler [((Double, Bool), [(Addr, OpenSum PrimVal)], Double)]
+testLogRegrLWInf :: Sampler [([(Double, Bool)], [(Addr, OpenSum PrimVal)], Double)]
 testLogRegrLWInf = do
   -- Using fixed model parameters, generate some sample data points to learn
   let n_samples = 1
@@ -186,7 +184,7 @@ testLogRegrLWInf = do
                          (repeat $ mkRecordLogRegr ([], [2], [-0.15]))
   let (xs, ys) = (map fst bs, map snd bs)
   -- Perform inference against these data points
-  lwTrace <- LW.lw 5 Example.logisticRegressionOne xs (map (mkRecordLogRegrL . (:[])) ys)
+  lwTrace <- LW.lw 5 Example.logisticRegression xs (mkRecordLogRegrL ys)
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
@@ -215,161 +213,6 @@ testLogRegrMHPred = do
                       (repeat $ mkRecordLogRegr ([], mu, b))
   return $ bs
 
--- {- Bayesian Neural Network for linear regression -}
-
-mkRecordNN :: ([Double], [Double], [Double], [Double])
-           -> ModelEnv Example.NNEnv
-mkRecordNN (yobs_vals, weight_vals, bias_vals, sigm_vals) =
-  #yObs := yobs_vals <:> #weight := weight_vals <:> #bias := bias_vals <:> #sigma := sigm_vals <:> nil
-
-mkRecordNNy :: Double
-           -> ModelEnv Example.NNEnv
-mkRecordNNy yobs_val =
-  #yObs := [yobs_val] <:> #weight := [] <:> #bias := [] <:> #sigma := [] <:> nil
-
-testNNLinBasic :: Sampler  [(Double, Double)]
-testNNLinBasic = do
-  -- Run simulate simulation over neural network
-  bs <- Simulate.simulate 1 (Example.nnLinModel 3)
-                         (map (/1) [0 .. 300])
-                         (repeat $ mkRecordNN ([], [1, 5, 8],
-                                                   [2, -5, 1],
-                                                   [4.0]))
-  return $ bs
-
-testNNLinLWSim :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
-testNNLinLWSim = do
-  -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
-  let xs  = concat [ replicate 11 x | x <- [0 .. 10]]
-  lwTrace <- LW.lw 1 (Example.nnLinModel 3)
-                    xs
-                    (concat $ repeat $ map (\y -> mkRecordNN ([y], [1, 5, 8],
-                                              [2, -5, 1],
-                                              [2.0])) [0 .. 10])
-  let lwTrace' = processLWTrace lwTrace
-  return lwTrace'
-
-testNNLinLWInf :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
-testNNLinLWInf = do
-  -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
-  lwTrace <- LW.lw 1  (Example.nnLinModel 3)
-                      (map (/50) [0 .. 300])
-                      (map (\y -> mkRecordNN ([y], [], [], []))
-                           [ x | x <- map (/50) [0 .. 300] ])
-  let lwTrace' = processLWTrace lwTrace
-  return lwTrace'
-
-{- Bayesian neural network v2 -}
-testNNStepBasic :: Sampler  [(Double, Double)]
-testNNStepBasic = do
-  let n_samples = 1 -- Run simulate simulation over neural network
-  bs <- Simulate.simulate n_samples (Example.nnStepModel 3)
-                              (map (/1) [-100 .. 100])
-                              (repeat $ mkRecordNN ([], [1, 5, 8],
-                                                        [2, -5, 1],
-                                                        [4.0]))
-  return $ bs
-
-testNNStepLWSim :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
-testNNStepLWSim = do
-  let xs  = concat [ replicate 31 x | x <- [-10 .. 10]]
-      -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
-  lwTrace <- LW.lw 1 (Example.nnStepModel 3)
-                    xs
-                    (concat $ repeat $ map (\y -> mkRecordNN ([y], [1, 5, 8],
-                                              [2, -5, 1],
-                                              [2.0])) [-20 .. 10])
-  let lwTrace' = processLWTrace lwTrace
-  return lwTrace'
-
-testNNStepLWSim2 :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
-testNNStepLWSim2 = do
-  -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
-  lwTrace <- LW.lw 1  (Example.nnLinModel 3)
-                      (map (/50) [-200 .. 200])
-                      (map (\y -> mkRecordNN ([y], [1, 5, 8],
-                                                   [2, -5, 1],
-                                                   [2.0]))
-                           [ sin x | x <- map (/50) [-200 .. 200] ])
-  let lwTrace' = processLWTrace lwTrace
-  return lwTrace'
-
-testNNStepLWInf :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
-testNNStepLWInf = do
-  -- Run nn with fixed parameters, inputs, and outputs, to get likelihood of every data point over a sine curve
-  lwTrace <- LW.lw 1  (Example.nnLinModel 3)
-                      (map (/50) [-200 .. 200])
-                      (map (\y -> mkRecordNN ([y], [], [], []))
-                           [ sin x | x <- map (/50) [-200 .. 200] ])
-  let lwTrace' = processLWTrace lwTrace
-  return lwTrace'
-
--- | Another neural network variation for logistic regression
-mkRecordNNLog :: ([Bool], [Double])
-           -> ModelEnv Example.NNLogEnv
-mkRecordNNLog (yobs_vals, weight_vals) =
-  #yObs := yobs_vals <:> #weight := weight_vals <:> nil
-
-mkRecordNNLogy :: Bool -> ModelEnv Example.NNLogEnv
-mkRecordNNLogy yobs_val =
-  #yObs := [yobs_val] <:> #weight := [] <:> nil
-
-testNNLogBasic :: Sampler [((Double, Double), Bool)]
-testNNLogBasic = do
-  let -- Run simulate simulation over neural network
-      w1 = [0.18, 0.36, -1.29, 0.094, -1.64, 0.65]
-      w2 = [0.147, -0.417, -0.278, -1.275,0.568,-0.785,0.074,0.351,0.732]
-      w3 = [0.295, 0.414, -0.834]
-  bs <- Simulate.simulate 1 (Example.nnLogModel 3)
-                      nnLogX
-                      (repeat $ mkRecordNNLog ([], w1 ++ w2 ++ w3))
-  return $ bs
-
-testNNLogBasic' :: Sampler [((Double, Double), Bool)]
-testNNLogBasic' = do
-  let -- Run simulate simulation over neural network
-      w1 = [0.18, 0.36, -1.29, 0.094, -1.64, 0.65]
-      w2 = [0.147, -0.417, -0.278, -1.275,0.568,-0.785,0.074,0.351,0.732]
-      w3 = [0.295, 0.414, -0.834]
-  bs <- Simulate.simulate 1 (Example.nnLogModel 3)
-                      nnLogX
-                      (map (\y -> mkRecordNNLog ([y], w1 ++ w2 ++ w3)) nnLogY)
-  return $ bs
-
-
-{- Sine Model -}
-testSinBasic :: Sampler [(Double, Double)]
-testSinBasic = do
-  -- Simulate a sine curve
-  bs <- Simulate.simulate 1 Example.sineModel
-                       (map (/50) [0 .. 200])
-                       (repeat $ mkRecordLinRegr ([], [5], [0], [0.1]))
-  return $ bs
-
-testSinLWSim :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
-testSinLWSim = do
-  -- Run sine model with fixed parameters, inputs, and outputs, to get likelihood of every data point over a uniform area
-  let xs  = concat [ replicate 101 x | x <- [0 .. 100]]
-  lwTrace <- LW.lw 1 Example.sineModel
-                    xs
-                    (concat $ repeat $ map (\y -> mkRecordLinRegr ([y], [0.1], [0], [0.1]))
-                    (map (/100) [-100 .. 100]))
-  let lwTrace' = processLWTrace lwTrace
-  return lwTrace'
-
-testSinLWInf :: Sampler [((Double, Double), [(Addr, OpenSum PrimVal)], Double)]
-testSinLWInf = do
-  -- Generate data points from sine model with fixed parameters
-  let xs = map (/50) [0 .. 200]
-  bs <- Simulate.simulate 1 Example.sineModel
-                    xs
-                    (repeat $ mkRecordLinRegr ([], [2], [0], [0.1]))
-  let (xs, ys) = (map fst bs, map snd bs)
-  -- Perform inference against these data points to try and learn sine model parameters
-  lwTrace <- LW.lw 3 Example.sineModel xs (map (mkRecordLinRegrY . (:[])) ys)
-  let lwTrace' = processLWTrace lwTrace
-  return lwTrace'
-
 {- Hidden markov model -}
 
 mkRecordHMM :: ([Int], Double, Double) -> ModelEnv Example.HMMEnv
@@ -390,24 +233,22 @@ testHMMLWSim :: Sampler [(([Int], [Int]), [(Addr, OpenSum PrimVal)], Double)]
 testHMMLWSim = do
   let hmm_n_steps    = 10
       hmm_n_samples  = 10
-  lwTrace <- LW.lw 1 (Example.hmmNSteps hmm_n_steps)
-                 (replicate hmm_n_samples 0)
-                 (map ((\ys -> mkRecordHMM (ys, 0.5, 0.5)) . replicate hmm_n_steps)
-                  [0 .. hmm_n_samples])
+  lwTrace <- LW.lw hmm_n_samples (Example.hmmNSteps hmm_n_steps)
+                    0
+                    (mkRecordHMM ([0 .. hmm_n_steps], 0.5, 0.5))
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
 testHMMLWInf :: Sampler [(([Int], [Int]), [(Addr, OpenSum PrimVal)], Double)]
 testHMMLWInf = do
   let hmm_n_steps   = 10
-      hmm_n_samples = 10
-  bs <- Simulate.simulate hmm_n_samples (Example.hmmNSteps hmm_n_steps)
+  bs <- Simulate.simulate 1 (Example.hmmNSteps hmm_n_steps)
                     [0] [mkRecordHMM ([], 0.9, 0.1)]
   let lw_n_iterations = 100
-      (_, yss) = unzip bs
-  lwTrace <- LW.lw lw_n_iterations  (Example.hmmNSteps hmm_n_steps)
-                                (replicate hmm_n_samples 0)
-                                (map mkRecordHMMy yss)
+      (_, yss) = head bs
+  lwTrace <- LW.lw lw_n_iterations (Example.hmmNSteps hmm_n_steps)
+                                0
+                                (mkRecordHMMy yss)
   let lwTrace' = processLWTrace lwTrace
   return lwTrace'
 
@@ -474,7 +315,7 @@ testSIRLWInf :: Sampler [(([(Int, Int, Int)], [Int]), [(Addr, OpenSum PrimVal)],
 testSIRLWInf = do
   let sir_n_steps    = length sirInfectedData
   lwTrace <- LW.lw 100 (Example.hmmSIRNsteps (fixedParams 763 1) sir_n_steps)
-                 [latentState 762 1 0] [mkRecordSIRy sirInfectedData]
+                 (latentState 762 1 0) (mkRecordSIRy sirInfectedData)
   let lwTrace' = processLWTrace lwTrace
   liftS $ print $ show lwTrace'
   let output' =

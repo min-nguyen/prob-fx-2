@@ -81,7 +81,7 @@ linearRegressionOne x = do
 
 linearRegression :: forall env rs .
   Observables env '["y", "m", "c", "σ"] Double =>
-  [Double] -> Model env rs [Double]
+  [Double] -> Model env rs [(Double, Double)]
 linearRegression xs = do
   m <- normal' 0 3 #m
   c <- normal' 0 5 #c
@@ -89,7 +89,7 @@ linearRegression xs = do
   ys <- foldM (\ys x -> do
                     y <- normal' (m * x + c) σ #y
                     return (y:ys)) [] xs
-  return ys
+  return (zip xs ys)
 
 type LogRegrEnv =
     '[  "label" ':= Bool,
