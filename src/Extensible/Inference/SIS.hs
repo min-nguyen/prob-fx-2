@@ -19,9 +19,9 @@ import Data.Map (Map)
 import Extensible.ModelEnv
 import Control.Monad
 import Control.Applicative
-import Control.Monad.Trans.Class
 import Extensible.Dist
 import Extensible.Freer
+import Extensible.IO
 import Extensible.Model
 import Extensible.NonDet
 import Extensible.Sampler
@@ -48,12 +48,12 @@ instance (Accum ctx1, Accum ctx2) => Accum (ctx1, ctx2) where
   aempty = (aempty, aempty)
   accum (xs, ys) (xs', ys') = (accum xs xs', accum ys ys')
 
-sis :: forall a env ctx es'.
+sis :: forall a env ctx es.
      (Accum ctx, Show ctx, FromSTrace env, Show a)
   -- => Member NonDet es'
   => Int
-  -> Resampler       ctx '[Observe, Sample]  a
-  -> ParticleHandler ctx '[Observe, Sample] a
+  -> Resampler       ctx (Observe : Sample : '[])  a
+  -> ParticleHandler ctx (Observe : Sample : '[]) a
   -> Model env [ObsReader env, Dist] a
   -> ModelEnv env
   -> Sampler [(a, ctx)]
@@ -61,13 +61,13 @@ sis n_particles resampler pophdl model env = do
   let prog_0  = (runDist . runObsReader env) (runModel model)
       progs   = replicate n_particles (weaken' prog_0)
       ctxs    = replicate n_particles aempty
-  (runSample . runObserve ) (loopSIS n_particles resampler pophdl (progs, ctxs))
+  (runSample . runObserve) (loopSIS n_particles resampler pophdl (progs, ctxs))
 
 loopSIS :: (Show a, Show ctx, Accum ctx)
   => Int
   -> Resampler       ctx es  a
   -> ParticleHandler ctx es a
-  -> ([Prog (NonDet:es) a], [ctx])   -- Particles and corresponding contexts
+  -> ([Prog (NonDet : es) a], [ctx])   -- Particles and corresponding contexts
   -> Prog es [(a, ctx)]
 loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
   -- Run particles to next checkpoint
@@ -88,10 +88,10 @@ runSample = loop
   loop (Op u k) =
     case u of
       SampPatt d α ->
-        sample d >>= \x -> -- printS ("Sampled " ++ show x ++ " from " ++ show d) >>
-                    loop (k x)
+        (sample d) >>= \x -> --lift (printS ("Sampled " ++ show x ++ " from " ++ show d)) >>
+          loop (k x)
       PrintPatt s  ->
-        liftS (putStrLn s) >>= loop . k
+        (liftS (putStrLn s)) >>= loop . k
       _         -> error "Impossible: Nothing cannot occur"
 
 runObserve :: Prog (Observe : es) a -> Prog es a

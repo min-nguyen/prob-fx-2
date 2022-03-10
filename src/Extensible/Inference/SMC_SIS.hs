@@ -19,12 +19,13 @@ import Data.Map (Map)
 import Extensible.ModelEnv
 import Control.Monad
 import Control.Applicative
-import Control.Monad.Trans.Class
+
 import Extensible.Dist
 import Extensible.Freer
 import Extensible.Model
 import Extensible.NonDet
 import Extensible.Sampler
+import Extensible.IO
 import Extensible.ObsReader
 import Extensible.State
 import Extensible.STrace

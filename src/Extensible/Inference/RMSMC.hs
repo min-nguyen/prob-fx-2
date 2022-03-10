@@ -19,12 +19,12 @@ import Data.Map (Map)
 import Extensible.ModelEnv
 import Control.Monad
 import Control.Applicative
-import Control.Monad.Trans.Class
 import Extensible.Dist
 import Extensible.Freer
 import Extensible.Model
 import Extensible.NonDet
 import Extensible.Sampler
+import Extensible.IO
 import Extensible.ObsReader
 import Extensible.State
 import Extensible.STrace
@@ -64,14 +64,14 @@ rmsmcPopulationHandler progs = do
   let progs_ctxs' = map (\((prog, α, p), strace) -> (prog, (α, p,  strace))) progs_ctxs
   return progs_ctxs'
 
-rmsmcResampler :: 
+rmsmcResampler :: forall es' a ctx.
      Prog '[Observe, Sample] a -> [(Addr, Double, SDTrace)] -> [(Addr, Double, SDTrace)] -> [Prog es' a]
-  -> Prog '[Observe, Sample] ([Prog es' a], [ctx])
+  -> Prog '[Observe, Sample, Lift Sampler] ([Prog es' a], [ctx])
 rmsmcResampler model ctx_0 ctx_1 progs_1 = do
   let α_break       = fst3 (head ctx_0)
   let partial_model = insertBreakpoint α_break model
       straces_accum = zipWith Map.union (map thrd3 ctx_0) (map thrd3 ctx_1)
-      f = map (\sdtrace -> mh' 10 partial_model sdtrace [])  straces_accum
+  f <- lift $ sequence $ map (\sdtrace -> mh' 10 partial_model sdtrace [])  straces_accum
   -- let f = mhStep env model'
   undefined
 

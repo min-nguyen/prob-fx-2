@@ -231,8 +231,7 @@ runMH samples α_samp m = do
   ((a, samples'), logps') <-
                             ( -- This is where the previous run's samples are actually reused.
                               -- We do not reuse logps, we simply recompute them.
-                              runLift
-                            . runSample α_samp samples
+                              runSample α_samp samples
                             . runObserve
                             . runState Map.empty
                             . runState Map.empty
@@ -271,10 +270,10 @@ data SampleMH a where
   SampleMH  :: Dist a -> Addr -> SampleMH a
 
 -- | Run Sample occurrences
-runSample :: Addr -> SDTrace -> Prog '[Sample] a -> Prog '[Lift Sampler] a
+runSample :: Addr -> SDTrace -> Prog '[Sample] a -> Sampler a
 runSample α_samp samples = loop
   where
-  loop :: Prog '[Sample] a -> Prog '[Lift Sampler] a
+  loop :: Prog '[Sample] a -> Sampler a
   loop (Val x) = return x
   loop (Op u k) = case u of
       -- PrintPatt s ->
@@ -282,7 +281,7 @@ runSample α_samp samples = loop
       SampPatt d α ->
         do let maybe_y = lookupSample samples d α α_samp
            case maybe_y of
-             Nothing -> lift (sample d) >>= (loop . k)
+             Nothing -> sample d >>= (loop . k)
              Just x  -> (loop . k) x
       _  -> error "Impossible: Nothing cannot occur"
 
