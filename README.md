@@ -1,1 +1,1 @@
-- **effect-abstractions-constr-kinds-dep-map**: Extended version of `effect-abstractions-constr-kinds` which uses dependent maps `DMap (Key Addr)` as sample maps, as opposed to `Map Addr (OpenSum' PrimVal)`.
+- **dep-map**: Uses dependent maps `DMap (Key Addr)` as sample maps, as opposed to `Map Addr (OpenSum' PrimVal)`.
