@@ -2,8 +2,8 @@
 {-# HLINT ignore "Use camelCase" #-}
 module Main where
 import Criterion.Main
-import Extensible.Test
-import Extensible.Sampler
+import Test
+import Sampler
 
 
 main :: IO ()
