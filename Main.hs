@@ -33,7 +33,8 @@ main = do
   -- trace <- sampleIO $ testHMMLW 10 2000
   -- trace <- sampleIO $ testHMMMH 10 2000
   -- trace <- sampleIOFixed $ testTopicSim 10 10
-  trace <- sampleIOFixed $ testTopicMHPred 10 1000
+  trace <- sampleIOFixed $ testTopicMHPost 10 1000
+  -- trace <- sampleIOFixed $ testTopicMHPred 10 1000
   -- trace <- sampleIOFixed testSIRBasic
   -- trace <- sampleIOFixed testSIRMHPost
   -- trace <- sampleIOFixed testSIRSBasic

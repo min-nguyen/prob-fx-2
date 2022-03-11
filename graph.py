@@ -175,10 +175,31 @@ def main():
     ax.bar(ws, freqs)
     ax.set_xticklabels(ws)
     plt.show()
+  if arg == "topic-mh":
+    plt.rcParams.update({'font.family': 'serif'})
+    # plt.rcParams.update({'font.weight': 'bold'})
+    plt.rcParams.update({'font.size': 15})
+    ws          = ['DNA', 'evolution', 'parsing', 'phonology']
+    # data is in format (topic_ps, word_ps)
+    doc_topic_ps     = data[0][-1][0]
+    topic_0_word_ps  = data[1][-1][0]
+    topic_1_word_ps  = data[1][-1][1]
 
+    fig, ax = plt.subplots(nrows=1)
+    ax.bar(['Topic 0', 'Topic 1'], doc_topic_ps, 0.8)
+    ax.set_xticklabels(['Topic 0', 'Topic 1'])
+    plt.title('Document-Topic Distribution', fontname="serif")
+    fig0, ax0 = plt.subplots(nrows=1)
+    ax0.bar(ws, topic_0_word_ps, 0.8)
+    ax0.set_xticklabels(ws)
+    plt.title('Topic-Word Distribution 0', fontname="serif")
+    fig1, ax1 = plt.subplots(nrows=1)
+    ax1.bar(ws, topic_1_word_ps, 0.8)
+    ax1.set_xticklabels(ws)
+    plt.title('Topic-Word Distribution 1', fontname="serif")
+    plt.show()
   if arg == "sir-basic":
     # we expect data to be in the format of (sir-values :: [(Int, Int, Int)], infected count :: [Int])
-
     # y axis
     sir_values   = np.array(data[0])
     obs_infected = np.array(data[1])
