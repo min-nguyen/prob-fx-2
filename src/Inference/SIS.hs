@@ -34,7 +34,7 @@ import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
 import Util
 
-{- Takes previous contexts of particles, the contexts of particles since previous execution, and the current particles,
+{- Takes previous contexts of particles, the new contexts of particles since previous execution, and the current particles,
   , and decides which particles and contexts to continue with. -}
 type Resampler       ctx es a = [ctx] -> [ctx] -> [Prog (NonDet : es) a] -> Prog es ([Prog (NonDet : es) a], [ctx])
 {- Takes list of particles and runs them to the next step, producing a list of particles and their yielded contexts -}

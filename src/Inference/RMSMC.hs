@@ -65,13 +65,16 @@ rmsmcPopulationHandler progs = do
   return progs_ctxs'
 
 rmsmcResampler :: forall es' a ctx.
-     Prog '[Observe, Sample] a -> [(Addr, Double, SDTrace)] -> [(Addr, Double, SDTrace)] -> [Prog es' a]
+     Prog '[Observe, Sample] a -- the initial program, representing the entire unevaluated model execution (having already provided a model environment)
+  -> [(Addr, Double, SDTrace)]
+  -> [(Addr, Double, SDTrace)]
+  -> [Prog es' a]
   -> Prog '[Observe, Sample, Lift Sampler] ([Prog es' a], [ctx])
 rmsmcResampler model ctx_0 ctx_1 progs_1 = do
   let α_break       = fst3 (head ctx_0)
   let partial_model = insertBreakpoint α_break model
       straces_accum = zipWith Map.union (map thrd3 ctx_0) (map thrd3 ctx_1)
-  f <- lift $ sequence $ map (\sdtrace -> mh' 10 partial_model sdtrace [])  straces_accum
+  f <- lift $ mapM (\sdtrace -> mh' 10 partial_model sdtrace []) straces_accum
   -- let f = mhStep env model'
   undefined
 
