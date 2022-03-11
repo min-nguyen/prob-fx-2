@@ -26,6 +26,7 @@ import ModelEnv
 import Control.Monad
 import IO
 import Dist
+import Data.Bifunctor
 import Freer
 import Model hiding (runModelFree)
 import Sampler
@@ -145,16 +146,17 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   return $ exp (dom_logα + _X'logα - _Xlogα)
 
 -- | Run MH for one input and environment
-mh :: (es ~ '[ObsReader env, Dist])
+mh :: forall es a b env e. (es ~ '[ObsReader env, Dist], FromSTrace env)
    => Int                              -- Number of mhSteps per data point
    -> (b -> Model env es a)            -- Model awaiting input variable
    -> [Tag]                            -- Tags indicated sample sites of interest
    -> b                                -- List of model input variables
    -> ModelEnv env                     -- List of model observed variables
-   -> Sampler (TraceMH a)              -- Trace of all accepted outputs, samples, and logps
+   -> Sampler [(a, ModelEnv env, LPTrace)]  -- Trace of all accepted outputs, samples, and logps
 mh n model tags x_0 env_0 = do
   -- Perform initial run of mh
-  mh' n (runDist . runObsReader env_0 $ runModel (model x_0)) Map.empty tags
+  mhTrace <- mh' n (runDist . runObsReader env_0 $ runModel (model x_0)) Map.empty tags
+  return (map (mapsnd3 (fromSDTrace @env)) mhTrace)
 
 mh' :: (es ~ '[Observe, Sample])
    => Int                              -- Number of mhSteps per data point

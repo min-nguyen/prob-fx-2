@@ -45,11 +45,20 @@ dotProd xss yss =
 fst3 :: (a, b, c) -> a
 fst3 (a, b, c) = a
 
+mapfst3 :: (a -> d) -> (a, b, c) -> (d, b, c)
+mapfst3 f (a, c, d) = (f a, c, d)
+
 snd3 :: (a, b, c) -> b
 snd3 (a, b, c) = b
 
+mapsnd3 :: (b -> d) -> (a, b, c) -> (a, d, c)
+mapsnd3 f (a, b, c) = (a, f b, c)
+
 thrd3 :: (a, b, c) -> c
 thrd3 (_, _, c) = c
+
+mapthrd3 :: (c -> d) -> (a, b, c) -> (a, b, d)
+mapthrd3 f (a, b, c) = (a, b, f c)
 
 fstsnd3 :: (a, b, c) -> (a, b)
 fstsnd3 (a, b, c) = (a, b)

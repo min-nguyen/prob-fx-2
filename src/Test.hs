@@ -76,23 +76,24 @@ testLinRegrBasic n_datapoints n_samples = do
 testLinRegrLWInf :: Int -> Int -> Sampler [([(Double, Double)], Double)]
 testLinRegrLWInf n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
-  lwTrace :: [([(Double, Double)],       -- y data points
-                STrace,  -- sample trace
-                Double)]       -- likelihood
+  lwTrace :: [([(Double, Double)],  -- y data points
+                STrace,             -- sample trace
+                Double)]            -- likelihood
           <- LW.lw n_samples Example.linearRegression
                    [0 .. n_datapoints']
                    (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints']))
-  return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
+  return $ map (\(xys, _, prob) -> (xys, prob)) lwTrace
 
-testLinRegrMHPost :: Int -> Int -> Sampler [(Addr, [Double])]
+testLinRegrMHPost :: Int -> Int -> Sampler ([Double], [Double], [Double])
 testLinRegrMHPost n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
-  mhTrace <- MH.mh n_samples Example.linearRegression [] [0 .. n_datapoints']
+  mhTrace <- MH.mh n_samples Example.linearRegression ["m", "c", "σ"] [0 .. n_datapoints']
                    (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints']))
-  let mhTrace'   = processMHTrace mhTrace
-      postParams = extractPostParams (Proxy @Double) [("m", 0), ("c", 0), ("σ", 0)] mhTrace'
-  return postParams
-  -- return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
+  let mh_env_out = map snd3  mhTrace
+      mus        = concatMap (getOP #m) mh_env_out
+      cs         = concatMap (getOP #c) mh_env_out
+      σs         = concatMap (getOP #σ) mh_env_out
+  return (mus, cs, σs)
 
 {- Log Regr -}
 mkRecordLogRegr :: ([Bool], [Double], [Double]) -> ModelEnv Example.LogRegrEnv
@@ -207,20 +208,20 @@ testSIRBasic = do
 infobs_data :: [Int]
 infobs_data = [0,1,4,2,1,3,3,5,10,11,30,23,48,50,91,94,129,151,172,173,198,193,214,179,229,172,205,211,191,212,185,184,173,211,185,197,176,169,198,174,163,197,152,198,153,164,154,167,178,174,160,149,140,172,169,144,137,151,166,151,147,149,159,150,151,139,137,182,121,119,133,146,141,136,126,131,124,110,120,113,117,102,120,117,122,121,110,125,127,117,117,98,109,108,108,120,98,103,104,103]
 
-testSIRMHPost :: Sampler ([Double], [Double], [Double])
-testSIRMHPost = do
-  let mh_n_iterations = 5000
-  -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
-  mhTrace :: [((Example.LatState, [Example.LatState]), SDTrace, LPTrace)]
-          <- MH.mh mh_n_iterations (runWriterM . Example.hmmSIRNsteps 20) ["β", "γ", "ρ"]
-                        (latentState 762 1 0)
-                        (mkRecordSIR ([], [0.009], [], infobs_data))
-  let mhSampleMaps = map snd3 mhTrace
-      ρs = concatMap (MH.extractSamples (#ρ, Proxy @Double)) mhSampleMaps
-      βs = concatMap (MH.extractSamples (#β, Proxy @Double)) mhSampleMaps
-      γs = concatMap (MH.extractSamples (#γ, Proxy @Double)) mhSampleMaps
-  -- printS $ show (ρs, βs, γs)
-  return (ρs, βs, γs)
+-- testSIRMHPost :: Sampler ([Double], [Double], [Double])
+-- testSIRMHPost = do
+--   let mh_n_iterations = 5000
+--   -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
+--   mhTrace :: [((Example.LatState, [Example.LatState]), SDTrace, LPTrace)]
+--           <- MH.mh mh_n_iterations (runWriterM . Example.hmmSIRNsteps 20) ["β", "γ", "ρ"]
+--                         (latentState 762 1 0)
+--                         (mkRecordSIR ([], [0.009], [], infobs_data))
+--   let mhSampleMaps = map snd3 mhTrace
+--       ρs = concatMap (MH.extractSamples (#ρ, Proxy @Double)) mhSampleMaps
+--       βs = concatMap (MH.extractSamples (#β, Proxy @Double)) mhSampleMaps
+--       γs = concatMap (MH.extractSamples (#γ, Proxy @Double)) mhSampleMaps
+--   -- printS $ show (ρs, βs, γs)
+--   return (ρs, βs, γs)
 
 {- SIR Resusceptible -}
 testSIRSBasic :: Sampler ([(Int, Int, Int)], -- sir values

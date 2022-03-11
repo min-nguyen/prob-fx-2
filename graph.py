@@ -36,8 +36,9 @@ def main():
     axs1.set_title('Lin Regr - Mu SMC Posterior')
     plt.show()
   if arg == "lin-regr-mh-post":
-    mu_samples_unique = np.array([d[1] for d in data if d[0][0] == 'm']).ravel()
-    c_samples_unique  = np.array([d[1] for d in data if d[0][0] == 'c']).ravel()
+    mu_samples_unique = np.array(data[0]).ravel()
+    c_samples_unique  = np.array(data[1]).ravel()
+    sigma_samples_unique  = np.array(data[2]).ravel()
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("mu values")
     axs1.set_ylabel("frequency")
