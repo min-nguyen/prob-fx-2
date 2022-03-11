@@ -215,8 +215,18 @@ testTopicSim n_words n_samples = do
                                                                [1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]], []))
   return $ concatMap fst bs
 
-testTopicMHPost :: Int -> Int -> Sampler ([ [[Double]]  ], [[[Double]]])
-testTopicMHPost n_words n_samples = do
+testTopicLW :: Int -> Int -> Sampler [ (([[Double]], [[Double]]) , Double) ] -- this test is just for benchmark purposes.
+testTopicLW n_words n_samples = do
+  lwTrace <- LW.lw n_samples (Example.documentDist vocabulary 2)
+                        n_words (mkRecordTopic ([], [], doc_words))
+  let lw_envs_out = map snd3 lwTrace
+      θs          = map (getOP #θ) lw_envs_out
+      φs          = map (getOP #φ) lw_envs_out
+      ps          = map thrd3 lwTrace
+  return $ zip (zip θs φs) ps
+
+testTopicMH :: Int -> Int -> Sampler ([ [[Double]]  ], [[[Double]]])
+testTopicMH n_words n_samples = do
   mhTrace <- MH.mh n_samples (Example.documentDist vocabulary 2) ["φ", "θ"]
                         n_words (mkRecordTopic ([], [], doc_words))
   let mh_envs_out = map snd3 mhTrace
@@ -226,7 +236,7 @@ testTopicMHPost n_words n_samples = do
 
 testTopicMHPred :: Int -> Int -> Sampler [String]
 testTopicMHPred n_words n_samples = do
-  (θs, φs) <- testTopicMHPost n_words n_samples
+  (θs, φs) <- testTopicMH n_words n_samples
   let  θ   = last θs
        φ   = last φs
   -- liftS $ print $ "Using params " ++ show (topic_ps, word_ps)

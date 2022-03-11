@@ -8,7 +8,6 @@ import Data.Tuple
 import qualified Data.Map as Map
 import DataSets
 import qualified Example as Example
-import EffExample
 import qualified Inference.Simulate as Simulate
 import qualified Inference.LW as LW
 import qualified Inference.MH as MH
