@@ -121,14 +121,15 @@ observationModel :: (Observable env "y" Int)
 observationModel observation_p x = do
   binomial' x observation_p #y
 
-hmmNode :: (Observable env "y" Int)
+hmmNode :: (Observable env "y" Int) => Member (Writer [Int]) ts
   => Double -> Double -> Int -> Model env ts Int
 hmmNode transition_p observation_p x_prev = do
   x_n <- transitionModel  transition_p x_prev
+  tellM [x_n]
   y_n <- observationModel observation_p x_n
   return x_n
 
-hmmNSteps :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
+hmmNSteps :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double) => Member (Writer [Int]) ts
   => Int -> (Int -> Model env ts Int)
 hmmNSteps n x = do
   trans_p <- uniform' 0 1 #trans_p

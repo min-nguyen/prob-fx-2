@@ -95,6 +95,32 @@ def main():
     plt.ylabel('y - axis')
     plt.title('Logistic regression - basic simulation')
     plt.show()
+  if arg == "hmm-sim":
+    xys = np.array(data)
+    xs = [xy[0] for xy in xys]
+    ys = [xy[1] for xy in xys]
+    plt.scatter(xs, ys)
+    plt.xlabel('x - axis')
+    plt.ylabel('y - axis')
+    plt.title('HMM Simulation')
+    plt.show()
+  if arg == "hmm-lw":
+    params    = [ d[0] for d in data]
+    trans_ps  = [ param[0] for param in params]
+    obs_ps    = [ param[1] for param in params]
+    ps        = [ d[1] for d in data]
+    print(ps)
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel('trans_p value')
+    axs1.set_ylabel('probability')
+    axs1.scatter(trans_ps, ps)
+    axs1.set_title('HMM - Likelihood Weighting')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel('obs_p value value')
+    axs2.set_ylabel('probability')
+    axs2.scatter(obs_ps, ps)
+    axs2.set_title('HMM - Likelihood Weighting')
+    plt.show()
   if arg == "sir-basic":
     # we expect data to be in the format of (sir-values :: [(Int, Int, Int)], infected count :: [Int])
 

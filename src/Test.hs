@@ -126,26 +126,33 @@ mkRecordHMM (ys, transp, obsp) = #y := ys <:> #trans_p := [transp] <:> #obs_p :=
 mkRecordHMMy :: [Int] -> ModelEnv Example.HMMEnv
 mkRecordHMMy ys = #y := ys <:> #trans_p := [] <:> #obs_p := [] <:>  nil
 
-testHMMBasic :: Int -> Int -> Sampler [Int]
-testHMMBasic hmm_length n_samples = do
-  bs <- Simulate.simulate n_samples (Example.hmmNSteps hmm_length)
+testHMMSim :: Int -> Int -> Sampler [(Int, Int)]
+testHMMSim hmm_length n_samples = do
+  bs <- Simulate.simulate n_samples (runWriterM . Example.hmmNSteps hmm_length)
                           0 (mkRecordHMM ([], 0.5, 0.9))
-  return $ map fst bs
+  let sim_envs_out  = map snd bs
+      xs :: [Int]   = concatMap (snd . fst) bs
+      ys :: [Int]   = concatMap (getOP #y) sim_envs_out
+  return $ zip xs ys
 
 hmm_data :: [Int]
 hmm_data = [0,1,1,3,4,5,5,5,6,5,6,8,8,9,7,8,9,8,10,10,7,8,10,9,10,10,14,14,14,15,14,15,14,17,17,17,16,17,14,15,16,18,17,19,20,20,20,22,23,22,23,25,21,21,23,25,24,26,28,23,25,23,27,28,28,25,28,29,28,24,27,28,28,32,32,32,33,31,33,34,32,31,33,36,37,39,36,36,32,38,38,38,38,37,40,38,38,39,40,42]
 
-testHMMLWInf :: Int -> Int -> Sampler [(Int, Double)]
-testHMMLWInf hmm_length n_samples = do
-  lwTrace <- LW.lw n_samples (Example.hmmNSteps hmm_length)
-                             0 (mkRecordHMMy hmm_data)
-  return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
+-- testHMMLW :: Int -> Int -> Sampler [((Double, Double), Double)]
+-- testHMMLW hmm_length n_samples = do
+--   lwTrace <- LW.lw n_samples (Example.hmmNSteps hmm_length)
+--                              0 (mkRecordHMMy hmm_data)
+--   let lw_envs_out = map snd3 lwTrace
+--       trans_ps    = concatMap (getOP #trans_p) lw_envs_out
+--       obs_ps      = concatMap (getOP #obs_p) lw_envs_out
+--       ps          = map thrd3 lwTrace
+--   return $ zip (zip trans_ps obs_ps) ps
 
-testHMMMHPost :: Int -> Int -> Sampler [(Int, LPTrace)]
-testHMMMHPost hmm_length n_samples = do
-  mhTrace <- MH.mh n_samples (Example.hmmNSteps hmm_length) ["trans_p", "obs_p"]
-                             0 (mkRecordHMMy hmm_data)
-  return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
+-- testHMMMH :: Int -> Int -> Sampler [(Int, LPTrace)]
+-- testHMMMH hmm_length n_samples = do
+--   mhTrace <- MH.mh n_samples (Example.hmmNSteps hmm_length) ["trans_p", "obs_p"]
+--                              0 (mkRecordHMMy hmm_data)
+--   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
 
 {- Topic model -}
 vocab :: [String]
