@@ -198,7 +198,7 @@ def main():
     ax1.set_xticklabels(ws)
     plt.title('Topic-Word Distribution 1', fontname="serif")
     plt.show()
-  if arg == "sir-basic":
+  if arg == "sir-sim":
     # we expect data to be in the format of (sir-values :: [(Int, Int, Int)], infected count :: [Int])
     # y axis
     sir_values   = np.array(data[0])
@@ -231,7 +231,7 @@ def main():
     plt.ylim([0,800])
     # plt.legend()
     plt.show()
-  if arg == "sir-mh-post":
+  if arg == "sir-mh":
     print(data)
     rhos_unique   = data[0]
     betas_unique  = data[1]
@@ -252,7 +252,7 @@ def main():
     axs3.hist(gammas_unique, bins=25)
     axs3.set_title('HMM - Metropolis Hastings Posterior (Gamma)')
     plt.show()
-  if arg == "sirv-basic":
+  if arg == "sirv-sim":
     # we expect data to be in the format of (sir-values :: [(Int, Int, Int)], infected count :: [Int])
     # y axis
     sirv_values   = np.array(data[0])

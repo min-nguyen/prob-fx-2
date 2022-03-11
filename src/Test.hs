@@ -36,6 +36,7 @@ import Util
 import Debug.Trace
 import Unsafe.Coerce
 import STrace
+import Old.Example (LatentState(LatentState))
 
 -- Returns a list of (addr, [p]) of all unique samples for addresses of interest in the mh trace
 extractPostParams :: forall p a. (Eq p, Member p PrimVal) => Proxy p -> [Addr] -> [(a, [(Addr, OpenSum PrimVal)], [(Addr, Double)])] -> [(Addr, [p])]
@@ -232,9 +233,9 @@ latentState = Example.LatState
 fromLatState :: Example.LatState -> (Int, Int, Int)
 fromLatState (Example.LatState sus inf recov) = (sus, inf, recov)
 
-testSIRBasic :: Sampler ([(Int, Int, Int)], -- sir values
+testSIRSim :: Sampler ([(Int, Int, Int)], -- sir values
                           [Int])            -- observed infections
-testSIRBasic = do
+testSIRSim = do
   let latState0  = Example.LatState { Example.sus = 762, Example.inf = 1, Example.recov = 0 }
       params     = #β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:>  #infobs := [] <:> nil
   simOutputs :: [((Example.LatState,   -- model output
@@ -254,33 +255,32 @@ testSIRBasic = do
 infobs_data :: [Int]
 infobs_data = [0,1,4,2,1,3,3,5,10,11,30,23,48,50,91,94,129,151,172,173,198,193,214,179,229,172,205,211,191,212,185,184,173,211,185,197,176,169,198,174,163,197,152,198,153,164,154,167,178,174,160,149,140,172,169,144,137,151,166,151,147,149,159,150,151,139,137,182,121,119,133,146,141,136,126,131,124,110,120,113,117,102,120,117,122,121,110,125,127,117,117,98,109,108,108,120,98,103,104,103]
 
--- testSIRMHPost :: Sampler ([Double], [Double], [Double])
--- testSIRMHPost = do
---   let mh_n_iterations = 5000
---   -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
---   mhTrace :: [((Example.LatState, [Example.LatState]), SDTrace, LPTrace)]
---           <- MH.mh mh_n_iterations (runWriterM . Example.hmmSIRNsteps 20) ["β", "γ", "ρ"]
---                         (latentState 762 1 0)
---                         (mkRecordSIR ([], [0.009], [], infobs_data))
---   let mhSampleMaps = map snd3 mhTrace
---       ρs = concatMap (MH.extractSamples (#ρ, Proxy @Double)) mhSampleMaps
---       βs = concatMap (MH.extractSamples (#β, Proxy @Double)) mhSampleMaps
---       γs = concatMap (MH.extractSamples (#γ, Proxy @Double)) mhSampleMaps
---   -- printS $ show (ρs, βs, γs)
---   return (ρs, βs, γs)
+testSIRMH :: Sampler ([Double], [Double], [Double])
+testSIRMH = do
+  let mh_n_iterations = 5000
+  -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
+  mhTrace  <- MH.mh mh_n_iterations (runWriterM @[Example.LatState] . Example.hmmSIRNsteps 20) ["β", "γ", "ρ"]
+                        (latentState 762 1 0)
+                        (mkRecordSIR ([], [0.009], [], infobs_data))
+  let mhSampleMaps = map snd3 mhTrace
+      ρs = concatMap (getOP #ρ) mhSampleMaps
+      βs = concatMap (getOP #β) mhSampleMaps
+      γs = concatMap (getOP #γ) mhSampleMaps
+  -- printS $ show (ρs, βs, γs)
+  return (ρs, βs, γs)
 
 {- SIR Resusceptible -}
-testSIRSBasic :: Sampler ([(Int, Int, Int)], -- sir values
+testSIRSSim :: Sampler ([(Int, Int, Int)], -- sir values
                           [Int])
-testSIRSBasic = do
+testSIRSSim = do
   simOutputs <- Simulate.simulate 1 (runWriterM . Example.hmmSIRSNsteps 100)
                    (latentState 762 1 0)
                    (#β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #η := [0.05] <:> #infobs := [] <:> nil)
 
   let fstOutput = head simOutputs
-      sirLog    :: [Example.LatState]         = (snd . fst) fstOutput
-      sampleMap :: ModelEnv Example.SIRSEnv   = snd fstOutput
-      infobs    :: [Int]                      = getOP #infobs sampleMap
+      sirLog      :: [Example.LatState]         = (snd . fst) fstOutput
+      sim_env_out :: ModelEnv Example.SIRSEnv   = snd fstOutput
+      infobs      :: [Int]                      = getOP #infobs sim_env_out
 
       sirLog_tuples :: [(Int, Int, Int)] = map fromLatState sirLog
 
@@ -290,9 +290,9 @@ testSIRSBasic = do
 fromLatSIRVState :: Example.LatStateSIRV -> (Int, Int, Int, Int)
 fromLatSIRVState (Example.LatStateSIRV sus inf recov vacc) = (sus, inf, recov, vacc)
 
-testSIRVBasic :: Sampler ([(Int, Int, Int, Int)], -- sir values
+testSIRVSim :: Sampler ([(Int, Int, Int, Int)], -- sir values
                           [Int])                  -- observed infections
-testSIRVBasic = do
+testSIRVSim = do
   let latState0  = Example.LatStateSIRV { Example.s = 762, Example.i = 1, Example.r = 0,  Example.v = 0 }
       params     = #β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #ω := [0.04] <:>  #η := [0.05] <:> #infobs := [] <:> nil
   simOutputs :: [((Example.LatStateSIRV,        -- model output
@@ -301,9 +301,9 @@ testSIRVBasic = do
                 <- Simulate.simulate 1 (runWriterM . Example.hmmSIRVNsteps 100)
                    latState0 params
   let fstOutput = head simOutputs
-      sirLog    :: [Example.LatStateSIRV]   = (snd . fst) fstOutput
-      sampleMap :: ModelEnv Example.SIRVEnv = snd fstOutput
-      infobs    :: [Int]                    = getOP #infobs sampleMap
+      sirLog      :: [Example.LatStateSIRV]   = (snd . fst) fstOutput
+      sim_env_out :: ModelEnv Example.SIRVEnv = snd fstOutput
+      infobs      :: [Int]                    = getOP #infobs sim_env_out
 
       sirLog_tuples :: [(Int, Int, Int, Int)] = map fromLatSIRVState sirLog
 
