@@ -25,6 +25,7 @@ main :: IO ()
 main = do
   -- trace <- sampleIOFixed $ testLinRegrSim 10 1
   -- trace <- sampleIO $ testLinRegrLW 10 2000
+  trace <- sampleIO $ testLinRegrLW' 10 2000
   -- trace <- sampleIO $ testLinRegrMH 10 2000
   -- trace <- sampleIOFixed $ testLogRegrSim 200 100
   -- trace <- sampleIOFixed $ testLogRegrLW 200 100
@@ -36,7 +37,7 @@ main = do
   -- trace <- sampleIOFixed $ testTopicMHPost 10 1000
   -- trace <- sampleIOFixed $ testTopicMHPred 10 1000
   -- trace <- sampleIOFixed testSIRSim
-  trace <- sampleIOFixed testSIRMH
+  -- trace <- sampleIOFixed testSIRMH
   -- trace <- sampleIOFixed testSIRSSim
   -- trace <- sampleIOFixed testSIRVSim
   -- trace <- sampleIO (TestSMC.testLinRegrSMC 20 101)
