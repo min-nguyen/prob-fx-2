@@ -130,6 +130,18 @@ testLogRegrLW n_datapoints n_samples = do
       ps     = map thrd3 lwTrace
   return $ zip (zip mus bs) ps
 
+testLogRegrMH :: Int -> Int -> Sampler ([Double], [Double])
+testLogRegrMH n_datapoints n_samples = do
+  xys <- testLogRegrSim n_datapoints 1
+  let xs = map fst xys
+      ys = map snd xys
+  mhTrace <- MH.mh n_samples Example.logisticRegression ["m", "b"] xs (mkRecordLogRegrL ys)
+  let mh_envs_out = map snd3 mhTrace
+      mus        = concatMap (getOP #m) mh_envs_out
+      bs         = concatMap (getOP #b) mh_envs_out
+      -- σs         = concatMap (getOP #σ) mh_envs_out
+  return (mus, bs)
+
 {- HMM -}
 mkRecordHMM :: ([Int], Double, Double) -> ModelEnv Example.HMMEnv
 mkRecordHMM (ys, transp, obsp) = #y := ys <:> #trans_p := [transp] <:> #obs_p := [obsp] <:>  nil

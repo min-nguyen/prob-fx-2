@@ -112,6 +112,20 @@ def main():
     axs2.scatter(bs, ps)
     axs2.set_title('Logistic regression - Likelihood Weighting')
     plt.show()
+  if arg == "log-regr-mh":
+    mus = np.array(data[0]).ravel()
+    bs = np.array(data[1]).ravel()
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("mu values")
+    axs1.set_ylabel("frequency")
+    axs1.hist(mus, bins=50)
+    axs1.set_title('Logistic regression - Metropolis Hastings Posterior')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel("b values")
+    axs2.set_ylabel("frequency")
+    axs2.hist(bs, bins=50)
+    axs2.set_title('Logistic regression - Metropolis Hastings Posterior')
+    plt.show()
   if arg == "hmm-sim":
     xys = np.array(data)
     xs = [xy[0] for xy in xys]
