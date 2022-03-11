@@ -76,7 +76,12 @@ library
                       Inference.SIS,
                       Test,
                       Experiment,
-                      TestSMC
+                      TestSMC,
+                      Old.Test,
+                      Old.Inference.Simulate,
+                      Old.Inference.LW,
+                      Old.Inference.MH,
+                      Old.Example
 
   -- Modules included in this library but not exported.
   -- other-modules:

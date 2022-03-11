@@ -193,13 +193,13 @@ mkRecordTopic (tps, wps, ys) =  #θ := tps <:>  #φ := wps <:> #w := ys <:>nil
 testTopicBasic :: Int -> Int -> Sampler [[String]]
 testTopicBasic n_words n_samples = do
   bs <- Simulate.simulate n_samples (Example.documentDist vocab 2)
-                        n_words (mkRecordTopic ([[0.5, 0.5]], [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],[1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]], []))
+                        n_words (mkRecordTopic ([[0.5, 0.5]], [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],
+                                                               [1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]], []))
   return $ map fst bs
 
 testTopicLW :: Int -> Int -> Sampler [([String], Double)]
 testTopicLW n_words n_samples = do
-  lwTrace <- LW.lw n_samples (Example.documentDist vocabulary 2)
-                        n_words (mkRecordTopic ([], [], doc_words))
+  lwTrace <- LW.lw n_samples (Example.documentDist vocabulary 2) n_words (mkRecordTopic ([], [], doc_words))
   return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
 
 testTopicMHPost :: Int -> Int -> Sampler [([String], LPTrace)]
