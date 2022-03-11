@@ -37,31 +37,24 @@ def main():
     plt.ylabel('y - axis')
     plt.title('Linear regression')
     plt.show()
-  if arg == "lin-regr-lw-inf":
-    print(data)
-    xys        = [ d[0] for d in data]
-    # sampleMaps = [ d[1] for d in data]
+  if arg == "lin-regr-lw":
+    params    = [ d[0] for d in data]
+    mus       = [ param[0] for param in params]
+    cs        = [ param[1] for param in params]
+    sigmas    = [ param[2] for param in params]
     ps         = [ d[1] for d in data]
     print(ps)
-    # xs = [x[0] for x in xys]
-    # ys = [y[1] for y in xys]
-    # mu_samples  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'm'] for d in sampleMaps ]).ravel()
-    # mu_samples_unique = removeDuplicates(mu_samples)
-    # c_samples  = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'c'] for d in sampleMaps ]).ravel()
-    # c_samples_unique = removeDuplicates(c_samples)
-    # std_samples   = np.array([ [ d1[1] for d1 in d if d1[0][0] == 'σ'] for d in sampleMaps ]).ravel()
-    # std_samples_unique = removeDuplicates(std_samples)
-    # fig1, axs1 = plt.subplots(nrows=1)
-    # axs1.set_xlabel('mu value')
-    # axs1.set_ylabel('probability')
-    # axs1.scatter(mu_samples, ps)
-    # axs1.set_title('Linear regression - Likelihood Weighting')
-    # fig2, axs2 = plt.subplots(nrows=1)
-    # axs2.set_xlabel('c value')
-    # axs2.set_ylabel('probability')
-    # axs2.scatter(c_samples, ps)
-    # axs2.set_title('Linear regression - Likelihood Weighting')
-    # plt.show()
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel('mu value')
+    axs1.set_ylabel('probability')
+    axs1.scatter(mus, ps)
+    axs1.set_title('Linear regression - Likelihood Weighting')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel('c value')
+    axs2.set_ylabel('probability')
+    axs2.scatter(cs, ps)
+    axs2.set_title('Linear regression - Likelihood Weighting')
+    plt.show()
   if arg == "lin-regr-mh-post":
     mu_samples_unique = np.array(data[0]).ravel()
     c_samples_unique  = np.array(data[1]).ravel()

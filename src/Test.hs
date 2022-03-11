@@ -73,26 +73,31 @@ testLinRegrSim n_datapoints n_samples = do
                     (mkRecordLinRegr ([], [1.0], [0.0], [1.0]))
   return $ concatMap fst bs
 
-testLinRegrLWInf :: Int -> Int -> Sampler [([(Double, Double)], Double)]
+testLinRegrLWInf :: Int -> Int -> Sampler [((Double, Double, Double), Double)]
 testLinRegrLWInf n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
-  lwTrace :: [([(Double, Double)],  -- y data points
-                STrace,             -- sample trace
-                Double)]            -- likelihood
+  lwTrace :: [([(Double, Double)],              -- y data points
+                ModelEnv Example.LinRegrEnv,    -- sample trace
+                Double)]                        -- likelihood
           <- LW.lw n_samples Example.linearRegression
                    [0 .. n_datapoints']
                    (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints']))
-  return $ map (\(xys, _, prob) -> (xys, prob)) lwTrace
+  let lw_envs_out = map snd3 lwTrace
+      mus        = concatMap (getOP #m) lw_envs_out
+      cs         = concatMap (getOP #c) lw_envs_out
+      σs         = concatMap (getOP #σ) lw_envs_out
+      ps         = map thrd3 lwTrace
+  return $ zip (zip3 mus cs σs) ps
 
 testLinRegrMHPost :: Int -> Int -> Sampler ([Double], [Double], [Double])
 testLinRegrMHPost n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
   mhTrace <- MH.mh n_samples Example.linearRegression ["m", "c", "σ"] [0 .. n_datapoints']
                    (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints']))
-  let mh_env_out = map snd3  mhTrace
-      mus        = concatMap (getOP #m) mh_env_out
-      cs         = concatMap (getOP #c) mh_env_out
-      σs         = concatMap (getOP #σ) mh_env_out
+  let mh_envs_out = map snd3 mhTrace
+      mus        = concatMap (getOP #m) mh_envs_out
+      cs         = concatMap (getOP #c) mh_envs_out
+      σs         = concatMap (getOP #σ) mh_envs_out
   return (mus, cs, σs)
 
 {- Log Regr -}

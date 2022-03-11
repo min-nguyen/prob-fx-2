@@ -25,18 +25,20 @@ import State ( modify, runState, State )
 import STrace
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum(..))
+import Util
 
 type TraceLW a = [(a, STrace, Double)]
 
 -- | Run LW n times for one input and environment
-lw :: (es ~ '[ObsReader env, Dist])
+lw :: forall env es a b. (FromSTrace env, es ~ '[ObsReader env, Dist])
    => Int                              -- Number of lw iterations per data point
    -> (b -> Model env es a)            -- Model awaiting input variable
    -> b                              -- List of model input variables
    -> ModelEnv env                       -- List of model observed variables
-   -> Sampler (TraceLW a)              -- List of n likelihood weightings for each data point
+   -> Sampler [(a, ModelEnv env, Double)]              -- List of n likelihood weightings for each data point
 lw n model x env = do
-  replicateM n (runLW env (model x))
+  lwTrace <- replicateM n (runLW env (model x))
+  return (map (mapsnd3 (fromSTrace @env)) lwTrace)
 
 -- | Run LW once for single data point
 runLW :: es ~ '[ObsReader env, Dist]
