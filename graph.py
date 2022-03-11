@@ -78,9 +78,10 @@ def main():
     axs1.hist(mus, bins=25)
     axs1.set_title('Lin Regr - Mu SMC Posterior')
     plt.show()
-  if arg == "log-regr-basic":
-    xs = np.array([ xys[0] for xys in data]).ravel()
-    ys = np.array([ xys[1] for xys in data]).ravel()
+  if arg == "log-regr-sim":
+    xys = np.array(data)
+    xs =  np.array([xy[0] for xy in xys])
+    ys =  np.array([xy[1] for xy in xys])
     model = linear_model.LogisticRegression(C=1e5, solver='lbfgs')
     model.fit(xs.reshape(-1,1), ys)
     x_test = np.linspace(-2.0,2.0,num=100)

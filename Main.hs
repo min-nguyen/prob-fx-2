@@ -24,9 +24,9 @@ import Util
 main :: IO ()
 main = do
   -- trace <- sampleIOFixed $ testLinRegrSim 10 1
-  trace <- sampleIO $ testLinRegrLWInf 10 2000
+  -- trace <- sampleIO $ testLinRegrLWInf 10 2000
   -- trace <- sampleIO $ testLinRegrMHPost 10 2000
-  -- trace <- sampleIOFixed $ testLogRegrBasic 200 100
+  trace <- sampleIOFixed $ testLogRegrSim 200 100
   -- trace <- sampleIOFixed testSIRBasic
   -- trace <- sampleIOFixed testSIRMHPost
   -- trace <- sampleIOFixed testSIRSBasic
