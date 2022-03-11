@@ -190,23 +190,31 @@ doc_words     = ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","ev
 mkRecordTopic :: ([[Double]], [[Double]], [String]) -> ModelEnv Example.TopicEnv
 mkRecordTopic (tps, wps, ys) =  #θ := tps <:>  #φ := wps <:> #w := ys <:>nil
 
-testTopicBasic :: Int -> Int -> Sampler [[String]]
-testTopicBasic n_words n_samples = do
+testTopicSim :: Int -> Int -> Sampler [String]
+testTopicSim n_words n_samples = do
   bs <- Simulate.simulate n_samples (Example.documentDist vocab 2)
                         n_words (mkRecordTopic ([[0.5, 0.5]], [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],
                                                                [1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]], []))
-  return $ map fst bs
+  return $ concatMap fst bs
 
-testTopicLW :: Int -> Int -> Sampler [([String], Double)]
-testTopicLW n_words n_samples = do
-  lwTrace <- LW.lw n_samples (Example.documentDist vocabulary 2) n_words (mkRecordTopic ([], [], doc_words))
-  return $ map (\(ys, sampleMap, prob) -> (ys, prob)) lwTrace
-
-testTopicMHPost :: Int -> Int -> Sampler [([String], LPTrace)]
+testTopicMHPost :: Int -> Int -> Sampler ([ [[Double]]  ], [[[Double]]])
 testTopicMHPost n_words n_samples = do
   mhTrace <- MH.mh n_samples (Example.documentDist vocabulary 2) ["φ", "θ"]
                         n_words (mkRecordTopic ([], [], doc_words))
-  return $ map (\(ys, sampleMap, prob) -> (ys, prob)) mhTrace
+  let mh_envs_out = map snd3 mhTrace
+      θs          = map (getOP #θ) mh_envs_out
+      φs          = map (getOP #φ) mh_envs_out
+  return (θs, φs)
+
+testTopicMHPred :: Int -> Int -> Sampler [String]
+testTopicMHPred n_words n_samples = do
+  (θs, φs) <- testTopicMHPost n_words n_samples
+  let  θ   = last θs
+       φ   = last φs
+  -- liftS $ print $ "Using params " ++ show (topic_ps, word_ps)
+  bs <- Simulate.simulate 1 (Example.documentDist vocabulary 2) 10
+        (mkRecordTopic (θ,  φ, []))
+  return $ concatMap fst bs
 
 {- SIR -}
 mkRecordSIR :: ([Double], [Double], [Double], [Int]) -> ModelEnv Example.SIREnv

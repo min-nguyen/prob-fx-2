@@ -28,10 +28,12 @@ main = do
   -- trace <- sampleIO $ testLinRegrMH 10 2000
   -- trace <- sampleIOFixed $ testLogRegrSim 200 100
   -- trace <- sampleIOFixed $ testLogRegrLW 200 100
-  trace <- sampleIOFixed $ testLogRegrMH 20 2000
+  -- trace <- sampleIOFixed $ testLogRegrMH 20 2000
   -- trace <- sampleIOFixed $ testHMMSim 20 10
   -- trace <- sampleIO $ testHMMLW 10 2000
   -- trace <- sampleIO $ testHMMMH 10 2000
+  -- trace <- sampleIOFixed $ testTopicSim 10 10
+  trace <- sampleIOFixed $ testTopicMHPred 10 1000
   -- trace <- sampleIOFixed testSIRBasic
   -- trace <- sampleIOFixed testSIRMHPost
   -- trace <- sampleIOFixed testSIRSBasic

@@ -166,6 +166,16 @@ def main():
     axs2.hist(obs_ps, bins=50)
     axs2.set_title('HMM - Metropolis Hastings Posterior')
     plt.show()
+  if arg == "topic-sim":
+    print(data)
+    words = list(np.array(data).ravel())
+    _, ax = plt.subplots(nrows=1)
+    ws = list(set(words))
+    freqs = [ words.count(w)  for w in ws]
+    ax.bar(ws, freqs)
+    ax.set_xticklabels(ws)
+    plt.show()
+
   if arg == "sir-basic":
     # we expect data to be in the format of (sir-values :: [(Int, Int, Int)], infected count :: [Int])
 
