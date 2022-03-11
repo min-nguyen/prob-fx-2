@@ -81,7 +81,8 @@ library
                       Old.Inference.LW,
                       Old.Inference.MH,
                       Old.Example,
-                      Old.EffExample
+                      Old.EffExample,
+                      Old.OpenProductVec
   -- Modules included in this library but not exported.
   -- other-modules:
 

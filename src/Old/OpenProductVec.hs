@@ -3,7 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
-module ModelEnv where
+module Old.OpenProductVec where
 
 import Data.Kind
 -- import Data.Functor.Identity
