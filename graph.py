@@ -55,7 +55,7 @@ def main():
     axs2.scatter(cs, ps)
     axs2.set_title('Linear regression - Likelihood Weighting')
     plt.show()
-  if arg == "lin-regr-mh-post":
+  if arg == "lin-regr-mh":
     mu_samples_unique = np.array(data[0]).ravel()
     c_samples_unique  = np.array(data[1]).ravel()
     sigma_samples_unique  = np.array(data[2]).ravel()
@@ -120,6 +120,20 @@ def main():
     axs2.set_ylabel('probability')
     axs2.scatter(obs_ps, ps)
     axs2.set_title('HMM - Likelihood Weighting')
+    plt.show()
+  if arg == "hmm-mh":
+    trans_ps = np.array(data[0]).ravel()
+    obs_ps  = np.array(data[1]).ravel()
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("trans_ps values")
+    axs1.set_ylabel("frequency")
+    axs1.hist(trans_ps, bins=50)
+    axs1.set_title('HMM - Metropolis Hastings Posterior')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel("obs_ps values")
+    axs2.set_ylabel("frequency")
+    axs2.hist(obs_ps, bins=50)
+    axs2.set_title('HMM - Metropolis Hastings Posterior')
     plt.show()
   if arg == "sir-basic":
     # we expect data to be in the format of (sir-values :: [(Int, Int, Int)], infected count :: [Int])

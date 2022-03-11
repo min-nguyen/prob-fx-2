@@ -69,7 +69,7 @@ printM x = Model $ prinT x
 tellM :: Member (Writer w) es => w -> Model env es ()
 tellM w = Model $ tell w
 
-runWriterM :: Monoid w => Model env (Writer w : es) v -> Model env es (v, w)
+runWriterM :: forall w env es v. Monoid w => Model env (Writer w : es) v -> Model env es (v, w)
 runWriterM m = Model $ runWriter $ runModel m
 
 putM :: Member (State s) es => s -> Model env es ()
