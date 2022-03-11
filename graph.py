@@ -95,6 +95,23 @@ def main():
     plt.ylabel('y - axis')
     plt.title('Logistic regression - basic simulation')
     plt.show()
+  if arg == "log-regr-lw":
+    params    = [ d[0] for d in data]
+    mus       = [ param[0] for param in params]
+    bs        = [ param[1] for param in params]
+    ps        = [ d[1] for d in data]
+    print(ps)
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel('mu value')
+    axs1.set_ylabel('probability')
+    axs1.scatter(mus, ps)
+    axs1.set_title('Logistic regression - Likelihood Weighting')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel('b value')
+    axs2.set_ylabel('probability')
+    axs2.scatter(bs, ps)
+    axs2.set_title('Logistic regression - Likelihood Weighting')
+    plt.show()
   if arg == "hmm-sim":
     xys = np.array(data)
     xs = [xy[0] for xy in xys]

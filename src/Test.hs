@@ -111,13 +111,24 @@ mkRecordLogRegrL label_val =
 
 testLogRegrSim :: Int -> Int -> Sampler [(Double, Bool)]
 testLogRegrSim n_datapoints n_samples = do
-  -- This should generate a set of points on the y-axis for each given point on the x-axis
   let incr = 200/fromIntegral n_datapoints
       xs = [ (-100 + (fromIntegral x)*incr)/50 | x <- [0 .. n_datapoints]]
   bs <- Simulate.simulate n_samples Example.logisticRegression
                          xs
                          (mkRecordLogRegr ([], [2], [-0.15]))
   return $ concatMap fst bs
+
+testLogRegrLW :: Int -> Int -> Sampler [((Double, Double), Double)]
+testLogRegrLW n_datapoints n_samples = do
+  xys <- testLogRegrSim n_datapoints 1
+  let xs = map fst xys
+      ys = map snd xys
+  lwTrace <- LW.lw n_samples Example.logisticRegression xs (mkRecordLogRegrL ys)
+  let lw_envs_out = map snd3 lwTrace
+      mus    = concatMap (getOP #m) lw_envs_out
+      bs     = concatMap (getOP #b) lw_envs_out
+      ps     = map thrd3 lwTrace
+  return $ zip (zip mus bs) ps
 
 {- HMM -}
 mkRecordHMM :: ([Int], Double, Double) -> ModelEnv Example.HMMEnv
