@@ -80,7 +80,7 @@ linearRegression xs = do
   ys <- foldM (\ys x -> do
                     y <- normal' (m * x + c) σ #y
                     return (y:ys)) [] xs
-  return (zip xs ys)
+  return (zip xs (reverse ys))
 
 type LogRegrEnv =
     '[  "label" ':= Bool,

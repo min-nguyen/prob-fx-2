@@ -64,14 +64,14 @@ mkRecordLinRegrY :: [Double] -> ModelEnv Example.LinRegrEnv
 mkRecordLinRegrY y_vals =
   (#y := y_vals) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:> nil
 
-testLinRegrBasic :: Int -> Int -> Sampler [[(Double, Double)]]
-testLinRegrBasic n_datapoints n_samples = do
+testLinRegrSim :: Int -> Int -> Sampler [(Double, Double)]
+testLinRegrSim n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
   bs :: [([(Double, Double)], ModelEnv Example.LinRegrEnv)]
       <- Simulate.simulate n_samples Example.linearRegression
                     [0 .. n_datapoints']
                     (mkRecordLinRegr ([], [1.0], [0.0], [1.0]))
-  return $ map fst bs
+  return $ concatMap fst bs
 
 testLinRegrLWInf :: Int -> Int -> Sampler [([(Double, Double)], Double)]
 testLinRegrLWInf n_datapoints n_samples = do
