@@ -52,9 +52,9 @@ sis :: forall a env ctx es.
      (Accum ctx, Show ctx, FromSTrace env, Show a)
   -- => Member NonDet es'
   => Int
-  -> Resampler       ctx (Observe : Sample : '[])  a
-  -> ParticleHandler ctx (Observe : Sample : '[]) a
-  -> Model env [ObsReader env, Dist] a
+  -> Resampler       ctx (Observe : Sample : Lift Sampler : '[])  a
+  -> ParticleHandler ctx (Observe : Sample : Lift Sampler : '[]) a
+  -> Model env [ObsReader env, Dist, Lift Sampler] a
   -> ModelEnv env
   -> Sampler [(a, ctx)]
 sis n_particles resampler pophdl model env = do
@@ -80,10 +80,10 @@ loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
     Left  progs -> do (progs', ctxs') <- resampler ctxs_0 ctxs_1 progs_1
                       loopSIS n_particles resampler populationHandler (progs', ctxs')
 
-runSample :: Prog '[Sample] a -> Sampler a
+runSample :: Prog '[Sample, Lift Sampler] a -> Sampler a
 runSample = loop
   where
-  loop :: Prog '[Sample] a -> Sampler a
+  loop :: Prog '[Sample, Lift Sampler] a -> Sampler a
   loop (Val x) = return x
   loop (Op u k) =
     case u of

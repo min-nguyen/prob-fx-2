@@ -146,7 +146,7 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
   return $ exp (dom_logα + _X'logα - _Xlogα)
 
 -- | Run MH for one input and environment
-mh :: forall es a b env e. (es ~ '[ObsReader env, Dist], FromSTrace env)
+mh :: forall es a b env e. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env)
    => Int                              -- Number of mhSteps per data point
    -> (b -> Model env es a)            -- Model awaiting input variable
    -> [Tag]                            -- Tags indicated sample sites of interest
@@ -158,7 +158,7 @@ mh n model tags x_0 env_0 = do
   mhTrace <- mh' n (runDist . runObsReader env_0 $ runModel (model x_0)) Map.empty tags
   return (map (mapsnd3 (fromSDTrace @env)) mhTrace)
 
-mh' :: (es ~ '[Observe, Sample])
+mh' :: (es ~ '[Observe, Sample, Lift Sampler])
    => Int                              -- Number of mhSteps per data point
    -> Prog es a
    -> SDTrace
@@ -177,7 +177,7 @@ mh' n prog samples_0 tags = do
   return $ reverse l
 
 -- | Perform one step of MH for a single data point
-mhStep :: (es ~ '[Observe, Sample])
+mhStep :: (es ~ '[Observe, Sample, Lift Sampler])
   => Prog es a   -- Model
   -> [Tag]            -- Tags indicating sample sites of interest
   -> TraceMH a        -- Trace of previous mh outputs
@@ -216,7 +216,7 @@ mhStep model tags trace = do
             return trace
 
 -- | Run model once under MH
-runMH :: (es ~ '[Observe, Sample])
+runMH :: (es ~ '[Observe, Sample, Lift Sampler])
   => SDTrace      -- Previous mh sample set
   -> Addr      -- Sample address
   -> Prog es a -- Model
@@ -264,10 +264,10 @@ data SampleMH a where
   SampleMH  :: Dist a -> Addr -> SampleMH a
 
 -- | Run Sample occurrences
-runSample :: Addr -> SDTrace -> Prog '[Sample] a -> Sampler a
+runSample :: Addr -> SDTrace -> Prog '[Sample, Lift Sampler] a -> Sampler a
 runSample α_samp samples = loop
   where
-  loop :: Prog '[Sample] a -> Sampler a
+  loop :: Prog '[Sample, Lift Sampler] a -> Sampler a
   loop (Val x) = return x
   loop (Op u k) = case u of
       -- PrintPatt s ->

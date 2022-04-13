@@ -23,6 +23,7 @@ import qualified Inference.MH as MH
 import qualified Inference.SMC as SMC
 import qualified Inference.SMC_SIS as SMC_SIS
 import qualified Inference.SIS as SIS
+import qualified Inference.RMSMC as RMSMC
 import OpenSum
 import State
 import Model
@@ -61,3 +62,12 @@ testLinRegrSIS n_datapoints n_particles = do
   let envs = map (\(a, prob, env) -> env) bs
       mus  = concatMap (getOP #m) envs
   return mus
+
+-- testLinRegrRMSMC :: Int -> Int -> Sampler [Double]
+-- testLinRegrRMSMC n_datapoints n_particles = do
+--   let n_datapoints' = fromIntegral n_datapoints
+--   bs <- RMSMC.smc n_particles (Example.linearRegression [0 .. n_datapoints'])
+--                     (mkRecordLinRegrY (map ((+0) . (*3)) [0 .. n_datapoints']))
+--   let envs = map (\(a, prob, env) -> env) bs
+--       mus  = concatMap (getOP #m) envs
+--   return mus

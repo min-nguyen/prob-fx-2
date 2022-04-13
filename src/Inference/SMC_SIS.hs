@@ -45,7 +45,7 @@ instance Ord k => Accum (Map k a) where
   accum  = Map.union
 
 smc :: forall env es' a. (FromSTrace env, Show a) =>
-  (es' ~ [ObsReader env, Dist]) =>
+  (es' ~ [ObsReader env, Dist, Lift Sampler]) =>
   Int -> Model env es' a -> ModelEnv env -> Sampler [(a, Double, ModelEnv env)]
 smc n_particles model env = do
   as_ps_straces <- sis n_particles smcResampler smcPopulationHandler model env
