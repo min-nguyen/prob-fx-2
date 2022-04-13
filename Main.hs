@@ -24,7 +24,7 @@ main :: IO ()
 main = do
   -- trace <- sampleIOFixed $ testLinRegrSim 10 1
   -- trace <- sampleIO $ testLinRegrLW 10 2000
-  trace <- sampleIO $ testLinRegrLW' 10 2000
+  -- trace <- sampleIO $ testLinRegrLW' 10 2000
   -- trace <- sampleIO $ testLinRegrMH 10 2000
   -- trace <- sampleIOFixed $ testLogRegrSim 200 100
   -- trace <- sampleIOFixed $ testLogRegrLW 200 100
@@ -39,8 +39,8 @@ main = do
   -- trace <- sampleIOFixed testSIRMH
   -- trace <- sampleIOFixed testSIRSSim
   -- trace <- sampleIOFixed testSIRVSim
-  -- trace <- sampleIO (TestSMC.testLinRegrSMC 20 101)
-  -- trace <- sampleIO (TestSMC.testLinRegrSIS 6 100)
+  trace <- sampleIO (TestSMC.testLinRegrSMC 10 10)
+  -- trace <- sampleIO (TestSMC.testLinRegrSIS 10 10)
   let traceStr = show trace
   putStrLn traceStr
   writeFile "model-output.txt" traceStr

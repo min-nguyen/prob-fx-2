@@ -48,7 +48,7 @@ testLinRegrSMC :: Int -> Int -> Sampler [Double]
 testLinRegrSMC n_datapoints n_particles = do
   let n_datapoints' = fromIntegral n_datapoints
   bs <- SMC.smc n_particles (Example.linearRegression [0 .. n_datapoints'])
-                    (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints']))
+                    (mkRecordLinRegrY (map ((+0) . (*3)) [0 .. n_datapoints']))
   let envs = map (\(a, env, prob) -> env) bs
       mus  = concatMap (getOP #m) envs
   return mus
@@ -57,7 +57,7 @@ testLinRegrSIS :: Int -> Int -> Sampler [Double]
 testLinRegrSIS n_datapoints n_particles = do
   let n_datapoints' = fromIntegral n_datapoints
   bs <- SMC_SIS.smc n_particles (Example.linearRegression [0 .. n_datapoints'])
-                    (mkRecordLinRegrY (map ((+2) . (*5)) [0 .. n_datapoints']))
+                    (mkRecordLinRegrY (map ((+0) . (*3)) [0 .. n_datapoints']))
   let envs = map (\(a, prob, env) -> env) bs
       mus  = concatMap (getOP #m) envs
   return mus

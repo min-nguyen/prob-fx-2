@@ -66,7 +66,7 @@ rmsmcPopulationHandler progs = do
 
 rmsmcResampler :: forall es' a ctx.
      Prog '[Observe, Sample] a -- the initial program, representing the entire unevaluated model execution (having already provided a model environment)
-  -> [(Addr, Double, SDTrace)]
+  -> [(Addr, Double, SDTrace)] 
   -> [(Addr, Double, SDTrace)]
   -> [Prog es' a]
   -> Prog '[Observe, Sample, Lift Sampler] ([Prog es' a], [ctx])

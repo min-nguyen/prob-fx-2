@@ -72,18 +72,21 @@ smcResampler logWs_straces_0 logWs_straces_1sub0 progs = do
       (logWs_1sub0, straces_1sub0)  = unzip logWs_straces_1sub0
       -- Compute log mean exp of previous probabilities
       logZ  = logMeanExp logWs_0
+  prinT $ "logZ = " ++ show logZ
       -- Compute normalized log probabilities of current particles
-      logWs_1 = map (+ logZ) logWs_1sub0
+  let logWs_1 = map (+ logZ) logWs_1sub0
       -- Accumulate sample traces
       straces_1 = zipWith Map.union straces_1sub0 straces_0
       n_particles = length progs
   prinT $ "LogWs " ++ show logWs_1
+  -- prinT $ show straces_1
   -- Select particles to continue with
   particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map exp logWs_1) Nothing Nothing) undefined)
-  prinT $ "particle idx " ++ show particle_idxs
+  -- prinT $ "particle idx " ++ show particle_idxs
   let progs'         = map (progs !!) particle_idxs
       logWs'         = map (logWs_1 !!) particle_idxs
       straces'       = map (straces_1 !!) particle_idxs
+  -- prinT $ "continuing with" ++ show   straces'
   return (progs', zip logWs' straces')
 
 traceSamples :: (Member Sample es) => Prog es a -> Prog (State STrace : es) a

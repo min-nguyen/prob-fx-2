@@ -31,29 +31,31 @@ import Writer
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
 import Util
-
 logMeanExp :: [Double] -> Double
 logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
-                     in   ( (1/fromIntegral _L) * (sum ( logWₙₛ₁)))
+                     in   log ( (1.0/fromIntegral _L) * (sum (map exp logWₙₛ₁)))
 
 smc :: forall a env. (FromSTrace env, Show a) => -- , Observe, State STrace, NonDet, Sample
   Int -> Model env '[ObsReader env, Dist] a -> ModelEnv env -> Sampler [(a, ModelEnv env, Double)]
 smc n_particles model env = do
-  let prog = (traceSamples . branchWeaken 2 . runDist . runObsReader env) (runModel model)
-  particles <- (runSample . runObserve) (loopSMC n_particles 0 (repeat Map.empty) prog)
+  let prog = (traceSamples . branchWeaken n_particles . runDist . runObsReader env) (runModel model)
+  particles <- (runSample . runObserve) (loopSMC n_particles [0] (repeat Map.empty) prog)
   let particles' = map (\(a, strace, prob) -> (a, fromSTrace @env strace, prob)) particles
   return particles'
 
 loopSMC :: Show a => Members [Observe, Sample] es
-  => Int -> Double -> [STrace] -> Prog (State STrace : NonDet : es) a -> Prog es [(a, STrace, Double)]
-loopSMC n_particles logZ straces_accum prog  = do
+  => Int -> [Double] -> [STrace] -> Prog (State STrace : NonDet : es) a -> Prog es [(a, STrace, Double)]
+loopSMC n_particles logWs_prev straces_accum prog  = do
   progs_probs <- (runNonDet . runState Map.empty . breakObserve) prog
   let -- get log probabilities of each particle since between previous observe operation
       (progs, ps, straces) = (unzip3 . untuple3) progs_probs
       -- compute normalized importance weights of each particle
-      logWs               = map (+ logZ) ps
+      logZ  = logMeanExp logWs_prev
+      logWs = map (+ logZ) ps
       -- accumulate sample traces of each particle
       straces_accum'      = zipWith Map.union straces straces_accum
+  -- prinT $ "logMeanExp': "  ++  show (logMeanExp [0])
+  prinT $ "logZ': "  ++  show logZ
   prinT $ "logWs: "  ++  show logWs
   -- prinT $ show straces_accum'
   case foldVals progs of
@@ -61,13 +63,13 @@ loopSMC n_particles logZ straces_accum prog  = do
     Right vals  -> (\val -> zip3 val straces_accum' logWs) <$> vals
     -- otherwise, pick programs to continue with
     Left  progs -> do particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map exp logWs) Nothing Nothing) undefined)
-                      prinT ("particle indexes: " ++ show particle_idxs ++ " ")
+                      -- prinT ("particle indexes: " ++ show particle_idxs ++ " ")
                       let -- set logZ to be log mean exp of all particle's normalized importance weights
-                          logZ'           = logMeanExp logWs
+                          logWs'           = map (logWs !!) particle_idxs
                           prog'           = asum (map (progs !!) particle_idxs)
                           straces_accum'' = map (straces_accum' !!) particle_idxs
-                      prinT $ "logZ': "  ++  show logZ'
-                      loopSMC n_particles logZ' straces_accum'' prog'
+                      prinT $ "continuing with" ++ show   straces_accum''
+                      loopSMC n_particles logWs' straces_accum'' prog'
 
 traceSamples :: (Member Sample es) => Prog es a -> Prog (State STrace : es) a
 traceSamples  (Val x)  = return x
