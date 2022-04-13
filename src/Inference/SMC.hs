@@ -54,7 +54,7 @@ loopSMC n_particles logWs_prev straces_accum prog  = do
       logWs = map (+ logZ) ps
       -- accumulate sample traces of each particle
       straces_accum'      = zipWith Map.union straces straces_accum
-  -- prinT $ "logMeanExp': "  ++  show (logMeanExp [0])
+  -- prinT $ "resmaple_ps'" ++ show (map exp resample_ps')
   prinT $ "logZ': "  ++  show logZ
   prinT $ "logWs: "  ++  show logWs
   -- prinT $ show straces_accum'
@@ -68,7 +68,7 @@ loopSMC n_particles logWs_prev straces_accum prog  = do
                           logWs'           = map (logWs !!) particle_idxs
                           prog'           = asum (map (progs !!) particle_idxs)
                           straces_accum'' = map (straces_accum' !!) particle_idxs
-                      prinT $ "continuing with" ++ show   straces_accum''
+                      -- prinT $ "continuing with" ++ show   straces_accum''
                       loopSMC n_particles logWs' straces_accum'' prog'
 
 traceSamples :: (Member Sample es) => Prog es a -> Prog (State STrace : es) a
