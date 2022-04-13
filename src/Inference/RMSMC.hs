@@ -61,12 +61,13 @@ rmsmcPopulationHandler :: Members [Observe, Sample] es
 rmsmcPopulationHandler progs = do
   -- Merge particles into single non-deterministic program using 'asum', and run to next checkpoint
   progs_ctxs <- (runNonDet . runState Map.empty . traceSamples . breakObserves ) (asum progs)
+  -- List of particles that can be resumed, their observe breakpoint address, the log probability at that break point, and an accumulated sample trace
   let progs_ctxs' = map (\((prog, α, p), strace) -> (prog, (α, p,  strace))) progs_ctxs
   return progs_ctxs'
 
 rmsmcResampler :: forall es' a ctx.
      Prog '[Observe, Sample] a -- the initial program, representing the entire unevaluated model execution (having already provided a model environment)
-  -> [(Addr, Double, SDTrace)] 
+  -> [(Addr, Double, SDTrace)]
   -> [(Addr, Double, SDTrace)]
   -> [Prog es' a]
   -> Prog '[Observe, Sample, Lift Sampler] ([Prog es' a], [ctx])

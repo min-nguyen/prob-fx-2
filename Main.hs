@@ -39,8 +39,8 @@ main = do
   -- trace <- sampleIOFixed testSIRMH
   -- trace <- sampleIOFixed testSIRSSim
   -- trace <- sampleIOFixed testSIRVSim
-  -- trace <- sampleIO (TestSMC.testLinRegrSMC 50 100)
-  trace <- sampleIO (TestSMC.testLinRegrSIS 50 100)
+  -- trace <- sampleIO (TestSMC.testLinRegrSMC 100 50)
+  trace <- sampleIO (TestSMC.testLinRegrSIS 100 100)
   let traceStr = show trace
   putStrLn traceStr
   writeFile "model-output.txt" traceStr

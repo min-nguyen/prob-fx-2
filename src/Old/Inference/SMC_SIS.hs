@@ -60,13 +60,11 @@ smcPopulationHandler progs = do
   let progs_ctxs' = map (\((prog, p), strace) -> (prog, (p, strace))) progs_ctxs
   return progs_ctxs'
 
-{- Text book version of SMC that uses log mean exp -}
+{- Text book version of SMC that uses log mean exp: this causes the log weights to tend to -infinity too fast -}
 
 logMeanExp :: [Double] -> Double
-logMeanExp logws =
-  let c = maximum logws
-      l = length logws
-  in  c + log ((1.0/fromIntegral l) * sum (map (\logw -> exp (logw - c)) logws))
+logMeanExp logWₙₛ₁ = let _L = length logWₙₛ₁
+                     in   log ( (1.0/fromIntegral _L) * (sum (map exp logWₙₛ₁)))
 
 smcResampler :: Member Sample es => Resampler (Double, STrace) es a
 smcResampler logWs_straces_0 logWs_straces_1sub0 progs = do
@@ -83,7 +81,6 @@ smcResampler logWs_straces_0 logWs_straces_1sub0 progs = do
       straces_1 = zipWith Map.union straces_1sub0 straces_0
       n_particles = length progs
   prinT $ "LogWs " ++ show logWs_1
-  prinT $ "Resampling probabilities " ++ show (map exp logWs_1)
   -- prinT $ show straces_1
   -- Select particles to continue with
   particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map exp logWs_1) Nothing Nothing) undefined)
@@ -120,25 +117,3 @@ runObserve  (Op op k) = case op of
         -- prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp
         Val (k y, logp)
       Other op -> Op op (runObserve . k)
-
--- smcResampler :: Member Sample es => Resampler (Double, STrace) es a
--- smcResampler logWs_straces_0 logWs_straces_1sub0 progs = do
---   let -- Get log weights and sample traces from previous particle run
---       (logWs_0    , straces_0)      = unzip logWs_straces_0
---       -- Get log weights and sample traces since previous particle run
---       (logWs_1sub0, straces_1sub0)  = unzip logWs_straces_1sub0
-
---   let -- Accumulate sample traces
---       straces_1 = zipWith Map.union straces_1sub0 straces_0
---       -- Compute normalized log probabilities of current particles = log (Ws_1sub0 / sum Ws_0)
---       logWs_1 = map (log . ((/ sum (map exp logWs_0)) . exp)) logWs_1sub0
---       n_particles = length progs
---   prinT $ "LogWs " ++ show logWs_1
---   -- Select particles to continue with
---   particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map exp logWs_1) Nothing Nothing) undefined)
---   -- prinT $ "particle idx " ++ show particle_idxs
---   let progs'         = map (progs !!) particle_idxs
---       logWs'         = map (logWs_1 !!) particle_idxs
---       straces'       = map (straces_1 !!) particle_idxs
---   -- prinT $ "continuing with" ++ show   straces'
---   return (progs', zip logWs' straces')
