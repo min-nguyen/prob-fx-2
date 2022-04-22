@@ -87,6 +87,10 @@ infixr 5 <:>
 (<:>) :: UniqueKey x env ~ 'True => Assign (ObsVar x) [a] -> ModelEnv env -> ModelEnv ((x ':= a) ': env)
 (_ := a) <:> env = HCons a env
 
+infixr 5 ∙
+(∙) :: UniqueKey x env ~ 'True => Assign (ObsVar x) [a] -> ModelEnv env -> ModelEnv ((x ':= a) ': env)
+(_ := a) ∙ env = HCons a env
+
 mkLens :: forall env x a. Observable env x a => ObsVar x -> Lens' (ModelEnv env) [a]
 mkLens x = lens (getOP x) (\s a -> setOP x a s)
 

@@ -48,6 +48,14 @@ mkRecordLinRegrY :: [Double] -> ModelEnv Example.LinRegrEnv
 mkRecordLinRegrY y_vals =
   (#y := y_vals) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:> nil
 
+
+testLinRegrSimOnce :: Int  -> Sampler [Double]
+testLinRegrSimOnce n_datapoints  = do
+  let xs = [0 .. fromIntegral n_datapoints]
+      env_in = (#m := [3]) ∙ (#c := [5]) ∙ (#σ := [1]) ∙ (#y := []) ∙ nil
+  (ys, env_out) <- Simulate.simulateOnce Example.linearRegression env_in xs
+  return ys
+
 testLinRegrSim :: Int -> Int -> Sampler [(Double, Double)]
 testLinRegrSim n_datapoints n_samples = do
   let xs = [0 .. fromIntegral n_datapoints]
