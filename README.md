@@ -1,3 +1,6 @@
+<<<<<<< HEAD
+- **dep-map**: Uses dependent maps `DMap (Key Addr)` as sample maps, as opposed to `Map Addr (OpenSum' PrimVal)`.
+=======
 # models
 
 Branches:
@@ -177,3 +180,4 @@ transformMH (Free u k) = do
 Extended **effect-abstractions-constr-kinds** and cleaned up. 
 
 - **weakened-handlers**: extended icfp22-version, which reimplements handlers to use `weaken`
+>>>>>>> inference-extension
