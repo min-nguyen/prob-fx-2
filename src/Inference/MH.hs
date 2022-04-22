@@ -117,11 +117,6 @@ This is already natural for models such as a HMM.
 
 type TraceMH a = [(a, SDTrace, LPTrace)]
 
-extractSamples ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (ObsVar x, Proxy a) -> SDTrace -> [a]
-extractSamples (x, typ)  =
-    map (fromJust . OpenSum.prj @a . snd . snd)
-  . Map.toList
-  . Map.filterWithKey (\(tag, idx) _ -> tag == varToStr x)
 
 -- | Compute acceptance probability
 -- If the log prob from our new samples is better than our old samples, then we always accept.

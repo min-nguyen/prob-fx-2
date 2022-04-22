@@ -36,13 +36,23 @@ import GHC.TypeLits
 simulate :: forall env es b a. (FromSTrace env, es ~ '[ObsReader env, Dist])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env es a)           -- Model awaiting input variable
-  -> b                             -- List of model input variables
-  -> ModelEnv env                      -- List of model observed variables
+  -> b                               -- List of model input variables
+  -> ModelEnv env                    -- List of model observed variables
   -> Sampler [(a, ModelEnv env)]
 simulate n model x env = do
   outputs_smaps <- replicateM n (runSimulate env (model x))
   let outputs_envs = map (fmap (fromSTrace @env)) outputs_smaps
   return outputs_envs
+
+simulateOnce :: forall env es b a. (FromSTrace env, es ~ '[ObsReader env, Dist])
+  => (b -> Model env es a)           -- Model awaiting input variable
+  -> ModelEnv env                      -- List of model observed variables
+  -> b                             -- List of model input variables
+  -> Sampler (a, ModelEnv env)
+simulateOnce model env x  = do
+  outputs_smaps <- runSimulate env (model x)
+  let outputs_env = fmap (fromSTrace @env) outputs_smaps
+  return outputs_env
 
 runSimulate :: (es ~ '[ObsReader env, Dist])
  => ModelEnv env -> Model env es a -> Sampler (a, STrace)

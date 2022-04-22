@@ -61,26 +61,26 @@ type LinRegrEnv =
 
 linearRegressionOne :: forall env rs .
   Observables env '["y", "m", "c", "σ"] Double =>
-  Double -> Model env rs (Double, Double)
+  Double -> Model env rs Double
 linearRegressionOne x = do
   m <- normal' 0 3 #m
   c <- normal' 0 5 #c
   σ <- uniform' 1 3 #σ
   -- printM $ "(m * x + c) is " ++ show (m * x + c)
   y <- normal' (m * x + c) σ #y
-  return (x, y)
+  return y
 
 linearRegression :: forall env rs .
   Observables env '["y", "m", "c", "σ"] Double =>
-  [Double] -> Model env rs [(Double, Double)]
+  [Double] -> Model env rs [Double]
 linearRegression xs = do
   m <- normal' 0 3 #m
   c <- normal' 0 5 #c
   σ <- uniform' 1 3 #σ
-  ys <- foldM (\ys x -> do
+  ys <- mapM (\x -> do
                     y <- normal' (m * x + c) σ #y
-                    return (y:ys)) [] xs
-  return (zip xs (reverse ys))
+                    return (y)) xs
+  return ys
 
 type LogRegrEnv =
     '[  "label" ':= Bool,

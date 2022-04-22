@@ -38,23 +38,6 @@ import Unsafe.Coerce
 import STrace
 import Old.Example (LatentState(LatentState))
 
--- Returns a list of (addr, [p]) of all unique samples for addresses of interest in the mh trace
-extractPostParams :: forall p a. (Eq p, Member p PrimVal) => Proxy p -> [Addr] -> [(a, [(Addr, OpenSum PrimVal)], [(Addr, Double)])] -> [(Addr, [p])]
-extractPostParams _ addrs mhTrace =
-  let sampleMap = map snd3 mhTrace
-      paramTrace = [ (addr, xs) | addr <- addrs,
-        let xs = map (\smap -> let p = fromJust $ lookup addr smap
-                                   d = fromJust $ prj @p p
-                               in  d) sampleMap ]
-      paramTraceUnique = map (\(addr, xs) -> (addr, removeDuplicates xs)) paramTrace
-  in  paramTraceUnique
-
-processMHTrace :: [(a, Map.Map Addr (PrimDist, OpenSum PrimVal), Map.Map Addr Double)]
-               -> [(a, [(Addr, OpenSum PrimVal)], [(Addr, Double)])]
-processMHTrace = map (\(xy, samples, logps) ->
-  let samples' = map (\(α, (dist, sample)) -> (α, sample)) (Map.toList samples)
-      logps'   = Map.toList logps
-  in  (xy, samples', logps') )
 
 {- Linear Regression -}
 mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> ModelEnv Example.LinRegrEnv
@@ -67,22 +50,22 @@ mkRecordLinRegrY y_vals =
 
 testLinRegrSim :: Int -> Int -> Sampler [(Double, Double)]
 testLinRegrSim n_datapoints n_samples = do
-  let n_datapoints' = fromIntegral n_datapoints
-  bs :: [([(Double, Double)], ModelEnv Example.LinRegrEnv)]
+  let xs = [0 .. fromIntegral n_datapoints]
+  bs :: [([Double], ModelEnv Example.LinRegrEnv)]
       <- Simulate.simulate n_samples Example.linearRegression
-                    [0 .. n_datapoints']
+                    xs
                     (mkRecordLinRegr ([], [1.0], [0.0], [1.0]))
-  return $ concatMap fst bs
+  return $ zip xs (concatMap fst bs)
 
 testLinRegrLW :: Int -> Int -> Sampler [((Double, Double, Double), Double)]
 testLinRegrLW n_datapoints n_samples = do
-  let n_datapoints' = fromIntegral n_datapoints
-  lwTrace :: [([(Double, Double)],              -- y data points
+  let xs = [0 .. fromIntegral n_datapoints]
+  lwTrace :: [([Double],              -- y data points
                 ModelEnv Example.LinRegrEnv,    -- sample trace
                 Double)]                        -- likelihood
           <- LW.lw n_samples Example.linearRegression
-                   [0 .. n_datapoints']
-                   (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints']))
+                   xs
+                   (mkRecordLinRegrY (map ((+2) . (*3)) xs))
   let lw_envs_out = map snd3 lwTrace
       mus        = concatMap (getOP #m) lw_envs_out
       cs         = concatMap (getOP #c) lw_envs_out
@@ -93,12 +76,12 @@ testLinRegrLW n_datapoints n_samples = do
 -- Performs LW sampling *per* data point (x,y), rather than per set of input data (xs, ys)
 testLinRegrLW' :: Int -> Int -> Sampler [((Double, Double, Double), Double)]
 testLinRegrLW' n_datapoints n_samples = do
-  let n_datapoints' = fromIntegral n_datapoints
-  lwTrace :: [([(Double, Double)],              -- y data points
+  let xs = [0 .. fromIntegral n_datapoints]
+  lwTrace :: [([Double],              -- y data points
                 ModelEnv Example.LinRegrEnv,    -- sample trace
                 Double)]                        -- likelihood
           <- concat <$> mapM (\(x, y) -> LW.lw n_samples Example.linearRegression [x] (mkRecordLinRegrY [y]))
-                                  (zip [0 .. n_datapoints'] (map ((+2) . (*3)) [0 .. n_datapoints']))
+                                  (zip xs (map ((+2) . (*3)) xs))
   let lw_envs_out = map snd3 lwTrace
       mus        = concatMap (getOP #m) lw_envs_out
       cs         = concatMap (getOP #c) lw_envs_out
