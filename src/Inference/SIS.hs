@@ -19,17 +19,17 @@ import Data.Map (Map)
 import ModelEnv
 import Control.Monad
 import Control.Applicative
-import Dist
+import Effects.Dist
 import Freer
-import IO
+import Effects.Lift
 import Model
-import NonDet
+import Effects.NonDet
 import Sampler
-import ObsReader
-import State
+import Effects.ObsReader
+import Effects.State
 import STrace
 import Sampler
-import Writer
+import Effects.Writer
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
 import Util

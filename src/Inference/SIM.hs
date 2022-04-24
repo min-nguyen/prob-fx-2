@@ -11,7 +11,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Inference.Simulate where
+module Inference.SIM where
 
 -- import Data.Extensible hiding (Member)
 import qualified Data.Map as Map
@@ -19,14 +19,14 @@ import Data.Maybe
 import Data.Map (Map)
 import ModelEnv
 import Control.Monad
-import Dist
+import Effects.Dist
 import Freer
 import Model
 import Sampler
-import ObsReader
-import State
+import Effects.ObsReader
+import Effects.State
 import STrace
-import IO
+import Effects.Lift
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
 import Unsafe.Coerce (unsafeCoerce)

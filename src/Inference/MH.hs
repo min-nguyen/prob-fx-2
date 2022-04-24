@@ -25,8 +25,8 @@ import Data.Maybe
 -- import Data.Extensible hiding (Member)
 import ModelEnv
 import Control.Monad
-import IO
-import Dist
+import Effects.Lift
+import Effects.Dist
 import Data.Bifunctor
 import Freer
 import Model hiding (runModelFree)
@@ -34,8 +34,8 @@ import Sampler
 import STrace
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum(..))
-import ObsReader
-import State
+import Effects.ObsReader
+import Effects.State
 import GHC.Natural
 import GHC.TypeLits (Nat)
 import qualified GHC.TypeLits as TL

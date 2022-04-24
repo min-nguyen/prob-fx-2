@@ -15,9 +15,9 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 
-module ObsReader where
+module Effects.ObsReader where
 
-import State
+import Effects.State
 import Freer
 -- import Data.Extensible hiding (Member)
 import ModelEnv

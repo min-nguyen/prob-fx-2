@@ -14,7 +14,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Writer where
+module Effects.Writer where
 import Freer
 
 data Writer w a where

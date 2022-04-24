@@ -20,12 +20,12 @@ module Old.Example where
 import Statistics.Distribution
 import GHC.OverloadedLabels
 import Freer
-import Reader
-import State
-import Writer
+import Effects.Reader
+import Effects.State
+import Effects.Writer
 import Model
-import Dist
-import IO
+import Effects.Dist
+import Effects.Lift
 import Sampler
 import OpenSum (OpenSum)
 import qualified OpenSum as OpenSum

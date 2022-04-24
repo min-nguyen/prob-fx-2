@@ -12,16 +12,16 @@ module Old.Inference.LW where
 import qualified Data.Map as Map
 import Data.Map (Map)
 import ModelEnv
-import ObsReader
+import Effects.ObsReader
 import Control.Monad
 import Control.Monad.Trans.Class
 import Unsafe.Coerce
-import Dist
+import Effects.Dist
 import qualified Example as Example
 import Freer
 import Model hiding (runModelFree)
 import Sampler
-import State ( modify, runState, State )
+import Effects.State ( modify, runState, State )
 import STrace
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum(..))

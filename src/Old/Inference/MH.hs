@@ -25,14 +25,14 @@ import Data.Maybe
 import ModelEnv
 import Control.Monad
 import Control.Monad.Trans.Class
-import Dist
+import Effects.Dist
 import Freer
 import Model hiding (runModelFree)
 import Sampler
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum(..))
-import ObsReader
-import State
+import Effects.ObsReader
+import Effects.State
 import GHC.Natural
 import GHC.TypeLits (Nat)
 import qualified GHC.TypeLits as TL

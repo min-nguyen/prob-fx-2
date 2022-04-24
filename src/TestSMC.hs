@@ -17,17 +17,17 @@ import Data.Maybe
 import qualified Data.Map as Map
 import qualified Example as Example
 import DataSets
-import Dist
+import Effects.Dist
 import qualified Inference.LW as LW
 import qualified Inference.MH as MH
 import qualified Inference.SMC as SMC
 import qualified Inference.SIS as SIS
 import qualified Inference.RMSMC as RMSMC
 import OpenSum
-import State
+import Effects.State
 import Model
 import Sampler
-import ObsReader
+import Effects.ObsReader
 -- import Data.Extensible
 import ModelEnv
 import Util

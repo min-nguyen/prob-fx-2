@@ -14,14 +14,14 @@ module Old.Inference.Simulate where
 import ModelEnv
 import Control.Monad
 -- import Control.Monad.Trans.Class
-import Dist
+import Effects.Dist
 import Freer
 import Model
 import Sampler
-import ObsReader
-import State
+import Effects.ObsReader
+import Effects.State
 import Example as Example
-import IO
+import Effects.Lift
 
 simulate :: (es ~ '[ObsReader env, Dist])
   => Int                             -- Number of iterations per data point

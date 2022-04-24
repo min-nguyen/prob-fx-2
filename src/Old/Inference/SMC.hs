@@ -18,16 +18,16 @@ import ModelEnv
 import Control.Monad
 import Control.Applicative
 import Control.Monad.Trans.Class
-import Dist
+import Effects.Dist
 import Freer
 import Model
-import NonDet
+import Effects.NonDet
 import Sampler
-import ObsReader
-import State
+import Effects.ObsReader
+import Effects.State
 import STrace
 import Sampler
-import Writer
+import Effects.Writer
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
 import Util

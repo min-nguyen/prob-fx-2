@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Experiment where
+module Old.Experiment where
 -- import Data.Extensible hiding (Member)
 import qualified Data.Map as Map
 import Data.Maybe
@@ -17,16 +17,16 @@ import ModelEnv
 import Control.Monad
 import Control.Applicative
 import Control.Monad.Trans.Class
-import Dist
+import Effects.Dist
 import Freer
 import Model
-import NonDet
+import Effects.NonDet
 import Sampler
-import ObsReader
-import State
+import Effects.ObsReader
+import Effects.State
 import STrace
 import Sampler
-import Writer
+import Effects.Writer
 import Debug.Trace
 
 run' :: [Int]

@@ -6,16 +6,16 @@
 module Model where
 
 import Util
-import Dist
+import Effects.Dist
 import Freer
--- import Reader
-import ObsReader
+-- import Effects.Reader
+import Effects.ObsReader
 import OpenSum (OpenSum)
 import qualified OpenSum as OpenSum
 import Sampler
-import State ( State, get, put, modify, runState )
-import Writer
-import IO
+import Effects.State ( State, get, put, modify, runState )
+import Effects.Writer
+import Effects.Lift
 import GHC.Generics
 import GHC.Types
 import GHC.TypeLits

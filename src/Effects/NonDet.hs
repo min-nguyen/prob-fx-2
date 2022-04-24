@@ -15,12 +15,12 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE ImplicitParams #-}
 
-module NonDet where
+module Effects.NonDet where
 
 import Control.Applicative
 import Control.Monad
 import Freer
-import Writer
+import Effects.Writer
 import Debug.Trace
 
 data NonDet a where

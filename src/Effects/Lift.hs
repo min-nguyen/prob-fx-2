@@ -14,7 +14,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module IO where
+module Effects.Lift where
 
 import Freer
 import Data.Function (fix)

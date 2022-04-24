@@ -15,7 +15,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
 
-module State where
+module Effects.State where
 
 import Freer
 

@@ -15,7 +15,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
 
-module Reader where
+module Effects.Reader where
 
 import Freer
 import Data.Extensible hiding (Member)

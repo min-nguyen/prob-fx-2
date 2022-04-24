@@ -6,7 +6,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Sampler where
 
-import IO hiding (lift)
+import Effects.Lift hiding (lift)
 import Freer
 import Control.Monad
 import Control.Monad.Primitive
