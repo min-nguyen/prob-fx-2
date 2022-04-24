@@ -55,6 +55,9 @@ runNonDet (Op op k) = case op of
 branch :: Member NonDet es => Int -> Prog es a -> Prog es a
 branch n prog = asum (replicate n prog)
 
+weakenNonDet :: Prog es a -> Prog (NonDet : es) a
+weakenNonDet = branchWeaken 1
+
 branchWeaken :: Int -> Prog es a -> Prog (NonDet : es) a
 branchWeaken n (Op op k) = asum $ replicate n (Op (weaken op) (weaken' . k))
   where weaken' (Op op k) = Op (weaken op) (weaken' . k)

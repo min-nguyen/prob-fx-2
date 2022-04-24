@@ -12,6 +12,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TupleSections #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Inference.MH where
 
 import Data.Functor.Identity
@@ -150,16 +151,16 @@ mh :: forall es a b env e. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrac
    -> Sampler [(a, ModelEnv env, LPTrace)]  -- Trace of all accepted outputs, samples, and logps
 mh n model tags x_0 env_0 = do
   -- Perform initial run of mh
-  mhTrace <- mh' n (runDist . runObsReader env_0 $ runModel (model x_0)) Map.empty tags
+  mhTrace <- mhWithSTrace n (runDist . runObsReader env_0 $ runModel (model x_0)) Map.empty tags
   return (map (mapsnd3 (fromSDTrace @env)) mhTrace)
 
-mh' :: (es ~ '[Observe, Sample, Lift Sampler])
+mhWithSTrace :: (es ~ '[Observe, Sample, Lift Sampler])
    => Int                              -- Number of mhSteps per data point
    -> Prog es a
    -> SDTrace
    -> [Tag]                            -- Tags indicated sample sites of interest
    -> Sampler (TraceMH a)              -- Trace of all accepted outputs, samples, and logps
-mh' n prog samples_0 tags = do
+mhWithSTrace n prog samples_0 tags = do
   -- Perform initial run of mh
   let α_0 = ("", 0)
   (y_0, samples_0, logps_0) <- runMH samples_0 α_0 prog
@@ -183,7 +184,7 @@ mhStep model tags trace = do
   -- α_samp <- sample $ DiscrUniformDist 0 2 Nothing
   let sampleSites = if null tags then samples
                     else  Map.filterWithKey (\(tag, i) _ -> tag `elem` tags) samples
-  α_samp_ind <- (sample (DiscrUniformDist 0 (Map.size sampleSites - 1) Nothing Nothing))
+  α_samp_ind <- sample (DiscrUniformDist 0 (Map.size sampleSites - 1) Nothing Nothing)
   -- liftS $ print $ "α_samp_ind is " ++ show α_samp_ind ++ " Map.size samples is " ++ show (Map.size samples)
   -- liftS $ print $ "sample ind is " ++ show α_samp_ind ++ "\n sample sites are " ++ show sampleSites
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
@@ -220,7 +221,8 @@ runMH samples α_samp m = do
   ((a, samples'), logps') <-
                             ( -- This is where the previous run's samples are actually reused.
                               -- We do not reuse logps, we simply recompute them.
-                              runSample α_samp samples
+                              runLift
+                            . runSample α_samp samples
                             . runObserve
                             . runState Map.empty
                             . runState Map.empty
@@ -259,20 +261,21 @@ data SampleMH a where
   SampleMH  :: Dist a -> Addr -> SampleMH a
 
 -- | Run Sample occurrences
-runSample :: Addr -> SDTrace -> Prog '[Sample, Lift Sampler] a -> Sampler a
+runSample :: Addr -> SDTrace -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
 runSample α_samp samples = loop
   where
-  loop :: Prog '[Sample, Lift Sampler] a -> Sampler a
+  loop :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
   loop (Val x) = return x
   loop (Op u k) = case u of
       PrintPatt s ->
-        do liftS (putStrLn s) >> loop (k ())
+        lift (liftS (putStrLn s)) >> loop (k ())
       SampPatt d α ->
         do let maybe_y = lookupSample samples d α α_samp
            case maybe_y of
-             Nothing -> sample d >>= (loop . k)
+             Nothing -> lift (sample d) >>= (loop . k)
              Just x  -> (loop . k) x
-      _  -> error "Impossible: Nothing cannot occur"
+      DecompLeft u' ->
+         Op u' (loop . k)
 
 lookupSample :: Show a => OpenSum.Member a PrimVal => SDTrace -> Dist a -> Addr -> Addr -> Maybe a
 lookupSample samples d α α_samp

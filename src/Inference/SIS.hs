@@ -99,13 +99,13 @@ runSample = loop
   loop :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
   loop (Val x) = return x
   loop (Op u k) =
-    case decomp u of
-      Right (Sample d α) ->
-        (lift $ sample d) >>= \x -> --lift (printS ("Sampled " ++ show x ++ " from " ++ show d)) >>
-          loop (k x)
-      (Right (Printer s))  ->
-        (lift $ liftS (putStrLn s)) >>= loop . k
-      Left u' -> Op u' (loop . k)
+    case  u of
+      SampPatt d α ->
+        lift (sample d) >>= \x -> loop (k x)
+      PrintPatt s  ->
+        lift (liftS (putStrLn s)) >>= loop . k
+      DecompLeft u' ->
+        Op u' (loop . k)
 
 runObserve :: Prog (Observe : es) a -> Prog es a
 runObserve  (Val x) = return x

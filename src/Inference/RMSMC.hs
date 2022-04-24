@@ -39,10 +39,10 @@ import Util
 
 rmsmc :: forall env es' a. (FromSTrace env, Show a) =>
   (es' ~ [ObsReader env, Dist, Lift Sampler]) =>
-  Int -> Model env es' a -> ModelEnv env -> Sampler [(a, Double, ModelEnv env)]
-rmsmc n_particles model env = do
+  Int -> Int -> Model env es' a -> ModelEnv env -> Sampler [(a, Double, ModelEnv env)]
+rmsmc n_particles mh_steps model env = do
   let model_0 = (runDist . runObsReader env) (runModel model)
-  as_ps_straces <- sis n_particles (rmsmcResampler model_0) rmsmcPopulationHandler model env
+  as_ps_straces <- sis n_particles (rmsmcResampler mh_steps model_0) rmsmcPopulationHandler model env
   return $ map (\(a, (addr, p, strace)) -> (a, p, fromSDTrace @env strace)) as_ps_straces
 
 rmsmcPopulationHandler :: Members [Observe, Sample] es
@@ -55,9 +55,10 @@ rmsmcPopulationHandler progs = do
   return progs_ctxs'
 
 rmsmcResampler :: forall es a.
-     Prog [Observe, Sample, Lift Sampler] a -- the initial program, representing the entire unevaluated model execution (having already provided a model environment)
+     Int
+  -> Prog [Observe, Sample, Lift Sampler] a -- the initial program, representing the entire unevaluated model execution (having already provided a model environment)
   -> Resampler ([Addr], Double, SDTrace) [Observe, Sample, Lift Sampler] a
-rmsmcResampler model_0 ctx_0 ctx_1sub0 progs_1 = do
+rmsmcResampler mh_steps model_0 ctx_0 ctx_1sub0 progs_1 = do
   let
       (obs_addrs_0,     logWs_0    , straces_0)         = unzip3 ctx_0
       -- Get log weights and sample traces since previous particle run
@@ -83,15 +84,15 @@ rmsmcResampler model_0 ctx_0 ctx_1sub0 progs_1 = do
       partial_model = insertBreakpoint α_break model_0
 
   -- perform metropolis-hastings using each resampled particle's sample trace
-  mhTraces <- lift $ mapM (\sdtrace -> mh' 100 partial_model sdtrace []) resampled_straces
+  mhTraces <- lift $ mapM (\sdtrace -> mhWithSTrace mh_steps partial_model sdtrace []) resampled_straces
   let -- get the continuations of each particle from the break point, and weaken with non-det effect
-      moved_particles     = map (branchWeaken 1 . fst3 . last) mhTraces
+      moved_particles     = map (weakenNonDet . fst3 . last) mhTraces
       -- get the sample traces of each particle up until the break point
       moved_straces = map (snd3 . last) mhTraces
       -- get the log prob traces of each particle up until the break point
       lptraces     = map (thrd3 . last) mhTraces
       -- filter log probability traces to only include that for observe operations
-      obs_lptraces = map (Map.filterWithKey (\k a -> k `elem` (head obs_addrs_1))) lptraces
+      obs_lptraces = map (Map.filterWithKey (\k a -> k `elem` head obs_addrs_1)) lptraces
       -- compute total log probability of each particle up until break point
       moved_logWs  = map (sum . map snd . Map.toList) obs_lptraces
 
