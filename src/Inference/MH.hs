@@ -265,8 +265,8 @@ runSample α_samp samples = loop
   loop :: Prog '[Sample, Lift Sampler] a -> Sampler a
   loop (Val x) = return x
   loop (Op u k) = case u of
-      -- PrintPatt s ->
-      --   do liftS (putStrLn s) >> loop (k ())
+      PrintPatt s ->
+        do liftS (putStrLn s) >> loop (k ())
       SampPatt d α ->
         do let maybe_y = lookupSample samples d α α_samp
            case maybe_y of

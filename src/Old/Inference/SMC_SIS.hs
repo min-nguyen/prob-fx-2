@@ -36,14 +36,6 @@ import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
 import Util
 
-instance Accum Double where
-  aempty = 0
-  accum  = (+)
-
-instance Ord k => Accum (Map k a) where
-  aempty = Map.empty
-  accum  = Map.union
-
 smc :: forall env es' a. (FromSTrace env, Show a) =>
   (es' ~ [ObsReader env, Dist]) =>
   Int -> Model env es' a -> ModelEnv env -> Sampler [(a, Double, ModelEnv env)]

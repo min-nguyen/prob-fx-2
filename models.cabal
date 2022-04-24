@@ -73,6 +73,7 @@ library
                       Inference.SMC,
                       Inference.SMC_SIS,
                       Inference.SIS,
+                      Inference.RMSMC,
                       Test,
                       Experiment,
                       TestSMC,

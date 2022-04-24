@@ -44,9 +44,22 @@ class Accum ctx where
   accum  :: ctx -> ctx -> ctx
   aempty :: ctx
 
+instance (Accum ctx1, Accum ctx2, Accum ctx3) => Accum (ctx1, ctx2, ctx3) where
+  aempty = (aempty, aempty, aempty)
+  accum (xs, ys, zs) (xs', ys', zs') = (accum xs xs', accum ys ys', accum zs zs')
+
 instance (Accum ctx1, Accum ctx2) => Accum (ctx1, ctx2) where
   aempty = (aempty, aempty)
   accum (xs, ys) (xs', ys') = (accum xs xs', accum ys ys')
+instance Accum Double where
+  aempty = 0
+  accum  = (+)
+instance Ord k => Accum (Map k a) where
+  aempty = Map.empty
+  accum  = Map.union
+instance Accum [a] where
+  aempty = []
+  accum  = (++)
 
 sis :: forall a env ctx es.
      (Accum ctx, Show ctx, FromSTrace env, Show a)
@@ -92,7 +105,7 @@ runSample = loop
           loop (k x)
       PrintPatt s  ->
         (liftS (putStrLn s)) >>= loop . k
-      _         -> error "Impossible: Nothing cannot occur"
+      -- _         -> error "Impossible: Nothing cannot occur"
 
 runObserve :: Prog (Observe : es) a -> Prog es a
 runObserve  (Val x) = return x

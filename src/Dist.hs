@@ -167,11 +167,6 @@ runDist = loop 0 Map.empty
                 k'      = loop (counter + 1) tagMap' . k
     Left  u'  -> Op (weaken $ weaken u') (loop counter tagMap . k)
 
--- runDist :: forall es a. Prog (Dist ': es) a -> Prog (Observe ': Sample ': es) a
--- runDist = replaceRelayStN @'[Observe, Sample] (0, Map.empty) (\_ x -> return x)
---   undefined
---  (forall x. s -> t x -> (s -> x -> Prog (es :++: ts) b) -> Prog (es :++: ts) b) (Prog (t : ts) a)
-
 data Sample a where
   Sample  :: Dist a -> Addr -> Sample a
   Printer :: String -> Sample ()
