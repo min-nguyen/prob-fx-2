@@ -9,6 +9,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Inference.SIS where
 -- import Data.Extensible hiding (Member)
@@ -33,6 +34,7 @@ import Effects.Writer
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
 import Util
+import Language.Haskell.TH.Lens (_Overlappable)
 
 {- Takes previous contexts of particles, the new contexts of particles since previous execution, and the current particles,
   , and decides which particles and contexts to continue with. -}
@@ -41,29 +43,41 @@ type Resampler       ctx es a = [ctx] -> [ctx] -> [Prog (NonDet : es) a] -> Prog
 type ParticleHandler ctx es a = [Prog (NonDet : es) a] -> Prog es [(Prog (NonDet : es) a, ctx)]
 
 class Accum ctx where
-  accum  :: ctx -> ctx -> ctx
-  aempty :: ctx
+  -- For each particle, accumulate its incremental context, and its previous context
+  accum  :: [ctx] -> [ctx] -> [ctx]
+  -- Initialise the contexts for n particles
+  aempty :: Int -> [ctx]
 
-instance (Accum ctx1, Accum ctx2, Accum ctx3) => Accum (ctx1, ctx2, ctx3) where
-  aempty = (aempty, aempty, aempty)
-  accum (xs, ys, zs) (xs', ys', zs') = (accum xs xs', accum ys ys', accum zs zs')
+newtype LogP = LogP { logP :: Double } deriving (Show, Num)
 
-instance (Accum ctx1, Accum ctx2) => Accum (ctx1, ctx2) where
-  aempty = (aempty, aempty)
-  accum (xs, ys) (xs', ys') = (accum xs xs', accum ys ys')
-instance Accum Double where
-  aempty = 0
-  accum  = (+)
+instance {-# OVERLAPPING #-} Accum LogP where
+  aempty n = replicate n 0
+  accum logps_1sub0 logps_0  =
+    let logZ = logMeanExp logps_0
+    in  map (+ logZ) logps_1sub0
+
 instance Ord k => Accum (Map k a) where
-  aempty = Map.empty
-  accum  = Map.union
-instance Accum [a] where
-  aempty = []
-  accum  = (++)
+  aempty n = replicate n  Map.empty
+  accum  = zipWith Map.union
+
+instance {-# OVERLAPPING #-} Accum [Addr] where
+  aempty n = replicate n []
+  accum addrs_1sub0 addrs_0 = zipWith (++) addrs_1sub0 addrs_0
+
+instance (Accum a, Accum b) => Accum (a, b) where
+  aempty n = zip (aempty n) (aempty n)
+  accum xys xys' = let (x, y)    = unzip xys
+                       (x', y') = unzip xys'
+                   in  zip (accum x x') (accum y y')
+
+instance (Accum a, Accum b, Accum c) => Accum (a, b, c) where
+  aempty n = zip3 (aempty n) (aempty n) (aempty n)
+  accum xyzs xyzs' = let (x, y, z)    = unzip3 xyzs
+                         (x', y', z') = unzip3 xyzs'
+                     in  zip3 (accum x x') (accum y y') (accum z z')
 
 sis :: forall a env ctx es.
      (Accum ctx, Show ctx, FromSTrace env, Show a)
-  -- => Member NonDet es'
   => Int
   -> Resampler       ctx (Observe : Sample : Lift Sampler : '[])  a
   -> ParticleHandler ctx (Observe : Sample : Lift Sampler : '[]) a
@@ -73,7 +87,8 @@ sis :: forall a env ctx es.
 sis n_particles resampler pophdl model env = do
   let prog_0  = (runDist . runObsReader env) (runModel model)
       progs   = replicate n_particles (weaken' prog_0)
-      ctxs    = replicate n_particles aempty
+      ctxs    = aempty n_particles
+  printS $ show ctxs
   (runLift . runSample . runObserve) (loopSIS n_particles resampler pophdl (progs, ctxs))
 
 loopSIS :: (Show a, Show ctx, Accum ctx)
@@ -87,7 +102,7 @@ loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
   (progs_1, ctxs_1) <- unzip <$> populationHandler progs_0
   case foldVals progs_1 of
   -- if all programs have finished, return with accumulated context
-    Right vals  -> do let ctxs' = zipWith accum ctxs_1 ctxs_0
+    Right vals  -> do let ctxs' =  accum ctxs_1 ctxs_0
                       (`zip` ctxs') <$> vals
   -- otherwise, pick programs to continue with
     Left  progs -> do (progs', ctxs') <- resampler ctxs_0 ctxs_1 progs_1
@@ -114,8 +129,9 @@ runObserve  (Op op k) = case op of
         runObserve (k y)
       Other op -> Op op (runObserve . k)
 
-logMeanExp :: [Double] -> Double
-logMeanExp logws =
-  let c = maximum logws
+logMeanExp :: [LogP] -> LogP
+logMeanExp logps =
+  let logws = map logP logps
+      c = maximum logws
       l = length logws
-  in  c + log ((1.0/fromIntegral l) * sum (map (\logw -> exp (logw - c)) logws))
+  in  LogP $ c + log ((1.0/fromIntegral l) * sum (map (\logw -> exp (logw - c)) logws))
