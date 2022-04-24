@@ -31,7 +31,7 @@ import Effects.State
 import STrace
 import Sampler
 import Effects.Writer
-import Inference.SIS (sis, Accum(..), Resampler, logMeanExp)
+import Inference.SIS (sis, Accum(..), Resampler, LogP(..), logMeanExp)
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
 import Util
@@ -39,40 +39,30 @@ import Util
 
 smc :: forall env es' a. (FromSTrace env, Show a) =>
   (es' ~ [ObsReader env, Dist, Lift Sampler]) =>
-  Int -> Model env es' a -> ModelEnv env -> Sampler [(a, Double, ModelEnv env)]
+  Int -> Model env es' a -> ModelEnv env -> Sampler [(a, LogP, ModelEnv env)]
 smc n_particles model env = do
   as_ps_straces <- sis n_particles smcResampler smcPopulationHandler model env
   return $ map (\(a, (p, strace)) -> (a, p, fromSTrace @env strace)) as_ps_straces
 
 smcPopulationHandler :: Members [Observe, Sample] es
   =>         [Prog (NonDet:es) a]
-  -> Prog es [(Prog (NonDet:es) a, (Double, STrace))]
+  -> Prog es [(Prog (NonDet:es) a, (LogP, STrace))]
 smcPopulationHandler progs = do
   -- Merge particles into single non-deterministic program using 'asum', and run to next checkpoint
   progs_ctxs <- (runNonDet . runState Map.empty . traceSamples . breakObserve ) (asum progs)
   let progs_ctxs' = map (\((prog, p), strace) -> (prog, (p, strace))) progs_ctxs
   return progs_ctxs'
 
-smcResampler :: Member Sample es => Resampler (Double, STrace) es a
+smcResampler :: Member Sample es => Resampler (LogP, STrace) es a
 smcResampler logWs_straces_0 logWs_straces_1sub0 progs = do
-  let -- Get log weights and sample traces from previous particle run
-      (logWs_0    , straces_0)      = unzip logWs_straces_0
-      -- Get log weights and sample traces since previous particle run
-      (logWs_1sub0, straces_1sub0)  = unzip logWs_straces_1sub0
-      -- Compute log mean exp of previous probabilities
-      logZ  = logMeanExp logWs_0
-  prinT $ "logZ = " ++ show logZ
-      -- Compute normalized log probabilities of current particles
-  let logWs_1 = map (+ logZ) logWs_1sub0
-      -- Accumulate sample traces
-      straces_1 = zipWith Map.union straces_1sub0 straces_0
+  let -- for each particle, compute normalised accumulated log weights, and accumulated sample traces
+      (logWs_1    , straces_1)      = unzip $ accum logWs_straces_1sub0 logWs_straces_0
       n_particles = length progs
   prinT $ "LogWs " ++ show logWs_1
-  prinT $ "Resampling probabilities " ++ show (map exp logWs_1)
+  prinT $ "Resampling probabilities " ++ show (map (exp . logP) logWs_1)
   -- prinT $ show straces_1
   -- Select particles to continue with
-  particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map exp logWs_1) Nothing Nothing) undefined)
-  -- prinT $ "particle idx " ++ show particle_idxs
+  particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map (exp . logP) logWs_1) Nothing Nothing) undefined)
   let resampled_progs         = map (progs !!) particle_idxs
       resampled_logWs         = map (logWs_1 !!) particle_idxs
       resampled_straces       = map (straces_1 !!) particle_idxs
@@ -87,23 +77,23 @@ traceSamples  (Op u k) = case u of
     _   -> Op (weaken u) (traceSamples . k)
 
 -- When discharging Observe, return the rest of the program, and the log probability
-breakObserve :: Member Observe es => Prog es a -> Prog es (Prog es a, Double)
+breakObserve :: Member Observe es => Prog es a -> Prog es (Prog es a, LogP)
 breakObserve  (Val x) = return (Val x, 0)
 breakObserve  (Op op k) = case op of
       ObsPatt d y α -> do
         let logp = logProb d y
         -- prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp
-        Val (k y, logp)
+        Val (k y, LogP logp)
       _ -> Op op (breakObserve . k)
 
 -- When discharging Observe, return the rest of the program, and the log probability
-runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, Double)
+runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, LogP)
 runObserve  (Val x) = return (Val x, 0)
 runObserve  (Op op k) = case op of
       ObsPatt d y α -> do
         let logp = logProb d y
         -- prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp
-        Val (k y, logp)
+        Val (k y, LogP logp)
       Other op -> Op op (runObserve . k)
 
 -- smcResampler :: Member Sample es => Resampler (Double, STrace) es a
