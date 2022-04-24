@@ -74,7 +74,7 @@ sis n_particles resampler pophdl model env = do
   let prog_0  = (runDist . runObsReader env) (runModel model)
       progs   = replicate n_particles (weaken' prog_0)
       ctxs    = replicate n_particles aempty
-  (runSample . runObserve) (loopSIS n_particles resampler pophdl (progs, ctxs))
+  (runLift . runSample . runObserve) (loopSIS n_particles resampler pophdl (progs, ctxs))
 
 loopSIS :: (Show a, Show ctx, Accum ctx)
   => Int
@@ -93,19 +93,19 @@ loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
     Left  progs -> do (progs', ctxs') <- resampler ctxs_0 ctxs_1 progs_1
                       loopSIS n_particles resampler populationHandler (progs', ctxs')
 
-runSample :: Prog '[Sample, Lift Sampler] a -> Sampler a
+runSample :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
 runSample = loop
   where
-  loop :: Prog '[Sample, Lift Sampler] a -> Sampler a
+  loop :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
   loop (Val x) = return x
   loop (Op u k) =
-    case u of
-      SampPatt d α ->
-        (sample d) >>= \x -> --lift (printS ("Sampled " ++ show x ++ " from " ++ show d)) >>
+    case decomp u of
+      Right (Sample d α) ->
+        (lift $ sample d) >>= \x -> --lift (printS ("Sampled " ++ show x ++ " from " ++ show d)) >>
           loop (k x)
-      PrintPatt s  ->
-        (liftS (putStrLn s)) >>= loop . k
-      -- _         -> error "Impossible: Nothing cannot occur"
+      (Right (Printer s))  ->
+        (lift $ liftS (putStrLn s)) >>= loop . k
+      Left u' -> Op u' (loop . k)
 
 runObserve :: Prog (Observe : es) a -> Prog es a
 runObserve  (Val x) = return x

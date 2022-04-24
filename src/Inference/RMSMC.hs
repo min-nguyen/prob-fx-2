@@ -31,7 +31,7 @@ import State
 import STrace
 import Sampler
 import Writer
-import Inference.MH
+import Inference.MH2
 import Inference.SIS (sis, Accum(..), Resampler, ParticleHandler)
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)

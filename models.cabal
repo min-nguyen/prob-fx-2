@@ -69,6 +69,7 @@ library
                       STrace,
                       Inference.Simulate,
                       Inference.LW,
+                      Inference.MH2,
                       Inference.MH,
                       Inference.SMC,
                       Inference.SMC_SIS,
