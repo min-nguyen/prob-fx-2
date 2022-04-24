@@ -15,7 +15,7 @@
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE ImplicitParams #-}
-module Dist where
+module Effects.Dist where
 
 import Freer
     ( Prog(..), Member(..), EffectSum, decomp, send, weaken )
@@ -45,17 +45,61 @@ import Numeric.Log
 import qualified System.Random.MWC.Distributions as MWC
 import Data.GADT.Compare (GEq)
 
--- data Forall where
---   F :: (forall a. Show a => a) -> Forall
-
-
 type PrimVal = '[Int, Double, [Double], Bool, String]
+
+data Dist a where
+  HalfCauchyDist    :: Double -> Maybe Double -> Maybe String -> Dist Double
+  CauchyDist        :: Double -> Double -> Maybe Double -> Maybe String -> Dist Double
+  NormalDist        :: Double -> Double -> Maybe Double -> Maybe String -> Dist Double
+  HalfNormalDist    :: Double -> Maybe Double -> Maybe String -> Dist Double
+  UniformDist       :: Double -> Double -> Maybe Double -> Maybe String -> Dist Double
+  DiscrUniformDist  :: Int    -> Int    -> Maybe Int -> Maybe String -> Dist Int
+  GammaDist         :: Double -> Double -> Maybe Double -> Maybe String -> Dist Double
+  BetaDist          :: Double -> Double -> Maybe Double -> Maybe String ->  Dist Double
+  BinomialDist      :: Int    -> Double -> Maybe Int -> Maybe String -> Dist Int
+  BernoulliDist     :: Double -> Maybe Bool -> Maybe String -> Dist Bool
+  CategoricalDist   :: (Eq a, Show a, OpenSum.Member a PrimVal) => [(a, Double)] -> Maybe a -> Maybe String -> Dist a
+  DiscreteDist      :: [Double] -> Maybe Int -> Maybe String -> Dist Int
+  PoissonDist       :: Double -> Maybe Int -> Maybe String -> Dist Int
+  DirichletDist     :: [Double] -> Maybe [Double] -> Maybe String -> Dist [Double]
+  DeterministicDist :: (Eq a, Show a, OpenSum.Member a PrimVal) => a -> Maybe a -> Maybe String -> Dist a
 
 data PrimDist where
   PrimDist :: forall a. Show a => Dist a -> PrimDist
 
 data Dict (a :: Constraint) where
   Dict :: a => Dict a
+
+type Tag  = String
+type Addr = (Tag, Int)
+type TagMap = Map Tag Int
+
+{- Replaces Dists with Sample or Observe and adds address -}
+runDist :: forall es a. Prog (Dist : es) a -> Prog (Observe : Sample : es) a
+runDist = loop 0 Map.empty
+  where
+  loop :: Int -> TagMap -> Prog (Dist : es) a -> Prog (Observe : Sample : es) a
+  loop _ _ (Val x) = return x
+  loop counter tagMap (Op u k) = case decomp u of
+    Right d ->
+         case getObs d of
+              Just y  -> do send (Observe d y (tag, tagIdx)) >>= k'
+              Nothing -> do send (Sample d (tag, tagIdx))    >>= k'
+          where tag     = fromMaybe (show counter) (getTag d)
+                tagIdx  = Map.findWithDefault 0 tag tagMap
+                tagMap' = Map.insert tag (tagIdx + 1) tagMap
+                k'      = loop (counter + 1) tagMap' . k
+    Left  u'  -> Op (weaken $ weaken u') (loop counter tagMap . k)
+
+data Sample a where
+  Sample  :: Dist a -> Addr -> Sample a
+  Printer :: String -> Sample ()
+
+data Observe a where
+  Observe :: Dist a -> a -> Addr -> Observe a
+
+prinT :: Member Sample es => String -> Prog es ()
+prinT s = Op (inj $ Printer s) Val
 
 distDict :: Dist x -> Dict (Show x, OpenSum.Member x PrimVal)
 distDict = \case
@@ -77,23 +121,6 @@ distDict = \case
 
 instance Show PrimDist where
   show (PrimDist d) = show d
-
-data Dist a where
-  HalfCauchyDist    :: Double -> Maybe Double -> Maybe String -> Dist Double
-  CauchyDist        :: Double -> Double -> Maybe Double -> Maybe String -> Dist Double
-  NormalDist        :: Double -> Double -> Maybe Double -> Maybe String -> Dist Double
-  HalfNormalDist    :: Double -> Maybe Double -> Maybe String -> Dist Double
-  UniformDist       :: Double -> Double -> Maybe Double -> Maybe String -> Dist Double
-  DiscrUniformDist  :: Int    -> Int    -> Maybe Int -> Maybe String -> Dist Int
-  GammaDist         :: Double -> Double -> Maybe Double -> Maybe String -> Dist Double
-  BetaDist          :: Double -> Double -> Maybe Double -> Maybe String ->  Dist Double
-  BinomialDist      :: Int    -> Double -> Maybe Int -> Maybe String -> Dist Int
-  BernoulliDist     :: Double -> Maybe Bool -> Maybe String -> Dist Bool
-  CategoricalDist   :: (Eq a, Show a, OpenSum.Member a PrimVal) => [(a, Double)] -> Maybe a -> Maybe String -> Dist a
-  DiscreteDist      :: [Double] -> Maybe Int -> Maybe String -> Dist Int
-  PoissonDist       :: Double -> Maybe Int -> Maybe String -> Dist Int
-  DirichletDist     :: [Double] -> Maybe [Double] -> Maybe String -> Dist [Double]
-  DeterministicDist :: (Eq a, Show a, OpenSum.Member a PrimVal) => a -> Maybe a -> Maybe String -> Dist a
 
 instance Eq (Dist a) where
   (==) (NormalDist m s _ _) (NormalDist m' s' _ _) = m == m' && s == s'
@@ -145,43 +172,6 @@ instance Show a => Show (Dist a) where
   show (DeterministicDist x y tag) =
    "DeterministicDist(" ++ show x ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
 
-type Tag  = String
-type Addr = (Tag, Int)
-
-type TagMap = Map Tag Int
-
-{- Replaces Dists with Sample or Observe and adds address -}
-runDist :: forall es a. Prog (Dist : es) a -> Prog (Observe : Sample : es) a
-runDist = loop 0 Map.empty
-  where
-  loop :: Int -> TagMap -> Prog (Dist : es) a -> Prog (Observe : Sample : es) a
-  loop _ _ (Val x) = return x
-  loop counter tagMap (Op u k) = case decomp u of
-    Right d ->
-         case getObs d of
-              Just y  -> do send (Observe d y (tag, tagIdx)) >>= k'
-              Nothing -> do send (Sample d (tag, tagIdx))    >>= k'
-          where tag     = fromMaybe (show counter) (getTag d)
-                tagIdx  = Map.findWithDefault 0 tag tagMap
-                tagMap' = Map.insert tag (tagIdx + 1) tagMap
-                k'      = loop (counter + 1) tagMap' . k
-    Left  u'  -> Op (weaken $ weaken u') (loop counter tagMap . k)
-
--- runDist :: forall es a. Prog (Dist ': es) a -> Prog (Observe ': Sample ': es) a
--- runDist = replaceRelayStN @'[Observe, Sample] (0, Map.empty) (\_ x -> return x)
---   undefined
---  (forall x. s -> t x -> (s -> x -> Prog (es :++: ts) b) -> Prog (es :++: ts) b) (Prog (t : ts) a)
-
-data Sample a where
-  Sample  :: Dist a -> Addr -> Sample a
-  Printer :: String -> Sample ()
-
-prinT :: Member Sample es => String -> Prog es ()
-prinT s = Op (inj $ Printer s) Val
-
-data Observe a where
-  Observe :: Dist a -> a -> Addr -> Observe a
-
 pattern PrintPatt :: (Member Sample es) => (x ~ ()) => String -> EffectSum es x
 pattern PrintPatt s <- (prj -> Just (Printer s))
 
@@ -199,16 +189,6 @@ pattern SampPatt d α <- (Samp (DistDict d) α)
 
 pattern SampPatt' :: (Member Sample es) => (Show x, OpenSum.Member x PrimVal) => Dist x -> Addr -> EffectSum es x
 pattern SampPatt' d α <- (prj -> Just (Sample d@(distDict -> Dict) α))
-
-isExprInt :: Dist x -> Maybe (Int :~: x)
-isExprInt e@(BinomialDist _ _ _ _) = Just Refl
-isExprInt _         = Nothing
-
-pattern DistInt :: () => x ~ Int => Dist x
-pattern DistInt  <- (isExprInt -> Just Refl)
-
-pattern ExprIntPrj :: Member Dist es => x ~ Int => Dist x -> EffectSum es x
-pattern ExprIntPrj e <- (prj -> Just e@DistInt)
 
 pattern Obs :: Member Observe es => Dist x -> x -> Addr -> EffectSum es x
 pattern Obs d y α <- (prj -> Just (Observe d y α))
@@ -332,3 +312,15 @@ sample (PoissonDist λ obs _) =
 sample (DirichletDist xs _ _) =
   createSampler (sampleDirichlet xs)
 sample (DeterministicDist x _ _) = return x
+
+{-
+isExprInt :: Dist x -> Maybe (Int :~: x)
+isExprInt e@(BinomialDist _ _ _ _) = Just Refl
+isExprInt _         = Nothing
+
+pattern DistInt :: () => x ~ Int => Dist x
+pattern DistInt  <- (isExprInt -> Just Refl)
+
+pattern ExprIntPrj :: Member Dist es => x ~ Int => Dist x -> EffectSum es x
+pattern ExprIntPrj e <- (prj -> Just e@DistInt)
+-}

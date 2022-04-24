@@ -8,10 +8,9 @@ import Data.Tuple
 import qualified Data.Map as Map
 import DataSets
 import qualified Example as Example
-import qualified Inference.Simulate as Simulate
+import qualified Inference.SIM as SIM
 import qualified Inference.LW as LW
 import qualified Inference.MH as MH
-import qualified Experiment as Experiment
 import OpenSum as OpenSum
 import Model
 import Data.Extensible ()
@@ -40,7 +39,8 @@ main = do
   -- trace <- sampleIOFixed testSIRSSim
   -- trace <- sampleIOFixed testSIRVSim
   -- trace <- sampleIO (TestSMC.testLinRegrSMC 100 50)
-  trace <- sampleIO (TestSMC.testLinRegrSIS 100 100)
+  -- trace <- sampleIO (TestSMC.testLinRegrSIS 100 100)
+  trace <- sampleIOFixed (TestSMC.testLinRegrRMSMC 10 10 100)
   let traceStr = show trace
   putStrLn traceStr
   writeFile "model-output.txt" traceStr

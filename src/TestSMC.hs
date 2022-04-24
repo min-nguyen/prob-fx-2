@@ -17,18 +17,17 @@ import Data.Maybe
 import qualified Data.Map as Map
 import qualified Example as Example
 import DataSets
-import Dist
+import Effects.Dist
 import qualified Inference.LW as LW
 import qualified Inference.MH as MH
 import qualified Inference.SMC as SMC
-import qualified Inference.SMC_SIS as SMC_SIS
 import qualified Inference.SIS as SIS
 import qualified Inference.RMSMC as RMSMC
 import OpenSum
-import State
+import Effects.State
 import Model
 import Sampler
-import ObsReader
+import Effects.ObsReader
 -- import Data.Extensible
 import ModelEnv
 import Util
@@ -44,30 +43,20 @@ mkRecordLinRegrY :: [Double] -> ModelEnv Example.LinRegrEnv
 mkRecordLinRegrY y_vals =
   (#y := y_vals) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:> nil
 
--- testLinRegrSMC' :: Sampler [((Double, Double), Double)]
 testLinRegrSMC :: Int -> Int -> Sampler [Double]
 testLinRegrSMC n_datapoints n_particles = do
   let n_datapoints' = fromIntegral n_datapoints
   bs <- SMC.smc n_particles (Example.linearRegression [0 .. n_datapoints'])
                     (mkRecordLinRegrY (map ((+0) . (*3)) [0 .. n_datapoints']))
-  let envs = map (\(a, env, prob) -> env) bs
-      mus  = concatMap (getOP #m) envs
-  return mus
-
-testLinRegrSIS :: Int -> Int -> Sampler [Double]
-testLinRegrSIS n_datapoints n_particles = do
-  let n_datapoints' = fromIntegral n_datapoints
-  bs <- SMC_SIS.smc n_particles (Example.linearRegression [0 .. n_datapoints'])
-                    (mkRecordLinRegrY (map ((+0) . (*3)) [0 .. n_datapoints']))
   let envs = map (\(a, prob, env) -> env) bs
       mus  = concatMap (getOP #m) envs
   return mus
 
--- testLinRegrRMSMC :: Int -> Int -> Sampler [Double]
--- testLinRegrRMSMC n_datapoints n_particles = do
---   let n_datapoints' = fromIntegral n_datapoints
---   bs <- RMSMC.smc n_particles (Example.linearRegression [0 .. n_datapoints'])
---                     (mkRecordLinRegrY (map ((+0) . (*3)) [0 .. n_datapoints']))
---   let envs = map (\(a, prob, env) -> env) bs
---       mus  = concatMap (getOP #m) envs
---   return mus
+testLinRegrRMSMC :: Int -> Int -> Int -> Sampler [Double]
+testLinRegrRMSMC n_datapoints n_particles n_mh_steps = do
+  let n_datapoints' = fromIntegral n_datapoints
+  bs <- RMSMC.rmsmc n_particles n_mh_steps (Example.linearRegression [0 .. n_datapoints'])
+                    (mkRecordLinRegrY (map ((+0) . (*3)) [0 .. n_datapoints']))
+  let envs = map (\(a, prob, env) -> env) bs
+      mus  = concatMap (getOP #m) envs
+  return mus

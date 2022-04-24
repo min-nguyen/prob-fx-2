@@ -19,17 +19,17 @@ import Data.Map (Map)
 import ModelEnv
 import Control.Monad
 import Control.Applicative
-import Dist
+import Effects.Dist
 import Freer
-import IO
+import Effects.Lift
 import Model
-import NonDet
+import Effects.NonDet
 import Sampler
-import ObsReader
-import State
+import Effects.ObsReader
+import Effects.State
 import STrace
 import Sampler
-import Writer
+import Effects.Writer
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
 import Util
@@ -44,9 +44,22 @@ class Accum ctx where
   accum  :: ctx -> ctx -> ctx
   aempty :: ctx
 
+instance (Accum ctx1, Accum ctx2, Accum ctx3) => Accum (ctx1, ctx2, ctx3) where
+  aempty = (aempty, aempty, aempty)
+  accum (xs, ys, zs) (xs', ys', zs') = (accum xs xs', accum ys ys', accum zs zs')
+
 instance (Accum ctx1, Accum ctx2) => Accum (ctx1, ctx2) where
   aempty = (aempty, aempty)
   accum (xs, ys) (xs', ys') = (accum xs xs', accum ys ys')
+instance Accum Double where
+  aempty = 0
+  accum  = (+)
+instance Ord k => Accum (Map k a) where
+  aempty = Map.empty
+  accum  = Map.union
+instance Accum [a] where
+  aempty = []
+  accum  = (++)
 
 sis :: forall a env ctx es.
      (Accum ctx, Show ctx, FromSTrace env, Show a)
@@ -61,7 +74,7 @@ sis n_particles resampler pophdl model env = do
   let prog_0  = (runDist . runObsReader env) (runModel model)
       progs   = replicate n_particles (weaken' prog_0)
       ctxs    = replicate n_particles aempty
-  (runSample . runObserve) (loopSIS n_particles resampler pophdl (progs, ctxs))
+  (runLift . runSample . runObserve) (loopSIS n_particles resampler pophdl (progs, ctxs))
 
 loopSIS :: (Show a, Show ctx, Accum ctx)
   => Int
@@ -80,19 +93,19 @@ loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
     Left  progs -> do (progs', ctxs') <- resampler ctxs_0 ctxs_1 progs_1
                       loopSIS n_particles resampler populationHandler (progs', ctxs')
 
-runSample :: Prog '[Sample, Lift Sampler] a -> Sampler a
+runSample :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
 runSample = loop
   where
-  loop :: Prog '[Sample, Lift Sampler] a -> Sampler a
+  loop :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
   loop (Val x) = return x
   loop (Op u k) =
-    case u of
+    case  u of
       SampPatt d α ->
-        (sample d) >>= \x -> --lift (printS ("Sampled " ++ show x ++ " from " ++ show d)) >>
-          loop (k x)
+        lift (sample d) >>= \x -> loop (k x)
       PrintPatt s  ->
-        (liftS (putStrLn s)) >>= loop . k
-      _         -> error "Impossible: Nothing cannot occur"
+        lift (liftS (putStrLn s)) >>= loop . k
+      DecompLeft u' ->
+        Op u' (loop . k)
 
 runObserve :: Prog (Observe : es) a -> Prog es a
 runObserve  (Val x) = return x
@@ -100,3 +113,9 @@ runObserve  (Op op k) = case op of
       ObsPatt d y α -> do
         runObserve (k y)
       Other op -> Op op (runObserve . k)
+
+logMeanExp :: [Double] -> Double
+logMeanExp logws =
+  let c = maximum logws
+      l = length logws
+  in  c + log ((1.0/fromIntegral l) * sum (map (\logw -> exp (logw - c)) logws))

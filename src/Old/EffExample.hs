@@ -9,7 +9,7 @@
 module Old.EffExample where
 
 import Freer
-import Reader
+import Effects.Reader
 import Control.Monad.State
 
 data WriterE w a where

@@ -17,10 +17,10 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Maybe
 import GHC.TypeLits
-import Dist
+import Effects.Dist
 import ModelEnv
 import Freer
-import State
+import Effects.State
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
 import Util

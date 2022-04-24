@@ -20,29 +20,21 @@ import ModelEnv
 import Control.Monad
 import Control.Applicative
 
-import Dist
+import Effects.Dist
 import Freer
 import Model
-import NonDet
+import Effects.NonDet
 import Sampler
-import IO
-import ObsReader
-import State
+import Effects.Lift
+import Effects.ObsReader
+import Effects.State
 import STrace
 import Sampler
-import Writer
+import Effects.Writer
 import Inference.SIS (sis, Accum(..), Resampler)
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
 import Util
-
-instance Accum Double where
-  aempty = 0
-  accum  = (+)
-
-instance Ord k => Accum (Map k a) where
-  aempty = Map.empty
-  accum  = Map.union
 
 smc :: forall env es' a. (FromSTrace env, Show a) =>
   (es' ~ [ObsReader env, Dist]) =>

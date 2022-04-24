@@ -21,16 +21,16 @@ import Data.Maybe
 import qualified Data.Map as Map
 import qualified Example as Example
 import DataSets
-import Dist
-import qualified Inference.Simulate as Simulate
+import Effects.Dist
+import qualified Inference.SIM as SIM
 import qualified Inference.LW as LW
 import qualified Inference.MH as MH
 import OpenSum
 import qualified OpenSum as OpenSum
-import State
+import Effects.State
 import Model
 import Sampler
-import ObsReader
+import Effects.ObsReader
 import ModelEnv
 import Util
 import Debug.Trace
@@ -53,14 +53,14 @@ testLinRegrSimOnce :: Int  -> Sampler [Double]
 testLinRegrSimOnce n_datapoints  = do
   let xs = [0 .. fromIntegral n_datapoints]
       env_in = (#m := [3]) ∙ (#c := [5]) ∙ (#σ := [1]) ∙ (#y := []) ∙ nil
-  (ys, env_out) <- Simulate.simulateOnce Example.linearRegression env_in xs
+  (ys, env_out) <- SIM.simulateOnce Example.linearRegression env_in xs
   return ys
 
 testLinRegrSim :: Int -> Int -> Sampler [(Double, Double)]
 testLinRegrSim n_datapoints n_samples = do
   let xs = [0 .. fromIntegral n_datapoints]
   bs :: [([Double], ModelEnv Example.LinRegrEnv)]
-      <- Simulate.simulate n_samples Example.linearRegression
+      <- SIM.simulate n_samples Example.linearRegression
                     xs
                     (mkRecordLinRegr ([], [1.0], [0.0], [1.0]))
   return $ zip xs (concatMap fst bs)
@@ -122,7 +122,7 @@ testLogRegrSim :: Int -> Int -> Sampler [(Double, Bool)]
 testLogRegrSim n_datapoints n_samples = do
   let incr = 200/fromIntegral n_datapoints
       xs = [ (-100 + (fromIntegral x)*incr)/50 | x <- [0 .. n_datapoints]]
-  bs <- Simulate.simulate n_samples Example.logisticRegression
+  bs <- SIM.simulate n_samples Example.logisticRegression
                          xs
                          (mkRecordLogRegr ([], [2], [-0.15]))
   return $ concatMap fst bs
@@ -160,7 +160,7 @@ mkRecordHMMy ys = #y := ys <:> #trans_p := [] <:> #obs_p := [] <:>  nil
 
 testHMMSim :: Int -> Int -> Sampler [(Int, Int)]
 testHMMSim hmm_length n_samples = do
-  bs <- Simulate.simulate n_samples (runWriterM . Example.hmmNSteps hmm_length)
+  bs <- SIM.simulate n_samples (runWriterM . Example.hmmNSteps hmm_length)
                           0 (mkRecordHMM ([], 0.9, 0.2))
   let sim_envs_out  = map snd bs
       xs :: [Int]   = concatMap (snd . fst) bs
@@ -201,7 +201,7 @@ mkRecordTopic (tps, wps, ys) =  #θ := tps <:>  #φ := wps <:> #w := ys <:>nil
 
 testTopicSim :: Int -> Int -> Sampler [String]
 testTopicSim n_words n_samples = do
-  bs <- Simulate.simulate n_samples (Example.documentDist vocab 2)
+  bs <- SIM.simulate n_samples (Example.documentDist vocab 2)
                         n_words (mkRecordTopic ([[0.5, 0.5]], [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],
                                                                [1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]], []))
   return $ concatMap fst bs
@@ -231,7 +231,7 @@ testTopicMHPred n_words n_samples = do
   let  θ   = last θs
        φ   = last φs
   -- liftS $ print $ "Using params " ++ show (topic_ps, word_ps)
-  bs <- Simulate.simulate 1 (Example.documentDist vocabulary 2) 10
+  bs <- SIM.simulate 1 (Example.documentDist vocabulary 2) 10
         (mkRecordTopic (θ,  φ, []))
   return $ concatMap fst bs
 
@@ -259,7 +259,7 @@ testSIRSim = do
   simOutputs :: [((Example.LatState,   -- model output
                   [Example.LatState]), -- writer effect log of sir latent states
                    ModelEnv Example.SIREnv)]   -- trace of samples
-                <- Simulate.simulate 1 (runWriterM . Example.hmmSIRNsteps 100)
+                <- SIM.simulate 1 (runWriterM . Example.hmmSIRNsteps 100)
                    latState0 params
   let fstOutput = head simOutputs
       sirLog    :: [Example.LatState] = (snd . fst) fstOutput
@@ -291,7 +291,7 @@ testSIRMH = do
 testSIRSSim :: Sampler ([(Int, Int, Int)], -- sir values
                           [Int])
 testSIRSSim = do
-  simOutputs <- Simulate.simulate 1 (runWriterM . Example.hmmSIRSNsteps 100)
+  simOutputs <- SIM.simulate 1 (runWriterM . Example.hmmSIRSNsteps 100)
                    (latentState 762 1 0)
                    (#β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #η := [0.05] <:> #infobs := [] <:> nil)
 
@@ -316,7 +316,7 @@ testSIRVSim = do
   simOutputs :: [((Example.LatStateSIRV,        -- model output
                   [Example.LatStateSIRV]),      -- writer effect log of sir latent states
                    ModelEnv Example.SIRVEnv)]   -- trace of samples
-                <- Simulate.simulate 1 (runWriterM . Example.hmmSIRVNsteps 100)
+                <- SIM.simulate 1 (runWriterM . Example.hmmSIRVNsteps 100)
                    latState0 params
   let fstOutput = head simOutputs
       sirLog      :: [Example.LatStateSIRV]   = (snd . fst) fstOutput

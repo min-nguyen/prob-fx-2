@@ -17,15 +17,15 @@ import Data.Maybe
 import qualified Data.Map as Map
 import qualified Old.Example as Example
 import DataSets
-import Dist
+import Effects.Dist
 import qualified Old.Inference.Simulate as Simulate
 import qualified Old.Inference.LW as LW
 import qualified Old.Inference.MH as MH
 import OpenSum
-import State
+import Effects.State
 import Model
 import Sampler
-import ObsReader
+import Effects.ObsReader
 -- import Data.Extensible
 import ModelEnv
 import Util
