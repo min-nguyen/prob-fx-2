@@ -113,3 +113,9 @@ runObserve  (Op op k) = case op of
       ObsPatt d y α -> do
         runObserve (k y)
       Other op -> Op op (runObserve . k)
+
+logMeanExp :: [Double] -> Double
+logMeanExp logws =
+  let c = maximum logws
+      l = length logws
+  in  c + log ((1.0/fromIntegral l) * sum (map (\logw -> exp (logw - c)) logws))
