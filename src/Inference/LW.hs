@@ -46,12 +46,11 @@ runLW :: es ~ '[ObsReader env, Dist]
   -> Sampler (a, STrace, Double)
 runLW env model = do
   ((x, samples), p) <- (runSample
-                            . runObserve
-                            . runState Map.empty
-                            . transformLW
-                            . runDist
-                            . runObsReader env)
-                            (runModel model)
+                        . runObserve
+                        . traceSamples
+                        . runDist
+                        . runObsReader env)
+                        (runModel model)
   return (x, samples, p)
 
 runLWpaper :: es ~ '[ObsReader env, Dist]
@@ -60,6 +59,9 @@ runLWpaper :: es ~ '[ObsReader env, Dist]
 runLWpaper env m =
   (runSample . runObserve . runState Map.empty
     . transformLW . runDist . runObsReader env) (runModel m)
+
+traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, STrace)
+traceSamples = runState Map.empty . transformLW
 
 transformLW :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
 transformLW = install return
@@ -77,10 +79,6 @@ transformLW' (Op u k) = case u  of
     SampPatt d α -> Op u (\x -> do  updateSTrace α x
                                     transformLW' (k x))
     _ -> Op u (transformLW' . k)
-
--- transformLW' :: (Member (State STrace) es, Member Sample es)
---   => Prog es a -> Prog es a
--- transformLW' = replaceRelay return undefined
 
 runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es (a, Double)
 runObserve = loop 0
