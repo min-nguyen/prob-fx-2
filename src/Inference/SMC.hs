@@ -52,7 +52,7 @@ smc n_particles prog_0 env = do
   return $ map (\(a, (addr, p, strace)) -> (a, p, fromSDTrace @env strace)) as_ps_straces
 
 
-smcPopulationHandler :: Members [Observe, Sample] es
+smcPopulationHandler :: Members [Observe, Sample, Lift Sampler] es
   => ParticleHandler  ([Addr], LogP, SDTrace) es a
 smcPopulationHandler progs = do
   -- Merge particles into single non-deterministic program using 'asum', and run to next checkpoint
@@ -61,15 +61,19 @@ smcPopulationHandler progs = do
   let progs_ctxs' = map (\((prog, α, p), strace) -> (prog, ([α], p,  strace))) progs_ctxs
   return progs_ctxs'
 
-smcResampler :: Member Sample es => Resampler ([Addr], LogP, SDTrace) es a
+smcResampler :: Member (Lift Sampler) es => Resampler ([Addr], LogP, SDTrace) es a
 smcResampler logWs_straces_0 logWs_straces_1sub0 progs = do
   let -- for each particle, compute normalised accumulated log weights, and accumulated sample traces
-      (obs_addrs_1, logWs_1, straces_1)      = unzip3 $ accum logWs_straces_1sub0 logWs_straces_0
+      (obs_addrs_0, logWs_0, straces_0) = unzip3  logWs_straces_0
+  printLift $ "LogWs0 " ++ show logWs_0
+  let (obs_addrs_1sub, logWs_1sub0, straces_1sub0) = unzip3  logWs_straces_1sub0
+  printLift $ "LogWs1sub0 " ++ show logWs_1sub0
+  let (obs_addrs_1, logWs_1, straces_1)      = unzip3 $ accum logWs_straces_1sub0 logWs_straces_0
       n_particles = length progs
-  prinT $ "LogWs " ++ show logWs_1
-  prinT $ "Resampling probabilities " ++ show (map (exp . logP) logWs_1)
+  printLift $ "LogWs " ++ show logWs_1
+  printLift $ "Resampling probabilities " ++ show (map (exp . logP) logWs_1)
   -- Select particles to continue with
-  particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map (exp . logP) logWs_1) Nothing Nothing) undefined)
+  particle_idxs :: [Int] <- replicateM n_particles $  lift (sample (DiscreteDist (map (exp . logP) logWs_1) Nothing Nothing))
   let resampled_progs         = map (progs !!) particle_idxs
       resampled_logWs         = map (logWs_1 !!) particle_idxs
       resampled_straces       = map (straces_1 !!) particle_idxs
@@ -84,12 +88,12 @@ traceSamples  (Op u k) = case u of
     _   -> Op (weaken u) (traceSamples . k)
 
 -- When discharging Observe, return the rest of the program, and the log probability
-breakObserve :: Member Observe es => Prog es a -> Prog es (Prog es a, Addr, LogP)
+breakObserve :: Members [Lift Sampler, Observe] es => Prog es a -> Prog es (Prog es a, Addr, LogP)
 breakObserve  (Val x) = return (Val x, ("", 0), 0)
 breakObserve  (Op op k) = case op of
       ObsPatt d y α -> do
         let logp = logProb d y
-        -- prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp
+        printLift $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp
         Val (k y, α, LogP logp)
       _ -> Op op (breakObserve . k)
 

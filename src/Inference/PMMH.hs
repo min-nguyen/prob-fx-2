@@ -83,25 +83,26 @@ pmmhStep model tags trace = do
   (x', samples', _) <- MH.runMH samples α_samp model
   -- get prior samples to reuse for smc
   let priorSamples = Map.filterWithKey (\(tag, i) _ -> tag `elem` tags) samples'
-
+  printS $ "prior samples" ++ show priorSamples
   -- run SIS using prior samples
-  ctxs <- SIS.sis 10 SMC.smcResampler SMC.smcPopulationHandler SMC.runObserve (runSample priorSamples) model
-
+  ctxs <- SIS.sis 100 SMC.smcResampler SMC.smcPopulationHandler SMC.runObserve (runSample priorSamples) model
+  -- printS $ "ctxs" ++ show ctxs
   let -- get final log probabilities of each particle
       lps     = map (snd3 . snd) ctxs
       -- compute average
       logW'   = SIS.logMeanExp lps
       -- do some acceptance ratio to see if we use samples or samples'
-      acceptance_ratio = logW'/logW
+      acceptance_ratio = SIS.LogP $ exp (SIS.logP $ logW' - logW)
+  printS $ "logW' : " ++ show logW' ++ " logW: " ++ show logW
   -- liftS $ print $ "acceptance ratio" ++ show acceptance_ratio
   u <- sample (UniformDist 0 1 Nothing Nothing)
-
+  printS $ "acceptance: " ++ show acceptance_ratio ++ " u: " ++ show u
   if SIS.LogP u < acceptance_ratio
     then do -- liftS $ putStrLn $ "Accepting " -- ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
             -- ++ show logps
             -- ++ "\nwith α" ++ show α_samp ++ ": "
             -- ++ show acceptance_ratio ++ " > " ++ show u
-            -- liftS $ print "accepting"
+            liftS $ print "accepting"
             return ((x', samples', logW'):trace)
     else do
             -- liftS $ putStrLn $ "Rejecting " ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
@@ -120,6 +121,7 @@ runSample  samples = loop
         lift (liftS (putStrLn s)) >> loop (k ())
       SampPatt d α ->
         do let maybe_y = MH.lookupSample samples d α
+          --  printLift $ "using " ++ show maybe_y
            case maybe_y of
              Nothing -> lift (sample d) >>= (loop . k)
              Just x  -> (loop . k) x

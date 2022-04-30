@@ -11,6 +11,7 @@ import qualified Example as Example
 import qualified Inference.SIM as SIM
 import qualified Inference.LW as LW
 import qualified Inference.MH as MH
+import Effects.Dist
 import OpenSum as OpenSum
 import Model
 import Data.Extensible ()
@@ -38,9 +39,11 @@ main = do
   -- trace <- sampleIOFixed testSIRMH
   -- trace <- sampleIOFixed testSIRSSim
   -- trace <- sampleIOFixed testSIRVSim
-  trace <- sampleIOFixed (TestSMC.testLinRegrSMC 50 200)
+  -- trace <- sampleIOFixed (TestSMC.testLinRegrSMC 50 200)
   -- trace <- sampleIO (TestSMC.testLinRegrRMSMC 50 100 20)
-  -- trace <- sampleIO (TestSMC.testLinRegrPMMH 10 10 10)
+  -- let p = logProb (NormalDist 172.3005326501013 2.259862424134485 Nothing Nothing) 81.0
+  -- print (exp p)
+  trace <- sampleIOFixed (TestSMC.testLinRegrPMMH 30 10 100)
   let traceStr = show trace
   putStrLn traceStr
   writeFile "model-output.txt" traceStr
