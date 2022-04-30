@@ -48,29 +48,21 @@ rmsmcToplevel n_particles mh_steps model env = do
 rmsmc :: forall env es' a. (FromSTrace env, Show a) =>
   (es' ~ [Observe, Sample, Lift Sampler]) =>
   Int -> Int -> Prog es' a -> ModelEnv env -> Sampler [(a, LogP, ModelEnv env)]
-rmsmc n_particles mh_steps model_0 env = do
-  as_ps_straces <- sis n_particles (rmsmcResampler mh_steps model_0) SMC.smcPopulationHandler SMC.runObserve SMC.runSample model_0
+rmsmc n_particles mh_steps model env = do
+  as_ps_straces <- sis n_particles (rmsmcResampler mh_steps model) SMC.smcPopulationHandler SMC.runObserve SMC.runSample model
   return $ map (\(a, (addr, p, strace)) -> (a, p, fromSDTrace @env strace)) as_ps_straces
 
 rmsmcResampler :: forall es a.
      Int
   -> Prog [Observe, Sample, Lift Sampler] a -- the initial program, representing the entire unevaluated model execution (having already provided a model environment)
   -> Resampler ([Addr], LogP, SDTrace) [Observe, Sample, Lift Sampler] a
-rmsmcResampler mh_steps model_0 ctx_0 ctx_1sub0 progs_1 = do
-  let -- for each particle, accumulate observe addresses, compute normalised accumulated log weights, and accumulate sample traces
-      (obs_addrs_1, logWs_1, straces_1)  =  unzip3 $ accum ctx_1sub0 ctx_0
-      n_particles = length progs_1
-  prinT $ "LogWs " ++ show logWs_1
-  prinT $ "Resampling probabilities " ++ show (map (exp . logP) logWs_1)
-
-  -- select particles to continue with
-  particle_idxs :: [Int] <- replicateM n_particles $ send (Sample (DiscreteDist (map (exp . logP) logWs_1) Nothing Nothing) undefined)
-  let -- select sample traces to continue with
-      resampled_straces = map (straces_1 !!) particle_idxs
-      -- get most recent observe address
-      α_break       = (head . head) obs_addrs_1
+rmsmcResampler mh_steps model ctx_0 ctx_1sub0 progs_1 = do
+  -- run SMC resampling
+  (obs_addrs, _, resampled_straces) <- unzip3 . snd <$> SMC.smcResampler ctx_0 ctx_1sub0 progs_1
+  let -- get most recent observe address
+      α_break       = (head . head) obs_addrs
       -- insert break point to perform MH up to
-      partial_model = insertBreakpoint α_break model_0
+      partial_model = insertBreakpoint α_break model
 
   -- perform metropolis-hastings using each resampled particle's sample trace
   mhTraces <- lift $ mapM (\sdtrace -> mhWithSTrace mh_steps partial_model sdtrace []) resampled_straces
@@ -81,11 +73,11 @@ rmsmcResampler mh_steps model_0 ctx_0 ctx_1sub0 progs_1 = do
       -- get the log prob traces of each particle up until the break point
       lptraces     = map (thrd3 . last) mhTraces
       -- filter log probability traces to only include that for observe operations
-      obs_lptraces = map (Map.filterWithKey (\k a -> k `elem` head obs_addrs_1)) lptraces
+      obs_lptraces = map (Map.filterWithKey (\k a -> k `elem` head obs_addrs)) lptraces
       -- compute total log probability of each particle up until break point
       moved_logWs  = map (LogP . sum . map snd . Map.toList) obs_lptraces
 
-  return (moved_particles, zip3 obs_addrs_1 moved_logWs moved_straces)
+  return (moved_particles, zip3 obs_addrs moved_logWs moved_straces)
 
 insertBreakpoint :: Members [Observe, Sample] es =>
   Addr -> Prog es a -> Prog es (Prog es a)

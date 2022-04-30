@@ -51,7 +51,6 @@ smc n_particles prog_0 env = do
   as_ps_straces <- sis n_particles smcResampler smcPopulationHandler runObserve runSample  prog_0
   return $ map (\(a, (addr, p, strace)) -> (a, p, fromSDTrace @env strace)) as_ps_straces
 
-
 smcPopulationHandler :: Members [Observe, Sample, Lift Sampler] es
   => ParticleHandler  ([Addr], LogP, SDTrace) es a
 smcPopulationHandler progs = do
@@ -62,13 +61,9 @@ smcPopulationHandler progs = do
   return progs_ctxs'
 
 smcResampler :: Member (Lift Sampler) es => Resampler ([Addr], LogP, SDTrace) es a
-smcResampler logWs_straces_0 logWs_straces_1sub0 progs = do
-  let -- for each particle, compute normalised accumulated log weights, and accumulated sample traces
-  --     (obs_addrs_0, logWs_0, straces_0) = unzip3  logWs_straces_0
-  -- printLift $ "LogWs0 " ++ show logWs_0
-  -- let (obs_addrs_1sub, logWs_1sub0, straces_1sub0) = unzip3  logWs_straces_1sub0
-  -- printLift $ "LogWs1sub0 " ++ show logWs_1sub0
-  let (obs_addrs_1, logWs_1, straces_1)      = unzip3 $ accum logWs_straces_1sub0 logWs_straces_0
+smcResampler ctxs_0 ctxs_1sub0 progs = do
+  -- for each particle, compute normalised accumulated log weights, and accumulated sample traces
+  let (obs_addrs_1, logWs_1, straces_1)      = unzip3 $ accum ctxs_1sub0 ctxs_0
       n_particles = length progs
   -- printLift $ "LogWs " ++ show logWs_1
   -- printLift $ "Resampling probabilities " ++ show (map (exp . logP) logWs_1)

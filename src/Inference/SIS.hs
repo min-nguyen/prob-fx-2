@@ -86,21 +86,17 @@ instance (Accum a, Accum b, Accum c) => Accum (a, b, c) where
 
 sis :: forall a env ctx es.
      (Accum ctx, Show ctx, Show a)
-  => Int
-  -> Resampler       ctx (Observe : Sample : Lift Sampler : '[])  a
-  -> ParticleHandler ctx (Observe : Sample : Lift Sampler : '[]) a
+  => Int                                                                    -- num of particles
+  -> Resampler       ctx (Observe : Sample : Lift Sampler : '[])  a         -- resampler
+  -> ParticleHandler ctx (Observe : Sample : Lift Sampler : '[]) a          -- handler of particles
   -> (forall es b. Prog (Observe : es) b -> Prog es b)                      -- observe handler
   -> (forall b. Prog '[Sample, Lift Sampler] b -> Prog '[Lift Sampler] b)   -- sample handler
-  -- -> Model env [ObsReader env, Dist, Lift Sampler] a
-  -- -> ModelEnv env
-  -> Prog [Observe, Sample, Lift Sampler] a
+  -> Prog [Observe, Sample, Lift Sampler] a                                 -- model
   -> Sampler [(a, ctx)]
-sis n_particles resampler pophdl runObserve runSample prog_0 = do -- model env = do
-  let --prog_0  = (runDist . runObsReader env) (runModel model)
-      progs   = replicate n_particles (weaken' prog_0)
+sis n_particles resampler pophdl runObserve runSample model = do
+  let progs   = replicate n_particles (weaken' model)
       ctxs    = aempty n_particles
   (runLift . runSample . runObserve) (loopSIS n_particles resampler pophdl (progs, ctxs))
-
 
 loopSIS :: (Show a, Show ctx, Accum ctx)
   => Int
