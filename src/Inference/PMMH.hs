@@ -29,17 +29,17 @@ import Util
 
 type PMMHTrace a = [(a, SDTrace, SIS.LogP)]
 
--- mh :: forall es a b env e. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env)
---    => Int                              -- Number of mhSteps per data point
---    -> (b -> Model env es a)            -- Model awaiting input variable
---    -> [Tag]                            -- Tags indicated sample sites of interest
---    -> b                                -- List of model input variables
---    -> ModelEnv env                     -- List of model observed variables
---    -> Sampler [(a, ModelEnv env, LPTrace)]  -- Trace of all accepted outputs, samples, and logps
--- mh n model tags x_0 env_0 = do
---   -- Perform initial run of mh
---   mhTrace <- mhWithSTrace n (runDist . runObsReader env_0 $ runModel (model x_0)) Map.empty tags
---   return (map (mapsnd3 (fromSDTrace @env)) mhTrace)
+pmmh :: forall es a b env e. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env, Show a)
+   => Int                              -- Number of mhSteps per data point
+   -> (b -> Model env es a)            -- Model awaiting input variable
+   -> [Tag]                            -- Tags indicated sample sites of interest
+   -> b                                -- List of model input variables
+   -> ModelEnv env                     -- List of model observed variables
+   -> Sampler [(a, ModelEnv env, SIS.LogP)]  -- Trace of all accepted outputs, samples, and logps
+pmmh n model tags x_0 env_0 = do
+  -- Perform initial run of mh
+  mhTrace <- pmmhWithSTrace n (runDist . runObsReader env_0 $ runModel (model x_0)) Map.empty tags
+  return (map (mapsnd3 (fromSDTrace @env)) mhTrace)
 
 pmmhWithSTrace :: (es ~ '[Observe, Sample, Lift Sampler], Show a)
    => Int                              -- Number of mhSteps per data point
@@ -53,8 +53,9 @@ pmmhWithSTrace n prog samples_0 tags = do
   (y_0, samples_0, _) <- MH.runMH samples_0 α_0 prog
   -- get samples of prior parameters
   let priorSamples_0 = Map.filterWithKey (\(tag, i) _ -> tag `elem` tags) samples_0
+  printS $ "Prior samples: " ++ show priorSamples_0
   -- perform initial run of smc to compute likelihood
-  ctxs <- SIS.sis 100 SMC.smcResampler SMC.smcPopulationHandler SMC.runObserve (runSample priorSamples_0) prog
+  ctxs <- SIS.sis 10 SMC.smcResampler SMC.smcPopulationHandler SMC.runObserve (runSample priorSamples_0) prog
   let -- get final log probabilities of each particle
       lps     = map (snd3 . snd) ctxs
       -- compute average
@@ -84,7 +85,7 @@ pmmhStep model tags trace = do
   let priorSamples = Map.filterWithKey (\(tag, i) _ -> tag `elem` tags) samples'
 
   -- run SIS using prior samples
-  ctxs <- SIS.sis 100 SMC.smcResampler SMC.smcPopulationHandler SMC.runObserve (runSample priorSamples) model
+  ctxs <- SIS.sis 10 SMC.smcResampler SMC.smcPopulationHandler SMC.runObserve (runSample priorSamples) model
 
   let -- get final log probabilities of each particle
       lps     = map (snd3 . snd) ctxs
