@@ -8,6 +8,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Inference.PMMH where
 
@@ -20,7 +21,7 @@ import Sampler
 import Model
 import ModelEnv
 import STrace
-import Inference.MH ( TraceMH, accept, runMH )
+import qualified Inference.MH as MH
 import Inference.SMC hiding (runObserve)
 import Inference.SIS hiding (runSample, runObserve)
 
@@ -28,8 +29,8 @@ import Inference.SIS hiding (runSample, runObserve)
 mhStep :: (es ~ '[Observe, Sample, Lift Sampler])
   => Prog es a   -- Model
   -> [Tag]            -- Tags indicating sample sites of interest
-  -> TraceMH a        -- Trace of previous mh outputs
-  -> Sampler (TraceMH a)
+  -> MH.TraceMH a        -- Trace of previous mh outputs
+  -> Sampler (MH.TraceMH a)
 mhStep model tags trace = do
   let -- Get previous mh output
       (x, samples, logps) = head trace
@@ -39,11 +40,11 @@ mhStep model tags trace = do
 
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
   -- run mh with new sample address
-  (x', samples', logps') <- runMH samples α_samp model
+  (x', samples', logps') <- MH.runMH samples α_samp model
   -- get samples to reuse for smc
   let priorSamples = Map.filterWithKey (\(tag, i) _ -> tag `elem` tags) samples'
   -- do some acceptance ratio to see if we use samples or samples'
-  acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
+  acceptance_ratio <- liftS $ MH.accept α_samp samples samples' logps logps'
   -- liftS $ print $ "acceptance ratio" ++ show acceptance_ratio
   u <- sample (UniformDist 0 1 Nothing Nothing)
 
@@ -76,18 +77,18 @@ mhStep model tags trace = do
 --   printS $ show ctxs
 --   (runLift . runSample . runObserve) (loopSIS n_particles resampler pophdl (progs, ctxs))
 
--- runSample :: Addr -> SDTrace -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
--- runSample α_samp samples = loop
---   where
---   loop :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
---   loop (Val x) = return x
---   loop (Op u k) = case u of
---       PrintPatt s ->
---         lift (liftS (putStrLn s)) >> loop (k ())
---       SampPatt d α ->
---         do let maybe_y = lookupSample samples d α α_samp
---            case maybe_y of
---              Nothing -> lift (sample d) >>= (loop . k)
---              Just x  -> (loop . k) x
---       DecompLeft u' ->
---          Op u' (loop . k)
+runSample :: Addr -> SDTrace -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
+runSample α_samp samples = loop
+  where
+  loop :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
+  loop (Val x) = return x
+  loop (Op u k) = case u of
+      PrintPatt s ->
+        lift (liftS (putStrLn s)) >> loop (k ())
+      SampPatt d α ->
+        do let maybe_y = MH.lookupSample samples d α α_samp
+           case maybe_y of
+             Nothing -> lift (sample d) >>= (loop . k)
+             Just x  -> (loop . k) x
+      DecompLeft u' ->
+         Op u' (loop . k)
