@@ -41,19 +41,19 @@ smc :: forall env es' a. (FromSTrace env, Show a) =>
   (es' ~ [ObsReader env, Dist, Lift Sampler]) =>
   Int -> Model env es' a -> ModelEnv env -> Sampler [(a, LogP, ModelEnv env)]
 smc n_particles model env = do
-  as_ps_straces <- sis n_particles smcResampler smcPopulationHandler model env
-  return $ map (\(a, (p, strace)) -> (a, p, fromSTrace @env strace)) as_ps_straces
+  as_ps_straces <- sis n_particles smcResampler smcPopulationHandler runObserve runSample  model env
+  return $ map (\(a, (p, strace)) -> (a, p, fromSDTrace @env strace)) as_ps_straces
 
 smcPopulationHandler :: Members [Observe, Sample] es
   =>         [Prog (NonDet:es) a]
-  -> Prog es [(Prog (NonDet:es) a, (LogP, STrace))]
+  -> Prog es [(Prog (NonDet:es) a, (LogP, SDTrace))]
 smcPopulationHandler progs = do
   -- Merge particles into single non-deterministic program using 'asum', and run to next checkpoint
   progs_ctxs <- (runNonDet . runState Map.empty . traceSamples . breakObserve ) (asum progs)
   let progs_ctxs' = map (\((prog, p), strace) -> (prog, (p, strace))) progs_ctxs
   return progs_ctxs'
 
-smcResampler :: Member Sample es => Resampler (LogP, STrace) es a
+smcResampler :: Member Sample es => Resampler (LogP, SDTrace) es a
 smcResampler logWs_straces_0 logWs_straces_1sub0 progs = do
   let -- for each particle, compute normalised accumulated log weights, and accumulated sample traces
       (logWs_1    , straces_1)      = unzip $ accum logWs_straces_1sub0 logWs_straces_0
@@ -69,10 +69,10 @@ smcResampler logWs_straces_0 logWs_straces_1sub0 progs = do
   -- prinT $ "continuing with" ++ show   straces'
   return (resampled_progs, zip resampled_logWs resampled_straces)
 
-traceSamples :: (Member Sample es) => Prog es a -> Prog (State STrace : es) a
+traceSamples :: (Member Sample es) => Prog es a -> Prog (State SDTrace : es) a
 traceSamples  (Val x)  = return x
 traceSamples  (Op u k) = case u of
-    SampPatt d α ->  Op (weaken u) (\x -> do updateSTrace α x
+    SampPatt d α ->  Op (weaken u) (\x -> do updateSDTrace α d x
                                              traceSamples (k x))
     _   -> Op (weaken u) (traceSamples . k)
 
@@ -86,14 +86,25 @@ breakObserve  (Op op k) = case op of
         Val (k y, LogP logp)
       _ -> Op op (breakObserve . k)
 
--- When discharging Observe, return the rest of the program, and the log probability
-runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, LogP)
-runObserve  (Val x) = return (Val x, 0)
+runSample :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
+runSample = loop
+  where
+  loop :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
+  loop (Val x) = return x
+  loop (Op u k) =
+    case  u of
+      SampPatt d α ->
+        lift (sample d) >>= \x -> loop (k x)
+      PrintPatt s  ->
+        lift (liftS (putStrLn s)) >>= loop . k
+      DecompLeft u' ->
+        Op u' (loop . k)
+
+runObserve :: Prog (Observe : es) a -> Prog es a
+runObserve  (Val x) = return x
 runObserve  (Op op k) = case op of
       ObsPatt d y α -> do
-        let logp = logProb d y
-        -- prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp
-        Val (k y, LogP logp)
+        runObserve (k y)
       Other op -> Op op (runObserve . k)
 
 -- smcResampler :: Member Sample es => Resampler (Double, STrace) es a

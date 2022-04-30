@@ -32,6 +32,7 @@ import STrace
 import Sampler
 import Effects.Writer
 import Inference.MH
+import qualified Inference.SMC as SMC
 import Inference.SIS
     ( sis, Accum(accum), ParticleHandler, Resampler, LogP(..), logMeanExp )
 import OpenSum (OpenSum)
@@ -42,14 +43,14 @@ rmsmc :: forall env es' a. (FromSTrace env, Show a) =>
   Int -> Int -> Model env es' a -> ModelEnv env -> Sampler [(a, LogP, ModelEnv env)]
 rmsmc n_particles mh_steps model env = do
   let model_0 = (runDist . runObsReader env) (runModel model)
-  as_ps_straces <- sis n_particles (rmsmcResampler mh_steps model_0) rmsmcPopulationHandler model env
+  as_ps_straces <- sis n_particles (rmsmcResampler mh_steps model_0) rmsmcPopulationHandler SMC.runObserve SMC.runSample model env
   return $ map (\(a, (addr, p, strace)) -> (a, p, fromSDTrace @env strace)) as_ps_straces
 
 rmsmcPopulationHandler :: Members [Observe, Sample] es
   => ParticleHandler  ([Addr], LogP, SDTrace) es a
 rmsmcPopulationHandler progs = do
   -- Merge particles into single non-deterministic program using 'asum', and run to next checkpoint
-  progs_ctxs <- (runNonDet . runState Map.empty . traceSamples . breakObserves ) (asum progs)
+  progs_ctxs <- (runNonDet . runState Map.empty . SMC.traceSamples . breakObserve ) (asum progs)
   -- List of particles that can be resumed, their observe breakpoint address, the log probability at that break point, and an accumulated sample trace
   let progs_ctxs' = map (\((prog, α, p), strace) -> (prog, ([α], p,  strace))) progs_ctxs
   return progs_ctxs'
@@ -89,21 +90,14 @@ rmsmcResampler mh_steps model_0 ctx_0 ctx_1sub0 progs_1 = do
 
   return (moved_particles, zip3 obs_addrs_1 moved_logWs moved_straces)
 
-traceSamples :: (Member Sample es) => Prog es a -> Prog (State SDTrace : es) a
-traceSamples  (Val x)  = return x
-traceSamples  (Op u k) = case u of
-    SampPatt d α ->  Op (weaken u) (\x -> do updateSDTrace α d x
-                                             traceSamples (k x))
-    _   -> Op (weaken u) (traceSamples . k)
-
-breakObserves :: Member Observe es => Prog es a -> Prog es (Prog es a, Addr, LogP)
-breakObserves  (Val x) = return (Val x, ("", 0), 0)
-breakObserves  (Op op k) = case op of
+breakObserve :: Member Observe es => Prog es a -> Prog es (Prog es a, Addr, LogP)
+breakObserve  (Val x) = return (Val x, ("", 0), 0)
+breakObserve  (Op op k) = case op of
       ObsPatt d y α -> do
         let logp = logProb d y
         -- prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp
         Val (k y, α, LogP logp)
-      _ -> Op op (breakObserves . k)
+      _ -> Op op (breakObserve . k)
 
 insertBreakpoint :: Members [Observe, Sample] es =>
   Addr -> Prog es a -> Prog es (Prog es a)
