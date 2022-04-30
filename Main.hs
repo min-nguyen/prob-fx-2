@@ -39,11 +39,9 @@ main = do
   -- trace <- sampleIOFixed testSIRMH
   -- trace <- sampleIOFixed testSIRSSim
   -- trace <- sampleIOFixed testSIRVSim
-  -- trace <- sampleIOFixed (TestSMC.testLinRegrSMC 50 200)
+  trace <- sampleIOFixed (TestSMC.testLinRegrSMC 50 200)
   -- trace <- sampleIO (TestSMC.testLinRegrRMSMC 50 100 20)
-  -- let p = logProb (NormalDist 172.3005326501013 2.259862424134485 Nothing Nothing) 81.0
-  -- print (exp p)
-  trace <- sampleIOFixed (TestSMC.testLinRegrPMMH 30 10 100)
+  -- trace <- sampleIO (TestSMC.testLinRegrPMMH 30 10 1000)
   let traceStr = show trace
   putStrLn traceStr
   writeFile "model-output.txt" traceStr

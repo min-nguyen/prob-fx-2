@@ -143,11 +143,11 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
 
 -- | Run MH for one input and environment
 mh :: forall es a b env e. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env)
-   => Int                              -- Number of mhSteps per data point
-   -> (b -> Model env es a)            -- Model awaiting input variable
-   -> [Tag]                            -- Tags indicated sample sites of interest
-   -> b                                -- List of model input variables
-   -> ModelEnv env                     -- List of model observed variables
+   => Int                                   -- Number of mhSteps
+   -> (b -> Model env es a)                 -- Model awaiting input
+   -> [Tag]                                 -- Tags indicated sample sites of interest
+   -> b                                     -- List of model input variables
+   -> ModelEnv env                          -- List of model observed variables
    -> Sampler [(a, ModelEnv env, LPTrace)]  -- Trace of all accepted outputs, samples, and logps
 mh n model tags x_0 env_0 = do
   -- Perform initial run of mh
@@ -155,8 +155,8 @@ mh n model tags x_0 env_0 = do
   return (map (mapsnd3 (fromSDTrace @env)) mhTrace)
 
 mhWithSTrace :: (es ~ '[Observe, Sample, Lift Sampler])
-   => Int                              -- Number of mhSteps per data point
-   -> Prog es a
+   => Int                              -- Number of mhSteps
+   -> Prog es a                        -- Model consisting of sample and observe operations
    -> SDTrace
    -> [Tag]                            -- Tags indicated sample sites of interest
    -> Sampler (TraceMH a)              -- Trace of all accepted outputs, samples, and logps
@@ -174,7 +174,7 @@ mhWithSTrace n prog samples_0 tags = do
 
 -- | Perform one step of MH for a single data point
 mhStep :: (es ~ '[Observe, Sample, Lift Sampler])
-  => Prog es a   -- Model
+  => Prog es a        -- Model consisting of sample and observe operations
   -> [Tag]            -- Tags indicating sample sites of interest
   -> TraceMH a        -- Trace of previous mh outputs
   -> Sampler (TraceMH a)
@@ -213,9 +213,9 @@ mhStep model tags trace = do
 
 -- | Run model once under MH
 runMH :: (es ~ '[Observe, Sample, Lift Sampler])
-  => SDTrace      -- Previous mh sample set
+  => SDTrace   -- Previous mh sample set
   -> Addr      -- Sample address
-  -> Prog es a -- Model
+  -> Prog es a -- Model consisting of sample and observe operations
   -> Sampler (a, SDTrace, LPTrace)
 runMH samples α_samp m = do
   ((a, samples'), logps') <-

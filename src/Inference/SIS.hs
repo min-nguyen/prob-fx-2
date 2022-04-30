@@ -54,8 +54,9 @@ logMeanExp :: [LogP] -> LogP
 logMeanExp logps =
   let logws = map logP logps
       c = maximum logws
-      l = length logws
-  in  LogP $ c + log ((1.0/fromIntegral l) * sum (map (\logw -> exp (logw - c)) logws))
+  in  if isInfinite c
+      then (-1/0)
+      else LogP $ c + log ((1.0/fromIntegral (length logws)) * sum (map (\logw -> exp (logw - c)) logws))
 
 instance {-# OVERLAPPING #-} Accum LogP where
   aempty n = replicate n 0
@@ -98,7 +99,6 @@ sis n_particles resampler pophdl runObserve runSample prog_0 = do -- model env =
   let --prog_0  = (runDist . runObsReader env) (runModel model)
       progs   = replicate n_particles (weaken' prog_0)
       ctxs    = aempty n_particles
-  printS $ show ctxs
   (runLift . runSample . runObserve) (loopSIS n_particles resampler pophdl (progs, ctxs))
 
 

@@ -30,24 +30,26 @@ import Util
 type PMMHTrace a = [(a, SDTrace, SIS.LogP)]
 
 pmmh :: forall es a b env e. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env, Show a)
-   => Int                              -- Number of mhSteps per data point
+   => Int                              -- Number of mhSteps
+   -> Int                              -- Number of particles
    -> (b -> Model env es a)            -- Model awaiting input variable
    -> [Tag]                            -- Tags indicated sample sites of interest
    -> b                                -- List of model input variables
    -> ModelEnv env                     -- List of model observed variables
    -> Sampler [(a, ModelEnv env, SIS.LogP)]  -- Trace of all accepted outputs, samples, and logps
-pmmh n model tags x_0 env_0 = do
+pmmh mh_steps n_particles model tags x_0 env_0 = do
   -- Perform initial run of mh
-  mhTrace <- pmmhWithSTrace n (runDist . runObsReader env_0 $ runModel (model x_0)) Map.empty tags
+  mhTrace <- pmmhWithSTrace mh_steps n_particles (runDist . runObsReader env_0 $ runModel (model x_0)) Map.empty tags
   return (map (mapsnd3 (fromSDTrace @env)) mhTrace)
 
 pmmhWithSTrace :: (es ~ '[Observe, Sample, Lift Sampler], Show a)
-   => Int                              -- Number of mhSteps per data point
+   => Int                              -- Number of mhSteps
+   -> Int                              -- Number of particles
    -> Prog es a
    -> SDTrace
    -> [Tag]                            -- Tags indicated sample sites of interest
-   -> Sampler (PMMHTrace a)              -- Trace of all accepted outputs, samples, and logps
-pmmhWithSTrace n prog samples_0 tags = do
+   -> Sampler (PMMHTrace a)            -- Trace of all accepted outputs, samples, and logps
+pmmhWithSTrace mh_steps n_particles prog samples_0 tags = do
   -- perform initial run of mh
   let α_0 = ("", 0)
   (y_0, samples_0, _) <- MH.runMH samples_0 α_0 prog
@@ -61,17 +63,18 @@ pmmhWithSTrace n prog samples_0 tags = do
       -- compute average
       logW_0   = SIS.logMeanExp lps
   -- A function performing n pmmhsteps
-  let pmmhs  = foldl (>=>) return (replicate n (pmmhStep prog tags))
+  let pmmhs  = foldl (>=>) return (replicate mh_steps (pmmhStep n_particles prog tags))
   l <- pmmhs [(y_0, samples_0, logW_0)]
   -- Return pmmhTrace in correct order of execution (due to pmmhStep prepending new results onto head of trace)
   return $ reverse l
 
 pmmhStep :: Show a => (es ~ '[Observe, Sample, Lift Sampler])
-  => Prog es a          -- Model
+  => Int                -- Number of particles
+  -> Prog es a          -- Model
   -> [Tag]              -- Tags indicating prior random variables
   -> PMMHTrace a        -- Trace of previous mh outputs
   -> Sampler (PMMHTrace a)
-pmmhStep model tags trace = do
+pmmhStep n_particles model tags trace = do
   let -- Get previous mh output
       (x, samples, logW) = head trace
   let sampleSites = if null tags then samples
@@ -81,35 +84,25 @@ pmmhStep model tags trace = do
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
   -- run mh with new sample address
   (x', samples', _) <- MH.runMH samples α_samp model
-  -- get prior samples to reuse for smc
+  -- get proposal prior samples to reuse for smc
   let priorSamples = Map.filterWithKey (\(tag, i) _ -> tag `elem` tags) samples'
   printS $ "prior samples" ++ show priorSamples
-  -- run SIS using prior samples
-  ctxs <- SIS.sis 100 SMC.smcResampler SMC.smcPopulationHandler SMC.runObserve (runSample priorSamples) model
-  -- printS $ "ctxs" ++ show ctxs
+  -- run SMC using prior samples
+  ctxs <- SIS.sis n_particles SMC.smcResampler SMC.smcPopulationHandler SMC.runObserve (runSample priorSamples) model
   let -- get final log probabilities of each particle
       lps     = map (snd3 . snd) ctxs
       -- compute average
       logW'   = SIS.logMeanExp lps
-      -- do some acceptance ratio to see if we use samples or samples'
-      acceptance_ratio = SIS.LogP $ exp (SIS.logP $ logW' - logW)
-  printS $ "logW' : " ++ show logW' ++ " logW: " ++ show logW
-  -- liftS $ print $ "acceptance ratio" ++ show acceptance_ratio
+      -- compute acceptance ratio to see if we use samples or samples'
+      {-  if logW' and logW = -Infinity, this ratio can be NaN which is fine.
+          if logW > -Infinity and logW = -Infinity, this ratio can be Infinity, which is fine. -}
+      acceptance_ratio = exp (SIS.logP $ logW' - logW)
+  -- printS $ "logW' : " ++ show logW' ++ " logW: " ++ show logW
   u <- sample (UniformDist 0 1 Nothing Nothing)
-  printS $ "acceptance: " ++ show acceptance_ratio ++ " u: " ++ show u
-  if SIS.LogP u < acceptance_ratio
-    then do -- liftS $ putStrLn $ "Accepting " -- ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
-            -- ++ show logps
-            -- ++ "\nwith α" ++ show α_samp ++ ": "
-            -- ++ show acceptance_ratio ++ " > " ++ show u
-            liftS $ print "accepting"
-            return ((x', samples', logW'):trace)
-    else do
-            -- liftS $ putStrLn $ "Rejecting " ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
-            -- ++ show logps
-            --  ++ "\nwith α" ++ show α_samp ++ ": "
-            --  ++ show acceptance_ratio ++ " < u: " ++ show u
-            return trace
+  -- printS $ "acceptance: " ++ show acceptance_ratio ++ " u: " ++ show u
+  if u < acceptance_ratio
+     then do return ((x', samples', logW'):trace)
+     else do return trace
 
 runSample :: SDTrace -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
 runSample  samples = loop

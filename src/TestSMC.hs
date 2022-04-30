@@ -62,11 +62,12 @@ testLinRegrRMSMC n_datapoints n_particles n_mh_steps = do
       mus  = concatMap (getOP #m) envs
   return mus
 
-testLinRegrPMMH :: Int -> Int -> Int -> Sampler [Double]
+testLinRegrPMMH :: Int -> Int -> Int -> Sampler ([Double], [Double])
 testLinRegrPMMH n_datapoints n_particles n_mh_steps = do
   let n_datapoints' = fromIntegral n_datapoints
-  bs <- PMMH.pmmh  n_mh_steps (Example.linearRegression ) ["m"] [0 .. n_datapoints']
+  bs <- PMMH.pmmh n_mh_steps n_particles Example.linearRegression ["m", "c"] [0 .. n_datapoints']
                     (mkRecordLinRegrY (map ((+0) . (*3)) [0 .. n_datapoints']))
   let envs = map (\(a, env, logp) -> env) bs
       mus  = concatMap (getOP #m) envs
-  return mus
+      cs   = concatMap (getOP #c) envs
+  return (mus, cs)
