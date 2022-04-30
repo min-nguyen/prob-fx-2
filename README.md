@@ -1,35 +1,7 @@
 
 # models
 
-Branches:
-
-
-- **effect-abstractions**: An extended version of paper-version where effect handler abstractions are introduced, such as handleRelay, interpose, etc. Some existing effect handlers and inference handlers are also given alternative definitions where these handler abstractions are used.
-```
-replaceRelaySt ::
-      s
-  ->  (s -> a -> Freer (v ': ts) b)
-  ->  (forall x. s -> t x -> (s -> x -> Freer (v ': ts) b) -> Freer (v ': ts) b)
-  ->  Freer (t ': ts) a
-  ->  Freer (v ': ts) b
-replaceRelaySt s ret h (Pure x) = ret s x
-replaceRelaySt s ret h (Free u k) = case decomp u of
-  Right tx -> h s tx (\s' x -> replaceRelaySt s' ret h $ k x)
-  Left  u' -> Free (weaken u') (replaceRelaySt s ret h . k)
-
-runAffReader :: forall env ts a.
-  OP.OpenProduct (OP.AsList env) -> Freer (AffReader env ': ts) a -> Freer ts a
-runAffReader env0 = handleRelaySt env0
-  (\env x    -> return x)
-  (\env tx k ->
-    case tx of
-      Ask key -> let ys   = OP.getOP key env
-                     y    = maybeHead ys
-                     env' = OP.setOP key (safeTail ys) env
-                 in  k env' y)
-```
-
-- **effect-abstractions-constr-kinds**: Extended version of `effect-abstractions`. Replaced use of some pattern synonyms (previously used to match against existentially quantified 'x' in `Dist x`) with constraint kinds instead as a proof that the parameter of `Dist x` must be a member of `PrimVals`.
+- **constr-kinds**:Replaced use of some pattern synonyms (previously used to match against existentially quantified 'x' in `Dist x`) with constraint kinds instead as a proof that the parameter of `Dist x` must be a member of `PrimVals`.
 
 Old:
 ```
@@ -88,11 +60,10 @@ transformMH (Free u k) = do
 
 - **dep-map**: Extended version of `effect-abstractions-constr-kinds` which uses dependent maps `DMap (Key Addr)` as sample maps, as opposed to `Map Addr (OpenSum' PrimVal)`.
 
-- **icfp22-version**:
-Extended **effect-abstractions-constr-kinds** and cleaned up. 
+- **icfp22-version**: Version for ICFP22 submission
 
 - **weakened-handlers**: extended icfp22-version, which reimplements handlers to use `weaken`
 
-- **demonstration**: project directory for demos (edinburgh)
+- **demonstration**: new project directory for demos (edinburgh)
 
 - **inference-extension** for extending inference
