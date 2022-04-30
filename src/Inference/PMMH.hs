@@ -12,6 +12,7 @@
 
 module Inference.PMMH where
 
+import Control.Monad
 import Effects.Dist
 import Effects.ObsReader
 import Effects.Lift
@@ -40,23 +41,29 @@ type PMMHTrace a = [(a, SDTrace, SIS.LogP)]
 --   mhTrace <- mhWithSTrace n (runDist . runObsReader env_0 $ runModel (model x_0)) Map.empty tags
 --   return (map (mapsnd3 (fromSDTrace @env)) mhTrace)
 
--- mhWithSTrace :: (es ~ '[Observe, Sample, Lift Sampler])
---    => Int                              -- Number of mhSteps per data point
---    -> Prog es a
---    -> SDTrace
---    -> [Tag]                            -- Tags indicated sample sites of interest
---    -> Sampler (TraceMH a)              -- Trace of all accepted outputs, samples, and logps
--- mhWithSTrace n prog samples_0 tags = do
---   -- Perform initial run of mh
---   let α_0 = ("", 0)
---   (y_0, samples_0, logps_0) <- runMH samples_0 α_0 prog
---   -- A function performing n mhsteps for one data point
---   let mhs  = foldl (>=>) return (replicate n (mhStep prog tags))
---   -- Construct list of n mhsteps, one for each data point
---   -- Perform mhNstep for each data point, propagating (x, samples, logps) through
---   l <- mhs [(y_0, samples_0, logps_0)]
---   -- Return mhTrace in correct order of execution (due to mhStep prepending new results onto head of trace)
---   return $ reverse l
+pmmhWithSTrace :: (es ~ '[Observe, Sample, Lift Sampler], Show a)
+   => Int                              -- Number of mhSteps per data point
+   -> Prog es a
+   -> SDTrace
+   -> [Tag]                            -- Tags indicated sample sites of interest
+   -> Sampler (PMMHTrace a)              -- Trace of all accepted outputs, samples, and logps
+pmmhWithSTrace n prog samples_0 tags = do
+  -- perform initial run of mh
+  let α_0 = ("", 0)
+  (y_0, samples_0, _) <- MH.runMH samples_0 α_0 prog
+  -- get samples of prior parameters
+  let priorSamples_0 = Map.filterWithKey (\(tag, i) _ -> tag `elem` tags) samples_0
+  -- perform initial run of smc to compute likelihood
+  ctxs <- SIS.sis 100 SMC.smcResampler SMC.smcPopulationHandler SMC.runObserve (runSample priorSamples_0) prog
+  let -- get final log probabilities of each particle
+      lps     = map (snd3 . snd) ctxs
+      -- compute average
+      logW_0   = SIS.logMeanExp lps
+  -- A function performing n pmmhsteps
+  let pmmhs  = foldl (>=>) return (replicate n (pmmhStep prog tags))
+  l <- pmmhs [(y_0, samples_0, logW_0)]
+  -- Return pmmhTrace in correct order of execution (due to pmmhStep prepending new results onto head of trace)
+  return $ reverse l
 
 pmmhStep :: Show a => (es ~ '[Observe, Sample, Lift Sampler])
   => Prog es a          -- Model
