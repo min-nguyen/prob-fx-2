@@ -32,14 +32,13 @@ type PMMHTrace a = [(a, SDTrace, SIS.LogP)]
 pmmh :: forall es a b env e. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env, Show a)
    => Int                              -- Number of mhSteps
    -> Int                              -- Number of particles
-   -> (b -> Model env es a)            -- Model awaiting input variable
-   -> [Tag]                            -- Tags indicated sample sites of interest
-   -> b                                -- List of model input variables
+   -> Model env es a                   -- Model
    -> ModelEnv env                     -- List of model observed variables
+   -> [Tag]                            -- Tags indicated sample sites of interest
    -> Sampler [(a, ModelEnv env, SIS.LogP)]  -- Trace of all accepted outputs, samples, and logps
-pmmh mh_steps n_particles model tags x_0 env_0 = do
+pmmh mh_steps n_particles model env_0 tags = do
   -- Perform initial run of mh
-  mhTrace <- pmmhWithSTrace mh_steps n_particles (runDist . runObsReader env_0 $ runModel (model x_0)) Map.empty tags
+  mhTrace <- pmmhWithSTrace mh_steps n_particles (runDist . runObsReader env_0 $ runModel model) Map.empty tags
   return (map (mapsnd3 (fromSDTrace @env)) mhTrace)
 
 pmmhWithSTrace :: (es ~ '[Observe, Sample, Lift Sampler], Show a)

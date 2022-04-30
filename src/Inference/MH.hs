@@ -144,14 +144,13 @@ accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
 -- | Run MH for one input and environment
 mh :: forall es a b env e. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env)
    => Int                                   -- Number of mhSteps
-   -> (b -> Model env es a)                 -- Model awaiting input
-   -> [Tag]                                 -- Tags indicated sample sites of interest
-   -> b                                     -- List of model input variables
+   -> Model env es a                        -- Model awaiting input
    -> ModelEnv env                          -- List of model observed variables
+   -> [Tag]                                 -- Tags indicated sample sites of interest
    -> Sampler [(a, ModelEnv env, LPTrace)]  -- Trace of all accepted outputs, samples, and logps
-mh n model tags x_0 env_0 = do
+mh n model env_0 tags  = do
   -- Perform initial run of mh
-  mhTrace <- mhWithSTrace n (runDist . runObsReader env_0 $ runModel (model x_0)) Map.empty tags
+  mhTrace <- mhWithSTrace n (runDist . runObsReader env_0 $ runModel model) Map.empty tags
   return (map (mapsnd3 (fromSDTrace @env)) mhTrace)
 
 mhWithSTrace :: (es ~ '[Observe, Sample, Lift Sampler])

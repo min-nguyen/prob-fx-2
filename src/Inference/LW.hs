@@ -31,13 +31,12 @@ type TraceLW a = [(a, STrace, Double)]
 
 -- | Run LW n times for one input and environment
 lw :: forall env es a b. (FromSTrace env, es ~ '[ObsReader env, Dist])
-   => Int                              -- Number of lw iterations per data point
-   -> (b -> Model env es a)            -- Model awaiting input variable
-   -> b                              -- List of model input variables
-   -> ModelEnv env                       -- List of model observed variables
-   -> Sampler [(a, ModelEnv env, Double)]              -- List of n likelihood weightings for each data point
-lw n model x env = do
-  lwTrace <- replicateM n (runLW env (model x))
+   => Int                                   -- Number of lw iterations
+   -> Model env es a                        -- Model
+   -> ModelEnv env                          -- List of model observed variables
+   -> Sampler [(a, ModelEnv env, Double)]   -- List of n likelihood weightings for each data point
+lw n model env = do
+  lwTrace <- replicateM n (runLW env model)
   return (map (mapsnd3 (fromSTrace @env)) lwTrace)
 
 -- | Run LW once for single data point
