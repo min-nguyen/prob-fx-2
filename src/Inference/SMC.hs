@@ -31,17 +31,24 @@ import Effects.State
 import STrace
 import Sampler
 import Effects.Writer
+import Effects.Dist
 import Inference.SIS (sis, Accum(..), ParticleHandler, Resampler, LogP(..), logMeanExp)
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
 import Util
 
-
-smc :: forall env es' a. (FromSTrace env, Show a) =>
+smcToplevel :: forall env es' a. (FromSTrace env, Show a) =>
   (es' ~ [ObsReader env, Dist, Lift Sampler]) =>
   Int -> Model env es' a -> ModelEnv env -> Sampler [(a, LogP, ModelEnv env)]
-smc n_particles model env = do
-  as_ps_straces <- sis n_particles smcResampler smcPopulationHandler runObserve runSample  model env
+smcToplevel n_particles model env = do
+  let prog_0 = (runDist . runObsReader env) (runModel model)
+  smc n_particles prog_0 env
+
+smc :: forall env es' a. (FromSTrace env, Show a) =>
+  (es' ~ [Observe, Sample, Lift Sampler]) =>
+  Int -> Prog es' a -> ModelEnv env -> Sampler [(a, LogP, ModelEnv env)]
+smc n_particles prog_0 env = do
+  as_ps_straces <- sis n_particles smcResampler smcPopulationHandler runObserve runSample  prog_0
   return $ map (\(a, (addr, p, strace)) -> (a, p, fromSDTrace @env strace)) as_ps_straces
 
 

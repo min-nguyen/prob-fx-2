@@ -48,7 +48,7 @@ class Accum ctx where
   -- Initialise the contexts for n particles
   aempty :: Int -> [ctx]
 
-newtype LogP = LogP { logP :: Double } deriving (Show, Num)
+newtype LogP = LogP { logP :: Double } deriving (Show, Num, Eq, Ord, Fractional)
 
 logMeanExp :: [LogP] -> LogP
 logMeanExp logps =
@@ -84,17 +84,18 @@ instance (Accum a, Accum b, Accum c) => Accum (a, b, c) where
                      in  zip3 (accum x x') (accum y y') (accum z z')
 
 sis :: forall a env ctx es.
-     (Accum ctx, Show ctx, FromSTrace env, Show a)
+     (Accum ctx, Show ctx, Show a)
   => Int
   -> Resampler       ctx (Observe : Sample : Lift Sampler : '[])  a
   -> ParticleHandler ctx (Observe : Sample : Lift Sampler : '[]) a
   -> (forall es b. Prog (Observe : es) b -> Prog es b)                      -- observe handler
   -> (forall b. Prog '[Sample, Lift Sampler] b -> Prog '[Lift Sampler] b)   -- sample handler
-  -> Model env [ObsReader env, Dist, Lift Sampler] a
-  -> ModelEnv env
+  -- -> Model env [ObsReader env, Dist, Lift Sampler] a
+  -- -> ModelEnv env
+  -> Prog [Observe, Sample, Lift Sampler] a
   -> Sampler [(a, ctx)]
-sis n_particles resampler pophdl runObserve runSample model env = do
-  let prog_0  = (runDist . runObsReader env) (runModel model)
+sis n_particles resampler pophdl runObserve runSample prog_0 = do -- model env = do
+  let --prog_0  = (runDist . runObsReader env) (runModel model)
       progs   = replicate n_particles (weaken' prog_0)
       ctxs    = aempty n_particles
   printS $ show ctxs

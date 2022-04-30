@@ -269,18 +269,16 @@ runSample α_samp samples = loop
   loop (Op u k) = case u of
       PrintPatt s ->
         lift (liftS (putStrLn s)) >> loop (k ())
-      SampPatt d α ->
-        do let maybe_y = lookupSample samples d α α_samp
-           case maybe_y of
+      SampPatt d α -> do
+        let maybe_y = if α == α_samp then Nothing else lookupSample samples d α
+        case maybe_y of
              Nothing -> lift (sample d) >>= (loop . k)
              Just x  -> (loop . k) x
       DecompLeft u' ->
          Op u' (loop . k)
 
-lookupSample :: Show a => OpenSum.Member a PrimVal => SDTrace -> Dist a -> Addr -> Addr -> Maybe a
-lookupSample samples d α α_samp
-  | α == α_samp = Nothing
-  | otherwise   = do
+lookupSample :: Show a => OpenSum.Member a PrimVal => SDTrace -> Dist a -> Addr -> Maybe a
+lookupSample samples d α  = do
     let m = Map.lookup α samples
     case m of
       Just (PrimDist d', x) -> do

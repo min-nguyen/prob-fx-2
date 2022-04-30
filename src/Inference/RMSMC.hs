@@ -38,12 +38,18 @@ import Inference.SIS
 import OpenSum (OpenSum)
 import Util
 
-rmsmc :: forall env es' a. (FromSTrace env, Show a) =>
+rmsmcToplevel :: forall env es' a. (FromSTrace env, Show a) =>
   (es' ~ [ObsReader env, Dist, Lift Sampler]) =>
   Int -> Int -> Model env es' a -> ModelEnv env -> Sampler [(a, LogP, ModelEnv env)]
-rmsmc n_particles mh_steps model env = do
+rmsmcToplevel n_particles mh_steps model env = do
   let model_0 = (runDist . runObsReader env) (runModel model)
-  as_ps_straces <- sis n_particles (rmsmcResampler mh_steps model_0) SMC.smcPopulationHandler SMC.runObserve SMC.runSample model env
+  rmsmc n_particles mh_steps model_0 env
+
+rmsmc :: forall env es' a. (FromSTrace env, Show a) =>
+  (es' ~ [Observe, Sample, Lift Sampler]) =>
+  Int -> Int -> Prog es' a -> ModelEnv env -> Sampler [(a, LogP, ModelEnv env)]
+rmsmc n_particles mh_steps model_0 env = do
+  as_ps_straces <- sis n_particles (rmsmcResampler mh_steps model_0) SMC.smcPopulationHandler SMC.runObserve SMC.runSample model_0
   return $ map (\(a, (addr, p, strace)) -> (a, p, fromSDTrace @env strace)) as_ps_straces
 
 rmsmcResampler :: forall es a.
