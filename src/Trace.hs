@@ -28,6 +28,7 @@ import OpenSum (OpenSum)
 import Util
 import FindElem
 
+{- Sample trace -}
 type STrace  = Map Addr (PrimDist, OpenSum PrimVal)
 
 class FromSTrace (env :: [Assign Symbol *]) where
@@ -39,30 +40,19 @@ instance FromSTrace '[] where
 instance (UniqueKey x env ~ 'True, KnownSymbol x, Eq a, OpenSum.Member a PrimVal, FromSTrace env) => FromSTrace ((x := a) : env) where
   fromSTrace sMap    = HCons (extractSamples (ObsVar @x, Proxy @a) sMap) (fromSTrace sMap)
 
-class ValidSpec (spec :: [Symbol]) (env :: [Assign Symbol *]) where
-  asTags        :: Spec spec -> ModelEnv env ->  [String]
-
-instance ValidSpec '[] env where
-  asTags _ _     = []
-
-instance (FindElem x (GetObsVars env), KnownSymbol x, ValidSpec xs env) => ValidSpec (x : xs) env where
-  asTags  (SpecCons xs) env = symbolVal (Proxy @x) : asTags @xs @env xs env
-
 extractSamples ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (ObsVar x, Proxy a) -> STrace -> [a]
 extractSamples (x, typ)  =
     map (fromJust . OpenSum.prj @a . snd . snd)
   . Map.toList
   . Map.filterWithKey (\(tag, idx) _ -> tag == varToStr x)
 
-updateSTrace :: Show x => (Member (State STrace) es, OpenSum.Member x PrimVal) => Addr -> Dist x -> x -> Prog es ()
-updateSTrace α d x  = modify (Map.insert α (PrimDist d, OpenSum.inj x) :: STrace -> STrace)
-
 filterSTrace :: [Tag] -> STrace -> STrace
 filterSTrace tags = Map.filterWithKey (\(tag, idx) _ -> tag `elem` tags)
 
--- filterSTrace' :: FromSTrace env => Proxy env -> STrace -> STrace
--- filterSTrace' tags = Map.filterWithKey (\(tag, idx) _ -> tag `elem` tags)
+updateSTrace :: Show x => (Member (State STrace) es, OpenSum.Member x PrimVal) => Addr -> Dist x -> x -> Prog es ()
+updateSTrace α d x  = modify (Map.insert α (PrimDist d, OpenSum.inj x) :: STrace -> STrace)
 
+-- | Insert stateful operations for LPTrace when either Sample or Observe occur.
 traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, STrace)
 traceSamples = runState Map.empty . storeSamples
   where storeSamples :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
@@ -74,13 +64,13 @@ traceSamples = runState Map.empty . storeSamples
               Printer s  -> k ()
           )
 
-
+{- Log probability trace -}
 type LPTrace = Map Addr Double
 
 updateLPTrace :: (Member (State LPTrace) es) => Addr -> Dist x -> x -> Prog es ()
 updateLPTrace α d x  = modify (Map.insert α (logProb d x) :: LPTrace -> LPTrace)
 
--- | Insert stateful operations for SDTrace and LPTrace when either Sample or Observe occur.
+-- | Insert stateful operations for LPTrace when either Sample or Observe occur.
 traceLPs ::(Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)
 traceLPs = runState Map.empty . storeLPs
   where storeLPs :: (Member Sample es, Member Observe es) => Prog es a -> Prog (State LPTrace: es) a
