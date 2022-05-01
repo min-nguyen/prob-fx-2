@@ -56,7 +56,7 @@ pmmh mh_steps n_particles prog strace_0 tags = do
   -- get samples of prior parameters
   let priorSamples_0 = Map.filterWithKey (\(tag, i) _ -> tag `elem` tags) strace_0
   -- perform initial run of smc to compute likelihood
-  ctxs <- SIS.sis 10 SMC.smcResampler SMC.smcPopulationHandler SMC.runObserve (runSample priorSamples_0) prog
+  ctxs <- SIS.sis n_particles SMC.smcResampler SMC.smcPopulationHandler SMC.runObserve (runSample priorSamples_0) prog
   let -- get final log probabilities of each particle
       lps     = map (snd3 . snd) ctxs
       -- compute average
@@ -99,7 +99,7 @@ runSample  samples = loop
   loop (Val x) = return x
   loop (Op u k) = case u of
       PrintPatt s ->
-        lift (liftS (putStrLn s)) >> loop (k ())
+        printLift s >> loop (k ())
       SampPatt d α ->
         do let maybe_y = MH.lookupSample samples d α
           --  printLift $ "using " ++ show maybe_y

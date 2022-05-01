@@ -7,6 +7,7 @@
 {-# LANGUAGE GADTs #-}
 
 {-# LANGUAGE TypeOperators #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Inference.LW where
 
 import qualified Data.Map as Map
@@ -56,28 +57,18 @@ runLWpaper :: es ~ '[ObsReader env, Dist]
   => ModelEnv env -> Model env es a
   -> Sampler ((a, STrace), Double)
 runLWpaper env m =
-  (runSample . runObserve . runState Map.empty
-    . transformLW . runDist . runObsReader env) (runModel m)
+  (runSample . runObserve . traceSamples . runDist . runObsReader env) (runModel m)
 
 traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, STrace)
 traceSamples = runState Map.empty . transformLW
-
-transformLW :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
-transformLW = install return
-  (\x tx k -> case tx of
-      Sample d α -> case distDict d of
-        Dict -> do updateSTrace α x
-                   k x
-      Printer s  -> k ()
-  )
-
-transformLW' :: (Member (State STrace) es, Member Sample es)
-  => Prog es a -> Prog es a
-transformLW' (Val x) = return x
-transformLW' (Op u k) = case u  of
-    SampPatt d α -> Op u (\x -> do  updateSTrace α x
-                                    transformLW' (k x))
-    _ -> Op u (transformLW' . k)
+  where transformLW :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
+        transformLW = install return
+          (\x tx k -> case tx of
+              Sample d α -> case distDict d of
+                Dict -> do updateSTrace α x
+                           k x
+              Printer s  -> k ()
+          )
 
 runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es (a, Double)
 runObserve = loop 0

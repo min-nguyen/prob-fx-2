@@ -204,25 +204,34 @@ runMH strace α_samp prog = do
                             ( runLift
                             . runSample α_samp strace
                             . runObserve
-                            . runState Map.empty
-                            . runState Map.empty
-                            . transformMH) prog
+                            . traceLPs
+                            . traceSamples) prog
   return (a, strace', lptrace')
 
 -- | Insert stateful operations for SDTrace and LPTrace when either Sample or Observe occur.
-transformMH :: (Member Sample es, Member Observe es) =>
-  Prog es a -> Prog (State SDTrace: State LPTrace: es) a
-transformMH (Val x) = return x
-transformMH (Op u k) = do
-  case u of
-    SampPatt d α
-      -> Op (weaken $ weaken u) (\x -> updateSDTrace α d x >>
-                                       updateLPTrace α d x >>
-                                       transformMH (k x))
-    ObsPatt d y α
-      -> Op (weaken $ weaken u) (\x -> updateLPTrace α d x >>
-                       transformMH (k x))
-    _ -> Op (weaken $ weaken u) (transformMH . k)
+traceLPs ::(Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)
+traceLPs = runState Map.empty . storeLPs
+  where storeLPs :: (Member Sample es, Member Observe es) => Prog es a -> Prog (State LPTrace: es) a
+        storeLPs (Val x) = return x
+        storeLPs (Op u k) = do
+          case u of
+            SampPatt d α
+              -> Op (weaken u) (\x -> updateLPTrace α d x >>
+                                      storeLPs (k x))
+            ObsPatt d y α
+              -> Op (weaken u) (\x -> updateLPTrace α d x >> storeLPs (k x))
+            _ -> Op (weaken u) (storeLPs . k)
+
+traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, SDTrace)
+traceSamples = runState Map.empty . storeSamples
+  where storeSamples :: (Member Sample es) => Prog es a -> Prog (State SDTrace ': es) a
+        storeSamples = install return
+          (\x tx k -> case tx of
+              Sample d α -> case distDict d of
+                Dict -> do updateSDTrace α d x
+                           k x
+              Printer s  -> k ()
+          )
 
 -- | Remove Observe occurrences from tree (log p is taken care of by transformMH)
 runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es a
@@ -236,9 +245,6 @@ runObserve = loop 0
           --  prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show p'
            loop (p + p') (k y)
       DecompLeft u'  -> Op u' (loop p . k)
-
-data SampleMH a where
-  SampleMH  :: Dist a -> Addr -> SampleMH a
 
 -- | Run Sample occurrences
 runSample :: Addr -> SDTrace -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
