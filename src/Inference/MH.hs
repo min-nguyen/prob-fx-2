@@ -32,7 +32,7 @@ import Data.Bifunctor
 import Freer
 import Model hiding (runModelFree)
 import Sampler
-import STrace
+import Trace
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum(..))
 import Effects.ObsReader
@@ -205,33 +205,8 @@ runMH strace α_samp prog = do
                             . runSample α_samp strace
                             . runObserve
                             . traceLPs
-                            . traceSamples) prog
+                            . traceDSamples) prog
   return (a, strace', lptrace')
-
--- | Insert stateful operations for SDTrace and LPTrace when either Sample or Observe occur.
-traceLPs ::(Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)
-traceLPs = runState Map.empty . storeLPs
-  where storeLPs :: (Member Sample es, Member Observe es) => Prog es a -> Prog (State LPTrace: es) a
-        storeLPs (Val x) = return x
-        storeLPs (Op u k) = do
-          case u of
-            SampPatt d α
-              -> Op (weaken u) (\x -> updateLPTrace α d x >>
-                                      storeLPs (k x))
-            ObsPatt d y α
-              -> Op (weaken u) (\x -> updateLPTrace α d x >> storeLPs (k x))
-            _ -> Op (weaken u) (storeLPs . k)
-
-traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, SDTrace)
-traceSamples = runState Map.empty . storeSamples
-  where storeSamples :: (Member Sample es) => Prog es a -> Prog (State SDTrace ': es) a
-        storeSamples = install return
-          (\x tx k -> case tx of
-              Sample d α -> case distDict d of
-                Dict -> do updateSDTrace α d x
-                           k x
-              Printer s  -> k ()
-          )
 
 -- | Remove Observe occurrences from tree (log p is taken care of by transformMH)
 runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es a

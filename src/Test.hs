@@ -35,7 +35,7 @@ import ModelEnv
 import Util
 import Debug.Trace
 import Unsafe.Coerce
-import STrace
+import Trace
 import Old.Example (LatentState(LatentState))
 
 

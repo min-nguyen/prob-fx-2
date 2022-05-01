@@ -28,7 +28,7 @@ import Sampler
 import Effects.Lift
 import Effects.ObsReader
 import Effects.State
-import STrace
+import Trace
 import Sampler
 import Effects.Writer
 import Inference.MH

@@ -21,7 +21,7 @@ import Freer
 import Sampler
 import Model
 import ModelEnv
-import STrace
+import Trace
 import qualified Inference.MH as MH
 import qualified Inference.SMC as SMC
 import qualified Inference.SIS as SIS

@@ -28,7 +28,7 @@ import Sampler
 import Effects.Lift
 import Effects.ObsReader
 import Effects.State
-import STrace
+import Trace
 import Sampler
 import Effects.Writer
 import Effects.Dist
@@ -55,7 +55,7 @@ smcPopulationHandler :: Members [Observe, Sample, Lift Sampler] es
   => ParticleHandler  ([Addr], LogP, SDTrace) es a
 smcPopulationHandler particles = do
   -- Merge particles into single non-deterministic program using 'asum', and run to next checkpoint
-  particles_ctxs <- (runNonDet . runState Map.empty . traceSamples . breakObserve ) (asum particles)
+  particles_ctxs <- (runNonDet . traceDSamples . breakObserve ) (asum particles)
   -- List of particles that can be resumed, their observe breakpoint address, the log probability at that break point, and an accumulated sample trace
   let particles_ctxs' = map (\((prog, α, p), strace) -> (prog, ([α], p,  strace))) particles_ctxs
   return particles_ctxs'
@@ -74,13 +74,6 @@ smcResampler ctxs_0 ctxs_1sub0 particles = do
       resampled_straces       = map (straces_1 !!) particle_idxs
   -- prinT $ "continuing with" ++ show   straces'
   return (resampled_particles, zip3 obs_addrs_1 resampled_logWs resampled_straces)
-
-traceSamples :: (Member Sample es) => Prog es a -> Prog (State SDTrace : es) a
-traceSamples  (Val x)  = return x
-traceSamples  (Op u k) = case u of
-    SampPatt d α ->  Op (weaken u) (\x -> do updateSDTrace α d x
-                                             traceSamples (k x))
-    _   -> Op (weaken u) (traceSamples . k)
 
 -- When discharging Observe, return the rest of the program, and the log probability
 breakObserve :: Members [Lift Sampler, Observe] es => Prog es a -> Prog es (Prog es a, Addr, LogP)

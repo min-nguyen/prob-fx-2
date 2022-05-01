@@ -21,7 +21,7 @@ import Freer
 import Sampler
 import Model
 import ModelEnv
-import STrace
+import Trace
 import qualified Inference.MH as MH
 import qualified Inference.SMC as SMC
 import qualified Inference.SIS as SIS
@@ -73,11 +73,11 @@ pmmhStep :: Show a => (es ~ '[Observe, Sample, Lift Sampler])
   -> [Tag]              -- Tags indicating prior random variables
   -> PMMHTrace a        -- Trace of previous mh outputs
   -> Sampler (PMMHTrace a)
-pmmhStep n_particles prog tags pmmhTrace = do
+pmmhStep n_particles prog tags pmmhTrace =
   MH.mhStep prog tags (acceptSMC n_particles prog tags) pmmhTrace
 
 acceptSMC :: Show a => Int -> Prog '[Observe, Sample, Lift Sampler] a -> [Tag] -> MH.Accept SIS.LogP a
-acceptSMC n_particles prog tags x0 (a, strace', lptrace') (_, _, logW) = do
+acceptSMC n_particles prog tags _ (a, strace', lptrace') (_, _, logW) = do
   let priorSamples = Map.filterWithKey (\(tag, i) _ -> tag `elem` tags) strace'
   printS $ "prior samples" ++ show priorSamples
   -- run SMC using prior samples

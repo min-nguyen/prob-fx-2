@@ -23,12 +23,12 @@ import Freer
 import Model hiding (runModelFree)
 import Sampler
 import Effects.State ( modify, runState, State )
-import STrace
+import Trace
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum(..))
 import Util
 
-type TraceLW a = [(a, STrace, Double)]
+type TraceLW a = [(a, Trace, Double)]
 
 -- | Run LW n times for one input and environment
 lw :: forall env es a b. (FromSTrace env, es ~ '[ObsReader env, Dist])
@@ -43,7 +43,7 @@ lw n model env = do
 -- | Run LW once for single data point
 runLW :: es ~ '[ObsReader env, Dist]
   => ModelEnv env -> Model env es a
-  -> Sampler (a, STrace, Double)
+  -> Sampler (a, Trace, Double)
 runLW env model = do
   ((x, samples), p) <- (  runSample
                         . runObserve
@@ -55,20 +55,9 @@ runLW env model = do
 
 runLWpaper :: es ~ '[ObsReader env, Dist]
   => ModelEnv env -> Model env es a
-  -> Sampler ((a, STrace), Double)
+  -> Sampler ((a, Trace), Double)
 runLWpaper env m =
   (runSample . runObserve . traceSamples . runDist . runObsReader env) (runModel m)
-
-traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, STrace)
-traceSamples = runState Map.empty . transformLW
-  where transformLW :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
-        transformLW = install return
-          (\x tx k -> case tx of
-              Sample d α -> case distDict d of
-                Dict -> do updateSTrace α x
-                           k x
-              Printer s  -> k ()
-          )
 
 runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es (a, Double)
 runObserve = loop 0

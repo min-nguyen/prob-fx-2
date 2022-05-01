@@ -34,7 +34,7 @@ import ModelEnv
 import Util
 import Debug.Trace
 import Unsafe.Coerce
-import STrace
+import Trace
 
 mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> ModelEnv Example.LinRegrEnv
 mkRecordLinRegr (y_vals, m_vals, c_vals, σ_vals) =

@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Inference.SMC where
+module Old.Inference.SMC where
 -- import Data.Extensible hiding (Member)
 import qualified Data.Map as Map
 import Data.Maybe
@@ -25,17 +25,17 @@ import Effects.NonDet
 import Sampler
 import Effects.ObsReader
 import Effects.State
-import STrace
+import Trace
 import Sampler
 import Effects.Writer
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
 import Util
 
-smc :: forall a env. (FromSTrace env, Show a) => -- , Observe, State STrace, NonDet, Sample
+smc :: forall a env. (FromSTrace env, Show a) => -- , Observe, State Trace, NonDet, Sample
   Int -> Model env '[ObsReader env, Dist] a -> ModelEnv env -> Sampler [(a, ModelEnv env, Double)]
 smc n_particles model env = do
-  let prog = (traceSamples . branchWeaken n_particles . runDist . runObsReader env) (runModel model)
+  let prog = (storeSamples . branchWeaken n_particles . runDist . runObsReader env) (runModel model)
   particles <- (runSample . runObserve) (loopSMC n_particles [0] (repeat Map.empty) prog)
   let particles' = map (\(a, strace, prob) -> (a, fromSTrace @env strace, prob)) particles
   return particles'
@@ -54,7 +54,7 @@ logSumExp logws =
   in  c + log (sum (map (\logw -> exp (logw - c)) logws))
 
 loopSMC :: Show a => Members [Observe, Sample] es
-  => Int -> [Double] -> [STrace] -> Prog (State STrace : NonDet : es) a -> Prog es [(a, STrace, Double)]
+  => Int -> [Double] -> [Trace] -> Prog (State Trace : NonDet : es) a -> Prog es [(a, Trace, Double)]
 loopSMC n_particles logWs_prev straces_accum prog  = do
   progs_probs <- (runNonDet . runState Map.empty . breakObserve) prog
   let -- get log probabilities of each particle since between previous observe operation
@@ -82,12 +82,12 @@ loopSMC n_particles logWs_prev straces_accum prog  = do
                       -- prinT $ "continuing with" ++ show   straces_accum''
                       loopSMC n_particles logWs' straces_accum'' prog'
 
-traceSamples :: (Member Sample es) => Prog es a -> Prog (State STrace : es) a
-traceSamples  (Val x)  = return x
-traceSamples  (Op u k) = case u of
+storeSamples :: (Member Sample es) => Prog es a -> Prog (State Trace : es) a
+storeSamples  (Val x)  = return x
+storeSamples  (Op u k) = case u of
     SampPatt d α ->  Op (weaken u) (\x -> do updateSTrace α x
-                                             traceSamples (k x))
-    _   -> Op (weaken u) (traceSamples . k)
+                                             storeSamples (k x))
+    _   -> Op (weaken u) (storeSamples . k)
 
 -- When discharging Observe, return the rest of the program, and the log probability
 breakObserve :: Member Observe es => Prog es a -> Prog es (Prog es a, Double)
@@ -121,7 +121,7 @@ runSample = loop
       _         -> error "Impossible: Nothing cannot occur"
 
 -- loopSMC :: Show a => Members [Observe, Sample] es
---   => Int -> [Double] -> [STrace] -> Prog (State STrace : NonDet : es) a -> Prog es [(a, STrace, Double)]
+--   => Int -> [Double] -> [Trace] -> Prog (State Trace : NonDet : es) a -> Prog es [(a, Trace, Double)]
 -- loopSMC n_particles logWs_prev straces_accum prog  = do
 --   progs_probs <- (runNonDet . runState Map.empty . breakObserve) prog
 --   let -- get log probabilities of each particle since between previous observe operation

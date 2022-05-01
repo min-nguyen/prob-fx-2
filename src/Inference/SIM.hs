@@ -25,7 +25,7 @@ import Model
 import Sampler
 import Effects.ObsReader
 import Effects.State
-import STrace
+import Trace
 import Effects.Lift
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
@@ -55,7 +55,7 @@ simulateOnce model env x  = do
   return outputs_env
 
 runSimulate :: (es ~ '[ObsReader env, Dist])
- => ModelEnv env -> Model env es a -> Sampler (a, STrace)
+ => ModelEnv env -> Model env es a -> Sampler (a, Trace)
 runSimulate ys m
   = (runLift . runSample Map.empty . runObserve . runDist . runObsReader ys) (runModel m)
 
@@ -68,7 +68,7 @@ runObserve (Op u k) = case u of
   DecompLeft u' ->
     Op u' (runObserve . k)
 
-runSample :: STrace -> Prog '[Sample] a -> Prog '[Lift Sampler] (a, STrace)
+runSample :: Trace -> Prog '[Sample] a -> Prog '[Lift Sampler] (a, Trace)
 runSample sTrace (Val x)  = return (x, sTrace)
 runSample sTrace (Op u k) = case u of
     PrintPatt s -> do
