@@ -117,9 +117,9 @@ We would do:
 This is already natural for models such as a HMM.
 -}
 
-type MHTrace p a = [(a, SDTrace, p)]
+type MHTrace p a = [(a, STrace, p)]
 
-type MHCtx p a = (a, SDTrace, p)
+type MHCtx p a = (a, STrace, p)
 
 type Accept p a = Addr                        -- proposal sample address
                -> MHCtx LPTrace a             -- proposed mh ctx, parameterised by log probability map
@@ -151,12 +151,12 @@ mhTopLevel :: forall es a b env e. (es ~ '[ObsReader env, Dist, Lift Sampler], F
 mhTopLevel n model env tags  = do
   let prog = (runDist . runObsReader env) (runModel model)
   mhTrace <- mh n prog Map.empty tags
-  return (map (mapsnd3 (fromSDTrace @env)) mhTrace)
+  return (map (mapsnd3 (fromSTrace @env)) mhTrace)
 
 mh :: (es ~ '[Observe, Sample, Lift Sampler])
    => Int                              -- Number of mhSteps
    -> Prog es a                        -- Model consisting of sample and observe operations
-   -> SDTrace                          -- Initial sample trace
+   -> STrace                           -- Initial sample trace
    -> [Tag]                            -- Tags indicated sample sites of interest
    -> Sampler (MHTrace LPTrace a)      -- Trace of all accepted outputs, samples, and logps
 mh n prog strace_0 tags = do
@@ -180,7 +180,7 @@ mhStep :: (es ~ '[Observe, Sample, Lift Sampler])
 mhStep prog tags accepter mhTrace  = do
   let -- get previous mh output
       mhCtx@(_, samples, _) = head mhTrace
-      sampleSites = if null tags then samples else filterSDTrace tags samples
+      sampleSites = if null tags then samples else filterSTrace tags samples
   -- select proposal sample address
   α_samp_ind <- sample (DiscrUniformDist 0 (Map.size sampleSites - 1) Nothing Nothing)
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
@@ -195,17 +195,17 @@ mhStep prog tags accepter mhTrace  = do
 
 -- | Run model once under MH
 runMH :: (es ~ '[Observe, Sample, Lift Sampler])
-  => SDTrace   -- Previous mh sample set
+  => STrace   -- Previous mh sample set
   -> Addr      -- Sample address
   -> Prog es a -- Model consisting of sample and observe operations
-  -> Sampler (a, SDTrace, LPTrace)
+  -> Sampler (a, STrace, LPTrace)
 runMH strace α_samp prog = do
   ((a, strace'), lptrace') <-
                             ( runLift
                             . runSample α_samp strace
                             . runObserve
                             . traceLPs
-                            . traceDSamples) prog
+                            . traceSamples) prog
   return (a, strace', lptrace')
 
 -- | Remove Observe occurrences from tree (log p is taken care of by transformMH)
@@ -222,7 +222,7 @@ runObserve = loop 0
       DecompLeft u'  -> Op u' (loop p . k)
 
 -- | Run Sample occurrences
-runSample :: Addr -> SDTrace -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
+runSample :: Addr -> STrace -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
 runSample α_samp strace = loop
   where
   loop :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
@@ -238,7 +238,7 @@ runSample α_samp strace = loop
       DecompLeft u' ->
          Op u' (loop . k)
 
-lookupSample :: Show a => OpenSum.Member a PrimVal => SDTrace -> Dist a -> Addr -> Maybe a
+lookupSample :: Show a => OpenSum.Member a PrimVal => STrace -> Dist a -> Addr -> Maybe a
 lookupSample strace d α  = do
     let m = Map.lookup α strace
     case m of

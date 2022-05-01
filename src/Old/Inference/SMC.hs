@@ -25,7 +25,7 @@ import Effects.NonDet
 import Sampler
 import Effects.ObsReader
 import Effects.State
-import Trace
+import Old.Trace
 import Sampler
 import Effects.Writer
 import qualified OpenSum as OpenSum

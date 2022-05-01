@@ -22,7 +22,7 @@ import Freer
 import Model hiding (runModelFree)
 import Sampler
 import Effects.State ( modify, runState, State )
-import Trace
+import Old.Trace
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum(..))
 

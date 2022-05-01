@@ -50,12 +50,12 @@ rmsmc :: forall env es' a. (FromSTrace env, Show a) =>
   Int -> Int -> Prog es' a -> ModelEnv env -> Sampler [(a, LogP, ModelEnv env)]
 rmsmc n_particles mh_steps prog env = do
   as_ps_straces <- sis n_particles (rmsmcResampler mh_steps prog) SMC.smcPopulationHandler SMC.runObserve SMC.runSample prog
-  return $ map (\(a, (addr, p, strace)) -> (a, p, fromSDTrace @env strace)) as_ps_straces
+  return $ map (\(a, (addr, p, strace)) -> (a, p, fromSTrace @env strace)) as_ps_straces
 
 rmsmcResampler :: forall es a.
      Int
   -> Prog [Observe, Sample, Lift Sampler] a -- the initial program, representing the entire unevaluated model execution (having already provided a model environment)
-  -> Resampler ([Addr], LogP, SDTrace) [Observe, Sample, Lift Sampler] a
+  -> Resampler ([Addr], LogP, STrace) [Observe, Sample, Lift Sampler] a
 rmsmcResampler mh_steps prog ctx_0 ctx_1sub0 progs_1 = do
   -- run SMC resampling
   (obs_addrs, _, resampled_straces) <- unzip3 . snd <$> SMC.smcResampler ctx_0 ctx_1sub0 progs_1

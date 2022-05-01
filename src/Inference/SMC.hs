@@ -49,18 +49,18 @@ smc :: forall env es' a. (FromSTrace env, Show a) =>
   Int -> Prog es' a -> ModelEnv env -> Sampler [(a, LogP, ModelEnv env)]
 smc n_particles prog env = do
   as_ps_straces <- sis n_particles smcResampler smcPopulationHandler runObserve runSample prog
-  return $ map (\(a, (addr, p, strace)) -> (a, p, fromSDTrace @env strace)) as_ps_straces
+  return $ map (\(a, (addr, p, strace)) -> (a, p, fromSTrace @env strace)) as_ps_straces
 
 smcPopulationHandler :: Members [Observe, Sample, Lift Sampler] es
-  => ParticleHandler  ([Addr], LogP, SDTrace) es a
+  => ParticleHandler  ([Addr], LogP, STrace) es a
 smcPopulationHandler particles = do
   -- Merge particles into single non-deterministic program using 'asum', and run to next checkpoint
-  particles_ctxs <- (runNonDet . traceDSamples . breakObserve ) (asum particles)
+  particles_ctxs <- (runNonDet . traceSamples . breakObserve ) (asum particles)
   -- List of particles that can be resumed, their observe breakpoint address, the log probability at that break point, and an accumulated sample trace
   let particles_ctxs' = map (\((prog, α, p), strace) -> (prog, ([α], p,  strace))) particles_ctxs
   return particles_ctxs'
 
-smcResampler :: Member (Lift Sampler) es => Resampler ([Addr], LogP, SDTrace) es a
+smcResampler :: Member (Lift Sampler) es => Resampler ([Addr], LogP, STrace) es a
 smcResampler ctxs_0 ctxs_1sub0 particles = do
   -- for each particle, compute normalised accumulated log weights, and accumulated sample traces
   let (obs_addrs_1, logWs_1, straces_1)      = unzip3 $ accum ctxs_1sub0 ctxs_0

@@ -77,6 +77,7 @@ library
                       Test,
                       TestSMC,
                       Old.Experiment,
+                      Old.Trace,
                       Old.Test,
                       Old.Inference.Simulate,
                       Old.Inference.SMC,

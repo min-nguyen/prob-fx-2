@@ -76,6 +76,6 @@ runSample sTrace (Op u k) = case u of
       runSample sTrace (k ())
     SampPatt d α -> do
       x <- lift (sample d)
-      let sTrace' = Map.insert α (OpenSum.inj x) sTrace
+      let sTrace' = Map.insert α (PrimDist d, OpenSum.inj x) sTrace
       (runSample sTrace' . k) x
     _        -> error "Impossible: Nothing cannot occur"
