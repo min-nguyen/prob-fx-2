@@ -38,10 +38,10 @@ instance FromSTrace '[] where
   fromSTrace _       = ENil
 
 instance (UniqueKey x env ~ 'True, KnownSymbol x, Eq a, OpenSum.Member a PrimVal, FromSTrace env) => FromSTrace ((x := a) : env) where
-  fromSTrace sMap    = ECons (extractSamples (ObsVar @x, Proxy @a) sMap) (fromSTrace sMap)
+  fromSTrace sMap    = ECons (extractSTrace (ObsVar @x, Proxy @a) sMap) (fromSTrace sMap)
 
-extractSamples ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (ObsVar x, Proxy a) -> STrace -> [a]
-extractSamples (x, typ)  =
+extractSTrace ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (ObsVar x, Proxy a) -> STrace -> [a]
+extractSTrace (x, typ)  =
     map (fromJust . OpenSum.prj @a . snd . snd)
   . Map.toList
   . Map.filterWithKey (\(tag, idx) _ -> tag == varToStr x)
@@ -52,7 +52,7 @@ filterSTrace tags = Map.filterWithKey (\(tag, idx) _ -> tag `elem` tags)
 updateSTrace :: Show x => (Member (State STrace) es, OpenSum.Member x PrimVal) => Addr -> Dist x -> x -> Prog es ()
 updateSTrace α d x  = modify (Map.insert α (PrimDist d, OpenSum.inj x) :: STrace -> STrace)
 
--- | Insert stateful operations for LPTrace when either Sample or Observe occur.
+-- | Insert stateful operations for STrace when Sample occurs.
 traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, STrace)
 traceSamples = runState Map.empty . storeSamples
   where storeSamples :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a

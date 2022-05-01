@@ -31,11 +31,11 @@ type PMMHTrace a = MH.MHTrace SIS.LogP a
 
 pmmhTopLevel :: forall es a env xs.
   (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env, ValidSpec env xs, Show a)
-   => Int                              -- Number of mhSteps
-   -> Int                              -- Number of particles
-   -> Model env es a                   -- Model
-   -> ModelEnv env                     -- List of model observed variables
-   -> ObsVars xs                            -- Tags indicated sample sites of interest
+   => Int                                    -- Number of mhSteps
+   -> Int                                    -- Number of particles
+   -> Model env es a                         -- Model
+   -> ModelEnv env                           -- List of model observed variables
+   -> ObsVars xs                             -- Tags indicated sample sites of interest
    -> Sampler [(a, ModelEnv env, SIS.LogP)]  -- Trace of all accepted outputs, samples, and logps
 pmmhTopLevel mh_steps n_particles model env obsvars = do
   let prog = (runDist . runObsReader env) (runModel model)
@@ -48,7 +48,7 @@ pmmh :: (es ~ '[Observe, Sample, Lift Sampler], Show a)
    => Int                              -- Number of mhSteps
    -> Int                              -- Number of particles
    -> Prog es a                        -- Model
-   -> STrace                          -- Initial sample trace
+   -> STrace                           -- Initial sample trace
    -> [Tag]                            -- Tags indicated sample sites of interest
    -> Sampler (PMMHTrace a)            -- Trace of all accepted outputs, samples, and logps
 pmmh mh_steps n_particles prog strace_0 tags = do
@@ -63,6 +63,7 @@ pmmh mh_steps n_particles prog strace_0 tags = do
       lps     = map (snd3 . snd) ctxs
       -- compute average
       logW_0  = SIS.logMeanExp lps
+
   -- A function performing n pmmhsteps
   let pmmhs  = foldl (>=>) return (replicate mh_steps (pmmhStep n_particles prog tags))
   l <- pmmhs [(y_0, strace_0, logW_0)]

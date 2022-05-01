@@ -71,7 +71,7 @@ testLinRegrLW n_datapoints n_samples = do
   lwTrace :: [([Double],              -- y data points
                 ModelEnv Example.LinRegrEnv,    -- sample trace
                 Double)]                        -- likelihood
-          <- LW.lw n_samples (Example.linearRegression xs)
+          <- LW.lwTopLevel n_samples (Example.linearRegression xs)
                    (mkRecordLinRegrY (map ((+2) . (*3)) xs))
   let lw_envs_out = map snd3 lwTrace
       mus        = concatMap (getOP #m) lw_envs_out
@@ -87,7 +87,7 @@ testLinRegrLW' n_datapoints n_samples = do
   lwTrace :: [([Double],              -- y data points
                 ModelEnv Example.LinRegrEnv,    -- sample trace
                 Double)]                        -- likelihood
-          <- concat <$> mapM (\(x, y) -> LW.lw n_samples (Example.linearRegression [x]) (mkRecordLinRegrY [y]))
+          <- concat <$> mapM (\(x, y) -> LW.lwTopLevel n_samples (Example.linearRegression [x]) (mkRecordLinRegrY [y]))
                                   (zip xs (map ((+2) . (*3)) xs))
   let lw_envs_out = map snd3 lwTrace
       mus        = concatMap (getOP #m) lw_envs_out
@@ -132,7 +132,7 @@ testLogRegrLW n_datapoints n_samples = do
   xys <- testLogRegrSim n_datapoints 1
   let xs = map fst xys
       ys = map snd xys
-  lwTrace <- LW.lw n_samples (Example.logisticRegression xs) (mkRecordLogRegrL ys)
+  lwTrace <- LW.lwTopLevel n_samples (Example.logisticRegression xs) (mkRecordLogRegrL ys)
   let lw_envs_out = map snd3 lwTrace
       mus    = concatMap (getOP #m) lw_envs_out
       bs     = concatMap (getOP #b) lw_envs_out
@@ -171,7 +171,7 @@ testHMMSim hmm_length n_samples = do
 testHMMLW :: Int -> Int -> Sampler [((Double, Double), Double)]
 testHMMLW hmm_length n_samples = do
   ys <- map snd <$> testHMMSim hmm_length 1
-  lwTrace <- LW.lw n_samples (runWriterM @[Int] (Example.hmmNSteps hmm_length 0))
+  lwTrace <- LW.lwTopLevel n_samples (runWriterM @[Int] (Example.hmmNSteps hmm_length 0))
                              (mkRecordHMMy ys)
   let lw_envs_out = map snd3 lwTrace
 
@@ -209,7 +209,7 @@ testTopicSim n_words n_samples = do
 
 testTopicLW :: Int -> Int -> Sampler [ (([[Double]], [[Double]]) , Double) ] -- this test is just for benchmark purposes.
 testTopicLW n_words n_samples = do
-  lwTrace <- LW.lw n_samples (Example.documentDist vocabulary 2 n_words) (mkRecordTopic ([], [], doc_words))
+  lwTrace <- LW.lwTopLevel n_samples (Example.documentDist vocabulary 2 n_words) (mkRecordTopic ([], [], doc_words))
   let lw_envs_out = map snd3 lwTrace
       θs          = map (getOP #θ) lw_envs_out
       φs          = map (getOP #φ) lw_envs_out
