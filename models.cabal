@@ -81,6 +81,7 @@ library
                       Old.Inference.Simulate,
                       Old.Inference.LW,
                       Old.Inference.MH,
+                      Old.Inference.PMMH,
                       Old.Example,
                       Old.EffExample,
                       Old.OpenProductVec

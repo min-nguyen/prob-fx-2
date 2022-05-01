@@ -42,30 +42,30 @@ rmsmcToplevel :: forall env es' a. (FromSTrace env, Show a) =>
   (es' ~ [ObsReader env, Dist, Lift Sampler]) =>
   Int -> Int -> Model env es' a -> ModelEnv env -> Sampler [(a, LogP, ModelEnv env)]
 rmsmcToplevel n_particles mh_steps model env = do
-  let model_0 = (runDist . runObsReader env) (runModel model)
-  rmsmc n_particles mh_steps model_0 env
+  let prog = (runDist . runObsReader env) (runModel model)
+  rmsmc n_particles mh_steps prog env
 
 rmsmc :: forall env es' a. (FromSTrace env, Show a) =>
   (es' ~ [Observe, Sample, Lift Sampler]) =>
   Int -> Int -> Prog es' a -> ModelEnv env -> Sampler [(a, LogP, ModelEnv env)]
-rmsmc n_particles mh_steps model env = do
-  as_ps_straces <- sis n_particles (rmsmcResampler mh_steps model) SMC.smcPopulationHandler SMC.runObserve SMC.runSample model
+rmsmc n_particles mh_steps prog env = do
+  as_ps_straces <- sis n_particles (rmsmcResampler mh_steps prog) SMC.smcPopulationHandler SMC.runObserve SMC.runSample prog
   return $ map (\(a, (addr, p, strace)) -> (a, p, fromSDTrace @env strace)) as_ps_straces
 
 rmsmcResampler :: forall es a.
      Int
   -> Prog [Observe, Sample, Lift Sampler] a -- the initial program, representing the entire unevaluated model execution (having already provided a model environment)
   -> Resampler ([Addr], LogP, SDTrace) [Observe, Sample, Lift Sampler] a
-rmsmcResampler mh_steps model ctx_0 ctx_1sub0 progs_1 = do
+rmsmcResampler mh_steps prog ctx_0 ctx_1sub0 progs_1 = do
   -- run SMC resampling
   (obs_addrs, _, resampled_straces) <- unzip3 . snd <$> SMC.smcResampler ctx_0 ctx_1sub0 progs_1
   let -- get most recent observe address
       α_break       = (head . head) obs_addrs
       -- insert break point to perform MH up to
-      partial_model = insertBreakpoint α_break model
+      partial_model = insertBreakpoint α_break prog
 
   -- perform metropolis-hastings using each resampled particle's sample trace
-  mhTraces <- lift $ mapM (\sdtrace -> mhWithSTrace mh_steps partial_model sdtrace []) resampled_straces
+  mhTraces <- lift $ mapM (\sdtrace -> mh mh_steps partial_model sdtrace []) resampled_straces
   let -- get the continuations of each particle from the break point, and weaken with non-det effect
       moved_particles     = map (weakenNonDet . fst3 . last) mhTraces
       -- get the sample traces of each particle up until the break point

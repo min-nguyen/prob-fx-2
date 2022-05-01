@@ -93,8 +93,8 @@ sis :: forall a env ctx es.
   -> (forall b. Prog '[Sample, Lift Sampler] b -> Prog '[Lift Sampler] b)   -- sample handler
   -> Prog [Observe, Sample, Lift Sampler] a                                 -- model
   -> Sampler [(a, ctx)]
-sis n_particles resampler pophdl runObserve runSample model = do
-  let progs   = replicate n_particles (weaken' model)
+sis n_particles resampler pophdl runObserve runSample prog = do
+  let progs   = replicate n_particles (weaken' prog)
       ctxs    = aempty n_particles
   (runLift . runSample . runObserve) (loopSIS n_particles resampler pophdl (progs, ctxs))
 
@@ -104,15 +104,15 @@ loopSIS :: (Show a, Show ctx, Accum ctx)
   -> ParticleHandler ctx es a
   -> ([Prog (NonDet : es) a], [ctx])   -- Particles and corresponding contexts
   -> Prog es [(a, ctx)]
-loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
+loopSIS n_particles resampler populationHandler (particles_0, ctxs_0)  = do
   -- Run particles to next checkpoint
-  (progs_1, ctxs_1) <- unzip <$> populationHandler progs_0
-  case foldVals progs_1 of
+  (particles_1, ctxs_1) <- unzip <$> populationHandler particles_0
+  case foldVals particles_1 of
   -- if all programs have finished, return with accumulated context
     Right vals  -> do let ctxs' =  accum ctxs_1 ctxs_0
                       (`zip` ctxs') <$> vals
   -- otherwise, pick programs to continue with
-    Left  progs -> do (progs', ctxs') <- resampler ctxs_0 ctxs_1 progs_1
-                      loopSIS n_particles resampler populationHandler (progs', ctxs')
+    Left  particles_1 -> do (resampledParticles_1, resampledCtxs_1) <- resampler ctxs_0 ctxs_1 particles_1
+                            loopSIS n_particles resampler populationHandler (resampledParticles_1, resampledCtxs_1)
 
 

@@ -97,16 +97,16 @@ testLinRegrLW' n_datapoints n_samples = do
   printS ps
   return $ zip (zip3 mus cs σs) ps
 
-testLinRegrMH :: Int -> Int -> Sampler ([Double], [Double], [Double])
+testLinRegrMH :: Int -> Int -> Sampler [Double] --, [Double], [Double])
 testLinRegrMH n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
-  mhTrace <- MH.mh n_samples (Example.linearRegression [0 .. n_datapoints'])
+  mhTrace <- MH.mhTopLevel n_samples (Example.linearRegression [0 .. n_datapoints'])
                    (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints'])) ["m", "c", "σ"]
   let mh_envs_out = map snd3 mhTrace
       mus        = concatMap (getOP #m) mh_envs_out
       cs         = concatMap (getOP #c) mh_envs_out
       σs         = concatMap (getOP #σ) mh_envs_out
-  return (mus, cs, σs)
+  return mus
 
 {- Log Regr -}
 mkRecordLogRegr :: ([Bool], [Double], [Double]) -> ModelEnv Example.LogRegrEnv
@@ -143,7 +143,7 @@ testLogRegrMH n_datapoints n_samples = do
   xys <- testLogRegrSim n_datapoints 1
   let xs = map fst xys
       ys = map snd xys
-  mhTrace <- MH.mh n_samples (Example.logisticRegression xs) (mkRecordLogRegrL ys) ["m", "b"]
+  mhTrace <- MH.mhTopLevel n_samples (Example.logisticRegression xs) (mkRecordLogRegrL ys) ["m", "b"]
   let mh_envs_out = map snd3 mhTrace
       mus        = concatMap (getOP #m) mh_envs_out
       bs         = concatMap (getOP #b) mh_envs_out
@@ -181,7 +181,7 @@ testHMMLW hmm_length n_samples = do
 testHMMMH :: Int -> Int -> Sampler ([Double], [Double])
 testHMMMH hmm_length n_samples = do
   ys <- map snd <$> testHMMSim hmm_length 1
-  mhTrace <- MH.mh n_samples (runWriterM @[Int] $ Example.hmmNSteps hmm_length 0) (mkRecordHMMy ys) ["trans_p", "obs_p"]
+  mhTrace <- MH.mhTopLevel n_samples (runWriterM @[Int] $ Example.hmmNSteps hmm_length 0) (mkRecordHMMy ys) ["trans_p", "obs_p"]
   let mh_envs_out = map snd3 mhTrace
       trans_ps    = concatMap (getOP #trans_p) mh_envs_out
       obs_ps      = concatMap (getOP #obs_p) mh_envs_out
@@ -215,7 +215,7 @@ testTopicLW n_words n_samples = do
 
 testTopicMH :: Int -> Int -> Sampler ([ [[Double]]  ], [[[Double]]])
 testTopicMH n_words n_samples = do
-  mhTrace <- MH.mh n_samples (Example.documentDist vocabulary 2 n_words) (mkRecordTopic ([], [], doc_words)) ["φ", "θ"]
+  mhTrace <- MH.mhTopLevel n_samples (Example.documentDist vocabulary 2 n_words) (mkRecordTopic ([], [], doc_words)) ["φ", "θ"]
   let mh_envs_out = map snd3 mhTrace
       θs          = map (getOP #θ) mh_envs_out
       φs          = map (getOP #φ) mh_envs_out
@@ -273,7 +273,7 @@ testSIRMH :: Sampler ([Double], [Double], [Double])
 testSIRMH = do
   let mh_n_iterations = 5000
   -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
-  mhTrace  <- MH.mh mh_n_iterations (runWriterM @[Example.LatState] $ Example.hmmSIRNsteps 20 (latentState 762 1 0))
+  mhTrace  <- MH.mhTopLevel mh_n_iterations (runWriterM @[Example.LatState] $ Example.hmmSIRNsteps 20 (latentState 762 1 0))
                         (mkRecordSIR ([], [0.009], [], infobs_data)) ["β", "γ", "ρ"]
   let mhSampleMaps = map snd3 mhTrace
       ρs = concatMap (getOP #ρ) mhSampleMaps

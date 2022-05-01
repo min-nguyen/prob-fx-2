@@ -44,7 +44,7 @@ runLW :: es ~ '[ObsReader env, Dist]
   => ModelEnv env -> Model env es a
   -> Sampler (a, STrace, Double)
 runLW env model = do
-  ((x, samples), p) <- (runSample
+  ((x, samples), p) <- (  runSample
                         . runObserve
                         . traceSamples
                         . runDist
