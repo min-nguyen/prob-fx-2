@@ -69,11 +69,11 @@ processMHTrace = map (\(xy, samples, logps) ->
 
 mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> ModelEnv Example.LinRegrEnv
 mkRecordLinRegr (y_vals, m_vals, c_vals, σ_vals) =
-  (#y := y_vals) <:> (#m := m_vals) <:> (#c := c_vals) <:> (#σ := σ_vals) <:> nil
+  (#y := y_vals) <:> (#m := m_vals) <:> (#c := c_vals) <:> (#σ := σ_vals) <:> ENil
 
 mkRecordLinRegrY :: [Double] -> ModelEnv Example.LinRegrEnv
 mkRecordLinRegrY y_vals =
-  (#y := y_vals) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:> nil
+  (#y := y_vals) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:> ENil
 
 testLinRegrBasic :: Sampler [(Double, Double)]
 testLinRegrBasic = do
@@ -144,11 +144,11 @@ testLinRegrMHPred = do
 {- Logistic Regression -}
 mkRecordLogRegr :: ([Bool], [Double], [Double]) -> ModelEnv Example.LogRegrEnv
 mkRecordLogRegr (label_vals, m_vals, b_vals) =
-  #label := label_vals <:> #m := m_vals <:> #b := b_vals <:> nil
+  #label := label_vals <:> #m := m_vals <:> #b := b_vals <:> ENil
 
 mkRecordLogRegrL :: [Bool] -> ModelEnv Example.LogRegrEnv
 mkRecordLogRegrL label_val =
- #label := label_val <:> #m := [] <:> #b := [] <:> nil
+ #label := label_val <:> #m := [] <:> #b := [] <:> ENil
 
 testLogRegrBasic :: Sampler [(Double, Bool)]
 testLogRegrBasic = do
@@ -219,12 +219,12 @@ testLogRegrMHPred = do
 mkRecordNN :: ([Double], [Double], [Double], [Double])
            -> ModelEnv Example.NNEnv
 mkRecordNN (yobs_vals, weight_vals, bias_vals, sigm_vals) =
-  #yObs := yobs_vals <:> #weight := weight_vals <:> #bias := bias_vals <:> #sigma := sigm_vals <:> nil
+  #yObs := yobs_vals <:> #weight := weight_vals <:> #bias := bias_vals <:> #sigma := sigm_vals <:> ENil
 
 mkRecordNNy :: Double
            -> ModelEnv Example.NNEnv
 mkRecordNNy yobs_val =
-  #yObs := [yobs_val] <:> #weight := [] <:> #bias := [] <:> #sigma := [] <:> nil
+  #yObs := [yobs_val] <:> #weight := [] <:> #bias := [] <:> #sigma := [] <:> ENil
 
 testNNLinBasic :: Sampler  [(Double, Double)]
 testNNLinBasic = do
@@ -369,11 +369,11 @@ testNNStepMHPred = do
 mkRecordNNLog :: ([Bool], [Double])
            -> ModelEnv Example.NNLogEnv
 mkRecordNNLog (yobs_vals, weight_vals) =
-  #yObs := yobs_vals <:> #weight := weight_vals <:> nil
+  #yObs := yobs_vals <:> #weight := weight_vals <:> ENil
 
 mkRecordNNLogy :: Bool -> ModelEnv Example.NNLogEnv
 mkRecordNNLogy yobs_val =
-  #yObs := [yobs_val] <:> #weight := [] <:> nil
+  #yObs := [yobs_val] <:> #weight := [] <:> ENil
 
 testNNLogBasic :: Sampler [((Double, Double), Bool)]
 testNNLogBasic = do
@@ -483,10 +483,10 @@ testSinMHPred = do
 {- Hidden markov model -}
 
 mkRecordHMM :: ([Int], Double, Double) -> ModelEnv Example.HMMEnv
-mkRecordHMM (ys, transp, obsp) = #y := ys <:> #trans_p := [transp] <:> #obs_p := [obsp] <:>  nil
+mkRecordHMM (ys, transp, obsp) = #y := ys <:> #trans_p := [transp] <:> #obs_p := [obsp] <:>  ENil
 
 mkRecordHMMy :: [Int] -> ModelEnv Example.HMMEnv
-mkRecordHMMy ys = #y := ys <:> #trans_p := [] <:> #obs_p := [] <:>  nil
+mkRecordHMMy ys = #y := ys <:> #trans_p := [] <:> #obs_p := [] <:>  ENil
 
 testHMMBasic :: Sampler [([Int], [Int])]
 testHMMBasic = do
@@ -559,10 +559,10 @@ testHMMStBasic = do
 {- Hidden markov model : SIR -}
 
 mkRecordSIR :: ([Double], [Double], [Double]) -> ModelEnv Example.SIREnv
-mkRecordSIR (ρv, βv, γv) = #infobs := [] <:> #ρ := ρv <:> #β := βv <:> #γ := γv <:> nil
+mkRecordSIR (ρv, βv, γv) = #infobs := [] <:> #ρ := ρv <:> #β := βv <:> #γ := γv <:> ENil
 
 mkRecordSIRy :: [Int] -> ModelEnv Example.SIREnv
-mkRecordSIRy ys = #infobs := ys <:> #ρ := [] <:> #β := [] <:> #γ := [] <:> nil
+mkRecordSIRy ys = #infobs := ys <:> #ρ := [] <:> #β := [] <:> #γ := [] <:> ENil
 
 fixedParams :: Int -> Int -> Example.FixedParams
 fixedParams = Example.FixedParams
@@ -625,7 +625,7 @@ testSIRMHPred = do
 
 -- | Testing random distributions
 mkRecordDir :: [[Double]] -> ModelEnv Example.DirEnv
-mkRecordDir ds = #xs := ds <:> nil
+mkRecordDir ds = #xs := ds <:> ENil
 
 -- testHalfNormal :: Sampler [String]
 testHalfNormal = do
@@ -637,7 +637,7 @@ testHalfNormal = do
 
 -- | Topic model over single document
 mkRecordTopic :: ([[Double]], [[Double]], [String]) -> ModelEnv Example.TopicEnv
-mkRecordTopic (tps, wps, ys) =  #θ := tps <:>  #φ := wps <:> #w := ys <:>nil
+mkRecordTopic (tps, wps, ys) =  #θ := tps <:>  #φ := wps <:> #w := ys <:>ENil
 
 testTopicBasic :: Sampler [[String]]
 testTopicBasic = do
@@ -673,7 +673,7 @@ testTopicsMHPost = do
 
 -- | Hierchical linear regression
 mkRecordHLR :: ([Double], [Double], [Double], [Double], [Double], [Double], [Double]) -> ModelEnv Example.HLREnv
-mkRecordHLR (mua, mub, siga, sigb, a, b, lograds) = #mu_a := mua <:> #mu_b := mub <:> #sigma_a := siga <:> #sigma_b := sigb <:> #a := a <:> #b := b <:> #log_radon := lograds <:> nil
+mkRecordHLR (mua, mub, siga, sigb, a, b, lograds) = #mu_a := mua <:> #mu_b := mub <:> #sigma_a := siga <:> #sigma_b := sigb <:> #a := a <:> #b := b <:> #log_radon := lograds <:> ENil
 
 -- testHLRBasic :: Sampler [[Double]]
 testHLRBasic :: Sampler ([Double], [Double])
@@ -712,7 +712,7 @@ testHLRMHPredictive = do
 
 {- Gaussian Mixture Model -}
 mkRecordGMM :: ([Double], [Double], [Double], [Double]) -> ModelEnv Example.GMMEnv
-mkRecordGMM (mus, mu_ks, xs, ys) = #mu := mus <:> #mu_k := mu_ks <:> #x := xs <:> #y := ys <:> nil
+mkRecordGMM (mus, mu_ks, xs, ys) = #mu := mus <:> #mu_k := mu_ks <:> #x := xs <:> #y := ys <:> ENil
 
 testGMMBasic :: Sampler [[((Double, Double), Int)]]
 testGMMBasic = do
@@ -731,7 +731,7 @@ testGMMMHPost = do
 
 {- School model -}
 mkRecordSch :: ([Double], [[Double]], [Double]) -> ModelEnv Example.SchEnv
-mkRecordSch (mu, theta, ys) = #mu := mu <:> #theta := theta <:> #y := ys <:> nil
+mkRecordSch (mu, theta, ys) = #mu := mu <:> #theta := theta <:> #y := ys <:> ENil
 
 testSchBasic :: Sampler [[Double]]
 testSchBasic = do

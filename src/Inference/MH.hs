@@ -142,15 +142,15 @@ acceptMH x0 (a, strace', lptrace') (_, strace, lptrace)  = do
   return ((a, strace', lptrace'), exp (dom_logα + logα' - logα))
 
 -- | Run MH for one input and environment
-mhTopLevel :: forall es a b env spec e. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env, ValidSpec env spec )
+mhTopLevel :: forall es a b env xs e. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env, ValidSpec env xs )
    => Int                                   -- Number of mhSteps
    -> Model env es a                        -- Model awaiting input
    -> ModelEnv env                          -- List of model observed variables
-   -> ObsVars spec                             -- Specification of observable variable names, indicating sample sites of interest
+   -> ObsVars xs                            -- Specification of observable variable names, indicating sample sites of interest
    -> Sampler [(a, ModelEnv env, LPTrace)]  -- Trace of all accepted outputs, samples, and logps
-mhTopLevel n model env spec  = do
+mhTopLevel n model env obsvars  = do
   let prog = (runDist . runObsReader env) (runModel model)
-      tags = asTags @env spec
+      tags = asTags @env obsvars
   mhTrace <- mh n prog Map.empty tags
   return (map (mapsnd3 (fromSTrace @env)) mhTrace)
 

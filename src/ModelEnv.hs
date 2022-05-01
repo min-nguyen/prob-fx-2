@@ -29,12 +29,15 @@ varToStr ObsVar = symbolVal (Proxy @x)
 
 {- Specification of observable variables -}
 data ObsVars (xs :: [Symbol]) where
-  ObsVarsNil  :: ObsVars '[]
-  ObsVarsCons :: ObsVars xs -> ObsVars (x : xs)
+  ONil  :: ObsVars '[]
+  OCons :: ObsVars xs -> ObsVars (x : xs)
+
+onil :: ObsVars '[]
+onil = ONil
 
 infixr 5 ⋮
 (⋮) :: ObsVar x -> ObsVars xs -> ObsVars (x : xs)
-x ⋮ xs = ObsVarsCons xs
+x ⋮ xs = OCons xs
 
 {- Observable variable assignment -}
 data Assign x a = x := a
@@ -59,38 +62,38 @@ instance ValidSpec env '[] where
   asTags _    = []
 
 instance (FindElem x (Keys env), KnownSymbol x, ValidSpec env xs) => ValidSpec env (x : xs)  where
-  asTags (ObsVarsCons xs)  = symbolVal (Proxy @x) : asTags @env @xs xs
+  asTags (OCons xs)  = symbolVal (Proxy @x) : asTags @env @xs xs
 
 {- Model environment -}
 data ModelEnv (env :: [Assign Symbol *]) where
-  HNil  :: ModelEnv '[]
-  HCons :: forall a x env. [a] -> ModelEnv env -> ModelEnv (x := a : env)
+  ENil  :: ModelEnv '[]
+  ECons :: forall a x env. [a] -> ModelEnv env -> ModelEnv (x := a : env)
 
 instance (KnownSymbol x, Show a, Show (ModelEnv env)) => Show (ModelEnv ((x := a) ': env)) where
-  show (HCons a env) = varToStr (ObsVar @x) ++ ":=" ++ show a ++ ", " ++ show env
+  show (ECons a env) = varToStr (ObsVar @x) ++ ":=" ++ show a ++ ", " ++ show env
 instance Show (ModelEnv '[]) where
-  show HNil = "[]"
+  show ENil = "[]"
 
 instance FindElem x ((x := a) : env) where
   findElem = P 0
 instance {-# OVERLAPPABLE #-} FindElem x env => FindElem x ((x' := a) : env) where
   findElem = P $ 1 + unP (findElem :: P x env)
 
-nil :: ModelEnv '[]
-nil = HNil
+eNil :: ModelEnv '[]
+eNil = ENil
 
 infixr 5 <:>
 (<:>) :: UniqueKey x env ~ 'True => Assign (ObsVar x) [a] -> ModelEnv env -> ModelEnv ((x ':= a) ': env)
-(_ := a) <:> env = HCons a env
+(_ := a) <:> env = ECons a env
 
 infixr 5 ∙
 (∙) :: UniqueKey x env ~ 'True => Assign (ObsVar x) [a] -> ModelEnv env -> ModelEnv ((x ':= a) ': env)
-(_ := a) ∙ env = HCons a env
+(_ := a) ∙ env = ECons a env
 
 {- Observable class -}
 class (FindElem x env, LookupType x env ~ a) => Observable env x a where
   getIdx :: ObsVar x -> ModelEnv env -> Int
-  getIdx _ (HCons  a env) = unP $ findElem @x @env
+  getIdx _ (ECons  a env) = unP $ findElem @x @env
   getOP  :: ObsVar x -> ModelEnv env -> [a]
   setOP  :: ObsVar x -> [a] -> ModelEnv env -> ModelEnv env
 
@@ -99,16 +102,16 @@ instance (FindElem x env, LookupType x env ~ a) => Observable env x a where
   getOP _ env =
     let idx = unP $ findElem @x @env
         f :: Int -> ModelEnv env' -> [a]
-        f n (HCons a env) = if   n == 0
+        f n (ECons a env) = if   n == 0
                             then unsafeCoerce a
                             else f (n - 1) env
     in  f idx env
   setOP _ a' env =
     let idx = unP $ findElem @x @env
         f :: Int -> ModelEnv env' -> ModelEnv env'
-        f n (HCons a env) = if   n == 0
-                            then HCons (unsafeCoerce a') env
-                            else HCons a (f (n - 1) env)
+        f n (ECons a env) = if   n == 0
+                            then ECons (unsafeCoerce a') env
+                            else ECons a (f (n - 1) env)
     in  f idx env
 
 type family Observables env (ks :: [Symbol]) a :: Constraint where

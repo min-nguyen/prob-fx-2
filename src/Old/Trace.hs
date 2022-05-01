@@ -31,10 +31,10 @@ class FromSTrace env where
   fromSTrace :: STrace -> ModelEnv env
 
 instance FromSTrace '[] where
-  fromSTrace _ = nil
+  fromSTrace _ = ENil
 
 instance (UniqueKey x env ~ 'True, KnownSymbol x, Eq a, OpenSum.Member a PrimVal, FromSTrace env) => FromSTrace ((x := a) : env) where
-  fromSTrace sMap = HCons (extractSamples (ObsVar @x, Proxy @a) sMap) (fromSTrace sMap)
+  fromSTrace sMap = ECons (extractSamples (ObsVar @x, Proxy @a) sMap) (fromSTrace sMap)
 
 updateSTrace :: forall es x. (Member (State STrace) es, OpenSum.Member x PrimVal) => Addr -> x -> Prog es ()
 updateSTrace α x = modify (Map.insert α (OpenSum.inj x) :: STrace -> STrace)

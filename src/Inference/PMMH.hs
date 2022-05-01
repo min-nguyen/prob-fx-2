@@ -29,15 +29,17 @@ import Util
 
 type PMMHTrace a = MH.MHTrace SIS.LogP a
 
-pmmhTopLevel :: forall es a b env e. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env, Show a)
+pmmhTopLevel :: forall es a env xs.
+  (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env, ValidSpec env xs, Show a)
    => Int                              -- Number of mhSteps
    -> Int                              -- Number of particles
    -> Model env es a                   -- Model
    -> ModelEnv env                     -- List of model observed variables
-   -> [Tag]                            -- Tags indicated sample sites of interest
+   -> ObsVars xs                            -- Tags indicated sample sites of interest
    -> Sampler [(a, ModelEnv env, SIS.LogP)]  -- Trace of all accepted outputs, samples, and logps
-pmmhTopLevel mh_steps n_particles model env tags = do
+pmmhTopLevel mh_steps n_particles model env obsvars = do
   let prog = (runDist . runObsReader env) (runModel model)
+      tags = asTags @env obsvars
   -- Perform initial run of mh
   mhTrace <- pmmh mh_steps n_particles prog Map.empty tags
   return (map (mapsnd3 (fromSTrace @env)) mhTrace)
