@@ -55,7 +55,7 @@ simulateOnce model env x  = do
   return outputs_env
 
 runSimulate :: (es ~ '[ObsReader env, Dist])
- => ModelEnv env -> Model env es a -> Sampler (a, Trace)
+ => ModelEnv env -> Model env es a -> Sampler (a, STrace)
 runSimulate ys m
   = (runLift . runSample Map.empty . runObserve . runDist . runObsReader ys) (runModel m)
 
@@ -68,7 +68,7 @@ runObserve (Op u k) = case u of
   DecompLeft u' ->
     Op u' (runObserve . k)
 
-runSample :: Trace -> Prog '[Sample] a -> Prog '[Lift Sampler] (a, Trace)
+runSample :: STrace -> Prog '[Sample] a -> Prog '[Lift Sampler] (a, STrace)
 runSample sTrace (Val x)  = return (x, sTrace)
 runSample sTrace (Op u k) = case u of
     PrintPatt s -> do

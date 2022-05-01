@@ -28,7 +28,7 @@ import qualified OpenSum as OpenSum
 import OpenSum (OpenSum(..))
 import Util
 
-type TraceLW a = [(a, Trace, Double)]
+type TraceLW a = [(a, STrace, Double)]
 
 -- | Run LW n times for one input and environment
 lw :: forall env es a b. (FromSTrace env, es ~ '[ObsReader env, Dist])
@@ -43,7 +43,7 @@ lw n model env = do
 -- | Run LW once for single data point
 runLW :: es ~ '[ObsReader env, Dist]
   => ModelEnv env -> Model env es a
-  -> Sampler (a, Trace, Double)
+  -> Sampler (a, STrace, Double)
 runLW env model = do
   ((x, samples), p) <- (  runSample
                         . runObserve
@@ -55,7 +55,7 @@ runLW env model = do
 
 runLWpaper :: es ~ '[ObsReader env, Dist]
   => ModelEnv env -> Model env es a
-  -> Sampler ((a, Trace), Double)
+  -> Sampler ((a, STrace), Double)
 runLWpaper env m =
   (runSample . runObserve . traceSamples . runDist . runObsReader env) (runModel m)
 

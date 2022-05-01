@@ -26,7 +26,7 @@ import Trace
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum(..))
 
-type TraceLW a = [(a, Trace, Double)]
+type TraceLW a = [(a, STrace, Double)]
 
 -- | Run LW n times for multiple data points
 lw :: (es ~ '[ObsReader env, Dist])
@@ -42,7 +42,7 @@ lw n model xs envs = do
 -- | Run LW once for single data point
 runLW :: es ~ '[ObsReader env, Dist]
   => ModelEnv env -> Model env es a
-  -> Sampler (a, Trace, Double)
+  -> Sampler (a, STrace, Double)
 runLW env model = do
   ((x, samples), p) <- (runSample
                             . runObserve
@@ -55,12 +55,12 @@ runLW env model = do
 
 runLWpaper :: es ~ '[ObsReader env, Dist]
   => ModelEnv env -> Model env es a
-  -> Sampler ((a, Trace), Double)
+  -> Sampler ((a, STrace), Double)
 runLWpaper env m =
   (runSample . runObserve . runState Map.empty
    . transformLW . runDist . runObsReader env) (runModel m)
 
-transformLW :: (Member Sample es) => Prog es a -> Prog (State Trace ': es) a
+transformLW :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
 transformLW = install return
   (\x tx k -> case tx of
       Sample d α -> case distDict d of
@@ -69,7 +69,7 @@ transformLW = install return
       Printer s  -> k ()
   )
 
-transformLW' :: (Member (State Trace) es, Member Sample es)
+transformLW' :: (Member (State STrace) es, Member Sample es)
   => Prog es a -> Prog es a
 transformLW' (Val x) = return x
 transformLW' (Op u k) = case u  of

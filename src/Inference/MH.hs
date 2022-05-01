@@ -180,7 +180,7 @@ mhStep :: (es ~ '[Observe, Sample, Lift Sampler])
 mhStep prog tags accepter mhTrace  = do
   let -- get previous mh output
       mhCtx@(_, samples, _) = head mhTrace
-      sampleSites = if null tags then samples else Map.filterWithKey (\(tag, i) _ -> tag `elem` tags) samples
+      sampleSites = if null tags then samples else filterSDTrace tags samples
   -- select proposal sample address
   α_samp_ind <- sample (DiscrUniformDist 0 (Map.size sampleSites - 1) Nothing Nothing)
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites

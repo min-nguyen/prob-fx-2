@@ -25,10 +25,10 @@ import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
 import Util
 
-type Trace = Map Addr (OpenSum PrimVal)
+type STrace = Map Addr (OpenSum PrimVal)
 
 class FromSTrace env where
-  fromSTrace :: Trace -> ModelEnv env
+  fromSTrace :: STrace -> ModelEnv env
 
 instance FromSTrace '[] where
   fromSTrace _ = nil
@@ -36,21 +36,23 @@ instance FromSTrace '[] where
 instance (UniqueKey x env ~ 'True, KnownSymbol x, Eq a, OpenSum.Member a PrimVal, FromSTrace env) => FromSTrace ((x := a) : env) where
   fromSTrace sMap = HCons (extractSamples (ObsVar @x, Proxy @a) sMap) (fromSTrace sMap)
 
-updateSTrace :: forall es x. (Member (State Trace) es, OpenSum.Member x PrimVal) => Addr -> x -> Prog es ()
-updateSTrace α x = modify (Map.insert α (OpenSum.inj x) :: Trace -> Trace)
+updateSTrace :: forall es x. (Member (State STrace) es, OpenSum.Member x PrimVal) => Addr -> x -> Prog es ()
+updateSTrace α x = modify (Map.insert α (OpenSum.inj x) :: STrace -> STrace)
 
-extractSamples ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (ObsVar x, Proxy a) -> Trace -> [a]
+extractSamples ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (ObsVar x, Proxy a) -> STrace -> [a]
 extractSamples (x, typ)  =
     map (fromJust . OpenSum.prj @a . snd)
   . Map.toList
   . Map.filterWithKey (\(tag, idx) _ -> tag == varToStr x)
-
 
 type SDTrace  = Map Addr (PrimDist, OpenSum PrimVal)
 
 updateSDTrace :: Show x => (Member (State SDTrace) es, OpenSum.Member x PrimVal)
   => Addr -> Dist x -> x -> Prog es ()
 updateSDTrace α d x  = modify (Map.insert α (PrimDist d, OpenSum.inj x) :: SDTrace -> SDTrace)
+
+filterSDTrace :: [Tag] -> SDTrace -> SDTrace
+filterSDTrace tags strace = Map.filterWithKey (\(tag, idx) _ -> tag `elem` tags) strace
 
 fromSDTrace :: FromSTrace env => SDTrace -> ModelEnv env
 fromSDTrace sdtrace = fromSTrace $ snd <$> sdtrace
@@ -60,9 +62,9 @@ type LPTrace = Map Addr Double
 updateLPTrace :: (Member (State LPTrace) es) => Addr -> Dist x -> x -> Prog es ()
 updateLPTrace α d x  = modify (Map.insert α (logProb d x) :: LPTrace -> LPTrace)
 
-traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, Trace)
+traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, STrace)
 traceSamples = runState Map.empty . storeSamples
-  where storeSamples :: (Member Sample es) => Prog es a -> Prog (State Trace ': es) a
+  where storeSamples :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
         storeSamples = install return
           (\x tx k -> case tx of
               Sample d α -> case distDict d of
