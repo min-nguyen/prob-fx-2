@@ -74,9 +74,9 @@ testLinRegrLW n_datapoints n_samples = do
           <- LW.lwTopLevel n_samples (Example.linearRegression xs)
                    (mkRecordLinRegrY (map ((+2) . (*3)) xs))
   let lw_envs_out = map snd3 lwTrace
-      mus        = concatMap (getOP #m) lw_envs_out
-      cs         = concatMap (getOP #c) lw_envs_out
-      σs         = concatMap (getOP #σ) lw_envs_out
+      mus        = concatMap (getO #m) lw_envs_out
+      cs         = concatMap (getO #c) lw_envs_out
+      σs         = concatMap (getO #σ) lw_envs_out
       ps         = map thrd3 lwTrace
   return $ zip (zip3 mus cs σs) ps
 
@@ -90,9 +90,9 @@ testLinRegrLW' n_datapoints n_samples = do
           <- concat <$> mapM (\(x, y) -> LW.lwTopLevel n_samples (Example.linearRegression [x]) (mkRecordLinRegrY [y]))
                                   (zip xs (map ((+2) . (*3)) xs))
   let lw_envs_out = map snd3 lwTrace
-      mus        = concatMap (getOP #m) lw_envs_out
-      cs         = concatMap (getOP #c) lw_envs_out
-      σs         = concatMap (getOP #σ) lw_envs_out
+      mus        = concatMap (getO #m) lw_envs_out
+      cs         = concatMap (getO #c) lw_envs_out
+      σs         = concatMap (getO #σ) lw_envs_out
       ps         = map thrd3 lwTrace
   printS ps
   return $ zip (zip3 mus cs σs) ps
@@ -104,9 +104,9 @@ testLinRegrMH n_datapoints n_samples = do
   mhTrace <- MH.mhTopLevel n_samples (Example.linearRegression [0 .. n_datapoints'])
                    (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints'])) spec
   let mh_envs_out = map snd3 mhTrace
-      mus        = concatMap (getOP #m) mh_envs_out
-      cs         = concatMap (getOP #c) mh_envs_out
-      σs         = concatMap (getOP #σ) mh_envs_out
+      mus        = concatMap (getO #m) mh_envs_out
+      cs         = concatMap (getO #c) mh_envs_out
+      σs         = concatMap (getO #σ) mh_envs_out
   return mus
 
 {- Log Regr -}
@@ -134,8 +134,8 @@ testLogRegrLW n_datapoints n_samples = do
       ys = map snd xys
   lwTrace <- LW.lwTopLevel n_samples (Example.logisticRegression xs) (mkRecordLogRegrL ys)
   let lw_envs_out = map snd3 lwTrace
-      mus    = concatMap (getOP #m) lw_envs_out
-      bs     = concatMap (getOP #b) lw_envs_out
+      mus    = concatMap (getO #m) lw_envs_out
+      bs     = concatMap (getO #b) lw_envs_out
       ps     = map thrd3 lwTrace
   return $ zip (zip mus bs) ps
 
@@ -147,9 +147,9 @@ testLogRegrMH n_datapoints n_samples = do
       spec = #m ⋮ #b ⋮  ONil
   mhTrace <- MH.mhTopLevel n_samples (Example.logisticRegression xs) (mkRecordLogRegrL ys) spec
   let mh_envs_out = map snd3 mhTrace
-      mus        = concatMap (getOP #m) mh_envs_out
-      bs         = concatMap (getOP #b) mh_envs_out
-      -- σs         = concatMap (getOP #σ) mh_envs_out
+      mus        = concatMap (getO #m) mh_envs_out
+      bs         = concatMap (getO #b) mh_envs_out
+      -- σs         = concatMap (getO #σ) mh_envs_out
   return (mus, bs)
 
 {- HMM -}
@@ -165,7 +165,7 @@ testHMMSim hmm_length n_samples = do
                           0 (mkRecordHMM ([], 0.9, 0.2))
   let sim_envs_out  = map snd bs
       xs :: [Int]   = concatMap (snd . fst) bs
-      ys :: [Int]   = concatMap (getOP #y) sim_envs_out
+      ys :: [Int]   = concatMap (getO #y) sim_envs_out
   return $ zip xs ys
 
 testHMMLW :: Int -> Int -> Sampler [((Double, Double), Double)]
@@ -175,8 +175,8 @@ testHMMLW hmm_length n_samples = do
                              (mkRecordHMMy ys)
   let lw_envs_out = map snd3 lwTrace
 
-      trans_ps    = concatMap (getOP #trans_p) lw_envs_out
-      obs_ps      = concatMap (getOP #obs_p) lw_envs_out
+      trans_ps    = concatMap (getO #trans_p) lw_envs_out
+      obs_ps      = concatMap (getO #obs_p) lw_envs_out
       ps          = map thrd3 lwTrace
   return $ zip (zip trans_ps obs_ps) ps
 
@@ -186,8 +186,8 @@ testHMMMH hmm_length n_samples = do
   let spec = #trans_p ⋮ #obs_p ⋮ #y ⋮ ONil
   mhTrace <- MH.mhTopLevel n_samples (runWriterM @[Int] $ Example.hmmNSteps hmm_length 0) (mkRecordHMMy ys) spec
   let mh_envs_out = map snd3 mhTrace
-      trans_ps    = concatMap (getOP #trans_p) mh_envs_out
-      obs_ps      = concatMap (getOP #obs_p) mh_envs_out
+      trans_ps    = concatMap (getO #trans_p) mh_envs_out
+      obs_ps      = concatMap (getO #obs_p) mh_envs_out
   return $ (trans_ps, obs_ps)
 
 {- Topic model -}
@@ -211,8 +211,8 @@ testTopicLW :: Int -> Int -> Sampler [ (([[Double]], [[Double]]) , Double) ] -- 
 testTopicLW n_words n_samples = do
   lwTrace <- LW.lwTopLevel n_samples (Example.documentDist vocabulary 2 n_words) (mkRecordTopic ([], [], doc_words))
   let lw_envs_out = map snd3 lwTrace
-      θs          = map (getOP #θ) lw_envs_out
-      φs          = map (getOP #φ) lw_envs_out
+      θs          = map (getO #θ) lw_envs_out
+      φs          = map (getO #φ) lw_envs_out
       ps          = map thrd3 lwTrace
   return $ zip (zip θs φs) ps
 
@@ -221,8 +221,8 @@ testTopicMH n_words n_samples = do
   let spec = #φ ⋮ #θ ⋮  ONil
   mhTrace <- MH.mhTopLevel n_samples (Example.documentDist vocabulary 2 n_words) (mkRecordTopic ([], [], doc_words)) spec
   let mh_envs_out = map snd3 mhTrace
-      θs          = map (getOP #θ) mh_envs_out
-      φs          = map (getOP #φ) mh_envs_out
+      θs          = map (getO #θ) mh_envs_out
+      φs          = map (getO #φ) mh_envs_out
   return (θs, φs)
 
 testTopicMHPred :: Int -> Int -> Sampler [String]
@@ -264,7 +264,7 @@ testSIRSim = do
   let fstOutput = head simOutputs
       sirLog    :: [Example.LatState] = (snd . fst) fstOutput
       sampleMap :: ModelEnv Example.SIREnv = snd fstOutput
-      infobs    :: [Int]                   = getOP #infobs sampleMap
+      infobs    :: [Int]                   = getO #infobs sampleMap
 
       sirLog_tuples :: [(Int, Int, Int)] = map fromLatState sirLog
 
@@ -281,9 +281,9 @@ testSIRMH = do
   mhTrace  <- MH.mhTopLevel mh_n_iterations (runWriterM @[Example.LatState] $ Example.hmmSIRNsteps 20 (latentState 762 1 0))
                         (mkRecordSIR ([], [0.009], [], infobs_data)) spec
   let mhSampleMaps = map snd3 mhTrace
-      ρs = concatMap (getOP #ρ) mhSampleMaps
-      βs = concatMap (getOP #β) mhSampleMaps
-      γs = concatMap (getOP #γ) mhSampleMaps
+      ρs = concatMap (getO #ρ) mhSampleMaps
+      βs = concatMap (getO #β) mhSampleMaps
+      γs = concatMap (getO #γ) mhSampleMaps
   -- printS $ show (ρs, βs, γs)
   return (ρs, βs, γs)
 
@@ -298,7 +298,7 @@ testSIRSSim = do
   let fstOutput = head simOutputs
       sirLog      :: [Example.LatState]         = (snd . fst) fstOutput
       sim_env_out :: ModelEnv Example.SIRSEnv   = snd fstOutput
-      infobs      :: [Int]                      = getOP #infobs sim_env_out
+      infobs      :: [Int]                      = getO #infobs sim_env_out
 
       sirLog_tuples :: [(Int, Int, Int)] = map fromLatState sirLog
 
@@ -321,7 +321,7 @@ testSIRVSim = do
   let fstOutput = head simOutputs
       sirLog      :: [Example.LatStateSIRV]   = (snd . fst) fstOutput
       sim_env_out :: ModelEnv Example.SIRVEnv = snd fstOutput
-      infobs      :: [Int]                    = getOP #infobs sim_env_out
+      infobs      :: [Int]                    = getO #infobs sim_env_out
 
       sirLog_tuples :: [(Int, Int, Int, Int)] = map fromLatSIRVState sirLog
 

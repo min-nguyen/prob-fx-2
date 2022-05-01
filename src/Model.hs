@@ -88,7 +88,7 @@ normalLens :: forall env es x.  Observable env x Double
   => Double -> Double -> ObsVar x
   -> Lens' (ModelEnv env) [Double]
 normalLens mu sigma field =
-  lens (\env -> getOP field env) (\env b -> setOP field b env)
+  lens (\env -> getO field env) (\env b -> setO field b env)
 
 {- Distribution smart constructors -}
 

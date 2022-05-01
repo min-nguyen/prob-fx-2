@@ -50,7 +50,7 @@ testLinRegrSMC n_datapoints n_particles = do
   bs <- SMC.smcToplevel n_particles (Example.linearRegression [0 .. n_datapoints'])
                     (mkRecordLinRegrY (map ((+0) . (*3)) [0 .. n_datapoints']))
   let envs = map (\(a, prob, env) -> env) bs
-      mus  = concatMap (getOP #m) envs
+      mus  = concatMap (getO #m) envs
   return mus
 
 testLinRegrRMSMC :: Int -> Int -> Int -> Sampler [Double]
@@ -59,7 +59,7 @@ testLinRegrRMSMC n_datapoints n_particles n_mh_steps = do
   bs <- RMSMC.rmsmcToplevel n_particles n_mh_steps (Example.linearRegression [0 .. n_datapoints'])
                     (mkRecordLinRegrY (map ((+0) . (*3)) [0 .. n_datapoints']))
   let envs = map (\(a, prob, env) -> env) bs
-      mus  = concatMap (getOP #m) envs
+      mus  = concatMap (getO #m) envs
   return mus
 
 testLinRegrPMMH :: Int -> Int -> Int -> Sampler ([Double], [Double])
@@ -69,6 +69,6 @@ testLinRegrPMMH n_datapoints n_particles n_mh_steps = do
   bs <- PMMH.pmmhTopLevel n_mh_steps n_particles (Example.linearRegression [0 .. n_datapoints'])
                     (mkRecordLinRegrY (map ((+0) . (*3)) [0 .. n_datapoints'])) spec
   let envs = map (\(a, env, logp) -> env) bs
-      mus  = concatMap (getOP #m) envs
-      cs   = concatMap (getOP #c) envs
+      mus  = concatMap (getO #m) envs
+      cs   = concatMap (getO #c) envs
   return (mus, cs)

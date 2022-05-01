@@ -65,15 +65,15 @@ type family UniqueKey x env where
 
 -- | State that we can lookup var 'x' with value type 'a' in list of assocs 'xs'
 class (FindElem x env, LookupType x env ~ a) => Lookup env x a where
-  getOP :: ObsVar x -> ModelEnv env -> a
-  setOP :: ObsVar x -> a -> ModelEnv env -> ModelEnv env
+  getO :: ObsVar x -> ModelEnv env -> a
+  setO :: ObsVar x -> a -> ModelEnv env -> ModelEnv env
 
 instance (FindElem x env, LookupType x env ~ a) => Lookup env x a where
-  getOP _ (ModelEnv a) =
+  getO _ (ModelEnv a) =
     unAny (V.unsafeIndex a (unP $ findElem @x @env))
     where
       unAny (Any a) = unsafeCoerce a
-  setOP _ ft (ModelEnv a) =
+  setO _ ft (ModelEnv a) =
     ModelEnv (a V.// [(unP (findElem @x @env), Any ft)])
 
 -- | Map the list constructor over a list of assocs
@@ -101,7 +101,7 @@ infixr 5 <:>
 (_ :> a) <:> (ModelEnv env) = ModelEnv (V.cons (Any a) env)
 
 mkLens :: forall env x a. Lookup env x a => ObsVar x -> Lens' (ModelEnv env) a
-mkLens x = lens (getOP x) (\s a -> setOP x a s)
+mkLens x = lens (getO x) (\s a -> setO x a s)
 
 mkGetter ::  (s -> a) -> Getting a s a
 mkGetter x = dimap x (contramap x)
@@ -112,10 +112,10 @@ mkSetter f g = Identity . f (runIdentity . g)
 mkGetterSetter :: forall env x a . (Lookup env x a)
   => ObsVar x -> (Getting a (ModelEnv env) a, ASetter (ModelEnv env) (ModelEnv env) a a)
 mkGetterSetter field =
-  let getter' = mkGetter (\s -> getOP field s)
+  let getter' = mkGetter (\s -> getO field s)
       setter' = mkSetter (\f s ->  let a = s ^. getter'
                                        a' = f a
-                                   in  setOP field a' s)
+                                   in  setO field a' s)
   in (getter', setter')
 
 -- f = #hi :> 5 <: #bye :> 5
@@ -143,8 +143,8 @@ mkGetterSetter field =
 -- instance {-# OVERLAPPABLE #-} FindElem k kvs => FindElem k (kv ': kvs) where
 --   findElem = P $ 1 + unP (findElem :: P k kvs)
 
--- getOP :: forall key ts a. FindElem key ts => ObsVar key -> ModelEnv ts -> a
--- getOP _ (ModelEnv a) =
+-- getO :: forall key ts a. FindElem key ts => ObsVar key -> ModelEnv ts -> a
+-- getO _ (ModelEnv a) =
 --   unAny (V.unsafeIndex a (unP $ findElem @key @ts))
 --   where
 --     unAny (Any a) = unsafeCoerce a
@@ -194,16 +194,16 @@ mkGetterSetter field =
 -- type LookupType (key :: k) (ts :: [(k , t)]) =
 --   LookUp key ts >>= FromMaybe Stuck
 
--- getOP :: forall key ts  . KnownNat (FindElem key ts)
+-- getO :: forall key ts  . KnownNat (FindElem key ts)
 --     => ObsVar key -> ModelEnv ts -> (Eval (LookupType key ts))
--- getOP _ (ModelEnv a) =
+-- getO _ (ModelEnv a) =
 --   unAny (V.unsafeIndex a (findElem @key @ts))
 --   where
 --     unAny (Any a) = unsafeCoerce a
 
--- setOP :: forall key ts . KnownNat (FindElem key ts)
+-- setO :: forall key ts . KnownNat (FindElem key ts)
 --     => ObsVar key -> Eval (LookupType key ts) -> ModelEnv  ts -> ModelEnv ts
--- setOP _ ft (ModelEnv a) =
+-- setO _ ft (ModelEnv a) =
 --   ModelEnv (a V.// [(findElem @key @ts, Any ft)])
 
 -- instance (key ~ key') => IsLabel key (ObsVar key') where
@@ -217,7 +217,7 @@ mkGetterSetter field =
 
 -- keyGetter :: (KnownNat (FindElem k xs), a ~ Eval (FromMaybe Stuck (Eval (LookUp k xs))))
 --   => ObsVar k -> ModelEnv xs -> a
--- keyGetter k = (\s -> getOP k s)
+-- keyGetter k = (\s -> getO k s)
 
 -- makeGetter :: forall a xs k. (KnownNat (FindElem k xs), a ~ Eval (FromMaybe Stuck (Eval (LookUp k xs)))) => ObsVar k -> Getting a (ModelEnv  xs) a
 -- makeGetter k' = to (keyGetter k')
@@ -232,14 +232,14 @@ mkGetterSetter field =
 -- lens' sa sbt afb s = sbt s <$> afb (sa s)
 
 -- keyLens :: Lookup s k a => ObsVar k -> Lens' (ModelEnv s) a
--- keyLens k = lens (\s -> getOP k s) (\s b -> setOP k b s)
+-- keyLens k = lens (\s -> getO k s) (\s b -> setO k b s)
 
 -- mkGetterSetter :: (KnownNat (FindElem k xs), [a] ~ Eval (FromMaybe Stuck (Eval (LookUp k xs)))) => ObsVar k -> (Getting [a] (ModelEnv  xs) [a], ASetter (ModelEnv  xs) (ModelEnv xs) [a] [a])
 -- mkGetterSetter field =
---   let getter' = to' (\s -> getOP field s)
+--   let getter' = to' (\s -> getO field s)
 --       setter' = sets' (\f s ->  let a = s ^. getter'
 --                                     a' = f a
---                                 in  setOP field a' s)
+--                                 in  setO field a' s)
 --   in (getter', setter')
 
 
@@ -250,10 +250,10 @@ mkGetterSetter field =
 -- ex = (#bye, 5) <:> (#hi, 5) <:> nil
 
 -- getEx ::  Int
--- getEx = getOP #hi ex
+-- getEx = getO #hi ex
 
 -- getField :: (Lookup xs "key" a) => ModelEnv  xs ->  a
--- getField record = getOP #key record
+-- getField record = getO #key record
 
 -- bye :: KnownNat (FindElem "bye" xs) =>
 --   Getting (Eval (LookupType "bye" xs)) (ModelEnv  xs) (Eval (LookupType "bye" xs))
