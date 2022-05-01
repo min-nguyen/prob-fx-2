@@ -1,5 +1,5 @@
 {-# LANGUAGE GADTs #-}
-
+{-# LANGUAGE PolyKinds #-}
 module Util where
 
 import Control.Monad

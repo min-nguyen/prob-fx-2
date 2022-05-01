@@ -33,6 +33,17 @@ data ModelEnv (env :: [Assign Symbol *]) where
   HNil  :: ModelEnv '[]
   HCons :: forall a x env. [a] -> ModelEnv env -> ModelEnv (x := a : env)
 
+type family GetObsVars env where
+  GetObsVars (x := a : env) = x : GetObsVars env
+
+data Spec (xs :: [Symbol]) where
+  SpecNil  :: Spec '[]
+  SpecCons :: forall x xs. Spec xs -> Spec (x : xs)
+
+infixr 5 ⋮
+(⋮) :: forall x xs. KnownSymbol x => ObsVar x -> Spec xs -> Spec (x : xs)
+x ⋮ xs = SpecCons xs
+
 instance (KnownSymbol x, Show a, Show (ModelEnv env)) => Show (ModelEnv ((x := a) ': env)) where
   show (HCons a env) = varToStr (ObsVar @x) ++ ":=" ++ show a ++ ", " ++ show env
 instance Show (ModelEnv '[]) where

@@ -23,6 +23,10 @@ instance TypeError ('Text "Cannot unify effect types." ':$$:
   => FindElem t '[] where
   findElem = error "unreachable"
 
+type family Subset xs ys where
+  Subset (x : xs) ys = (FindElem x ys, Subset xs ys)
+  Subset '[] ys = ()
+
 -- class (FindElem t ts) => Member f (t :: * -> *) (ts :: [* -> *]) where
 --   inj ::  t x -> Union ts x
 --   prj ::  Union ts x -> Maybe (t x)

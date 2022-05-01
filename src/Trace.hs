@@ -10,6 +10,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableSuperClasses #-}
 
 module Trace where
 
@@ -24,17 +26,27 @@ import Effects.State
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
 import Util
+import FindElem
 
 type STrace  = Map Addr (PrimDist, OpenSum PrimVal)
 
-class FromSTrace env where
-  fromSTrace :: STrace -> ModelEnv env
+class FromSTrace (env :: [Assign Symbol *]) where
+  fromSTrace    :: STrace -> ModelEnv env
 
 instance FromSTrace '[] where
-  fromSTrace _ = nil
+  fromSTrace _         = nil
 
 instance (UniqueKey x env ~ 'True, KnownSymbol x, Eq a, OpenSum.Member a PrimVal, FromSTrace env) => FromSTrace ((x := a) : env) where
-  fromSTrace sMap = HCons (extractSamples (ObsVar @x, Proxy @a) sMap) (fromSTrace sMap)
+  fromSTrace sMap    = HCons (extractSamples (ObsVar @x, Proxy @a) sMap) (fromSTrace sMap)
+
+class ValidSpec (spec :: [Symbol]) (env :: [Assign Symbol *]) where
+  asTags        :: Spec spec -> ModelEnv env ->  [String]
+
+instance ValidSpec '[] env where
+  asTags _ _     = []
+
+instance (FindElem x (GetObsVars env), KnownSymbol x, ValidSpec xs env) => ValidSpec (x : xs) env where
+  asTags  (SpecCons xs) env = symbolVal (Proxy @x) : asTags @xs @env xs env
 
 extractSamples ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (ObsVar x, Proxy a) -> STrace -> [a]
 extractSamples (x, typ)  =
@@ -47,6 +59,9 @@ updateSTrace α d x  = modify (Map.insert α (PrimDist d, OpenSum.inj x) :: STra
 
 filterSTrace :: [Tag] -> STrace -> STrace
 filterSTrace tags = Map.filterWithKey (\(tag, idx) _ -> tag `elem` tags)
+
+-- filterSTrace' :: FromSTrace env => Proxy env -> STrace -> STrace
+-- filterSTrace' tags = Map.filterWithKey (\(tag, idx) _ -> tag `elem` tags)
 
 traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, STrace)
 traceSamples = runState Map.empty . storeSamples
