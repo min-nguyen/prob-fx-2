@@ -22,7 +22,7 @@ import Freer
 import Model hiding (runModelFree)
 import Sampler
 import Effects.State ( modify, runState, State )
-import STrace
+import Old.Trace
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum(..))
 
@@ -77,7 +77,7 @@ transformLW' (Op u k) = case u  of
                                     transformLW' (k x))
     _ -> Op u (transformLW' . k)
 
--- transformLW' :: (Member (State STrace) es, Member Sample es)
+-- transformLW' :: (Member (State Trace) es, Member Sample es)
 --   => Prog es a -> Prog es a
 -- transformLW' = replaceRelay return undefined
 

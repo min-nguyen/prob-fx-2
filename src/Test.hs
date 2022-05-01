@@ -35,24 +35,24 @@ import ModelEnv
 import Util
 import Debug.Trace
 import Unsafe.Coerce
-import STrace
+import Trace
 import Old.Example (LatentState(LatentState))
 
 
 {- Linear Regression -}
 mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> ModelEnv Example.LinRegrEnv
 mkRecordLinRegr (y_vals, m_vals, c_vals, σ_vals) =
-  (#y := y_vals) <:> (#m := m_vals) <:> (#c := c_vals) <:> (#σ := σ_vals) <:> nil
+  (#y := y_vals) <:> (#m := m_vals) <:> (#c := c_vals) <:> (#σ := σ_vals) <:> ENil
 
 mkRecordLinRegrY :: [Double] -> ModelEnv Example.LinRegrEnv
 mkRecordLinRegrY y_vals =
-  (#y := y_vals) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:> nil
+  (#y := y_vals) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:> ENil
 
 
 testLinRegrSimOnce :: Int  -> Sampler [Double]
 testLinRegrSimOnce n_datapoints  = do
   let xs = [0 .. fromIntegral n_datapoints]
-      env_in = (#m := [3]) ∙ (#c := [5]) ∙ (#σ := [1]) ∙ (#y := []) ∙ nil
+      env_in = (#m := [3]) ∙ (#c := [5]) ∙ (#σ := [1]) ∙ (#y := []) ∙ ENil
   (ys, env_out) <- SIM.simulateOnce Example.linearRegression env_in xs
   return ys
 
@@ -71,8 +71,7 @@ testLinRegrLW n_datapoints n_samples = do
   lwTrace :: [([Double],              -- y data points
                 ModelEnv Example.LinRegrEnv,    -- sample trace
                 Double)]                        -- likelihood
-          <- LW.lw n_samples Example.linearRegression
-                   xs
+          <- LW.lwTopLevel n_samples (Example.linearRegression xs)
                    (mkRecordLinRegrY (map ((+2) . (*3)) xs))
   let lw_envs_out = map snd3 lwTrace
       mus        = concatMap (getOP #m) lw_envs_out
@@ -88,7 +87,7 @@ testLinRegrLW' n_datapoints n_samples = do
   lwTrace :: [([Double],              -- y data points
                 ModelEnv Example.LinRegrEnv,    -- sample trace
                 Double)]                        -- likelihood
-          <- concat <$> mapM (\(x, y) -> LW.lw n_samples Example.linearRegression [x] (mkRecordLinRegrY [y]))
+          <- concat <$> mapM (\(x, y) -> LW.lwTopLevel n_samples (Example.linearRegression [x]) (mkRecordLinRegrY [y]))
                                   (zip xs (map ((+2) . (*3)) xs))
   let lw_envs_out = map snd3 lwTrace
       mus        = concatMap (getOP #m) lw_envs_out
@@ -98,25 +97,26 @@ testLinRegrLW' n_datapoints n_samples = do
   printS ps
   return $ zip (zip3 mus cs σs) ps
 
-testLinRegrMH :: Int -> Int -> Sampler ([Double], [Double], [Double])
+testLinRegrMH :: Int -> Int -> Sampler [Double] --, [Double], [Double])
 testLinRegrMH n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
-  mhTrace <- MH.mh n_samples Example.linearRegression ["m", "c", "σ"] [0 .. n_datapoints']
-                   (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints']))
+      spec = #m ⋮ #c ⋮ #σ ⋮ ONil
+  mhTrace <- MH.mhTopLevel n_samples (Example.linearRegression [0 .. n_datapoints'])
+                   (mkRecordLinRegrY (map ((+2) . (*3)) [0 .. n_datapoints'])) spec
   let mh_envs_out = map snd3 mhTrace
       mus        = concatMap (getOP #m) mh_envs_out
       cs         = concatMap (getOP #c) mh_envs_out
       σs         = concatMap (getOP #σ) mh_envs_out
-  return (mus, cs, σs)
+  return mus
 
 {- Log Regr -}
 mkRecordLogRegr :: ([Bool], [Double], [Double]) -> ModelEnv Example.LogRegrEnv
 mkRecordLogRegr (label_vals, m_vals, b_vals) =
-  #label := label_vals <:> #m := m_vals <:> #b := b_vals <:> nil
+  #label := label_vals <:> #m := m_vals <:> #b := b_vals <:> ENil
 
 mkRecordLogRegrL :: [Bool] -> ModelEnv Example.LogRegrEnv
 mkRecordLogRegrL label_val =
- #label := label_val <:> #m := [] <:> #b := [] <:> nil
+ #label := label_val <:> #m := [] <:> #b := [] <:> ENil
 
 testLogRegrSim :: Int -> Int -> Sampler [(Double, Bool)]
 testLogRegrSim n_datapoints n_samples = do
@@ -132,7 +132,7 @@ testLogRegrLW n_datapoints n_samples = do
   xys <- testLogRegrSim n_datapoints 1
   let xs = map fst xys
       ys = map snd xys
-  lwTrace <- LW.lw n_samples Example.logisticRegression xs (mkRecordLogRegrL ys)
+  lwTrace <- LW.lwTopLevel n_samples (Example.logisticRegression xs) (mkRecordLogRegrL ys)
   let lw_envs_out = map snd3 lwTrace
       mus    = concatMap (getOP #m) lw_envs_out
       bs     = concatMap (getOP #b) lw_envs_out
@@ -144,7 +144,8 @@ testLogRegrMH n_datapoints n_samples = do
   xys <- testLogRegrSim n_datapoints 1
   let xs = map fst xys
       ys = map snd xys
-  mhTrace <- MH.mh n_samples Example.logisticRegression ["m", "b"] xs (mkRecordLogRegrL ys)
+      spec = #m ⋮ #b ⋮  ONil
+  mhTrace <- MH.mhTopLevel n_samples (Example.logisticRegression xs) (mkRecordLogRegrL ys) spec
   let mh_envs_out = map snd3 mhTrace
       mus        = concatMap (getOP #m) mh_envs_out
       bs         = concatMap (getOP #b) mh_envs_out
@@ -153,10 +154,10 @@ testLogRegrMH n_datapoints n_samples = do
 
 {- HMM -}
 mkRecordHMM :: ([Int], Double, Double) -> ModelEnv Example.HMMEnv
-mkRecordHMM (ys, transp, obsp) = #y := ys <:> #trans_p := [transp] <:> #obs_p := [obsp] <:>  nil
+mkRecordHMM (ys, transp, obsp) = #y := ys <:> #trans_p := [transp] <:> #obs_p := [obsp] <:>  ENil
 
 mkRecordHMMy :: [Int] -> ModelEnv Example.HMMEnv
-mkRecordHMMy ys = #y := ys <:> #trans_p := [] <:> #obs_p := [] <:>  nil
+mkRecordHMMy ys = #y := ys <:> #trans_p := [] <:> #obs_p := [] <:>  ENil
 
 testHMMSim :: Int -> Int -> Sampler [(Int, Int)]
 testHMMSim hmm_length n_samples = do
@@ -170,8 +171,8 @@ testHMMSim hmm_length n_samples = do
 testHMMLW :: Int -> Int -> Sampler [((Double, Double), Double)]
 testHMMLW hmm_length n_samples = do
   ys <- map snd <$> testHMMSim hmm_length 1
-  lwTrace <- LW.lw n_samples (runWriterM @[Int] . Example.hmmNSteps hmm_length)
-                             0 (mkRecordHMMy ys)
+  lwTrace <- LW.lwTopLevel n_samples (runWriterM @[Int] (Example.hmmNSteps hmm_length 0))
+                             (mkRecordHMMy ys)
   let lw_envs_out = map snd3 lwTrace
 
       trans_ps    = concatMap (getOP #trans_p) lw_envs_out
@@ -182,8 +183,8 @@ testHMMLW hmm_length n_samples = do
 testHMMMH :: Int -> Int -> Sampler ([Double], [Double])
 testHMMMH hmm_length n_samples = do
   ys <- map snd <$> testHMMSim hmm_length 1
-  mhTrace <- MH.mh n_samples (runWriterM @[Int] . Example.hmmNSteps hmm_length) ["trans_p", "obs_p"]
-                             0 (mkRecordHMMy ys)
+  let spec = #trans_p ⋮ #obs_p ⋮ #y ⋮ ONil
+  mhTrace <- MH.mhTopLevel n_samples (runWriterM @[Int] $ Example.hmmNSteps hmm_length 0) (mkRecordHMMy ys) spec
   let mh_envs_out = map snd3 mhTrace
       trans_ps    = concatMap (getOP #trans_p) mh_envs_out
       obs_ps      = concatMap (getOP #obs_p) mh_envs_out
@@ -197,7 +198,7 @@ doc_words :: [String]
 doc_words     = ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA"]
 
 mkRecordTopic :: ([[Double]], [[Double]], [String]) -> ModelEnv Example.TopicEnv
-mkRecordTopic (tps, wps, ys) =  #θ := tps <:>  #φ := wps <:> #w := ys <:>nil
+mkRecordTopic (tps, wps, ys) =  #θ := tps <:>  #φ := wps <:> #w := ys <:>ENil
 
 testTopicSim :: Int -> Int -> Sampler [String]
 testTopicSim n_words n_samples = do
@@ -208,8 +209,7 @@ testTopicSim n_words n_samples = do
 
 testTopicLW :: Int -> Int -> Sampler [ (([[Double]], [[Double]]) , Double) ] -- this test is just for benchmark purposes.
 testTopicLW n_words n_samples = do
-  lwTrace <- LW.lw n_samples (Example.documentDist vocabulary 2)
-                        n_words (mkRecordTopic ([], [], doc_words))
+  lwTrace <- LW.lwTopLevel n_samples (Example.documentDist vocabulary 2 n_words) (mkRecordTopic ([], [], doc_words))
   let lw_envs_out = map snd3 lwTrace
       θs          = map (getOP #θ) lw_envs_out
       φs          = map (getOP #φ) lw_envs_out
@@ -218,8 +218,8 @@ testTopicLW n_words n_samples = do
 
 testTopicMH :: Int -> Int -> Sampler ([ [[Double]]  ], [[[Double]]])
 testTopicMH n_words n_samples = do
-  mhTrace <- MH.mh n_samples (Example.documentDist vocabulary 2) ["φ", "θ"]
-                        n_words (mkRecordTopic ([], [], doc_words))
+  let spec = #φ ⋮ #θ ⋮  ONil
+  mhTrace <- MH.mhTopLevel n_samples (Example.documentDist vocabulary 2 n_words) (mkRecordTopic ([], [], doc_words)) spec
   let mh_envs_out = map snd3 mhTrace
       θs          = map (getOP #θ) mh_envs_out
       φs          = map (getOP #φ) mh_envs_out
@@ -237,13 +237,13 @@ testTopicMHPred n_words n_samples = do
 
 {- SIR -}
 mkRecordSIR :: ([Double], [Double], [Double], [Int]) -> ModelEnv Example.SIREnv
-mkRecordSIR (βv, γv, ρv, infobs) = #β := βv <:> #γ := γv <:>  #ρ := ρv <:>  #infobs := infobs <:> nil
+mkRecordSIR (βv, γv, ρv, infobs) = #β := βv <:> #γ := γv <:>  #ρ := ρv <:>  #infobs := infobs <:> ENil
 
 mkRecordSIRparams :: ([Double], [Double], [Double]) -> ModelEnv Example.SIREnv
-mkRecordSIRparams (βv, γv, ρv) = #β := βv <:> #γ := γv <:>  #ρ := ρv <:>  #infobs := [] <:> nil
+mkRecordSIRparams (βv, γv, ρv) = #β := βv <:> #γ := γv <:>  #ρ := ρv <:>  #infobs := [] <:> ENil
 
 mkRecordSIRy :: [Int] -> ModelEnv Example.SIREnv
-mkRecordSIRy ys = #β := [] <:> #γ := [] <:>  #ρ := [] <:> #infobs := ys <:> nil
+mkRecordSIRy ys = #β := [] <:> #γ := [] <:>  #ρ := [] <:> #infobs := ys <:> ENil
 
 latentState :: Int -> Int -> Int -> Example.LatState
 latentState = Example.LatState
@@ -255,7 +255,7 @@ testSIRSim :: Sampler ([(Int, Int, Int)], -- sir values
                           [Int])            -- observed infections
 testSIRSim = do
   let latState0  = Example.LatState { Example.sus = 762, Example.inf = 1, Example.recov = 0 }
-      params     = #β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:>  #infobs := [] <:> nil
+      params     = #β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:>  #infobs := [] <:> ENil
   simOutputs :: [((Example.LatState,   -- model output
                   [Example.LatState]), -- writer effect log of sir latent states
                    ModelEnv Example.SIREnv)]   -- trace of samples
@@ -276,10 +276,10 @@ infobs_data = [0,1,4,2,1,3,3,5,10,11,30,23,48,50,91,94,129,151,172,173,198,193,2
 testSIRMH :: Sampler ([Double], [Double], [Double])
 testSIRMH = do
   let mh_n_iterations = 5000
+      spec = #β ⋮ #γ ⋮ #ρ ⋮ ONil
   -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
-  mhTrace  <- MH.mh mh_n_iterations (runWriterM @[Example.LatState] . Example.hmmSIRNsteps 20) ["β", "γ", "ρ"]
-                        (latentState 762 1 0)
-                        (mkRecordSIR ([], [0.009], [], infobs_data))
+  mhTrace  <- MH.mhTopLevel mh_n_iterations (runWriterM @[Example.LatState] $ Example.hmmSIRNsteps 20 (latentState 762 1 0))
+                        (mkRecordSIR ([], [0.009], [], infobs_data)) spec
   let mhSampleMaps = map snd3 mhTrace
       ρs = concatMap (getOP #ρ) mhSampleMaps
       βs = concatMap (getOP #β) mhSampleMaps
@@ -293,7 +293,7 @@ testSIRSSim :: Sampler ([(Int, Int, Int)], -- sir values
 testSIRSSim = do
   simOutputs <- SIM.simulate 1 (runWriterM . Example.hmmSIRSNsteps 100)
                    (latentState 762 1 0)
-                   (#β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #η := [0.05] <:> #infobs := [] <:> nil)
+                   (#β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #η := [0.05] <:> #infobs := [] <:> ENil)
 
   let fstOutput = head simOutputs
       sirLog      :: [Example.LatState]         = (snd . fst) fstOutput
@@ -312,7 +312,7 @@ testSIRVSim :: Sampler ([(Int, Int, Int, Int)], -- sir values
                           [Int])                  -- observed infections
 testSIRVSim = do
   let latState0  = Example.LatStateSIRV { Example.s = 762, Example.i = 1, Example.r = 0,  Example.v = 0 }
-      params     = #β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #ω := [0.04] <:>  #η := [0.05] <:> #infobs := [] <:> nil
+      params     = #β := [0.5] <:> #γ := [0.009] <:>  #ρ := [0.3] <:> #ω := [0.04] <:>  #η := [0.05] <:> #infobs := [] <:> ENil
   simOutputs :: [((Example.LatStateSIRV,        -- model output
                   [Example.LatStateSIRV]),      -- writer effect log of sir latent states
                    ModelEnv Example.SIRVEnv)]   -- trace of samples

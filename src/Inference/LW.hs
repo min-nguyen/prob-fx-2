@@ -7,6 +7,7 @@
 {-# LANGUAGE GADTs #-}
 
 {-# LANGUAGE TypeOperators #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Inference.LW where
 
 import qualified Data.Map as Map
@@ -22,65 +23,37 @@ import Freer
 import Model hiding (runModelFree)
 import Sampler
 import Effects.State ( modify, runState, State )
-import STrace
+import Trace
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum(..))
 import Util
 
-type TraceLW a = [(a, STrace, Double)]
+type LWTrace a = [(a, STrace, Double)]
 
--- | Run LW n times for one input and environment
-lw :: forall env es a b. (FromSTrace env, es ~ '[ObsReader env, Dist])
-   => Int                              -- Number of lw iterations per data point
-   -> (b -> Model env es a)            -- Model awaiting input variable
-   -> b                              -- List of model input variables
-   -> ModelEnv env                       -- List of model observed variables
-   -> Sampler [(a, ModelEnv env, Double)]              -- List of n likelihood weightings for each data point
-lw n model x env = do
-  lwTrace <- replicateM n (runLW env (model x))
+-- | Run LW n times
+lwTopLevel :: forall env es a b. (FromSTrace env, es ~ '[ObsReader env, Dist])
+   => Int                                   -- Number of lw iterations
+   -> Model env es a                        -- Model
+   -> ModelEnv env                          -- List of model observed variables
+   -> Sampler [(a, ModelEnv env, Double)]   -- List of n likelihood weightings for each data point
+lwTopLevel n model env = do
+  let prog = (runDist . runObsReader env) (runModel model)
+  lwTrace <- lw n prog
   return (map (mapsnd3 (fromSTrace @env)) lwTrace)
 
--- | Run LW once for single data point
-runLW :: es ~ '[ObsReader env, Dist]
-  => ModelEnv env -> Model env es a
+lw :: forall env es a b. (es ~ '[Observe, Sample])
+   => Int                   -- Number of lw iterations
+   -> Prog es a             -- Model
+   -> Sampler (LWTrace a)   -- List of n likelihood weightings for each data point
+lw n prog = replicateM n (runLW prog)
+
+-- | Run LW once
+runLW :: es ~ '[Observe, Sample]
+  => Prog es a                    -- Model
   -> Sampler (a, STrace, Double)
-runLW env model = do
-  ((x, samples), p) <- (runSample
-                            . runObserve
-                            . runState Map.empty
-                            . transformLW
-                            . runDist
-                            . runObsReader env)
-                            (runModel model)
+runLW prog = do
+  ((x, samples), p) <- (runSample . runObserve . traceSamples) prog
   return (x, samples, p)
-
-runLWpaper :: es ~ '[ObsReader env, Dist]
-  => ModelEnv env -> Model env es a
-  -> Sampler ((a, STrace), Double)
-runLWpaper env m =
-  (runSample . runObserve . runState Map.empty
-    . transformLW . runDist . runObsReader env) (runModel m)
-
-transformLW :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
-transformLW = install return
-  (\x tx k -> case tx of
-      Sample d α -> case distDict d of
-        Dict -> do updateSTrace α x
-                   k x
-      Printer s  -> k ()
-  )
-
-transformLW' :: (Member (State STrace) es, Member Sample es)
-  => Prog es a -> Prog es a
-transformLW' (Val x) = return x
-transformLW' (Op u k) = case u  of
-    SampPatt d α -> Op u (\x -> do  updateSTrace α x
-                                    transformLW' (k x))
-    _ -> Op u (transformLW' . k)
-
--- transformLW' :: (Member (State STrace) es, Member Sample es)
---   => Prog es a -> Prog es a
--- transformLW' = replaceRelay return undefined
 
 runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es (a, Double)
 runObserve = loop 0

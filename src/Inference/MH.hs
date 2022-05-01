@@ -13,6 +13,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# LANGUAGE TypeFamilies #-}
 module Inference.MH where
 
 import Data.Functor.Identity
@@ -31,7 +32,7 @@ import Data.Bifunctor
 import Freer
 import Model hiding (runModelFree)
 import Sampler
-import STrace
+import Trace
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum(..))
 import Effects.ObsReader
@@ -116,133 +117,97 @@ We would do:
 This is already natural for models such as a HMM.
 -}
 
-type TraceMH a = [(a, SDTrace, LPTrace)]
+type MHTrace p a = [(a, STrace, p)]
 
+type MHCtx p a = (a, STrace, p)
+
+type Accept p a = Addr                        -- proposal sample address
+               -> MHCtx LPTrace a             -- proposed mh ctx, parameterised by log probability map
+               -> MHCtx p a                   -- previous mh ctx, parameterised by arbitrary probability representation p
+               -> Sampler (MHCtx p a, Double) -- (proposed mh ctx using probability representation p, acceptance ratio)
 
 -- | Compute acceptance probability
 -- If the log prob from our new samples is better than our old samples, then we always accept.
 -- If the log prob from our new samples is worse than our old samples, then we sometimes accept.
 -- Encountering a probability of 0 (i.e. log probability of -infinity) from any individual sample means that the computed probability of the sample map becomes 0. This results in that sample map being rejected. Performing `exp` on `-Infinity` in Haskell produces 0.
-accept :: Addr -> SDTrace -> SDTrace -> LPTrace -> LPTrace -> IO Double
-accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
-  let _X'sampled = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ' \\ Map.keysSet _Ⲭ)
-      _Xsampled  = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ \\ Map.keysSet _Ⲭ')
-  -- putStrLn $ " Xsampled is " ++ show _Xsampled
-  -- putStrLn $ " X'sampled is " ++ show  _X'sampled
-  let dom_logα   = log (fromIntegral $ Map.size _Ⲭ) - log (fromIntegral $ Map.size _Ⲭ')
-  -- putStrLn $ " dom_logα is " ++ show dom_logα
-  let _Xlogα     = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ))
-                         0 (Map.keysSet logℙ \\ _Xsampled)
-  -- putStrLn $ " Xlogα is " ++ show _Xlogα ++ " from " ++ show (logℙ)
-  let _X'logα    = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ'))
-                         0 (Map.keysSet logℙ' \\ _X'sampled)
-  -- putStrLn $ " X'logα is " ++ show _X'logα ++ " from " ++ show (logℙ')
-  -- putStrLn $ " (X'logα, Xlogα) is " ++ show (_Xlogα , _X'logα)
-  -- print $ "dom_logα + _X'logα - _Xlogα is " ++ (show $ dom_logα + _X'logα - _Xlogα)
-  return $ exp (dom_logα + _X'logα - _Xlogα)
+acceptMH :: Accept LPTrace a
+acceptMH x0 (a, strace', lptrace') (_, strace, lptrace)  = do
+  let sampled' = Set.singleton x0 `Set.union` (Map.keysSet strace' \\ Map.keysSet strace)
+      sampled  = Set.singleton x0 `Set.union` (Map.keysSet strace \\ Map.keysSet strace')
+      dom_logα = log (fromIntegral $ Map.size strace) - log (fromIntegral $ Map.size strace')
+      logα     = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace))
+                         0 (Map.keysSet lptrace \\ sampled)
+      logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
+                         0 (Map.keysSet lptrace' \\ sampled')
+  return ((a, strace', lptrace'), exp (dom_logα + logα' - logα))
 
 -- | Run MH for one input and environment
-mh :: forall es a b env e. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env)
-   => Int                              -- Number of mhSteps per data point
-   -> (b -> Model env es a)            -- Model awaiting input variable
-   -> [Tag]                            -- Tags indicated sample sites of interest
-   -> b                                -- List of model input variables
-   -> ModelEnv env                     -- List of model observed variables
+mhTopLevel :: forall es a b env xs e. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env, ValidSpec env xs )
+   => Int                                   -- Number of mhSteps
+   -> Model env es a                        -- Model awaiting input
+   -> ModelEnv env                          -- List of model observed variables
+   -> ObsVars xs                            -- Specification of observable variable names, indicating sample sites of interest
    -> Sampler [(a, ModelEnv env, LPTrace)]  -- Trace of all accepted outputs, samples, and logps
-mh n model tags x_0 env_0 = do
-  -- Perform initial run of mh
-  mhTrace <- mhWithSTrace n (runDist . runObsReader env_0 $ runModel (model x_0)) Map.empty tags
-  return (map (mapsnd3 (fromSDTrace @env)) mhTrace)
+mhTopLevel n model env obsvars  = do
+  let prog = (runDist . runObsReader env) (runModel model)
+      tags = asTags @env obsvars
+  mhTrace <- mh n prog Map.empty tags
+  return (map (mapsnd3 (fromSTrace @env)) mhTrace)
 
-mhWithSTrace :: (es ~ '[Observe, Sample, Lift Sampler])
-   => Int                              -- Number of mhSteps per data point
-   -> Prog es a
-   -> SDTrace
+mh :: (es ~ '[Observe, Sample, Lift Sampler])
+   => Int                              -- Number of mhSteps
+   -> Prog es a                        -- Model consisting of sample and observe operations
+   -> STrace                           -- Initial sample trace
    -> [Tag]                            -- Tags indicated sample sites of interest
-   -> Sampler (TraceMH a)              -- Trace of all accepted outputs, samples, and logps
-mhWithSTrace n prog samples_0 tags = do
+   -> Sampler (MHTrace LPTrace a)      -- Trace of all accepted outputs, samples, and logps
+mh n prog strace_0 tags = do
   -- Perform initial run of mh
   let α_0 = ("", 0)
-  (y_0, samples_0, logps_0) <- runMH samples_0 α_0 prog
-  -- A function performing n mhsteps for one data point
-  let mhs  = foldl (>=>) return (replicate n (mhStep prog tags))
-  -- Construct list of n mhsteps, one for each data point
-  -- Perform mhNstep for each data point, propagating (x, samples, logps) through
-  l <- mhs [(y_0, samples_0, logps_0)]
+  mhCtx_0 <- runMH strace_0 α_0 prog
+  -- A function performing n mhSteps
+  let mhs = foldl (>=>) return (replicate n (mhStep prog tags acceptMH))
+  -- Perform n mhSteps using initial mhCtx
+  l <- mhs [mhCtx_0]
   -- Return mhTrace in correct order of execution (due to mhStep prepending new results onto head of trace)
   return $ reverse l
 
 -- | Perform one step of MH for a single data point
 mhStep :: (es ~ '[Observe, Sample, Lift Sampler])
-  => Prog es a   -- Model
+  => Prog es a        -- Model consisting of sample and observe operations
   -> [Tag]            -- Tags indicating sample sites of interest
-  -> TraceMH a        -- Trace of previous mh outputs
-  -> Sampler (TraceMH a)
-mhStep model tags trace = do
-  let -- Get previous mh output
-      (x, samples, logps) = head trace
-  -- α_samp <- sample $ DiscrUniformDist 0 2 Nothing
-  let sampleSites = if null tags then samples
-                    else  Map.filterWithKey (\(tag, i) _ -> tag `elem` tags) samples
+  -> Accept p a       -- Accept mechanism
+  -> MHTrace p a      -- Trace of previous mh outputs
+  -> Sampler (MHTrace p a)
+mhStep prog tags accepter mhTrace  = do
+  let -- get previous mh output
+      mhCtx@(_, samples, _) = head mhTrace
+      sampleSites = if null tags then samples else filterSTrace tags samples
+  -- select proposal sample address
   α_samp_ind <- sample (DiscrUniformDist 0 (Map.size sampleSites - 1) Nothing Nothing)
-  -- liftS $ print $ "α_samp_ind is " ++ show α_samp_ind ++ " Map.size samples is " ++ show (Map.size samples)
-  -- liftS $ print $ "sample ind is " ++ show α_samp_ind ++ "\n sample sites are " ++ show sampleSites
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
-  -- run mh with new sample address
-  -- liftS $ print $ "sample address is " ++ show α_samp
-  (x', samples', logps') <- runMH samples α_samp model
-  -- liftS $ print $ "Second run is: " ++ show (x', samples', logps')
-  -- do some acceptance ratio to see if we use samples or samples'
-  acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
-  -- liftS $ print $ "acceptance ratio" ++ show acceptance_ratio
+  -- run mh with proposal sample address to get an MHCtx using LPTrace as its probability
+  mhLPCtx' <- runMH samples α_samp prog
+  -- compute acceptance ratio to see if we use new mhCtx' or retain mhCtx
+  (mhCtx', acceptance_ratio) <- accepter α_samp mhLPCtx' mhCtx
   u <- sample (UniformDist 0 1 Nothing Nothing)
-
   if u < acceptance_ratio
-    then do -- liftS $ putStrLn $ "Accepting " -- ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
-            -- ++ show logps
-            -- ++ "\nwith α" ++ show α_samp ++ ": "
-            -- ++ show acceptance_ratio ++ " > " ++ show u
-            -- liftS $ print "accepting"
-            return ((x', samples', logps'):trace)
-    else do
-            -- liftS $ putStrLn $ "Rejecting " ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
-            -- ++ show logps
-            --  ++ "\nwith α" ++ show α_samp ++ ": "
-            --  ++ show acceptance_ratio ++ " < u: " ++ show u
-            return trace
+    then return (mhCtx':mhTrace)
+    else return mhTrace
 
 -- | Run model once under MH
 runMH :: (es ~ '[Observe, Sample, Lift Sampler])
-  => SDTrace      -- Previous mh sample set
+  => STrace   -- Previous mh sample set
   -> Addr      -- Sample address
-  -> Prog es a -- Model
-  -> Sampler (a, SDTrace, LPTrace)
-runMH samples α_samp m = do
-  ((a, samples'), logps') <-
-                            ( -- This is where the previous run's samples are actually reused.
-                              -- We do not reuse logps, we simply recompute them.
-                              runLift
-                            . runSample α_samp samples
+  -> Prog es a -- Model consisting of sample and observe operations
+  -> Sampler (a, STrace, LPTrace)
+runMH strace α_samp prog = do
+  ((a, strace'), lptrace') <-
+                            ( runLift
+                            . runSample α_samp strace
                             . runObserve
-                            . runState Map.empty
-                            . runState Map.empty
-                            . transformMH) m
-  return (a, samples', logps')
-
--- | Insert stateful operations for SDTrace and LPTrace when either Sample or Observe occur.
-transformMH :: (Member Sample es, Member Observe es) =>
-  Prog es a -> Prog (State SDTrace: State LPTrace: es) a
-transformMH (Val x) = return x
-transformMH (Op u k) = do
-  case u of
-    SampPatt d α
-      -> Op (weaken $ weaken u) (\x -> updateSDTrace α d x >>
-                                       updateLPTrace α d x >>
-                                       transformMH (k x))
-    ObsPatt d y α
-      -> Op (weaken $ weaken u) (\x -> updateLPTrace α d x >>
-                       transformMH (k x))
-    _ -> Op (weaken $ weaken u) (transformMH . k)
+                            . traceLPs
+                            . traceSamples) prog
+  return (a, strace', lptrace')
 
 -- | Remove Observe occurrences from tree (log p is taken care of by transformMH)
 runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es a
@@ -257,31 +222,26 @@ runObserve = loop 0
            loop (p + p') (k y)
       DecompLeft u'  -> Op u' (loop p . k)
 
-data SampleMH a where
-  SampleMH  :: Dist a -> Addr -> SampleMH a
-
 -- | Run Sample occurrences
-runSample :: Addr -> SDTrace -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
-runSample α_samp samples = loop
+runSample :: Addr -> STrace -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
+runSample α_samp strace = loop
   where
   loop :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
   loop (Val x) = return x
   loop (Op u k) = case u of
       PrintPatt s ->
         lift (liftS (putStrLn s)) >> loop (k ())
-      SampPatt d α ->
-        do let maybe_y = lookupSample samples d α α_samp
-           case maybe_y of
+      SampPatt d α -> do
+        let maybe_y = if α == α_samp then Nothing else lookupSample strace d α
+        case maybe_y of
              Nothing -> lift (sample d) >>= (loop . k)
              Just x  -> (loop . k) x
       DecompLeft u' ->
          Op u' (loop . k)
 
-lookupSample :: Show a => OpenSum.Member a PrimVal => SDTrace -> Dist a -> Addr -> Addr -> Maybe a
-lookupSample samples d α α_samp
-  | α == α_samp = Nothing
-  | otherwise   = do
-    let m = Map.lookup α samples
+lookupSample :: Show a => OpenSum.Member a PrimVal => STrace -> Dist a -> Addr -> Maybe a
+lookupSample strace d α  = do
+    let m = Map.lookup α strace
     case m of
       Just (PrimDist d', x) -> do
         -- printS $ "comparing " ++ show d ++ " and " ++ show d' ++ " is " ++ show (d == unsafeCoerce d')

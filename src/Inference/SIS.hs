@@ -28,7 +28,7 @@ import Effects.NonDet
 import Sampler
 import Effects.ObsReader
 import Effects.State
-import STrace
+import Trace
 import Sampler
 import Effects.Writer
 import qualified OpenSum as OpenSum
@@ -48,7 +48,15 @@ class Accum ctx where
   -- Initialise the contexts for n particles
   aempty :: Int -> [ctx]
 
-newtype LogP = LogP { logP :: Double } deriving (Show, Num)
+newtype LogP = LogP { logP :: Double } deriving (Show, Num, Eq, Ord, Fractional)
+
+logMeanExp :: [LogP] -> LogP
+logMeanExp logps =
+  let logws = map logP logps
+      c = maximum logws
+  in  if isInfinite c -- to avoid "-Infinity - (-Infinity)"
+      then (-1/0)
+      else LogP $ c + log ((1.0/fromIntegral (length logws)) * sum (map (\logw -> exp (logw - c)) logws))
 
 instance {-# OVERLAPPING #-} Accum LogP where
   aempty n = replicate n 0
@@ -77,19 +85,18 @@ instance (Accum a, Accum b, Accum c) => Accum (a, b, c) where
                      in  zip3 (accum x x') (accum y y') (accum z z')
 
 sis :: forall a env ctx es.
-     (Accum ctx, Show ctx, FromSTrace env, Show a)
-  => Int
-  -> Resampler       ctx (Observe : Sample : Lift Sampler : '[])  a
-  -> ParticleHandler ctx (Observe : Sample : Lift Sampler : '[]) a
-  -> Model env [ObsReader env, Dist, Lift Sampler] a
-  -> ModelEnv env
+     (Accum ctx, Show ctx, Show a)
+  => Int                                                                    -- num of particles
+  -> Resampler       ctx (Observe : Sample : Lift Sampler : '[])  a         -- resampler
+  -> ParticleHandler ctx (Observe : Sample : Lift Sampler : '[]) a          -- handler of particles
+  -> (forall es b. Prog (Observe : es) b -> Prog es b)                      -- observe handler
+  -> (forall b. Prog '[Sample, Lift Sampler] b -> Prog '[Lift Sampler] b)   -- sample handler
+  -> Prog [Observe, Sample, Lift Sampler] a                                 -- model
   -> Sampler [(a, ctx)]
-sis n_particles resampler pophdl model env = do
-  let prog_0  = (runDist . runObsReader env) (runModel model)
-      progs   = replicate n_particles (weaken' prog_0)
-      ctxs    = aempty n_particles
-  printS $ show ctxs
-  (runLift . runSample . runObserve) (loopSIS n_particles resampler pophdl (progs, ctxs))
+sis n_particles resampler pophdl runObserve runSample prog = do
+  let particles_0   = replicate n_particles (weaken' prog)
+      ctxs_0        = aempty n_particles
+  (runLift . runSample . runObserve) (loopSIS n_particles resampler pophdl (particles_0, ctxs_0))
 
 loopSIS :: (Show a, Show ctx, Accum ctx)
   => Int
@@ -97,41 +104,15 @@ loopSIS :: (Show a, Show ctx, Accum ctx)
   -> ParticleHandler ctx es a
   -> ([Prog (NonDet : es) a], [ctx])   -- Particles and corresponding contexts
   -> Prog es [(a, ctx)]
-loopSIS n_particles resampler populationHandler (progs_0, ctxs_0)  = do
+loopSIS n_particles resampler populationHandler (particles_0, ctxs_0)  = do
   -- Run particles to next checkpoint
-  (progs_1, ctxs_1) <- unzip <$> populationHandler progs_0
-  case foldVals progs_1 of
+  (particles_1, ctxs_1) <- unzip <$> populationHandler particles_0
+  case foldVals particles_1 of
   -- if all programs have finished, return with accumulated context
     Right vals  -> do let ctxs' =  accum ctxs_1 ctxs_0
                       (`zip` ctxs') <$> vals
   -- otherwise, pick programs to continue with
-    Left  progs -> do (progs', ctxs') <- resampler ctxs_0 ctxs_1 progs_1
-                      loopSIS n_particles resampler populationHandler (progs', ctxs')
+    Left  particles_1 -> do (resampledParticles_1, resampledCtxs_1) <- resampler ctxs_0 ctxs_1 particles_1
+                            loopSIS n_particles resampler populationHandler (resampledParticles_1, resampledCtxs_1)
 
-runSample :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
-runSample = loop
-  where
-  loop :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
-  loop (Val x) = return x
-  loop (Op u k) =
-    case  u of
-      SampPatt d α ->
-        lift (sample d) >>= \x -> loop (k x)
-      PrintPatt s  ->
-        lift (liftS (putStrLn s)) >>= loop . k
-      DecompLeft u' ->
-        Op u' (loop . k)
 
-runObserve :: Prog (Observe : es) a -> Prog es a
-runObserve  (Val x) = return x
-runObserve  (Op op k) = case op of
-      ObsPatt d y α -> do
-        runObserve (k y)
-      Other op -> Op op (runObserve . k)
-
-logMeanExp :: [LogP] -> LogP
-logMeanExp logps =
-  let logws = map logP logps
-      c = maximum logws
-      l = length logws
-  in  LogP $ c + log ((1.0/fromIntegral l) * sum (map (\logw -> exp (logw - c)) logws))

@@ -24,7 +24,7 @@ import Effects.NonDet
 import Sampler
 import Effects.ObsReader
 import Effects.State
-import STrace
+import Trace
 import Sampler
 import Effects.Writer
 import Debug.Trace

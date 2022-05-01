@@ -7,6 +7,7 @@
 module Sampler where
 
 import Effects.Lift hiding (lift)
+import FindElem
 import Freer
 import Control.Monad
 import Control.Monad.Primitive
@@ -27,6 +28,7 @@ import Statistics.Distribution.Normal
 import qualified System.Random.MWC as MWC
 import qualified System.Random.MWC.Distributions as MWC.Dist
 import Statistics.Distribution.CauchyLorentz
+import qualified Effects.Lift as Lift
 import qualified System.Random.MWC.Probability as MWC.Probability
 import Util
 import System.Random
@@ -38,6 +40,9 @@ newtype Sampler a = Sampler {runSampler :: ReaderT MWC.GenIO IO a}
 
 liftS :: IO a -> Sampler a
 liftS f = Sampler $ lift f
+
+printLift :: FindElem (Lift Sampler) es => String -> Prog es ()
+printLift s = Lift.lift $ Sampler $ lift (print s)
 
 -- To sample a random number, we run `sampleIO . createSampler $ sampleRandom`
 -- for example.
