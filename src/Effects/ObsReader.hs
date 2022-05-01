@@ -38,16 +38,16 @@ runObsReader :: forall env es a.
   ModelEnv env -> Prog (ObsReader env ': es) a -> Prog es a
 runObsReader env (Val x) = return x
 runObsReader env (Op (AskPatt key) k) = do
-    let ys = getOP key env
+    let ys = getO key env
         y  = maybeHead ys
-        env' = setOP key (safeTail ys) env
+        env' = setO key (safeTail ys) env
     runObsReader env' (k y)
 runObsReader env (Op (Other u) k) = Op u (runObsReader env . k)
 -- runObsReader' env (Op u k) = case decomp u of
 --   (Right (Ask key)) -> do
---     let ys = getOP key env
+--     let ys = getO key env
 --         y  = maybeHead ys
---         env' = setOP key (safeTail ys) env
+--         env' = setO key (safeTail ys) env
 --     runObsReader env' (k y)
 --   Left u -> Op u (runObsReader env . k)
 
@@ -57,9 +57,9 @@ runObsReader' env0 = handleRelaySt env0
   (\env x    -> return x)
   (\env tx k ->
     case tx of
-      Ask key -> let ys   = getOP key env
+      Ask key -> let ys   = getO key env
                      y    = maybeHead ys
-                     env' = setOP key (safeTail ys) env
+                     env' = setO key (safeTail ys) env
                  in  k env' y)
 
 

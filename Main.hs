@@ -36,12 +36,12 @@ main = do
   -- trace <- sampleIOFixed $ testTopicMHPost 10 1000
   -- trace <- sampleIOFixed $ testTopicMHPred 10 1000
   -- trace <- sampleIOFixed testSIRSim
-  trace <- sampleIOFixed testSIRMH
+  -- trace <- sampleIOFixed testSIRMH
   -- trace <- sampleIOFixed testSIRSSim
   -- trace <- sampleIOFixed testSIRVSim
   -- trace <- sampleIOFixed (TestSMC.testLinRegrSMC 50 200)
   -- trace <- sampleIOFixed (TestSMC.testLinRegrRMSMC 50 100 20)
-  -- trace <- sampleIOFixed (TestSMC.testLinRegrPMMH 30 10 1000)
+  trace <- sampleIOFixed (TestSMC.testLinRegrPMMH 30 10 1000)
   let traceStr = show trace
   putStrLn traceStr
   writeFile "model-output.txt" traceStr

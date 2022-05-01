@@ -70,7 +70,7 @@ pmmh mh_steps n_particles prog strace_0 tags = do
   -- Return pmmhTrace in correct order of execution (due to pmmhStep prepending new results onto head of trace)
   return $ reverse l
 
-pmmhStep :: Show a => (es ~ '[Observe, Sample, Lift Sampler])
+pmmhStep :: (es ~ '[Observe, Sample, Lift Sampler], Show a)
   => Int                -- Number of particles
   -> Prog es a          -- Model
   -> [Tag]              -- Tags indicating prior random variables

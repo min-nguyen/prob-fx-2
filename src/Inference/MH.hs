@@ -142,7 +142,7 @@ acceptMH x0 (a, strace', lptrace') (_, strace, lptrace)  = do
   return ((a, strace', lptrace'), exp (dom_logα + logα' - logα))
 
 -- | Run MH for one input and environment
-mhTopLevel :: forall es a b env xs e. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env, ValidSpec env xs )
+mhTopLevel :: forall es a env xs. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env, ValidSpec env xs)
    => Int                                   -- Number of mhSteps
    -> Model env es a                        -- Model awaiting input
    -> ModelEnv env                          -- List of model observed variables

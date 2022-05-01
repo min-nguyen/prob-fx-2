@@ -7,7 +7,6 @@ module ModelEnv where
 
 import Data.Kind
 -- import Data.Functor.Identity
-import Data.Proxy
 import qualified Data.Vector as V
 -- import Fcf
 import GHC.OverloadedLabels
@@ -16,6 +15,7 @@ import qualified GHC.TypeLits as TL
 import Unsafe.Coerce
 import FindElem
 import Effects.Dist ( Tag )
+import Util
 
 {- Observable variable container -}
 data ObsVar (x :: Symbol) where
@@ -56,13 +56,13 @@ type family LookupType x env where
 
 {- Valid specification of observable variables-}
 class ValidSpec (env :: [Assign Symbol *]) (xs :: [Symbol])  where
-  asTags        :: ObsVars xs ->  [Tag]
+  asTags :: ObsVars xs ->  [Tag]
 
 instance ValidSpec env '[] where
   asTags _    = []
 
 instance (FindElem x (Keys env), KnownSymbol x, ValidSpec env xs) => ValidSpec env (x : xs)  where
-  asTags (OCons xs)  = symbolVal (Proxy @x) : asTags @env @xs xs
+  asTags (OCons xs)  = varToStr (ObsVar @x) : asTags @env @xs xs
 
 {- Model environment -}
 data ModelEnv (env :: [Assign Symbol *]) where
@@ -94,19 +94,19 @@ infixr 5 ∙
 class (FindElem x env, LookupType x env ~ a) => Observable env x a where
   getIdx :: ObsVar x -> ModelEnv env -> Int
   getIdx _ (ECons  a env) = unP $ findElem @x @env
-  getOP  :: ObsVar x -> ModelEnv env -> [a]
-  setOP  :: ObsVar x -> [a] -> ModelEnv env -> ModelEnv env
+  getO  :: ObsVar x -> ModelEnv env -> [a]
+  setO  :: ObsVar x -> [a] -> ModelEnv env -> ModelEnv env
 
 instance (FindElem x env, LookupType x env ~ a) => Observable env x a where
   getIdx _ _ = unP $ findElem @x @env
-  getOP _ env =
+  getO _ env =
     let idx = unP $ findElem @x @env
         f :: Int -> ModelEnv env' -> [a]
         f n (ECons a env) = if   n == 0
                             then unsafeCoerce a
                             else f (n - 1) env
     in  f idx env
-  setOP _ a' env =
+  setO _ a' env =
     let idx = unP $ findElem @x @env
         f :: Int -> ModelEnv env' -> ModelEnv env'
         f n (ECons a env) = if   n == 0
