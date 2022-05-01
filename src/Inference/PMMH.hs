@@ -74,12 +74,12 @@ pmmhStep :: Show a => (es ~ '[Observe, Sample, Lift Sampler])
   -> PMMHTrace a        -- Trace of previous mh outputs
   -> Sampler (PMMHTrace a)
 pmmhStep n_particles model tags trace = do
-  let -- Get previous mh output
+  let -- get previous mh output
       (x, samples, logW) = head trace
+  -- select new sample address
   let sampleSites = if null tags then samples
                     else  Map.filterWithKey (\(tag, i) _ -> tag `elem` tags) samples
   α_samp_ind <- sample (DiscrUniformDist 0 (Map.size sampleSites - 1) Nothing Nothing)
-
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
   -- run mh with new sample address
   (x', samples', _) <- MH.runMH samples α_samp model
