@@ -32,52 +32,11 @@ type LinRegrEnv =
      "y" ':= Double
    ]
 
-{- (Section 1) Linear regression -}
+{-  Linear regression  -}
 linRegr :: forall env rs .
   Observables env '["y", "m", "c", "σ"] Double =>
-  Double -> Model env rs Double
-linRegr x = do
-  m <- normal 0 3 #m
-  c <- normal 0 5 #c
-  σ <- uniform 1 3 #σ
-  y <- normal (m * x + c) σ #y
-  return y
-
--- | (Fig 1. a) SIM from linear regression
-simLinRegr :: Sampler [(Double, Double)]
-simLinRegr = do
-  let xs  = [0 .. 100]
-      env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> eNil
-  ys_envs <- mapM (\x -> SIM.simulate (linRegr x) env) xs
-  let ys = map fst ys_envs
-  return (zip xs ys)
-
--- | (Fig 1. b) Perform likelihood weighting over linear regression; returns sampled mu values and associated likelihood weightings
-lwLinRegr :: Sampler [(Double, Double)]
-lwLinRegr = do
-  let xs  = [0 .. 100]
-      xys = [(x, env) | x <- xs, let env = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x]) <:> eNil]
-  lwTrace <- mapM (\(x, env) -> LW.lwTopLevel 200 (linRegr x) env) xys
-  let -- Get output of LW and extract mu samples
-      (env_outs, ps) = unzip $ concat lwTrace
-      mus = concatMap (get #m) env_outs
-  return $ zip mus ps
-
--- | Perform Metropolis-Hastings inference over linear regression
-mhLinRegr :: Sampler [Double]
-mhLinRegr = do
-  let xs  = [0 .. 100]
-      xys = [(x, env) | x <- xs, let env = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x]) <:> eNil]
-  mhTrace <- concat <$> mapM (\(x, env) -> MH.mhTopLevel 100 (linRegr x) env ONil) xys
-  let -- Get output of LW and extract mu samples
-      mus = concatMap (get #m) mhTrace
-  return mus
-
-{-  Linear regression many -}
-linRegrMany :: forall env rs .
-  Observables env '["y", "m", "c", "σ"] Double =>
   [Double] -> Model env rs [Double]
-linRegrMany xs = do
+linRegr xs = do
   m <- normal 0 3 #m
   c <- normal 0 5 #c
   σ <- uniform 1 3 #σ
@@ -86,9 +45,69 @@ linRegrMany xs = do
                     return y) xs
   return ys
 
-simLinRegrMany :: Int -> Int -> Sampler [(Double, Double)]
-simLinRegrMany n_datapoints n_samples = do
+simLinRegr :: Int -> Int -> Sampler [(Double, Double)]
+simLinRegr n_datapoints n_samples = do
   let xs  = [0 .. fromIntegral n_datapoints]
       env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> eNil
-  bs :: ([Double], Env LinRegrEnv) <- SIM.simulate (linRegrMany xs) env
+  bs :: ([Double], Env LinRegrEnv) <- SIM.simulate (linRegr xs) env
   return $ zip xs (fst bs)
+
+lwLinRegr :: Int -> Int -> Sampler [(Double, Double)]
+lwLinRegr n_datapoints n_samples = do
+  let n_datapoints' = fromIntegral n_datapoints
+      xs            = [0 .. n_datapoints']
+      env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  eNil
+  (env_outs, ps) <- unzip <$> LW.lwTopLevel n_samples (linRegr xs) env
+  let mus = concatMap (get #m) env_outs
+  return (zip mus ps)
+
+mhLinRegr :: Int -> Int -> Sampler [Double]
+mhLinRegr n_datapoints n_samples = do
+  let n_datapoints' = fromIntegral n_datapoints
+      xs            = [0 .. n_datapoints']
+      env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  eNil
+  env_mh_outs <- MH.mhTopLevel n_samples (linRegr xs) env (#m ⋮ #c ⋮ #σ ⋮ ONil)
+  let mus = concatMap (get #m) env_mh_outs
+  return mus
+
+{- (Section 1) Linear regression once -}
+linRegrOnce :: forall env rs .
+  Observables env '["y", "m", "c", "σ"] Double =>
+  Double -> Model env rs Double
+linRegrOnce x = do
+  m <- normal 0 3 #m
+  c <- normal 0 5 #c
+  σ <- uniform 1 3 #σ
+  y <- normal (m * x + c) σ #y
+  return y
+
+-- | (Fig 1. a) SIM from linear regression
+simLinRegrOnce :: Sampler [(Double, Double)]
+simLinRegrOnce  = do
+  let xs  = [0 .. 100]
+      env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> eNil
+  ys_envs <- mapM (\x -> SIM.simulate (linRegrOnce  x) env) xs
+  let ys = map fst ys_envs
+  return (zip xs ys)
+
+-- | (Fig 1. b) Perform likelihood weighting over linear regression; returns sampled mu values and associated likelihood weightings
+lwLinRegrOnce  :: Sampler [(Double, Double)]
+lwLinRegrOnce  = do
+  let xs  = [0 .. 100]
+      xys = [(x, env) | x <- xs, let env = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x]) <:> eNil]
+  lwTrace <- mapM (\(x, env) -> LW.lwTopLevel 200 (linRegrOnce  x) env) xys
+  let -- Get output of LW and extract mu samples
+      (env_outs, ps) = unzip $ concat lwTrace
+      mus = concatMap (get #m) env_outs
+  return $ zip mus ps
+
+-- | Perform Metropolis-Hastings inference over linear regression
+mhLinRegrOnce  :: Sampler [Double]
+mhLinRegrOnce  = do
+  let xs  = [0 .. 100]
+      xys = [(x, env) | x <- xs, let env = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x]) <:> eNil]
+  mhTrace <- concat <$> mapM (\(x, env) -> MH.mhTopLevel 100 (linRegrOnce  x) env ONil) xys
+  let -- Get output of LW and extract mu samples
+      mus = concatMap (get #m) mhTrace
+  return mus
+

@@ -55,7 +55,7 @@ smcPopulationHandler :: Members [Observe, Sample, Lift Sampler] es
   => ParticleHandler  ([Addr], LogP, STrace) es a
 smcPopulationHandler particles = do
   -- Merge particles into single non-deterministic program using 'asum', and run to next checkpoint
-  particles_ctxs <- (runNonDet . traceSamples . breakObserve ) (asum particles)
+  particles_ctxs <- (handleNonDet . traceSamples . breakObserve ) (asum particles)
   -- List of particles that can be resumed, their observe breakpoint address, the log probability at that break point, and an accumulated sample trace
   let particles_ctxs' = map (\((prog, α, p), strace) -> (prog, ([α], p,  strace))) particles_ctxs
   return particles_ctxs'
@@ -95,7 +95,7 @@ runSample = loop
       SampPatt d α ->
         lift (sample d) >>= \x -> loop (k x)
       PrintPatt s  ->
-        lift (liftS (putStrLn s)) >>= loop . k
+        lift (liftIOSampler (putStrLn s)) >>= loop . k
       DecompLeft u' ->
         Op u' (loop . k)
 

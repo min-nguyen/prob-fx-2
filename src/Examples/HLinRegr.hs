@@ -87,5 +87,5 @@ mhHLinRegr = do
   let env_pred   = head env_outs
       as         = get #a env_pred
       bs         = get #b env_pred
-  liftS $ print as
+  liftIOSampler $ print as
   return (as, bs)

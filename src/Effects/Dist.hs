@@ -98,8 +98,8 @@ data Sample a where
 data Observe a where
   Observe :: Dist a -> a -> Addr -> Observe a
 
-prinT :: Member Sample es => String -> Prog es ()
-prinT s = Op (inj $ Printer s) Val
+printSample :: Member Sample es => String -> Prog es ()
+printSample s = Op (inj $ Printer s) Val
 
 distDict :: Dist x -> Dict (Show x, OpenSum.Member x PrimVal)
 distDict = \case

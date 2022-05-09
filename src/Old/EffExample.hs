@@ -61,7 +61,7 @@ program = do
   return ()
 
 testProgram :: IO ()
-testProgram = (runM . runReader 5 . runReader'' (5 :: Int) . runReader'' (5 :: Int)) program
+testProgram = (runM . handleReader 5 . runReader'' (5 :: Int) . runReader'' (5 :: Int)) program
 
 programRW :: Member (ReaderE Int) es => Prog es ()
 programRW = do

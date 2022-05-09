@@ -5,18 +5,15 @@
 {-# LANGUAGE TypeFamilyDependencies #-}
 module Old.OpenProductVec where
 
-import Data.Kind
 -- import Data.Functor.Identity
 import Data.Proxy
 import qualified Data.Vector as V
--- import Fcf
 import GHC.Natural
 import GHC.OverloadedLabels
 import GHC.TypeLits
 import qualified GHC.TypeLits as TL
 import Unsafe.Coerce
 import Control.Lens hiding ((:>))
--- import Data.Extensible
 
 data Any where
   Any :: t -> Any
