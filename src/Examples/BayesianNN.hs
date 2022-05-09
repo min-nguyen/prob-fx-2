@@ -66,5 +66,5 @@ nnLinModel n x = do
 simNNLin :: Sampler  [(Double, Double)]
 simNNLin = do
   let env =  #yObs := [] <:> #weight := [1, 5, 8] <:> #bias := [2, -5, 1] <:> #sigma := [4.0] <:> ENil
-  bs <- mapM (Simulate.simulate (nnLinModel 3) env) (map (/1) [0 .. 300])
+  bs <- mapM (\x -> Simulate.simulate (nnLinModel 3 x) env) (map (/1) [0 .. 300])
   return $ map fst bs

@@ -44,7 +44,7 @@ gmm k n = do
 simGMM :: Sampler [((Double, Double), Int)]
 simGMM = do
   let env =  #mu := [-2.0, 3.5] <:> #mu_k := [] <:> #x := [] <:> #y := [] <:> eNil
-  bs <- Simulate.simulate (gmm 2) env 20
+  bs <- Simulate.simulate (gmm 2 20) env
   return $ fst bs
 
 mhGMM :: Sampler [[Double]]

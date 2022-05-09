@@ -96,7 +96,7 @@ simSIR :: Sampler ([(Int, Int, Int)], [Reported])
 simSIR = do
   let sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #ρ := [0.3] <:> #𝜉 := [] <:> ENil
       sir_0      = Popl {s = 762, i = 1, r = 0}
-  ((_, sir_trace), sim_env_out) <- Simulate.simulate (hmmSIR' 100) sim_env_in sir_0
+  ((_, sir_trace), sim_env_out) <- Simulate.simulate (hmmSIR' 100 sir_0) sim_env_in
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
       sirs = map (\(Popl s i recov) -> (s, i, recov)) sir_trace
   return (sirs, 𝜉s)
@@ -154,7 +154,7 @@ simSIRS :: Sampler ([(Int, Int, Int)], [Reported])
 simSIRS = do
   let sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #η := [0.05] <:> #ρ := [0.3] <:> #𝜉 := [] <:> eNil
       sir_0      = Popl {s = 762, i = 1, r = 0}
-  ((_, sir_trace), sim_env_out) <- Simulate.simulate (hmmSIRS 100) sim_env_in sir_0
+  ((_, sir_trace), sim_env_out) <- Simulate.simulate (hmmSIRS 100 sir_0) sim_env_in
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
       sirs = map (\(Popl s i recov) -> (s, i, recov)) sir_trace
   return (sirs, 𝜉s)
@@ -229,7 +229,7 @@ simSIRSV :: Sampler ([(Int, Int, Int, Int)], [Reported])
 simSIRSV = do
   let sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #η := [0.05] <:> #ω := [0.02] <:> #ρ := [0.3] <:> #𝜉 := [] <:> eNil
       sirv_0      = Popl' {s' = 762, i' = 1, r' = 0, v' = 0}
-  ((_, sirv_trace), sim_env_out) <- Simulate.simulate (hmmSIRSV 100) sim_env_in sirv_0
+  ((_, sirv_trace), sim_env_out) <- Simulate.simulate (hmmSIRSV 100 sirv_0) sim_env_in
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
       sirvs = map (\(Popl' s i recov v) -> (s, i, recov, v)) sirv_trace
   return (sirvs, 𝜉s)

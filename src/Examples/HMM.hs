@@ -47,7 +47,7 @@ simHMM :: Sampler (Int, Env HMMEnv)
 simHMM = do
   let x_0 = 0; n = 10
       env = #trans_p := [0.5] <:> #obs_p := [0.8] <:> #y := [] <:> eNil
-  Simulate.simulate (hmmFor n) env 0
+  Simulate.simulate (hmmFor n 0) env
 
 lwHMM :: Sampler  [(Env HMMEnv, Double)]
 lwHMM   = do
@@ -128,7 +128,7 @@ simHMMw = do
   let hmm_length = 10
       n_samples  = 30
       env = #trans_p := [0.9] <:> #obs_p := [0.2] <:> #y := [] <:> eNil
-  bs <- Simulate.simulateMany n_samples (handleWriterM . hmmW hmm_length) env 0
+  bs <- Simulate.simulateMany n_samples (handleWriterM $ hmmW hmm_length 0) env
   printS bs
   let sim_envs_out  = map snd bs
       xs :: [Int]   = concatMap (snd . fst) bs

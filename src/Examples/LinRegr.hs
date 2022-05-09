@@ -48,7 +48,7 @@ simLinRegr :: Sampler [(Double, Double)]
 simLinRegr = do
   let xs  = [0 .. 100]
       env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> eNil
-  ys_envs <- mapM (Simulate.simulate linRegr env) xs
+  ys_envs <- mapM (\x -> Simulate.simulate (linRegr x) env) xs
   let ys = map fst ys_envs
   return (zip xs ys)
 
@@ -90,5 +90,5 @@ simLinRegrMany :: Int -> Int -> Sampler [(Double, Double)]
 simLinRegrMany n_datapoints n_samples = do
   let xs  = [0 .. fromIntegral n_datapoints]
       env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> eNil
-  bs :: ([Double], Env LinRegrEnv) <- Simulate.simulate linRegrMany env xs
+  bs :: ([Double], Env LinRegrEnv) <- Simulate.simulate (linRegrMany xs) env
   return $ zip xs (fst bs)

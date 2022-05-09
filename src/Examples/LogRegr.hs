@@ -64,7 +64,7 @@ simLogRegr = do
   -- Define a model environment to simulate from.
       env = (#label := []) <:> (#m := [2]) <:> (#b := [-0.15]) <:> eNil
   -- Call simulate on logistic regression
-  (ys, envs) <- Simulate.simulate logRegr env xs
+  (ys, envs) <- Simulate.simulate (logRegr xs) env
   return (zip xs ys)
 
 -- | Likelihood-weighting over logistic regression
