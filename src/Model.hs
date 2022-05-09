@@ -66,10 +66,13 @@ handleCore env = handleDist . handleObsRead env . runModel
 
 {- Wrap other effects and handlers into the Model type -}
 -- | State
-printS s = Model . call . Lift . print
+-- printS :: Member (Lift)
 
 getStM :: (Member (State s) es) => Model env es s
 getStM = Model getSt
+
+modifyStM :: (Member (State s) es) => (s -> s) -> Model env es ()
+modifyStM f = Model $ modify f
 
 putStM :: (Member (State s) es) => s -> Model env es ()
 putStM s = Model (putSt s)

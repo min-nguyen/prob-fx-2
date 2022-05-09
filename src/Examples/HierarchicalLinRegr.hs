@@ -61,7 +61,7 @@ mkRecordHLR (mua, mub, siga, sigb, a, b, lograds) =
 simHierarchicalLinRegr :: Sampler ([Double], [Double])
 simHierarchicalLinRegr = do
   let env_in = mkRecordHLR ([1.45], [-0.68], [0.3], [0.2], [], [], [])
-  (bs, env_out) <- Simulate.simulate  (hierarchicalLinRegr n_counties dataFloorValues countyIdx) env_in  ()
+  (bs, env_out) <- Simulate.simulate (hierarchicalLinRegr n_counties dataFloorValues countyIdx) env_in  ()
   let basementIdxs      = findIndexes dataFloorValues 0
       noBasementIdxs    = findIndexes dataFloorValues 1
       basementPoints    = map (bs !!) basementIdxs
@@ -72,7 +72,8 @@ simHierarchicalLinRegr = do
 mhHierarchicalLinRegrpost :: Sampler ([Double], [Double])
 mhHierarchicalLinRegrpost = do
   let env_in = mkRecordHLR ([], [], [], [], [], [], logRadon)
-  env_outs <- MH.mh 2000 (hierarchicalLinRegr n_counties dataFloorValues countyIdx) ((), env_in) ["mu_a", "mu_b", "sigma_a", "sigma_b"]
+  env_outs <- MH.mhTopLevel 2000 (hierarchicalLinRegr n_counties dataFloorValues countyIdx ()) env_in
+                    (#mu_a ⋮ #mu_b ⋮ #sigma_a ⋮ #sigma_b ⋮ONil)
   let mu_a   = concatMap (get #mu_a)  env_outs
       mu_b   = concatMap (get #mu_b)  env_outs
   return (mu_a, mu_b)
@@ -81,7 +82,8 @@ mhHierarchicalLinRegrpost = do
 mhHierarchicalLinRegr :: Sampler ([Double], [Double])
 mhHierarchicalLinRegr = do
   let env_in = mkRecordHLR ([], [], [], [], [], [], logRadon)
-  env_outs <- MH.mh 2000 (hierarchicalLinRegr n_counties dataFloorValues countyIdx) ((), env_in) ["mu_a", "mu_b", "sigma_a", "sigma_b"]
+  env_outs <- MH.mhTopLevel 2000 (hierarchicalLinRegr n_counties dataFloorValues countyIdx ()) env_in
+                  (#mu_a ⋮ #mu_b ⋮ #sigma_a ⋮ #sigma_b ⋮ONil)
   let env_pred   = head env_outs
       as         = get #a env_pred
       bs         = get #b env_pred

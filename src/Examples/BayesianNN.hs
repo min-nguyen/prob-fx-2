@@ -6,6 +6,7 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant return" #-}
+{-# HLINT ignore "Fuse mapM/map" #-}
 
 module Examples.BayesianNN where
 
@@ -15,6 +16,7 @@ import Env
 import Sampler
 import Examples.DataSets
 import Inference.SIM as Simulate
+import Inference.LW as LW
 import Inference.MH as MH
 import Util
 
@@ -61,45 +63,19 @@ nnLinModel n x = do
   y  <- likelihoodNNLin nn x
   return (x, y)
 
--- | Alternative neural network formulation using activation
-forwardNNStep :: NN -> Double -> Double
-forwardNNStep (NN bs ws _) x =
-  ws `dot` map (activation . (x -)) bs
-  where activation x = if x < 0 then 0 else 1
+mkRecordNN :: ([Double], [Double], [Double], [Double])
+           -> Env NNEnv
+mkRecordNN (yobs_vals, weight_vals, bias_vals, sigm_vals) =
+  #yObs := yobs_vals <:> #weight := weight_vals <:> #bias := bias_vals <:> #sigma := sigm_vals <:> ENil
 
-likelihoodNNStep :: Observable env "yObs" Double
- => NN -> Double -> Model env es Double
-likelihoodNNStep nn x = do
-  let ySigma = sigm nn
-      yMean  = forwardNNStep nn x
-  normal yMean ySigma #yObs
+mkRecordNNy :: Double
+           -> Env NNEnv
+mkRecordNNy yobs_val =
+  #yObs := [yobs_val] <:> #weight := [] <:> #bias := [] <:> #sigma := [] <:> ENil
 
-nnStepModel :: (Observables env '["weight", "bias", "sigma", "yObs"] Double)
- => Int -> Double -> Model env es (Double, Double)
-nnStepModel n x = do
-  nn <- priorNN n
-  y <- likelihoodNNStep nn x
-  return (x, y)
-
--- | Another neural network formulation
-
-type NNLogEnv =
-    '[  "yObs"     ':= Bool,
-        "weight"   ':= Double
-     ]
-
-sigmoid :: Double -> Double
-sigmoid x = 1 / (1 + exp((-1) * x))
-
-nnLogModel :: (Observable env "weight" Double, Observable env "yObs" Bool)
-  => Int -> (Double, Double) -> Model env es ((Double, Double), Bool)
-nnLogModel n_nodes (x, y)  = do
-  let xs = [x, y]
-  weightsA <- replicateM2 (length xs) n_nodes (normal 0 1 #weight)
-  let outputA = map2 tanh (dotProd [xs] weightsA)
-  weightsB <- replicateM2 n_nodes n_nodes (normal 0 1 #weight)
-  let outputB = map2 tanh (dotProd outputA weightsB)
-  weightsC <- replicateM2 n_nodes 1 (normal 0 1 #weight)
-  let outputC =  sigmoid . head . head $ dotProd outputB weightsC
-  label <- bernoulli outputC #yObs
-  return ((x, y), label)
+simNNLin :: Sampler  [(Double, Double)]
+simNNLin = do
+  let env =  #yObs := [] <:> #weight := [1, 5, 8] <:> #bias := [2, -5, 1] <:> #sigma := [4.0] <:> ENil
+  -- Run simulate simulation over neural network
+  bs <- mapM (Simulate.simulate (nnLinModel 3) env) (map (/1) [0 .. 300])
+  return $ map fst bs

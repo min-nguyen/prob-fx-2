@@ -17,7 +17,6 @@ import Control.Monad
 import Control.Monad.Trans.Class
 import Unsafe.Coerce
 import Effects.Dist
-import qualified Example as Example
 import Prog
 import Model hiding (runModelFree)
 import Sampler

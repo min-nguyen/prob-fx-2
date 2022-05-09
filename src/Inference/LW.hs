@@ -18,7 +18,6 @@ import Control.Monad
 import Control.Monad.Trans.Class
 import Unsafe.Coerce
 import Effects.Dist
-import qualified Example as Example
 import Prog
 import Model hiding (runModelFree)
 import Sampler
@@ -35,11 +34,11 @@ lwTopLevel :: forall env es a b. (FromSTrace env, es ~ '[ObsReader env, Dist])
    => Int                                   -- Number of lw iterations
    -> Model env es a                        -- Model
    -> Env env                          -- List of model observed variables
-   -> Sampler [(a, Env env, Double)]   -- List of n likelihood weightings for each data point
+   -> Sampler [(Env env, Double)]   -- List of n likelihood weightings for each data point
 lwTopLevel n model env = do
   let prog = (handleDist . handleObsRead env) (runModel model)
   lwTrace <- lw n prog
-  return (map (mapsnd3 (fromSTrace @env)) lwTrace)
+  return (map (\(_, env, p) -> (fromSTrace env, p)) lwTrace)
 
 lw :: forall env es a b. (es ~ '[Observe, Sample])
    => Int                   -- Number of lw iterations

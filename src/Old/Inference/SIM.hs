@@ -20,7 +20,6 @@ import Model
 import Sampler
 import Effects.ObsReader
 import Effects.State
-import Example as Example
 import Effects.Lift
 
 simulate :: (es ~ '[ObsReader env, Dist])

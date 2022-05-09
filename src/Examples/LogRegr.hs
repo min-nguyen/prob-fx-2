@@ -62,7 +62,7 @@ simulateLogRegr = do
   -- First declare the model inputs
   let xs  = map (/50) [(-50) .. 50]
   -- Define a model environment to simulate from.
-      env = (#label := []) <:> (#m := [2]) <:> (#b := [-0.15]) <:> nil
+      env = (#label := []) <:> (#m := [2]) <:> (#b := [-0.15]) <:> eNil
   -- Call simulate on logistic regression
   (ys, envs) <- Simulate.simulate logRegr env xs
   return (zip xs ys)
@@ -73,9 +73,9 @@ inferLwLogRegr = do
   -- Get values from simulating log regr
   (xs, ys) <- unzip <$> simulateLogRegr
   -- Define environment for inference
-  let env = (#label := ys) <:> (#m := []) <:> (#b := []) <:> nil
+  let env = (#label := ys) <:> (#m := []) <:> (#b := []) <:> eNil
   -- Run LW inference for 20000 iterations
-  lwTrace <- LW.lw 20000 logRegr (xs, env)
+  lwTrace <- LW.lwTopLevel 20000 (logRegr xs) env
   let -- Get output of LW, extract mu samples, and pair with likelihood-weighting ps
       (env_outs, ps) = unzip lwTrace
       mus = concatMap (get #m) env_outs
@@ -87,9 +87,9 @@ inferMHLogRegr = do
   -- Get values from simulating log regr
   (xs, ys) <- unzip <$> simulateLogRegr
   let -- Define an environment for inference
-      env = (#label := ys) <:> (#m := []) <:> (#b := []) <:> nil
+      env = (#label := ys) <:> (#m := []) <:> (#b := []) <:> eNil
   -- Run MH inference for 20000 iterations; the ["m", "b"] is optional for indicating interest in learning #m and #b in particular, causing other variables to not be resampled (unless necessary) during MH.
-  mhTrace <- MH.mh 20000 logRegr (xs, env) ["m", "b"]
+  mhTrace <- MH.mhTopLevel 20000 (logRegr xs) env (#m ⋮ #b ⋮ONil)
   -- Retrieve values sampled for #m and #b during MH
   let m_samples = concatMap (get #m) mhTrace
       b_samples = concatMap (get #b) mhTrace

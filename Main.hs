@@ -7,7 +7,6 @@ import Data.List.Split
 import Data.Tuple
 import qualified Data.Map as Map
 import DataSets
-import qualified Example as Example
 import qualified Inference.SIM as SIM
 import qualified Inference.LW as LW
 import qualified Inference.MH as MH
@@ -16,9 +15,10 @@ import OpenSum as OpenSum
 import Model
 import Data.Extensible ()
 import Sampler
-import Test
 import qualified TestSMC as TestSMC
 import Util
+
+
 
 main :: IO ()
 main = do

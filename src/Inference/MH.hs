@@ -14,6 +14,8 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant return" #-}
 module Inference.MH where
 
 import Data.Functor.Identity
@@ -168,8 +170,8 @@ mh n prog strace_0 tags = do
   let mhs = foldl (>=>) return (replicate n (mhStep prog tags acceptMH))
   -- Perform n mhSteps using initial mhCtx
   l <- mhs [mhCtx_0]
-  -- Return mhTrace in correct order of execution (due to mhStep prepending new results onto head of trace)
-  return $ reverse l
+  -- Note: most recent samples are at the front (head) of the trace
+  return l
 
 -- | Perform one step of MH for a single data point
 mhStep :: (es ~ '[Observe, Sample, Lift Sampler])

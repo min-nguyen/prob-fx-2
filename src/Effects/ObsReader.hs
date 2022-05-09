@@ -22,7 +22,6 @@ import Prog
 -- import Data.Extensible hiding (Member)
 import Env
 -- import Model
-import Control.Lens hiding ((:>))
 import Util
 
 data ObsReader env (a :: *) where
@@ -38,18 +37,11 @@ handleObsRead :: forall env es a.
   Env env -> Prog (ObsReader env ': es) a -> Prog es a
 handleObsRead env (Val x) = return x
 handleObsRead env (Op (AskPatt key) k) = do
-    let ys = getO key env
+    let ys = get key env
         y  = maybeHead ys
-        env' = setO key (safeTail ys) env
+        env' = set key (safeTail ys) env
     handleObsRead env' (k y)
 handleObsRead env (Op (Other u) k) = Op u (handleObsRead env . k)
--- handleObsRead' env (Op u k) = case discharge u of
---   (Right (Ask key)) -> do
---     let ys = getO key env
---         y  = maybeHead ys
---         env' = setO key (safeTail ys) env
---     handleObsRead env' (k y)
---   Left u -> Op u (handleObsRead env . k)
 
 handleObsRead' :: forall env es a.
   Env env -> Prog (ObsReader env ': es) a -> Prog es a
@@ -57,9 +49,9 @@ handleObsRead' env0 = handleRelaySt env0
   (\env x    -> return x)
   (\env tx k ->
     case tx of
-      Ask key -> let ys   = getO key env
+      Ask key -> let ys   = get key env
                      y    = maybeHead ys
-                     env' = setO key (safeTail ys) env
+                     env' = set key (safeTail ys) env
                  in  k env' y)
 
 
