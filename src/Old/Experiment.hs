@@ -13,12 +13,12 @@ module Old.Experiment where
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Map (Map)
-import ModelEnv
+import Env
 import Control.Monad
 import Control.Applicative
 import Control.Monad.Trans.Class
 import Effects.Dist
-import Freer
+import Prog
 import Model
 import Effects.NonDet
 import Sampler
@@ -70,6 +70,6 @@ runWriterX = loop mempty where
   -- At this point, all Reader requests have been handled
   loop w (Val x) = return (Val x, w)
   -- Handle if Writer request, else ignore and go through the rest of the tree
-  loop w (Op u k) = case decomp u of
+  loop w (Op u k) = case discharge u of
     Right (Tell w') -> Val (k (), w')
     Left u'         -> Op u' (loop w . k)

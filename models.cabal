@@ -27,7 +27,7 @@ license-file:        LICENSE
 -- The package author(s).
 author:              min-nguyen
 
--- An email address to which users can send suggestions, bug reports, and
+-- An email address to which users can call suggestions, bug reports, and
 -- patches.
 maintainer:          minhnguyen1995@googlemail.com
 
@@ -52,8 +52,14 @@ library
   -- Modules exported by the library.
   exposed-modules:    Util,
                       DataSets,
-                      Freer,
-                      Example,
+                      Prog,
+                      Model,
+                      OpenSum,
+                      Env,
+                      FindElem,
+                      Sampler,
+                      Trace,
+                      TestSMC,
                       Effects.Dist,
                       Effects.ObsReader,
                       Effects.Writer,
@@ -61,12 +67,18 @@ library
                       Effects.Lift,
                       Effects.Reader,
                       Effects.NonDet,
-                      Model,
-                      OpenSum,
-                      ModelEnv,
-                      FindElem,
-                      Sampler,
-                      Trace,
+                      Examples.DataSets,
+                      Examples.LinRegr,
+                      Examples.SIR,
+                      Examples.SIRRecord,
+                      Examples.HMM,
+                      Examples.CoinFlip,
+                      Examples.LogRegr,
+                      Examples.LDA,
+                      Examples.HLinRegr,
+                      Examples.School,
+                      Examples.GMM,
+                      Examples.BayesianNN,
                       Inference.SIM,
                       Inference.LW,
                       Inference.MH,
@@ -74,17 +86,14 @@ library
                       Inference.SIS,
                       Inference.RMSMC,
                       Inference.PMMH,
-                      Test,
-                      TestSMC,
                       Old.Experiment,
                       Old.Trace,
-                      Old.Test,
-                      Old.Inference.Simulate,
+                      -- Old.Test,
+                      Old.Inference.SIM,
                       Old.Inference.SMC,
                       Old.Inference.LW,
                       Old.Inference.MH,
                       Old.Inference.PMMH,
-                      Old.Example,
                       Old.EffExample,
                       Old.OpenProductVec
   -- Modules included in this library but not exported.

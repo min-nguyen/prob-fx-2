@@ -2,7 +2,6 @@
 {-# HLINT ignore "Use camelCase" #-}
 module Main where
 import Criterion.Main
-import Test
 import Sampler
 
 
@@ -33,153 +32,153 @@ main = do
   -- benchmarkTopicMH_DataSize
 
 
-benchmarkLinRegrSim_SampleSize = defaultMain [
-    bgroup "linRegrSim" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testLinRegrSim 100 2000),
-                        bench "4000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrSim 100 4000),
-                        bench "6000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrSim 100 6000),
-                        bench "8000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrSim 100 8000),
-                        bench "10000 x 100" $ nfIO $ sampleIOFixed (testLinRegrSim 100 10000) ]
-  ]
+-- benchmarkLinRegrSim_SampleSize = defaultMain [
+--     bgroup "linRegrSim" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testLinRegrSim 100 2000),
+--                         bench "4000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrSim 100 4000),
+--                         bench "6000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrSim 100 6000),
+--                         bench "8000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrSim 100 8000),
+--                         bench "10000 x 100" $ nfIO $ sampleIOFixed (testLinRegrSim 100 10000) ]
+--   ]
 
-benchmarkLinRegrLW_SampleSize = defaultMain [
-    bgroup "linRegrLW" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testLinRegrLW 100 2000),
-                        bench "4000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrLW 100 4000),
-                        bench "6000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrLW 100 6000),
-                        bench "8000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrLW 100 8000),
-                        bench "10000 x 100" $ nfIO $ sampleIOFixed (testLinRegrLW 100 10000) ]
-  ]
+-- benchmarkLinRegrLW_SampleSize = defaultMain [
+--     bgroup "linRegrLW" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testLinRegrLW 100 2000),
+--                         bench "4000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrLW 100 4000),
+--                         bench "6000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrLW 100 6000),
+--                         bench "8000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrLW 100 8000),
+--                         bench "10000 x 100" $ nfIO $ sampleIOFixed (testLinRegrLW 100 10000) ]
+--   ]
 
-benchmarkLinRegrMH_SampleSize = defaultMain [
-    bgroup "linRegrMH" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testLinRegrMH 100 2000),
-                        bench "4000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrMH 100 4000),
-                        bench "6000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrMH 100 6000),
-                        bench "8000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrMH 100 8000),
-                        bench "10000 x 100" $ nfIO $ sampleIOFixed (testLinRegrMH 100 10000) ]
-  ]
+-- benchmarkLinRegrMH_SampleSize = defaultMain [
+--     bgroup "linRegrMH" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testLinRegrMH 100 2000),
+--                         bench "4000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrMH 100 4000),
+--                         bench "6000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrMH 100 6000),
+--                         bench "8000 x 100"  $ nfIO $ sampleIOFixed (testLinRegrMH 100 8000),
+--                         bench "10000 x 100" $ nfIO $ sampleIOFixed (testLinRegrMH 100 10000) ]
+--   ]
 
-benchmarkHMMSim_SampleSize = defaultMain [
-    bgroup "hmmSim" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testHMMSim 100 2000),
-                    bench "4000 x 100"  $ nfIO $ sampleIOFixed (testHMMSim 100 4000),
-                    bench "6000 x 100"  $ nfIO $ sampleIOFixed (testHMMSim 100 6000),
-                    bench "8000 x 100"  $ nfIO $ sampleIOFixed (testHMMSim 100 8000),
-                    bench "10000 x 100" $ nfIO $ sampleIOFixed (testHMMSim 100 10000) ]
-  ]
+-- benchmarkHMMSim_SampleSize = defaultMain [
+--     bgroup "hmmSim" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testHMMSim 100 2000),
+--                     bench "4000 x 100"  $ nfIO $ sampleIOFixed (testHMMSim 100 4000),
+--                     bench "6000 x 100"  $ nfIO $ sampleIOFixed (testHMMSim 100 6000),
+--                     bench "8000 x 100"  $ nfIO $ sampleIOFixed (testHMMSim 100 8000),
+--                     bench "10000 x 100" $ nfIO $ sampleIOFixed (testHMMSim 100 10000) ]
+--   ]
 
-benchmarkHMMLW_SampleSize = defaultMain [
-    bgroup "hmmLW" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testHMMLW 100 2000),
-                    bench "4000 x 100"  $ nfIO $ sampleIOFixed (testHMMLW 100 4000),
-                    bench "6000 x 100"  $ nfIO $ sampleIOFixed (testHMMLW 100 6000),
-                    bench "8000 x 100"  $ nfIO $ sampleIOFixed (testHMMLW 100 8000),
-                    bench "10000 x 100" $ nfIO $ sampleIOFixed (testHMMLW 100 10000) ]
-  ]
+-- benchmarkHMMLW_SampleSize = defaultMain [
+--     bgroup "hmmLW" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testHMMLW 100 2000),
+--                     bench "4000 x 100"  $ nfIO $ sampleIOFixed (testHMMLW 100 4000),
+--                     bench "6000 x 100"  $ nfIO $ sampleIOFixed (testHMMLW 100 6000),
+--                     bench "8000 x 100"  $ nfIO $ sampleIOFixed (testHMMLW 100 8000),
+--                     bench "10000 x 100" $ nfIO $ sampleIOFixed (testHMMLW 100 10000) ]
+--   ]
 
-benchmarkHMMMH_SampleSize = defaultMain [
-    bgroup "hmmMH" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testHMMMH 100 2000),
-                    bench "4000 x 100"  $ nfIO $ sampleIOFixed (testHMMMH 100 4000),
-                    bench "6000 x 100"  $ nfIO $ sampleIOFixed (testHMMMH 100 6000),
-                    bench "8000 x 100"  $ nfIO $ sampleIOFixed (testHMMMH 100 8000),
-                    bench "10000 x 100" $ nfIO $ sampleIOFixed (testHMMMH 100 10000) ]
-  ]
+-- benchmarkHMMMH_SampleSize = defaultMain [
+--     bgroup "hmmMH" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testHMMMH 100 2000),
+--                     bench "4000 x 100"  $ nfIO $ sampleIOFixed (testHMMMH 100 4000),
+--                     bench "6000 x 100"  $ nfIO $ sampleIOFixed (testHMMMH 100 6000),
+--                     bench "8000 x 100"  $ nfIO $ sampleIOFixed (testHMMMH 100 8000),
+--                     bench "10000 x 100" $ nfIO $ sampleIOFixed (testHMMMH 100 10000) ]
+--   ]
 
-benchmarkTopicSim_SampleSize = defaultMain [
-    bgroup "topicSim" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testTopicSim 100 2000),
-                      bench "4000 x 100"  $ nfIO $ sampleIOFixed (testTopicSim 100 4000),
-                      bench "6000 x 100"  $ nfIO $ sampleIOFixed (testTopicSim 100 6000),
-                      bench "8000 x 100"  $ nfIO $ sampleIOFixed (testTopicSim 100 8000),
-                      bench "10000 x 100" $ nfIO $ sampleIOFixed (testTopicSim 100 10000) ]
-  ]
+-- benchmarkTopicSim_SampleSize = defaultMain [
+--     bgroup "topicSim" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testTopicSim 100 2000),
+--                       bench "4000 x 100"  $ nfIO $ sampleIOFixed (testTopicSim 100 4000),
+--                       bench "6000 x 100"  $ nfIO $ sampleIOFixed (testTopicSim 100 6000),
+--                       bench "8000 x 100"  $ nfIO $ sampleIOFixed (testTopicSim 100 8000),
+--                       bench "10000 x 100" $ nfIO $ sampleIOFixed (testTopicSim 100 10000) ]
+--   ]
 
-benchmarkTopicLW_SampleSize = defaultMain [
-    bgroup "topicLW" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testTopicLW 100 2000),
-                      bench "4000 x 100"  $ nfIO $ sampleIOFixed (testTopicLW 100 4000),
-                      bench "6000 x 100"  $ nfIO $ sampleIOFixed (testTopicLW 100 6000),
-                      bench "8000 x 100"  $ nfIO $ sampleIOFixed (testTopicLW 100 8000),
-                      bench "10000 x 100" $ nfIO $ sampleIOFixed (testTopicLW 100 10000) ]
-  ]
+-- benchmarkTopicLW_SampleSize = defaultMain [
+--     bgroup "topicLW" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testTopicLW 100 2000),
+--                       bench "4000 x 100"  $ nfIO $ sampleIOFixed (testTopicLW 100 4000),
+--                       bench "6000 x 100"  $ nfIO $ sampleIOFixed (testTopicLW 100 6000),
+--                       bench "8000 x 100"  $ nfIO $ sampleIOFixed (testTopicLW 100 8000),
+--                       bench "10000 x 100" $ nfIO $ sampleIOFixed (testTopicLW 100 10000) ]
+--   ]
 
-benchmarkTopicMH_SampleSize = defaultMain [
-    bgroup "topicMH" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testTopicMH 100 2000),
-                      bench "4000 x 100"  $ nfIO $ sampleIOFixed (testTopicMH 100 4000),
-                      bench "6000 x 100"  $ nfIO $ sampleIOFixed (testTopicMH 100 6000),
-                      bench "8000 x 100"  $ nfIO $ sampleIOFixed (testTopicMH 100 8000),
-                      bench "10000 x 100" $ nfIO $ sampleIOFixed (testTopicMH 100 10000) ]
-  ]
+-- benchmarkTopicMH_SampleSize = defaultMain [
+--     bgroup "topicMH" [bench "2000 x 100" $ nfIO $ sampleIOFixed (testTopicMH 100 2000),
+--                       bench "4000 x 100"  $ nfIO $ sampleIOFixed (testTopicMH 100 4000),
+--                       bench "6000 x 100"  $ nfIO $ sampleIOFixed (testTopicMH 100 6000),
+--                       bench "8000 x 100"  $ nfIO $ sampleIOFixed (testTopicMH 100 8000),
+--                       bench "10000 x 100" $ nfIO $ sampleIOFixed (testTopicMH 100 10000) ]
+--   ]
 
----------------------------------
-
-
-benchmarkLinRegrSim_DataSize = defaultMain [
-    bgroup "linRegrSim" [bench "200 x 200" $ nfIO $ sampleIOFixed (testLinRegrSim 200 2000),
-                        bench "400 x 200"  $ nfIO $ sampleIOFixed (testLinRegrSim 400 2000),
-                        bench "600 x 200"  $ nfIO $ sampleIOFixed (testLinRegrSim 600 2000),
-                        bench "800 x 200"  $ nfIO $ sampleIOFixed (testLinRegrSim 800 2000),
-                        bench "1000 x 200" $ nfIO $ sampleIOFixed (testLinRegrSim 1000 2000) ]
-  ]
-
-benchmarkLinRegrLW_DataSize = defaultMain [
-    bgroup "linRegrLW" [bench "200 x 200" $ nfIO $ sampleIOFixed (testLinRegrLW 200 2000),
-                        bench "400 x 200"  $ nfIO $ sampleIOFixed (testLinRegrLW 400 2000),
-                        bench "600 x 200"  $ nfIO $ sampleIOFixed (testLinRegrLW 600 2000),
-                        bench "800 x 200"  $ nfIO $ sampleIOFixed (testLinRegrLW 800 2000),
-                        bench "1000 x 200" $ nfIO $ sampleIOFixed (testLinRegrLW 1000 2000) ]
-  ]
-
-benchmarkLinRegrMH_DataSize = defaultMain [
-    bgroup "linRegrMH" [bench "200 x 200" $ nfIO $ sampleIOFixed (testLinRegrMH 200 2000),
-                        bench "400 x 200"  $ nfIO $ sampleIOFixed (testLinRegrMH 400 2000),
-                        bench "600 x 200"  $ nfIO $ sampleIOFixed (testLinRegrMH 600 2000),
-                        bench "800 x 200"  $ nfIO $ sampleIOFixed (testLinRegrMH 800 2000),
-                        bench "1000 x 200" $ nfIO $ sampleIOFixed (testLinRegrMH 1000 2000) ]
-  ]
-
-benchmarkHMMSim_DataSize = defaultMain [
-    bgroup "hmmSim" [bench "40 x 200" $ nfIO $ sampleIOFixed (testHMMSim 40 2000),
-                    bench "80 x 200"  $ nfIO $ sampleIOFixed (testHMMSim 80 2000),
-                    bench "120 x 200"  $ nfIO $ sampleIOFixed (testHMMSim 120 2000),
-                    bench "160 x 200"  $ nfIO $ sampleIOFixed (testHMMSim 160 2000),
-                    bench "200 x 200" $ nfIO $ sampleIOFixed (testHMMSim 200 2000) ]
-  ]
-
-benchmarkHMMLW_DataSize = defaultMain [
-    bgroup "hmmLW" [bench "40 x 200" $ nfIO $ sampleIOFixed (testHMMLW 40 2000),
-                    bench "80 x 200"  $ nfIO $ sampleIOFixed (testHMMLW 80 2000),
-                    bench "120 x 200"  $ nfIO $ sampleIOFixed (testHMMLW 120 2000),
-                    bench "160 x 200"  $ nfIO $ sampleIOFixed (testHMMLW 160 2000),
-                    bench "200 x 200" $ nfIO $ sampleIOFixed (testHMMLW 200 2000) ]
-  ]
-
-benchmarkHMMMH_DataSize = defaultMain [
-    bgroup "hmmMH" [bench "40 x 200" $ nfIO $ sampleIOFixed (testHMMMH 40 2000),
-                    bench "80 x 200"  $ nfIO $ sampleIOFixed (testHMMMH 80 2000),
-                    bench "120 x 200"  $ nfIO $ sampleIOFixed (testHMMMH 120 2000),
-                    bench "160 x 200"  $ nfIO $ sampleIOFixed (testHMMMH 160 2000),
-                    bench "200 x 200" $ nfIO $ sampleIOFixed (testHMMMH 200 2000) ]
-  ]
-
-benchmarkTopicSim_DataSize = defaultMain [
-    bgroup "topicSim" [bench "40 x 200" $ nfIO $ sampleIOFixed (testTopicSim 40 2000),
-                      bench "80 x 200"  $ nfIO $ sampleIOFixed (testTopicSim 80 2000),
-                      bench "120 x 200"  $ nfIO $ sampleIOFixed (testTopicSim 120 2000),
-                      bench "160 x 200"  $ nfIO $ sampleIOFixed (testTopicSim 160 2000),
-                      bench "200 x 200" $ nfIO $ sampleIOFixed (testTopicSim 200 2000) ]
-  ]
-
-benchmarkTopicLW_DataSize = defaultMain [
-    bgroup "topicLW" [bench "40 x 200" $ nfIO $ sampleIOFixed (testTopicLW 40 2000),
-                      bench "80 x 200"  $ nfIO $ sampleIOFixed (testTopicLW 80 2000),
-                      bench "120 x 200"  $ nfIO $ sampleIOFixed (testTopicLW 120 2000),
-                      bench "160 x 200"  $ nfIO $ sampleIOFixed (testTopicLW 160 2000),
-                      bench "200 x 200" $ nfIO $ sampleIOFixed (testTopicLW 200 2000) ]
-  ]
+-- ---------------------------------
 
 
-benchmarkTopicMH_DataSize = defaultMain [
-    bgroup "topicMH" [bench "40 x 200" $ nfIO $ sampleIOFixed (testTopicMH 40 2000),
-                      bench "80 x 200"  $ nfIO $ sampleIOFixed (testTopicMH 80 2000),
-                      bench "120 x 200"  $ nfIO $ sampleIOFixed (testTopicMH 120 2000),
-                      bench "160 x 200"  $ nfIO $ sampleIOFixed (testTopicMH 160 2000),
-                      bench "200 x 200" $ nfIO $ sampleIOFixed (testTopicMH 200 2000) ]
-  ]
+-- benchmarkLinRegrSim_DataSize = defaultMain [
+--     bgroup "linRegrSim" [bench "200 x 200" $ nfIO $ sampleIOFixed (testLinRegrSim 200 2000),
+--                         bench "400 x 200"  $ nfIO $ sampleIOFixed (testLinRegrSim 400 2000),
+--                         bench "600 x 200"  $ nfIO $ sampleIOFixed (testLinRegrSim 600 2000),
+--                         bench "800 x 200"  $ nfIO $ sampleIOFixed (testLinRegrSim 800 2000),
+--                         bench "1000 x 200" $ nfIO $ sampleIOFixed (testLinRegrSim 1000 2000) ]
+--   ]
+
+-- benchmarkLinRegrLW_DataSize = defaultMain [
+--     bgroup "linRegrLW" [bench "200 x 200" $ nfIO $ sampleIOFixed (testLinRegrLW 200 2000),
+--                         bench "400 x 200"  $ nfIO $ sampleIOFixed (testLinRegrLW 400 2000),
+--                         bench "600 x 200"  $ nfIO $ sampleIOFixed (testLinRegrLW 600 2000),
+--                         bench "800 x 200"  $ nfIO $ sampleIOFixed (testLinRegrLW 800 2000),
+--                         bench "1000 x 200" $ nfIO $ sampleIOFixed (testLinRegrLW 1000 2000) ]
+--   ]
+
+-- benchmarkLinRegrMH_DataSize = defaultMain [
+--     bgroup "linRegrMH" [bench "200 x 200" $ nfIO $ sampleIOFixed (testLinRegrMH 200 2000),
+--                         bench "400 x 200"  $ nfIO $ sampleIOFixed (testLinRegrMH 400 2000),
+--                         bench "600 x 200"  $ nfIO $ sampleIOFixed (testLinRegrMH 600 2000),
+--                         bench "800 x 200"  $ nfIO $ sampleIOFixed (testLinRegrMH 800 2000),
+--                         bench "1000 x 200" $ nfIO $ sampleIOFixed (testLinRegrMH 1000 2000) ]
+--   ]
+
+-- benchmarkHMMSim_DataSize = defaultMain [
+--     bgroup "hmmSim" [bench "40 x 200" $ nfIO $ sampleIOFixed (testHMMSim 40 2000),
+--                     bench "80 x 200"  $ nfIO $ sampleIOFixed (testHMMSim 80 2000),
+--                     bench "120 x 200"  $ nfIO $ sampleIOFixed (testHMMSim 120 2000),
+--                     bench "160 x 200"  $ nfIO $ sampleIOFixed (testHMMSim 160 2000),
+--                     bench "200 x 200" $ nfIO $ sampleIOFixed (testHMMSim 200 2000) ]
+--   ]
+
+-- benchmarkHMMLW_DataSize = defaultMain [
+--     bgroup "hmmLW" [bench "40 x 200" $ nfIO $ sampleIOFixed (testHMMLW 40 2000),
+--                     bench "80 x 200"  $ nfIO $ sampleIOFixed (testHMMLW 80 2000),
+--                     bench "120 x 200"  $ nfIO $ sampleIOFixed (testHMMLW 120 2000),
+--                     bench "160 x 200"  $ nfIO $ sampleIOFixed (testHMMLW 160 2000),
+--                     bench "200 x 200" $ nfIO $ sampleIOFixed (testHMMLW 200 2000) ]
+--   ]
+
+-- benchmarkHMMMH_DataSize = defaultMain [
+--     bgroup "hmmMH" [bench "40 x 200" $ nfIO $ sampleIOFixed (testHMMMH 40 2000),
+--                     bench "80 x 200"  $ nfIO $ sampleIOFixed (testHMMMH 80 2000),
+--                     bench "120 x 200"  $ nfIO $ sampleIOFixed (testHMMMH 120 2000),
+--                     bench "160 x 200"  $ nfIO $ sampleIOFixed (testHMMMH 160 2000),
+--                     bench "200 x 200" $ nfIO $ sampleIOFixed (testHMMMH 200 2000) ]
+--   ]
+
+-- benchmarkTopicSim_DataSize = defaultMain [
+--     bgroup "topicSim" [bench "40 x 200" $ nfIO $ sampleIOFixed (testTopicSim 40 2000),
+--                       bench "80 x 200"  $ nfIO $ sampleIOFixed (testTopicSim 80 2000),
+--                       bench "120 x 200"  $ nfIO $ sampleIOFixed (testTopicSim 120 2000),
+--                       bench "160 x 200"  $ nfIO $ sampleIOFixed (testTopicSim 160 2000),
+--                       bench "200 x 200" $ nfIO $ sampleIOFixed (testTopicSim 200 2000) ]
+--   ]
+
+-- benchmarkTopicLW_DataSize = defaultMain [
+--     bgroup "topicLW" [bench "40 x 200" $ nfIO $ sampleIOFixed (testTopicLW 40 2000),
+--                       bench "80 x 200"  $ nfIO $ sampleIOFixed (testTopicLW 80 2000),
+--                       bench "120 x 200"  $ nfIO $ sampleIOFixed (testTopicLW 120 2000),
+--                       bench "160 x 200"  $ nfIO $ sampleIOFixed (testTopicLW 160 2000),
+--                       bench "200 x 200" $ nfIO $ sampleIOFixed (testTopicLW 200 2000) ]
+--   ]
+
+
+-- benchmarkTopicMH_DataSize = defaultMain [
+--     bgroup "topicMH" [bench "40 x 200" $ nfIO $ sampleIOFixed (testTopicMH 40 2000),
+--                       bench "80 x 200"  $ nfIO $ sampleIOFixed (testTopicMH 80 2000),
+--                       bench "120 x 200"  $ nfIO $ sampleIOFixed (testTopicMH 120 2000),
+--                       bench "160 x 200"  $ nfIO $ sampleIOFixed (testTopicMH 160 2000),
+--                       bench "200 x 200" $ nfIO $ sampleIOFixed (testTopicMH 200 2000) ]
+--   ]
 
 {-
 benchmarking linRegrSim/200 x 200

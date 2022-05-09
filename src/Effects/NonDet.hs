@@ -19,7 +19,7 @@ module Effects.NonDet where
 
 import Control.Applicative
 import Control.Monad
-import Freer
+import Prog
 import Effects.Writer
 import Debug.Trace
 
@@ -28,14 +28,14 @@ data NonDet a where
   Choose :: NonDet Bool
 
 pattern Choose' :: () => (x ~ Bool) => EffectSum (NonDet : es) x
-pattern Choose' <- (decomp -> Right Choose)
+pattern Choose' <- (discharge -> Right Choose)
 
 pattern Empty' :: EffectSum (NonDet : es) x
-pattern Empty' <- (decomp -> Right Empty)
+pattern Empty' <- (discharge -> Right Empty)
 
 instance Member NonDet es => Alternative (Prog es) where
-  empty  = send Empty
-  m1 <|> m2 = do b <- send Choose
+  empty  = call Empty
+  m1 <|> m2 = do b <- call Choose
                  if b then m1 else m2
 
 -- runNonDet' :: Functor ctx => ctx (Prog (NonDet ': es) a) -> Prog es [ctx a]
@@ -43,7 +43,7 @@ instance Member NonDet es => Alternative (Prog es) where
 -- runNonDet' ctxop = fmap (runNonDet) ctxop
 
 asum :: Member NonDet es => [Prog es a] -> Prog es a
-asum progs = foldr (<|>) (send Empty) progs
+asum progs = foldr (<|>) (call Empty) progs
 
 runNonDet :: Prog (NonDet ': es) a -> Prog es [a]
 runNonDet (Val x) = return [x]

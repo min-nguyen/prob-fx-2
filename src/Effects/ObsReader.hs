@@ -18,11 +18,10 @@
 module Effects.ObsReader where
 
 import Effects.State
-import Freer
+import Prog
 -- import Data.Extensible hiding (Member)
-import ModelEnv
+import Env
 -- import Model
-import Control.Lens hiding ((:>))
 import Util
 
 data ObsReader env (a :: *) where
@@ -32,34 +31,27 @@ ask :: forall env es x a. Member (ObsReader env) es => Observable env x a => Obs
 ask k = Op (inj (Ask k :: ObsReader env (Maybe a))) Val
 
 pattern AskPatt :: () => (v ~ Maybe a, Observable env x a) => ObsVar x -> EffectSum (ObsReader env : es) v
-pattern AskPatt x <- (decomp -> Right (Ask x))
+pattern AskPatt x <- (discharge -> Right (Ask x))
 
-runObsReader :: forall env es a.
-  ModelEnv env -> Prog (ObsReader env ': es) a -> Prog es a
-runObsReader env (Val x) = return x
-runObsReader env (Op (AskPatt key) k) = do
-    let ys = getO key env
+handleObsRead :: forall env es a.
+  Env env -> Prog (ObsReader env ': es) a -> Prog es a
+handleObsRead env (Val x) = return x
+handleObsRead env (Op (AskPatt key) k) = do
+    let ys = get key env
         y  = maybeHead ys
-        env' = setO key (safeTail ys) env
-    runObsReader env' (k y)
-runObsReader env (Op (Other u) k) = Op u (runObsReader env . k)
--- runObsReader' env (Op u k) = case decomp u of
---   (Right (Ask key)) -> do
---     let ys = getO key env
---         y  = maybeHead ys
---         env' = setO key (safeTail ys) env
---     runObsReader env' (k y)
---   Left u -> Op u (runObsReader env . k)
+        env' = set key (safeTail ys) env
+    handleObsRead env' (k y)
+handleObsRead env (Op (Other u) k) = Op u (handleObsRead env . k)
 
-runObsReader' :: forall env es a.
-  ModelEnv env -> Prog (ObsReader env ': es) a -> Prog es a
-runObsReader' env0 = handleRelaySt env0
+handleObsRead' :: forall env es a.
+  Env env -> Prog (ObsReader env ': es) a -> Prog es a
+handleObsRead' env0 = handleRelaySt env0
   (\env x    -> return x)
   (\env tx k ->
     case tx of
-      Ask key -> let ys   = getO key env
+      Ask key -> let ys   = get key env
                      y    = maybeHead ys
-                     env' = setO key (safeTail ys) env
+                     env' = set key (safeTail ys) env
                  in  k env' y)
 
 

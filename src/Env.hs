@@ -3,7 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
-module ModelEnv where
+module Env where
 
 import Data.Kind
 -- import Data.Functor.Identity
@@ -65,13 +65,13 @@ instance (FindElem x (Keys env), KnownSymbol x, ValidSpec env xs) => ValidSpec e
   asTags (OCons xs)  = varToStr (ObsVar @x) : asTags @env @xs xs
 
 {- Model environment -}
-data ModelEnv (env :: [Assign Symbol *]) where
-  ENil  :: ModelEnv '[]
-  ECons :: forall a x env. [a] -> ModelEnv env -> ModelEnv (x := a : env)
+data Env (env :: [Assign Symbol *]) where
+  ENil  :: Env '[]
+  ECons :: forall a x env. [a] -> Env env -> Env (x := a : env)
 
-instance (KnownSymbol x, Show a, Show (ModelEnv env)) => Show (ModelEnv ((x := a) ': env)) where
+instance (KnownSymbol x, Show a, Show (Env env)) => Show (Env ((x := a) ': env)) where
   show (ECons a env) = varToStr (ObsVar @x) ++ ":=" ++ show a ++ ", " ++ show env
-instance Show (ModelEnv '[]) where
+instance Show (Env '[]) where
   show ENil = "[]"
 
 instance FindElem x ((x := a) : env) where
@@ -79,36 +79,36 @@ instance FindElem x ((x := a) : env) where
 instance {-# OVERLAPPABLE #-} FindElem x env => FindElem x ((x' := a) : env) where
   findElem = P $ 1 + unP (findElem :: P x env)
 
-eNil :: ModelEnv '[]
+eNil :: Env '[]
 eNil = ENil
 
 infixr 5 <:>
-(<:>) :: UniqueKey x env ~ 'True => Assign (ObsVar x) [a] -> ModelEnv env -> ModelEnv ((x ':= a) ': env)
+(<:>) :: UniqueKey x env ~ 'True => Assign (ObsVar x) [a] -> Env env -> Env ((x ':= a) ': env)
 (_ := a) <:> env = ECons a env
 
 infixr 5 ∙
-(∙) :: UniqueKey x env ~ 'True => Assign (ObsVar x) [a] -> ModelEnv env -> ModelEnv ((x ':= a) ': env)
+(∙) :: UniqueKey x env ~ 'True => Assign (ObsVar x) [a] -> Env env -> Env ((x ':= a) ': env)
 (_ := a) ∙ env = ECons a env
 
 {- Observable class -}
 class (FindElem x env, LookupType x env ~ a) => Observable env x a where
-  getIdx :: ObsVar x -> ModelEnv env -> Int
+  getIdx :: ObsVar x -> Env env -> Int
   getIdx _ (ECons  a env) = unP $ findElem @x @env
-  getO  :: ObsVar x -> ModelEnv env -> [a]
-  setO  :: ObsVar x -> [a] -> ModelEnv env -> ModelEnv env
+  get  :: ObsVar x -> Env env -> [a]
+  set  :: ObsVar x -> [a] -> Env env -> Env env
 
 instance (FindElem x env, LookupType x env ~ a) => Observable env x a where
   getIdx _ _ = unP $ findElem @x @env
-  getO _ env =
+  get _ env =
     let idx = unP $ findElem @x @env
-        f :: Int -> ModelEnv env' -> [a]
+        f :: Int -> Env env' -> [a]
         f n (ECons a env) = if   n == 0
                             then unsafeCoerce a
                             else f (n - 1) env
     in  f idx env
-  setO _ a' env =
+  set _ a' env =
     let idx = unP $ findElem @x @env
-        f :: Int -> ModelEnv env' -> ModelEnv env'
+        f :: Int -> Env env' -> Env env'
         f n (ECons a env) = if   n == 0
                             then ECons (unsafeCoerce a') env
                             else ECons a (f (n - 1) env)

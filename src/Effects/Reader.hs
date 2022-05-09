@@ -17,7 +17,7 @@
 
 module Effects.Reader where
 
-import Freer
+import Prog
 import Data.Extensible hiding (Member)
 
 data Reader env a where
@@ -30,7 +30,7 @@ runReader :: forall env es a. env -> Prog (Reader env ': es) a -> Prog es a
 runReader env = loop where
   loop :: Prog (Reader env ': es) a -> Prog es a
   loop (Val x) = return x
-  loop (Op u k) = case decomp u of
+  loop (Op u k) = case discharge u of
     Right Ask -> loop (k env)
     Left  u'  -> Op u' (loop . k)
 

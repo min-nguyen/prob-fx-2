@@ -7,7 +7,6 @@ import Data.List.Split
 import Data.Tuple
 import qualified Data.Map as Map
 import DataSets
-import qualified Example as Example
 import qualified Inference.SIM as SIM
 import qualified Inference.LW as LW
 import qualified Inference.MH as MH
@@ -16,34 +15,61 @@ import OpenSum as OpenSum
 import Model
 import Data.Extensible ()
 import Sampler
-import Test
-import qualified TestSMC as TestSMC
+import TestSMC
 import Util
+import System.Environment
+import Examples.LinRegr
+import Examples.LogRegr
+import Examples.SIR
+import Examples.LDA
+import Examples.HLinRegr
+import Examples.School
+import Examples.GMM
+import Examples.HMM
+
+printThenWrite :: Show a => a -> IO ()
+printThenWrite a = print a >> writeFile "model-output.txt" (show a)
+
+parseArgs :: String -> IO ()
+parseArgs cmd = case cmd of
+  "simLinRegr"  -> sampleIO simLinRegr >>= printThenWrite
+  "lwLinRegr"   -> sampleIO lwLinRegr >>= printThenWrite
+  "mhLinRegr"   -> sampleIO mhLinRegr >>= printThenWrite
+
+  "simLogRegr"  -> sampleIO simLogRegr >>= printThenWrite
+  "lwLogRegr"   -> sampleIO lwLogRegr >>= printThenWrite
+  "mhLogRegr"   -> sampleIO mhLogRegr >>= printThenWrite
+
+  "simSIR"      -> sampleIO simSIR >>= printThenWrite
+  "mhSIR"       -> sampleIO mhSIR >>= printThenWrite
+  "simSIRS"     -> sampleIO simSIRS >>= printThenWrite
+  "simSIRSV"    -> sampleIO simSIRSV >>= printThenWrite
+
+  "simHMM"      -> sampleIO simHMMw >>= printThenWrite
+  "mhHMM"       -> sampleIO mhHMMw >>= printThenWrite
+
+  "simLDA"      -> sampleIO simLDA >>= printThenWrite
+  "mhLDA"       -> sampleIO mhLDA >>= printThenWrite
+
+  "simHLinRegr" -> sampleIO simHLinRegr >>= printThenWrite
+  "mhHLinRegr"  -> sampleIO mhHLinRegr >>= printThenWrite
+
+  "mhSchool"    -> sampleIO mhSchool >>= printThenWrite
+
+  "simGMM"      -> sampleIO simGMM >>= printThenWrite
+  "mhGMM"       -> sampleIO mhGMM >>= printThenWrite
+
+  "smcLinRegr"   -> sampleIOFixed (smcLinRegr 50 200) >>= printThenWrite
+  "rmsmcLinRegr" -> sampleIOFixed (rmsmcLinRegr 50 200 20) >>= printThenWrite
+  "pmmhLinRegr"  -> sampleIOFixed (pmmhLinRegr 30 10 1000) >>= printThenWrite
+  _              -> putStrLn $ "unrecognised command: " ++ cmd ++ "\n"
 
 main :: IO ()
 main = do
-  -- trace <- sampleIOFixed $ testLinRegrSim 10 1
-  -- trace <- sampleIO $ testLinRegrLW 10 2000
-  -- trace <- sampleIO $ testLinRegrLW' 10 2000
-  -- trace <- sampleIOFixed $ testLinRegrMH 10 2000
-  -- trace <- sampleIOFixed $ testLogRegrSim 200 100
-  -- trace <- sampleIOFixed $ testLogRegrLW 200 100
-  -- trace <- sampleIOFixed $ testLogRegrMH 20 2000
-  -- trace <- sampleIOFixed $ testHMMSim 20 10
-  -- trace <- sampleIO $ testHMMLW 10 2000
-  -- trace <- sampleIO $ testHMMMH 10 2000
-  -- trace <- sampleIOFixed $ testTopicSim 10 10
-  -- trace <- sampleIOFixed $ testTopicMHPost 10 1000
-  -- trace <- sampleIOFixed $ testTopicMHPred 10 1000
-  -- trace <- sampleIOFixed testSIRSim
-  -- trace <- sampleIOFixed testSIRMH
-  -- trace <- sampleIOFixed testSIRSSim
-  -- trace <- sampleIOFixed testSIRVSim
-  -- trace <- sampleIOFixed (TestSMC.testLinRegrSMC 50 200)
-  -- trace <- sampleIOFixed (TestSMC.testLinRegrRMSMC 50 100 20)
-  trace <- sampleIOFixed (TestSMC.testLinRegrPMMH 30 10 1000)
-  let traceStr = show trace
-  putStrLn traceStr
-  writeFile "model-output.txt" traceStr
-  return ()
-
+  -- trace <- sampleIOFixed (smcLinRegr 50 200)
+  -- trace <- sampleIOFixed (rmsmcLinRegr 50 100 20)
+  -- trace <- sampleIOFixed (pmmhLinRegr 30 10 1000)
+  -- printThenWrite trace
+  args <- getArgs
+  case args of []      -> print $ "no arguments provided to Wasabaye"
+               (a:as)  -> parseArgs a

@@ -12,17 +12,16 @@ module Inference.LW where
 
 import qualified Data.Map as Map
 import Data.Map (Map)
-import ModelEnv
+import Env
 import Effects.ObsReader
 import Control.Monad
 import Control.Monad.Trans.Class
 import Unsafe.Coerce
 import Effects.Dist
-import qualified Example as Example
-import Freer
+import Prog
 import Model hiding (runModelFree)
 import Sampler
-import Effects.State ( modify, runState, State )
+import Effects.State ( modify, handleState, State )
 import Trace
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum(..))
@@ -34,12 +33,12 @@ type LWTrace a = [(a, STrace, Double)]
 lwTopLevel :: forall env es a b. (FromSTrace env, es ~ '[ObsReader env, Dist])
    => Int                                   -- Number of lw iterations
    -> Model env es a                        -- Model
-   -> ModelEnv env                          -- List of model observed variables
-   -> Sampler [(a, ModelEnv env, Double)]   -- List of n likelihood weightings for each data point
+   -> Env env                          -- List of model observed variables
+   -> Sampler [(Env env, Double)]   -- List of n likelihood weightings for each data point
 lwTopLevel n model env = do
-  let prog = (runDist . runObsReader env) (runModel model)
+  let prog = (handleDist . handleObsRead env) (runModel model)
   lwTrace <- lw n prog
-  return (map (mapsnd3 (fromSTrace @env)) lwTrace)
+  return (map (\(_, env, p) -> (fromSTrace env, p)) lwTrace)
 
 lw :: forall env es a b. (es ~ '[Observe, Sample])
    => Int                   -- Number of lw iterations

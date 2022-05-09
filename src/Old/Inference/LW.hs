@@ -11,17 +11,16 @@ module Old.Inference.LW where
 
 import qualified Data.Map as Map
 import Data.Map (Map)
-import ModelEnv
+import Env
 import Effects.ObsReader
 import Control.Monad
 import Control.Monad.Trans.Class
 import Unsafe.Coerce
 import Effects.Dist
-import qualified Example as Example
-import Freer
+import Prog
 import Model hiding (runModelFree)
 import Sampler
-import Effects.State ( modify, runState, State )
+import Effects.State ( modify, handleState, State )
 import Old.Trace
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum(..))
@@ -33,7 +32,7 @@ lw :: (es ~ '[ObsReader env, Dist])
    => Int                              -- Number of lw iterations per data point
    -> (b -> Model env es a)            -- Model awaiting input variable
    -> [b]                              -- List of model input variables
-   -> [ModelEnv env]                       -- List of model observed variables
+   -> [Env env]                       -- List of model observed variables
    -> Sampler (TraceLW a)              -- List of n likelihood weightings for each data point
 lw n model xs envs = do
   let runN (x, env) = replicateM n (runLW env (model x))
@@ -41,24 +40,24 @@ lw n model xs envs = do
 
 -- | Run LW once for single data point
 runLW :: es ~ '[ObsReader env, Dist]
-  => ModelEnv env -> Model env es a
+  => Env env -> Model env es a
   -> Sampler (a, STrace, Double)
 runLW env model = do
   ((x, samples), p) <- (runSample
                             . runObserve
-                            . runState Map.empty
+                            . handleState Map.empty
                             . transformLW
-                            . runDist
-                            . runObsReader env)
+                            . handleDist
+                            . handleObsRead env)
                             (runModel model)
   return (x, samples, p)
 
 runLWpaper :: es ~ '[ObsReader env, Dist]
-  => ModelEnv env -> Model env es a
+  => Env env -> Model env es a
   -> Sampler ((a, STrace), Double)
 runLWpaper env m =
-  (runSample . runObserve . runState Map.empty
-   . transformLW . runDist . runObsReader env) (runModel m)
+  (runSample . runObserve . handleState Map.empty
+   . transformLW . handleDist . handleObsRead env) (runModel m)
 
 transformLW :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
 transformLW = install return

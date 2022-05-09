@@ -8,7 +8,7 @@ module Sampler where
 
 import Effects.Lift hiding (lift)
 import FindElem
-import Freer
+import Prog
 import Control.Monad
 import Control.Monad.Primitive
 import Control.Monad.ST (ST, runST, stToIO)
@@ -40,6 +40,9 @@ newtype Sampler a = Sampler {runSampler :: ReaderT MWC.GenIO IO a}
 
 liftS :: IO a -> Sampler a
 liftS f = Sampler $ lift f
+
+printS :: Show a => a -> Sampler ()
+printS s = liftS (print s)
 
 printLift :: FindElem (Lift Sampler) es => String -> Prog es ()
 printLift s = Lift.lift $ Sampler $ lift (print s)

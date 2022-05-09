@@ -17,11 +17,11 @@ import qualified Data.Map as Map
 import Data.Maybe
 import Data.Bifunctor
 import Data.Map (Map)
-import ModelEnv
+import Env
 import Control.Monad
 import Control.Applicative
 import Effects.Dist
-import Freer
+import Prog
 import Effects.Lift
 import Model
 import Effects.NonDet
