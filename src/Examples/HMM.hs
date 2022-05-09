@@ -43,14 +43,14 @@ hmmFor n x = do
                        | otherwise = return x_prev
   hmmLoop 0 x
 
-simulateHMM :: Sampler (Int, Env HMMEnv)
-simulateHMM = do
+simHMM :: Sampler (Int, Env HMMEnv)
+simHMM = do
   let x_0 = 0; n = 10
       env = #trans_p := [0.5] <:> #obs_p := [0.8] <:> #y := [] <:> eNil
   Simulate.simulate (hmmFor n) env 0
 
-inferLwHMM :: Sampler  [(Env HMMEnv, Double)]
-inferLwHMM   = do
+lwHMM :: Sampler  [(Env HMMEnv, Double)]
+lwHMM   = do
   let x_0 = 0; n = 10
       env = #trans_p := [] <:> #obs_p := [] <:> #y := [0, 1, 1, 3, 4, 5, 5, 5, 6, 5] <:> eNil
   LW.lwTopLevel 100 (hmmFor n x_0) env
@@ -121,34 +121,28 @@ hmmW :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double) =
 hmmW n x = do
   trans_p <- uniform 0 1 #trans_p
   obs_p   <- uniform 0 1 #obs_p
-  foldr (<=<) return  (replicate n (hmmNode trans_p obs_p)) x
+  foldr (<=<) return  (replicate n (hmmNodeW trans_p obs_p)) x
 
-simHMMw :: Int -> Int -> Sampler [(Int, Int)]
-simHMMw hmm_length n_samples = do
-  let env = #trans_p := [0.5] <:> #obs_p := [0.8] <:> #y := [] <:> eNil
-  bs <- Simulate.simulateMany n_samples (handleWriterM . hmmW hmm_length) 0 env
+simHMMw :: Sampler [(Int, Int)]
+simHMMw = do
+  let hmm_length = 10
+      n_samples  = 30
+      env = #trans_p := [0.9] <:> #obs_p := [0.2] <:> #y := [] <:> eNil
+  bs <- Simulate.simulateMany n_samples (handleWriterM . hmmW hmm_length) env 0
+  printS bs
   let sim_envs_out  = map snd bs
       xs :: [Int]   = concatMap (snd . fst) bs
       ys :: [Int]   = concatMap (get #y) sim_envs_out
   return $ zip xs ys
 
-lwHMMw :: Int -> Int -> Sampler [((Double, Double), Double)]
-lwHMMw hmm_length n_samples = do
-  ys <- map snd <$> simHMMw hmm_length 1
-  let env = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> eNil
-  lwTrace <- LW.lwTopLevel n_samples (handleWriterM @[Int] (hmmW hmm_length 0)) env
-  let lw_envs_out = map fst lwTrace
-      trans_ps    = concatMap (get #trans_p) lw_envs_out
-      obs_ps      = concatMap (get #obs_p) lw_envs_out
-      ps          = map snd lwTrace
-  return $ zip (zip trans_ps obs_ps) ps
-
-mhHMMw :: Int -> Int -> Sampler ([Double], [Double])
-mhHMMw hmm_length n_samples = do
-  ys <- map snd <$> simHMMw hmm_length 1
+mhHMMw :: Sampler ([Double], [Double])
+mhHMMw = do
+  let hmm_length = 10
+      mh_samples  = 5000
+  ys <- map snd <$> simHMMw
   let env  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> eNil
       spec = #trans_p ⋮ #obs_p ⋮ #y ⋮ ONil
-  mh_envs_out <- MH.mhTopLevel n_samples (handleWriterM @[Int] $ hmmW hmm_length 0) env spec
+  mh_envs_out <- MH.mhTopLevel mh_samples (handleWriterM @[Int] $ hmmW hmm_length 0) env spec
   let trans_ps    = concatMap (get #trans_p) mh_envs_out
       obs_ps      = concatMap (get #obs_p) mh_envs_out
   return (trans_ps, obs_ps)

@@ -57,8 +57,8 @@ logRegressionOne x = do
   return l
 
 -- | Simulate from logistic regression
-simulateLogRegr :: Sampler [(Double, Bool)]
-simulateLogRegr = do
+simLogRegr :: Sampler [(Double, Bool)]
+simLogRegr = do
   -- First declare the model inputs
   let xs  = map (/50) [(-50) .. 50]
   -- Define a model environment to simulate from.
@@ -68,10 +68,10 @@ simulateLogRegr = do
   return (zip xs ys)
 
 -- | Likelihood-weighting over logistic regression
-inferLwLogRegr :: Sampler [(Double, Double)]
-inferLwLogRegr = do
+lwLogRegr :: Sampler [(Double, Double)]
+lwLogRegr = do
   -- Get values from simulating log regr
-  (xs, ys) <- unzip <$> simulateLogRegr
+  (xs, ys) <- unzip <$> simLogRegr
   -- Define environment for inference
   let env = (#label := ys) <:> (#m := []) <:> (#b := []) <:> eNil
   -- Run LW inference for 20000 iterations
@@ -82,10 +82,10 @@ inferLwLogRegr = do
   return $ zip mus ps
 
 -- | Metropolis-Hastings inference over logistic regression
-inferMHLogRegr :: Sampler [(Double, Double)]
-inferMHLogRegr = do
+mhLogRegr :: Sampler [(Double, Double)]
+mhLogRegr = do
   -- Get values from simulating log regr
-  (xs, ys) <- unzip <$> simulateLogRegr
+  (xs, ys) <- unzip <$> simLogRegr
   let -- Define an environment for inference
       env = (#label := ys) <:> (#m := []) <:> (#b := []) <:> eNil
   -- Run MH inference for 20000 iterations; the ["m", "b"] is optional for indicating interest in learning #m and #b in particular, causing other variables to not be resampled (unless necessary) during MH.

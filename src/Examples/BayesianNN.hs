@@ -20,7 +20,7 @@ import Inference.LW as LW
 import Inference.MH as MH
 import Util
 
--- | Bayesian network
+
 type NNEnv =
     '[  "yObs"     ':= Double,
         "weight"   ':= Double,
@@ -37,7 +37,7 @@ dot [] _ = 0
 dot _ [] = 0
 dot (x:xs) (y:ys) = x * y + dot xs ys
 
--- | Neural network formulation for linear regression
+-- | Bayesian linear regression network
 forwardNNLin :: NN -> Double -> Double
 forwardNNLin (NN bs ws _) x =
   (ws `dot` map (x -) bs) / 20
@@ -63,19 +63,8 @@ nnLinModel n x = do
   y  <- likelihoodNNLin nn x
   return (x, y)
 
-mkRecordNN :: ([Double], [Double], [Double], [Double])
-           -> Env NNEnv
-mkRecordNN (yobs_vals, weight_vals, bias_vals, sigm_vals) =
-  #yObs := yobs_vals <:> #weight := weight_vals <:> #bias := bias_vals <:> #sigma := sigm_vals <:> ENil
-
-mkRecordNNy :: Double
-           -> Env NNEnv
-mkRecordNNy yobs_val =
-  #yObs := [yobs_val] <:> #weight := [] <:> #bias := [] <:> #sigma := [] <:> ENil
-
 simNNLin :: Sampler  [(Double, Double)]
 simNNLin = do
   let env =  #yObs := [] <:> #weight := [1, 5, 8] <:> #bias := [2, -5, 1] <:> #sigma := [4.0] <:> ENil
-  -- Run simulate simulation over neural network
   bs <- mapM (Simulate.simulate (nnLinModel 3) env) (map (/1) [0 .. 300])
   return $ map fst bs

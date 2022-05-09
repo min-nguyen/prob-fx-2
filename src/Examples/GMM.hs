@@ -11,6 +11,7 @@ module Examples.GMM where
 import Model
 import Inference.SIM as Simulate
 import Inference.LW as LW
+import Inference.MH as MH
 import Sampler
 import Control.Monad
 import Data.Kind (Constraint)
@@ -21,10 +22,10 @@ import Util
 -- | Gaussian Mixture Model
 
 type GMMEnv = '[
-    "mu" ':= Double,
+    "mu"   ':= Double,
     "mu_k" ':= Double,
-    "x"  ':= Double,
-    "y"  ':= Double
+    "x"    ':= Double,
+    "y"    ':= Double
   ]
 
 gmm :: Observables env '["mu", "mu_k", "x", "y"] Double
@@ -40,3 +41,18 @@ gmm k n = do
                    y    <- normal mu_k 1 #y
                    return ((x, y), i))
 
+simGMM :: Sampler [((Double, Double), Int)]
+simGMM = do
+  let env =  #mu := [-2.0, 3.5] <:> #mu_k := [] <:> #x := [] <:> #y := [] <:> eNil
+  bs <- Simulate.simulate (gmm 2) env 20
+  return $ fst bs
+
+mhGMM :: Sampler [[Double]]
+mhGMM = do
+  bs <- simGMM
+  let (xs, ys) = unzip (map fst bs)
+      env =  #mu := [] <:> #mu_k := [] <:> #x := xs <:> #y := ys <:> eNil
+  env_mh_out <- MH.mhTopLevel 4000 (gmm 2 20) env  (#mu ⋮  ONil)
+  let mus = map (get #mu) env_mh_out
+  printS mus
+  return mus

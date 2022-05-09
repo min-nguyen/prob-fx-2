@@ -11,6 +11,7 @@ module Examples.HierarchicalSchool where
 import Model
 import Inference.SIM as Simulate
 import Inference.LW as LW
+import Inference.MH as MH
 import Sampler
 import Control.Monad
 import Data.Kind (Constraint)
@@ -35,24 +36,14 @@ schoolModel n_schools σs = do
   let h = ""
   return θs
 
-testSchBasic :: Sampler [Double]
-testSchBasic = do
+mhSchool :: Sampler ([Double], [[Double]])
+mhSchool = do
   let n_schools = 8
       ys        = [28, 8, -3,   7, -1,  1, 18, 12]
       sigmas    = [15, 10, 16, 11,  9, 11, 10, 18]
       env       = #mu := [] <:> #theta := [] <:> #y := ys <:> ENil
-  bs <- Simulate.simulate (schoolModel n_schools) env sigmas
-  return $ fst bs
-
--- testSchMHPost :: Sampler ([(Addr, [Double])], [(Addr, [[Double]])])
--- testSchMHPost = do
---   let n_schools = 8
---       ys        = [28, 8, -3,   7, -1,  1, 18, 12]
---       sigmas    = [15, 10, 16, 11,  9, 11, 10, 18]
---   mhTrace <- MH.mh 2000 (Example.schoolModel n_schools) []
---               [sigmas] [mkRecordSch ([], [], ys)]
---   let mhTrace'   = processMHTrace mhTrace
---       thetas     = map fst3 mhTrace
---       muTrace    = extractPostParams (Proxy @Double) [("mu", 0)] mhTrace'
---       thetaTrace = extractPostParams (Proxy @[Double]) [("theta", 0)] mhTrace'
---   return (muTrace, thetaTrace)
+  env_mh_out <- MH.mhTopLevel 2000 (schoolModel n_schools sigmas) env (#mu ⋮ #theta ⋮ ONil)
+  printS env_mh_out
+  let mus    = concatMap (get #mu) env_mh_out
+      thetas = concatMap (get #theta) env_mh_out
+  return (mus, thetas)
