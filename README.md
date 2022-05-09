@@ -1,7 +1,7 @@
 
 # models
 
-- **constr-kinds**:Replaced use of some pattern synonyms (previously used to match against existentially quantified 'x' in `Dist x`) with constraint kinds instead as a proof that the parameter of `Dist x` must be a member of `PrimVals`.
+- **constr-kinds**: Replaced use of some pattern synonyms (previously used to match against existentially quantified 'x' in `Dist x`) with constraint kinds instead as a proof that the parameter of `Dist x` must be a member of `PrimVals`.
 
 Old:
 ```
@@ -61,9 +61,5 @@ transformMH (Free u k) = do
 - **dep-map**: Extended version of `effect-abstractions-constr-kinds` which uses dependent maps `DMap (Key Addr)` as sample maps, as opposed to `Map Addr (OpenSum' PrimVal)`.
 
 - **icfp22-version**: Version for ICFP22 submission
-
-- **weakened-handlers**: extended icfp22-version, which reimplements handlers to use `weaken`
-
-- **demonstration**: new project directory for demos (edinburgh)
 
 - **inference-extension** for extending inference
