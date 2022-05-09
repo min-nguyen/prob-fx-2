@@ -22,11 +22,11 @@ import qualified Data.Set as Set
 import Data.Set (Set, (\\))
 import Data.Maybe
 -- import Data.Extensible hiding (Member)
-import ModelEnv
+import Env
 import Control.Monad
 import Control.Monad.Trans.Class
 import Effects.Dist
-import Freer
+import Prog
 import Model hiding (runModelFree)
 import Sampler
 import qualified OpenSum as OpenSum
@@ -155,7 +155,7 @@ mh :: (es ~ '[ObsReader env, Dist])
    -> (b -> Model env es a)            -- Model awaiting input variable
    -> [Tag]                            -- Tags indicated sample sites of interest
    -> [b]                              -- List of model input variables
-   -> [ModelEnv env]                       -- List of model observed variables
+   -> [Env env]                       -- List of model observed variables
    -> Sampler (TraceMH a)              -- Trace of all accepted outputs, samples, and logps
 mh n model tags xs envs = do
   -- Perform initial run of mh
@@ -174,7 +174,7 @@ mh n model tags xs envs = do
 
 -- | Perform one step of MH for a single data point
 mhStep :: (es ~ '[ObsReader env, Dist])
-  => ModelEnv env         -- Model observed variable
+  => Env env         -- Model observed variable
   -> Model env es a   -- Model
   -> [Tag]            -- Tags indicating sample sites of interest
   -> TraceMH a        -- Trace of previous mh outputs
@@ -214,7 +214,7 @@ mhStep env model tags trace = do
 
 -- | Run model once under MH
 runMH :: (es ~ '[ObsReader env, Dist]) =>
-   ModelEnv env       -- Model observed variable
+   Env env       -- Model observed variable
   -> SMap              -- Previous mh sample set
   -> Addr           -- Sample address
   -> Model env es a -- Model
@@ -225,11 +225,11 @@ runMH env samples α_samp m = do
                               -- We do not reuse logps, we simply recompute them.
                               runSample α_samp samples
                             . runObserve
-                            . runState Map.empty
-                            . runState Map.empty
+                            . handleState Map.empty
+                            . handleState Map.empty
                             . transformMH
-                            . runDist
-                            . runObsReader env) (runModel m)
+                            . handleDist
+                            . handleObsRead env) (runModel m)
   return (a, samples', logps')
 
 -- transformMH :: (Member Sample es, Member Observe es) =>

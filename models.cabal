@@ -27,7 +27,7 @@ license-file:        LICENSE
 -- The package author(s).
 author:              min-nguyen
 
--- An email address to which users can send suggestions, bug reports, and
+-- An email address to which users can call suggestions, bug reports, and
 -- patches.
 maintainer:          minhnguyen1995@googlemail.com
 
@@ -52,7 +52,7 @@ library
   -- Modules exported by the library.
   exposed-modules:    Util,
                       DataSets,
-                      Freer,
+                      Prog,
                       Example,
                       Effects.Dist,
                       Effects.ObsReader,
@@ -61,9 +61,18 @@ library
                       Effects.Lift,
                       Effects.Reader,
                       Effects.NonDet,
+                      Examples.DataSets,
+                      Examples.LinRegr,
+                      Examples.SIR,
+                      Examples.SIRRecord,
+                      Examples.HMM,
+                      Examples.CoinFlip,
+                      Examples.LogRegr,
+                      Examples.LDA,
+                      Examples.HierarchicalLinRegr,
                       Model,
                       OpenSum,
-                      ModelEnv,
+                      Env,
                       FindElem,
                       Sampler,
                       Trace,
@@ -78,13 +87,12 @@ library
                       TestSMC,
                       Old.Experiment,
                       Old.Trace,
-                      Old.Test,
-                      Old.Inference.Simulate,
+                      -- Old.Test,
+                      Old.Inference.SIM,
                       Old.Inference.SMC,
                       Old.Inference.LW,
                       Old.Inference.MH,
                       Old.Inference.PMMH,
-                      Old.Example,
                       Old.EffExample,
                       Old.OpenProductVec
   -- Modules included in this library but not exported.

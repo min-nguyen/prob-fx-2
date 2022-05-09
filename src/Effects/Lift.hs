@@ -16,7 +16,7 @@
 
 module Effects.Lift where
 
-import Freer
+import Prog
 import Data.Function (fix)
 
 newtype Lift m a = Lift (m a)
@@ -25,7 +25,7 @@ newtype Lift m a = Lift (m a)
 -- By using SetMember, it is possible to assert that the lifted type occurs
 -- only once in the effect list
 lift :: (Member (Lift m) es) => m a -> Prog es a
-lift = send . Lift
+lift = call . Lift
 
 runLift :: forall m w. Monad m => Prog '[Lift m] w -> m w
 runLift (Val x) = return x

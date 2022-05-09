@@ -7,13 +7,13 @@ module Model where
 
 import Util
 import Effects.Dist
-import Freer
+import Prog
 -- import Effects.Reader
 import Effects.ObsReader
 import OpenSum (OpenSum)
 import qualified OpenSum as OpenSum
 import Sampler
-import Effects.State ( State, get, put, modify, runState )
+import Effects.State
 import Effects.Writer
 import Effects.Lift
 import GHC.Generics
@@ -24,7 +24,7 @@ import Data.Kind
 import Data.Proxy
 import Data.Profunctor.Unsafe
 -- import Data.Extensible hiding (wrap, Head, Member)
-import ModelEnv
+import Env
 import Control.Lens hiding ((:>))
 import Control.Monad
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
@@ -60,221 +60,207 @@ instance Monad (Model env es) where
     f' <- f
     runModel $ x f'
 
-printS :: Show a => a -> Sampler ()
-printS x = liftS $ print x
+{- Transform multimodal model into program of samples and observes -}
+handleCore :: Env env -> Model env (ObsReader env : Dist : es) a -> Prog (Observe : Sample : es) a
+handleCore env = handleDist . handleObsRead env . runModel
 
-printM :: Member Sample es => String -> Model env es ()
-printM x = Model $ prinT x
+{- Wrap other effects and handlers into the Model type -}
+-- | State
+printS s = Model . call . Lift . print
 
+getStM :: (Member (State s) es) => Model env es s
+getStM = Model getSt
+
+putStM :: (Member (State s) es) => s -> Model env es ()
+putStM s = Model (putSt s)
+
+handleStateM :: s -> Model env (State s : es) a -> Model env es (a, s)
+handleStateM s m = Model $ handleState s $ runModel m
+
+-- | Writer
 tellM :: Member (Writer w) es => w -> Model env es ()
 tellM w = Model $ tell w
 
-runWriterM :: forall w env es v. Monoid w => Model env (Writer w : es) v -> Model env es (v, w)
-runWriterM m = Model $ runWriter $ runModel m
+handleWriterM :: Monoid w => Model env (Writer w : es) v -> Model env es (v, w)
+handleWriterM m = Model $ handleWriter $ runModel m
 
-putM :: Member (State s) es => s -> Model env es ()
-putM x = Model $ put x
+-- | Lift
+liftM :: (Member (Lift m) es) => m a -> Model env es a
+liftM = Model . call . Lift
 
-getM :: Member (State s) es => Model env es s
-getM = Model get
-
-modifyM :: Member (State s) es => (s -> s) -> Model env es ()
-modifyM f = Model $ modify f
-
-runStateM :: Model env (State [Int] : es) v -> Model env es (v, [Int])
-runStateM m = Model $ runState [] $ runModel m
 
 normalLens :: forall env es x.  Observable env x Double
   => Double -> Double -> ObsVar x
-  -> Lens' (ModelEnv env) [Double]
+  -> Lens' (Env env) [Double]
 normalLens mu sigma field =
-  lens (\env -> getO field env) (\env b -> setO field b env)
+  lens (\env -> get field env) (\env b -> Env.set field b env)
 
 {- Distribution smart constructors -}
-
-deterministic :: (Eq v, Show v, OpenSum.Member v PrimVal)
+deterministic' :: (Eq v, Show v, OpenSum.Member v PrimVal)
   => v -> Model env es v
-deterministic x = Model $ do
-  send (DeterministicDist x Nothing Nothing)
+deterministic' x = Model $ do
+  call (DeterministicDist x Nothing Nothing)
 
-deterministic' :: forall env es v x. (Eq v, Show v, OpenSum.Member v PrimVal)
+deterministic :: forall env es v x. (Eq v, Show v, OpenSum.Member v PrimVal)
   => Observable env x v
   => v -> ObsVar x -> Model env es v
-deterministic' x field = Model $ do
+deterministic x field = Model $ do
   let tag = Just $ varToStr field
   maybe_y <- ask @env field
-  send (DeterministicDist x maybe_y tag)
+  call (DeterministicDist x maybe_y tag)
 
-dirichlet :: [Double] -> Model env es [Double]
-dirichlet xs = Model $ do
-  send (DirichletDist xs Nothing Nothing)
+dirichlet' :: [Double] -> Model env es [Double]
+dirichlet' xs = Model $ do
+  call (DirichletDist xs Nothing Nothing)
 
-dirichlet' :: forall env es x. Observable env x [Double]
+dirichlet :: forall env es x. Observable env x [Double]
   => [Double] -> ObsVar x
   -> Model env es [Double]
-dirichlet' xs field = Model $ do
+dirichlet xs field = Model $ do
   let tag = Just $ varToStr field
   maybe_y <- ask @env field
-  send (DirichletDist xs maybe_y tag)
+  call (DirichletDist xs maybe_y tag)
 
-discrete :: [Double] -> Model env es Int
-discrete xs = Model $ do
-  send (DiscreteDist xs Nothing Nothing)
+discrete' :: [Double] -> Model env es Int
+discrete' xs = Model $ do
+  call (DiscreteDist xs Nothing Nothing)
 
-discrete' :: forall env es x. Observable env x Int
+discrete :: forall env es x. Observable env x Int
   => [Double] -> ObsVar x
   -> Model env es Int
-discrete' xs field = Model $ do
+discrete xs field = Model $ do
   let tag = Just $ varToStr field
   maybe_y <- ask @env field
-  send (DiscreteDist xs maybe_y tag)
+  call (DiscreteDist xs maybe_y tag)
 
-categorical :: (Eq v, Show v, OpenSum.Member v PrimVal) => [(v, Double)] -> Model env es v
-categorical xs = Model $ do
-  send (CategoricalDist xs Nothing Nothing)
+categorical' :: (Eq v, Show v, OpenSum.Member v PrimVal) => [(v, Double)] -> Model env es v
+categorical' xs = Model $ do
+  call (CategoricalDist xs Nothing Nothing)
 
-categorical' :: forall env es v x. (Eq v, Show v, OpenSum.Member v PrimVal) => Observable env x v
+categorical :: forall env es v x. (Eq v, Show v, OpenSum.Member v PrimVal) => Observable env x v
   => [(v, Double)] -> ObsVar x
   -> Model env es v
-categorical' xs field = Model $ do
+categorical xs field = Model $ do
   let tag = Just $ varToStr field
   maybe_y <- ask @env field
-  send (CategoricalDist xs maybe_y tag)
+  call (CategoricalDist xs maybe_y tag)
 
-normal :: Double -> Double -> Model env es Double
-normal mu sigma = Model $ do
-  send (NormalDist mu sigma Nothing Nothing)
+normal' :: Double -> Double -> Model env es Double
+normal' mu sigma = Model $ do
+  call (NormalDist mu sigma Nothing Nothing)
 
-normal' :: forall env es x. Observable env x Double
+normal :: forall env es x. Observable env x Double
   => Double -> Double -> ObsVar x
   -> Model env es Double
-normal' mu sigma field = Model $ do
+normal mu sigma field = Model $ do
   let tag = Just $ varToStr field
   maybe_y <- ask @env field
-  send (NormalDist mu sigma maybe_y tag)
+  call (NormalDist mu sigma maybe_y tag)
 
-halfNormal :: Double -> Model env es Double
-halfNormal sigma = Model $ do
-  send (HalfNormalDist sigma Nothing Nothing)
+halfNormal' :: Double -> Model env es Double
+halfNormal' sigma = Model $ do
+  call (HalfNormalDist sigma Nothing Nothing)
 
-halfNormal' :: forall env es x. Observable env x Double
+halfNormal :: forall env es x. Observable env x Double
   => Double -> ObsVar x
   -> Model env es Double
-halfNormal' sigma field = Model $ do
+halfNormal sigma field = Model $ do
   let tag = Just $ varToStr field
   maybe_y <- ask @env field
-  send (HalfNormalDist sigma maybe_y tag)
+  call (HalfNormalDist sigma maybe_y tag)
 
-cauchy :: Double -> Double -> Model env es Double
-cauchy mu sigma = Model $ do
-  send (CauchyDist mu sigma Nothing Nothing)
+cauchy' :: Double -> Double -> Model env es Double
+cauchy' mu sigma = Model $ do
+  call (CauchyDist mu sigma Nothing Nothing)
 
-cauchy' :: forall env es x. Observable env x Double
+cauchy :: forall env es x. Observable env x Double
   => Double -> Double -> ObsVar x
   -> Model env es Double
-cauchy' mu sigma field = Model $ do
+cauchy mu sigma field = Model $ do
   let tag = Just $ varToStr field
   maybe_y <- ask @env field
-  send (CauchyDist mu sigma maybe_y tag)
+  call (CauchyDist mu sigma maybe_y tag)
 
-halfCauchy :: Double -> Model env es Double
-halfCauchy sigma = Model $ do
-  send (HalfCauchyDist sigma Nothing Nothing)
+halfCauchy' :: Double -> Model env es Double
+halfCauchy' sigma = Model $ do
+  call (HalfCauchyDist sigma Nothing Nothing)
 
-halfCauchy' :: forall env es x. Observable env x Double
+halfCauchy :: forall env es x. Observable env x Double
   => Double -> ObsVar x
   -> Model env es Double
-halfCauchy' sigma field = Model $ do
+halfCauchy sigma field = Model $ do
   let tag = Just $ varToStr field
   maybe_y <- ask @env field
-  send (HalfCauchyDist sigma maybe_y tag)
+  call (HalfCauchyDist sigma maybe_y tag)
 
-bernoulli :: Double -> Model env es Bool
-bernoulli p = Model $ do
-  send (BernoulliDist p Nothing Nothing)
+bernoulli' :: Double -> Model env es Bool
+bernoulli' p = Model $ do
+  call (BernoulliDist p Nothing Nothing)
 
-bernoulli' :: forall env es x. Observable env x Bool
+bernoulli :: forall env es x. Observable env x Bool
   => Double -> ObsVar x
   -> Model env es Bool
-bernoulli' p field = Model $ do
+bernoulli p field = Model $ do
   let tag = Just $ varToStr field
   maybe_y <- ask @env field
-  send (BernoulliDist p maybe_y tag)
+  call (BernoulliDist p maybe_y tag)
 
-binomial :: Int -> Double -> Model env es Int
-binomial n p = Model $ do
-  send (BinomialDist n p Nothing Nothing)
+binomial' :: Int -> Double -> Model env es Int
+binomial' n p = Model $ do
+  call (BinomialDist n p Nothing Nothing)
 
-binomial' :: forall env es x. Observable env x Int
+binomial :: forall env es x. Observable env x Int
   => Int -> Double -> ObsVar x
   -> Model env es Int
-binomial' n p field = Model $ do
+binomial n p field = Model $ do
   let tag = Just $ varToStr field
   maybe_y <- ask @env field
-  send (BinomialDist n p maybe_y tag)
+  call (BinomialDist n p maybe_y tag)
 
-gamma :: Double -> Double -> Model env es Double
-gamma x θ = Model $ do
-  send (GammaDist x θ Nothing Nothing)
+gamma' :: Double -> Double -> Model env es Double
+gamma' x θ = Model $ do
+  call (GammaDist x θ Nothing Nothing)
 
-gamma' :: forall env es x. Observable env x Double
+gamma :: forall env es x. Observable env x Double
   => Double -> Double -> ObsVar x
   -> Model env es Double
-gamma' x θ field = Model $ do
+gamma x θ field = Model $ do
   let tag = Just $ varToStr field
   maybe_y <- ask @env field
-  send (GammaDist x θ maybe_y tag)
+  call (GammaDist x θ maybe_y tag)
 
-beta :: Double -> Double -> Model env es Double
-beta α β = Model $ do
-  send (BetaDist α β Nothing Nothing)
+beta' :: Double -> Double -> Model env es Double
+beta' α β = Model $ do
+  call (BetaDist α β Nothing Nothing)
 
-beta' :: forall env es x. Observable env x Double
+beta :: forall env es x. Observable env x Double
   => Double -> Double -> ObsVar x
   -> Model env es Double
-beta' α β field = Model $ do
+beta α β field = Model $ do
   let tag = Just $ varToStr field
   maybe_y <- ask @env field
-  send (BetaDist α β maybe_y tag)
+  call (BetaDist α β maybe_y tag)
 
-uniform :: Double -> Double -> Model env es Double
-uniform min max = Model $ do
-  send (UniformDist min max Nothing Nothing)
+uniform' :: Double -> Double -> Model env es Double
+uniform' min max = Model $ do
+  call (UniformDist min max Nothing Nothing)
 
-uniform' :: forall env es x. Observable env x Double
+uniform :: forall env es x. Observable env x Double
   => Double -> Double -> ObsVar x
   -> Model env es Double
-uniform' min max field = Model $ do
+uniform min max field = Model $ do
   let tag = Just $ varToStr field
   maybe_y <- ask @env field
-  send (UniformDist min max maybe_y tag)
+  call (UniformDist min max maybe_y tag)
 
-poisson :: Double -> Model env es Int
-poisson λ = Model $ do
-  send (PoissonDist λ Nothing Nothing)
+poisson' :: Double -> Model env es Int
+poisson' λ = Model $ do
+  call (PoissonDist λ Nothing Nothing)
 
-poisson' :: forall env es x. Observable env x Int
+poisson :: forall env es x. Observable env x Int
   => Double -> ObsVar x
   -> Model env es Int
-poisson' λ field = Model $ do
+poisson λ field = Model $ do
   let tag = Just $ varToStr field
   maybe_y <- ask @env field
-  send (PoissonDist λ maybe_y tag)
-
--- fromFieldOptic :: Observable (AsList env) x v => KnownSymbol x => Extensible f p t =>
---   FieldOptic x -> Lens' (AsList env :& Field Identity) v
--- fromFieldOptic l = l
-
--- fromFieldOptic :: -- Observable (AsList env) x v =>
---   forall  x xs.
---   (Extensible Identity (->) (:&)
---   , ExtensibleConstr (:&) xs (Field Identity) (x ':> Double)
---   , Observable xs x Double
---   , Labelling x (->)
---   , Wrapper Identity)
---   => FieldOptic x -> Lens' (Record xs) Double
--- fromFieldOptic l = l
-
--- toFieldName :: forall env x v. KnownSymbol x => Observable (AsList env) x v =>
---   FieldOptic x -> String -- Lens' (AsList env :& Field Identity) v
--- toFieldName l = symbolVal (Proxy @x)
+  call (PoissonDist λ maybe_y tag)

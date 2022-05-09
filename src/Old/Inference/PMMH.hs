@@ -17,10 +17,10 @@ import Effects.Dist
 import Effects.ObsReader
 import Effects.Lift
 import qualified Data.Map as Map
-import Freer
+import Prog
 import Sampler
 import Model
-import ModelEnv
+import Env
 import Old.Trace
 import qualified Inference.MH as MH
 import qualified Inference.SMC as SMC
@@ -33,12 +33,12 @@ pmmh :: forall es a b env e. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTr
    => Int                              -- Number of mhSteps
    -> Int                              -- Number of particles
    -> Model env es a                   -- Model
-   -> ModelEnv env                     -- List of model observed variables
+   -> Env env                     -- List of model observed variables
    -> [Tag]                            -- Tags indicated sample sites of interest
-   -> Sampler [(a, ModelEnv env, SIS.LogP)]  -- Trace of all accepted outputs, samples, and logps
+   -> Sampler [(a, Env env, SIS.LogP)]  -- Trace of all accepted outputs, samples, and logps
 pmmh mh_steps n_particles model env_0 tags = do
   -- Perform initial run of mh
-  mhTrace <- pmmhWithSTrace mh_steps n_particles (runDist . runObsReader env_0 $ runModel model) Map.empty tags
+  mhTrace <- pmmhWithSTrace mh_steps n_particles (handleDist . handleObsRead env_0 $ runModel model) Map.empty tags
   return (map (mapsnd3 (fromSDTrace @env)) mhTrace)
 
 pmmhWithSTrace :: (es ~ '[Observe, Sample, Lift Sampler], Show a)

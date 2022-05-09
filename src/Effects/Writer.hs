@@ -1,35 +1,24 @@
-{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FunctionalDependencies, FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE PatternSynonyms, ViewPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE Trustworthy #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators, TypeApplications, UndecidableInstances #-}
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Effects.Writer where
-import Freer
+import Prog
 
+-- | Writer effect and handler
 data Writer w a where
   Tell :: w -> Writer w ()
 
 tell :: Member (Writer w) ts => w -> Prog ts ()
 tell w = Op (inj $ Tell w) Val
 
-runWriter :: forall w ts a . Monoid w => Prog (Writer w ': ts) a -> Prog ts (a, w)
-runWriter = loop mempty where
+handleWriter :: forall w ts a . Monoid w => Prog (Writer w ': ts) a -> Prog ts (a, w)
+handleWriter = loop mempty where
   loop ::  w -> Prog (Writer w ': ts) a -> Prog ts (a, w)
-  -- At this point, all Reader requests have been handled
   loop w (Val x) = return (x, w)
-  -- Handle if Writer request, else ignore and go through the rest of the tree
-  loop w (Op u k) = case decomp u of
+  loop w (Op u k) = case discharge u of
     Right (Tell w') -> loop (w `mappend` w') (k ())
     Left u'         -> Op u' (loop w . k)
 

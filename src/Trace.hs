@@ -20,8 +20,8 @@ import Data.Map (Map)
 import Data.Maybe
 import GHC.TypeLits
 import Effects.Dist
-import ModelEnv
-import Freer
+import Env
+import Prog
 import Effects.State
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
@@ -32,7 +32,7 @@ import FindElem
 type STrace  = Map Addr (PrimDist, OpenSum PrimVal)
 
 class FromSTrace (env :: [Assign Symbol *]) where
-  fromSTrace    :: STrace -> ModelEnv env
+  fromSTrace    :: STrace -> Env env
 
 instance FromSTrace '[] where
   fromSTrace _       = ENil
@@ -54,7 +54,7 @@ updateSTrace α d x  = modify (Map.insert α (PrimDist d, OpenSum.inj x) :: STra
 
 -- | Insert stateful operations for STrace when Sample occurs.
 traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, STrace)
-traceSamples = runState Map.empty . storeSamples
+traceSamples = handleState Map.empty . storeSamples
   where storeSamples :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
         storeSamples = install return
           (\x tx k -> case tx of
@@ -72,7 +72,7 @@ updateLPTrace α d x  = modify (Map.insert α (logProb d x) :: LPTrace -> LPTrac
 
 -- | Insert stateful operations for LPTrace when either Sample or Observe occur.
 traceLPs ::(Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)
-traceLPs = runState Map.empty . storeLPs
+traceLPs = handleState Map.empty . storeLPs
   where storeLPs :: (Member Sample es, Member Observe es) => Prog es a -> Prog (State LPTrace: es) a
         storeLPs (Val x) = return x
         storeLPs (Op u k) = do

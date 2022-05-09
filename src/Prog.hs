@@ -15,7 +15,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 
-module Freer where
+module Prog where
 
 import Control.Monad
 import Unsafe.Coerce
@@ -54,7 +54,7 @@ type family Members (es :: [* -> *]) (tss :: [* -> *]) = (cs :: Constraint) | cs
   Members '[] tss       = ()
 
 pattern Other :: EffectSum es x -> EffectSum  (e ': es) x
-pattern Other u <- (decomp -> Left u)
+pattern Other u <- (discharge -> Left u)
 
 inj' :: Int -> e x -> EffectSum es x
 inj' = EffectSum
@@ -64,9 +64,9 @@ prj' n (EffectSum n' x) | n == n'   = Just (unsafeCoerce x)
                     | otherwise = Nothing
 
 {- We want to handle a request of type e, where we state that e must be at the front of the list of requests (we know that the index is 0). If the request tv is indeed of type e (its index is 0), then we can unsafe coerce the tv to be of type 'e x'. Otherwise, we return rv which is a request of a different type, and we can safely remove the request 'e' from the front of the union at _this_ level of the free monad.  -}
-decomp :: EffectSum (e ': es) x -> Either (EffectSum es x) (e x)
-decomp (EffectSum 0 tv) = Right $ unsafeCoerce tv
-decomp (EffectSum n rv) = Left  $ EffectSum (n-1) rv
+discharge :: EffectSum (e ': es) x -> Either (EffectSum es x) (e x)
+discharge (EffectSum 0 tv) = Right $ unsafeCoerce tv
+discharge (EffectSum n rv) = Left  $ EffectSum (n-1) rv
 
 -- Prepend new effect type at front
 weaken :: EffectSum es a -> EffectSum (any ': es) a
@@ -136,12 +136,12 @@ runM (Op u k) =
       Just mb -> mb >>= runM . k
       Nothing -> error "Impossible: Nothing cannot occur"
 
--- send :: (UniqueMember e es, Member e es) => e x -> Prog es x
-send :: (Member e es) => e x -> Prog es x
-send e = Op (inj e) Val
+-- call :: (UniqueMember e es, Member e es) => e x -> Prog es x
+call :: (Member e es) => e x -> Prog es x
+call e = Op (inj e) Val
 
 sendM :: (Monad m, LastMember m es) => m a -> Prog es a
-sendM = send
+sendM = call
 
 -- | Given request, handle or relay it, and discharge it from the list of effects
 handleRelay ::
@@ -151,7 +151,7 @@ handleRelay ::
   -> Prog es b
 handleRelay ret _ (Val x) = ret x
 handleRelay ret h (Op u k) =
-  case decomp u of
+  case discharge u of
     Right x  -> h x (handleRelay ret h . k)
     Left  u' -> Op u' (handleRelay ret h . k)
 
@@ -164,7 +164,7 @@ handleRelaySt ::
   -> Prog es b
 handleRelaySt s ret _ (Val x) = ret s x
 handleRelaySt s ret h (Op u k) =
-  case decomp u of
+  case discharge u of
     Right tx -> h s tx (\s' x -> handleRelaySt s' ret h $ k x)
     Left u' -> Op u' (handleRelaySt s ret h . k)
 
@@ -200,7 +200,7 @@ replaceRelay ::
   ->  Prog (e ': es) a
   ->  Prog (e ': es) b
 replaceRelay ret h (Val x) = ret x
-replaceRelay ret h (Op u k) = case decomp u of
+replaceRelay ret h (Op u k) = case discharge u of
   Right tx -> h tx (replaceRelay ret h . k)
   Left  u' -> Op (weaken u') (replaceRelay ret h . k)
 
@@ -210,7 +210,7 @@ replaceRelayN :: forall rs e es a b . Weakens rs =>
   ->  Prog (e ': es) a
   ->  Prog (rs :++: es) b
 replaceRelayN ret h (Val x) = ret x
-replaceRelayN ret h (Op u k) = case decomp u of
+replaceRelayN ret h (Op u k) = case discharge u of
   Right tx -> h tx (replaceRelayN @rs ret h . k)
   Left  u' -> Op (weakens @rs u') (replaceRelayN @rs ret h . k)
 
@@ -221,7 +221,7 @@ replaceRelaySt ::
   ->  Prog (e ': es) a
   ->  Prog (e ': es) b
 replaceRelaySt s ret h (Val x) = ret s x
-replaceRelaySt s ret h (Op u k) = case decomp u of
+replaceRelaySt s ret h (Op u k) = case discharge u of
   Right tx -> h s tx (\s' x -> replaceRelaySt s' ret h $ k x)
   Left  u' -> Op (weaken u') (replaceRelaySt s ret h . k)
 
@@ -232,7 +232,7 @@ replaceRelayStN :: forall rs es s e a b . Weakens rs =>
   ->  Prog (e ': es) a
   ->  Prog (rs :++: es) b
 replaceRelayStN s ret h (Val x) = ret s x
-replaceRelayStN s ret h (Op u k) = case decomp u of
+replaceRelayStN s ret h (Op u k) = case discharge u of
   Right tx -> h s tx (\s' x -> replaceRelayStN @rs s' ret h $ k x)
   Left  u' -> Op (weakens @rs u') (replaceRelayStN @rs s ret h . k)
 
@@ -307,11 +307,11 @@ data Reader' env a where
   Ask' :: (env -> a) -> Reader' env a
   deriving Functor
 
-send' e = Val' (e Val')
+call' e = Val' (e Val')
 
 prog :: Free (Reader' Int) ()
 prog = do
-  send' Ask'
+  call' Ask'
   return ()
 
 runProg :: Free (Reader' Int) () -> IO ()

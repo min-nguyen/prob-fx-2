@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeOperators #-}
 module Old.EffExample where
 
-import Freer
+import Prog
 import Effects.Reader
 import Control.Monad.State
 
@@ -29,27 +29,27 @@ runFrontPrependRW ::
   Prog (ReaderE Int ': es) a -> Prog (WriterE [Int] ': ReaderE Int ': es) a
 runFrontPrependRW = installFront return
   (\x tx k ->
-      case tx of AskE -> do send (TellE [x])
+      case tx of AskE -> do call (TellE [x])
                             k x)
 
 runInstallPrependRW :: forall es a . Member (ReaderE Int) es =>
   Prog es a -> Prog (WriterE [Int] ': es) a
 runInstallPrependRW = install @(ReaderE Int) return
   (\x tx k ->
-      case tx of AskE -> do send (TellE [x])
+      case tx of AskE -> do call (TellE [x])
                             k x)
 
 runInstallRW :: Members '[ReaderE Int, WriterE [Int]] es =>
   Prog es a -> Prog es a
 runInstallRW = installExisting @(ReaderE Int) @(WriterE [Int]) return
   (\x tx k ->
-      case tx of AskE -> do send (TellE [x])
+      case tx of AskE -> do call (TellE [x])
                             k x)
 
 runReplaceRW :: forall env es a. env -> Prog (ReaderE env ': es) a -> Prog (WriterE [env] ': es) a
 runReplaceRW env = replaceRelayN @('[WriterE [env]]) return
   (\tx k ->
-      case tx of AskE -> do send (TellE [env])
+      case tx of AskE -> do call (TellE [env])
                             k env
                             )
 
@@ -65,8 +65,8 @@ testProgram = (runM . runReader 5 . runReader'' (5 :: Int) . runReader'' (5 :: I
 
 programRW :: Member (ReaderE Int) es => Prog es ()
 programRW = do
-  x :: Int <- send AskE
-  y :: Int <- send AskE
+  x :: Int <- call AskE
+  y :: Int <- call AskE
   return ()
 
 runProgramRW :: ((), [Int])

@@ -30,17 +30,17 @@ import Model
 import Sampler
 import Effects.ObsReader
 -- import Data.Extensible
-import ModelEnv
+import Env
 import Util
 import Debug.Trace
 import Unsafe.Coerce
 import Trace
 
-mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> ModelEnv Example.LinRegrEnv
+mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> Env Example.LinRegrEnv
 mkRecordLinRegr (y_vals, m_vals, c_vals, σ_vals) =
   (#y := y_vals) <:> (#m := m_vals) <:> (#c := c_vals) <:> (#σ := σ_vals) <:> ENil
 
-mkRecordLinRegrY :: [Double] -> ModelEnv Example.LinRegrEnv
+mkRecordLinRegrY :: [Double] -> Env Example.LinRegrEnv
 mkRecordLinRegrY y_vals =
   (#y := y_vals) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:> ENil
 

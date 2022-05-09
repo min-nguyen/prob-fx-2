@@ -17,10 +17,10 @@ import Effects.Dist
 import Effects.ObsReader
 import Effects.Lift
 import qualified Data.Map as Map
-import Freer
+import Prog
 import Sampler
 import Model
-import ModelEnv
+import Env
 import Trace
 import qualified Inference.MH as MH
 import qualified Inference.SMC as SMC
@@ -34,11 +34,11 @@ pmmhTopLevel :: forall es a env xs.
    => Int                                    -- Number of mhSteps
    -> Int                                    -- Number of particles
    -> Model env es a                         -- Model
-   -> ModelEnv env                           -- List of model observed variables
+   -> Env env                           -- List of model observed variables
    -> ObsVars xs                             -- Tags indicated sample sites of interest
-   -> Sampler [(a, ModelEnv env, SIS.LogP)]  -- Trace of all accepted outputs, samples, and logps
+   -> Sampler [(a, Env env, SIS.LogP)]  -- Trace of all accepted outputs, samples, and logps
 pmmhTopLevel mh_steps n_particles model env obsvars = do
-  let prog = (runDist . runObsReader env) (runModel model)
+  let prog = (handleDist . handleObsRead env) (runModel model)
       tags = asTags @env obsvars
   -- Perform initial run of mh
   mhTrace <- pmmh mh_steps n_particles prog Map.empty tags

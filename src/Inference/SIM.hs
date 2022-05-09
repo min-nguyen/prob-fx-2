@@ -17,10 +17,10 @@ module Inference.SIM where
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Map (Map)
-import ModelEnv
+import Env
 import Control.Monad
 import Effects.Dist
-import Freer
+import Prog
 import Model
 import Sampler
 import Effects.ObsReader
@@ -33,31 +33,31 @@ import Unsafe.Coerce (unsafeCoerce)
 import Util
 import GHC.TypeLits
 
-simulate :: forall env es b a. (FromSTrace env, es ~ '[ObsReader env, Dist])
+simulateMany :: forall env es b a. (FromSTrace env, es ~ '[ObsReader env, Dist])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env es a)           -- Model awaiting input variable
   -> b                               -- List of model input variables
-  -> ModelEnv env                    -- List of model observed variables
-  -> Sampler [(a, ModelEnv env)]
-simulate n model x env = do
+  -> Env env                    -- List of model observed variables
+  -> Sampler [(a, Env env)]
+simulateMany n model x env = do
   outputs_smaps <- replicateM n (runSimulate env (model x))
   let outputs_envs = map (fmap (fromSTrace @env)) outputs_smaps
   return outputs_envs
 
-simulateOnce :: forall env es b a. (FromSTrace env, es ~ '[ObsReader env, Dist])
+simulate :: forall env es b a. (FromSTrace env, es ~ '[ObsReader env, Dist])
   => (b -> Model env es a)           -- Model awaiting input variable
-  -> ModelEnv env                      -- List of model observed variables
+  -> Env env                      -- List of model observed variables
   -> b                             -- List of model input variables
-  -> Sampler (a, ModelEnv env)
-simulateOnce model env x  = do
+  -> Sampler (a, Env env)
+simulate model env x  = do
   outputs_smaps <- runSimulate env (model x)
   let outputs_env = fmap (fromSTrace @env) outputs_smaps
   return outputs_env
 
 runSimulate :: (es ~ '[ObsReader env, Dist])
- => ModelEnv env -> Model env es a -> Sampler (a, STrace)
+ => Env env -> Model env es a -> Sampler (a, STrace)
 runSimulate ys m
-  = (runLift . runSample Map.empty . runObserve . runDist . runObsReader ys) (runModel m)
+  = (runLift . runSample Map.empty . runObserve . handleDist . handleObsRead ys) (runModel m)
 
 runObserve :: Prog (Observe : es) a -> Prog es  a
 runObserve (Val x) = return x

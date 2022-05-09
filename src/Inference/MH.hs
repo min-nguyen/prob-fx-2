@@ -24,12 +24,12 @@ import qualified Data.Set as Set
 import Data.Set (Set, (\\))
 import Data.Maybe
 -- import Data.Extensible hiding (Member)
-import ModelEnv
+import Env
 import Control.Monad
 import Effects.Lift
 import Effects.Dist
 import Data.Bifunctor
-import Freer
+import Prog
 import Model hiding (runModelFree)
 import Sampler
 import Trace
@@ -145,14 +145,14 @@ acceptMH x0 (a, strace', lptrace') (_, strace, lptrace)  = do
 mhTopLevel :: forall es a env xs. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env, ValidSpec env xs)
    => Int                                   -- Number of mhSteps
    -> Model env es a                        -- Model awaiting input
-   -> ModelEnv env                          -- List of model observed variables
+   -> Env env                          -- List of model observed variables
    -> ObsVars xs                            -- Specification of observable variable names, indicating sample sites of interest
-   -> Sampler [(a, ModelEnv env, LPTrace)]  -- Trace of all accepted outputs, samples, and logps
+   -> Sampler [Env env]  -- Trace of all accepted outputs, samples, and logps
 mhTopLevel n model env obsvars  = do
-  let prog = (runDist . runObsReader env) (runModel model)
+  let prog = (handleDist . handleObsRead env) (runModel model)
       tags = asTags @env obsvars
   mhTrace <- mh n prog Map.empty tags
-  return (map (mapsnd3 (fromSTrace @env)) mhTrace)
+  return (map (\(_, env_out, _) -> fromSTrace env_out) mhTrace)
 
 mh :: (es ~ '[Observe, Sample, Lift Sampler])
    => Int                              -- Number of mhSteps

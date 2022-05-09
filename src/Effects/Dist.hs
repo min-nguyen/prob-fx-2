@@ -17,8 +17,8 @@
 {-# LANGUAGE ImplicitParams #-}
 module Effects.Dist where
 
-import Freer
-    ( Prog(..), Member(..), EffectSum, decomp, send, weaken )
+import Prog
+    ( Prog(..), Member(..), EffectSum, discharge, call, weaken )
 import Sampler
 import OpenSum (OpenSum)
 import qualified OpenSum as OpenSum
@@ -75,16 +75,16 @@ type Addr = (Tag, Int)
 type TagMap = Map Tag Int
 
 {- Replaces Dists with Sample or Observe and adds address -}
-runDist :: forall es a. Prog (Dist : es) a -> Prog (Observe : Sample : es) a
-runDist = loop 0 Map.empty
+handleDist :: forall es a. Prog (Dist : es) a -> Prog (Observe : Sample : es) a
+handleDist = loop 0 Map.empty
   where
   loop :: Int -> TagMap -> Prog (Dist : es) a -> Prog (Observe : Sample : es) a
   loop _ _ (Val x) = return x
-  loop counter tagMap (Op u k) = case decomp u of
+  loop counter tagMap (Op u k) = case discharge u of
     Right d ->
          case getObs d of
-              Just y  -> do send (Observe d y (tag, tagIdx)) >>= k'
-              Nothing -> do send (Sample d (tag, tagIdx))    >>= k'
+              Just y  -> do call (Observe d y (tag, tagIdx)) >>= k'
+              Nothing -> do call (Sample d (tag, tagIdx))    >>= k'
           where tag     = fromMaybe (show counter) (getTag d)
                 tagIdx  = Map.findWithDefault 0 tag tagMap
                 tagMap' = Map.insert tag (tagIdx + 1) tagMap
@@ -176,7 +176,7 @@ pattern PrintPatt :: (Member Sample es) => (x ~ ()) => String -> EffectSum es x
 pattern PrintPatt s <- (prj -> Just (Printer s))
 
 pattern DistPatt :: () => (Show x, OpenSum.Member x PrimVal) => Dist x -> EffectSum (Dist : r) x
-pattern DistPatt d <- (decomp -> Right (DistDict d))
+pattern DistPatt d <- (discharge -> Right (DistDict d))
 
 pattern DistDict :: () => (Show x, OpenSum.Member x PrimVal) => Dist x -> Dist x
 pattern DistDict d <- d@(distDict -> Dict)
@@ -197,10 +197,10 @@ pattern ObsPatt :: (Member Observe es) => (Show x, OpenSum.Member x PrimVal) => 
 pattern ObsPatt d y α <- (Obs (DistDict d) y α)
 
 pattern DecompLeft :: EffectSum es a -> EffectSum ((:) e es) a
-pattern DecompLeft u <- (decomp -> Left u)
+pattern DecompLeft u <- (discharge -> Left u)
 
 pattern DecompRight :: e a -> EffectSum (e : es) a
-pattern DecompRight u <- (decomp -> Right u)
+pattern DecompRight u <- (discharge -> Right u)
 
 getObs :: Dist a -> Maybe a
 getObs d@(HalfCauchyDist _ obs _)     =  obs

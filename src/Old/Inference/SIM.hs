@@ -8,14 +8,14 @@
 {-# LANGUAGE TypeOperators #-}
 
 {-# LANGUAGE AllowAmbiguousTypes #-}
-module Old.Inference.Simulate where
+module Old.Inference.SIM where
 
 -- import Data.Extensible hiding (Member)
-import ModelEnv
+import Env
 import Control.Monad
 -- import Control.Monad.Trans.Class
 import Effects.Dist
-import Freer
+import Prog
 import Model
 import Sampler
 import Effects.ObsReader
@@ -27,16 +27,16 @@ simulate :: (es ~ '[ObsReader env, Dist])
   => Int                             -- Number of iterations per data point
   -> (b -> Model env es a)           -- Model awaiting input variable
   -> [b]                             -- List of model input variables
-  -> [ModelEnv env]                      -- List of model observed variables
+  -> [Env env]                      -- List of model observed variables
   -> Sampler [a]
 simulate n model xs envs = do
   let runN (x, env) = replicateM n (runSimulate env (model x))
   concat <$> mapM runN (zip xs envs)
 
 runSimulate :: (es ~ '[ObsReader env, Dist])
- => ModelEnv env -> Model env es a -> Sampler a
+ => Env env -> Model env es a -> Sampler a
 runSimulate ys m
-  = (runLift . runSample . runObserve . runDist. runObsReader ys ) (runModel m)
+  = (runLift . runSample . runObserve . handleDist. handleObsRead ys ) (runModel m)
 
 runObserve :: Prog (Observe : es) a -> Prog es  a
 runObserve (Val x) = return x

@@ -17,11 +17,11 @@ import Data.Maybe
 import Data.Bifunctor
 import Data.Map (Map)
 import Debug.Trace
-import ModelEnv
+import Env
 import Control.Monad
 import Control.Applicative
 import Effects.Dist
-import Freer
+import Prog
 import Model
 import Effects.NonDet
 import Sampler
@@ -40,14 +40,14 @@ import Util
 
 rmsmcToplevel :: forall env es' a. (FromSTrace env, Show a) =>
   (es' ~ [ObsReader env, Dist, Lift Sampler]) =>
-  Int -> Int -> Model env es' a -> ModelEnv env -> Sampler [(a, LogP, ModelEnv env)]
+  Int -> Int -> Model env es' a -> Env env -> Sampler [(a, LogP, Env env)]
 rmsmcToplevel n_particles mh_steps model env = do
-  let prog = (runDist . runObsReader env) (runModel model)
+  let prog = (handleDist . handleObsRead env) (runModel model)
   rmsmc n_particles mh_steps prog env
 
 rmsmc :: forall env es' a. (FromSTrace env, Show a) =>
   (es' ~ [Observe, Sample, Lift Sampler]) =>
-  Int -> Int -> Prog es' a -> ModelEnv env -> Sampler [(a, LogP, ModelEnv env)]
+  Int -> Int -> Prog es' a -> Env env -> Sampler [(a, LogP, Env env)]
 rmsmc n_particles mh_steps prog env = do
   as_ps_straces <- sis n_particles (rmsmcResampler mh_steps prog) SMC.smcPopulationHandler SMC.runObserve SMC.runSample prog
   return $ map (\(a, (addr, p, strace)) -> (a, p, fromSTrace @env strace)) as_ps_straces

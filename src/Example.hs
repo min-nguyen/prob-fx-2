@@ -20,7 +20,7 @@ module Example where
 
 import Statistics.Distribution
 import GHC.OverloadedLabels
-import Freer
+import Prog
 -- import Effects.Reader
 import Effects.ObsReader
 import Effects.State
@@ -38,7 +38,7 @@ import Data.Maybe
 import Data.Kind (Constraint)
 import GHC.TypeLits
 import Data.Typeable
-import ModelEnv
+import Env
 import Util
 import Data.Vector.Fusion.Bundle (findIndex)
 import GHC.Show (Show)
@@ -47,8 +47,8 @@ import Control.Lens.Combinators (isn't)
 
 coinFlip :: (Observables env '["p"] Double, Observables env '[ "y"] Bool) => Model env es Bool
 coinFlip = do
-  p <- uniform' 0 1 #p
-  y <- bernoulli' p #y
+  p <- uniform 0 1 #p
+  y <- bernoulli p #y
   return y
 
 {- Linear regression -}
@@ -63,23 +63,23 @@ linearRegressionOne :: forall env rs .
   Observables env '["y", "m", "c", "σ"] Double =>
   Double -> Model env rs Double
 linearRegressionOne x = do
-  m <- normal' 0 3 #m
-  c <- normal' 0 5 #c
-  σ <- uniform' 1 3 #σ
+  m <- normal 0 3 #m
+  c <- normal 0 5 #c
+  σ <- uniform 1 3 #σ
   -- printM $ "(m * x + c) is " ++ show (m * x + c)
-  y <- normal' (m * x + c) σ #y
+  y <- normal (m * x + c) σ #y
   return y
 
 linearRegression :: forall env rs .
   Observables env '["y", "m", "c", "σ"] Double =>
   [Double] -> Model env rs [Double]
 linearRegression xs = do
-  m <- normal' 0 3 #m
-  c <- normal' 0 5 #c
-  σ <- uniform' 1 3 #σ
+  m <- normal 0 3 #m
+  c <- normal 0 5 #c
+  σ <- uniform 1 3 #σ
   ys <- mapM (\x -> do
-                    y <- normal' (m * x + c) σ #y
-                    return (y)) xs
+                    y <- normal (m * x + c) σ #y
+                    return y) xs
   return ys
 
 type LogRegrEnv =
@@ -95,12 +95,12 @@ logisticRegression :: forall rs env.
  (Observable env "label" Bool, Observables env '["m", "b"] Double) =>
  [Double] -> Model env rs [(Double, Bool)]
 logisticRegression xs = do
-  m     <- normal' 0 5 #m
-  b     <- normal' 0 1 #b
-  sigma <- gamma 1 1
+  m     <- normal 0 5 #m
+  b     <- normal 0 1 #b
+  sigma <- gamma' 1 1
   ls    <- foldM (\ls x -> do
-                     y <- normal (m * x + b) sigma
-                     l <- bernoulli' (sigmoid y) #label
+                     y <- normal' (m * x + b) sigma
+                     l <- bernoulli (sigmoid y) #label
                      return (l:ls)) [] xs
   return (zip xs (reverse ls))
 
@@ -113,13 +113,13 @@ type HMMEnv =
 
 transitionModel ::  Double -> Int -> Model env ts Int
 transitionModel transition_p x_prev = do
-  dX <- boolToInt <$> bernoulli transition_p
+  dX <- boolToInt <$> bernoulli' transition_p
   return (dX + x_prev)
 
 observationModel :: (Observable env "y" Int)
   => Double -> Int -> Model env ts Int
 observationModel observation_p x = do
-  binomial' x observation_p #y
+  binomial x observation_p #y
 
 hmmNode :: (Observable env "y" Int) => Member (Writer [Int]) ts
   => Double -> Double -> Int -> Model env ts Int
@@ -132,22 +132,22 @@ hmmNode transition_p observation_p x_prev = do
 hmmNSteps :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double) => Member (Writer [Int]) ts
   => Int -> (Int -> Model env ts Int)
 hmmNSteps n x = do
-  trans_p <- uniform' 0 1 #trans_p
-  obs_p   <- uniform' 0 1 #obs_p
+  trans_p <- uniform 0 1 #trans_p
+  obs_p   <- uniform 0 1 #obs_p
   foldr (<=<) return  (replicate n (hmmNode trans_p obs_p)) x
 
 {- HMM Loop-}
 hmmForM :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double) =>
   Int -> Int -> Model env ts Int
 hmmForM n x = do
-  trans_p <- uniform' 0 1 #trans_p
-  obs_p   <- uniform' 0 1 #obs_p
+  trans_p <- uniform 0 1 #trans_p
+  obs_p   <- uniform 0 1 #obs_p
   let hmmLoop :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double) => Int -> Int -> Model env ts Int
       hmmLoop 0 x_prev = return x_prev
       hmmLoop i x_prev = do
-        dX <- boolToInt <$> bernoulli trans_p
+        dX <- boolToInt <$> bernoulli' trans_p
         let x = x_prev + dX
-        binomial' x obs_p #y
+        binomial x obs_p #y
         hmmLoop (i - 1) x
   hmmLoop n x
 
@@ -162,18 +162,18 @@ type TopicEnv =
 wordDist :: Observable env "w" String =>
   [String] -> [Double] -> Model env ts String
 wordDist vocab ps =
-  categorical' (zip vocab ps) #w
+  categorical (zip vocab ps) #w
 
 -- Probability of each word in a topic
 topicWordPrior :: Observable env "φ" [Double]
   => [String] -> Model env ts [Double]
 topicWordPrior vocab
-  = dirichlet' (replicate (length vocab) 1) #φ
+  = dirichlet (replicate (length vocab) 1) #φ
 
 -- Probability of each topic in a document
 docTopicPrior :: Observable env "θ" [Double]
   => Int -> Model env ts [Double]
-docTopicPrior n_topics = dirichlet' (replicate n_topics 1) #θ
+docTopicPrior n_topics = dirichlet (replicate n_topics 1) #θ
 
 -- Learns topic model for a single document
 documentDist :: (Observables env '["φ", "θ"] [Double],
@@ -184,7 +184,7 @@ documentDist vocab n_topics n_words = do
   topic_word_ps <- replicateM n_topics $ topicWordPrior vocab
   -- Distribution over topics for a given document
   doc_topic_ps  <- docTopicPrior n_topics
-  replicateM n_words (do  z <- discrete doc_topic_ps
+  replicateM n_words (do  z <- discrete' doc_topic_ps
                           let word_ps = topic_word_ps !! z
                           wordDist vocab word_ps)
 
@@ -224,20 +224,20 @@ type InfectionCount = Int
 obsSIR :: Observable env "infobs" Int
   => Double -> LatState -> Model env ts Int
 obsSIR rho (LatState _ inf _)  = do
-  i <- poisson' (rho * fromIntegral inf) #infobs
+  i <- poisson (rho * fromIntegral inf) #infobs
   return i
 
 transSI :: Double -> LatState -> Model env ts LatState
 transSI beta (LatState sus inf rec) = do
   let pop = sus + inf + rec
-  dN_SI <- binomial sus (1 - exp ((-beta * fromIntegral inf) / fromIntegral pop))
+  dN_SI <- binomial' sus (1 - exp ((-beta * fromIntegral inf) / fromIntegral pop))
   let sus' = sus - dN_SI
       inf' = inf + dN_SI
   return $ LatState sus' inf' rec
 
 transIR :: Double -> LatState -> Model env ts LatState
 transIR gamma (LatState sus inf rec)  = do
-  dN_IR <- binomial inf (1 - exp (-gamma))
+  dN_IR <- binomial' inf (1 - exp (-gamma))
   let inf' = inf - dN_IR
       rec' = rec + dN_IR
   return $ LatState sus inf' rec'
@@ -260,9 +260,9 @@ hmmSIR  (Params beta gamma rho) latentState = do
 paramsPrior :: Observables env '["ρ", "β",  "γ"] Double
   => Model env ts Params
 paramsPrior = do
-  pBeta  <- gamma' 2 1 #β
-  pGamma <- gamma' 1 (1/8) #γ
-  pRho   <- beta' 2 7 #ρ
+  pBeta  <- gamma 2 1 #β
+  pGamma <- gamma 1 (1/8) #γ
+  pRho   <- beta 2 7 #ρ
   return (Params pBeta pGamma pRho)
 
 hmmSIRNsteps ::
@@ -286,7 +286,7 @@ type SIRSEnv =
 
 transRS :: Double -> LatState -> Model env ts LatState
 transRS eta (LatState sus inf rec) = do
-  dN_RS <- binomial rec (1 - exp (-eta))
+  dN_RS <- binomial' rec (1 - exp (-eta))
   let sus' = sus + dN_RS
       rec' = rec - dN_RS
   return $ LatState sus' inf rec'
@@ -301,11 +301,11 @@ transSIRS beta gamma eta latentSt = do
 paramsPrior' :: Observables env '["ρ", "β", "η", "γ"] Double
   => Model env ts (Params, Double)
 paramsPrior' = do
-  pBeta  <- gamma' 2 1 #β
-  pGamma <- gamma' 1 (1/8) #γ
-  pEta <- gamma' 1 (1/8) #η
-  pRho   <- beta' 2 7 #ρ
-  return ((Params pBeta pGamma pRho), pEta)
+  pBeta  <- gamma 2 1 #β
+  pGamma <- gamma 1 (1/8) #γ
+  pEta <- gamma 1 (1/8) #η
+  pRho   <- beta 2 7 #ρ
+  return (Params pBeta pGamma pRho, pEta)
 
 hmmSIRS :: Member (Writer [LatState]) ts
   => Observable env "infobs" Int
@@ -345,14 +345,14 @@ hmmGen prior transModel obsModel n lat = do
 priorSIRGen :: Observables env '["ρ", "β", "γ"] Double
   => Model env ts Params
 priorSIRGen = do
-  pBeta  <- gamma' 2 1 #β
-  pGamma <- gamma' 1 (1/8) #γ
-  pRho   <- beta' 2 7 #ρ
+  pBeta  <- gamma 2 1 #β
+  pGamma <- gamma 1 (1/8) #γ
+  pRho   <- beta 2 7 #ρ
   return (Params pBeta pGamma pRho)
 
 obsSIRGen :: forall env ts. Observable env "infobs" Int
   => Params -> LatState -> Model env ts Int
-obsSIRGen (Params _ _ rho) (LatState _ inf _)  = poisson' (rho * fromIntegral inf) #infobs
+obsSIRGen (Params _ _ rho) (LatState _ inf _)  = poisson (rho * fromIntegral inf) #infobs
 
 transSIRGen :: forall env ts. Params -> LatState -> Model env ts LatState
 transSIRGen (Params beta gamma _) = transSI beta >=> transIR gamma
@@ -380,28 +380,28 @@ data LatStateSIRV = LatStateSIRV {
 transSI' :: Double -> LatStateSIRV -> Model env ts LatStateSIRV
 transSI' beta sirv@(LatStateSIRV {s = s, i = i}) = do
   let pop = s + i + r sirv + v sirv
-  dN_SI <- binomial s (1 - exp ((-beta * fromIntegral i) / fromIntegral pop))
+  dN_SI <- binomial' s (1 - exp ((-beta * fromIntegral i) / fromIntegral pop))
   let s' = s - dN_SI
       i' = i + dN_SI
   return $ sirv { s = s', i = i' }
 
 transIR' :: Double -> LatStateSIRV -> Model env ts LatStateSIRV
 transIR' gamma sirv@(LatStateSIRV {i = i, r = r})  = do
-  dN_IR <- binomial i (1 - exp (-gamma))
+  dN_IR <- binomial' i (1 - exp (-gamma))
   let i' = i  - dN_IR
       r' = r  + dN_IR
   return $ sirv { i = i', r = r' }
 
 transSV' :: Double -> LatStateSIRV -> Model env ts LatStateSIRV
 transSV' omega sirv@(LatStateSIRV {s = s, v = v})  = do
-  dN_SV <- binomial s (1 - exp (-omega))
+  dN_SV <- binomial' s (1 - exp (-omega))
   let s' = s - dN_SV
       v' = v + dN_SV
   return $ sirv { s = s', v = v' }
 
 transRS' :: Double -> LatStateSIRV -> Model env ts LatStateSIRV
 transRS' eta sirv@(LatStateSIRV {r = r, s = s}) = do
-  dN_RS <- binomial r (1 - exp (-eta))
+  dN_RS <- binomial' r (1 - exp (-eta))
   let s' = s + dN_RS
       r' = r - dN_RS
   return $ sirv {s = s', r = r'}
@@ -416,7 +416,7 @@ transSIRV (ParamsSIRV {beta_ = beta, gamma_ = gamma, omega_ = omega, eta_ = eta}
   return latentSt'
 
 obsSIRV :: Observable env "infobs" Int => ObsModel env ts ParamsSIRV LatStateSIRV Int
-obsSIRV (ParamsSIRV {rho_ = rho}) sirv  = poisson' (rho * fromIntegral (i sirv)) #infobs
+obsSIRV (ParamsSIRV {rho_ = rho}) sirv  = poisson (rho * fromIntegral (i sirv)) #infobs
 
 type SIRVEnv =
   [
@@ -431,11 +431,11 @@ type SIRVEnv =
 priorSIRV :: Observables env '["ρ", "β", "γ", "ω", "η"] Double
   => Model env ts ParamsSIRV
 priorSIRV = do
-  pBeta  <- gamma' 2 1 #β
-  pGamma <- gamma' 1 (1/8) #γ
-  pRho   <- beta' 2 7 #ρ
-  pOmega <- gamma' 1 (1/16) #ω
-  pEta <- gamma' 1 (1/8) #η
+  pBeta  <- gamma 2 1 #β
+  pGamma <- gamma 1 (1/8) #γ
+  pRho   <- beta 2 7 #ρ
+  pOmega <- gamma 1 (1/16) #ω
+  pEta <- gamma 1 (1/8) #η
   return (ParamsSIRV pBeta pGamma pRho pOmega pEta)
 
 hmmSIRVNsteps ::
