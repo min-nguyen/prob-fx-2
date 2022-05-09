@@ -3,6 +3,7 @@
 module Main where
 import Criterion.Main
 import Sampler
+import BenchmarkPrograms
 
 
 main :: IO ()
