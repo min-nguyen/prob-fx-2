@@ -26,8 +26,8 @@ data Reader env a where
 ask :: (Member (Reader env) es) => Prog es env
 ask = Op (inj Ask) Val
 
-runReader :: forall env es a. env -> Prog (Reader env ': es) a -> Prog es a
-runReader env = loop where
+handleReader :: forall env es a. env -> Prog (Reader env ': es) a -> Prog es a
+handleReader env = loop where
   loop :: Prog (Reader env ': es) a -> Prog es a
   loop (Val x) = return x
   loop (Op u k) = case discharge u of

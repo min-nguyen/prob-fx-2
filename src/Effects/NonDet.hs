@@ -38,19 +38,15 @@ instance Member NonDet es => Alternative (Prog es) where
   m1 <|> m2 = do b <- call Choose
                  if b then m1 else m2
 
--- runNonDet' :: Functor ctx => ctx (Prog (NonDet ': es) a) -> Prog es [ctx a]
--- -- runNonDet' (Val x) = return [x]
--- runNonDet' ctxop = fmap (runNonDet) ctxop
-
 asum :: Member NonDet es => [Prog es a] -> Prog es a
 asum progs = foldr (<|>) (call Empty) progs
 
-runNonDet :: Prog (NonDet ': es) a -> Prog es [a]
-runNonDet (Val x) = return [x]
-runNonDet (Op op k) = case op of
-   Choose' -> (<|>) <$> runNonDet (k True) <*> runNonDet (k False)
+handleNonDet :: Prog (NonDet ': es) a -> Prog es [a]
+handleNonDet (Val x) = return [x]
+handleNonDet (Op op k) = case op of
+   Choose' -> (<|>) <$> handleNonDet (k True) <*> handleNonDet (k False)
    Empty'  -> Val []
-   Other op  -> Op op (runNonDet . k)
+   Other op  -> Op op (handleNonDet . k)
 
 branch :: Member NonDet es => Int -> Prog es a -> Prog es a
 branch n prog = asum (replicate n prog)

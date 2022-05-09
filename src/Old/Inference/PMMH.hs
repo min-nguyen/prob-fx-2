@@ -110,7 +110,7 @@ runSample  samples = loop
   loop (Val x) = return x
   loop (Op u k) = case u of
       PrintPatt s ->
-        lift (liftS (putStrLn s)) >> loop (k ())
+        lift (liftIOSampler (putStrLn s)) >> loop (k ())
       SampPatt d α ->
         do let maybe_y = MH.lookupSample samples d α
           --  printLift $ "using " ++ show maybe_y

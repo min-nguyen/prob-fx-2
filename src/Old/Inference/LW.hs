@@ -100,8 +100,8 @@ runSample = loop
   loop (Op u k) =
     case u of
       SampPatt d α ->
-        -- liftS (putStrLn $ ">> : " ++ show α) >>
+        -- liftIOSampler (putStrLn $ ">> : " ++ show α) >>
         sample d >>= loop . k
       PrintPatt s  ->
-        liftS (putStrLn s) >>= loop . k
+        liftIOSampler (putStrLn s) >>= loop . k
       _         -> error "Impossible: Nothing cannot occur"

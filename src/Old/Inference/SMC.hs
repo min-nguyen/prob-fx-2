@@ -56,7 +56,7 @@ logSumExp logws =
 loopSMC :: Show a => Members [Observe, Sample] es
   => Int -> [Double] -> [STrace] -> Prog (State STrace : NonDet : es) a -> Prog es [(a, STrace, Double)]
 loopSMC n_particles logWs_prev straces_accum prog  = do
-  progs_probs <- (runNonDet . handleState Map.empty . breakObserve) prog
+  progs_probs <- (handleNonDet . handleState Map.empty . breakObserve) prog
   let -- get log probabilities of each particle since between previous observe operation
       (progs, ps, straces) = (unzip3 . untuple3) progs_probs
       -- compute normalized importance weights of each particle
@@ -64,10 +64,10 @@ loopSMC n_particles logWs_prev straces_accum prog  = do
       logWs = map (+ logZ) ps
       -- accumulate sample traces of each particle
       straces_accum' = zipWith Map.union straces straces_accum
-  prinT $ "logZ': "  ++  show logZ
-  prinT $ "ps: "  ++  show ps
-  prinT $ "logWs: "  ++  show logWs
-  prinT $ "sample ps: " ++ show (map exp logWs)
+  printSample $ "logZ': "  ++  show logZ
+  printSample $ "ps: "  ++  show ps
+  printSample $ "logWs: "  ++  show logWs
+  printSample $ "sample ps: " ++ show (map exp logWs)
   -- prinT $ show straces_accum'
   case foldVals progs of
     -- if all programs have finished, return with their normalized importance weights
@@ -117,13 +117,13 @@ runSample = loop
         sample d >>= \x -> -- printS ("Sampled " ++ show x ++ " from " ++ show d) >>
                     loop (k x)
       PrintPatt s  ->
-        liftS (putStrLn s) >>= loop . k
+        liftIOSampler (putStrLn s) >>= loop . k
       _         -> error "Impossible: Nothing cannot occur"
 
 -- loopSMC :: Show a => Members [Observe, Sample] es
 --   => Int -> [Double] -> [Trace] -> Prog (State Trace : NonDet : es) a -> Prog es [(a, Trace, Double)]
 -- loopSMC n_particles logWs_prev straces_accum prog  = do
---   progs_probs <- (runNonDet . handleState Map.empty . breakObserve) prog
+--   progs_probs <- (handleNonDet . handleState Map.empty . breakObserve) prog
 --   let -- get log probabilities of each particle since between previous observe operation
 --       (progs, ps, straces) = (unzip3 . untuple3) progs_probs
 --       -- accumulate sample traces of each particle

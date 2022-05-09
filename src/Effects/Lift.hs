@@ -27,8 +27,8 @@ newtype Lift m a = Lift (m a)
 lift :: (Member (Lift m) es) => m a -> Prog es a
 lift = call . Lift
 
-runLift :: forall m w. Monad m => Prog '[Lift m] w -> m w
-runLift (Val x) = return x
-runLift (Op u q) = case prj u of
-     Just (Lift m) -> m >>= runLift . q
+handleLift :: forall m w. Monad m => Prog '[Lift m] w -> m w
+handleLift (Val x) = return x
+handleLift (Op u q) = case prj u of
+     Just (Lift m) -> m >>= handleLift . q
      Nothing -> error "Impossible: Nothing cannot occur"

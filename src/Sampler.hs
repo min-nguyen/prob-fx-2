@@ -38,11 +38,11 @@ import GHC.Word
 newtype Sampler a = Sampler {runSampler :: ReaderT MWC.GenIO IO a}
   deriving (Functor, Applicative, Monad)
 
-liftS :: IO a -> Sampler a
-liftS f = Sampler $ lift f
+liftIOSampler :: IO a -> Sampler a
+liftIOSampler f = Sampler $ lift f
 
 printS :: Show a => a -> Sampler ()
-printS s = liftS (print s)
+printS s = liftIOSampler (print s)
 
 printLift :: FindElem (Lift Sampler) es => String -> Prog es ()
 printLift s = Lift.lift $ Sampler $ lift (print s)

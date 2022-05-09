@@ -29,7 +29,7 @@ def main():
   data = ast.literal_eval(f.read().replace('-Infinity', '-2e308')) #
   color_map = plt.cm.get_cmap('Blues')
 
-  if arg == "simLinRegr":
+  if arg == ["simLinRegr", "simLinRegrOnce"]:
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
     xs = xys[0]
@@ -39,7 +39,7 @@ def main():
     plt.ylabel('y data points')
     plt.title('Linear regression')
     plt.show()
-  if arg == "lwLinRegr":
+  if arg in ["lwLinRegr", "lwLinRegrOnce"]:
     mus = [d[0] for d in data]
     ps  = [d[1] for d in data]
     fig1, axs1 = plt.subplots(nrows=1)
@@ -48,7 +48,7 @@ def main():
     axs1.scatter(mus, ps)
     axs1.set_title('Linear regression - Likelihood Weighting')
     plt.show()
-  if arg in ["mhLinRegr","smcLinRegr","rmsmcLinRegr","pmmhLinRegr"]:
+  if arg in ["mhLinRegr","mhLinRegrOnce","smcLinRegr","rmsmcLinRegr","pmmhLinRegr"]:
     mus = data
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("mu values", fontsize=12)

@@ -204,7 +204,7 @@ runMH :: (es ~ '[Observe, Sample, Lift Sampler])
   -> Sampler (a, STrace, LPTrace)
 runMH strace α_samp prog = do
   ((a, strace'), lptrace') <-
-                            ( runLift
+                            ( handleLift
                             . runSample α_samp strace
                             . runObserve
                             . traceLPs
@@ -232,7 +232,7 @@ runSample α_samp strace = loop
   loop (Val x) = return x
   loop (Op u k) = case u of
       PrintPatt s ->
-        lift (liftS (putStrLn s)) >> loop (k ())
+        lift (liftIOSampler (putStrLn s)) >> loop (k ())
       SampPatt d α -> do
         let maybe_y = if α == α_samp then Nothing else lookupSample strace d α
         case maybe_y of
@@ -248,7 +248,7 @@ lookupSample strace d α  = do
       Just (PrimDist d', x) -> do
         -- printS $ "comparing " ++ show d ++ " and " ++ show d' ++ " is " ++ show (d == unsafeCoerce d')
         if d == unsafeCoerce d'
-           then do -- liftS $ print ("retrieving " ++ show x ++ " for " ++ show d')
+           then do -- liftIOSampler $ print ("retrieving " ++ show x ++ " for " ++ show d')
                    OpenSum.prj x
             else Nothing
       Nothing -> Nothing

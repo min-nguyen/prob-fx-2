@@ -134,7 +134,7 @@ testLinRegrMHPred = do
   let mu         = drawPredParam "m" mhTrace
       c          = drawPredParam "c" mhTrace
       sigma      = drawPredParam "σ" mhTrace
-  liftS $ print $ "Using parameters " ++ show (mu, c, sigma)
+  liftIOSampler $ print $ "Using parameters " ++ show (mu, c, sigma)
   -- Using these parameters, simulate data from the predictive.
   bs <- Simulate.simulate 1 Example.linearRegression
                          (map (/1) [0 .. 100])
@@ -208,7 +208,7 @@ testLogRegrMHPred = do
   mhTrace <- testLogRegrMHPost
   let mu         = drawPredParam "m" mhTrace
       b          = drawPredParam "b" mhTrace
-  liftS $ print $ "Using parameters " ++ show (mu, b)
+  liftIOSampler $ print $ "Using parameters " ++ show (mu, b)
   bs <- Simulate.simulate 1 Example.logisticRegression
                       (map (/50) [(-100) .. 100])
                       (repeat $ mkRecordLogRegr ([], mu, b))
@@ -281,7 +281,7 @@ testNNLinMHPred = do
   let weights    = drawPredParam "weight" mhTrace
       bias       = drawPredParam "bias" mhTrace
       sigma      = drawPredParam "sigma" mhTrace
-  liftS $ print $ "Using parameters: " ++ show (weights, bias, sigma)
+  liftIOSampler $ print $ "Using parameters: " ++ show (weights, bias, sigma)
   -- Using these parameters, simulate data from the predictive. We can see that the predictive data becomes more accurate with more mh steps.
   bs <- Simulate.simulate 1 (Example.nnLinModel 3)
                          (map (/1) [0 .. 300])
@@ -357,7 +357,7 @@ testNNStepMHPred = do
       bias       = drawPredParam "bias" mhTrace
       sigma      = drawPredParam "sigma" mhTrace
   -- Using these parameters, simulate data from the predictive.
-  liftS $ print $ "Using parameters: " ++ show (weights, bias, sigma)
+  liftIOSampler $ print $ "Using parameters: " ++ show (weights, bias, sigma)
   bs <- Simulate.simulate 1 (Example.nnStepModel 3)
                          [-200 .. 200]
                          (repeat $ mkRecordNN ([], bias,
@@ -473,7 +473,7 @@ testSinMHPred = do
       c          = drawPredParam "c" mhTrace
       sigma      = drawPredParam "σ" mhTrace
       xs         = map (/50) [0 .. 200]
-  liftS $ putStrLn $ "mu c sigma" ++ show (mu, c, sigma)
+  liftIOSampler $ putStrLn $ "mu c sigma" ++ show (mu, c, sigma)
   -- Using these parameters, simulate data from the predictive.
   bs <- Simulate.simulate 1 Example.sineModel
                          xs
@@ -534,7 +534,7 @@ testHMMMHPost = do
                                    (map mkRecordHMMy yss)
   let mhTrace'   = processMHTrace mhTrace
       postParams = extractPostParams (Proxy @Double)  [("trans_p", 0), ("obs_p", 0)] mhTrace'
-  liftS $ print $ "trace is " ++ show (map snd3 mhTrace')
+  liftIOSampler $ print $ "trace is " ++ show (map snd3 mhTrace')
   return postParams
 
 testHMMMHPred :: Sampler [([Int], [Int])]
@@ -544,7 +544,7 @@ testHMMMHPred = do
       hmm_n_samples = 100
       trans_p    = drawPredParam "trans_p" mhTrace
       obs_p      = drawPredParam "obs_p" mhTrace
-  liftS $ print $ "using parameters " ++ show (trans_p, obs_p)
+  liftIOSampler $ print $ "using parameters " ++ show (trans_p, obs_p)
   bs <- Simulate.simulate hmm_n_samples (Example.hmmNSteps hmm_n_steps)
                     [0] [mkRecordHMM ([], head trans_p, head obs_p)]
   return $ bs
@@ -587,7 +587,7 @@ testSIRLWInf = do
   lwTrace <- LW.lw 100 (Example.hmmSIRNsteps (fixedParams 763 1) sir_n_steps)
                  [latentState 762 1 0] [mkRecordSIRy sirInfectedData]
   let lwTrace' = processLWTrace lwTrace
-  liftS $ print $ show lwTrace'
+  liftIOSampler $ print $ show lwTrace'
   let output' =
         map (\((xs, ys), sampleMap, p) -> ((map fromLatentState xs, ys), sampleMap, p)) lwTrace'
   return output'
@@ -600,7 +600,7 @@ testSIRMHPost = do
           [latentState 762 1 0] [mkRecordSIR ([0.3], [0.7], [0.009])]
   let infectedData    = map snd bs
       mh_n_iterations = 2000
-  liftS $ print $ "infected data is " ++ show infectedData
+  liftIOSampler $ print $ "infected data is " ++ show infectedData
   -- This demonstrates well the need for specifying the sample sites ["ρ", "β", "γ"].
   mhTrace <- MH.mh mh_n_iterations (Example.hmmSIRNsteps (fixedParams 763 1) 200) ["ρ", "β", "γ"]
                         (replicate sir_n_samples $ latentState 762 1 0)
@@ -615,12 +615,12 @@ testSIRMHPred = do
   let ρ    = drawPredParam "ρ" mhTrace
       β    = drawPredParam "β" mhTrace
       γ    = drawPredParam "γ" mhTrace
-  liftS $ print $ show (ρ, β, γ)
+  liftIOSampler $ print $ show (ρ, β, γ)
   bs <- Simulate.simulate 1
                     (Example.hmmSIRNsteps (fixedParams 763 1) 200)
                     [latentState 762 1 0] [mkRecordSIR (ρ, β, γ)]
   let output = map (\(xs, ys) -> (map fromLatentState xs, ys)) bs
-  liftS $ print $ show (bs)
+  liftIOSampler $ print $ show (bs)
   return $ head output
 
 -- | Testing random distributions
@@ -657,7 +657,7 @@ testTopicMHPred = do
   mhTrace <- testTopicMHPost
   let  topic_ps   = drawPredParam "θ" mhTrace
        word_ps    = drawPredParam "φ" mhTrace
-  liftS $ print $ "Using params " ++ show (topic_ps, word_ps)
+  liftIOSampler $ print $ "Using params " ++ show (topic_ps, word_ps)
   Simulate.simulate 1 (Example.documentDist vocabulary 2) [10]
         [mkRecordTopic (topic_ps,  word_ps, [])]
 
@@ -692,9 +692,9 @@ testHLRMHPost = do
   mhTrace <- MH.mh 3000 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx) ["mu_a", "mu_b", "sigma_a", "sigma_b"]
                     [()] [mkRecordHLR ([], [], [], [], [], [], logRadon)]
   let mhTrace' = processMHTrace mhTrace
-  -- liftS $ print $ show $ map snd3 mhTrace'
+  -- liftIOSampler $ print $ show $ map snd3 mhTrace'
   let paramTrace = extractPostParams (Proxy @Double)  [("mu_a", 0), ("mu_b", 0), ("sigma_a", 0), ("sigma_b", 0) ] mhTrace'
-  liftS $ print paramTrace
+  liftIOSampler $ print paramTrace
   return paramTrace
 
 testHLRMHPredictive :: Sampler  ([Double], [(Addr, OpenSum PrimVal)], [(Addr, Double)])
@@ -706,7 +706,7 @@ testHLRMHPredictive = do
   mhTrace <- MH.mh 4000 (Example.hierarchicalLinRegr n_counties dataFloorValues countyIdx)
              ["mu_a", "mu_b", "sigma_a", "sigma_b", "a", "b"] [()] [mkRecordHLR ([], [], [], [], [], [], logRadon)]
   let mhTrace' = processMHTrace mhTrace
-  liftS $ print $ show $ map snd3 mhTrace'
+  liftIOSampler $ print $ show $ map snd3 mhTrace'
   -- Only returning the most recent of the mh trace here
   return (head mhTrace')
 

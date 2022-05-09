@@ -39,7 +39,7 @@ runTwice m = do
 handleProgram :: Show a => Monoid w => Prog (Writer w : NonDet : es) a -> Prog es [a]
 handleProgram (Val x) = return [x]
 handleProgram prog = do
-  progs_ws <- (runNonDet . runWriterX) prog
+  progs_ws <- (handleNonDet . runWriterX) prog
   -- When all of progs_ws are Vals, asum will produce Val <|> Val
   let progs = foldVals (map fst progs_ws)
   case progs

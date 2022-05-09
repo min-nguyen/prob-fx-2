@@ -32,9 +32,13 @@ printThenWrite a = print a >> writeFile "model-output.txt" (show a)
 
 parseArgs :: String -> IO ()
 parseArgs cmd = case cmd of
-  "simLinRegr"  -> sampleIO simLinRegr >>= printThenWrite
-  "lwLinRegr"   -> sampleIO lwLinRegr >>= printThenWrite
-  "mhLinRegr"   -> sampleIO mhLinRegr >>= printThenWrite
+  "simLinRegrOnce"  -> sampleIO simLinRegrOnce >>= printThenWrite
+  "lwLinRegrOnce"   -> sampleIO lwLinRegrOnce >>= printThenWrite
+  "mhLinRegrOnce"   -> sampleIO mhLinRegrOnce >>= printThenWrite
+
+  "simLinRegr"  -> sampleIO (simLinRegr 50 100) >>= printThenWrite
+  "lwLinRegr"   -> sampleIO (lwLinRegr 20 3000)>>= printThenWrite
+  "mhLinRegr"   -> sampleIO (mhLinRegr 50 5000) >>= printThenWrite
 
   "simLogRegr"  -> sampleIO simLogRegr >>= printThenWrite
   "lwLogRegr"   -> sampleIO lwLogRegr >>= printThenWrite
@@ -71,5 +75,5 @@ main = do
   -- trace <- sampleIOFixed (pmmhLinRegr 30 10 1000)
   -- printThenWrite trace
   args <- getArgs
-  case args of []      -> print $ "no arguments provided to Wasabaye"
+  case args of []      -> print "no arguments provided to Wasabaye"
                (a:as)  -> parseArgs a

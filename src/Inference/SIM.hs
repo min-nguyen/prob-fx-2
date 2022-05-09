@@ -52,7 +52,7 @@ simulate model env   = do
 runSimulate :: (es ~ '[ObsReader env, Dist])
  => Env env -> Model env es a -> Sampler (a, STrace)
 runSimulate ys m
-  = (runLift . runSample Map.empty . runObserve . handleDist . handleObsRead ys) (runModel m)
+  = (handleLift . runSample Map.empty . runObserve . handleDist . handleObsRead ys) (runModel m)
 
 runObserve :: Prog (Observe : es) a -> Prog es  a
 runObserve (Val x) = return x
@@ -67,7 +67,7 @@ runSample :: STrace -> Prog '[Sample] a -> Prog '[Lift Sampler] (a, STrace)
 runSample sTrace (Val x)  = return (x, sTrace)
 runSample sTrace (Op u k) = case u of
     PrintPatt s -> do
-      (lift . liftS) (putStrLn s)
+      (lift . liftIOSampler) (putStrLn s)
       runSample sTrace (k ())
     SampPatt d α -> do
       x <- lift (sample d)

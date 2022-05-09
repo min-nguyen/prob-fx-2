@@ -186,27 +186,27 @@ mhStep env model tags trace = do
   let sampleSites = if null tags then samples
                     else  Map.filterWithKey (\(tag, i) _ -> tag `elem` tags) samples
   α_samp_ind <- sample $ DiscrUniformDist 0 (Map.size sampleSites - 1) Nothing Nothing
-  -- liftS $ print $ "α_samp_ind is " ++ show α_samp_ind ++ " Map.size samples is " ++ show (Map.size samples)
-  -- liftS $ print $ "sample ind is " ++ show α_samp_ind ++ "\n sample sites are " ++ show sampleSites
+  -- liftIOSampler $ print $ "α_samp_ind is " ++ show α_samp_ind ++ " Map.size samples is " ++ show (Map.size samples)
+  -- liftIOSampler $ print $ "sample ind is " ++ show α_samp_ind ++ "\n sample sites are " ++ show sampleSites
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
   -- run mh with new sample address
-  -- liftS $ print $ "sample address is " ++ show α_samp
+  -- liftIOSampler $ print $ "sample address is " ++ show α_samp
   (x', samples', logps') <- runMH env samples α_samp model
-  -- liftS $ print $ "Second run is: " ++ show (x', samples', logps')
+  -- liftIOSampler $ print $ "Second run is: " ++ show (x', samples', logps')
   -- do some acceptance ratio to see if we use samples or samples'
-  acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
-  -- liftS $ print $ "acceptance ratio" ++ show acceptance_ratio
+  acceptance_ratio <- liftIOSampler $ accept α_samp samples samples' logps logps'
+  -- liftIOSampler $ print $ "acceptance ratio" ++ show acceptance_ratio
   u <- sample (UniformDist 0 1 Nothing Nothing)
 
   if u < acceptance_ratio
-    then do -- liftS $ putStrLn $ "Accepting " -- ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
+    then do -- liftIOSampler $ putStrLn $ "Accepting " -- ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
             -- ++ show logps
             -- ++ "\nwith α" ++ show α_samp ++ ": "
             -- ++ show acceptance_ratio ++ " > " ++ show u
-            -- liftS $ print "accepting"
+            -- liftIOSampler $ print "accepting"
             return ((x', samples', logps'):trace)
     else do
-            -- liftS $ putStrLn $ "Rejecting " ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
+            -- liftIOSampler $ putStrLn $ "Rejecting " ++ show (Map.lookup α_samp samples') -- ++ show logps' ++ "\nover      "
             -- ++ show logps
             --  ++ "\nwith α" ++ show α_samp ++ ": "
             --  ++ show acceptance_ratio ++ " < u: " ++ show u
@@ -275,7 +275,7 @@ runSample α_samp samples = loop
   loop (Val x) = return x
   loop (Op u k) = case u of
       PrintPatt s ->
-        do liftS (putStrLn s) >> loop (k ())
+        do liftIOSampler (putStrLn s) >> loop (k ())
       SampPatt d α ->
         do x <- fromMaybe <$> sample d <*> lookupSample samples d α α_samp
            (loop . k . unsafeCoerce) x
@@ -290,7 +290,7 @@ lookupSample samples d α α_samp
       Just (PrimDist d', x) -> do
         -- printS $ "comparing " ++ show d ++ " and " ++ show d' ++ " is " ++ show (d == unsafeCoerce d')
         if d == unsafeCoerce d'
-           then do -- liftS $ print ("retrieving " ++ show x ++ " for " ++ show d')
+           then do -- liftIOSampler $ print ("retrieving " ++ show x ++ " for " ++ show d')
                    return (OpenSum.prj x )
             else return Nothing
       Nothing -> return Nothing

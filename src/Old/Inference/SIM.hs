@@ -35,7 +35,7 @@ simulate n model xs envs = do
 runSimulate :: (es ~ '[ObsReader env, Dist])
  => Env env -> Model env es a -> Sampler a
 runSimulate ys m
-  = (runLift . runSample . runObserve . handleDist. handleObsRead ys ) (runModel m)
+  = (handleLift . runSample . runObserve . handleDist. handleObsRead ys ) (runModel m)
 
 runObserve :: Prog (Observe : es) a -> Prog es  a
 runObserve (Val x) = return x
@@ -50,7 +50,7 @@ runSample :: Prog (Sample : es) a -> Prog (Lift Sampler : es) a
 runSample (Val x) = return x
 runSample (Op u k) = case u of
     PrintPatt s -> do
-      (lift . liftS) (putStrLn s)
+      (lift . liftIOSampler) (putStrLn s)
       runSample (k ())
     SampPatt d α -> do
       y <- lift (sample d )
