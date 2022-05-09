@@ -14,7 +14,7 @@ import Prog
 import Effects.ObsReader
 import Effects.Writer
 import Model
-import Inference.SIM as Simulate
+import Inference.SIM as SIM
 import Inference.LW as LW
 import Inference.MH as MH
 import Effects.Dist
@@ -43,12 +43,12 @@ linRegr x = do
   y <- normal (m * x + c) σ #y
   return y
 
--- | (Fig 1. a) Simulate from linear regression
+-- | (Fig 1. a) SIM from linear regression
 simLinRegr :: Sampler [(Double, Double)]
 simLinRegr = do
   let xs  = [0 .. 100]
       env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> eNil
-  ys_envs <- mapM (\x -> Simulate.simulate (linRegr x) env) xs
+  ys_envs <- mapM (\x -> SIM.simulate (linRegr x) env) xs
   let ys = map fst ys_envs
   return (zip xs ys)
 
@@ -90,5 +90,5 @@ simLinRegrMany :: Int -> Int -> Sampler [(Double, Double)]
 simLinRegrMany n_datapoints n_samples = do
   let xs  = [0 .. fromIntegral n_datapoints]
       env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> eNil
-  bs :: ([Double], Env LinRegrEnv) <- Simulate.simulate (linRegrMany xs) env
+  bs :: ([Double], Env LinRegrEnv) <- SIM.simulate (linRegrMany xs) env
   return $ zip xs (fst bs)

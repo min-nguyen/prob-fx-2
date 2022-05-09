@@ -13,7 +13,7 @@ import Prog
 import Effects.ObsReader
 import Effects.Writer
 import Model
-import Inference.SIM as Simulate
+import Inference.SIM as SIM
 import Inference.MH as MH
 import Effects.Lift
 import Sampler
@@ -91,12 +91,12 @@ hmmSIR' n = handleWriterM . hmmSIR n
 
 type SIRenv = '["β" := Double, "γ"  := Double, "ρ"  := Double, "𝜉" := Int]
 
--- | Simulate from SIR model: ([(s, i, r)], [𝜉])
+-- | SIM from SIR model: ([(s, i, r)], [𝜉])
 simSIR :: Sampler ([(Int, Int, Int)], [Reported])
 simSIR = do
   let sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #ρ := [0.3] <:> #𝜉 := [] <:> ENil
       sir_0      = Popl {s = 762, i = 1, r = 0}
-  ((_, sir_trace), sim_env_out) <- Simulate.simulate (hmmSIR' 100 sir_0) sim_env_in
+  ((_, sir_trace), sim_env_out) <- SIM.simulate (hmmSIR' 100 sir_0) sim_env_in
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
       sirs = map (\(Popl s i recov) -> (s, i, recov)) sir_trace
   return (sirs, 𝜉s)
@@ -149,12 +149,12 @@ transPrior' = do
 hmmSIRS :: (Observables env '["𝜉"] Int, Observables env '["β", "η", "γ", "ρ"] Double) => Int -> Popl -> Model env ts (Popl, [Popl])
 hmmSIRS n = handleWriterM . hmmGen transPrior' obsPrior transSIRS obsSIR n
 
--- | Simulate from SIRS model: ([(s, i, r)], [𝜉])
+-- | SIM from SIRS model: ([(s, i, r)], [𝜉])
 simSIRS :: Sampler ([(Int, Int, Int)], [Reported])
 simSIRS = do
   let sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #η := [0.05] <:> #ρ := [0.3] <:> #𝜉 := [] <:> eNil
       sir_0      = Popl {s = 762, i = 1, r = 0}
-  ((_, sir_trace), sim_env_out) <- Simulate.simulate (hmmSIRS 100 sir_0) sim_env_in
+  ((_, sir_trace), sim_env_out) <- SIM.simulate (hmmSIRS 100 sir_0) sim_env_in
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
       sirs = map (\(Popl s i recov) -> (s, i, recov)) sir_trace
   return (sirs, 𝜉s)
@@ -224,12 +224,12 @@ obsSIRSV rho (Popl' _ i _ v)  = do
 hmmSIRSV ::  (Observables env '["𝜉"] Int, Observables env '["β", "γ", "η", "ω", "ρ"] Double) => Int -> Popl' -> Model env ts (Popl', [Popl'])
 hmmSIRSV n = handleWriterM . hmmGen transPrior'' obsPrior transSIRSV obsSIRSV n
 
--- | Simulate from SIRSV model : ([(s, i, r, v)], [𝜉])
+-- | SIM from SIRSV model : ([(s, i, r, v)], [𝜉])
 simSIRSV :: Sampler ([(Int, Int, Int, Int)], [Reported])
 simSIRSV = do
   let sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #η := [0.05] <:> #ω := [0.02] <:> #ρ := [0.3] <:> #𝜉 := [] <:> eNil
       sirv_0      = Popl' {s' = 762, i' = 1, r' = 0, v' = 0}
-  ((_, sirv_trace), sim_env_out) <- Simulate.simulate (hmmSIRSV 100 sirv_0) sim_env_in
+  ((_, sirv_trace), sim_env_out) <- SIM.simulate (hmmSIRSV 100 sirv_0) sim_env_in
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
       sirvs = map (\(Popl' s i recov v) -> (s, i, recov, v)) sirv_trace
   return (sirvs, 𝜉s)

@@ -15,7 +15,7 @@ import Model
 import Env
 import Sampler
 import Examples.DataSets
-import Inference.SIM as Simulate
+import Inference.SIM as SIM
 import Inference.LW as LW
 import Inference.MH as MH
 import Util
@@ -66,5 +66,5 @@ nnLinModel n x = do
 simNNLin :: Sampler  [(Double, Double)]
 simNNLin = do
   let env =  #yObs := [] <:> #weight := [1, 5, 8] <:> #bias := [2, -5, 1] <:> #sigma := [4.0] <:> ENil
-  bs <- mapM (\x -> Simulate.simulate (nnLinModel 3 x) env) (map (/1) [0 .. 300])
+  bs <- mapM (\x -> SIM.simulate (nnLinModel 3 x) env) (map (/1) [0 .. 300])
   return $ map fst bs

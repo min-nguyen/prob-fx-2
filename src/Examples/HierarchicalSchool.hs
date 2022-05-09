@@ -9,7 +9,7 @@
 module Examples.HierarchicalSchool where
 
 import Model
-import Inference.SIM as Simulate
+import Inference.SIM as SIM
 import Inference.LW as LW
 import Inference.MH as MH
 import Sampler

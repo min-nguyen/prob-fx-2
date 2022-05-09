@@ -14,8 +14,15 @@ module Examples.LogRegr where
 import Control.Monad
 import Model
 import Env
+    ( Observables,
+      Observable(get),
+      Assign((:=)),
+      ObsVars(ONil),
+      (⋮),
+      eNil,
+      (<:>) )
 import Sampler
-import Inference.SIM as Simulate
+import Inference.SIM as SIM
 import Inference.MH as MH
 import Inference.LW as LW
 
@@ -56,7 +63,7 @@ logRegressionOne x = do
   l     <- bernoulli (sigmoid y) #label
   return l
 
--- | Simulate from logistic regression
+-- | SIM from logistic regression
 simLogRegr :: Sampler [(Double, Bool)]
 simLogRegr = do
   -- First declare the model inputs
@@ -64,7 +71,7 @@ simLogRegr = do
   -- Define a model environment to simulate from.
       env = (#label := []) <:> (#m := [2]) <:> (#b := [-0.15]) <:> eNil
   -- Call simulate on logistic regression
-  (ys, envs) <- Simulate.simulate (logRegr xs) env
+  (ys, envs) <- SIM.simulate (logRegr xs) env
   return (zip xs ys)
 
 -- | Likelihood-weighting over logistic regression

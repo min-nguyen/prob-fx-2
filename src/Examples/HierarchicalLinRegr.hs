@@ -14,7 +14,7 @@ import Model
 import Env
 import Sampler
 import Examples.DataSets
-import Inference.SIM as Simulate
+import Inference.SIM as SIM
 import Inference.MH as MH
 import Util
 
@@ -61,7 +61,7 @@ mkRecordHLR (mua, mub, siga, sigb, a, b, lograds) =
 simHierarchicalLinRegr :: Sampler ([Double], [Double])
 simHierarchicalLinRegr = do
   let env_in = mkRecordHLR ([1.45], [-0.68], [0.3], [0.2], [], [], [])
-  (bs, env_out) <- Simulate.simulate (hierarchicalLinRegr n_counties dataFloorValues countyIdx) env_in
+  (bs, env_out) <- SIM.simulate (hierarchicalLinRegr n_counties dataFloorValues countyIdx) env_in
   let basementIdxs      = findIndexes dataFloorValues 0
       noBasementIdxs    = findIndexes dataFloorValues 1
       basementPoints    = map (bs !!) basementIdxs
