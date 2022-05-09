@@ -29,11 +29,9 @@ def main():
   data = ast.literal_eval(f.read().replace('-Infinity', '-2e308')) #
   color_map = plt.cm.get_cmap('Blues')
 
-  if arg == ["simLinRegr", "simLinRegrOnce"]:
-    xys =  [[ i for i, j in data ],
-            [ j for i, j in data ]]
-    xs = xys[0]
-    ys = xys[1]
+  if arg in ["simLinRegr", "simLinRegrOnce"]:
+    xs = [xy[0] for xy in data]
+    ys = [xy[1] for xy in data]
     plt.scatter(xs, ys)
     plt.xlabel('x data points')
     plt.ylabel('y data points')
