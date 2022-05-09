@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE OverloadedLabels #-}
 
-module Examples.HierarchicalSchool where
+module Examples.School where
 
 import Model
 import Inference.SIM as SIM

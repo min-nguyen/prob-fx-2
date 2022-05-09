@@ -193,9 +193,7 @@ mhStep prog tags accepter mhTrace  = do
   (mhCtx', acceptance_ratio) <- accepter α_samp mhLPCtx' mhCtx
   u <- sample (UniformDist 0 1 Nothing Nothing)
   if u < acceptance_ratio
-
-    then do printS "accepting"
-            return (mhCtx':mhTrace)
+    then return (mhCtx':mhTrace)
     else return mhTrace
 
 -- | Run model once under MH

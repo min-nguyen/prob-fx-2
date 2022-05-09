@@ -7,7 +7,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant return" #-}
 
-module Examples.HierarchicalLinRegr where
+module Examples.HLinRegr where
 
 import Control.Monad
 import Model
@@ -33,9 +33,9 @@ hlrPrior = do
   return (mu_a, sigma_a, mu_b, sigma_b)
 
 -- n counties = 85, len(floor_x) = 919, len(county_idx) = 919
-hierarchicalLinRegr :: Observables env '["mu_a", "mu_b", "sigma_a", "sigma_b", "a", "b", "log_radon"] Double
+hLinRegr :: Observables env '["mu_a", "mu_b", "sigma_a", "sigma_b", "a", "b", "log_radon"] Double
   => Int -> [Int] -> [Int] -> Model env es [Double]
-hierarchicalLinRegr n_counties floor_x county_idx  = do
+hLinRegr n_counties floor_x county_idx  = do
   (mu_a, sigma_a, mu_b, sigma_b) <- hlrPrior
   -- Intercept for each county
   a <- replicateM n_counties (normal mu_a sigma_a #a)  -- length = 85
@@ -58,10 +58,10 @@ mkRecordHLR :: ([Double], [Double], [Double], [Double], [Double], [Double], [Dou
 mkRecordHLR (mua, mub, siga, sigb, a, b, lograds) =
    #mu_a := mua <:> #mu_b := mub <:> #sigma_a := siga <:> #sigma_b := sigb <:> #a := a <:> #b := b <:> #log_radon := lograds <:> ENil
 
-simHierarchicalLinRegr :: Sampler ([Double], [Double])
-simHierarchicalLinRegr = do
+simHLinRegr :: Sampler ([Double], [Double])
+simHLinRegr = do
   let env_in = mkRecordHLR ([1.45], [-0.68], [0.3], [0.2], [], [], [])
-  (bs, env_out) <- SIM.simulate (hierarchicalLinRegr n_counties dataFloorValues countyIdx) env_in
+  (bs, env_out) <- SIM.simulate (hLinRegr n_counties dataFloorValues countyIdx) env_in
   let basementIdxs      = findIndexes dataFloorValues 0
       noBasementIdxs    = findIndexes dataFloorValues 1
       basementPoints    = map (bs !!) basementIdxs
@@ -69,20 +69,20 @@ simHierarchicalLinRegr = do
   return (basementPoints, nobasementPoints)
 
 -- Return posterior for intercepts and gradients
-mhHierarchicalLinRegrpost :: Sampler ([Double], [Double])
-mhHierarchicalLinRegrpost = do
+mhHLinRegrpost :: Sampler ([Double], [Double])
+mhHLinRegrpost = do
   let env_in = mkRecordHLR ([], [], [], [], [], [], logRadon)
-  env_outs <- MH.mhTopLevel 2000 (hierarchicalLinRegr n_counties dataFloorValues countyIdx) env_in
+  env_outs <- MH.mhTopLevel 2000 (hLinRegr n_counties dataFloorValues countyIdx) env_in
                     (#mu_a ⋮ #mu_b ⋮ #sigma_a ⋮ #sigma_b ⋮ONil)
   let mu_a   = concatMap (get #mu_a)  env_outs
       mu_b   = concatMap (get #mu_b)  env_outs
   return (mu_a, mu_b)
 
 -- Return predictive posterior for intercepts and gradients
-mhHierarchicalLinRegr :: Sampler ([Double], [Double])
-mhHierarchicalLinRegr = do
+mhHLinRegr :: Sampler ([Double], [Double])
+mhHLinRegr = do
   let env_in = mkRecordHLR ([], [], [], [], [], [], logRadon)
-  env_outs <- MH.mhTopLevel 2000 (hierarchicalLinRegr n_counties dataFloorValues countyIdx) env_in
+  env_outs <- MH.mhTopLevel 2000 (hLinRegr n_counties dataFloorValues countyIdx) env_in
                   (#mu_a ⋮ #mu_b ⋮ #sigma_a ⋮ #sigma_b ⋮ONil)
   let env_pred   = head env_outs
       as         = get #a env_pred

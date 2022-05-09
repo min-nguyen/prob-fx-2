@@ -230,7 +230,7 @@ def main():
     ax1.set_xticklabels(ws)
     plt.title('Topic-Word Distribution 1')
     plt.show()
-  if arg == "simHierarchicalLinRegr":
+  if arg == "simHLinRegr":
     basement_ys   = data[0]
     basement_xs   = [0 for i in range(len(basement_ys))]
     nobasement_ys = data[1]
@@ -241,7 +241,7 @@ def main():
     plt.ylabel('Log radon level')
     plt.xticks([0, 1], ["basement", "no basement"])
     plt.show()
-  if arg == "mhHierarchicalLinRegr":
+  if arg == "mhHLinRegr":
     intercepts = data[0]
     gradients  = data[1]
     plt.xticks([0, 1], ["basement", "no basement"])
@@ -251,7 +251,7 @@ def main():
       y = m * x + c
       plt.plot(x, y)
     plt.show()
-  if arg == "mhHierarchicalLinRegrpost":
+  if arg == "mhHLinRegrpost":
     mu_a       = data[0]
     mu_b       = data[1]
     fig1, axs1 = plt.subplots(nrows=1)

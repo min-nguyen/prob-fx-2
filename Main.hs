@@ -22,15 +22,13 @@ import Examples.LinRegr
 import Examples.LogRegr
 import Examples.SIR
 import Examples.LDA
-import Examples.HierarchicalLinRegr
-import Examples.HierarchicalSchool
+import Examples.HLinRegr
+import Examples.School
 import Examples.GMM
 import Examples.HMM
 
 printThenWrite :: Show a => a -> IO ()
 printThenWrite a = print a >> writeFile "model-output.txt" (show a)
-
-availableCommands = "[simLinRegr, lwLinRegr, mhLinRegr, simSIR, simSIRS, simSIRSV, mhSIR, simLogRegr, lwLogRegr, mhLogRegr, simLDA, mhLDA, simHierchicalLinRegr, mhHierarchicalLinRegr]"
 
 parseArgs :: String -> IO ()
 parseArgs cmd = case cmd of
@@ -39,7 +37,7 @@ parseArgs cmd = case cmd of
   "mhLinRegr"   -> sampleIO mhLinRegr >>= printThenWrite
 
   "simLogRegr"  -> sampleIO simLogRegr >>= printThenWrite
-  "lwLogRegr"  -> sampleIO lwLogRegr >>= printThenWrite
+  "lwLogRegr"   -> sampleIO lwLogRegr >>= printThenWrite
   "mhLogRegr"   -> sampleIO mhLogRegr >>= printThenWrite
 
   "simSIR"      -> sampleIO simSIR >>= printThenWrite
@@ -48,20 +46,19 @@ parseArgs cmd = case cmd of
   "simSIRSV"    -> sampleIO simSIRSV >>= printThenWrite
 
   "simHMM"      -> sampleIO simHMMw >>= printThenWrite
-  "mhHMM"      -> sampleIO mhHMMw >>= printThenWrite
+  "mhHMM"       -> sampleIO mhHMMw >>= printThenWrite
 
   "simLDA"      -> sampleIO simLDA >>= printThenWrite
   "mhLDA"       -> sampleIO mhLDA >>= printThenWrite
 
-  "simHierarchicalLinRegr" -> sampleIO simHierarchicalLinRegr >>= printThenWrite
-  "mhHierarchicalLinRegr" -> sampleIO mhHierarchicalLinRegr >>= printThenWrite
+  "simHLinRegr" -> sampleIO simHLinRegr >>= printThenWrite
+  "mhHLinRegr" -> sampleIO mhHLinRegr >>= printThenWrite
 
   "mhSchool"    -> sampleIO mhSchool >>= printThenWrite
 
   "simGMM"      -> sampleIO simGMM >>= printThenWrite
   "mhGMM"      -> sampleIO mhGMM >>= printThenWrite
   _             -> putStrLn $ "unrecognised command: " ++ cmd ++ "\n"
-                           ++ "available commands: " ++ availableCommands
 
 main :: IO ()
 main = do
@@ -70,5 +67,5 @@ main = do
   -- trace <- sampleIOFixed (TestSMC.testLinRegrPMMH 30 10 1000)
   -- printThenWrite trace
   args <- getArgs
-  case args of []      -> print $ "no arguments provided to Wasabaye. Available arguments: " ++ availableCommands
+  case args of []      -> print $ "no arguments provided to Wasabaye"
                (a:as)  -> parseArgs a
