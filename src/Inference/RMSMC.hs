@@ -67,11 +67,11 @@ rmsmcResampler mh_steps prog ctx_0 ctx_1sub0 progs_1 = do
   -- perform metropolis-hastings using each resampled particle's sample trace
   mhTraces <- lift $ mapM (\strace -> mh mh_steps partial_model strace []) resampled_straces
   let -- get the continuations of each particle from the break point, and weaken with non-det effect
-      moved_particles = map (weakenNonDet . fst3 . last) mhTraces
+      moved_particles = map (weakenNonDet . fst3 . head) mhTraces
       -- get the sample traces of each particle up until the break point
-      moved_straces   = map (snd3 . last) mhTraces
+      moved_straces   = map (snd3 . head) mhTraces
       -- get the log prob traces of each particle up until the break point
-      lptraces        = map (thrd3 . last) mhTraces
+      lptraces        = map (thrd3 . head) mhTraces
       -- filter log probability traces to only include that for observe operations
       obs_lptraces    = map (Map.filterWithKey (\k a -> k `elem` head obs_addrs)) lptraces
       -- compute log weights of particles, that is, the total log probability of each particle up until the break point

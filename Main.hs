@@ -15,7 +15,7 @@ import OpenSum as OpenSum
 import Model
 import Data.Extensible ()
 import Sampler
-import qualified TestSMC as TestSMC
+import TestSMC
 import Util
 import System.Environment
 import Examples.LinRegr
@@ -52,19 +52,23 @@ parseArgs cmd = case cmd of
   "mhLDA"       -> sampleIO mhLDA >>= printThenWrite
 
   "simHLinRegr" -> sampleIO simHLinRegr >>= printThenWrite
-  "mhHLinRegr" -> sampleIO mhHLinRegr >>= printThenWrite
+  "mhHLinRegr"  -> sampleIO mhHLinRegr >>= printThenWrite
 
   "mhSchool"    -> sampleIO mhSchool >>= printThenWrite
 
   "simGMM"      -> sampleIO simGMM >>= printThenWrite
-  "mhGMM"      -> sampleIO mhGMM >>= printThenWrite
-  _             -> putStrLn $ "unrecognised command: " ++ cmd ++ "\n"
+  "mhGMM"       -> sampleIO mhGMM >>= printThenWrite
+
+  "smcLinRegr"   -> sampleIOFixed (smcLinRegr 50 200) >>= printThenWrite
+  "rmsmcLinRegr" -> sampleIOFixed (rmsmcLinRegr 50 200 20) >>= printThenWrite
+  "pmmhLinRegr"  -> sampleIOFixed (pmmhLinRegr 30 10 1000) >>= printThenWrite
+  _              -> putStrLn $ "unrecognised command: " ++ cmd ++ "\n"
 
 main :: IO ()
 main = do
-  -- trace <- sampleIOFixed (TestSMC.testLinRegrSMC 50 200)
-  -- trace <- sampleIOFixed (TestSMC.testLinRegrRMSMC 50 100 20)
-  -- trace <- sampleIOFixed (TestSMC.testLinRegrPMMH 30 10 1000)
+  -- trace <- sampleIOFixed (smcLinRegr 50 200)
+  -- trace <- sampleIOFixed (rmsmcLinRegr 50 100 20)
+  -- trace <- sampleIOFixed (pmmhLinRegr 30 10 1000)
   -- printThenWrite trace
   args <- getArgs
   case args of []      -> print $ "no arguments provided to Wasabaye"

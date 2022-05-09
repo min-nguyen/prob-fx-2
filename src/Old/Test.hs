@@ -39,7 +39,7 @@ g = let p = NormalDist 0.5 0.1 Nothing Nothing
 
 -- Draw the most recent sampled parameters from a post param mh trace
 drawPredParam :: Tag -> [(Addr, [a])] -> [a]
-drawPredParam tag xs = [ last v | ((t, i), v) <- xs, t == tag]
+drawPredParam tag xs = [ head v | ((t, i), v) <- xs, t == tag]
 
 -- Returns a list of (addr, [p]) of all unique samples for addresses of interest in the mh trace
 extractPostParams :: forall p a. (Eq p, Member p PrimVal) => Proxy p -> [Addr] -> [(a, [(Addr, OpenSum PrimVal)], [(Addr, Double)])] -> [(Addr, [p])]
@@ -707,8 +707,8 @@ testHLRMHPredictive = do
              ["mu_a", "mu_b", "sigma_a", "sigma_b", "a", "b"] [()] [mkRecordHLR ([], [], [], [], [], [], logRadon)]
   let mhTrace' = processMHTrace mhTrace
   liftS $ print $ show $ map snd3 mhTrace'
-  -- Only returning the last of the mh trace here
-  return (last mhTrace')
+  -- Only returning the most recent of the mh trace here
+  return (head mhTrace')
 
 {- Gaussian Mixture Model -}
 mkRecordGMM :: ([Double], [Double], [Double], [Double]) -> Env Example.GMMEnv
