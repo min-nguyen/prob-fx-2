@@ -103,7 +103,7 @@ library
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >= 4.14 && <= 4.16,
+  build-depends:       base >= 4.11 && <= 4.16,
                        ghc-prim,
                        primitive,
                        containers,
@@ -173,7 +173,8 @@ executable benchmark-program
                        extensible,
                        models,
                        containers,
-                       criterion
+                       criterion,
+                       deepseq
                       -- Use this package for dumpcore: ghc-dump-core
 
   hs-source-dirs:      benchmarking
