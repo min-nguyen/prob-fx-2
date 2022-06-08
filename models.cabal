@@ -67,6 +67,7 @@ library
                       Effects.Lift,
                       Effects.Reader,
                       Effects.NonDet,
+                      Effects.MonadBayes,
                       Examples.DataSets,
                       Examples.LinRegr,
                       Examples.SIR,
@@ -103,7 +104,7 @@ library
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >= 4.11 && <= 4.16,
+  build-depends:       base >= 4.11 && <= 4.14,
                        ghc-prim,
                        primitive,
                        containers,
@@ -117,6 +118,7 @@ library
                        membership,
                        profunctors,
                        statistics,
+                       monad-bayes,
                        split,
                        mwc-random,
                        mwc-probability,
