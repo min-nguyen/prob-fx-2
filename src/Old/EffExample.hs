@@ -21,7 +21,7 @@ runWriterE = handleRelaySt mempty (\w a -> return (a, w))
 
 data ReaderE env a where
   AskE :: ReaderE env env
-
+ 
 runReaderE :: env -> Prog (ReaderE env ': es) a -> Prog es a
 runReaderE env = handleRelay return (\AskE k -> k env)
 

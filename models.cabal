@@ -125,7 +125,8 @@ library
                        random,
                        dirichlet,
                        log-domain,
-                       some
+                       some,
+                       fused-effects
                       -- Use this package for dumpcore: ghc-dump-core
 
   -- Directories containing source files.
