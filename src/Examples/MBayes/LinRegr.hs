@@ -50,6 +50,8 @@ mbayesLinRegr :: (MonadInfer m, Observables env '["y", "m", "c", "σ"] Double) =
  [Double] -> Env env -> m [Double]
 mbayesLinRegr xs = toMBayes (linRegr xs)
 
+{- Executing Lin Regr -}
+
 simLinRegr :: Int -> Int -> IO [[Double]]
 simLinRegr n_samples n_datapoints = do
   let xs  = [0 .. fromIntegral n_datapoints]

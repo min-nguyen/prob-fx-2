@@ -79,6 +79,7 @@ library
                       Examples.School,
                       Examples.GMM,
                       Examples.BayesianNN,
+                      Examples.MBayes.LDA,
                       Examples.MBayes.LinRegr,
                       Examples.MBayes.HMM,
                       Inference.SIM,
