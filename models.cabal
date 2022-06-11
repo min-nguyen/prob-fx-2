@@ -86,7 +86,7 @@ library
                       Inference.SIS,
                       Inference.RMSMC,
                       Inference.PMMH,
-                      Inference.MBayes,
+                      Inference.MBAYES,
                       Old.Experiment,
                       Old.Trace,
                       -- Old.Test,
