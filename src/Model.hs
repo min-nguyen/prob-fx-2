@@ -62,7 +62,7 @@ instance Monad (Model env es) where
 
 {- Transform multimodal model into program of samples and observes -}
 handleCore :: Env env -> Model env (ObsReader env : Dist : es) a -> Prog (Observe : Sample : es) a
-handleCore env = handleDist . handleObsRead env . runModel
+handleCore env m = (handleDist . handleObsRead env) (runModel m)
 
 {- Wrap other effects and handlers into the Model type -}
 -- | State
@@ -88,8 +88,8 @@ handleWriterM :: Monoid w => Model env (Writer w : es) v -> Model env es (v, w)
 handleWriterM m = Model $ handleWriter $ runModel m
 
 -- | Lift
-liftM :: (Member (Lift m) es) => m a -> Model env es a
-liftM = Model . call . Lift
+liftM :: forall es m env a. (Member (Lift m) es) => m a -> Model env es a
+liftM m = Model $ call (Lift m)
 
 
 normalLens :: forall env es x.  Observable env x Double

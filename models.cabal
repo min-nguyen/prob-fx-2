@@ -43,7 +43,7 @@ build-type:          Simple
 extra-source-files:  CHANGELOG.md
 
 -- Constraint on the version of Cabal needed to build this package.
-cabal-version:       >=1.10
+cabal-version:       2.0
 
 
 library
@@ -86,10 +86,13 @@ library
                       Inference.SIS,
                       Inference.RMSMC,
                       Inference.PMMH,
-                      Inference.MBAYES,
+                      Inference.MBAYES
+
+  -- Modules included in this library but not exported.
+  other-modules:      Control.Monad.Bayes.Class,
                       Old.Experiment,
                       Old.Trace,
-                      -- Old.Test,
+                      Old.Test,
                       Old.Inference.SIM,
                       Old.Inference.SMC,
                       Old.Inference.LW,
@@ -97,14 +100,12 @@ library
                       Old.Inference.PMMH,
                       Old.EffExample,
                       Old.OpenProductVec
-  -- Modules included in this library but not exported.
-  -- other-modules:
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >= 4.11 && <= 4.14,
+  build-depends:       base             >=4.11   && <4.17,
                        ghc-prim,
                        primitive,
                        containers,
@@ -118,7 +119,6 @@ library
                        membership,
                        profunctors,
                        statistics,
-                       monad-bayes,
                        split,
                        mwc-random,
                        mwc-probability,
