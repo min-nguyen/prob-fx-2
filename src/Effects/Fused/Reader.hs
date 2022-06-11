@@ -21,24 +21,25 @@ module Effects.Fused.Reader where
 import Control.Algebra
 import Control.Effect.Sum
 
-data ReaderE r m k where
-  Ask :: ReaderE r m r
+{- A higher-order effect signature, sig m a, with underlying carrier type m. -}
 
-newtype ReaderC r a = ReaderC { runReaderC :: r -> a } deriving (Functor, Applicative, Monad)
+data Reader env m a where
+  Ask :: Reader env m env
 
-ask :: (Member (ReaderE r) sig, Algebra sig m) => m r
+{- One of the computation carrier types 'm' that the signature can be interpreted to -}
+
+newtype ReaderC r a = ReaderC { runReaderC :: r -> a } 
+  deriving (Functor, Applicative, Monad)
+
+ask :: (Member (Reader env) sig, Algebra sig m) => m env
 ask = send Ask
 
--- handleReader :: forall env es a. env -> Prog (Reader env ': es) a -> Prog es a
--- handleReader env = loop where
---   loop :: Prog (Reader env ': es) a -> Prog es a
---   loop (Val x) = return x
---   loop (Op u k) = case discharge u of
---     Right Ask -> loop (k env)
---     Left  u'  -> Op u' (loop . k)
+-- type Handler ctx n m = forall x. ctx (n x) -> m (ctx x)
 
-instance Algebra (ReaderE r)  -- sig
-                 (ReaderC r)  -- m
+instance Algebra (Reader env)   -- sig
+                 (ReaderC env)  -- m
                  where
-  alg :: (Algebra sig m, Functor ctx) => Handler ctx n m -> sig n a -> ctx () -> m (ctx a)
-  alg h = undefined
+  alg :: (m ~ ReaderC env, sig ~ Reader env) =>
+         (Algebra sig m, Functor ctx) => Handler ctx n m -> sig n a -> ctx () -> m (ctx a)
+  alg hdl op ctx = case op of
+    Ask -> ReaderC undefined 
