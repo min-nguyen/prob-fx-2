@@ -79,6 +79,8 @@ library
                       Examples.School,
                       Examples.GMM,
                       Examples.BayesianNN,
+                      Examples.MBayes.LinRegr,
+                      Examples.MBayes.HMM,
                       Inference.SIM,
                       Inference.LW,
                       Inference.MH,
@@ -99,8 +101,13 @@ library
                       Old.Inference.MH,
                       Old.Inference.PMMH,
                       Old.EffExample,
-                      Old.OpenProductVec
-
+                      Old.OpenProductVec,
+                      Control.Monad.Bayes.Free,
+                      Control.Monad.Bayes.Sampler,
+                      Control.Monad.Bayes.Traced,
+                      Control.Monad.Bayes.Traced.Common,
+                      Control.Monad.Bayes.Traced.Static,
+                      Control.Monad.Bayes.Weighted
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
 
@@ -112,6 +119,7 @@ library
                        extensible,
                        vector,
                        lens,
+                       free,
                        aeson < 2,
                        transformers,
                        HMap,

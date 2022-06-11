@@ -9,7 +9,7 @@
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
-module Examples.LinRegr where
+module Examples.MBayes.LinRegr where
 
 import Effects.ObsReader
 import Effects.Writer
@@ -56,6 +56,7 @@ simLinRegr n_samples n_datapoints = do
       env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> eNil
   sampleIO $ prior $ replicateM n_samples (mbayesLinRegr xs env)
 
+-- Note: running inference a Wasabaye model using Monad Bayes will only yield the return values of the model; also returning any sampled parameters of interest could be done by using a Writer effect in the model.
 lwLinRegr :: Int -> Int -> IO [([Double], Log Double)]
 lwLinRegr n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
