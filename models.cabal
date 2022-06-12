@@ -82,6 +82,9 @@ library
                       Examples.MBayes.LDA,
                       Examples.MBayes.LinRegr,
                       Examples.MBayes.HMM,
+                      Fused.Algebra,
+                      Fused.Sum,
+                      Fused.Reader,
                       Inference.SIM,
                       Inference.LW,
                       Inference.MH,
@@ -90,6 +93,7 @@ library
                       Inference.RMSMC,
                       Inference.PMMH,
                       Inference.MBAYES
+                      
 
   -- Modules included in this library but not exported.
   other-modules:      Control.Monad.Bayes.Class,
@@ -134,8 +138,8 @@ library
                        random,
                        dirichlet,
                        log-domain,
-                       some,
-                       fused-effects
+                       some
+                      --  fused-effects
                       -- Use this package for dumpcore: ghc-dump-core
 
   -- Directories containing source files.
