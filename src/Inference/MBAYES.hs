@@ -9,6 +9,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Inference.MBAYES where
 
@@ -26,29 +27,29 @@ import qualified Data.Vector as Vec
 
 {- Handle Obs and Sample separately, using the "Lift m" effect and a MTL approach to "m" -}
 
-toMBayes :: forall m env a. MonadInfer m => Model env [ObsReader env, Dist, Lift m] a -> Env env -> m a 
-toMBayes m env = (handleLift . handleSamp @m . handleObs @m . handleDist . handleObsRead env) (runModel m)
+toMBayes :: MonadInfer m => Model env [ObsReader env, Dist, Lift m] a -> Env env -> m a 
+toMBayes m env = (handleLift . handleSamp . handleObs . handleDist . handleObsRead env) (runModel m)
 
-handleObs :: forall m es a. MonadCond m => Member (Lift m) es => Prog (Observe : es) a -> Prog es a
+handleObs :: forall m es a. MonadCond m => LastMember (Lift m) es => Prog (Observe : es) a -> Prog es a
 handleObs (Val x)  = Val x
 handleObs (Op u k) = case discharge u of
   Left u' -> do
-     Op u' (handleObs @m . k)
+     Op u' (handleObs . k)
   Right (Observe d y _) -> 
       do let p = logProb d y
          lift @m $ score (Exp p)
-         handleObs @m (k y)
+         handleObs (k y)
 
-handleSamp :: forall m es a. MonadSample m => Member (Lift m) es => Prog (Sample : es) a -> Prog es a
+handleSamp :: forall m es a. MonadSample m => LastMember (Lift m) es => Prog (Sample : es) a -> Prog es a
 handleSamp (Val x) = return x
 handleSamp (Op u k) = case discharge u of
   Left u' -> do
-     Op u' (handleSamp @m . k)
+     Op u' (handleSamp  . k)
   Right (Sample d _) -> 
       do y <- lift @m $ sampleBayes d
-         handleSamp @m (k y)
+         handleSamp (k y)
   Right (Printer s) ->  -- Ignoring printing for now so the `MonadIO m` constraint can be omitted.
-      do handleSamp @m (k ())
+      do handleSamp (k ())
 
 sampleBayes :: MonadSample m => Dist a -> m a
 sampleBayes (UniformDist a b _ _)     = uniform a b
@@ -66,14 +67,14 @@ sampleBayes (DistDict d)              = error ("Sampling from " ++ show d ++ " i
 
 {-  Alternative for handling Dist as the last effect directly into a monad -}
 
-handleDist_MB :: forall m es a. MonadInfer m => Prog '[Dist] a -> m a
-handleDist_MB (Val x)  = return x
-handleDist_MB (Op u k) = case discharge u of
+handleDistMB :: MonadInfer m => Prog '[Dist] a -> m a
+handleDistMB (Val x)  = return x
+handleDistMB (Op u k) = case discharge u of
     Right d ->
       case getObs d of
           Just y  -> do let p = logProb d y
                         score (Exp p)
-                        handleDist_MB (k y)
+                        handleDistMB (k y)
           Nothing -> do y <- sampleBayes d
-                        handleDist_MB (k y)
+                        handleDistMB (k y)
     Left  u'  -> error "impossible; Dist must be the last effect"
