@@ -7,9 +7,6 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
--- | Operations on /sums/, combining effects into a /signature/.
---
--- @since 0.1.0.0
 module Fused.Sum where
   
 import Data.Kind (Constraint, Type)
@@ -51,7 +48,6 @@ instance {-# OVERLAPPABLE #-}
   inj = R . inj
   {-# INLINE inj #-}
 
-
 -- | Reassociate a right-nested sum leftwards.
 --
 -- @since 1.0.2.0
@@ -60,14 +56,7 @@ reassociateSumL = \case
   L l     -> L (L l)
   R (L l) -> L (R l)
   R (R r) -> R r
-{-# INLINE reassociateSumL #-}
 
-
--- | Decompose sums on the left into multiple 'Member' constraints.
---
--- Note that while this, and by extension 'Control.Algebra.Has', can be used to group together multiple membership checks into a single (composite) constraint, large signatures on the left can slow compiles down due to [a problem with recursive type families](https://gitlab.haskell.org/ghc/ghc/issues/8095).
---
--- @since 1.0.0.0
 type family Members sub sup :: Constraint where
   Members (l :+: r) u = (Members l u, Members r u)
   Members t         u = Member t u
