@@ -34,7 +34,7 @@ instance Monad m => Algebra (LiftEff IO) IO where
           Handler ctx n IO -> (LiftEff IO) n a -> ctx () -> IO (ctx a)
   alg hdl (LiftWith mop) ctx = (\x -> fmap (const x) ctx) <$> mop
 
-instance Monad m => Algebra (LiftEff Identity) Identity where 
-  alg :: (Functor ctx) => 
-          Handler ctx n Identity -> (LiftEff Identity) n a -> ctx () -> Identity (ctx a)
-  alg hdl (LiftWith mop) ctx = (\x -> fmap (const x) ctx) <$> mop
+-- instance Monad m => Algebra (LiftEff Identity) Identity where 
+--   alg :: (Functor ctx) => 
+--           Handler ctx n Identity -> (LiftEff Identity) n a -> ctx () -> Identity (ctx a)
+--   alg hdl (LiftWith mop) ctx = (\x -> fmap (const x) ctx) <$> mop

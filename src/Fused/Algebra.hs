@@ -26,6 +26,7 @@ type Has eff sig m = (Members eff sig, Algebra sig m)
 send :: (Member eff sig, Algebra sig m) => eff m a -> m a
 send sig = runIdentity <$> alg (fmap Identity . runIdentity) (inj sig) (Identity ())
 
+run :: Identity a -> a
 run = runIdentity 
 
 -- | Compose two contexts, and compose two handlers

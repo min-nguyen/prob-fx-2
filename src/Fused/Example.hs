@@ -21,12 +21,10 @@
 
 module Fused.Example where
 
-import Data.Functor.Identity
 import Fused.Algebra ( Algebra(..), Has, send, run )
 import Fused.Sum
 import Fused.Writer
 import Fused.Reader
-import Fused.Lift
 
 prog :: (Monad m, Has (ReaderEff Int) sig m, Has (WriterEff String) sig m) => m Int
 prog = do
@@ -51,3 +49,6 @@ prog' = hdlr2 $ do
 
 hdlr2 :: Monad m => WriterT String (ReaderT Int m) a -> m (a, String)
 hdlr2 = (`runReaderT` (5 :: Int)) . runWriterT @String
+
+example :: String
+example = run $ runReaderT ask "hello" 

@@ -19,17 +19,13 @@
 {-# HLINT ignore "Use void" #-}
 {-# LANGUAGE TupleSections #-}
 
-module Fused.ExampleSrc where
+module Fused.SrcComparison.ExampleSrc where
 
 import qualified Control.Algebra 
 import qualified Control.Carrier.Reader
-import qualified Control.Carrier.State.Lazy ()
 
 import Fused.SrcComparison.AlgebraSrc ( Algebra(..), Has, send, run )
 import Fused.SrcComparison.ReaderSrc
-import Fused.Sum
-import Fused.Writer
-import Fused.Lift
 
 exampleSrc :: String
 exampleSrc = Control.Algebra.run . Control.Carrier.Reader.runReader "hello" $ Control.Carrier.Reader.ask
