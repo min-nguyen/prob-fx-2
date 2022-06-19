@@ -17,6 +17,7 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use void" #-}
+{-# LANGUAGE TupleSections #-}
 
 module Fused.Writer where
 
@@ -77,23 +78,20 @@ instance (Monoid w, Monad m) => Monad (WriterT w m) where
       (b, v) <- runWriterT (k a)
       pure (b, w <> v)
 
--- instance Algebra es ms => 
---          Algebra (ReaderEff env :+: es) (ReaderT env ms) where
---   alg :: (Functor ctx)
---       => (forall x. ctx (n x) -> ReaderT env ms (ctx x))
---       -> (ReaderEff env :+: es) n a
---       -> ctx () 
---       -> ReaderT env ms (ctx a)
---   alg hdl op ctx = case op of
---     L (Ask :: ReaderEff env n a)
---         -> ReaderT (\env -> pure $ fmap (const env) ctx) 
---     R (op' :: es n a) 
---         -> ReaderT (\env -> -- Calls a "smaller" algebra to interpret effect `es n a` to underlying computation `ms a`
---                             alg
---                             -- Calls a "smaller" handler of type `ctx (n x) -> ms (ctx x)`
---                             ((`runReaderT` env) . hdl)
---                             op' 
---                             ctx)
-
-
-        
+instance (Monoid w, Algebra es ms) => 
+         Algebra (WriterEff w :+: es) (WriterT w ms) where
+  alg :: (Functor ctx)
+      => (forall x. ctx (n x) -> WriterT w ms (ctx x))
+      -> (WriterEff w :+: es) n a
+      -> ctx () 
+      -> WriterT w ms (ctx a)
+  alg hdl op ctx = case op of
+    L (Tell w :: WriterEff w n a)
+      -> WriterT (pure (fmap (const ()) ctx, w))
+    R (op' :: es n a) 
+      -> WriterT ((, mempty) 
+                  <$> alg -- Calls a "smaller" algebra to interpret effect `es n a` to underlying computation `ms a`
+                      ((fst <$>) . runWriterT . hdl) -- Calls a "smaller" handler of type `ctx (n x) -> ms (ctx x)`
+                      op' 
+                      ctx
+                 )
