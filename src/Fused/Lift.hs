@@ -25,14 +25,17 @@ import Fused.Sum
 type Handler ctx n m = forall x. ctx (n x) -> m (ctx x)
 
 data Lift sig m k where
-  LiftWith :: (forall ctx . Functor ctx => Handler ctx m sig -> ctx () -> sig (ctx a)) -> Lift sig m a
+  LiftWith :: m a -> Lift sig m a
+
+-- lift :: (Member (Lift n) sig, Algebra sig m) => n a -> m a
+-- lift na = send $ LiftWith na
 
 instance Algebra (Lift IO) IO where 
   alg :: (Functor ctx) => 
           Handler ctx n IO -> (Lift IO) n a -> ctx () -> IO (ctx a)
-  alg hdl (LiftWith with) ctx = with hdl ctx
+  alg hdl (LiftWith na) ctx = hdl (fmap (const na) ctx)
 
 instance Algebra (Lift Identity) Identity where 
   alg :: (Functor ctx) => 
           Handler ctx n Identity -> (Lift Identity) n a -> ctx () -> Identity (ctx a)
-  alg hdl (LiftWith with) ctx = with hdl ctx
+  alg hdl (LiftWith na) ctx = hdl (fmap (const na) ctx)
