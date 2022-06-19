@@ -63,18 +63,19 @@ newtype WriterT w n a = WriterT { runWriterT :: n (a, w) }
   deriving Functor
 
 liftA2 :: Applicative f => (a1 -> a2 -> b) -> f a1 -> f a2 -> f b
-liftA2 f x = (<*>) (fmap f x)
+liftA2 f x = (fmap f x <*>)
 
 instance (Monoid w, Applicative m) => Applicative (WriterT w m) where
   pure x  = WriterT (pure (x, mempty))
   WriterT mf <*> WriterT ma = WriterT (liftA2 k mf ma)
     where k (f, w) (a, v) = (f a, w <> v)
 
--- instance (Monad m) => Monad (ReaderT r m) where
---     return   = pure
---     m >>= k  = ReaderT $ \ r -> do
---         a <- runReaderT m r
---         runReaderT (k a) r
+instance (Monoid w, Monad m) => Monad (WriterT w m) where
+    return   = pure
+    m >>= k  = WriterT $ do
+      (a, w) <- runWriterT m 
+      (b, v) <- runWriterT (k a)
+      pure (b, w <> v)
 
 -- instance Algebra es ms => 
 --          Algebra (ReaderEff env :+: es) (ReaderT env ms) where

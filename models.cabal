@@ -85,6 +85,8 @@ library
                       Fused.Algebra,
                       Fused.Sum,
                       Fused.Reader,
+                      Fused.Writer,
+                      Fused.Example,
                       Inference.SIM,
                       Inference.LW,
                       Inference.MH,

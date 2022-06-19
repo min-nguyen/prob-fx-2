@@ -21,6 +21,15 @@ module Fused.Reader where
 import Fused.Algebra ( Algebra(..), send )
 import Fused.Sum
 
+{- 
+  Higher-order signatures, sig m a, are a refinement of first-order signatures, sig k. In particular, the rest of the computation 'k' corresponds to a monadic computation 'm a'.
+
+    data Sig (m :: * -> *) (a :: *) where
+      Op :: arg -> Sig m a
+
+  We understand this as: the syntax of 'Sig' has an underlying computation type 'm'.
+-}
+
 {- A higher-order effect signature, sig m a, with underlying carrier type m. -}
 
 data ReaderEff env m a where
