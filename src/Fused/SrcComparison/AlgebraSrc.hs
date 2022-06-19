@@ -3,12 +3,14 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE InstanceSigs #-}
 
 module Fused.SrcComparison.AlgebraSrc where
 
 import Fused.Sum
 import Data.Functor.Identity
-
+-- import Fused.SrcComparison.LiftSrc
 
 type Handler ctx n m = forall x. ctx (n x) -> m (ctx x)
 
@@ -45,3 +47,4 @@ thread hdl op = fmap getCompose . alg hdl op . Compose
 
 newtype Swap s a = Swap { getSwap :: (a, s) }
   deriving Functor
+

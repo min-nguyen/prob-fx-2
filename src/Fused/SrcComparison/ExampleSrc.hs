@@ -24,6 +24,7 @@ module Fused.SrcComparison.ExampleSrc where
 import qualified Control.Algebra 
 import qualified Control.Carrier.Reader
 
+import Fused.SrcComparison.LiftSrc
 import Fused.SrcComparison.AlgebraSrc ( Algebra(..), Has, send, run )
 import Fused.SrcComparison.ReaderSrc
 

@@ -16,10 +16,10 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
 
-module Fused.Lift where
+module Fused.SrcComparison.LiftSrc (Lift(..)) where
 
 import Data.Functor.Identity
-import Fused.Algebra ( Algebra(..), send )
+import Fused.SrcComparison.AlgebraSrc ( Algebra(..), send )
 import Fused.Sum
 
 type Handler ctx n m = forall x. ctx (n x) -> m (ctx x)
@@ -32,7 +32,7 @@ instance Monad m => Algebra (Lift IO) IO where
           Handler ctx n IO -> (Lift IO) n a -> ctx () -> IO (ctx a)
   alg hdl (LiftWith with) ctx = with hdl ctx
 
-instance Monad m => Algebra (Lift Identity) Identity where 
+instance Algebra (Lift Identity) Identity where 
   alg :: (Functor ctx) => 
           Handler ctx n Identity -> (Lift Identity) n a -> ctx () -> Identity (ctx a)
   alg hdl (LiftWith with) ctx = with hdl ctx
