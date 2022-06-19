@@ -21,35 +21,31 @@
 
 module Fused.Example where
 
-import Fused.Algebra ( Algebra(..), Has, send, run )
+import Fused.Algebra
 import Fused.Sum
 import Fused.Writer
 import Fused.Reader
 import Data.Functor.Identity
 import Fused.Lift
 
--- prog :: (Monad m, Has (LiftEff Identity) sig m, Has (ReaderEff Int) sig m, Has (WriterEff String) sig m) => m Int
--- prog = do
---   send (Tell "hi")
---   x  :: Int <- send Ask
---   send (Tell "bye") 
---   pure x
+prog :: (Monad m, Has (ReaderEff Int) sig m, Has (WriterEff String) sig m) => m Int
+prog = do
+  send (Tell "hi")
+  x  :: Int <- send Ask
+  send (Tell "bye") 
+  pure x
 
 hdlr1 :: WriterT String (Reader Int) a -> (a, String)
 hdlr1 = (`runReader` (5 :: Int)) . runWriterT @String
 
--- apply :: (Algebra sig m, Member (ReaderEff Int) sig, Member (WriterEff String) sig) =>
---          (m Int -> t) -> t
--- apply runProg = runProg prog
+prog' :: (Monad m, Has (ReaderEff Int) sig m, Has (WriterEff String) sig m) => m Int
+prog' = do
+  send (Tell "hi")
+  x  :: Int <- send Ask
+  send (Tell "bye") 
+  pure x
 
--- prog' :: Algebra es m => m (Int, String)
--- prog' = run $ (`runReaderT` (5 :: Int)) . runWriterT @String $ do
---   send (Tell "hi")
---   x  :: Int <- send Ask
---   send (Tell "bye") 
---   pure x
-
--- hdlr2 :: Monad m => WriterT String (ReaderT Int m) a ->  (a, String)
+hdlr2 :: WriterT String (ReaderT Int Identity) a -> (a, String)
 hdlr2 = run . (`runReaderT` (5 :: Int)) . runWriterT @String
 
 -- f = run prog'

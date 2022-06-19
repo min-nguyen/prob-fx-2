@@ -27,7 +27,7 @@ type Handler ctx n m = forall x. ctx (n x) -> m (ctx x)
 data Lift sig m k where
   LiftWith :: (forall ctx . Functor ctx => Handler ctx m sig -> ctx () -> sig (ctx a)) -> Lift sig m a
 
-instance Monad m => Algebra (Lift IO) IO where 
+instance Algebra (Lift IO) IO where 
   alg :: (Functor ctx) => 
           Handler ctx n IO -> (Lift IO) n a -> ctx () -> IO (ctx a)
   alg hdl (LiftWith with) ctx = with hdl ctx

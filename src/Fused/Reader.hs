@@ -18,7 +18,8 @@
 
 module Fused.Reader where
 
-import Fused.Algebra ( Algebra(..), send )
+import Fused.Lift hiding (Handler)
+import Fused.Algebra 
 import Fused.Sum
 
 {- 
@@ -42,8 +43,6 @@ ask = send Ask
 
 newtype Reader env a = Reader { runReader :: env -> a } 
   deriving (Functor, Applicative, Monad)
-
-type Handler ctx n m = forall x. ctx (n x) -> m (ctx x)
 
 instance Algebra (ReaderEff env)   -- sig
                  (Reader env)      -- m
