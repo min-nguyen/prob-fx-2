@@ -72,6 +72,8 @@ ones m n = replicate m $ replicate n 1
 untuple3 :: [((a, b), c)] -> [(a, b, c)]
 untuple3 = map (\((a, b), c) -> (a, b, c))
 
+swap :: (a, b) -> (b, a)
+swap (a, b) = (b, a)
 
 data Address =
   Address { -- The address of the previous sample statement
