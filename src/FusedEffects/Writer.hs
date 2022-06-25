@@ -19,10 +19,10 @@
 {-# HLINT ignore "Use void" #-}
 {-# LANGUAGE TupleSections #-}
 
-module Fused.Writer where
+module FusedEffects.Writer where
 
-import Fused.Algebra ( Algebra(..), send )
-import Fused.Sum
+import FusedEffects.Algebra ( Algebra(..), send )
+import FusedEffects.Sum
 
 {- A higher-order effect signature, sig m a, with underlying carrier type m. -}
 

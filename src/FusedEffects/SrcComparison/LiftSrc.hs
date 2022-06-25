@@ -16,11 +16,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
 
-module Fused.SrcComparison.LiftSrc (Lift(..)) where
+module FusedEffects.SrcComparison.LiftSrc (Lift(..)) where
 
 import Data.Functor.Identity
-import Fused.SrcComparison.AlgebraSrc ( Algebra(..), send )
-import Fused.Sum
+import FusedEffects.SrcComparison.AlgebraSrc ( Algebra(..), send )
+import FusedEffects.Sum
 
 type Handler ctx n m = forall x. ctx (n x) -> m (ctx x)
 

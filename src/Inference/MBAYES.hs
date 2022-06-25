@@ -25,7 +25,6 @@ import Control.Monad.IO.Class
 import qualified Data.Vector as Vec
 
 {- Handle Obs and Sample separately, using the "Lift m" effect and a MTL approach to "m" -}
-
 toMBayes :: forall m env a. MonadInfer m => Model env [ObsReader env, Dist, Lift m] a -> Env env -> m a 
 toMBayes m env = (handleLift . handleSamp @m . handleObs @m . handleDist . handleObsRead env) (runModel m)
 
@@ -63,9 +62,7 @@ sampleBayes (PoissonDist l _ _)       = poisson l
 sampleBayes (DirichletDist as _ _)    = dirichlet (Vec.fromList as) >>= pure . Vec.toList
 sampleBayes (DistDict d)              = error ("Sampling from " ++ show d ++ " is not supported")
 
-
 {-  Alternative for handling Dist as the last effect directly into a monad -}
-
 handleDist_MB :: forall m es a. MonadInfer m => Prog '[Dist] a -> m a
 handleDist_MB (Val x)  = return x
 handleDist_MB (Op u k) = case discharge u of

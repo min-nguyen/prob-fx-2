@@ -19,14 +19,14 @@
 {-# HLINT ignore "Use void" #-}
 {-# LANGUAGE TupleSections #-}
 
-module Fused.Example where
+module FusedEffects.Example where
 
-import Fused.Algebra
-import Fused.Sum
-import Fused.Writer
-import Fused.Reader
+import FusedEffects.Algebra
+import FusedEffects.Sum
+import FusedEffects.Writer
+import FusedEffects.Reader
 import Data.Functor.Identity
-import Fused.Lift
+import FusedEffects.Lift
 
 prog :: (Monad m, Has (ReaderEff Int) sig m, Has (WriterEff String) sig m) => m Int
 prog = do

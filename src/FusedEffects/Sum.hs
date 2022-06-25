@@ -7,7 +7,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Fused.Sum where
+module FusedEffects.Sum where
   
 import Data.Kind (Constraint, Type)
 

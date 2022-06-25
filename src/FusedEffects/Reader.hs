@@ -16,10 +16,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
 
-module Fused.SrcComparison.ReaderSrc where
+module FusedEffects.Reader where
 
-import Fused.SrcComparison.AlgebraSrc ( Algebra(..), send )
-import Fused.Sum
+import FusedEffects.Lift hiding (Handler)
+import FusedEffects.Algebra 
+import FusedEffects.Sum
 
 {- 
   Higher-order signatures, sig m a, are a refinement of first-order signatures, sig k. In particular, the rest of the computation 'k' corresponds to a monadic computation 'm a'.
@@ -38,12 +39,10 @@ data ReaderEff env m a where
 ask :: (Member (ReaderEff env) sig, Algebra sig m) => m env
 ask = send Ask
 
-{-
+{- One of the computation carrier types 'm' that the effect as a singleton signature can be interpreted to -}
 
 newtype Reader env a = Reader { runReader :: env -> a } 
   deriving (Functor, Applicative, Monad)
-
-type Handler ctx n m = forall x. ctx (n x) -> m (ctx x)
 
 instance Algebra (ReaderEff env)   -- sig
                  (Reader env)      -- m
@@ -53,26 +52,20 @@ instance Algebra (ReaderEff env)   -- sig
   alg hdl op ctx = case op of
     Ask -> Reader (\env -> fmap (const env) ctx) 
 
--}
-
 {- One of the computation carrier types 'm' that the effect in a larger signature can be interpreted to -}
 
-runReader :: r -> ReaderT r m a -> m a
-runReader r (ReaderT runReaderC) = runReaderC r
-
-newtype ReaderT env n a = ReaderT (env -> n a )
+newtype ReaderT env n a = ReaderT { runReaderT :: env -> n a } 
   deriving (Functor)
 
 instance (Applicative m) => Applicative (ReaderT r m) where
   pure x  = ReaderT (\env -> pure x)
-  (ReaderT f) <*> (ReaderT v) = ReaderT $ \ r ->  f r <*> v r
+  f <*> v = ReaderT $ \ r -> runReaderT f r <*> runReaderT v r
 
 instance (Monad m) => Monad (ReaderT r m) where
     return   = pure
-    (ReaderT m) >>= k  = ReaderT $ \ r -> do
-        a <- m r
-        let ReaderT m = k a
-        m r
+    m >>= k  = ReaderT $ \ r -> do
+        a <- runReaderT m r
+        runReaderT (k a) r
 
 instance Algebra es ms => 
          Algebra (ReaderEff env :+: es) (ReaderT env ms) where
@@ -88,9 +81,8 @@ instance Algebra es ms =>
         -> ReaderT (\env -> -- Calls a "smaller" algebra to interpret effect `es n a` to underlying computation `ms a`
                             alg
                             -- Calls a "smaller" handler of type `ctx (n x) -> ms (ctx x)`
-                            (runReader env . hdl)
+                            ((`runReaderT` env) . hdl)
                             op' 
                             ctx)
 
 
-        

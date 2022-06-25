@@ -16,11 +16,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
 
-module Fused.Lift where
+module FusedEffects.Lift where
 
 import Data.Functor.Identity
-import Fused.Algebra ( Algebra(..), send )
-import Fused.Sum
+import FusedEffects.Algebra ( Algebra(..), send )
+import FusedEffects.Sum
 
 type Handler ctx n m = forall x. ctx (n x) -> m (ctx x)
 

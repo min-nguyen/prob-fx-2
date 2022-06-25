@@ -16,10 +16,10 @@
 {-# LANGUAGE InstanceSigs #-}
 
 
-module Fused.ObsReader where
+module FusedEffects.ObsReader where
 
-import Fused.Algebra
-import Fused.Sum
+import FusedEffects.Algebra
+import FusedEffects.Sum
 import Env
 import Util
 
