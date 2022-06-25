@@ -19,6 +19,7 @@ import Control.Monad.Trans.Class
 import Unsafe.Coerce
 import Effects.Dist
 import Prog
+import PrimDist
 import Model hiding (runModelFree)
 import Sampler
 import Effects.State ( modify, handleState, State )

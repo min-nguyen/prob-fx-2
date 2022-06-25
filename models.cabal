@@ -53,6 +53,7 @@ library
   exposed-modules:    Util,
                       DataSets,
                       Prog,
+                      PrimDist,
                       Model,
                       OpenSum,
                       Env,
@@ -67,6 +68,12 @@ library
                       Effects.Lift,
                       Effects.Reader,
                       Effects.NonDet,
+                      FusedEffects.Algebra,
+                      FusedEffects.Sum,
+                      FusedEffects.Reader,
+                      FusedEffects.Writer,
+                      FusedEffects.Lift,
+                      FusedEffects.Example,
                       Examples.DataSets,
                       Examples.LinRegr,
                       Examples.SIR,
@@ -79,6 +86,9 @@ library
                       Examples.School,
                       Examples.GMM,
                       Examples.BayesianNN,
+                      Examples.MBayes.LDA,
+                      Examples.MBayes.LinRegr,
+                      Examples.MBayes.HMM,
                       Inference.SIM,
                       Inference.LW,
                       Inference.MH,
@@ -87,20 +97,16 @@ library
                       Inference.RMSMC,
                       Inference.PMMH,
                       Inference.MBAYES
+                      
 
   -- Modules included in this library but not exported.
   other-modules:      Control.Monad.Bayes.Class,
-                      Old.Experiment,
-                      Old.Trace,
-                      Old.Test,
-                      Old.Inference.SIM,
-                      Old.Inference.SMC,
-                      Old.Inference.LW,
-                      Old.Inference.MH,
-                      Old.Inference.PMMH,
-                      Old.EffExample,
-                      Old.OpenProductVec
-
+                      Control.Monad.Bayes.Free,
+                      Control.Monad.Bayes.Sampler,
+                      Control.Monad.Bayes.Traced,
+                      Control.Monad.Bayes.Traced.Common,
+                      Control.Monad.Bayes.Traced.Static,
+                      Control.Monad.Bayes.Weighted
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
 
@@ -112,6 +118,7 @@ library
                        extensible,
                        vector,
                        lens,
+                       free,
                        aeson < 2,
                        transformers,
                        HMap,
@@ -126,6 +133,7 @@ library
                        dirichlet,
                        log-domain,
                        some
+                      --  fused-effects
                       -- Use this package for dumpcore: ghc-dump-core
 
   -- Directories containing source files.

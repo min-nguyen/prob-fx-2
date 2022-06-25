@@ -15,7 +15,6 @@ from functools import reduce
 import itertools
 from scipy.stats import gaussian_kde
 from scipy.interpolate import make_interp_spline
-import pymc3 as pm
 
 
 # Remove consecutive duplicates

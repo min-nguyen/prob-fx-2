@@ -18,6 +18,7 @@ import Effects.ObsReader
 import Effects.Lift
 import qualified Data.Map as Map
 import Prog
+import PrimDist
 import Sampler
 import Model
 import Env

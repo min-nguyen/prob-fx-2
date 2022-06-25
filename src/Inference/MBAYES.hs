@@ -9,10 +9,12 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Inference.MBAYES where
 
 import Prog
+import PrimDist
 import Model (Model(..))
 import Effects.Dist
 import Effects.Lift
@@ -25,7 +27,6 @@ import Control.Monad.IO.Class
 import qualified Data.Vector as Vec
 
 {- Handle Obs and Sample separately, using the "Lift m" effect and a MTL approach to "m" -}
-
 toMBayes :: forall m env a. MonadInfer m => Model env [ObsReader env, Dist, Lift m] a -> Env env -> m a 
 toMBayes m env = (handleLift . handleSamp @m . handleObs @m . handleDist . handleObsRead env) (runModel m)
 
@@ -50,30 +51,28 @@ handleSamp (Op u k) = case discharge u of
   Right (Printer s) ->  -- Ignoring printing for now so the `MonadIO m` constraint can be omitted.
       do handleSamp @m (k ())
 
-sampleBayes :: MonadSample m => Dist a -> m a
-sampleBayes (UniformDist a b _ _)     = uniform a b
-sampleBayes (DiscreteDist as _ _)     = categorical (Vec.fromList as)
-sampleBayes (CategoricalDist as _ _)  = categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
-sampleBayes (NormalDist mu std _ _)   = normal mu std
-sampleBayes (GammaDist k t _ _)       = gamma k t
-sampleBayes (BetaDist a b _ _)        = beta a b
-sampleBayes (BernoulliDist p _ _)     = bernoulli p
-sampleBayes (BinomialDist n p _ _)    = replicateM n (bernoulli p) >>= (pure . length . filter (== True))
-sampleBayes (PoissonDist l _ _)       = poisson l
-sampleBayes (DirichletDist as _ _)    = dirichlet (Vec.fromList as) >>= pure . Vec.toList
-sampleBayes (DistDict d)              = error ("Sampling from " ++ show d ++ " is not supported")
-
+sampleBayes :: MonadSample m => PrimDist a -> m a
+sampleBayes (UniformDist a b )     = uniform a b
+sampleBayes (DiscreteDist as )     = categorical (Vec.fromList as)
+sampleBayes (CategoricalDist as )  = categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
+sampleBayes (NormalDist mu std )   = normal mu std
+sampleBayes (GammaDist k t )       = gamma k t
+sampleBayes (BetaDist a b )        = beta a b
+sampleBayes (BernoulliDist p )     = bernoulli p
+sampleBayes (BinomialDist n p )    = replicateM n (bernoulli p) >>= (pure . length . filter (== True))
+sampleBayes (PoissonDist l )       = poisson l
+sampleBayes (DirichletDist as )    = dirichlet (Vec.fromList as) >>= pure . Vec.toList
+sampleBayes (PrimDistDict d)       = error ("Sampling from " ++ show d ++ " is not supported")
 
 {-  Alternative for handling Dist as the last effect directly into a monad -}
-
-handleDist_MB :: forall m es a. MonadInfer m => Prog '[Dist] a -> m a
-handleDist_MB (Val x)  = return x
-handleDist_MB (Op u k) = case discharge u of
+handleDistMB :: forall m es a. MonadInfer m => Prog '[Dist] a -> m a
+handleDistMB (Val x)  = return x
+handleDistMB (Op u k) = case discharge u of
     Right d ->
       case getObs d of
-          Just y  -> do let p = logProb d y
+          Just y  -> do let p = logProb (getPrimDist d) y
                         score (Exp p)
-                        handleDist_MB (k y)
-          Nothing -> do y <- sampleBayes d
-                        handleDist_MB (k y)
+                        handleDistMB (k y)
+          Nothing -> do y <- sampleBayes (getPrimDist d)
+                        handleDistMB (k y)
     Left  u'  -> error "impossible; Dist must be the last effect"
