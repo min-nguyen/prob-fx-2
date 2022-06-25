@@ -13,6 +13,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE InstanceSigs #-}
 
 
 module Fused.ObsReader where
@@ -25,8 +26,6 @@ import Util
 -- | Effect
 data ObsReader env m (a :: *) where
   Ask :: Observable env x a => ObsVar x -> ObsReader env m (Maybe a)
-  -- Get :: ObsReader env m (Env env)
-  -- Put :: Env env -> ObsReader env m ()
 
 ask :: forall sig env es x m a. (Member (ObsReader env) sig, Algebra sig m) => Observable env x a => ObsVar x -> m (Maybe a)
 ask k = send (Ask k :: ObsReader env m (Maybe a))
@@ -50,21 +49,16 @@ instance Monad m => Monad (ObsReaderC env m) where
 
 -- | Algebra
 instance Algebra sig m => Algebra (ObsReader env :+: sig) (ObsReaderC env m) where
-  alg hdl sig ctx = ObsReaderC $ \ s -> case sig of
-    -- L Ask
-    -- L Get     -> pure (s, s <$ ctx)
-    -- L (Put s) -> pure (s, ctx)
-    R other   -> thread ((uncurry runObsReaderC . swap) ~<~ hdl) other (s, ctx)
+  alg :: (Functor ctx)
+      => (forall x. ctx (n x) -> ObsReaderC env m (ctx x))
+      -> (ObsReader env :+: sig) n a
+      -> ctx () 
+      -> ObsReaderC env m (ctx a)
+  alg hdl sig ctx = ObsReaderC $ \env -> case sig of
+    L (Ask x) -> do
+      let ys = get x env
+          y  = maybeHead ys
+          env' = set x (safeTail ys) env
+      pure (env', y <$ ctx)
+    R other   -> thread ((uncurry runObsReaderC . swap) ~<~ hdl) other (env, ctx)
   {-# INLINE alg #-}
-
-
-
--- handleObsRead :: forall env es a.
---   Env env -> Prog (ObsReader env ': es) a -> Prog es a
--- handleObsRead env (Val x) = return x
--- handleObsRead env (Op (AskPatt key) k) = do
---     let ys = get key env
---         y  = maybeHead ys
---         env' = set key (safeTail ys) env
---     handleObsRead env' (k y)
--- handleObsRead env (Op (Other u) k) = Op u (handleObsRead env . k)
