@@ -11,30 +11,25 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Inference.RMSMC where
--- import Data.Extensible hiding (Member)
+
 import qualified Data.Map as Map
-import Data.Maybe
-import Data.Bifunctor
 import Data.Map (Map)
-import Debug.Trace
 import Env
+import Prog
+import Model
+import Sampler
+import Trace
+import LogP
 import Control.Monad
 import Control.Applicative
 import Effects.Dist
-import Prog
-import Model
-import Effects.NonDet
-import Sampler
 import Effects.Lift
 import Effects.ObsReader
-import Effects.State
-import Trace
-import Sampler
-import Effects.Writer
-import Inference.MH
+import Effects.NonDet
+import qualified Inference.MH as MH
 import qualified Inference.SMC as SMC
-import Inference.SIS
-    ( sis, Accum(accum), ParticleHandler, Resampler, LogP(..), logMeanExp )
+import qualified Inference.SIM as SIM
+import qualified Inference.SIS as SIS
 import OpenSum (OpenSum)
 import Util
 
@@ -49,13 +44,13 @@ rmsmc :: forall env es' a. (FromSTrace env, Show a) =>
   (es' ~ [Observe, Sample, Lift Sampler]) =>
   Int -> Int -> Prog es' a -> Env env -> Sampler [(a, LogP, Env env)]
 rmsmc n_particles mh_steps prog env = do
-  as_ps_straces <- sis n_particles (rmsmcResampler mh_steps prog) SMC.smcPopulationHandler SMC.handleObs SMC.handleSamp prog
+  as_ps_straces <- SIS.sis n_particles (rmsmcResampler mh_steps prog) SMC.smcPopulationHandler SIM.handleObs SIM.handleSamp prog
   return $ map (\(a, (addr, p, strace)) -> (a, p, fromSTrace @env strace)) as_ps_straces
 
 rmsmcResampler :: forall es a.
      Int
   -> Prog [Observe, Sample, Lift Sampler] a -- the initial program, representing the entire unevaluated model execution (having already provided a model environment)
-  -> Resampler ([Addr], LogP, STrace) [Observe, Sample, Lift Sampler] a
+  -> SIS.Resampler ([Addr], LogP, STrace) [Observe, Sample, Lift Sampler] a
 rmsmcResampler mh_steps prog ctx_0 ctx_1sub0 progs_1 = do
   -- run SMC resampling, ignore log weights of particles
   (obs_addrs, _, resampled_straces) <- unzip3 . snd <$> SMC.smcResampler ctx_0 ctx_1sub0 progs_1
@@ -65,7 +60,7 @@ rmsmcResampler mh_steps prog ctx_0 ctx_1sub0 progs_1 = do
       partial_model = insertBreakpoint α_break prog
 
   -- perform metropolis-hastings using each resampled particle's sample trace
-  mhTraces <- lift $ mapM (\strace -> mh mh_steps partial_model strace []) resampled_straces
+  mhTraces <- lift $ mapM (\strace -> MH.mh mh_steps partial_model strace []) resampled_straces
   let -- get the continuations of each particle from the break point, and weaken with non-det effect
       moved_particles = map (weakenNonDet . fst3 . head) mhTraces
       -- get the sample traces of each particle up until the break point

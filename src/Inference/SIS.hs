@@ -12,29 +12,15 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Inference.SIS where
--- import Data.Extensible hiding (Member)
+
 import qualified Data.Map as Map
-import Data.Maybe
-import Data.Bifunctor
 import Data.Map (Map)
-import Env
-import Control.Monad
-import Control.Applicative
 import Effects.Dist
 import Prog
 import Effects.Lift
-import Model
 import Effects.NonDet
 import Sampler
-import Effects.ObsReader
-import Effects.State
-import Trace
-import Sampler
-import Effects.Writer
-import qualified OpenSum as OpenSum
-import OpenSum (OpenSum)
-import Util
-import Language.Haskell.TH.Lens (_Overlappable)
+import LogP
 
 {- Takes previous contexts of particles, the new contexts of particles since previous execution, and the current particles,
   , and decides which particles and contexts to continue with. -}
@@ -47,16 +33,6 @@ class Accum ctx where
   accum  :: [ctx] -> [ctx] -> [ctx]
   -- Initialise the contexts for n particles
   aempty :: Int -> [ctx]
-
-newtype LogP = LogP { logP :: Double } deriving (Show, Num, Eq, Ord, Fractional)
-
-logMeanExp :: [LogP] -> LogP
-logMeanExp logps =
-  let logws = map logP logps
-      c = maximum logws
-  in  if isInfinite c -- to avoid "-Infinity - (-Infinity)"
-      then (-1/0)
-      else LogP $ c + log ((1.0/fromIntegral (length logws)) * sum (map (\logw -> exp (logw - c)) logws))
 
 instance {-# OVERLAPPING #-} Accum LogP where
   aempty n = replicate n 0

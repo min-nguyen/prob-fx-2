@@ -12,23 +12,25 @@
 
 module Inference.PMMH where
 
+import qualified Data.Map as Map
 import Control.Monad
 import Effects.Dist
 import Effects.ObsReader
 import Effects.Lift
-import qualified Data.Map as Map
 import Prog
 import PrimDist
 import Sampler
 import Model
 import Env
 import Trace
+import LogP
 import qualified Inference.MH as MH
 import qualified Inference.SMC as SMC
 import qualified Inference.SIS as SIS
+import qualified Inference.SIM as SIM
 import Util
 
-type PMMHTrace a = MH.MHTrace SIS.LogP a
+type PMMHTrace a = MH.MHTrace LogP a
 
 pmmhTopLevel :: forall es a env xs.
   (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env, ValidSpec env xs, Show a)
@@ -37,7 +39,7 @@ pmmhTopLevel :: forall es a env xs.
    -> Model env es a                         -- Model
    -> Env env                           -- List of model observed variables
    -> ObsVars xs                             -- Tags indicated sample sites of interest
-   -> Sampler [(a, Env env, SIS.LogP)]  -- Trace of all accepted outputs, samples, and logps
+   -> Sampler [(a, Env env, LogP)]  -- Trace of all accepted outputs, samples, and logps
 pmmhTopLevel mh_steps n_particles model env obsvars = do
   let prog = (handleDist . handleObsRead env) (runModel model)
       tags = asTags @env obsvars
@@ -59,11 +61,11 @@ pmmh mh_steps n_particles prog strace_0 tags = do
   -- get samples of prior parameters
   let priorSamples_0 = filterSTrace tags strace_0
   -- perform initial run of smc to compute likelihood
-  ctxs <- SIS.sis n_particles SMC.smcResampler SMC.smcPopulationHandler SMC.handleObs (handleSamp priorSamples_0) prog
+  ctxs <- SIS.sis n_particles SMC.smcResampler SMC.smcPopulationHandler SIM.handleObs (handleSamp priorSamples_0) prog
   let -- get final log probabilities of each particle
       lps     = map (snd3 . snd) ctxs
       -- compute average
-      logW_0  = SIS.logMeanExp lps
+      logW_0  = logMeanExp lps
 
   -- A function performing n pmmhsteps
   let pmmhs  = foldl (>=>) return (replicate mh_steps (pmmhStep n_particles prog tags))
@@ -80,20 +82,20 @@ pmmhStep :: (es ~ '[Observe, Sample, Lift Sampler], Show a)
 pmmhStep n_particles prog tags pmmhTrace =
   MH.mhStep prog tags (acceptSMC n_particles prog tags) pmmhTrace
 
-acceptSMC :: Show a => Int -> Prog '[Observe, Sample, Lift Sampler] a -> [Tag] -> MH.Accept SIS.LogP a
+acceptSMC :: Show a => Int -> Prog '[Observe, Sample, Lift Sampler] a -> [Tag] -> MH.Accept LogP a
 acceptSMC n_particles prog tags _ (a, strace', lptrace') (_, _, logW) = do
   let priorSamples = filterSTrace tags strace'
   printS $ "prior samples" ++ show priorSamples
   -- run SMC using prior samples
-  ctxs <- SIS.sis n_particles SMC.smcResampler SMC.smcPopulationHandler SMC.handleObs (handleSamp priorSamples) prog
+  ctxs <- SIS.sis n_particles SMC.smcResampler SMC.smcPopulationHandler SIM.handleObs (handleSamp priorSamples) prog
   let -- get final log probabilities of each particle
       lps     = map (snd3 . snd) ctxs
       -- compute average
-      logW'   = SIS.logMeanExp lps
+      logW'   = logMeanExp lps
       -- compute acceptance ratio to see if we use samples or samples'
       {-  if logW' and logW = -Infinity, this ratio can be NaN which is fine, in which case comparing u < Nan returns false
           if logW > -Infinity and logW = -Infinity, this ratio can be Infinity, which is fine. -}
-      acceptance_ratio = exp (SIS.logP $ logW' - logW)
+      acceptance_ratio = exp (logP $ logW' - logW)
   return ((a, strace', logW'), acceptance_ratio)
 
 handleSamp :: STrace -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a

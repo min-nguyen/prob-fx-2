@@ -13,18 +13,16 @@
 
 module Inference.MBAYES where
 
+import Control.Monad.IO.Class
+import Numeric.Log
+import Model (Model(..))
+import Env
 import Prog
 import PrimDist
-import Model (Model(..))
 import Effects.Dist
 import Effects.Lift
 import Effects.ObsReader
-import Env
 import Control.Monad.Bayes.Class
-import Control.Monad
-import Numeric.Log
-import Control.Monad.IO.Class
-import qualified Data.Vector as Vec
 
 {- Handle Obs and Sample separately, using the "Lift m" effect and a MTL approach to "m" -}
 toMBayes :: forall m env a. MonadInfer m => Model env [ObsReader env, Dist, Lift m] a -> Env env -> m a 

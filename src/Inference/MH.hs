@@ -18,34 +18,25 @@
 {-# HLINT ignore "Redundant return" #-}
 module Inference.MH where
 
+import Control.Monad
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Kind (Type)
 import qualified Data.Set as Set
 import Data.Set (Set, (\\))
 import Data.Maybe
--- import Data.Extensible hiding (Member)
+import Unsafe.Coerce
 import Env
-import Control.Monad
-import Effects.Lift
-import Effects.Dist
 import PrimDist
 import Prog
-import Model hiding (runModelFree)
+import Model
 import Sampler
 import Trace
-    ( filterSTrace,
-      traceLPs,
-      traceSamples,
-      FromSTrace(..),
-      LPTrace,
-      STrace )
-import Inference.SIM (handleObs)
-import qualified OpenSum as OpenSum
-import OpenSum (OpenSum(..))
+import Effects.Lift
+import Effects.Dist
 import Effects.ObsReader
-import qualified GHC.TypeLits as TL
-import Unsafe.Coerce
+import qualified Inference.SIM as SIM (handleObs)
+import qualified OpenSum
 {-
 MH(x0, Ⲭ, LogP):
 Perform initial run of MH.
@@ -208,7 +199,7 @@ runMH strace α_samp prog = do
   ((a, strace'), lptrace') <-
                             ( handleLift
                             . handleSamp α_samp strace
-                            . handleObs
+                            . SIM.handleObs
                             . traceLPs
                             . traceSamples) prog
   return (a, strace', lptrace')

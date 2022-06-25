@@ -57,6 +57,7 @@ library
                       Model,
                       OpenSum,
                       Env,
+                      LogP,
                       FindElem,
                       Sampler,
                       Trace,
