@@ -3,3 +3,5 @@ dist-newstyle/
 model-output.txt
 *.csv
 sys
+.ghc.environment.*
+*.swp
