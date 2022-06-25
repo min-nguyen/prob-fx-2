@@ -5,6 +5,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE MonoLocalBinds #-}
+
 module FusedEffects.Model where
 
 import FusedEffects.Algebra
