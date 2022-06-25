@@ -23,7 +23,7 @@ class Monad m => Algebra sig m | m -> sig where
 type Has eff sig m = (Members eff sig, Algebra sig m)
 
 -- | Construct a request for an effect to be interpreted by some handler later on.
-send :: (Member eff sig, Algebra sig m) => eff m a -> m a
+send :: forall eff sig m a . (Member eff sig, Algebra sig m) => eff m a -> m a
 send sig = runIdentity <$> alg (fmap Identity . runIdentity) (inj sig) (Identity ())
 
 run :: Identity a -> a
