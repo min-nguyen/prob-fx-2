@@ -13,7 +13,8 @@ module Inference.LW where
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Env
-import Effects.ObsReader
+import Effects.ObsReader ( handleObsRead, ObsReader )
+import Effects.Lift
 import Control.Monad
 import Control.Monad.Trans.Class
 import Unsafe.Coerce
@@ -23,60 +24,37 @@ import PrimDist
 import Model hiding (runModelFree)
 import Sampler
 import Effects.State ( modify, handleState, State )
-import Trace
-import qualified OpenSum as OpenSum
-import OpenSum (OpenSum(..))
-import Util
+import Inference.SIM (handleSamp)
+import Trace ( traceSamples, FromSTrace(..), STrace )
 
 type LWTrace a = [(a, STrace, Double)]
 
 -- | Run LW n times
-lwTopLevel :: forall env es a b. (FromSTrace env, es ~ '[ObsReader env, Dist])
-   => Int                                   -- Number of lw iterations
-   -> Model env es a                        -- Model
-   -> Env env                          -- List of model observed variables
-   -> Sampler [(Env env, Double)]   -- List of n likelihood weightings for each data point
+lwTopLevel :: FromSTrace env
+   => Int                                 -- Number of lw iterations
+   -> Model env [ObsReader env, Dist] a   -- Model
+   -> Env env                             -- List of model observed variables
+   -> Sampler [(Env env, Double)]         -- List of n likelihood weightings for each data point
 lwTopLevel n model env = do
   let prog = (handleDist . handleObsRead env) (runModel model)
   lwTrace <- lw n prog
   return (map (\(_, env, p) -> (fromSTrace env, p)) lwTrace)
 
-lw :: forall env es a b. (es ~ '[Observe, Sample])
-   => Int                   -- Number of lw iterations
-   -> Prog es a             -- Model
-   -> Sampler (LWTrace a)   -- List of n likelihood weightings for each data point
+lw :: Int                         -- Number of lw iterations
+   -> Prog [Observe, Sample] a    -- Model
+   -> Sampler (LWTrace a)         -- List of n likelihood weightings for each data point
 lw n prog = replicateM n (runLW prog)
 
 -- | Run LW once
-runLW :: es ~ '[Observe, Sample]
-  => Prog es a                    -- Model
-  -> Sampler (a, STrace, Double)
+runLW :: Prog [Observe, Sample] a -> Sampler (a, STrace, Double)
 runLW prog = do
-  ((x, samples), p) <- (runSample . runObserve . traceSamples) prog
+  ((x, samples), p) <- (handleLift . handleSamp . handleObs 0 . traceSamples) prog
   return (x, samples, p)
 
-runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es (a, Double)
-runObserve = loop 0
-  where
-  loop :: Member Sample es => Double -> Prog (Observe : es) a -> Prog es (a, Double)
-  loop logp (Val x) = return (x, exp logp)
-  loop logp (Op u k) = case  u of
-      ObsPatt d y α -> do
-        let logp' = logProb d y
-        -- prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show logp'
-        loop (logp + logp') (k y)
-      DecompLeft u' -> Op u' (loop logp . k)
-
-runSample :: Prog '[Sample] a -> Sampler a
-runSample = loop
-  where
-  loop :: Prog '[Sample] a -> Sampler a
-  loop (Val x) = return x
-  loop (Op u k) =
-    case u of
-      SampPatt d α ->
-        -- liftIOSampler (putStrLn $ ">> : " ++ show α) >>
-        sample d >>= loop . k
-      PrintPatt s  ->
-        liftIOSampler (putStrLn s) >>= loop . k
-      _         -> error "Impossible: Nothing cannot occur"
+handleObs :: Member Sample es => Double -> Prog (Observe : es) a -> Prog es (a, Double)
+handleObs logp (Val x) = return (x, exp logp)
+handleObs logp (Op u k) = case discharge u of
+    Right (Observe d y α) -> do
+      let logp' = logProb d y
+      handleObs (logp + logp') (k y)
+    Left op' -> Op op' (handleObs logp . k)

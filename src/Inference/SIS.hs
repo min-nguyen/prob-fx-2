@@ -93,10 +93,10 @@ sis :: forall a env ctx es.
   -> (forall b. Prog '[Sample, Lift Sampler] b -> Prog '[Lift Sampler] b)   -- sample handler
   -> Prog [Observe, Sample, Lift Sampler] a                                 -- model
   -> Sampler [(a, ctx)]
-sis n_particles resampler pophdl runObserve runSample prog = do
+sis n_particles resampler pophdl handleObs handleSamp prog = do
   let particles_0   = replicate n_particles (weaken' prog)
       ctxs_0        = aempty n_particles
-  (handleLift . runSample . runObserve) (loopSIS n_particles resampler pophdl (particles_0, ctxs_0))
+  (handleLift . handleSamp . handleObs) (loopSIS n_particles resampler pophdl (particles_0, ctxs_0))
 
 loopSIS :: (Show a, Show ctx, Accum ctx)
   => Int

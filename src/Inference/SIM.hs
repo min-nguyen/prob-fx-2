@@ -53,25 +53,21 @@ simulate model env   = do
 runSimulate :: (es ~ '[ObsReader env, Dist])
  => Env env -> Model env es a -> Sampler (a, STrace)
 runSimulate ys m
-  = (handleLift . runSample Map.empty . runObserve . handleDist . handleObsRead ys) (runModel m)
+  = (handleLift . handleSamp . handleObs . traceSamples . handleDist . handleObsRead ys) (runModel m)
 
-runObserve :: Prog (Observe : es) a -> Prog es  a
-runObserve (Val x) = return x
-runObserve (Op u k) = case u of
-  ObsPatt d y α ->
-    let p = logProb d y
-    in  runObserve (k y)
-  DecompLeft u' ->
-    Op u' (runObserve . k)
+handleObs :: Prog (Observe : es) a -> Prog es  a
+handleObs (Val x) = return x
+handleObs (Op op k) = case discharge op of
+  Right (Observe d y α) -> handleObs (k y)
+  Left op' -> Op op' (handleObs . k)
 
-runSample :: STrace -> Prog '[Sample] a -> Prog '[Lift Sampler] (a, STrace)
-runSample sTrace (Val x)  = return (x, sTrace)
-runSample sTrace (Op u k) = case u of
+handleSamp :: Prog '[Sample] a -> Prog '[Lift Sampler] a
+handleSamp (Val x)  = return x
+handleSamp (Op u k) = case u of
     PrintPatt s -> do
       (lift . liftIOSampler) (putStrLn s)
-      runSample sTrace (k ())
+      handleSamp  (k ())
     SampPatt d α -> do
       x <- lift (sample d)
-      let sTrace' = Map.insert α (ErasedPrimDist d, OpenSum.inj x) sTrace
-      (runSample sTrace' . k) x
+      (handleSamp . k) x
     _        -> error "Impossible: Nothing cannot occur"

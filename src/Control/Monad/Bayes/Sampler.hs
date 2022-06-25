@@ -20,7 +20,7 @@ module Control.Monad.Bayes.Sampler
     sampleIOwith,
     Seed,
     SamplerST (SamplerST),
-    runSamplerST,
+    handleSamprST,
     sampleST,
     sampleSTfixed,
   )
@@ -63,8 +63,8 @@ instance MonadSample SamplerIO where
 -- | An 'ST' based random sampler using the @mwc-random@ package.
 newtype SamplerST a = SamplerST (forall s. ReaderT (GenST s) (ST s) a)
 
-runSamplerST :: SamplerST a -> ReaderT (GenST s) (ST s) a
-runSamplerST (SamplerST s) = s
+handleSamprST :: SamplerST a -> ReaderT (GenST s) (ST s) a
+handleSamprST (SamplerST s) = s
 
 instance Functor SamplerST where
   fmap f (SamplerST s) = SamplerST $ fmap f s
@@ -74,7 +74,7 @@ instance Applicative SamplerST where
   (SamplerST f) <*> (SamplerST x) = SamplerST $ f <*> x
 
 instance Monad SamplerST where
-  (SamplerST x) >>= f = SamplerST $ x >>= runSamplerST . f
+  (SamplerST x) >>= f = SamplerST $ x >>= handleSamprST . f
 
 -- | Run the sampler with a supplied seed.
 -- Note that 'State Seed' is much less efficient than 'SamplerST' for composing computation.

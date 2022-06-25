@@ -48,7 +48,7 @@ smc :: forall env es' a. (FromSTrace env, Show a) =>
   (es' ~ [Observe, Sample, Lift Sampler]) =>
   Int -> Prog es' a -> Env env -> Sampler [(a, LogP, Env env)]
 smc n_particles prog env = do
-  as_ps_straces <- sis n_particles smcResampler smcPopulationHandler runObserve runSample prog
+  as_ps_straces <- sis n_particles smcResampler smcPopulationHandler handleObs handleSamp prog
   return $ map (\(a, (addr, p, strace)) -> (a, p, fromSTrace @env strace)) as_ps_straces
 
 smcPopulationHandler :: Members [Observe, Sample, Lift Sampler] es
@@ -85,8 +85,8 @@ breakObserve  (Op op k) = case op of
         Val (k y, α, LogP logp)
       _ -> Op op (breakObserve . k)
 
-runSample :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
-runSample = loop
+handleSamp :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
+handleSamp = loop
   where
   loop :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
   loop (Val x) = return x
@@ -99,9 +99,9 @@ runSample = loop
       DecompLeft u' ->
         Op u' (loop . k)
 
-runObserve :: Prog (Observe : es) a -> Prog es a
-runObserve  (Val x) = return x
-runObserve  (Op op k) = case op of
+handleObs :: Prog (Observe : es) a -> Prog es a
+handleObs  (Val x) = return x
+handleObs  (Op op k) = case op of
       ObsPatt d y α -> do
-        runObserve (k y)
-      Other op -> Op op (runObserve . k)
+        handleObs (k y)
+      Other op -> Op op (handleObs . k)

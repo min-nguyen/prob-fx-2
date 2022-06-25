@@ -35,7 +35,7 @@ import System.Random
 import System.Random.MWC
 import GHC.Word
 
-newtype Sampler a = Sampler {runSampler :: ReaderT MWC.GenIO IO a}
+newtype Sampler a = Sampler {handleSampr :: ReaderT MWC.GenIO IO a}
   deriving (Functor, Applicative, Monad)
 
 liftIOSampler :: IO a -> Sampler a
@@ -52,14 +52,14 @@ printLift s = Lift.lift $ Sampler $ lift (print s)
 
 -- | Takes a Sampler, provides it a random generator, and runs the sampler in the IO context
 sampleIO :: Sampler a -> IO a
-sampleIO m = MWC.createSystemRandom >>= (runReaderT . runSampler) m
+sampleIO m = MWC.createSystemRandom >>= (runReaderT . handleSampr) m
 
 -- | Takes a Sampler, provides it a fixed generator, and runs the sampler in the IO context
 sampleIOFixed :: Sampler a -> IO a
-sampleIOFixed m = MWC.create >>= (runReaderT . runSampler) m
+sampleIOFixed m = MWC.create >>= (runReaderT . handleSampr) m
 
 sampleIOFixedSeed :: Int -> Sampler a -> IO a
-sampleIOFixedSeed n m = initialize (V.singleton (fromIntegral n :: Word32)) >>= (runReaderT . runSampler) m
+sampleIOFixedSeed n m = initialize (V.singleton (fromIntegral n :: Word32)) >>= (runReaderT . handleSampr) m
 
 -- | Takes a distribution which awaits a generator, and returns a Sampler
 createSampler :: (MWC.GenIO -> IO a) -> Sampler a

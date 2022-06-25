@@ -49,7 +49,7 @@ rmsmc :: forall env es' a. (FromSTrace env, Show a) =>
   (es' ~ [Observe, Sample, Lift Sampler]) =>
   Int -> Int -> Prog es' a -> Env env -> Sampler [(a, LogP, Env env)]
 rmsmc n_particles mh_steps prog env = do
-  as_ps_straces <- sis n_particles (rmsmcResampler mh_steps prog) SMC.smcPopulationHandler SMC.runObserve SMC.runSample prog
+  as_ps_straces <- sis n_particles (rmsmcResampler mh_steps prog) SMC.smcPopulationHandler SMC.handleObs SMC.handleSamp prog
   return $ map (\(a, (addr, p, strace)) -> (a, p, fromSTrace @env strace)) as_ps_straces
 
 rmsmcResampler :: forall es a.

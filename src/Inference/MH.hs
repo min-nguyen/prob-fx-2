@@ -18,7 +18,6 @@
 {-# HLINT ignore "Redundant return" #-}
 module Inference.MH where
 
-import Data.Functor.Identity
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Kind (Type)
@@ -30,21 +29,23 @@ import Env
 import Control.Monad
 import Effects.Lift
 import Effects.Dist
-import Data.Bifunctor
 import PrimDist
 import Prog
 import Model hiding (runModelFree)
 import Sampler
 import Trace
+    ( filterSTrace,
+      traceLPs,
+      traceSamples,
+      FromSTrace(..),
+      LPTrace,
+      STrace )
+import Inference.SIM (handleObs)
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum(..))
 import Effects.ObsReader
-import Effects.State
-import GHC.Natural
-import GHC.TypeLits (Nat)
 import qualified GHC.TypeLits as TL
 import Unsafe.Coerce
-import Util
 {-
 MH(x0, Ⲭ, LogP):
 Perform initial run of MH.
@@ -145,7 +146,7 @@ acceptMH x0 (a, strace', lptrace') (_, strace, lptrace)  = do
   return ((a, strace', lptrace'), exp (dom_logα + logα' - logα))
 
 -- | Run MH for one input and environment
-mhTopLevel :: forall es a env xs. (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env, ValidSpec env xs)
+mhTopLevel :: forall es a env xs. (es ~ [ObsReader env, Dist, Lift Sampler], FromSTrace env, ValidSpec env xs)
    => Int                                   -- Number of mhSteps
    -> Model env es a                        -- Model awaiting input
    -> Env env                          -- List of model observed variables
@@ -157,7 +158,7 @@ mhTopLevel n model env obsvars  = do
   mhTrace <- mh n prog Map.empty tags
   return (map (\(_, env_out, _) -> fromSTrace env_out) mhTrace)
 
-mh :: (es ~ '[Observe, Sample, Lift Sampler])
+mh :: (es ~ [Observe, Sample, Lift Sampler])
    => Int                              -- Number of mhSteps
    -> Prog es a                        -- Model consisting of sample and observe operations
    -> STrace                           -- Initial sample trace
@@ -175,7 +176,7 @@ mh n prog strace_0 tags = do
   return l
 
 -- | Perform one step of MH for a single data point
-mhStep :: (es ~ '[Observe, Sample, Lift Sampler])
+mhStep :: (es ~ [Observe, Sample, Lift Sampler])
   => Prog es a        -- Model consisting of sample and observe operations
   -> [Tag]            -- Tags indicating sample sites of interest
   -> Accept p a       -- Accept mechanism
@@ -206,28 +207,15 @@ runMH :: (es ~ '[Observe, Sample, Lift Sampler])
 runMH strace α_samp prog = do
   ((a, strace'), lptrace') <-
                             ( handleLift
-                            . runSample α_samp strace
-                            . runObserve
+                            . handleSamp α_samp strace
+                            . handleObs
                             . traceLPs
                             . traceSamples) prog
   return (a, strace', lptrace')
 
--- | Remove Observe occurrences from tree (log p is taken care of by transformMH)
-runObserve :: Member Sample es => Prog (Observe : es) a -> Prog es a
-runObserve = loop 0
-  where
-  loop :: Member Sample es => Double -> Prog (Observe : es) a -> Prog es a
-  loop p (Val x)   = return x
-  loop p (Op u k) = case u of
-      ObsPatt d y α ->
-        do let p' = prob d y
-          --  prinT $ "Prob of observing " ++ show y ++ " from " ++ show d ++ " is " ++ show p'
-           loop (p + p') (k y)
-      DecompLeft u'  -> Op u' (loop p . k)
-
 -- | Run Sample occurrences
-runSample :: Addr -> STrace -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
-runSample α_samp strace = loop
+handleSamp :: Addr -> STrace -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
+handleSamp α_samp strace = loop
   where
   loop :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
   loop (Val x) = return x
@@ -243,18 +231,11 @@ runSample α_samp strace = loop
          Op u' (loop . k)
 
 lookupSample :: Show a => OpenSum.Member a PrimVal => STrace -> PrimDist a -> Addr -> Maybe a
-lookupSample strace d α  = do
-    let m = Map.lookup α strace
-    case m of
-      Just (d', x) -> do
-        -- printS $ "comparing " ++ show d ++ " and " ++ show d' ++ " is " ++ show (d == unsafeCoerce d')
-        if d == unsafeCoerce d'
-           then do -- liftIOSampler $ print ("retrieving " ++ show x ++ " for " ++ show d')
-                   OpenSum.prj x
-            else Nothing
-      Nothing -> Nothing
-
-
+lookupSample strace d α = do
+    (d', x) <- Map.lookup α strace
+    if d == unsafeCoerce d'
+      then OpenSum.prj x
+      else Nothing
 
 -- | Lookup a sample address α's value in Ⲭ.
 -- Return Nothing if: 1) it doesn'e exist, 2) the sample address is the same as the current sample site α_samp, or 3) the sample we're supposed to reuse belongs to either a different distribution or the same distribution with different parameters (due to a new sampled value affecting its parameters). These all indicate that a new value should be sampled.

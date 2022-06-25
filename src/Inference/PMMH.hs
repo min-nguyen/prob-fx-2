@@ -59,7 +59,7 @@ pmmh mh_steps n_particles prog strace_0 tags = do
   -- get samples of prior parameters
   let priorSamples_0 = filterSTrace tags strace_0
   -- perform initial run of smc to compute likelihood
-  ctxs <- SIS.sis n_particles SMC.smcResampler SMC.smcPopulationHandler SMC.runObserve (runSample priorSamples_0) prog
+  ctxs <- SIS.sis n_particles SMC.smcResampler SMC.smcPopulationHandler SMC.handleObs (handleSamp priorSamples_0) prog
   let -- get final log probabilities of each particle
       lps     = map (snd3 . snd) ctxs
       -- compute average
@@ -85,7 +85,7 @@ acceptSMC n_particles prog tags _ (a, strace', lptrace') (_, _, logW) = do
   let priorSamples = filterSTrace tags strace'
   printS $ "prior samples" ++ show priorSamples
   -- run SMC using prior samples
-  ctxs <- SIS.sis n_particles SMC.smcResampler SMC.smcPopulationHandler SMC.runObserve (runSample priorSamples) prog
+  ctxs <- SIS.sis n_particles SMC.smcResampler SMC.smcPopulationHandler SMC.handleObs (handleSamp priorSamples) prog
   let -- get final log probabilities of each particle
       lps     = map (snd3 . snd) ctxs
       -- compute average
@@ -96,8 +96,8 @@ acceptSMC n_particles prog tags _ (a, strace', lptrace') (_, _, logW) = do
       acceptance_ratio = exp (SIS.logP $ logW' - logW)
   return ((a, strace', logW'), acceptance_ratio)
 
-runSample :: STrace -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
-runSample  samples = loop
+handleSamp :: STrace -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
+handleSamp  samples = loop
   where
   loop :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
   loop (Val x) = return x
