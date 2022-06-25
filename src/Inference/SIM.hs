@@ -18,6 +18,7 @@ import qualified Data.Map as Map
 import Data.Maybe
 import Data.Map (Map)
 import Env
+import PrimDist as PrimDist
 import Control.Monad
 import Effects.Dist
 import Prog
@@ -71,6 +72,6 @@ runSample sTrace (Op u k) = case u of
       runSample sTrace (k ())
     SampPatt d α -> do
       x <- lift (sample d)
-      let sTrace' = Map.insert α (PrimDist d, OpenSum.inj x) sTrace
+      let sTrace' = Map.insert α (ErasedPrimDist d, OpenSum.inj x) sTrace
       (runSample sTrace' . k) x
     _        -> error "Impossible: Nothing cannot occur"
