@@ -42,11 +42,6 @@ import qualified System.Random.MWC.Distributions as MWC
 import qualified Data.Vector as V
 import Unsafe.Coerce
 
-type family Maybes (as :: [x]) = (bs :: [x]) | bs -> as where
-  Maybes ((f , v) : as) = (f , Maybe v) : Maybes as
-  Maybes (v : as) = Maybe v : Maybes as
-  Maybes '[] = '[]
-
 newtype Model env es v =
   Model { runModel :: (Member Dist es, Member (ObsReader env) es) => Prog es v }
   deriving Functor

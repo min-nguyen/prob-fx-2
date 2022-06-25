@@ -28,9 +28,9 @@ import qualified Data.Vector as Vec
 
 {- Handle Obs and Sample separately, using the "Lift m" effect and a MTL approach to "m" -}
 toMBayes :: forall m env a. MonadInfer m => Model env [ObsReader env, Dist, Lift m] a -> Env env -> m a 
-toMBayes m env = (handleLift . handleSamp @m . handleObs @m . handleDist . handleObsRead env) (runModel m)
+toMBayes m env = (handleLift . handleSamp . handleObs @m . handleDist . handleObsRead env) (runModel m)
 
-handleObs :: forall m es a. MonadCond m => Member (Lift m) es => Prog (Observe : es) a -> Prog es a
+handleObs :: forall m es a. MonadCond m => UniqueMember (Lift m) es => Prog (Observe : es) a -> Prog es a
 handleObs (Val x)  = Val x
 handleObs (Op u k) = case discharge u of
   Left u' -> do
@@ -40,7 +40,7 @@ handleObs (Op u k) = case discharge u of
          lift @m $ score (Exp p)
          handleObs @m (k y)
 
-handleSamp :: forall m es a. MonadSample m => Member (Lift m) es => Prog (Sample : es) a -> Prog es a
+handleSamp :: forall m es a. MonadSample m => UniqueMember (Lift m) es => Prog (Sample : es) a -> Prog es a
 handleSamp (Val x) = return x
 handleSamp (Op u k) = case discharge u of
   Left u' -> do
