@@ -15,12 +15,15 @@
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE ImplicitParams #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module PrimDist where
 
 import Prog
     ( Prog(..), Member(..), EffectSum, discharge, call, weaken )
 import Sampler
+import qualified Control.Monad.Bayes.Class as Monad.Bayes.Class
+import qualified Data.Vector as Vec
 import OpenSum (OpenSum)
 import qualified OpenSum as OpenSum
 import Util ( boolToInt )
@@ -122,6 +125,28 @@ instance Show a => Show (PrimDist a) where
   show (DeterministicDist x) =
    "DeterministicDist(" ++ show x ++ ", " ++ ")"
 
+primDistDict :: PrimDist x -> Dict (Show x, OpenSum.Member x PrimVal)
+primDistDict d = case d of
+  HalfCauchyDist {} -> Dict
+  CauchyDist {} -> Dict
+  NormalDist {} -> Dict
+  HalfNormalDist  {} -> Dict
+  UniformDist  {} -> Dict
+  DiscrUniformDist {} -> Dict
+  GammaDist {} -> Dict
+  BetaDist {} -> Dict
+  BinomialDist {} -> Dict
+  BernoulliDist {} -> Dict
+  CategoricalDist {} -> Dict
+  DiscreteDist {} -> Dict
+  PoissonDist {} -> Dict
+  DirichletDist {} -> Dict
+  DeterministicDist {} -> Dict
+
+pattern PrimDistDict :: () => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> PrimDist x
+pattern PrimDistDict d <- d@(primDistDict -> Dict)
+
+
 prob :: PrimDist a -> a -> Double
 prob (DirichletDist xs) ys =
   let xs' = map (/(Prelude.sum xs)) xs
@@ -196,3 +221,16 @@ sample (PoissonDist λ ) =
 sample (DirichletDist xs ) =
   createSampler (sampleDirichlet xs)
 sample (DeterministicDist x) = return x
+
+sampleBayes :: Monad.Bayes.Class.MonadSample m => PrimDist a -> m a
+sampleBayes (UniformDist a b )     = Monad.Bayes.Class.uniform a b
+sampleBayes (DiscreteDist as )     = Monad.Bayes.Class.categorical (Vec.fromList as)
+sampleBayes (CategoricalDist as )  = Monad.Bayes.Class.categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
+sampleBayes (NormalDist mu std )   = Monad.Bayes.Class.normal mu std
+sampleBayes (GammaDist k t )       = Monad.Bayes.Class.gamma k t
+sampleBayes (BetaDist a b )        = Monad.Bayes.Class.beta a b
+sampleBayes (BernoulliDist p )     = Monad.Bayes.Class.bernoulli p
+sampleBayes (BinomialDist n p )    = sequence (replicate n (Monad.Bayes.Class.bernoulli p)) >>= (pure . length . filter (== True))
+sampleBayes (PoissonDist l )       = Monad.Bayes.Class.poisson l
+sampleBayes (DirichletDist as )    = Monad.Bayes.Class.dirichlet (Vec.fromList as) >>= pure . Vec.toList
+sampleBayes (PrimDistDict d)       = error ("Sampling from " ++ show d ++ " is not supported")

@@ -51,19 +51,6 @@ handleSamp (Op u k) = case discharge u of
   Right (Printer s) ->  -- Ignoring printing for now so the `MonadIO m` constraint can be omitted.
       do handleSamp @m (k ())
 
-sampleBayes :: MonadSample m => PrimDist a -> m a
-sampleBayes (UniformDist a b )     = uniform a b
-sampleBayes (DiscreteDist as )     = categorical (Vec.fromList as)
-sampleBayes (CategoricalDist as )  = categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
-sampleBayes (NormalDist mu std )   = normal mu std
-sampleBayes (GammaDist k t )       = gamma k t
-sampleBayes (BetaDist a b )        = beta a b
-sampleBayes (BernoulliDist p )     = bernoulli p
-sampleBayes (BinomialDist n p )    = replicateM n (bernoulli p) >>= (pure . length . filter (== True))
-sampleBayes (PoissonDist l )       = poisson l
-sampleBayes (DirichletDist as )    = dirichlet (Vec.fromList as) >>= pure . Vec.toList
-sampleBayes (PrimDistDict d)       = error ("Sampling from " ++ show d ++ " is not supported")
-
 {-  Alternative for handling Dist as the last effect directly into a monad -}
 handleDistMB :: forall m es a. MonadInfer m => Prog '[Dist] a -> m a
 handleDistMB (Val x)  = return x
