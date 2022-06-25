@@ -53,6 +53,7 @@ library
   exposed-modules:    Util,
                       DataSets,
                       Prog,
+                      PrimDist,
                       Model,
                       OpenSum,
                       Env,
@@ -67,6 +68,15 @@ library
                       Effects.Lift,
                       Effects.Reader,
                       Effects.NonDet,
+                      FusedEffects.Algebra,
+                      FusedEffects.Sum,
+                      FusedEffects.Reader,
+                      FusedEffects.Writer,
+                      FusedEffects.Lift,
+                      FusedEffects.Example,
+                      FusedEffects.Model,
+                      FusedEffects.Dist,
+                      FusedEffects.ObsReader,
                       Examples.DataSets,
                       Examples.LinRegr,
                       Examples.SIR,
@@ -90,19 +100,10 @@ library
                       Inference.RMSMC,
                       Inference.PMMH,
                       Inference.MBAYES
+                      
 
   -- Modules included in this library but not exported.
   other-modules:      Control.Monad.Bayes.Class,
-                      Old.Experiment,
-                      Old.Trace,
-                      Old.Test,
-                      Old.Inference.SIM,
-                      Old.Inference.SMC,
-                      Old.Inference.LW,
-                      Old.Inference.MH,
-                      Old.Inference.PMMH,
-                      Old.EffExample,
-                      Old.OpenProductVec,
                       Control.Monad.Bayes.Free,
                       Control.Monad.Bayes.Sampler,
                       Control.Monad.Bayes.Traced,
@@ -135,6 +136,7 @@ library
                        dirichlet,
                        log-domain,
                        some
+                      --  fused-effects
                       -- Use this package for dumpcore: ghc-dump-core
 
   -- Directories containing source files.

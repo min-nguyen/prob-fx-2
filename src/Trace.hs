@@ -19,7 +19,8 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Maybe
 import GHC.TypeLits
-import Effects.Dist
+import PrimDist as PrimDist
+import Effects.Dist as Dist
 import Env
 import Prog
 import Effects.State
@@ -29,7 +30,7 @@ import Util
 import FindElem
 
 {- Sample trace -}
-type STrace  = Map Addr (PrimDist, OpenSum PrimVal)
+type STrace  = Map Addr (ErasedPrimDist, OpenSum PrimVal)
 
 class FromSTrace (env :: [Assign Symbol *]) where
   fromSTrace    :: STrace -> Env env
@@ -49,8 +50,8 @@ extractSTrace (x, typ)  =
 filterSTrace :: [Tag] -> STrace -> STrace
 filterSTrace tags = Map.filterWithKey (\(tag, idx) _ -> tag `elem` tags)
 
-updateSTrace :: Show x => (Member (State STrace) es, OpenSum.Member x PrimVal) => Addr -> Dist x -> x -> Prog es ()
-updateSTrace α d x  = modify (Map.insert α (PrimDist d, OpenSum.inj x) :: STrace -> STrace)
+updateSTrace :: Show x => (Member (State STrace) es, OpenSum.Member x PrimVal) => Addr -> PrimDist x -> x -> Prog es ()
+updateSTrace α d x  = modify (Map.insert α (ErasedPrimDist d, OpenSum.inj x) :: STrace -> STrace)
 
 -- | Insert stateful operations for STrace when Sample occurs.
 traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, STrace)
@@ -58,7 +59,7 @@ traceSamples = handleState Map.empty . storeSamples
   where storeSamples :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
         storeSamples = install return
           (\x tx k -> case tx of
-              Sample d α -> case distDict d of
+              Sample d α -> case primDistDict d of
                 Dict -> do updateSTrace α d x
                            k x
               Printer s  -> k ()
@@ -67,8 +68,8 @@ traceSamples = handleState Map.empty . storeSamples
 {- Log probability trace -}
 type LPTrace = Map Addr Double
 
-updateLPTrace :: (Member (State LPTrace) es) => Addr -> Dist x -> x -> Prog es ()
-updateLPTrace α d x  = modify (Map.insert α (logProb d x) :: LPTrace -> LPTrace)
+updateLPTrace :: (Member (State LPTrace) es) => Addr -> PrimDist x -> x -> Prog es ()
+updateLPTrace α d x  = modify (Map.insert α (PrimDist.logProb d x) :: LPTrace -> LPTrace)
 
 -- | Insert stateful operations for LPTrace when either Sample or Observe occur.
 traceLPs ::(Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)

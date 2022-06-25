@@ -19,7 +19,7 @@ import Data.Map (Map)
 import Env
 import Control.Monad
 import Control.Applicative
-
+import PrimDist
 import Effects.Dist
 import Prog
 import Model
@@ -31,7 +31,7 @@ import Effects.State
 import Trace
 import Sampler
 import Effects.Writer
-import Effects.Dist
+import PrimDist as PrimDist
 import Inference.SIS (sis, Accum(..), ParticleHandler, Resampler, LogP(..), logMeanExp)
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum)
@@ -60,7 +60,7 @@ smcPopulationHandler particles = do
   let particles_ctxs' = map (\((prog, α, p), strace) -> (prog, ([α], p,  strace))) particles_ctxs
   return particles_ctxs'
 
-smcResampler :: Member (Lift Sampler) es => Resampler ([Addr], LogP, STrace) es a
+smcResampler :: LastMember (Lift Sampler) es => Resampler ([Addr], LogP, STrace) es a
 smcResampler ctxs_0 ctxs_1sub0 particles = do
   -- for each particle, compute normalised accumulated log weights, and accumulated sample traces
   let (obs_addrs_1, logWs_1, straces_1)      = unzip3 $ accum ctxs_1sub0 ctxs_0
@@ -68,7 +68,7 @@ smcResampler ctxs_0 ctxs_1sub0 particles = do
   -- printLift $ "LogWs " ++ show logWs_1
   -- printLift $ "Resampling probabilities " ++ show (map (exp . logP) logWs_1)
   -- Select particles to continue with
-  particle_idxs :: [Int] <- replicateM n_particles $  lift (sample (DiscreteDist (map (exp . logP) logWs_1) Nothing Nothing))
+  particle_idxs :: [Int] <- replicateM n_particles $  lift (sample (DiscreteDist (map (exp . logP) logWs_1)))
   let resampled_particles     = map (particles !!) particle_idxs
       resampled_logWs         = map (logWs_1 !!) particle_idxs
       resampled_straces       = map (straces_1 !!) particle_idxs

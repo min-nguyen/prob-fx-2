@@ -31,6 +31,7 @@ import Control.Monad
 import Effects.Lift
 import Effects.Dist
 import Data.Bifunctor
+import PrimDist
 import Prog
 import Model hiding (runModelFree)
 import Sampler
@@ -185,13 +186,13 @@ mhStep prog tags accepter mhTrace  = do
       mhCtx@(_, samples, _) = head mhTrace
       sampleSites = if null tags then samples else filterSTrace tags samples
   -- select proposal sample address
-  α_samp_ind <- sample (DiscrUniformDist 0 (Map.size sampleSites - 1) Nothing Nothing)
+  α_samp_ind <- sample (DiscrUniformDist 0 (Map.size sampleSites - 1))
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
   -- run mh with proposal sample address to get an MHCtx using LPTrace as its probability
   mhLPCtx' <- runMH samples α_samp prog
   -- compute acceptance ratio to see if we use new mhCtx' or retain mhCtx
   (mhCtx', acceptance_ratio) <- accepter α_samp mhLPCtx' mhCtx
-  u <- sample (UniformDist 0 1 Nothing Nothing)
+  u <- sample (UniformDist 0 1)
   if u < acceptance_ratio
     then return (mhCtx':mhTrace)
     else return mhTrace
@@ -241,11 +242,11 @@ runSample α_samp strace = loop
       DecompLeft u' ->
          Op u' (loop . k)
 
-lookupSample :: Show a => OpenSum.Member a PrimVal => STrace -> Dist a -> Addr -> Maybe a
+lookupSample :: Show a => OpenSum.Member a PrimVal => STrace -> PrimDist a -> Addr -> Maybe a
 lookupSample strace d α  = do
     let m = Map.lookup α strace
     case m of
-      Just (PrimDist d', x) -> do
+      Just (d', x) -> do
         -- printS $ "comparing " ++ show d ++ " and " ++ show d' ++ " is " ++ show (d == unsafeCoerce d')
         if d == unsafeCoerce d'
            then do -- liftIOSampler $ print ("retrieving " ++ show x ++ " for " ++ show d')

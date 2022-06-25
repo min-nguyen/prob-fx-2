@@ -4,7 +4,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
--- {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE PatternSynonyms, ViewPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE Trustworthy #-}
@@ -17,7 +16,6 @@
 
 module Effects.ObsReader where
 
-import Effects.State
 import Prog
 -- import Data.Extensible hiding (Member)
 import Env
