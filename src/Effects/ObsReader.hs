@@ -17,7 +17,6 @@
 
 module Effects.ObsReader where
 
-import Effects.State
 import Prog
 -- import Data.Extensible hiding (Member)
 import Env

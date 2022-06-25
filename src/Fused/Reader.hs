@@ -86,4 +86,3 @@ instance Algebra es ms =>
                             ctx)
 
 
-        
