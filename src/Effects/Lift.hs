@@ -24,7 +24,7 @@ newtype Lift m a = Lift (m a)
 
 -- By using SetMember, it is possible to assert that the lifted type occurs
 -- only once in the effect list
-lift :: (Member (Lift m) es) => m a -> Prog es a
+lift :: (UniqueMember (Lift m) es, Member (Lift m) es) => m a -> Prog es a
 lift = call . Lift
 
 handleLift :: forall m w. Monad m => Prog '[Lift m] w -> m w

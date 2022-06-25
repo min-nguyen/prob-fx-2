@@ -27,7 +27,7 @@ import Util
 data ObsReader env m (a :: *) where
   Ask :: Observable env x a => ObsVar x -> ObsReader env m (Maybe a)
 
-ask :: forall sig env es x m a. (Member (ObsReader env) sig, Algebra sig m) => Observable env x a => ObsVar x -> m (Maybe a)
+ask :: forall env sig  es x m a. (Member (ObsReader env) sig, Algebra sig m) => Observable env x a => ObsVar x -> m (Maybe a)
 ask k = send (Ask k :: ObsReader env m (Maybe a))
 
 -- | Carrier

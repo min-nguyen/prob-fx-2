@@ -81,23 +81,6 @@ data Observe a where
 printSample :: Member Sample es => String -> Prog es ()
 printSample s = Op (inj $ Printer s) Val
 
-primDistDict :: PrimDist x -> Dict (Show x, OpenSum.Member x PrimVal)
-primDistDict d = case d of
-  HalfCauchyDist {} -> Dict
-  CauchyDist {} -> Dict
-  NormalDist {} -> Dict
-  HalfNormalDist  {} -> Dict
-  UniformDist  {} -> Dict
-  DiscrUniformDist {} -> Dict
-  GammaDist {} -> Dict
-  BetaDist {} -> Dict
-  BinomialDist {} -> Dict
-  BernoulliDist {} -> Dict
-  CategoricalDist {} -> Dict
-  DiscreteDist {} -> Dict
-  PoissonDist {} -> Dict
-  DirichletDist {} -> Dict
-  DeterministicDist {} -> Dict
 
 instance Show a => Show (Dist a) where
   show (Dist d y tag) = "Dist(" ++ show d ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
@@ -107,9 +90,6 @@ instance Eq (Dist a) where
 
 pattern PrintPatt :: (Member Sample es) => (x ~ ()) => String -> EffectSum es x
 pattern PrintPatt s <- (prj -> Just (Printer s))
-
-pattern PrimDistDict :: () => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> PrimDist x
-pattern PrimDistDict d <- d@(primDistDict -> Dict)
 
 pattern Samp :: Member Sample es => PrimDist x -> Addr -> EffectSum es x
 pattern Samp d α <- (prj -> Just (Sample d α))
