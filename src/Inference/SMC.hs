@@ -60,7 +60,7 @@ smcPopulationHandler particles = do
   let particles_ctxs' = map (\((prog, α, p), strace) -> (prog, ([α], p,  strace))) particles_ctxs
   return particles_ctxs'
 
-smcResampler :: Member (Lift Sampler) es => Resampler ([Addr], LogP, STrace) es a
+smcResampler :: UniqueMember (Lift Sampler) es => Resampler ([Addr], LogP, STrace) es a
 smcResampler ctxs_0 ctxs_1sub0 particles = do
   -- for each particle, compute normalised accumulated log weights, and accumulated sample traces
   let (obs_addrs_1, logWs_1, straces_1)      = unzip3 $ accum ctxs_1sub0 ctxs_0

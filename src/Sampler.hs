@@ -44,7 +44,7 @@ liftIOSampler f = Sampler $ lift f
 printS :: Show a => a -> Sampler ()
 printS s = liftIOSampler (print s)
 
-printLift :: FindElem (Lift Sampler) es => String -> Prog es ()
+printLift :: UniqueMember (Lift Sampler) es => String -> Prog es ()
 printLift s = Lift.lift $ Sampler $ lift (print s)
 
 -- To sample a random number, we run `sampleIO . createSampler $ sampleRandom`

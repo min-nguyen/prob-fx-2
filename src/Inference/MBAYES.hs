@@ -28,9 +28,9 @@ import qualified Data.Vector as Vec
 
 {- Handle Obs and Sample separately, using the "Lift m" effect and a MTL approach to "m" -}
 toMBayes :: forall m env a. MonadInfer m => Model env [ObsReader env, Dist, Lift m] a -> Env env -> m a 
-toMBayes m env = (handleLift . handleSamp @m . handleObs @m . handleDist . handleObsRead env) (runModel m)
+toMBayes m env = (handleLift . handleSamp . handleObs @m . handleDist . handleObsRead env) (runModel m)
 
-handleObs :: forall m es a. MonadCond m => Member (Lift m) es => Prog (Observe : es) a -> Prog es a
+handleObs :: forall m es a. MonadCond m => UniqueMember (Lift m) es => Prog (Observe : es) a -> Prog es a
 handleObs (Val x)  = Val x
 handleObs (Op u k) = case discharge u of
   Left u' -> do
@@ -40,7 +40,7 @@ handleObs (Op u k) = case discharge u of
          lift @m $ score (Exp p)
          handleObs @m (k y)
 
-handleSamp :: forall m es a. MonadSample m => Member (Lift m) es => Prog (Sample : es) a -> Prog es a
+handleSamp :: forall m es a. MonadSample m => UniqueMember (Lift m) es => Prog (Sample : es) a -> Prog es a
 handleSamp (Val x) = return x
 handleSamp (Op u k) = case discharge u of
   Left u' -> do
@@ -50,19 +50,6 @@ handleSamp (Op u k) = case discharge u of
          handleSamp @m (k y)
   Right (Printer s) ->  -- Ignoring printing for now so the `MonadIO m` constraint can be omitted.
       do handleSamp @m (k ())
-
-sampleBayes :: MonadSample m => PrimDist a -> m a
-sampleBayes (UniformDist a b )     = uniform a b
-sampleBayes (DiscreteDist as )     = categorical (Vec.fromList as)
-sampleBayes (CategoricalDist as )  = categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
-sampleBayes (NormalDist mu std )   = normal mu std
-sampleBayes (GammaDist k t )       = gamma k t
-sampleBayes (BetaDist a b )        = beta a b
-sampleBayes (BernoulliDist p )     = bernoulli p
-sampleBayes (BinomialDist n p )    = replicateM n (bernoulli p) >>= (pure . length . filter (== True))
-sampleBayes (PoissonDist l )       = poisson l
-sampleBayes (DirichletDist as )    = dirichlet (Vec.fromList as) >>= pure . Vec.toList
-sampleBayes (PrimDistDict d)       = error ("Sampling from " ++ show d ++ " is not supported")
 
 {-  Alternative for handling Dist as the last effect directly into a monad -}
 handleDistMB :: forall m es a. MonadInfer m => Prog '[Dist] a -> m a

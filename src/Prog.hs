@@ -26,9 +26,7 @@ import Data.Typeable
 -- import qualified OpenSum as OpenSum
 import FindElem
 
-{- Extensible effects without Typeable in EffectSum, using Prog monad -}
-
-{- Unions -}
+{- Effect Sum -}
 data EffectSum (es :: [* -> *]) (x :: *) :: * where
   EffectSum :: Int -> e x -> EffectSum es x
 
@@ -63,12 +61,10 @@ prj' :: Int -> EffectSum es x -> Maybe (e x)
 prj' n (EffectSum n' x) | n == n'   = Just (unsafeCoerce x)
                     | otherwise = Nothing
 
-{- We want to handle a request of type e, where we state that e must be at the front of the list of requests (we know that the index is 0). If the request tv is indeed of type e (its index is 0), then we can unsafe coerce the tv to be of type 'e x'. Otherwise, we return rv which is a request of a different type, and we can safely remove the request 'e' from the front of the union at _this_ level of the free monad.  -}
 discharge :: EffectSum (e ': es) x -> Either (EffectSum es x) (e x)
 discharge (EffectSum 0 tv) = Right $ unsafeCoerce tv
 discharge (EffectSum n rv) = Left  $ EffectSum (n-1) rv
 
--- Prepend new effect type at front
 weaken :: EffectSum es a -> EffectSum (any ': es) a
 weaken (EffectSum n ta) = EffectSum (n + 1) ta
 
@@ -97,8 +93,8 @@ type family UMember (b :: Bool) (e :: * -> *) (es :: [* -> *]) :: Bool where
   UMember 'False e (e' ': es) = UMember 'False e es
   UMember 'False e '[]        = 'False
 
-class    (UMember 'False e es ~ True) => UniqueMember e es
-instance (UMember 'False e es ~ True) => UniqueMember e es
+class    (UMember 'False e es ~ True, Member e es) => UniqueMember e es
+instance (UMember 'False e es ~ True, Member e es) => UniqueMember e es
 
 -- | Last effect in effect list
 class Member m effs => LastMember m effs | effs -> m
