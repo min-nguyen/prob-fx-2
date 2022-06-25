@@ -104,18 +104,13 @@ library
                       
 
   -- Modules included in this library but not exported.
-  other-modules:      Control.Monad.Bayes.Class,
-                      Control.Monad.Bayes.Free,
-                      Control.Monad.Bayes.Sampler,
-                      Control.Monad.Bayes.Traced,
-                      Control.Monad.Bayes.Traced.Common,
-                      Control.Monad.Bayes.Traced.Static,
-                      Control.Monad.Bayes.Weighted
+  other-modules:      
+  
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base             >=4.11   && <4.17,
+  build-depends:       base        >= 4.11 && <4.17,
                        ghc-prim,
                        primitive,
                        containers,
@@ -136,7 +131,8 @@ library
                        random,
                        dirichlet,
                        log-domain,
-                       some
+                       some,
+                       monad-bayes >= 0.1.1.2
                       --  fused-effects
                       -- Use this package for dumpcore: ghc-dump-core
 
