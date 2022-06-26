@@ -19,21 +19,23 @@ import Model (Model(..))
 import Env
 import Prog
 import PrimDist
+import Trace
 import Effects.Dist
 import Effects.Lift
 import Effects.ObsReader
 import Control.Monad.Bayes.Class
 
 {- Handle Obs and Sample separately, using the "Lift m" effect and a MTL approach to "m" -}
-toMBayes :: forall m env a. MonadInfer m => Model env [ObsReader env, Dist, Lift m] a -> Env env -> m a 
-toMBayes m env = (handleLift . handleSamp . handleObs . handleDist . handleObsRead env) (runModel m)
+toMBayes :: forall m env a. (FromSTrace env, MonadInfer m) => Model env [ObsReader env, Dist, Lift m] a -> Env env -> m (a, Env env)
+toMBayes m env = 
+   (fmap (fmap fromSTrace) . handleLift . handleSamp . handleObs . traceSamples. handleDist . handleObsRead env) (runModel m)
 
 handleObs :: forall m es a. MonadCond m => LastMember (Lift m) es => Prog (Observe : es) a -> Prog es a
 handleObs (Val x)  = Val x
 handleObs (Op u k) = case discharge u of
   Left u' -> do
      Op u' (handleObs . k)
-  Right (Observe d y _) -> 
+  Right (Observe d y _) ->
       do let p = logProb d y
          lift (score (Exp p))
          handleObs (k y)
@@ -43,7 +45,7 @@ handleSamp (Val x) = return x
 handleSamp (Op u k) = case discharge u of
   Left u' -> do
      Op u' (handleSamp  . k)
-  Right (Sample d _) -> 
+  Right (Sample d _) ->
       do y <- lift (sampleBayes d)
          handleSamp (k y)
   Right (Printer s) ->  -- Ignoring printing for now so the `MonadIO m` constraint can be omitted.

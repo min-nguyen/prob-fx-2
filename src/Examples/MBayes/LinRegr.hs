@@ -19,6 +19,7 @@ import Effects.Dist
 import Effects.Lift
 import Control.Monad
 import Env
+import Trace
 import Util
 import Control.Monad.Bayes.Class (MonadInfer)
 import Control.Monad.Bayes.Weighted ( prior, runWeighted )
@@ -46,29 +47,32 @@ linRegr xs = do
                     return y) xs
   return ys
 
-mbayesLinRegr :: (MonadInfer m, Observables env '["y", "m", "c", "σ"] Double) =>
- [Double] -> Env env -> m [Double]
+mbayesLinRegr :: (FromSTrace env, MonadInfer m, Observables env '["y", "m", "c", "σ"] Double) =>
+ [Double] -> Env env -> m ([Double], Env env)
 mbayesLinRegr xs = toMBayes (linRegr xs)
 
 {- Executing Lin Regr -}
 
-simLinRegr :: Int -> Int -> IO [[Double]]
+simLinRegr :: Int -> Int -> IO [([Double], Env LinRegrEnv)]
 simLinRegr n_samples n_datapoints = do
   let xs  = [0 .. fromIntegral n_datapoints]
       env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> eNil
   sampleIO $ prior $ replicateM n_samples (mbayesLinRegr xs env)
 
--- Note: running inference a Wasabaye model using Monad Bayes will only yield the return values of the model; also returning any sampled parameters of interest could be done by using a Writer effect in the model.
-lwLinRegr :: Int -> Int -> IO [([Double], Log Double)]
+lwLinRegr :: Int -> Int -> IO [(([Double], Env LinRegrEnv), Log Double)]
 lwLinRegr n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
       xs            = [0 .. n_datapoints']
-      env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  eNil
+      env           = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> eNil
   sampleIO $ replicateM n_samples (runWeighted $ mbayesLinRegr xs env)
 
-mhLinRegr :: Int -> Int -> IO [[Double]]
+mhLinRegr :: Int -> Int -> IO [([Double], Env LinRegrEnv)]
 mhLinRegr n_samples n_datapoints = do
   let n_datapoints' = fromIntegral n_datapoints
       xs            = [0 .. n_datapoints']
-      env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  eNil
-  sampleIO $ prior $ mh n_samples (mbayesLinRegr xs env)
+      env           = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> eNil
+  mhtrace <- sampleIO (prior $ mh n_samples (mbayesLinRegr xs env))
+  let (outpts, envs) = unzip mhtrace
+      mus = concatMap (get #m) envs
+  print mus
+  return mhtrace

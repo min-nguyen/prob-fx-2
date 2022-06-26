@@ -21,6 +21,7 @@ import Effects.Dist
 import Effects.Lift
 import Control.Monad
 import Env
+import Trace
 import Util
 import Control.Monad.Bayes.Class (MonadInfer)
 import Control.Monad.Bayes.Weighted ( prior, runWeighted )
@@ -59,8 +60,8 @@ documentDist vocab n_topics n_words = do
                           let word_ps = topic_word_ps !! z
                           wordDist vocab word_ps)
 
-mbayesLDA :: (MonadInfer m, Observables env '["φ", "θ"] [Double], Observable env "w" String)
-  => [String] -> Int -> Int -> Env env -> m [String]
+mbayesLDA :: (FromSTrace env, MonadInfer m, Observables env '["φ", "θ"] [Double], Observable env "w" String)
+  => [String] -> Int -> Int -> Env env -> m ([String], Env env)
 mbayesLDA vocab n_topics n_words = toMBayes (documentDist vocab n_topics n_words)
 
 {- Executing LDA -}
@@ -71,7 +72,7 @@ vocab = ["DNA", "evolution", "parsing", "phonology"]
 topic_data :: [String]
 topic_data = ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA"]
 
-simLDA :: Int -> Int -> IO [[String]]
+simLDA :: Int -> Int -> IO [([String], Env TopicEnv)]
 simLDA n_samples n_words  = do
   let env = #θ := [[0.5, 0.5]] <:>
             #φ := [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],
@@ -79,14 +80,12 @@ simLDA n_samples n_words  = do
             #w := [] <:> ENil
   sampleIO $ prior $ replicateM n_samples (mbayesLDA vocab 2 n_words env) 
 
--- Note: running inference a Wasabaye model using Monad Bayes will only yield the return values of the model; also returning any sampled parameters of interest could be done by using a Writer effect in the model.
-
-lwLDA :: Int -> Int -> IO [([String], Log Double)]
+lwLDA :: Int -> Int -> IO [(([String], Env TopicEnv), Log Double)]
 lwLDA n_samples n_words  = do
   let env = #θ := [] <:>  #φ := [] <:> #w := topic_data <:> ENil
   sampleIO $ replicateM n_samples (runWeighted $ mbayesLDA vocab 2 n_words env) 
 
-mhLDA :: Int -> Int -> IO [[String]]
+mhLDA :: Int -> Int -> IO [([String], Env TopicEnv)]
 mhLDA n_samples n_words  = do
   let env = #θ := [] <:>  #φ := [] <:> #w := topic_data <:> ENil
   sampleIO $ prior $ mh n_samples (mbayesLDA vocab 2 n_words env) 
