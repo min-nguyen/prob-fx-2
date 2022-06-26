@@ -52,7 +52,7 @@ smcLinRegr n_datapoints n_particles = do
                     (mkRecordLinRegrY (map ((+0) . (*3)) [0 .. n_datapoints']))
   let envs = map (\(a, prob, env) -> env) bs
       mus  = concatMap (get #m) envs
-  return mus
+  pure mus
 
 rmsmcLinRegr :: Int -> Int -> Int -> Sampler [Double]
 rmsmcLinRegr n_datapoints n_particles n_mh_steps = do
@@ -61,7 +61,7 @@ rmsmcLinRegr n_datapoints n_particles n_mh_steps = do
                     (mkRecordLinRegrY (map ((+0) . (*3)) [0 .. n_datapoints']))
   let envs = map (\(a, prob, env) -> env) bs
       mus  = concatMap (get #m) envs
-  return mus
+  pure mus
 
 pmmhLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
 pmmhLinRegr n_datapoints n_particles n_mh_steps = do
@@ -72,4 +72,4 @@ pmmhLinRegr n_datapoints n_particles n_mh_steps = do
   let envs = map (\(a, env, logp) -> env) bs
       mus  = concatMap (get #m) envs
       cs   = concatMap (get #c) envs
-  return (mus, cs)
+  pure (mus, cs)

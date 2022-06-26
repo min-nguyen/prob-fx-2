@@ -116,16 +116,15 @@ instance Applicative (Prog es) where
   (Op fx k) <*> x = Op fx ((<*> x) . k)
 
 instance Monad (Prog es) where
-  return            = Val
   Val a >>= f      = f a
   Op fx k >>= f = Op fx (k >=> f)
 
 run :: Prog '[] a -> a
 run (Val x) = x
-run _ = error "'run' isn'e defined for non-pure computations"
+run _ = error "'run' isn't defined for non-pure computations"
 
 runM :: forall m a es. (Monad m, LastMember m es) => Prog es a -> m a
-runM (Val x) = return x
+runM (Val x) = pure x
 runM (Op u k) =
   let x = prj @m u
   in case x of
@@ -295,9 +294,8 @@ instance (Functor f) => Applicative (Free f) where
   Op' faf  <*> as  = Op' (fmap (<*> as) faf)
 
 instance (Functor f) => Monad (Free f) where
-   return = Val'
-   (Op' x) >>= f = Op' (fmap (>>= f) x)
-   (Val' es) >>= f = f es
+  (Op' x) >>= f = Op' (fmap (>>= f) x)
+  (Val' es) >>= f = f es
 
 data Reader' env a where
   Ask' :: (env -> a) -> Reader' env a
@@ -308,7 +306,7 @@ call' e = Val' (e Val')
 prog :: Free (Reader' Int) ()
 prog = do
   call' Ask'
-  return ()
+  pure ()
 
 runProg :: Free (Reader' Int) () -> IO ()
 runProg (Op' (Ask' k)) = do

@@ -41,7 +41,7 @@ handleObs (Op u k) = case discharge u of
          handleObs (k y)
 
 handleSamp :: forall m es a. MonadSample m => LastMember (Lift m) es => Prog (Sample : es) a -> Prog es a
-handleSamp (Val x) = return x
+handleSamp (Val x) = pure x
 handleSamp (Op u k) = case discharge u of
   Left u' -> do
      Op u' (handleSamp  . k)
@@ -53,7 +53,7 @@ handleSamp (Op u k) = case discharge u of
 
 {-  Alternative for handling Dist as the last effect directly into a monad -}
 handleDistMB :: forall m es a. MonadInfer m => Prog '[Dist] a -> m a
-handleDistMB (Val x)  = return x
+handleDistMB (Val x)  = pure x
 handleDistMB (Op u k) = case discharge u of
     Right d ->
       case getObs d of

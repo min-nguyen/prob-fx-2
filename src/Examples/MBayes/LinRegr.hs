@@ -5,7 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Redundant return" #-}
+{-# HLINT ignore "Redundant pure" #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
@@ -44,8 +44,8 @@ linRegr xs = do
   σ <- uniform 1 3 #σ
   ys <- mapM (\x -> do
                     y <- normal (m * x + c) σ #y
-                    return y) xs
-  return ys
+                    pure y) xs
+  pure ys
 
 mbayesLinRegr :: (FromSTrace env, MonadInfer m, Observables env '["y", "m", "c", "σ"] Double) =>
  [Double] -> Env env -> m ([Double], Env env)
@@ -75,4 +75,4 @@ mhLinRegr n_samples n_datapoints = do
   let (outpts, envs) = unzip mhtrace
       mus = concatMap (get #m) envs
   print mus
-  return mhtrace
+  pure mhtrace

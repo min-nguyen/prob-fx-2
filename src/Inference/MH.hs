@@ -15,7 +15,7 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Redundant return" #-}
+{-# HLINT ignore "Redundant pure" #-}
 module Inference.MH where
 
 import Control.Monad
@@ -91,7 +91,7 @@ For example, instead of:
     c <- normal' 0 5 #c
     σ <- uniform' 1 3 #σ
     y <- normal' (m * x + c) σ #y
-    return (x, y)
+    pure (x, y)
 
 We would do:
 
@@ -105,9 +105,9 @@ We would do:
     let loop (x:xs) ys = do
             y <- normal' (m * x + c) σ #y
             loop xs (ys ++ [y])
-        loop [] ys     = return ys
+        loop [] ys     = pure ys
     ys <- loop xs []
-    return (xs, ys)
+    pure (xs, ys)
 
 This is already natural for models such as a HMM.
 -}
@@ -134,7 +134,7 @@ acceptMH x0 (a, strace', lptrace') (_, strace, lptrace)  = do
                          0 (Map.keysSet lptrace \\ sampled)
       logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
                          0 (Map.keysSet lptrace' \\ sampled')
-  return ((a, strace', lptrace'), exp (dom_logα + logα' - logα))
+  pure ((a, strace', lptrace'), exp (dom_logα + logα' - logα))
 
 -- | Run MH for one input and environment
 mhTopLevel :: forall es a env xs. (es ~ [ObsReader env, Dist, Lift Sampler], FromSTrace env, ValidSpec env xs)
@@ -147,7 +147,7 @@ mhTopLevel n model env obsvars  = do
   let prog = (handleDist . handleObsRead env) (runModel model)
       tags = asTags @env obsvars
   mhTrace <- mh n prog Map.empty tags
-  return (map (\(_, env_out, _) -> fromSTrace env_out) mhTrace)
+  pure (map (\(_, env_out, _) -> fromSTrace env_out) mhTrace)
 
 mh :: (es ~ [Observe, Sample, Lift Sampler])
    => Int                              -- Number of mhSteps
@@ -160,11 +160,11 @@ mh n prog strace_0 tags = do
   let α_0 = ("", 0)
   mhCtx_0 <- runMH strace_0 α_0 prog
   -- A function performing n mhSteps
-  let mhs = foldl (>=>) return (replicate n (mhStep prog tags acceptMH))
+  let mhs = foldl (>=>) pure (replicate n (mhStep prog tags acceptMH))
   -- Perform n mhSteps using initial mhCtx
   l <- mhs [mhCtx_0]
   -- Note: most recent samples are at the front (head) of the trace
-  return l
+  pure l
 
 -- | Perform one step of MH for a single data point
 mhStep :: (es ~ [Observe, Sample, Lift Sampler])
@@ -186,8 +186,8 @@ mhStep prog tags accepter mhTrace  = do
   (mhCtx', acceptance_ratio) <- accepter α_samp mhLPCtx' mhCtx
   u <- sample (UniformDist 0 1)
   if u < acceptance_ratio
-    then return (mhCtx':mhTrace)
-    else return mhTrace
+    then pure (mhCtx':mhTrace)
+    else pure mhTrace
 
 -- | Run model once under MH
 runMH :: (es ~ '[Observe, Sample, Lift Sampler])
@@ -202,14 +202,14 @@ runMH strace α_samp prog = do
                             . SIM.handleObs
                             . traceLPs
                             . traceSamples) prog
-  return (a, strace', lptrace')
+  pure (a, strace', lptrace')
 
 -- | Run Sample occurrences
 handleSamp :: Addr -> STrace -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
 handleSamp α_samp strace = loop
   where
   loop :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
-  loop (Val x) = return x
+  loop (Val x) = pure x
   loop (Op u k) = case u of
       PrintPatt s ->
         lift (liftIOSampler (putStrLn s)) >> loop (k ())

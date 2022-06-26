@@ -33,7 +33,7 @@ pattern AskPatt x <- (discharge -> Right (Ask x))
 
 handleObsRead :: forall env es a.
   Env env -> Prog (ObsReader env ': es) a -> Prog es a
-handleObsRead env (Val x) = return x
+handleObsRead env (Val x) = pure x
 handleObsRead env (Op (AskPatt key) k) = do
     let ys = get key env
         y  = maybeHead ys
@@ -44,7 +44,7 @@ handleObsRead env (Op (Other u) k) = Op u (handleObsRead env . k)
 handleObsRead' :: forall env es a.
   Env env -> Prog (ObsReader env ': es) a -> Prog es a
 handleObsRead' env0 = handleRelaySt env0
-  (\env x    -> return x)
+  (\env x    -> pure x)
   (\env tx k ->
     case tx of
       Ask key -> let ys   = get key env

@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Redundant return" #-}
+{-# HLINT ignore "Redundant pure" #-}
 module Examples.CoinFlip where
 
 import PrimDist
@@ -20,7 +20,7 @@ coinFlip :: (Observables env '["p"] Double, Observables env '[ "y"] Bool) => Mod
 coinFlip = do
   p <- uniform 0 1 #p
   y <- bernoulli p #y
-  return y
+  pure y
 
 -- | Desugared coin flip model
 
@@ -30,4 +30,4 @@ coinFlip' = Model $ do
   p        <- call (Dist (UniformDist 0 1) maybe_p (Just "p"))
   maybe_y  <- call (Ask @env #y)
   y        <- call (Dist (BernoulliDist p) maybe_y (Just "p") )
-  return y
+  pure y

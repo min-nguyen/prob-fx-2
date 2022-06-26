@@ -41,7 +41,7 @@ smc :: forall env es' a. (FromSTrace env, Show a) =>
   Int -> Prog es' a -> Env env -> Sampler [(a, LogP, Env env)]
 smc n_particles prog env = do
   as_ps_straces <- SIS.sis n_particles smcResampler smcPopulationHandler SIM.handleObs SIM.handleSamp prog
-  return $ map (\(a, (addr, p, strace)) -> (a, p, fromSTrace @env strace)) as_ps_straces
+  pure $ map (\(a, (addr, p, strace)) -> (a, p, fromSTrace @env strace)) as_ps_straces
 
 smcPopulationHandler :: Members [Observe, Sample, Lift Sampler] es
   => SIS.ParticleHandler  ([Addr], LogP, STrace) es a
@@ -50,7 +50,7 @@ smcPopulationHandler particles = do
   particles_ctxs <- (handleNonDet . traceSamples . breakObserve ) (asum particles)
   -- List of particles that can be resumed, their observe breakpoint address, the log probability at that break point, and an accumulated sample trace
   let particles_ctxs' = map (\((prog, α, p), strace) -> (prog, ([α], p,  strace))) particles_ctxs
-  return particles_ctxs'
+  pure particles_ctxs'
 
 smcResampler :: LastMember (Lift Sampler) es => SIS.Resampler ([Addr], LogP, STrace) es a
 smcResampler ctxs_0 ctxs_1sub0 particles = do
@@ -65,11 +65,11 @@ smcResampler ctxs_0 ctxs_1sub0 particles = do
       resampled_logWs         = map (logWs_1 !!) particle_idxs
       resampled_straces       = map (straces_1 !!) particle_idxs
   -- prinT $ "continuing with" ++ show   straces'
-  return (resampled_particles, zip3 obs_addrs_1 resampled_logWs resampled_straces)
+  pure (resampled_particles, zip3 obs_addrs_1 resampled_logWs resampled_straces)
 
 -- When discharging Observe, return the rest of the program, and the log probability
 breakObserve :: Members [Lift Sampler, Observe] es => Prog es a -> Prog es (Prog es a, Addr, LogP)
-breakObserve  (Val x) = return (Val x, ("", 0), 0)
+breakObserve  (Val x) = pure (Val x, ("", 0), 0)
 breakObserve  (Op op k) = case op of
       ObsPatt d y α -> do
         let logp = logProb d y

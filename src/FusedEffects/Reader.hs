@@ -62,10 +62,9 @@ instance (Applicative m) => Applicative (ReaderT r m) where
   f <*> v = ReaderT $ \ r -> runReaderT f r <*> runReaderT v r
 
 instance (Monad m) => Monad (ReaderT r m) where
-    return   = pure
-    m >>= k  = ReaderT $ \ r -> do
-        a <- runReaderT m r
-        runReaderT (k a) r
+  m >>= k  = ReaderT $ \ r -> do
+      a <- runReaderT m r
+      runReaderT (k a) r
 
 instance Algebra es ms => 
          Algebra (ReaderEff env :+: es) (ReaderT env ms) where

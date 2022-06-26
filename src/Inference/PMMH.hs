@@ -45,7 +45,7 @@ pmmhTopLevel mh_steps n_particles model env obsvars = do
       tags = asTags @env obsvars
   -- Perform initial run of mh
   mhTrace <- pmmh mh_steps n_particles prog Map.empty tags
-  return (map (mapsnd3 (fromSTrace @env)) mhTrace)
+  pure (map (mapsnd3 (fromSTrace @env)) mhTrace)
 
 pmmh :: (es ~ '[Observe, Sample, Lift Sampler], Show a)
    => Int                              -- Number of mhSteps
@@ -68,10 +68,10 @@ pmmh mh_steps n_particles prog strace_0 tags = do
       logW_0  = logMeanExp lps
 
   -- A function performing n pmmhsteps
-  let pmmhs  = foldl (>=>) return (replicate mh_steps (pmmhStep n_particles prog tags))
+  let pmmhs  = foldl (>=>) pure (replicate mh_steps (pmmhStep n_particles prog tags))
   l <- pmmhs [(y_0, strace_0, logW_0)]
   -- Return pmmhTrace in correct order of execution (due to pmmhStep prepending new results onto head of trace)
-  return $ reverse l
+  pure $ reverse l
 
 pmmhStep :: (es ~ '[Observe, Sample, Lift Sampler], Show a)
   => Int                -- Number of particles
@@ -96,13 +96,13 @@ acceptSMC n_particles prog tags _ (a, strace', lptrace') (_, _, logW) = do
       {-  if logW' and logW = -Infinity, this ratio can be NaN which is fine, in which case comparing u < Nan returns false
           if logW > -Infinity and logW = -Infinity, this ratio can be Infinity, which is fine. -}
       acceptance_ratio = exp (logP $ logW' - logW)
-  return ((a, strace', logW'), acceptance_ratio)
+  pure ((a, strace', logW'), acceptance_ratio)
 
 handleSamp :: STrace -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
 handleSamp  samples = loop
   where
   loop :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
-  loop (Val x) = return x
+  loop (Val x) = pure x
   loop (Op u k) = case u of
       PrintPatt s ->
         printLift s >> loop (k ())

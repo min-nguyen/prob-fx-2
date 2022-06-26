@@ -42,7 +42,7 @@ asum :: Member NonDet es => [Prog es a] -> Prog es a
 asum progs = foldr (<|>) (call Empty) progs
 
 handleNonDet :: Prog (NonDet ': es) a -> Prog es [a]
-handleNonDet (Val x) = return [x]
+handleNonDet (Val x) = pure [x]
 handleNonDet (Op op k) = case op of
    Choose' -> (<|>) <$> handleNonDet (k True) <*> handleNonDet (k False)
    Empty'  -> Val []
@@ -65,7 +65,7 @@ branchWeaken n (Val x)   = asum $ replicate n (Val x)
 -- If all finished, return a single program that returns all results
 foldVals :: Show a => [Prog es' a] -> Either [Prog es' a] (Prog es [a])
 foldVals ps  = loop ps where
-  loop (Val x:vs) = do -- trace ("Val is " ++ show x) return ()
+  loop (Val x:vs) = do -- trace ("Val is " ++ show x) pure ()
                        xs <- loop vs
                        Right ((x:) <$> xs)
   loop [] = Right (Val [])

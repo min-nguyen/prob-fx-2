@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Redundant return" #-}
+{-# HLINT ignore "Redundant pure" #-}
 
 module Examples.HLinRegr where
 
@@ -30,7 +30,7 @@ hlrPrior = do
   sigma_a <- halfNormal 5 #sigma_a
   mu_b    <- normal 0 10 #mu_b
   sigma_b <- halfNormal 5 #sigma_b
-  return (mu_a, sigma_a, mu_b, sigma_b)
+  pure (mu_a, sigma_a, mu_b, sigma_b)
 
 -- n counties = 85, len(floor_x) = 919, len(county_idx) = 919
 hLinRegr :: Observables env '["mu_a", "mu_b", "sigma_a", "sigma_b", "a", "b", "log_radon"] Double
@@ -52,7 +52,7 @@ hLinRegr n_counties floor_x county_idx  = do
       radon_est = zipWith (+) a_county_idx (zipWith (*) b_county_idx floor_values)
   -- Sample radon amount for each data point
   radon_like <- mapM (\rad_est -> normal rad_est eps #log_radon) radon_est
-  return radon_like
+  pure radon_like
 
 mkRecordHLR :: ([Double], [Double], [Double], [Double], [Double], [Double], [Double]) -> Env HLREnv
 mkRecordHLR (mua, mub, siga, sigb, a, b, lograds) =
@@ -66,7 +66,7 @@ simHLinRegr = do
       noBasementIdxs    = findIndexes dataFloorValues 1
       basementPoints    = map (bs !!) basementIdxs
       nobasementPoints  = map (bs !!) noBasementIdxs
-  return (basementPoints, nobasementPoints)
+  pure (basementPoints, nobasementPoints)
 
 -- Return posterior for intercepts and gradients
 mhHLinRegrpost :: Sampler ([Double], [Double])
@@ -76,7 +76,7 @@ mhHLinRegrpost = do
                     (#mu_a ⋮ #mu_b ⋮ #sigma_a ⋮ #sigma_b ⋮ONil)
   let mu_a   = concatMap (get #mu_a)  env_outs
       mu_b   = concatMap (get #mu_b)  env_outs
-  return (mu_a, mu_b)
+  pure (mu_a, mu_b)
 
 -- Return predictive posterior for intercepts and gradients
 mhHLinRegr :: Sampler ([Double], [Double])
@@ -88,4 +88,4 @@ mhHLinRegr = do
       as         = get #a env_pred
       bs         = get #b env_pred
   liftIOSampler $ print as
-  return (as, bs)
+  pure (as, bs)

@@ -193,11 +193,11 @@ logProb d = log . prob d
 
 sample :: PrimDist a -> Sampler a
 sample (HalfCauchyDist σ )  =
-  createSampler (sampleCauchy 0 σ) >>= return . abs
+  createSampler (sampleCauchy 0 σ) >>= pure . abs
 sample (CauchyDist μ σ )  =
   createSampler (sampleCauchy μ σ)
 sample (HalfNormalDist σ )  =
-  createSampler (sampleNormal 0 σ) >>= return . abs
+  createSampler (sampleNormal 0 σ) >>= pure . abs
 sample (NormalDist μ σ )  =
   createSampler (sampleNormal μ σ)
 sample (UniformDist min max )  =
@@ -209,18 +209,18 @@ sample (GammaDist k θ )        =
 sample (BetaDist α β  )         =
   createSampler (sampleBeta α β)
 sample (BinomialDist n p  )     =
-  createSampler (sampleBinomial n p) >>=  return .  length . filter (== True)
+  createSampler (sampleBinomial n p) >>=  pure .  length . filter (== True)
 sample (BernoulliDist p )      =
   createSampler (sampleBernoulli p)
 sample (CategoricalDist ps )   =
-  createSampler (sampleCategorical (V.fromList $ fmap snd ps)) >>= \i -> return $ fst $ ps !! i
+  createSampler (sampleCategorical (V.fromList $ fmap snd ps)) >>= \i -> pure $ fst $ ps !! i
 sample (DiscreteDist ps )      =
   createSampler (sampleDiscrete ps)
 sample (PoissonDist λ ) =
   createSampler (samplePoisson λ)
 sample (DirichletDist xs ) =
   createSampler (sampleDirichlet xs)
-sample (DeterministicDist x) = return x
+sample (DeterministicDist x) = pure x
 
 sampleBayes :: Monad.Bayes.Class.MonadSample m => PrimDist a -> m a
 sampleBayes (UniformDist a b )     = Monad.Bayes.Class.uniform a b

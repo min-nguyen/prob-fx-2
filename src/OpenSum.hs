@@ -27,7 +27,7 @@ testOpenSum =
   in  os1 == os2
 
 instance forall a as. (Eq a, Eq (OpenSum as)) => Eq (OpenSum (a ': as)) where
-  -- If their types aren'a the same, return false
+  -- If their types aren't the same, return false
   UnsafeOpenSum i _ == UnsafeOpenSum j _ | i /= j = False
   -- If their types are both a, then unsafe coerce both and compare
   UnsafeOpenSum 0 x == UnsafeOpenSum 0 y =

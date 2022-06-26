@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeOperators, TypeApplications #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Redundant return" #-}
+{-# HLINT ignore "Redundant pure" #-}
 {-# HLINT ignore "Use camelCase" #-}
 module Examples.SIR where
 
@@ -38,12 +38,12 @@ transSI :: TransModel env ts Double Popl
 transSI beta (Popl s i r) = do
   let pop = s + i + r
   dN_SI <- binomial' s (1 - exp ((-beta * fromIntegral i) / fromIntegral pop))
-  return $ Popl (s - dN_SI) (i + dN_SI) r
+  pure $ Popl (s - dN_SI) (i + dN_SI) r
 
 transIR :: TransModel env ts Double Popl
 transIR gamma (Popl s i r)  = do
   dN_IR <- binomial' i (1 - exp (-gamma))
-  return $ Popl s (i - dN_IR) (r + dN_IR)
+  pure $ Popl s (i - dN_IR) (r + dN_IR)
 
 data TransParams = TransParams {
     betaP  :: Double, -- ^ Mean contact rate between susceptible and infected people
@@ -55,7 +55,7 @@ transSIR :: Member (Writer [Popl]) es
 transSIR (TransParams beta gamma) latentSt = do
   latentSt' <- (transSI beta >=> transIR gamma) latentSt
   tellM [latentSt']
-  return latentSt'
+  pure latentSt'
 
 -- | SIR observation model
 type ObsParams = Double
@@ -64,7 +64,7 @@ obsSIR :: Observable env "𝜉" Int
   => ObsModel env ts Double Popl Reported
 obsSIR rho (Popl _ i _)  = do
   i <- poisson (rho * fromIntegral i) #𝜉
-  return i
+  pure i
 
 -- | SIR transition prior
 transPrior :: Observables env '["β",  "γ"] Double
@@ -72,14 +72,14 @@ transPrior :: Observables env '["β",  "γ"] Double
 transPrior = do
   pBeta  <- gamma 2 1 #β
   pGamma <- gamma 1 (1/8) #γ
-  return (TransParams pBeta pGamma)
+  pure (TransParams pBeta pGamma)
 
 -- | SIR observation prior
 obsPrior :: Observables env '["ρ"] Double
   => Model env ts ObsParams
 obsPrior = do
   pRho <- beta 2 7 #ρ
-  return pRho
+  pure pRho
 
 -- | SIR as HMM
 hmmSIR :: (Member (Writer [Popl]) es, Observable env "𝜉" Int, Observables env '["ρ", "β", "γ"] Double)
@@ -99,7 +99,7 @@ simSIR = do
   ((_, sir_trace), sim_env_out) <- SIM.simulate (hmmSIR' 100 sir_0) sim_env_in
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
       sirs = map (\(Popl s i recov) -> (s, i, recov)) sir_trace
-  return (sirs, 𝜉s)
+  pure (sirs, 𝜉s)
 
 infobs_data :: [Int]
 infobs_data = [0,1,4,2,1,3,3,5,10,11,30,23,48,50,91,94,129,151,172,173,198,193,214,179,229,172,205,211,191,212,185,184,173,211,185,197,176,169,198,174,163,197,152,198,153,164,154,167,178,174,160,149,140,172,169,144,137,151,166,151,147,149,159,150,151,139,137,182,121,119,133,146,141,136,126,131,124,110,120,113,117,102,120,117,122,121,110,125,127,117,117,98,109,108,108,120,98,103,104,103]
@@ -113,7 +113,7 @@ mhSIR = do
   mhTrace <- MH.mhTopLevel 50000 (handleWriterM @[Popl] $ hmmSIR' 100 sir_0) mh_env_in (#β ⋮ #ρ ⋮ONil)
   let ρs = concatMap (get #ρ) mhTrace
       βs = concatMap (get #β) mhTrace
-  return (ρs, βs)
+  pure (ρs, βs)
 
 {- (3.2.1) EXTENSIONS TO SIR MODEL -}
 
@@ -128,14 +128,14 @@ data TransParams' = TransParams' {
 transRS :: Double -> Popl -> Model env ts Popl
 transRS eta (Popl s i r) = do
   dN_RS <- binomial' r (1 - exp (-eta))
-  return $ Popl (s + dN_RS) i (r - dN_RS)
+  pure $ Popl (s + dN_RS) i (r - dN_RS)
 
 transSIRS :: Member (Writer [Popl]) es
   => TransModel env es TransParams' Popl
 transSIRS (TransParams' beta gamma eta) latentSt = do
   latentSt' <- (transSI beta >=> transIR gamma >=> transRS eta) latentSt
   tellM [latentSt']
-  return latentSt'
+  pure latentSt'
 
 -- | SIR transition prior
 transPrior' :: Observables env '["β", "η", "γ"] Double
@@ -143,7 +143,7 @@ transPrior' :: Observables env '["β", "η", "γ"] Double
 transPrior' = do
   TransParams pBeta pGamma  <- transPrior
   pEta <- gamma 1 (1/8) #η
-  return (TransParams' pBeta pGamma pEta)
+  pure (TransParams' pBeta pGamma pEta)
 
 -- | SIRS as HMM
 hmmSIRS :: (Observables env '["𝜉"] Int, Observables env '["β", "η", "γ", "ρ"] Double) => Int -> Popl -> Model env ts (Popl, [Popl])
@@ -157,7 +157,7 @@ simSIRS = do
   ((_, sir_trace), sim_env_out) <- SIM.simulate (hmmSIRS 100 sir_0) sim_env_in
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
       sirs = map (\(Popl s i recov) -> (s, i, recov)) sir_trace
-  return (sirs, 𝜉s)
+  pure (sirs, 𝜉s)
 
 {- SIRSV (resusceptible + vacc) model -}
 data TransParams'' = TransParams'' {
@@ -179,22 +179,22 @@ transSI' :: TransModel env ts Double Popl'
 transSI' beta (Popl' s i r v) = do
   let pop = s + i + r + v
   dN_SI <- binomial' s (1 - exp ((-beta * fromIntegral i) / fromIntegral pop))
-  return $ Popl' (s - dN_SI) (i + dN_SI) r v
+  pure $ Popl' (s - dN_SI) (i + dN_SI) r v
 
 transIR' :: TransModel env ts Double Popl'
 transIR' gamma (Popl' s i r v)  = do
   dN_IR <- binomial' i (1 - exp (-gamma))
-  return $ Popl' s (i - dN_IR) (r + dN_IR) v
+  pure $ Popl' s (i - dN_IR) (r + dN_IR) v
 
 transRS' :: TransModel env es Double Popl'
 transRS' eta (Popl' s i r v) = do
   dN_RS <- binomial' r (1 - exp (-eta))
-  return $ Popl' (s + dN_RS) i (r - dN_RS) v
+  pure $ Popl' (s + dN_RS) i (r - dN_RS) v
 
 transSV' :: TransModel env es Double Popl'
 transSV' omega (Popl' s i r v)  = do
   dN_SV <- binomial' s (1 - exp (-omega))
-  return $  Popl' (s - dN_SV) i r (v + dN_SV )
+  pure $  Popl' (s - dN_SV) i r (v + dN_SV )
 
 transSIRSV :: Member (Writer [Popl']) ts => TransModel env ts TransParams'' Popl'
 transSIRSV (TransParams'' beta gamma omega eta) latentSt = do
@@ -203,7 +203,7 @@ transSIRSV (TransParams'' beta gamma omega eta) latentSt = do
                 transRS' eta   >=>
                 transSV' omega) latentSt
   tellM [latentSt']
-  return latentSt'
+  pure latentSt'
 
 -- | SIRSV transition prior
 transPrior'' :: Observables env '["β", "γ", "ω", "η"] Double
@@ -211,14 +211,14 @@ transPrior'' :: Observables env '["β", "γ", "ω", "η"] Double
 transPrior''  = do
   TransParams' pBeta pGamma pEta <- transPrior'
   pOmega <- gamma 1 (1/16) #ω
-  return (TransParams'' pBeta pGamma pEta pOmega)
+  pure (TransParams'' pBeta pGamma pEta pOmega)
 
 -- | SIRSV observation model
 obsSIRSV :: Observable env "𝜉" Int
   => ObsModel env ts Double Popl' Reported
 obsSIRSV rho (Popl' _ i _ v)  = do
   i <- poisson (rho * fromIntegral i) #𝜉
-  return i
+  pure i
 
 -- | SIRSV as HMM
 hmmSIRSV ::  (Observables env '["𝜉"] Int, Observables env '["β", "γ", "η", "ω", "ρ"] Double) => Int -> Popl' -> Model env ts (Popl', [Popl'])
@@ -232,4 +232,4 @@ simSIRSV = do
   ((_, sirv_trace), sim_env_out) <- SIM.simulate (hmmSIRSV 100 sirv_0) sim_env_in
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
       sirvs = map (\(Popl' s i recov v) -> (s, i, recov, v)) sirv_trace
-  return (sirvs, 𝜉s)
+  pure (sirvs, 𝜉s)

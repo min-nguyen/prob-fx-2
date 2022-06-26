@@ -25,7 +25,7 @@ modify f = getSt >>= putSt . f
 handleState :: forall s es a. s -> Prog (State s ': es) a -> Prog es (a, s)
 handleState s m = loop s m where
   loop :: s -> Prog (State s ': es) a -> Prog es (a, s)
-  loop s (Val x) = return (x, s)
+  loop s (Val x) = pure (x, s)
   loop s (Op u k) = case discharge u of
     Right GetSt      -> loop s (k s)
     Right (PutSt s') -> loop s' (k ())
@@ -33,7 +33,7 @@ handleState s m = loop s m where
 
 handleState' :: s -> Prog (State s ': es) a -> Prog es (a, s)
 handleState' s0  = handleRelaySt s0
-  (\s x -> return (x, s))
+  (\s x -> pure (x, s))
   (\s tx k -> case
       tx of GetSt    -> k s s
             PutSt s' -> k s' ())

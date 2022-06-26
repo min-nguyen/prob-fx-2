@@ -40,7 +40,7 @@ simulate :: forall env es b a. (FromSTrace env, es ~ '[ObsReader env, Dist, Lift
 simulate model env   = do
   outputs_smaps <- runSimulate env model
   let outputs_env = fmap (fromSTrace @env) outputs_smaps
-  return outputs_env
+  pure outputs_env
 
 runSimulate :: (es ~ '[ObsReader env, Dist, Lift Sampler])
  => Env env -> Model env es a -> Sampler (a, STrace)
@@ -48,13 +48,13 @@ runSimulate ys m
   = (handleLift . handleSamp . handleObs . traceSamples . handleDist . handleObsRead ys) (runModel m)
 
 handleObs :: Prog (Observe : es) a -> Prog es  a
-handleObs (Val x) = return x
+handleObs (Val x) = pure x
 handleObs (Op op k) = case discharge op of
   Right (Observe d y α) -> handleObs (k y)
   Left op' -> Op op' (handleObs . k)
 
 handleSamp :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
-handleSamp (Val x)  = return x
+handleSamp (Val x)  = pure x
 handleSamp (Op u k) = case discharge u of
   Right (Printer s) -> do
       (lift . liftIOSampler) (putStrLn s)

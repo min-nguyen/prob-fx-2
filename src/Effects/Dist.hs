@@ -59,7 +59,7 @@ handleDist :: forall es a. Prog (Dist : es) a -> Prog (Observe : Sample : es) a
 handleDist = loop 0 Map.empty
   where
   loop :: Int -> TagMap -> Prog (Dist : es) a -> Prog (Observe : Sample : es) a
-  loop _ _ (Val x) = return x
+  loop _ _ (Val x) = pure x
   loop counter tagMap (Op u k) = case discharge u of
     Right d ->
          case getObs d of

@@ -36,7 +36,7 @@ lwTopLevel :: FromSTrace env
 lwTopLevel n model env = do
   let prog = (handleDist . handleObsRead env) (runModel model)
   lwTrace <- lw n prog
-  return (map (\(_, env, p) -> (fromSTrace env, p)) lwTrace)
+  pure (map (\(_, env, p) -> (fromSTrace env, p)) lwTrace)
 
 lw :: Int                         -- Number of lw iterations
    -> Prog [Observe, Sample, Lift Sampler] a    -- Model
@@ -47,10 +47,10 @@ lw n prog = replicateM n (runLW prog)
 runLW :: Prog [Observe, Sample, Lift Sampler] a -> Sampler (a, STrace, Double)
 runLW prog = do
   ((x, samples), p) <- (handleLift . SIM.handleSamp . handleObs 0 . traceSamples) prog
-  return (x, samples, p)
+  pure (x, samples, p)
 
 handleObs :: Member Sample es => Double -> Prog (Observe : es) a -> Prog es (a, Double)
-handleObs logp (Val x) = return (x, exp logp)
+handleObs logp (Val x) = pure (x, exp logp)
 handleObs logp (Op u k) = case discharge u of
     Right (Observe d y α) -> do
       let logp' = logProb d y

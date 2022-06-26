@@ -42,7 +42,6 @@ instance Monoid w => Applicative (Writer w) where
   Writer (f, w) <*> Writer (a, v) = Writer (f a, w <> v)
 
 instance Monoid w => Monad (Writer w) where
-  return = pure
   Writer (x, w) >>= f = 
     let Writer (y, v) = f x
     in  Writer (y, w <> v)
@@ -72,11 +71,10 @@ instance (Monoid w, Applicative m) => Applicative (WriterT w m) where
     where k (f, w) (a, v) = (f a, w <> v)
 
 instance (Monoid w, Monad m) => Monad (WriterT w m) where
-    return   = pure
-    m >>= k  = WriterT $ do
-      (a, w) <- runWriterT m 
-      (b, v) <- runWriterT (k a)
-      pure (b, w <> v)
+  m >>= k  = WriterT $ do
+    (a, w) <- runWriterT m 
+    (b, v) <- runWriterT (k a)
+    pure (b, w <> v)
 
 instance (Monoid w, Algebra es ms) => 
          Algebra (WriterEff w :+: es) (WriterT w ms) where

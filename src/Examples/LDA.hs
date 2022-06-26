@@ -87,7 +87,7 @@ simLDA = do
                       [1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]] <:>
                #w := [] <:> eNil
   (words, env_out) <- SIM.simulate (topicModel vocab 2 n_words) env_in
-  return words
+  pure words
 
 -- | Inference from topic model
 -- Document of words to perform inference over
@@ -105,4 +105,4 @@ mhLDA  = do
   let env_pred   = head env_mh_outs
       θs         = get #θ env_pred
       φs         = get #φ env_pred
-  return (θs, φs)
+  pure (θs, φs)

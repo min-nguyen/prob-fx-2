@@ -5,7 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Redundant return" #-}
+{-# HLINT ignore "Redundant pure" #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
@@ -38,7 +38,7 @@ type HMMEnv =
 transitionModel ::  Double -> Int -> Model env ts Int
 transitionModel transition_p x_prev = do
   dX <- boolToInt <$> bernoulli' transition_p
-  return (dX + x_prev)
+  pure (dX + x_prev)
 
 observationModel :: (Observable env "y" Int)
   => Double -> Int -> Model env ts Int
@@ -50,14 +50,14 @@ hmmNode :: (Observable env "y" Int)
 hmmNode transition_p observation_p x_prev = do
   x_n <- transitionModel  transition_p x_prev
   y_n <- observationModel observation_p x_n
-  return x_n
+  pure x_n
 
 hmm :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
   => Int -> (Int -> Model env ts Int)
 hmm n x = do
   trans_p <- uniform 0 1 #trans_p
   obs_p   <- uniform 0 1 #obs_p
-  foldr (<=<) return  (replicate n (hmmNode trans_p obs_p)) x
+  foldr (<=<) pure  (replicate n (hmmNode trans_p obs_p)) x
 
 mbayesHMM :: (FromSTrace env, MonadInfer m, Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
   => Int -> Int -> Env env -> m (Int, Env env)
@@ -73,7 +73,7 @@ simHMM n_samples n_steps = do
   let x   = 0
       env = (#y := []) <:> (#trans_p := [0.5]) <:> #obs_p := [0.9] <:>  eNil
   yss <- sampleIO $ prior $ replicateM n_samples $ mbayesHMM n_steps x env
-  return yss
+  pure yss
 
 lwHMM :: Int -> Int -> IO [((Int, Env HMMEnv), Log Double)]
 lwHMM n_samples n_steps = do

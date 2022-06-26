@@ -57,7 +57,7 @@ updateSTrace α d x  = modify (Map.insert α (ErasedPrimDist d, OpenSum.inj x) :
 traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, STrace)
 traceSamples = handleState Map.empty . storeSamples
   where storeSamples :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
-        storeSamples = install return
+        storeSamples = install pure
           (\x tx k -> case tx of
               Sample d α -> case primDistDict d of
                 Dict -> do updateSTrace α d x
@@ -75,7 +75,7 @@ updateLPTrace α d x  = modify (Map.insert α (PrimDist.logProb d x) :: LPTrace 
 traceLPs ::(Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)
 traceLPs = handleState Map.empty . storeLPs
   where storeLPs :: (Member Sample es, Member Observe es) => Prog es a -> Prog (State LPTrace: es) a
-        storeLPs (Val x) = return x
+        storeLPs (Val x) = pure x
         storeLPs (Op u k) = do
           case u of
             SampPatt d α

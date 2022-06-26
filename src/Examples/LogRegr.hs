@@ -7,7 +7,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Redundant return" #-}
+{-# HLINT ignore "Redundant pure" #-}
 
 module Examples.LogRegr where
 
@@ -48,8 +48,8 @@ logRegr xs = do
   ls    <- foldM (\ls x -> do
                      y <- normal' (m * x + b) sigma
                      l <- bernoulli (sigmoid y) #label
-                     return (l:ls)) [] xs
-  return (reverse ls)
+                     pure (l:ls)) [] xs
+  pure (reverse ls)
 
 -- | Alternative logistic regression formulation, for  a single data point
 logRegressionOne :: forall rs env.
@@ -61,7 +61,7 @@ logRegressionOne x = do
   sigma <- gamma' 1 1
   y     <- normal' (m * x + b) sigma
   l     <- bernoulli (sigmoid y) #label
-  return l
+  pure l
 
 -- | SIM from logistic regression
 simLogRegr :: Sampler [(Double, Bool)]
@@ -72,7 +72,7 @@ simLogRegr = do
       env = (#label := []) <:> (#m := [2]) <:> (#b := [-0.15]) <:> eNil
   -- Call simulate on logistic regression
   (ys, envs) <- SIM.simulate (logRegr xs) env
-  return (zip xs ys)
+  pure (zip xs ys)
 
 -- | Likelihood-weighting over logistic regression
 lwLogRegr :: Sampler [(Double, Double)]
@@ -86,7 +86,7 @@ lwLogRegr = do
   let -- Get output of LW, extract mu samples, and pair with likelihood-weighting ps
       (env_outs, ps) = unzip lwTrace
       mus = concatMap (get #m) env_outs
-  return $ zip mus ps
+  pure $ zip mus ps
 
 -- | Metropolis-Hastings inference over logistic regression
 mhLogRegr :: Sampler [(Double, Double)]
@@ -100,4 +100,4 @@ mhLogRegr = do
   -- Retrieve values sampled for #m and #b during MH
   let m_samples = concatMap (get #m) mhTrace
       b_samples = concatMap (get #b) mhTrace
-  return (zip m_samples b_samples)
+  pure (zip m_samples b_samples)

@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Redundant return" #-}
+{-# HLINT ignore "Redundant pure" #-}
 {-# LANGUAGE TypeApplications #-}
 module Examples.HMM where
 
@@ -40,7 +40,7 @@ hmmFor n x = do
                             let x = x_prev + dX
                             binomial x obs_p #y
                             hmmLoop (i - 1) x
-                       | otherwise = return x_prev
+                       | otherwise = pure x_prev
   hmmLoop 0 x
 
 simHMM :: Sampler (Int, Env HMMEnv)
@@ -59,27 +59,27 @@ lwHMM   = do
 transModel ::  Double -> Int -> Model env ts Int
 transModel transition_p x_prev = do
   dX <- boolToInt <$> bernoulli' transition_p
-  return (x_prev + dX)
+  pure (x_prev + dX)
 
 obsModel :: (Observable env "y" Int)
   => Double -> Int -> Model env ts Int
 obsModel observation_p x = do
   y <- binomial x observation_p #y
-  return y
+  pure y
 
 hmmNode :: (Observable env "y" Int)
   => Double -> Double -> Int -> Model env ts Int
 hmmNode transition_p observation_p x_prev = do
   x_i <- transModel  transition_p x_prev
   y_i <- obsModel observation_p x_i
-  return x_i
+  pure x_i
 
 hmm :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
   => Int -> (Int -> Model env ts Int)
 hmm n x = do
   trans_p <- uniform 0 1 #trans_p
   obs_p   <- uniform 0 1 #obs_p
-  foldr (>=>) return (replicate n (hmmNode trans_p obs_p)) x
+  foldr (>=>) pure (replicate n (hmmNode trans_p obs_p)) x
 
 {- (Sec 3) Higher-order, generic HMM -}
 type TransModel env ts params lat   = params -> lat -> Model env ts lat
@@ -94,14 +94,14 @@ hmmGen transPrior obsPrior transModel obsModel n x_0 = do
   let hmmNode x = do
                 x' <- transModel ps1 x
                 y' <- obsModel ps2 x'
-                return x'
-  foldl (>=>) return (replicate n hmmNode) x_0
+                pure x'
+  foldl (>=>) pure (replicate n hmmNode) x_0
 
 {-  Hidden Markov Model using Writer effect -}
 transModelW ::  Double -> Int -> Model env ts Int
 transModelW transition_p x_prev = do
   dX <- boolToInt <$> bernoulli' transition_p
-  return (dX + x_prev)
+  pure (dX + x_prev)
 
 obsModelW :: (Observable env "y" Int)
   => Double -> Int -> Model env ts Int
@@ -114,14 +114,14 @@ hmmNodeW transition_p observation_p x_prev = do
   x_n <- transModelW  transition_p x_prev
   tellM [x_n]
   y_n <- obsModelW observation_p x_n
-  return x_n
+  pure x_n
 
 hmmW :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double) => Member (Writer [Int]) ts
   => Int -> (Int -> Model env ts Int)
 hmmW n x = do
   trans_p <- uniform 0 1 #trans_p
   obs_p   <- uniform 0 1 #obs_p
-  foldr (<=<) return  (replicate n (hmmNodeW trans_p obs_p)) x
+  foldr (<=<) pure  (replicate n (hmmNodeW trans_p obs_p)) x
 
 simHMMw :: Sampler [(Int, Int)]
 simHMMw = do
@@ -133,7 +133,7 @@ simHMMw = do
   let sim_envs_out  = map snd bs
       xs :: [Int]   = concatMap (snd . fst) bs
       ys :: [Int]   = concatMap (get #y) sim_envs_out
-  return $ zip xs ys
+  pure $ zip xs ys
 
 mhHMMw :: Sampler ([Double], [Double])
 mhHMMw = do
@@ -145,4 +145,4 @@ mhHMMw = do
   mh_envs_out <- MH.mhTopLevel mh_samples (handleWriterM @[Int] $ hmmW hmm_length 0) env spec
   let trans_ps    = concatMap (get #trans_p) mh_envs_out
       obs_ps      = concatMap (get #obs_p) mh_envs_out
-  return (trans_ps, obs_ps)
+  pure (trans_ps, obs_ps)

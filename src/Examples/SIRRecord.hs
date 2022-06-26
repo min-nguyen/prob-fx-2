@@ -16,7 +16,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Redundant return" #-}
+{-# HLINT ignore "Redundant pure" #-}
 module Examples.SIRRecord where
 
 import qualified Data.Extensible as Extensible
@@ -49,14 +49,14 @@ transSI  beta popl = do
   let (s_0, i_0, r_0 ) = (popl ^. s,  popl ^. i,  popl ^. r)
       pop = s_0 + i_0 + r_0
   dN_SI <- binomial' s_0 (1 - exp ((-beta * fromIntegral i_0) / fromIntegral pop))
-  return $ popl & s .~ (s_0 - dN_SI)
+  pure $ popl & s .~ (s_0 - dN_SI)
                 & i .~ (i_0 + dN_SI)
 
 transIR :: Lookups popl '["i", "r"] Int => TransModel env ts Double (Record popl)
 transIR  gamma popl = do
   let (i_0, r_0) = (popl ^. i,  popl ^. r)
   dN_IR <- binomial' i_0 (1 - exp (-gamma))
-  return $ popl & i .~ (i_0 - dN_IR)
+  pure $ popl & i .~ (i_0 - dN_IR)
                 & r .~ (r_0 + dN_IR)
 
 transSIR :: (Member (Writer [Record popl]) ts, Lookups popl '["s", "i", "r"] Int)
@@ -64,7 +64,7 @@ transSIR :: (Member (Writer [Record popl]) ts, Lookups popl '["s", "i", "r"] Int
 transSIR (beta, gamma) popl = do
   popl <- (transSI beta >=> transIR gamma) popl
   tellM [popl]
-  return popl
+  pure popl
 
 -- | SIR observation model
 type ObsParams = Double
@@ -81,7 +81,7 @@ transPrior :: Observables env '["β",  "γ"] Double
 transPrior = do
   pBeta  <- gamma 2 1 #β
   pGamma <- gamma 1 (1/8) #γ
-  return (pBeta, pGamma)
+  pure (pBeta, pGamma)
 
 -- | SIR observation prior
 obsPrior :: Observables env '["ρ"] Double
@@ -101,7 +101,7 @@ transRS :: Lookups popl '["s", "r"] Int => TransModel env ts Double (Record popl
 transRS eta popl = do
   let (r_0, s_0) = (popl ^. r,  popl ^. s)
   dN_RS <- binomial' r_0 (1 - exp (-eta))
-  return $ popl & r .~ (r_0 - dN_RS)
+  pure $ popl & r .~ (r_0 - dN_RS)
                 & s .~ (s_0 + dN_RS)
 
 transSIRS :: Lookups popl '["s", "i", "r"] Int => TransModel env es (Double, Double, Double) (Record popl)
@@ -113,7 +113,7 @@ transPriorS :: Observables env '["β", "η", "γ"] Double
 transPriorS = do
   (pBeta, pGamma)  <- transPrior
   pEta <- gamma 1 (1/8) #η
-  return (pBeta, pGamma, pEta)
+  pure (pBeta, pGamma, pEta)
 
 -- | SIRS as HMM
 hmmSIRS :: (Member (Writer [Record popl]) es,
@@ -129,7 +129,7 @@ transSV :: Lookups popl '["s", "v"] Int => TransModel env es Double (Record popl
 transSV omega popl  = do
   let (s_0, v_0) = (popl ^. s,  popl ^. v)
   dN_SV <- binomial' s_0 (1 - exp (-omega))
-  return $ popl & s .~ (s_0 - dN_SV)
+  pure $ popl & s .~ (s_0 - dN_SV)
                 & v .~ (v_0 + dN_SV)
 
 transSIRSV :: Lookups popl '["s", "i", "r", "v"] Int => TransModel env ts (Double, Double, Double, Double) (Record popl)
@@ -142,7 +142,7 @@ transPriorSV :: Observables env '["β", "γ", "ω", "η"] Double
 transPriorSV  = do
   (pBeta, pGamma, pEta) <- transPriorS
   pOmega <- gamma 1 (1/16) #ω
-  return (pBeta, pGamma, pEta, pOmega)
+  pure (pBeta, pGamma, pEta, pOmega)
 
 -- | SIRSV as HMM
 hmmSIRSV :: (Member (Writer [Record popl]) es,

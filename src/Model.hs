@@ -51,7 +51,6 @@ instance Applicative (Model env es) where
   (<*>) = ap
 
 instance Monad (Model env es) where
-  return = pure
   Model f >>= x = Model $ do
     f' <- f
     runModel $ x f'

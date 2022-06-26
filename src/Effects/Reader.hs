@@ -29,18 +29,18 @@ ask = Op (inj Ask) Val
 handleReader :: forall env es a. env -> Prog (Reader env ': es) a -> Prog es a
 handleReader env = loop where
   loop :: Prog (Reader env ': es) a -> Prog es a
-  loop (Val x) = return x
+  loop (Val x) = pure x
   loop (Op u k) = case discharge u of
     Right Ask -> loop (k env)
     Left  u'  -> Op u' (loop . k)
 
 runReader' :: env -> Prog (Reader env ': es) a -> Prog es a
-runReader' env = handleRelay return (\Ask k -> k env)
+runReader' env = handleRelay pure (\Ask k -> k env)
 
 runReader'' :: forall es env a.
   LastMember IO es =>
   Member (Reader env) es => env -> Prog es a -> Prog es a
 runReader'' env =
-  interpose @(Reader env) return
+  interpose @(Reader env) pure
   (\Ask k -> do sendM (print "hi")
                 k env)

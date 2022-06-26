@@ -34,7 +34,7 @@ schoolModel n_schools σs = do
   θs  <- deterministic (map ((μ +) . (τ *)) ηs) #theta
   ys  <- mapM (\(θ, σ) -> normal θ σ #y) (zip θs σs)
   let h = ""
-  return θs
+  pure θs
 
 mhSchool :: Sampler ([Double], [[Double]])
 mhSchool = do
@@ -46,4 +46,4 @@ mhSchool = do
   printS env_mh_out
   let mus    = concatMap (get #mu) env_mh_out
       thetas = concatMap (get #theta) env_mh_out
-  return (mus, thetas)
+  pure (mus, thetas)

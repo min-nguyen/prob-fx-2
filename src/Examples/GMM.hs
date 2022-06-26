@@ -39,13 +39,13 @@ gmm k n = do
                    let i = fromJust $ elemIndex mu_k mus
                    x    <- normal mu_k 1 #x
                    y    <- normal mu_k 1 #y
-                   return ((x, y), i))
+                   pure ((x, y), i))
 
 simGMM :: Sampler [((Double, Double), Int)]
 simGMM = do
   let env =  #mu := [-2.0, 3.5] <:> #mu_k := [] <:> #x := [] <:> #y := [] <:> eNil
   bs <- SIM.simulate (gmm 2 20) env
-  return $ fst bs
+  pure $ fst bs
 
 mhGMM :: Sampler [[Double]]
 mhGMM = do
@@ -55,4 +55,4 @@ mhGMM = do
   env_mh_out <- MH.mhTopLevel 4000 (gmm 2 20) env  (#mu ⋮  ONil)
   let mus = map (get #mu) env_mh_out
   printS mus
-  return mus
+  pure mus

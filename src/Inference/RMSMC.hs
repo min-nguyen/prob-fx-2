@@ -45,7 +45,7 @@ rmsmc :: forall env es' a. (FromSTrace env, Show a) =>
   Int -> Int -> Prog es' a -> Env env -> Sampler [(a, LogP, Env env)]
 rmsmc n_particles mh_steps prog env = do
   as_ps_straces <- SIS.sis n_particles (rmsmcResampler mh_steps prog) SMC.smcPopulationHandler SIM.handleObs SIM.handleSamp prog
-  return $ map (\(a, (addr, p, strace)) -> (a, p, fromSTrace @env strace)) as_ps_straces
+  pure $ map (\(a, (addr, p, strace)) -> (a, p, fromSTrace @env strace)) as_ps_straces
 
 rmsmcResampler :: forall es a.
      Int
@@ -72,11 +72,11 @@ rmsmcResampler mh_steps prog ctx_0 ctx_1sub0 progs_1 = do
       -- compute log weights of particles, that is, the total log probability of each particle up until the break point
       moved_logWs     = map (LogP . sum . map snd . Map.toList) obs_lptraces
 
-  return (moved_particles, zip3 obs_addrs moved_logWs moved_straces)
+  pure (moved_particles, zip3 obs_addrs moved_logWs moved_straces)
 
 insertBreakpoint :: Members [Observe, Sample] es =>
   Addr -> Prog es a -> Prog es (Prog es a)
-insertBreakpoint α_break (Val x) = return (Val x)
+insertBreakpoint α_break (Val x) = pure (Val x)
 insertBreakpoint α_break (Op op k) = case op of
       ObsPatt d y α -> do
         if α_break == α

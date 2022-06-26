@@ -60,7 +60,7 @@ linRegr xs = do
   c <- normal 0 5 #c
   σ <- uniform 1 3 #σ
   foldM (\ys x -> do y <- normal (m * x + c) σ #y
-                     return (y:ys)) [] xs
+                     pure (y:ys)) [] xs
 
 mkRecordLogRegr :: ([Double],  [Double],  [Double],  [Double]) -> Env LogRegrEnv
 mkRecordLogRegr (y_vals, m_vals, c_vals, σ_vals) =
@@ -76,7 +76,7 @@ simLogRegr n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
       xs            = [0 .. n_datapoints']
   Simulate.simulateMany n_samples (linRegr xs) (mkRecordLogRegr ([], [1.0], [0.0], [1.0]))
-  return ()
+  pure ()
 
 lwLogRegr :: Int -> Int -> Sampler ()
 lwLogRegr n_datapoints n_samples = do
@@ -84,7 +84,7 @@ lwLogRegr n_datapoints n_samples = do
       xs            = [0 .. n_datapoints']
       env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  eNil
   LW.lwTopLevel n_samples (linRegr xs) env
-  return ()
+  pure ()
 
 mhLogRegr :: Int -> Int -> Sampler ()
 mhLogRegr n_datapoints n_samples = do
@@ -92,7 +92,7 @@ mhLogRegr n_datapoints n_samples = do
       xs            = [0 .. n_datapoints']
       env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  eNil
   MH.mhTopLevel n_samples (linRegr xs) env ONil
-  return ()
+  pure ()
 
 {- HMM -}
 type HMMEnv =
@@ -104,7 +104,7 @@ type HMMEnv =
 transitionModel ::  Double -> Int -> Model env ts Int
 transitionModel transition_p x_prev = do
   dX <- boolToInt <$> bernoulli' transition_p
-  return (dX + x_prev)
+  pure (dX + x_prev)
 
 observationModel :: (Observable env "y" Int)
   => Double -> Int -> Model env ts Int
@@ -116,14 +116,14 @@ hmmNode :: (Observable env "y" Int)
 hmmNode transition_p observation_p x_prev = do
   x_n <- transitionModel  transition_p x_prev
   y_n <- observationModel observation_p x_n
-  return x_n
+  pure x_n
 
 hmmNSteps :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
   => Int -> (Int -> Model env ts Int)
 hmmNSteps n x = do
   trans_p <- uniform 0 1 #trans_p
   obs_p   <- uniform 0 1 #obs_p
-  foldr (<=<) return  (replicate n (hmmNode trans_p obs_p)) x
+  foldr (<=<) pure  (replicate n (hmmNode trans_p obs_p)) x
 
 -- Execute HMM
 mkRecordHMM :: ([Int], Double, Double) -> Env HMMEnv
@@ -142,12 +142,12 @@ simHMM hmm_length n_samples = do
 lwHMM :: Int -> Int -> Sampler ()
 lwHMM hmm_length n_samples = do
   LW.lwTopLevel n_samples (hmmNSteps hmm_length 0) (mkRecordHMMy hmm_data)
-  return ()
+  pure ()
 
 mhHMM :: Int -> Int -> Sampler ()
 mhHMM hmm_length n_samples = do
   MH.mhTopLevel n_samples (hmmNSteps hmm_length 0) (mkRecordHMMy hmm_data) ONil
-  return ()
+  pure ()
 
 {- Latent dirichlet allocation (topic model) -}
 type TopicEnv =
@@ -208,16 +208,16 @@ simLDA n_words n_samples = do
                       [1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]] <:>
                #w := [] <:> eNil
   Simulate.simulateMany n_samples (documentDist vocab 2 n_words) params
-  return ()
+  pure ()
 
 lwLDA :: Int -> Int -> Sampler ()
 lwLDA n_words n_samples = do
   let env = #θ := [] <:>  #φ := [] <:> #w := topic_data <:> eNil
   LW.lwTopLevel n_samples (documentDist vocab 2 n_words) env
-  return ()
+  pure ()
 
 mhLDA :: Int -> Int -> Sampler ()
 mhLDA n_words n_samples = do
   let xs_envs = (n_words, #θ := [] <:>  #φ := [] <:> #w := topic_data <:> eNil)
   MH.mhTopLevel n_samples (documentDist vocab 2 n_words) (mkRecordTopic ([], [], topic_data)) ONil
-  return ()
+  pure ()
