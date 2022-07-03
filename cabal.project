@@ -2,4 +2,4 @@ source-repository-package
   type: git
   location: https://github.com/tweag/monad-bayes.git
 
-packages: ./models.cabal
+packages: ./prob-fx2.cabal
