@@ -1,26 +1,23 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FunctionalDependencies, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE PatternSynonyms, ViewPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators, TypeApplications, UndecidableInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Effects.Lift where
 
-import Prog
 import Data.Function (fix)
+import Prog
 
 newtype Lift m a = Lift (m a)
-
 
 -- By using SetMember, it is possible to assert that the lifted type occurs
 -- only once in the effect list

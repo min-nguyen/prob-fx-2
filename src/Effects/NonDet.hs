@@ -18,10 +18,7 @@
 module Effects.NonDet where
 
 import Control.Applicative
-import Control.Monad
 import Prog
-import Effects.Writer
-import Debug.Trace
 
 data NonDet a where
   Empty  :: NonDet a

@@ -6,34 +6,27 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Sampler where
 
-import Effects.Lift hiding (lift)
-import FindElem
-import Prog
 import Control.Monad
-import Control.Monad.Primitive
 import Control.Monad.ST (ST, runST, stToIO)
 import Control.Monad.Trans (MonadIO, MonadTrans, lift)
 import Control.Monad.Trans.Reader (ReaderT, ask, mapReaderT, runReaderT)
-import Data.Functor.Identity
-import qualified Data.Map as Map
 import Data.Map (Map)
-import qualified Data.Set as Set
 import Data.Set (Set)
-import Data.List
-import Debug.Trace
+import Effects.Lift hiding (lift)
+import FindElem
+import GHC.Word
+import Prog
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
-import Statistics.Distribution
-import Statistics.Distribution.Normal
+import qualified Effects.Lift as Lift
 import qualified System.Random.MWC as MWC
 import qualified System.Random.MWC.Distributions as MWC.Dist
-import Statistics.Distribution.CauchyLorentz
-import qualified Effects.Lift as Lift
 import qualified System.Random.MWC.Probability as MWC.Probability
-import Util
-import System.Random
+import Statistics.Distribution
+import Statistics.Distribution.CauchyLorentz
 import System.Random.MWC
-import GHC.Word
 
 newtype Sampler a = Sampler {handleSampr :: ReaderT MWC.GenIO IO a}
   deriving (Functor, Applicative, Monad)

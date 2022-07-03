@@ -15,21 +15,20 @@
 
 module Trace where
 
-import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Maybe
-import GHC.TypeLits
-import PrimDist as PrimDist
+import Data.Proxy
 import Effects.Dist as Dist
-import Env
-import Prog
 import Effects.State
-import qualified OpenSum as OpenSum
+import Env
+import GHC.TypeLits
 import OpenSum (OpenSum)
-import Util
-import FindElem
+import PrimDist
+import Prog
+import qualified Data.Map as Map
+import qualified OpenSum 
 
-{- Sample trace -}
+-- | Sample trace 
 type STrace  = Map Addr (ErasedPrimDist, OpenSum PrimVal)
 
 class FromSTrace (env :: [Assign Symbol *]) where

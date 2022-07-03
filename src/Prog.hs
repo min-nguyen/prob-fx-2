@@ -18,13 +18,9 @@
 module Prog where
 
 import Control.Monad
-import Unsafe.Coerce
 import Data.Kind (Constraint)
-import GHC.TypeLits
-    ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
-import Data.Typeable
--- import qualified OpenSum as OpenSum
 import FindElem
+import Unsafe.Coerce
 
 {- Effect Sum -}
 data EffectSum (es :: [* -> *]) (x :: *) :: * where
@@ -41,11 +37,6 @@ instance {-# INCOHERENT #-} (e ~ e') => Member e '[e'] where
 instance (FindElem e es) => Member e es where
   inj = inj' (unP (findElem :: P e es))
   prj = prj' (unP (findElem :: P e es))
-
--- | Not possible to implement "Members" as a type class.
--- class Members e (tss :: [* -> *])
--- instance (Member e tss, Members es tss) => Members (e ': es) tss
--- instance Members '[] es
 
 type family Members (es :: [* -> *]) (tss :: [* -> *]) = (cs :: Constraint) | cs -> es where
   Members (e ': es) tss = (Member e tss, Members es tss)

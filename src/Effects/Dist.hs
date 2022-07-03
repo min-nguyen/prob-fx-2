@@ -1,52 +1,26 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GADTs, TypeOperators #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE ImplicitParams #-}
+
 module Effects.Dist where
 
-import PrimDist hiding (prob, sample)
-import qualified PrimDist as PrimDist (prob, sample) 
-import Prog
-    ( Prog(..), Member(..), EffectSum, discharge, call, weaken )
-import Sampler
-import OpenSum (OpenSum)
-import qualified OpenSum as OpenSum
-import Util ( boolToInt )
-import Control.Lens hiding ((:>))
-import Control.Monad.State
-import Data.Kind
 import Data.Map (Map)
-import qualified Data.Map as Map
 import Data.Maybe
-import qualified Data.Vector as V
-import qualified Data.Vector.Unboxed as UV
-import Statistics.Distribution
-import Statistics.Distribution.CauchyLorentz
-import Statistics.Distribution.DiscreteUniform
-import Statistics.Distribution.Poisson
-import Statistics.Distribution.Normal
-import Statistics.Distribution.Dirichlet
-import Statistics.Distribution.Gamma
-import Statistics.Distribution.Beta
-import Statistics.Distribution.Binomial
-import Statistics.Distribution.Uniform
-import Numeric.Log
-import qualified System.Random.MWC.Distributions as MWC
-import Data.GADT.Compare (GEq)
-
+import OpenSum (OpenSum)
+import PrimDist hiding (prob, sample)
+import Prog
+import qualified Data.Map as Map
+import qualified OpenSum
+import Util ( boolToInt )
 
 data Dist a = Dist { getPrimDist :: PrimDist a, getObs :: Maybe a, getTag :: Maybe String}
 

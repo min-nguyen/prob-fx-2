@@ -34,8 +34,10 @@ type PMMHTrace a = MH.MHTrace LogP a
 
 pmmhTopLevel :: forall es a env xs.
   (es ~ '[ObsReader env, Dist, Lift Sampler], FromSTrace env, ValidSpec env xs, Show a)
-   => Int                                    -- Number of mhSteps
-   -> Int                                    -- Number of particles
+   => 
+   -- | Number of mhSteps
+      Int                                    
+   -> Int                                   
    -> Model env es a                         -- Model
    -> Env env                           -- List of model observed variables
    -> ObsVars xs                             -- Tags indicated sample sites of interest

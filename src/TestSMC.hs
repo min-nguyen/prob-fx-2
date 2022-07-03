@@ -13,29 +13,18 @@
 
 module TestSMC where
 
-import Data.Maybe
-import qualified Data.Map as Map
+
+
+import Env
 import Examples.LinRegr
-import DataSets
-import Effects.Dist
 import qualified Inference.LW as LW
 import qualified Inference.MH as MH
-import qualified Inference.SMC as SMC
-import qualified Inference.SIS as SIS
-import qualified Inference.RMSMC as RMSMC
 import qualified Inference.PMMH as PMMH
-import OpenSum
-import Effects.State
-import Model
+import qualified Inference.RMSMC as RMSMC
+import qualified Inference.SIS as SIS
+import qualified Inference.SMC as SMC
 import Sampler
-import Effects.ObsReader
--- import Data.Extensible
-import Env
-import Util
-import Debug.Trace
 import Unsafe.Coerce
-import Trace
-
 
 mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> Env LinRegrEnv
 mkRecordLinRegr (y_vals, m_vals, c_vals, σ_vals) =

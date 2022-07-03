@@ -51,7 +51,6 @@ library
   -- -fprint-explicit-kinds
   -- Modules exported by the library.
   exposed-modules:    Util,
-                      DataSets,
                       Prog,
                       PrimDist,
                       Model,

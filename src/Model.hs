@@ -1,46 +1,26 @@
-{-# LANGUAGE RankNTypes, GADTs, TypeApplications, FlexibleInstances, DerivingStrategies, DataKinds, TypeOperators, TypeFamilies, FlexibleContexts, MultiParamTypeClasses, ConstraintKinds, PolyKinds, UndecidableSuperClasses, TemplateHaskell, ScopedTypeVariables, AllowAmbiguousTypes, QuantifiedConstraints, OverloadedLabels, UndecidableInstances, FunctionalDependencies, TypeFamilyDependencies #-}
+{-# LANGUAGE RankNTypes, GADTs, TypeApplications, FlexibleInstances, DerivingStrategies, DataKinds, TypeOperators, FlexibleContexts, MultiParamTypeClasses, ConstraintKinds, PolyKinds, UndecidableSuperClasses, ScopedTypeVariables, AllowAmbiguousTypes, QuantifiedConstraints, UndecidableInstances, TypeFamilyDependencies #-}
 
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Model where
 
-import Util
-import PrimDist
-import Effects.Dist
-import Prog
--- import Effects.Reader
-import Effects.ObsReader
-import OpenSum (OpenSum)
-import qualified OpenSum as OpenSum
-import Sampler
-import Effects.State
-import Effects.Writer
-import Effects.Lift
-import GHC.Generics
-import GHC.Types
-import GHC.TypeLits
-import Data.Maybe
-import Data.Kind
-import Data.Proxy
-import Data.Profunctor.Unsafe
--- import Data.Extensible hiding (wrap, Head, Member)
-import Env
+
 import Control.Lens hiding ((:>))
 import Control.Monad
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
--- import Control.Monad.Reader
-import Statistics.Distribution
-import Statistics.Distribution.DiscreteUniform
-import Statistics.Distribution.Normal
-import Statistics.Distribution.Gamma
-import Statistics.Distribution.Beta
-import Statistics.Distribution.Binomial
-import Statistics.Distribution.Uniform
-import System.Random.MWC
-import qualified System.Random.MWC.Distributions as MWC
+import Effects.Dist
+import Effects.Lift
+import Effects.ObsReader
+import Effects.State
+import Effects.Writer
+import Env
+import OpenSum (OpenSum)
+import PrimDist
+import Prog
 import qualified Data.Vector as V
-import Unsafe.Coerce
+import qualified OpenSum
+import qualified System.Random.MWC.Distributions as MWC
 
 newtype Model env es v =
   Model { runModel :: (Member Dist es, Member (ObsReader env) es) => Prog es v }
@@ -85,7 +65,6 @@ handleWriterM m = Model $ handleWriter $ runModel m
 -- | Lift
 liftM :: forall es m env a. (Member (Lift m) es) => m a -> Model env es a
 liftM m = Model $ call (Lift m)
-
 
 normalLens :: forall env es x.  Observable env x Double
   => Double -> Double -> ObsVar x

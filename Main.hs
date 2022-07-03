@@ -3,29 +3,17 @@
 {-# LANGUAGE DataKinds #-}
 module Main where
 
-import Data.List.Split
-import Data.Tuple
-import qualified Data.Map as Map
-import DataSets
-import qualified Inference.SIM as SIM
-import qualified Inference.LW as LW
-import qualified Inference.MH as MH
-import Effects.Dist
-import OpenSum as OpenSum
-import Model
-import Data.Extensible ()
-import Sampler
-import TestSMC
-import Util
-import System.Environment
+import Examples.GMM
+import Examples.HLinRegr
+import Examples.HMM
+import Examples.LDA
 import Examples.LinRegr
 import Examples.LogRegr
-import Examples.SIR
-import Examples.LDA
-import Examples.HLinRegr
 import Examples.School
-import Examples.GMM
-import Examples.HMM
+import Examples.SIR
+import Sampler
+import System.Environment
+import TestSMC
 
 printThenWrite :: Show a => a -> IO ()
 printThenWrite a = print a >> writeFile "model-output.txt" (show a)

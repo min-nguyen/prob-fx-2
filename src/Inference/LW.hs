@@ -29,8 +29,11 @@ type LWTrace a = [(a, STrace, Double)]
 
 -- | Run LW n times
 lwTopLevel :: FromSTrace env
-   => Int                                 -- Number of lw iterations
-   -> Model env [ObsReader env, Dist, Lift Sampler] a   -- Model
+   =>                                  
+   -- | Number of LW iterations
+   Int  
+   -- | Model
+   -> Model env [ObsReader env, Dist, Lift Sampler] a 
    -> Env env                             -- List of model observed variables
    -> Sampler [(Env env, Double)]         -- List of n likelihood weightings for each data point
 lwTopLevel n model env = do

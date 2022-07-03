@@ -1,10 +1,8 @@
-{-# LANGUAGE AllowAmbiguousTypes, ConstraintKinds, FlexibleContexts, FlexibleInstances, GADTs, PolyKinds, RankNTypes, DataKinds, ScopedTypeVariables, TypeApplications, TypeFamilies, TypeOperators, UndecidableInstances, EmptyCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilyDependencies #-}
+{-# LANGUAGE AllowAmbiguousTypes, ConstraintKinds, FlexibleContexts, FlexibleInstances, GADTs, PolyKinds, RankNTypes, DataKinds, ScopedTypeVariables, TypeOperators, UndecidableInstances, MultiParamTypeClasses, TypeFamilyDependencies #-}
 
 module FindElem where
-import GHC.TypeLits
-    ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
+
+import GHC.TypeLits ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
 
 newtype P t rs = P {unP :: Int}
 
@@ -26,7 +24,3 @@ instance TypeError ('Text "Cannot unify effect types." ':$$:
 type family Subset xs ys where
   Subset (x : xs) ys = (FindElem x ys, Subset xs ys)
   Subset '[] ys = ()
-
--- class (FindElem t ts) => Member f (t :: * -> *) (ts :: [* -> *]) where
---   inj ::  t x -> Union ts x
---   prj ::  Union ts x -> Maybe (t x)

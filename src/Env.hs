@@ -1,21 +1,16 @@
-{-# LANGUAGE AllowAmbiguousTypes, ConstraintKinds, FlexibleContexts, FlexibleInstances, GADTs, PolyKinds, RankNTypes, DataKinds, ScopedTypeVariables, TypeApplications, TypeFamilies, TypeOperators, UndecidableInstances,  OverloadedLabels #-}
+{-# LANGUAGE AllowAmbiguousTypes, ConstraintKinds, FlexibleContexts, FlexibleInstances, GADTs, PolyKinds, RankNTypes, DataKinds, ScopedTypeVariables, TypeApplications, TypeOperators, UndecidableInstances, MultiParamTypeClasses, TypeFamilyDependencies #-}
 
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE TypeFamilyDependencies #-}
 module Env where
 
 import Data.Kind
--- import Data.Functor.Identity
-import qualified Data.Vector as V
--- import Fcf
+import Data.Proxy
+import Effects.Dist ( Tag )
+import FindElem
 import GHC.OverloadedLabels
 import GHC.TypeLits
+import qualified Data.Vector as V
 import qualified GHC.TypeLits as TL
-import Unsafe.Coerce
-import FindElem
-import Effects.Dist ( Tag )
-import Util
+import Unsafe.Coerce ( unsafeCoerce )
 
 {- Observable variable container -}
 data ObsVar (x :: Symbol) where

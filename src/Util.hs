@@ -3,13 +3,9 @@
 module Util where
 
 import Control.Monad
-import Control.Applicative
-import qualified Data.Map as Map
-import Data.Map (Map)
 import Data.List
-
-data Proxy p = Proxy
-
+import Data.Map (Map)
+import qualified Data.Map as Map
 
 replicateM2 :: Applicative m => Int -> Int -> m a -> m [[a]]
 replicateM2 n m = replicateM n . replicateM m
@@ -74,11 +70,3 @@ untuple3 = map (\((a, b), c) -> (a, b, c))
 
 swap :: (a, b) -> (b, a)
 swap (a, b) = (b, a)
-
-data Address =
-  Address { -- The address of the previous sample statement
-            prevSamp  :: String,
-            -- Mapping of sample addresses to their number of occurrences
-            samples   :: Map String Int,
-            -- Mapping of observe addresses to their number of occurrences
-            observes  :: Map String Int } deriving Show

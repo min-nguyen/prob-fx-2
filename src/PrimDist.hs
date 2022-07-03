@@ -19,33 +19,29 @@
 
 module PrimDist where
 
-import Prog
-    ( Prog(..), Member(..), EffectSum, discharge, call, weaken )
-import Sampler
-import qualified Control.Monad.Bayes.Class as Monad.Bayes.Class
-import qualified Data.Vector as Vec
-import OpenSum (OpenSum)
-import qualified OpenSum as OpenSum
-import Util ( boolToInt )
 import Data.Kind
 import Data.Map (Map)
+import Numeric.Log
+import OpenSum (OpenSum)
+import qualified Control.Monad.Bayes.Class as Monad.Bayes.Class
 import qualified Data.Map as Map
-import Data.Maybe
 import qualified Data.Vector as V
+import qualified Data.Vector as Vec
 import qualified Data.Vector.Unboxed as UV
+import qualified OpenSum as OpenSum
+import qualified System.Random.MWC.Distributions as MWC
+import Sampler
 import Statistics.Distribution
-import Statistics.Distribution.CauchyLorentz
-import Statistics.Distribution.DiscreteUniform
-import Statistics.Distribution.Poisson
-import Statistics.Distribution.Normal
-import Statistics.Distribution.Dirichlet
-import Statistics.Distribution.Gamma
 import Statistics.Distribution.Beta
 import Statistics.Distribution.Binomial
+import Statistics.Distribution.CauchyLorentz
+import Statistics.Distribution.Dirichlet
+import Statistics.Distribution.DiscreteUniform
+import Statistics.Distribution.Gamma
+import Statistics.Distribution.Normal
+import Statistics.Distribution.Poisson
 import Statistics.Distribution.Uniform
-import Numeric.Log
-import qualified System.Random.MWC.Distributions as MWC
-import Data.GADT.Compare (GEq)
+import Util ( boolToInt )
 
 type PrimVal = '[Int, Double, [Double], Bool, String]
 

@@ -16,10 +16,8 @@
 
 module Effects.ObsReader where
 
-import Prog
--- import Data.Extensible hiding (Member)
 import Env
--- import Model
+import Prog
 import Util
 
 data ObsReader env (a :: *) where
