@@ -34,16 +34,22 @@ lwTopLevel :: FromSTrace env
    Int  
    -- | Model
    -> Model env [ObsReader env, Dist, Lift Sampler] a 
-   -> Env env                             -- List of model observed variables
-   -> Sampler [(Env env, Double)]         -- List of n likelihood weightings for each data point
+   -- | Observations
+   -> Env env                            
+   -- List of n likelihood weightings for each data point
+   -> Sampler [(Env env, Double)]         
 lwTopLevel n model env = do
   let prog = (handleDist . handleObsRead env) (runModel model)
   lwTrace <- lw n prog
   pure (map (\(_, env, p) -> (fromSTrace env, p)) lwTrace)
 
-lw :: Int                         -- Number of lw iterations
-   -> Prog [Observe, Sample, Lift Sampler] a    -- Model
-   -> Sampler (LWTrace a)         -- List of n likelihood weightings for each data point
+lw :: 
+  -- | Number of lw iterations
+  Int                        
+  -- | Probabilistic program
+  -> Prog [Observe, Sample, Lift Sampler] a    
+  -- | List of n likelihood weightings for each data point
+  -> Sampler (LWTrace a)         
 lw n prog = replicateM n (runLW prog)
 
 -- | Run LW once

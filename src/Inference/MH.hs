@@ -229,7 +229,7 @@ lookupSample strace d α = do
       else Nothing
 
 -- | Lookup a sample address α's value in Ⲭ.
--- Return Nothing if: 1) it doesn'e exist, 2) the sample address is the same as the current sample site α_samp, or 3) the sample we're supposed to reuse belongs to either a different distribution or the same distribution with different parameters (due to a new sampled value affecting its parameters). These all indicate that a new value should be sampled.
+-- Return Nothing if: 1) it doesn't exist, 2) the sample address is the same as the current sample site α_samp, or 3) the sample we're supposed to reuse belongs to either a different distribution or the same distribution with different parameters (due to a new sampled value affecting its parameters). These all indicate that a new value should be sampled.
 -- lookupSample :: OpenSum.Member a '[Int, Double, Bool] => Ⲭ -> Dist a -> Addr -> Addr -> Maybe a
 -- lookupSample samples d α α_samp
 --   | α == α_samp = Nothing
