@@ -19,7 +19,7 @@ from scipy.interpolate import make_interp_spline
 
 # Remove consecutive duplicates
 def removeDuplicates(xs):
-  pure [v for i, v in enumerate(xs) if i == 0 or v != xs[i-1]]
+  return [v for i, v in enumerate(xs) if i == 0 or v != xs[i-1]]
 
 def main():
   arg  = sys.argv[1]
