@@ -101,25 +101,25 @@ type HMMEnv =
      "obs_p"   ':= Double
    ]
 
-transitionModel ::  Double -> Int -> Model env ts Int
+transitionModel ::  Double -> Int -> Model env es Int
 transitionModel transition_p x_prev = do
   dX <- boolToInt <$> bernoulli' transition_p
   pure (dX + x_prev)
 
 observationModel :: (Observable env "y" Int)
-  => Double -> Int -> Model env ts Int
+  => Double -> Int -> Model env es Int
 observationModel observation_p x = do
   binomial x observation_p #y
 
 hmmNode :: (Observable env "y" Int)
-  => Double -> Double -> Int -> Model env ts Int
+  => Double -> Double -> Int -> Model env es Int
 hmmNode transition_p observation_p x_prev = do
   x_n <- transitionModel  transition_p x_prev
   y_n <- observationModel observation_p x_n
   pure x_n
 
 hmmNSteps :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
-  => Int -> (Int -> Model env ts Int)
+  => Int -> (Int -> Model env es Int)
 hmmNSteps n x = do
   trans_p <- uniform 0 1 #trans_p
   obs_p   <- uniform 0 1 #obs_p
@@ -157,22 +157,22 @@ type TopicEnv =
    ]
 
 wordDist :: Observable env "w" String =>
-  [String] -> [Double] -> Model env ts String
+  [String] -> [Double] -> Model env es String
 wordDist vocab ps =
   categorical (zip vocab ps) #w
 
 topicWordPrior :: Observable env "φ" [Double]
-  => [String] -> Model env ts [Double]
+  => [String] -> Model env es [Double]
 topicWordPrior vocab
   = dirichlet (replicate (length vocab) 1) #φ
 
 docTopicPrior :: Observable env "θ" [Double]
-  => Int -> Model env ts [Double]
+  => Int -> Model env es [Double]
 docTopicPrior n_topics = dirichlet (replicate n_topics 1) #θ
 
 documentDist :: (Observables env '["φ", "θ"] [Double],
                  Observable env "w" String)
-  => [String] -> Int -> Int -> Model env ts [String]
+  => [String] -> Int -> Int -> Model env es [String]
 documentDist vocab n_topics n_words = do
   -- Generate distribution over words for each topic
   topic_word_ps <- replicateM n_topics $ topicWordPrior vocab
@@ -187,7 +187,7 @@ topicModel :: (Observables env '["φ", "θ"] [Double],
   => [String] ->
      Int      ->
      [Int]    ->
-     Model env ts [[String]]
+     Model env es [[String]]
 topicModel vocab n_topics doc_words = do
   mapM (documentDist vocab n_topics) doc_words
 

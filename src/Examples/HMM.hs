@@ -31,7 +31,7 @@ type HMMEnv =
    ]
 
 hmmFor :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double) =>
-  Int -> Int -> Model env ts Int
+  Int -> Int -> Model env es Int
 hmmFor n x = do
   trans_p <- uniform 0 1 #trans_p
   obs_p   <- uniform 0 1 #obs_p
@@ -56,38 +56,38 @@ lwHMM   = do
   LW.lwTopLevel 100 (hmmFor n x_0) env
 
 {- (Fig 3) Modular HMM -}
-transModel ::  Double -> Int -> Model env ts Int
+transModel ::  Double -> Int -> Model env es Int
 transModel transition_p x_prev = do
   dX <- boolToInt <$> bernoulli' transition_p
   pure (x_prev + dX)
 
 obsModel :: (Observable env "y" Int)
-  => Double -> Int -> Model env ts Int
+  => Double -> Int -> Model env es Int
 obsModel observation_p x = do
   y <- binomial x observation_p #y
   pure y
 
 hmmNode :: (Observable env "y" Int)
-  => Double -> Double -> Int -> Model env ts Int
+  => Double -> Double -> Int -> Model env es Int
 hmmNode transition_p observation_p x_prev = do
   x_i <- transModel  transition_p x_prev
   y_i <- obsModel observation_p x_i
   pure x_i
 
 hmm :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
-  => Int -> (Int -> Model env ts Int)
+  => Int -> (Int -> Model env es Int)
 hmm n x = do
   trans_p <- uniform 0 1 #trans_p
   obs_p   <- uniform 0 1 #obs_p
   foldr (>=>) pure (replicate n (hmmNode trans_p obs_p)) x
 
 {- (Sec 3) Higher-order, generic HMM -}
-type TransModel env ts params lat   = params -> lat -> Model env ts lat
-type ObsModel env ts params lat obs = params -> lat -> Model env ts obs
+type TransModel env es params lat   = params -> lat -> Model env es lat
+type ObsModel env es params lat obs = params -> lat -> Model env es obs
 
-hmmGen :: Model env ts ps1 -> Model env ts ps2
-       -> TransModel env ts ps1 lat -> ObsModel env ts ps2 lat obs
-       -> Int -> lat -> Model env ts lat
+hmmGen :: Model env es ps1 -> Model env es ps2
+       -> TransModel env es ps1 lat -> ObsModel env es ps2 lat obs
+       -> Int -> lat -> Model env es lat
 hmmGen transPrior obsPrior transModel obsModel n x_0 = do
   ps1    <- transPrior
   ps2    <- obsPrior
@@ -98,26 +98,26 @@ hmmGen transPrior obsPrior transModel obsModel n x_0 = do
   foldl (>=>) pure (replicate n hmmNode) x_0
 
 {-  Hidden Markov Model using Writer effect -}
-transModelW ::  Double -> Int -> Model env ts Int
+transModelW ::  Double -> Int -> Model env es Int
 transModelW transition_p x_prev = do
   dX <- boolToInt <$> bernoulli' transition_p
   pure (dX + x_prev)
 
 obsModelW :: (Observable env "y" Int)
-  => Double -> Int -> Model env ts Int
+  => Double -> Int -> Model env es Int
 obsModelW observation_p x = do
   binomial x observation_p #y
 
-hmmNodeW :: (Observable env "y" Int) => Member (Writer [Int]) ts
-  => Double -> Double -> Int -> Model env ts Int
+hmmNodeW :: (Observable env "y" Int) => Member (Writer [Int]) es
+  => Double -> Double -> Int -> Model env es Int
 hmmNodeW transition_p observation_p x_prev = do
   x_n <- transModelW  transition_p x_prev
   tellM [x_n]
   y_n <- obsModelW observation_p x_n
   pure x_n
 
-hmmW :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double) => Member (Writer [Int]) ts
-  => Int -> (Int -> Model env ts Int)
+hmmW :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double) => Member (Writer [Int]) es
+  => Int -> (Int -> Model env es Int)
 hmmW n x = do
   trans_p <- uniform 0 1 #trans_p
   obs_p   <- uniform 0 1 #obs_p

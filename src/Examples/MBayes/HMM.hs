@@ -35,25 +35,25 @@ type HMMEnv =
      "obs_p"   ':= Double
    ]
 
-transitionModel ::  Double -> Int -> Model env ts Int
+transitionModel ::  Double -> Int -> Model env es Int
 transitionModel transition_p x_prev = do
   dX <- boolToInt <$> bernoulli' transition_p
   pure (dX + x_prev)
 
 observationModel :: (Observable env "y" Int)
-  => Double -> Int -> Model env ts Int
+  => Double -> Int -> Model env es Int
 observationModel observation_p x = do
   binomial x observation_p #y
 
 hmmNode :: (Observable env "y" Int)
-  => Double -> Double -> Int -> Model env ts Int
+  => Double -> Double -> Int -> Model env es Int
 hmmNode transition_p observation_p x_prev = do
   x_n <- transitionModel  transition_p x_prev
   y_n <- observationModel observation_p x_n
   pure x_n
 
 hmm :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
-  => Int -> (Int -> Model env ts Int)
+  => Int -> (Int -> Model env es Int)
 hmm n x = do
   trans_p <- uniform 0 1 #trans_p
   obs_p   <- uniform 0 1 #obs_p

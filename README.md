@@ -12,7 +12,7 @@ isDistBool _ = Nothing
 pattern DistBool :: Dist Bool -> Dist x
 pattern DistBool d <- (isDistBool -> Just d)
 
-pattern SampBoolPrj :: Member Sample ts => Dist Bool -> Addr -> Union ts x
+pattern SampBoolPrj :: Member Sample es => Dist Bool -> Addr -> Union es x
 pattern SampBoolPrj d α <- (prj -> Just (Sample (DistBool  d) α))
 
 transformMH (Free u k) = do

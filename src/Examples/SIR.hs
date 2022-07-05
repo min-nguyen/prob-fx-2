@@ -34,13 +34,13 @@ data Popl = Popl {
 type Reported = Int
 
 -- | SIR transition model
-transSI :: TransModel env ts Double Popl
+transSI :: TransModel env es Double Popl
 transSI beta (Popl s i r) = do
   let pop = s + i + r
   dN_SI <- binomial' s (1 - exp ((-beta * fromIntegral i) / fromIntegral pop))
   pure $ Popl (s - dN_SI) (i + dN_SI) r
 
-transIR :: TransModel env ts Double Popl
+transIR :: TransModel env es Double Popl
 transIR gamma (Popl s i r)  = do
   dN_IR <- binomial' i (1 - exp (-gamma))
   pure $ Popl s (i - dN_IR) (r + dN_IR)
@@ -61,14 +61,14 @@ transSIR (TransParams beta gamma) latentSt = do
 type ObsParams = Double
 
 obsSIR :: Observable env "𝜉" Int
-  => ObsModel env ts Double Popl Reported
+  => ObsModel env es Double Popl Reported
 obsSIR rho (Popl _ i _)  = do
   i <- poisson (rho * fromIntegral i) #𝜉
   pure i
 
 -- | SIR transition prior
 transPrior :: Observables env '["β",  "γ"] Double
-  => Model env ts TransParams
+  => Model env es TransParams
 transPrior = do
   pBeta  <- gamma 2 1 #β
   pGamma <- gamma 1 (1/8) #γ
@@ -76,7 +76,7 @@ transPrior = do
 
 -- | SIR observation prior
 obsPrior :: Observables env '["ρ"] Double
-  => Model env ts ObsParams
+  => Model env es ObsParams
 obsPrior = do
   pRho <- beta 2 7 #ρ
   pure pRho
@@ -125,7 +125,7 @@ data TransParams' = TransParams' {
 }
 
 -- | SIRS transition model
-transRS :: Double -> Popl -> Model env ts Popl
+transRS :: Double -> Popl -> Model env es Popl
 transRS eta (Popl s i r) = do
   dN_RS <- binomial' r (1 - exp (-eta))
   pure $ Popl (s + dN_RS) i (r - dN_RS)
@@ -139,14 +139,14 @@ transSIRS (TransParams' beta gamma eta) latentSt = do
 
 -- | SIR transition prior
 transPrior' :: Observables env '["β", "η", "γ"] Double
-  => Model env ts TransParams'
+  => Model env es TransParams'
 transPrior' = do
   TransParams pBeta pGamma  <- transPrior
   pEta <- gamma 1 (1/8) #η
   pure (TransParams' pBeta pGamma pEta)
 
 -- | SIRS as HMM
-hmmSIRS :: (Observables env '["𝜉"] Int, Observables env '["β", "η", "γ", "ρ"] Double) => Int -> Popl -> Model env ts (Popl, [Popl])
+hmmSIRS :: (Observables env '["𝜉"] Int, Observables env '["β", "η", "γ", "ρ"] Double) => Int -> Popl -> Model env es (Popl, [Popl])
 hmmSIRS n = handleWriterM . hmmGen transPrior' obsPrior transSIRS obsSIR n
 
 -- | SIM from SIRS model: ([(s, i, r)], [𝜉])
@@ -175,13 +175,13 @@ data Popl' = Popl' {
 } deriving Show
 
 -- | SIRSV transition model
-transSI' :: TransModel env ts Double Popl'
+transSI' :: TransModel env es Double Popl'
 transSI' beta (Popl' s i r v) = do
   let pop = s + i + r + v
   dN_SI <- binomial' s (1 - exp ((-beta * fromIntegral i) / fromIntegral pop))
   pure $ Popl' (s - dN_SI) (i + dN_SI) r v
 
-transIR' :: TransModel env ts Double Popl'
+transIR' :: TransModel env es Double Popl'
 transIR' gamma (Popl' s i r v)  = do
   dN_IR <- binomial' i (1 - exp (-gamma))
   pure $ Popl' s (i - dN_IR) (r + dN_IR) v
@@ -196,7 +196,7 @@ transSV' omega (Popl' s i r v)  = do
   dN_SV <- binomial' s (1 - exp (-omega))
   pure $  Popl' (s - dN_SV) i r (v + dN_SV )
 
-transSIRSV :: Member (Writer [Popl']) ts => TransModel env ts TransParams'' Popl'
+transSIRSV :: Member (Writer [Popl']) es => TransModel env es TransParams'' Popl'
 transSIRSV (TransParams'' beta gamma omega eta) latentSt = do
   latentSt' <- (transSI' beta  >=>
                 transIR' gamma >=>
@@ -207,7 +207,7 @@ transSIRSV (TransParams'' beta gamma omega eta) latentSt = do
 
 -- | SIRSV transition prior
 transPrior'' :: Observables env '["β", "γ", "ω", "η"] Double
-  => Model env ts TransParams''
+  => Model env es TransParams''
 transPrior''  = do
   TransParams' pBeta pGamma pEta <- transPrior'
   pOmega <- gamma 1 (1/16) #ω
@@ -215,13 +215,13 @@ transPrior''  = do
 
 -- | SIRSV observation model
 obsSIRSV :: Observable env "𝜉" Int
-  => ObsModel env ts Double Popl' Reported
+  => ObsModel env es Double Popl' Reported
 obsSIRSV rho (Popl' _ i _ v)  = do
   i <- poisson (rho * fromIntegral i) #𝜉
   pure i
 
 -- | SIRSV as HMM
-hmmSIRSV ::  (Observables env '["𝜉"] Int, Observables env '["β", "γ", "η", "ω", "ρ"] Double) => Int -> Popl' -> Model env ts (Popl', [Popl'])
+hmmSIRSV ::  (Observables env '["𝜉"] Int, Observables env '["β", "γ", "η", "ω", "ρ"] Double) => Int -> Popl' -> Model env es (Popl', [Popl'])
 hmmSIRSV n = handleWriterM . hmmGen transPrior'' obsPrior transSIRSV obsSIRSV n
 
 -- | SIM from SIRSV model : ([(s, i, r, v)], [𝜉])

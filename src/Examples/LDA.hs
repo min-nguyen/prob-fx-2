@@ -34,17 +34,17 @@ type TopicEnv =
    ]
 
 topicWordPrior :: Observable env "φ" [Double]
-  => [String] -> Model env ts [Double]
+  => [String] -> Model env es [Double]
 topicWordPrior vocab
   = dirichlet (replicate (length vocab) 1) #φ
 
 docTopicPrior :: Observable env "θ" [Double]
-  => Int -> Model env ts [Double]
+  => Int -> Model env es [Double]
 docTopicPrior n_topics = dirichlet (replicate n_topics 1) #θ
 
 -- Distribution over likely words
 wordDist :: Observable env "w" String =>
-  [String] -> [Double] -> Model env ts String
+  [String] -> [Double] -> Model env es String
 wordDist vocab ps =
   categorical (zip vocab ps) #w
 
@@ -54,7 +54,7 @@ topicModel :: (Observables env '["φ", "θ"] [Double],
   => [String]
   -> Int
   -> Int
-  -> Model env ts [String]
+  -> Model env es [String]
 topicModel vocab n_topics n_words = do
   -- Generate distribution over words for each topic
   topic_word_ps <- replicateM n_topics $ topicWordPrior vocab
@@ -70,7 +70,7 @@ topicModels :: (Observables env '["φ", "θ"] [Double],
   => [String]  -- Possible vocabulary in a document
   -> Int       -- Assumed number of topics in a document
   -> [Int]     -- Number of words in a document
-  -> Model env ts [[String]]
+  -> Model env es [[String]]
 topicModels vocab n_topics doc_words = do
   mapM (topicModel vocab n_topics) doc_words
 

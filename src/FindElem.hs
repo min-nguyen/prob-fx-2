@@ -6,8 +6,8 @@ import GHC.TypeLits ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
 
 newtype P t rs = P {unP :: Int}
 
-class FindElem x ts where
-  findElem :: P x ts
+class FindElem x es where
+  findElem :: P x es
 
 instance FindElem t (t ': r) where
   findElem = P 0

@@ -25,6 +25,7 @@ import Prog
 import Control.Lens hiding ((:>))
 import Effects.Writer
 import Model
+    ( beta, binomial', gamma, handleWriterM, poisson, tellM, Model )
 import Env
 import Control.Monad
 import Env
@@ -44,7 +45,7 @@ type Reported = Int
 {- SIR model using extensible records -}
 
 -- | SIR transition model
-transSI :: Lookups popl '["s", "i", "r"] Int => TransModel env ts Double (Record popl)
+transSI :: Lookups popl '["s", "i", "r"] Int => TransModel env es Double (Record popl)
 transSI  beta popl = do
   let (s_0, i_0, r_0 ) = (popl ^. s,  popl ^. i,  popl ^. r)
       pop = s_0 + i_0 + r_0
@@ -52,15 +53,15 @@ transSI  beta popl = do
   pure $ popl & s .~ (s_0 - dN_SI)
                 & i .~ (i_0 + dN_SI)
 
-transIR :: Lookups popl '["i", "r"] Int => TransModel env ts Double (Record popl)
+transIR :: Lookups popl '["i", "r"] Int => TransModel env es Double (Record popl)
 transIR  gamma popl = do
   let (i_0, r_0) = (popl ^. i,  popl ^. r)
   dN_IR <- binomial' i_0 (1 - exp (-gamma))
   pure $ popl & i .~ (i_0 - dN_IR)
                 & r .~ (r_0 + dN_IR)
 
-transSIR :: (Member (Writer [Record popl]) ts, Lookups popl '["s", "i", "r"] Int)
-  => TransModel env ts (Double, Double) (Record popl)
+transSIR :: (Member (Writer [Record popl]) es, Lookups popl '["s", "i", "r"] Int)
+  => TransModel env es (Double, Double) (Record popl)
 transSIR (beta, gamma) popl = do
   popl <- (transSI beta >=> transIR gamma) popl
   tellM [popl]
@@ -70,14 +71,14 @@ transSIR (beta, gamma) popl = do
 type ObsParams = Double
 
 obsSIR :: Lookup s "i" Int => Observable env "𝜉" Int
-  => ObsModel env ts Double (Record s) Reported
+  => ObsModel env es Double (Record s) Reported
 obsSIR rho popl  = do
   let i_0 = popl ^. i
   poisson (rho * fromIntegral i_0) #𝜉
 
 -- | SIR transition prior
 transPrior :: Observables env '["β",  "γ"] Double
-  => Model env ts (Double, Double)
+  => Model env es (Double, Double)
 transPrior = do
   pBeta  <- gamma 2 1 #β
   pGamma <- gamma 1 (1/8) #γ
@@ -85,7 +86,7 @@ transPrior = do
 
 -- | SIR observation prior
 obsPrior :: Observables env '["ρ"] Double
-  => Model env ts ObsParams
+  => Model env es ObsParams
 obsPrior = beta 2 7 #ρ
 
 -- | SIR as HMM
@@ -97,7 +98,7 @@ hmmSIR n  = handleWriterM . hmmGen transPrior obsPrior transSIR obsSIR n
 {- SIRS (resusceptible) model -}
 
 -- | SIRS transition model
-transRS :: Lookups popl '["s", "r"] Int => TransModel env ts Double (Record popl)
+transRS :: Lookups popl '["s", "r"] Int => TransModel env es Double (Record popl)
 transRS eta popl = do
   let (r_0, s_0) = (popl ^. r,  popl ^. s)
   dN_RS <- binomial' r_0 (1 - exp (-eta))
@@ -109,7 +110,7 @@ transSIRS (beta, gamma, eta) = transSI beta >=> transIR gamma >=> transRS eta
 
 -- | SIRS transition prior
 transPriorS :: Observables env '["β", "η", "γ"] Double
-  => Model env ts (Double, Double, Double)
+  => Model env es (Double, Double, Double)
 transPriorS = do
   (pBeta, pGamma)  <- transPrior
   pEta <- gamma 1 (1/8) #η
@@ -132,13 +133,13 @@ transSV omega popl  = do
   pure $ popl & s .~ (s_0 - dN_SV)
                 & v .~ (v_0 + dN_SV)
 
-transSIRSV :: Lookups popl '["s", "i", "r", "v"] Int => TransModel env ts (Double, Double, Double, Double) (Record popl)
+transSIRSV :: Lookups popl '["s", "i", "r", "v"] Int => TransModel env es (Double, Double, Double, Double) (Record popl)
 transSIRSV (beta, gamma, eta, omega) =
   transSI beta >=> transIR gamma >=> transRS eta  >=> transSV omega
 
 -- | SIRSV transition prior
 transPriorSV :: Observables env '["β", "γ", "ω", "η"] Double
-  => Model env ts (Double, Double, Double, Double)
+  => Model env es (Double, Double, Double, Double)
 transPriorSV  = do
   (pBeta, pGamma, pEta) <- transPriorS
   pOmega <- gamma 1 (1/16) #ω
