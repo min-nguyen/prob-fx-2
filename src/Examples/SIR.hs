@@ -110,7 +110,7 @@ mhSIR = do
   𝜉s <- snd <$> simSIR
   let mh_env_in = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> eNil
       sir_0           = Popl {s = 762, i = 1, r = 0}
-  mhTrace <- MH.mhTopLevel 1000 (handleWriterM @[Popl] $ hmmSIR' 100 sir_0) mh_env_in (#β ⋮ #ρ ⋮ONil)
+  mhTrace <- MH.mhTopLevel 50000 (handleWriterM @[Popl] $ hmmSIR' 100 sir_0) mh_env_in (#β ⋮ #ρ ⋮ONil)
   let ρs = concatMap (get #ρ) mhTrace
       βs = concatMap (get #β) mhTrace
   pure (ρs, βs)

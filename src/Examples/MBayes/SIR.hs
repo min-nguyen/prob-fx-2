@@ -55,9 +55,10 @@ data TransParams = TransParams {
     gammaP :: Double  -- ^ Mean recovery rate
 }
 
-transSIR :: TransModel env es TransParams Popl
+transSIR :: Member (Writer [Popl]) es => TransModel env es TransParams Popl
 transSIR (TransParams beta gamma) latentSt = do
   latentSt' <- (transSI beta >=> transIR gamma) latentSt
+  tellM [latentSt']
   pure latentSt'
 
 -- | SIR observation model
@@ -85,26 +86,35 @@ obsPrior = do
   pure pRho
 
 -- | SIR as HMM
-hmmSIR :: (Observable env "𝜉" Int, Observables env '["ρ", "β", "γ"] Double)
+hmmSIR :: ( Member (Writer [Popl]) es, Observable env "𝜉" Int, Observables env '["ρ", "β", "γ"] Double)
   => Int -> Popl -> Model env es Popl
 hmmSIR = hmmGen transPrior obsPrior transSIR obsSIR
 
 hmmSIR' :: (Observables env '["𝜉"] Int , Observables env '[ "β" , "γ" , "ρ"] Double) => Int -> Popl -> Model env es (Popl, [Popl])
-hmmSIR' n xs = handleWriterM $ hmmSIR n xs
+hmmSIR' n popl = handleWriterM $ hmmSIR n popl
 
 mbayesSIR :: (FromSTrace env, MonadInfer m, Observables env '["𝜉"] Int , Observables env '[ "β" , "γ" , "ρ"] Double) => 
- Int -> Popl -> Env env -> m (Popl, Env env)
-mbayesSIR n xs = toMBayes (hmmSIR n xs)
+ Int -> Popl -> Env env -> m ((Popl, [Popl]), Env env)
+mbayesSIR n popl = toMBayes (hmmSIR' n popl)
 
 -- | Executing SIR
 infobs_data :: [Int]
 infobs_data = [0,1,4,2,1,3,3,5,10,11,30,23,48,50,91,94,129,151,172,173,198,193,214,179,229,172,205,211,191,212,185,184,173,211,185,197,176,169,198,174,163,197,152,198,153,164,154,167,178,174,160,149,140,172,169,144,137,151,166,151,147,149,159,150,151,139,137,182,121,119,133,146,141,136,126,131,124,110,120,113,117,102,120,117,122,121,110,125,127,117,117,98,109,108,108,120,98,103,104,103]
 
+simSIRMB :: IO ([(Int, Int, Int)], [Reported])
+simSIRMB = do
+  let sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #ρ := [0.3] <:> #𝜉 := [] <:> ENil
+      sir_0      = Popl {s = 762, i = 1, r = 0}
+  ((_, sir_trace), sim_env_out) <- sampleIO $ prior (mbayesSIR 100 sir_0 sim_env_in)
+  let 𝜉s :: [Reported] = get #𝜉 sim_env_out
+      sirs = map (\(Popl s i recov) -> (s, i, recov)) sir_trace
+  pure (sirs, 𝜉s)
+
 mhSIRMB :: IO ([Double], [Double]) -- [(Popl, Env SIRenv)]
 mhSIRMB = do
   let sir_0      = Popl {s = 762, i = 1, r = 0}
       env = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := infobs_data <:> eNil
-  (_, env) <- unzip <$> (sampleIO $ prior $ mh 100 (mbayesSIR 100 sir_0 env))
+  (_, env) <- unzip <$> sampleIO (prior $ mh 100 (mbayesSIR 100 sir_0 env))
   let ρs = concatMap (get #ρ) env
       βs = concatMap (get #β) env
   pure (ρs, βs)

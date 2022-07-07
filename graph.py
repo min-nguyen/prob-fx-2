@@ -53,7 +53,7 @@ def main():
     axs1.hist(mus, bins=25)
     axs1.set_title('Linear regression - Metropolis Hastings')
     plt.show()
-  if arg in ["simSIR", "simSIRS"]:
+  if arg in ["simSIR", "simSIRMB", "simSIRS"]:
     # y axis
     sir_values   = np.array(data[0])
     obs_infected = np.array(data[1])

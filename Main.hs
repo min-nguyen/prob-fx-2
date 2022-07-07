@@ -38,8 +38,6 @@ parseArgs cmd = case cmd of
   "simSIRS"     -> sampleIO simSIRS >>= printThenWrite
   "simSIRSV"    -> sampleIO simSIRSV >>= printThenWrite
 
-  "mhSIRMB"     -> print "WARNING: Metropolis-Hastings for the SIR model using *Monad Bayes* can crash" >> mhSIRMB >>= printThenWrite
-
   "simHMM"      -> sampleIO simHMMw >>= printThenWrite
   "mhHMM"       -> sampleIO mhHMMw >>= printThenWrite
 
@@ -57,6 +55,13 @@ parseArgs cmd = case cmd of
   "smcLinRegr"   -> sampleIOFixed (smcLinRegr 50 200) >>= printThenWrite
   "rmsmcLinRegr" -> sampleIOFixed (rmsmcLinRegr 50 200 20) >>= printThenWrite
   "pmmhLinRegr"  -> sampleIOFixed (pmmhLinRegr 30 10 1000) >>= printThenWrite
+
+  -- | Some selected examples of translating models to be executed by Monad Bayes
+  "simSIRMB"     -> simSIRMB >>= printThenWrite
+  "mhSIRMB"      -> print ("WARNING: Metropolis-Hastings for the SIR model using *Monad Bayes* can crash on the MonadSample class when sampling from distributions. " ++
+                           "Not to mention, it is also very slow.")
+                           >> mhSIRMB >>= printThenWrite
+
   _              -> putStrLn $ "unrecognised command: " ++ cmd ++ "\n"
 
 main :: IO ()
