@@ -246,7 +246,7 @@ def main():
     axs2.set_ylabel("value")
     axs2.boxplot(thetas_)
     axs2.set_title('School - Metropolis Hastings Posterior (thetas)')
-    
+  plt.show()
   save_multi_image("model-output.pdf")
 if __name__ == "__main__":
   main()
