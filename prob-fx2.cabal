@@ -92,6 +92,7 @@ library
                       Examples.MBayes.LDA,
                       Examples.MBayes.LinRegr,
                       Examples.MBayes.HMM,
+                      Examples.MBayes.SIR,
                       Inference.SIM,
                       Inference.LW,
                       Inference.MH,

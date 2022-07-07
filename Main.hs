@@ -11,6 +11,7 @@ import Examples.LinRegr
 import Examples.LogRegr
 import Examples.School
 import Examples.SIR
+import Examples.MBayes.SIR
 import Sampler
 import System.Environment
 import TestSMC
@@ -36,6 +37,8 @@ parseArgs cmd = case cmd of
   "mhSIR"       -> sampleIO mhSIR >>= printThenWrite
   "simSIRS"     -> sampleIO simSIRS >>= printThenWrite
   "simSIRSV"    -> sampleIO simSIRSV >>= printThenWrite
+
+  "mhSIRMB"     -> print "WARNING: Metropolis-Hastings for the SIR model using *Monad Bayes* can crash" >> mhSIRMB >>= printThenWrite
 
   "simHMM"      -> sampleIO simHMMw >>= printThenWrite
   "mhHMM"       -> sampleIO mhHMMw >>= printThenWrite

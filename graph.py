@@ -121,7 +121,7 @@ def main():
     plt.ylim([0,800])
     plt.legend()
     plt.show()
-  if arg == "mhSIR":
+  if arg in ["mhSIR", "mhSIRMB"]:
     print(data)
     rhos_unique   = data[0]
     betas_unique  = data[1]
