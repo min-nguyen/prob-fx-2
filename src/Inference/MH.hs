@@ -17,13 +17,13 @@ import Data.Maybe
 -- import Data.Extensible hiding (Member)
 import Env
 import Control.Monad
-import Control.Monad.Trans.Class
 import Effects.Dist
 import Prog
 import Model hiding (runModelFree)
 import Sampler
 import PrimDist
 import Trace
+import Effects.Lift
 import qualified OpenSum as OpenSum
 import OpenSum (OpenSum(..))
 import Effects.ObsReader
@@ -32,7 +32,7 @@ import Unsafe.Coerce
 import Inference.SIM (handleObs)
 
 -- ||| (Section 6.2.2) Metropolis-Hastings
-mh :: (FromSTrace env, es ~ '[ObsReader env, Dist])
+mh :: (FromSTrace env, es ~ '[ObsReader env, Dist, Lift Sampler])
   => 
   -- | Number of MH iterations
      Int                    
@@ -53,7 +53,7 @@ mh n model  (x_0, env_0) tags = do
   return $ map (\((_, strace), _) -> fromSTrace strace) mhTrace
 
 -- | Perform one step of MH
-mhStep :: (es ~ '[ObsReader env, Dist])
+mhStep :: (es ~ '[ObsReader env, Dist, Lift Sampler])
   => 
   -- | Model environment
      Env env                  
@@ -85,7 +85,7 @@ mhStep env model tags trace = do
     else do return trace
 
 -- | MH handler
-runMH :: (es ~ '[ObsReader env, Dist])
+runMH :: (es ~ '[ObsReader env, Dist, Lift Sampler])
   => 
   -- | Model environment
      Env env       
@@ -97,7 +97,7 @@ runMH :: (es ~ '[ObsReader env, Dist])
   -> Model env es a 
   -> Sampler ((a, STrace), LPTrace)
 runMH env strace α_samp =
-     handleSamp strace α_samp . handleObs
+    handleLift . handleSamp strace α_samp . handleObs
    . traceLPs . traceSamples . handleCore env
 
 pattern Samp :: Member Sample es => PrimDist x -> Addr -> EffectSum es x
@@ -107,7 +107,7 @@ pattern Obs :: Member Observe es => PrimDist x -> x -> Addr -> EffectSum es x
 pattern Obs d y α <- (prj -> Just (Observe d y α))
 
 -- | Selectively sample
-handleSamp :: STrace -> Addr -> Prog '[Sample] a -> Sampler a
+handleSamp :: STrace -> Addr -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
 handleSamp strace α_samp (Op op k) = case discharge op of
   Right (Sample (PrimDistDict d) α) ->
         do x <- lookupSample strace d α α_samp
@@ -116,16 +116,16 @@ handleSamp strace α_samp (Op op k) = case discharge op of
 handleSamp _ _ (Val x) = return x
 
 -- | Look up the sampled value for an address from the sample trace
-lookupSample :: Show a => OpenSum.Member a PrimVal => STrace -> PrimDist a -> Addr -> Addr -> Sampler a
+lookupSample :: Show a => OpenSum.Member a PrimVal => STrace -> PrimDist a -> Addr -> Addr -> Prog '[Lift Sampler] a
 lookupSample samples d α α_samp
-  | α == α_samp = sample d
+  | α == α_samp = lift (sample d)
   | otherwise   =
       case Map.lookup α samples of
         Just (ErasedPrimDist d', x) -> do
           if d == unsafeCoerce d'
             then return (fromJust $ OpenSum.prj x)
-            else sample d
-        Nothing -> sample d
+            else lift (sample d)
+        Nothing -> lift (sample d)
 
 -- | Compute acceptance probability
 accept :: Addr -> STrace -> STrace -> LPTrace -> LPTrace -> IO Double
