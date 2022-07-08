@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE OverloadedLabels #-}
 
-module Examples.School where
+module Tests.Examples.School where
 
 import Model
 import Inference.MH as MH

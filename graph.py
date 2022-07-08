@@ -21,7 +21,7 @@ def main():
 
   data = ast.literal_eval(f.read().replace('-Infinity', '-2e308')) #
   color_map = plt.cm.get_cmap('Blues')
-  if arg == "simLinRegr":
+  if arg in ["simLinRegr", "simLinRegrs"]:
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
     xs = xys[0]
@@ -31,7 +31,7 @@ def main():
     plt.ylabel('y data points')
     plt.title('Linear regression')
     
-  if arg == "lwLinRegr":
+  if arg in ["lwLinRegr", "lwLinRegrs"]:
     mus = [d[0] for d in data]
     ps  = [d[1] for d in data]
     fig1, axs1 = plt.subplots(nrows=1)
@@ -40,15 +40,21 @@ def main():
     axs1.scatter(mus, ps)
     axs1.set_title('Linear regression - Likelihood Weighting')
     
-  if arg == "mhLinRegr":
-    mus = data
+  if arg in ["mhLinRegr", "mhLinRegrs"]:
+    mus = data[0]
+    cs  = data[1]
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("mu values", fontsize=12)
     axs1.set_ylabel("frequency")
     axs1.hist(mus, bins=25)
     axs1.set_title('Linear regression - Metropolis Hastings')
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("c values", fontsize=12)
+    axs1.set_ylabel("frequency")
+    axs1.hist(cs, bins=25)
+    axs1.set_title('Linear regression - Metropolis Hastings')
     
-  if arg == "simSIR" or arg == "simSIRS":
+  if arg in ["simSIR", "simSIRS"]:
     # y axis
     sir_values   = np.array(data[0])
     obs_infected = np.array(data[1])
@@ -130,7 +136,7 @@ def main():
     axs2.hist(betas_unique, bins=55)
     axs2.set_title('HMM - Metropolis Hastings Posterior (Beta)')
     
-  if arg == "simLogRegr":
+  if arg in ["simLogRegr", "simLogRegrs"]:
     xys = np.array(data)
     xs =  np.array([xy[0] for xy in xys])
     ys =  np.array([xy[1] for xy in xys])
@@ -147,31 +153,60 @@ def main():
     plt.ylabel('y - axis')
     plt.title('Logistic regression simulation')
     
-  if arg == "lwLogRegr":
-    mus = [d[0] for d in data]
+  if arg in ["lwLogRegr", "lwLogRegrs"]:
+    mus = [d[0][0] for d in data]
+    bs  = [d[0][1] for d in data]
     ps  = [d[1] for d in data]
-    fig1, axs1 = plt.subplots(nrows=1)
+    _, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel('mu value')
     axs1.set_ylabel('probability')
     axs1.scatter(mus, ps)
-    axs1.set_title('Logistic regression - Likelihood Weighting')
+    _, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel('b value')
+    axs2.set_ylabel('probability')
+    axs2.scatter(bs, ps)
+    axs2.set_title('Logistic regression - Likelihood Weighting')
     
-  if arg == "mhLogRegr":
-    mu_samples = [d[0] for d in data]
-    b_samples  = [d[1] for d in data]
-    fig1, axs1 = plt.subplots(nrows=1)
+  if arg in ["mhLogRegr", "mhLogRegrs"]:
+    mu_samples = data[0]
+    b_samples  = data[1]
+    _, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("mu values")
     axs1.set_ylabel("frequency")
     axs1.hist(mu_samples, bins=50)
     axs1.set_title('Logistic regression - Metropolis Hastings Posterior')
-    fig2, axs2 = plt.subplots(nrows=1)
+    _, axs2 = plt.subplots(nrows=1)
     axs2.set_xlabel("b values")
     axs2.set_ylabel("frequency")
     axs2.hist(b_samples, bins=50)
     axs2.set_title('Logistic regression - Metropolis Hastings Posterior')
     
+  if arg == "simHMM":
+    xs = [d[0] for d in data]
+    ys = [d[1] for d in data]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("trans state")
+    axs1.set_ylabel("obs state")
+    axs1.scatter(xs, ys, cmap=color_map)
+    axs1.set_title('HMM - Simulation')
+    plt.show()
+  if arg == "mhHMM":
+    # Note : this works less well for certain parameters of trans_p and obs_p used for the training data
+    trans_ps_unique = data[0]
+    obs_ps_unique   = data[1]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("trans_ps values")
+    axs1.set_ylabel("frequency")
+    axs1.hist(trans_ps_unique, bins=50)
+    axs1.set_title('HMM - Metropolis Hastings Posterior (Trans P)')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel("obs_ps values")
+    axs2.set_ylabel("frequency")
+    axs2.hist(obs_ps_unique, bins=50)
+    axs2.set_title('HMM - Metropolis Hastings Posterior (Obs P)')
+    plt.show()
+
   if arg == "simLDA":
-    print(data)
     words = list(np.array(data).ravel())
     _, ax = plt.subplots(nrows=1)
     ws = list(set(words))
@@ -184,15 +219,15 @@ def main():
     topic_ps = data[0][0]
     topic_0s = data[1][0]
     topic_1s = data[1][1]
-    fig, ax = plt.subplots(nrows=1)
+    _, ax = plt.subplots(nrows=1)
     ax.bar(['Topic 0', 'Topic 1'], topic_ps, 0.8)
     ax.set_xticklabels(['Topic 0', 'Topic 1'])
     plt.title('Document-Topic Distribution')
-    fig0, ax0 = plt.subplots(nrows=1)
+    _, ax0 = plt.subplots(nrows=1)
     ax0.bar(ws, topic_0s, 0.8)
     ax0.set_xticklabels(ws)
     plt.title('Topic-Word Distribution 0')
-    fig1, ax1 = plt.subplots(nrows=1)
+    _, ax1 = plt.subplots(nrows=1)
     ax1.bar(ws, topic_1s, 0.8)
     ax1.set_xticklabels(ws)
     plt.title('Topic-Word Distribution 1')
@@ -202,7 +237,6 @@ def main():
     basement_xs   = [0 for i in range(len(basement_ys))]
     nobasement_ys = data[1]
     nobasement_xs = [1 for i in range(len(nobasement_ys))]
-    print(data)
     plt.scatter(basement_xs, basement_ys, color="r")
     plt.scatter(nobasement_xs, nobasement_ys, color='b')
     plt.ylabel('Log radon level')
@@ -246,7 +280,7 @@ def main():
     axs2.set_ylabel("value")
     axs2.boxplot(thetas_)
     axs2.set_title('School - Metropolis Hastings Posterior (thetas)')
-    
+  plt.show()
   save_multi_image("model-output.pdf")
 if __name__ == "__main__":
   main()
