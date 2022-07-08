@@ -11,6 +11,7 @@ module Inference.LW where
 import qualified Data.Map as Map
 import Env
 import Effects.ObsReader
+import Effects.Lift
 import Control.Monad
 import Effects.Dist
 import Prog
@@ -22,12 +23,12 @@ import Trace
 import Inference.SIM as SIM (handleSamp)
 
 -- ||| (Section 6.2.1) Likelihood Weighting (LW)
-lw :: forall env es a b. (FromSTrace env, es ~ '[ObsReader env, Dist])
+lw :: forall env es a b. (FromSTrace env)
     => 
     -- | Number of LW iterations
        Int                          
     -- | A model
-    -> Model env [ObsReader env, Dist] a       
+    -> Model env [ObsReader env, Dist, Lift Sampler] a       
     -- | A model environment (containing observed values to condition on)
     -> Env env         
     -- | List of n likelihood weightings for each data point
@@ -38,15 +39,15 @@ lw n model env = do
   pure $ map (\((_, strace), p) -> (fromSTrace strace, p)) lwTrace
 
 -- | LW handler
-runLWs :: Int -> Prog [Observe, Sample] a -> Sampler [((a, STrace), Double)]
+runLWs :: Int -> Prog [Observe, Sample, Lift Sampler] a -> Sampler [((a, STrace), Double)]
 runLWs n prog = replicateM n (runLW prog)
 
 -- | Run LW once
-runLW :: Prog [Observe, Sample] a -> Sampler ((a, STrace), Double)
-runLW  = SIM.handleSamp . handleObs 0 . traceSamples
+runLW :: Prog [Observe, Sample, Lift Sampler] a -> Sampler ((a, STrace), Double)
+runLW  = handleLift . SIM.handleSamp . handleObs 0 . traceSamples
 
 -- | Accumulate log probabilities of each Observe operation
-handleObs :: Member Sample es => Double -> Prog (Observe : es) a -> Prog es (a, Double)
+handleObs :: Double -> Prog (Observe : es) a -> Prog es (a, Double)
 handleObs logp (Val x) = return (x, exp logp)
 handleObs logp (Op u k) = case discharge u of
     Right (Observe d y α) -> do

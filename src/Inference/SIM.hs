@@ -7,13 +7,12 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Inference.SIM where
 
-import Control.Monad
-import Control.Monad.Trans.Class
 import Data.Map (Map)
 import Data.Maybe
 import Effects.Dist
 import Effects.ObsReader
 import Effects.State
+import Effects.Lift
 import Env
 import GHC.TypeLits
 import Model
@@ -27,7 +26,7 @@ import Trace
 import Unsafe.Coerce (unsafeCoerce)
 
 -- ||| (Section 6.1) Simulation
-simulate :: forall env es b a. (FromSTrace env, es ~ '[ObsReader env, Dist])
+simulate :: forall env es b a. (FromSTrace env, es ~ '[ObsReader env, Dist, Lift Sampler])
   => 
   -- | A model 
      Model env es a
@@ -40,21 +39,21 @@ simulate model env = do
   return (fmap fromSTrace outputs_strace)
 
 -- | SIM handler
-runSimulate :: (es ~ '[ObsReader env, Dist])
+runSimulate :: (es ~ '[ObsReader env, Dist, Lift Sampler])
  => Env env -> Model env es a -> Sampler (a, STrace)
 runSimulate env 
-  = handleSamp . handleObs . traceSamples . handleCore env
-
-handleObs :: Prog (Observe : es) a -> Prog es  a
+  = handleLift . handleSamp . handleObs . traceSamples . handleCore env
+ 
+handleObs :: Prog (Observe : es) a -> Prog es a
 handleObs (Val x) = return x
 handleObs (Op op k) = case discharge op of
   Right (Observe d y α) -> handleObs (k y)
   Left op' -> Op op' (handleObs . k)
 
-handleSamp :: Prog '[Sample] a -> Sampler a
+handleSamp :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
 handleSamp  (Val x)  = return x
 handleSamp  (Op op k) = case discharge op of
   Right (Sample (PrimDistDict d) α) ->
-    do  x <- sample d
+    do  x <- lift $ sample d
         handleSamp (k x)
   _        -> error "Impossible: Nothing cannot occur"
