@@ -21,7 +21,7 @@ def main():
 
   data = ast.literal_eval(f.read().replace('-Infinity', '-2e308')) #
   color_map = plt.cm.get_cmap('Blues')
-  if arg in ["simLinRegr", "simLinRegrs"]:
+  if arg in ["simLinRegrOnce", "simLinRegr"]:
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
     xs = xys[0]
@@ -31,7 +31,7 @@ def main():
     plt.ylabel('y data points')
     plt.title('Linear regression')
     
-  if arg in ["lwLinRegr", "lwLinRegrs"]:
+  if arg in ["lwLinRegrOnce", "lwLinRegr"]:
     mus = [d[0] for d in data]
     ps  = [d[1] for d in data]
     fig1, axs1 = plt.subplots(nrows=1)
@@ -40,7 +40,7 @@ def main():
     axs1.scatter(mus, ps)
     axs1.set_title('Linear regression - Likelihood Weighting')
     
-  if arg in ["mhLinRegr", "mhLinRegrs"]:
+  if arg in ["mhLinRegrOnce", "mhLinRegr"]:
     mus = data[0]
     cs  = data[1]
     fig1, axs1 = plt.subplots(nrows=1)
@@ -136,7 +136,7 @@ def main():
     axs2.hist(betas_unique, bins=55)
     axs2.set_title('HMM - Metropolis Hastings Posterior (Beta)')
     
-  if arg in ["simLogRegr", "simLogRegrs"]:
+  if arg in ["simLogRegrOnce", "simLogRegr"]:
     xys = np.array(data)
     xs =  np.array([xy[0] for xy in xys])
     ys =  np.array([xy[1] for xy in xys])
@@ -153,7 +153,7 @@ def main():
     plt.ylabel('y - axis')
     plt.title('Logistic regression simulation')
     
-  if arg in ["lwLogRegr", "lwLogRegrs"]:
+  if arg in ["lwLogRegrOnce", "lwLogRegr"]:
     mus = [d[0][0] for d in data]
     bs  = [d[0][1] for d in data]
     ps  = [d[1] for d in data]
@@ -167,7 +167,7 @@ def main():
     axs2.scatter(bs, ps)
     axs2.set_title('Logistic regression - Likelihood Weighting')
     
-  if arg in ["mhLogRegr", "mhLogRegrs"]:
+  if arg in ["mhLogRegrOnce", "mhLogRegr"]:
     mu_samples = data[0]
     b_samples  = data[1]
     _, axs1 = plt.subplots(nrows=1)

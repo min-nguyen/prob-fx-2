@@ -9,10 +9,25 @@ import Test.HUnit
 import Sampler
 import System.Environment (getArgs)
 import Test.HUnit (Test(TestCase))
-import Tests.Expected (simLinRegrExpected)
+import Tests.Expected 
 
 
 
+
+testSimLinRegrOnce :: Test
+testSimLinRegrOnce = TestCase $ do
+  output <- sampleIOFixed (simLinRegrOnce 100)
+  assertEqual "Testing (simLinRegrOnce 100)" output simLinRegrOnceExpected
+
+testLwLinRegrOnce :: Test
+testLwLinRegrOnce = TestCase $ do
+  output <- sampleIOFixed (lwLinRegrOnce 100 50) 
+  assertEqual "Testing (lwLinRegrOnce 100 50)" output lwLinRegrOnceExpected
+
+testMhLinRegrOnce :: Test
+testMhLinRegrOnce = TestCase $ do
+  output <- sampleIOFixed (mhLinRegrOnce 100 100) 
+  assertEqual "Testing (mhLinRegrOnce 100 100)" output mhLinRegrOnceExpected
 
 testSimLinRegr :: Test
 testSimLinRegr = TestCase $ do
@@ -21,28 +36,28 @@ testSimLinRegr = TestCase $ do
 
 testLwLinRegr :: Test
 testLwLinRegr = TestCase $ do
-  output <- sampleIOFixed (lwLinRegr 100 50) 
-  assertEqual "Testing (lwLinRegr 100 50)" output lwLinRegrExpected
+  output <- sampleIOFixed (lwLinRegr 1000 10) 
+  assertEqual "Testing (lwLinRegr 1000 10)" output lwLinRegrExpected
 
 testMhLinRegr :: Test
 testMhLinRegr = TestCase $ do
-  output <- sampleIOFixed (mhLinRegr 100 100) 
-  assertEqual "Testing (mhLinRegr 100 100)" output mhLinRegrExpected
+  output <- sampleIOFixed (mhLinRegr 10000 50) 
+  assertEqual "Testing (mhLinRegr 10000 50)" output mhLinRegrExpected
 
-testSimLinRegrs :: Test
-testSimLinRegrs = TestCase $ do
-  output <- sampleIOFixed (simLinRegrs 100)
-  assertEqual "Testing (simLinRegrs 100)" output simLinRegrsExpected
+testSimLogRegrOnce :: Test
+testSimLogRegrOnce = TestCase $ do
+  output <- sampleIOFixed (simLogRegrOnce 50)
+  assertEqual "Testing (simLogRegrOnce 50)" output simLogRegrOnceExpected
 
-testLwLinRegrs :: Test
-testLwLinRegrs = TestCase $ do
-  output <- sampleIOFixed (lwLinRegrs 1000 10) 
-  assertEqual "Testing (lwLinRegrs 1000 10)" output lwLinRegrsExpected
+testLwLogRegrOnce :: Test
+testLwLogRegrOnce = TestCase $ do
+  output <- sampleIOFixed (lwLogRegrOnce 10 10) 
+  assertEqual "Testing (lwLogRegrOnce 10 10)" output lwLogRegrOnceExpected
 
-testMhLinRegrs :: Test
-testMhLinRegrs = TestCase $ do
-  output <- sampleIOFixed (mhLinRegrs 10000 50) 
-  assertEqual "Testing (mhLinRegrs 10000 50)" output mhLinRegrsExpected
+testMhLogRegrOnce :: Test
+testMhLogRegrOnce = TestCase $ do
+  output <- sampleIOFixed (mhLogRegrOnce 100 10) 
+  assertEqual "Testing (mhLogRegrOnce 100 10)" output mhLogRegrOnceExpected
 
 testSimLogRegr :: Test
 testSimLogRegr = TestCase $ do
@@ -51,28 +66,13 @@ testSimLogRegr = TestCase $ do
 
 testLwLogRegr :: Test
 testLwLogRegr = TestCase $ do
-  output <- sampleIOFixed (lwLogRegr 10 10) 
-  assertEqual "Testing (lwLogRegr 10 10)" output lwLogRegrExpected
+  output <- sampleIOFixed (lwLogRegr 100 10) 
+  assertEqual "Testing (lwLogRegr 100 10)" output lwLogRegrExpected
 
 testMhLogRegr :: Test
 testMhLogRegr = TestCase $ do
-  output <- sampleIOFixed (mhLogRegr 100 10) 
-  assertEqual "Testing (mhLogRegr 100 10)" output mhLogRegrExpected
-
-testSimLogRegrs :: Test
-testSimLogRegrs = TestCase $ do
-  output <- sampleIOFixed (simLogRegrs 50)
-  assertEqual "Testing (simLogRegrs 50)" output simLogRegrsExpected
-
-testLwLogRegrs :: Test
-testLwLogRegrs = TestCase $ do
-  output <- sampleIOFixed (lwLogRegrs 100 10) 
-  assertEqual "Testing (lwLogRegrs 100 10)" output lwLogRegrsExpected
-
-testMhLogRegrs :: Test
-testMhLogRegrs = TestCase $ do
-  output <- sampleIOFixed (mhLogRegrs 1000 10) 
-  assertEqual "Testing (mhLogRegrs 1000 10)" output mhLogRegrsExpected
+  output <- sampleIOFixed (mhLogRegr 1000 10) 
+  assertEqual "Testing (mhLogRegr 1000 10)" output mhLogRegrExpected
 
 testSimHMM :: Test
 testSimHMM = TestCase $ do
@@ -120,7 +120,8 @@ testMhSchool = TestCase $ do
   assertEqual "Testing (mhSchool 1000)" output mhSchoolExpected
 
 tests :: Test
-tests = TestList [testSimLinRegr, testLwLinRegr, testMhLinRegr, testSimLinRegrs, testLwLinRegrs, testMhLinRegrs, testSimLogRegr,testLwLogRegr, testMhLogRegr, testSimLogRegrs, testLwLogRegrs, testMhLogRegrs, testSimHMM, testMhHMM, testSimSIR, testMhSIR, testSimLDA, testMhLDA, testSimRadon, testMhRadon, testMhSchool]
+tests = TestList [testSimLinRegrOnce, testLwLinRegrOnce, testMhLinRegrOnce, testSimLinRegr, testLwLinRegr, testMhLinRegr, testSimLogRegrOnce, testLwLogRegrOnce, testMhLogRegrOnce, testSimLogRegr, testLwLogRegr, testMhLogRegr, testSimHMM, testMhHMM, testSimSIR, testMhSIR, testSimLDA, testMhLDA, testSimRadon, testMhRadon, testMhSchool
+ ]
 
 main :: IO ()
 main = do

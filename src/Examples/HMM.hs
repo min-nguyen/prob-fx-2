@@ -52,7 +52,7 @@ lwHMM :: Sampler  [(Env HMMEnv, Double)]
 lwHMM   = do
   let x_0 = 0; n = 10
       env = #trans_p := [] <:> #obs_p := [] <:> #y := [0, 1, 1, 3, 4, 5, 5, 5, 6, 5] <:> nil
-  LW.lw 100 (hmmFor n) (x_0, env)
+  LW.lw 100 (hmmFor n x_0) env
 
 -- ||| (Section 2, Fig 3) Modular HMM 
 transModel ::  Double -> Int -> Model env ts Int

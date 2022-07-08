@@ -8,6 +8,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Prog where
 
@@ -74,3 +75,19 @@ pattern Other u <- (discharge -> Left u)
 discharge :: EffectSum (e ': es) x -> Either (EffectSum es x) (e x)
 discharge (EffectSum 0 tv) = Right $ unsafeCoerce tv
 discharge (EffectSum n rv) = Left  $ EffectSum (n-1) rv
+
+weaken :: EffectSum es a -> EffectSum (any ': es) a
+weaken (EffectSum n ta) = EffectSum (n + 1) ta
+
+-- | Find some existing effect e in es, leave it unhandled, and install new effect e' after every request of e. This adds the effect e' to the front of es.
+-- Requires type application on usage to specify which effect is being intercepted, e.g. "installPrepend @(Reader Int)"
+install :: Member e es =>
+     (a -> Prog (e' ': es) a)
+  -> (forall x. x -> e x -> (x -> Prog (e' ': es) a) -> Prog (e' ': es) a)
+  -> Prog es a
+  -> Prog (e' ': es) a
+install ret h (Val x )  = ret x
+install ret h (Op u k) =
+  case prj u  of
+    Just tx -> Op (weaken u) (\x -> h x tx (install ret h . k))
+    Nothing -> Op (weaken u) (install ret h . k)

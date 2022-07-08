@@ -19,29 +19,31 @@ import Model hiding (runModelFree)
 import Sampler
 import Effects.State ( modify, handleState, State )
 import Trace
-import Inference.SIM (traceSamples, handleSamp)
+import Inference.SIM as SIM (handleSamp)
 
 -- ||| (Section 6.2.1) Likelihood Weighting (LW)
-lw :: forall env es a b. (FromSTrace env, es ~ '[ObsReader env, Dist, State STrace, Observe, Sample])
+lw :: forall env es a b. (FromSTrace env, es ~ '[ObsReader env, Dist])
     => 
     -- | Number of LW iterations
        Int                          
-    -- | A model awaiting an input
-    -> (b -> Model env es a)        
-    -- | A model input and model environment (containing observed values to condition on)
-    -> (b, Env env)                 
-    -- | Trace of weighted output environments containing values sampled for each LW iteration
+    -- | A model
+    -> Model env [ObsReader env, Dist] a       
+    -- | A model environment (containing observed values to condition on)
+    -> Env env         
+    -- | List of n likelihood weightings for each data point
     -> Sampler [(Env env, Double)]  
-lw n model xs_envs = do
-  let runN (x, env) = replicateM n (runLW env (model x))
-  lwTrace <- runN xs_envs
-  return $ map (\((_, strace), p) -> (fromSTrace strace, p)) lwTrace
+lw n model env = do
+  let prog = (handleDist . handleObsRead env) (runModel model)
+  lwTrace <- runLWs n prog
+  pure $ map (\((_, strace), p) -> (fromSTrace strace, p)) lwTrace
 
 -- | LW handler
-runLW :: es ~ '[ObsReader env, Dist,State STrace,  Observe, Sample]
-  => Env env -> Model env es a
-  -> Sampler ((a, STrace), Double)
-runLW env = handleSamp . handleObs 0 . handleState Map.empty . traceSamples . handleCore env
+runLWs :: Int -> Prog [Observe, Sample] a -> Sampler [((a, STrace), Double)]
+runLWs n prog = replicateM n (runLW prog)
+
+-- | Run LW once
+runLW :: Prog [Observe, Sample] a -> Sampler ((a, STrace), Double)
+runLW  = SIM.handleSamp . handleObs 0 . traceSamples
 
 -- | Accumulate log probabilities of each Observe operation
 handleObs :: Member Sample es => Double -> Prog (Observe : es) a -> Prog es (a, Double)

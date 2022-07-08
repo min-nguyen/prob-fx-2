@@ -34,6 +34,7 @@ import Statistics.Distribution.Poisson
 import Statistics.Distribution.Uniform
 import Util ( boolToInt )
 import PrimDist
+import Prog
 
 -- ||| (Section 4.2.1) Effects for distributions
 -- | The Dist effect has a single operation `Dist` that takes as arguments: a primitive distribution of type `PrimDist a`, an optional observed value of type `Maybe a`, and an optional observable variable name of type `Maybe String` .
@@ -42,17 +43,21 @@ data Dist a = Dist { getPrimDist :: PrimDist a, getObs :: Maybe a, getTag :: May
 -- ||| (Section 5.3) Handling Distributions
 data Sample a where
   Sample  :: PrimDist a -> Addr -> Sample a
+  
+pattern Samp :: (Member Sample es) => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> Addr -> EffectSum es x
+pattern Samp d α <- (prj -> Just (Sample (PrimDistDict d) α))
 
 data Observe a where
   Observe :: PrimDist a -> a -> Addr -> Observe a
 
+pattern Obs :: (Member Observe es) => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> x -> Addr -> EffectSum es x
+pattern Obs d y α <- (prj -> Just (Observe (PrimDistDict d) y α))
+
 -- | Interpret Dist to Sample or Observe, and add address
-handleDist :: (Member Sample es, Member Observe es)
-        => Prog (Dist : es) a -> Prog es a
+handleDist :: Prog (Dist : es) a -> Prog (Observe : Sample : es) a
 handleDist = loop 0 Map.empty
   where
-  loop :: (Member Sample es, Member Observe es)
-       => Int -> TagMap -> Prog (Dist : es) a -> Prog es a
+  loop :: Int -> TagMap -> Prog (Dist : es) a -> Prog (Observe : Sample : es) a
   loop _ _ (Val x) = return x
   loop counter tagMap (Op u k) = case discharge u of
     Right (Dist d maybe_y maybe_tag) ->
@@ -63,7 +68,7 @@ handleDist = loop 0 Map.empty
                 tagIdx  = Map.findWithDefault 0 tag tagMap
                 tagMap' = Map.insert tag (tagIdx + 1) tagMap
                 k'      = loop (counter + 1) tagMap' . k
-    Left  u'  -> Op u' (loop counter tagMap . k)
+    Left  u'  -> Op (weaken (weaken u')) (loop counter tagMap . k)
 
 type Tag  = String
 type Addr = (Tag, Int)
@@ -75,3 +80,4 @@ instance Show a => Show (Dist a) where
 
 instance Eq (Dist a) where
   (==) (Dist d1 _ _) (Dist d2 _ _) = d1 == d2 
+

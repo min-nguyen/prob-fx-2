@@ -26,7 +26,7 @@ import qualified OpenSum
 
 -- ||| (Section 4.2) Model definition
 newtype Model env es v =
-  Model { runModel :: (Member Dist es, Member (ObsReader env) es, Member Sample es) => Prog es v }
+  Model { runModel :: (Member Dist es, Member (ObsReader env) es) => Prog es v }
   deriving Functor
 
 instance Applicative (Model env es) where
@@ -40,9 +40,8 @@ instance Monad (Model env es) where
     runModel $ x f'
 
 -- ||| (Section 5.4) Specialising Multimodal Models
-handleCore :: (Member Observe es, Member Sample es) => Env env -> Model env (ObsReader env : Dist : es) a -> Prog es a
-handleCore env m = (handleDist . handleRead env) (runModel m)
-
+handleCore :: Env env -> Model env (ObsReader env : Dist : es) a -> Prog (Observe : Sample : es) a
+handleCore env m = (handleDist . handleObsRead env) (runModel m)
 
 -- || Other effects and handlers as the Model type 
 -- | State

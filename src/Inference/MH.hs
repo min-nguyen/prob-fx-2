@@ -29,10 +29,10 @@ import OpenSum (OpenSum(..))
 import Effects.ObsReader
 import Effects.State
 import Unsafe.Coerce
-import Inference.SIM (handleObs, traceSamples)
+import Inference.SIM (handleObs)
 
 -- ||| (Section 6.2.2) Metropolis-Hastings
-mh :: (FromSTrace env, es ~ '[ObsReader env, Dist, State STrace, State LPTrace, Observe, Sample])
+mh :: (FromSTrace env, es ~ '[ObsReader env, Dist])
   => 
   -- | Number of MH iterations
      Int                    
@@ -53,7 +53,7 @@ mh n model  (x_0, env_0) tags = do
   return $ map (\((_, strace), _) -> fromSTrace strace) mhTrace
 
 -- | Perform one step of MH
-mhStep :: (es ~ '[ObsReader env, Dist, State STrace, State LPTrace, Observe, Sample])
+mhStep :: (es ~ '[ObsReader env, Dist])
   => 
   -- | Model environment
      Env env                  
@@ -85,7 +85,7 @@ mhStep env model tags trace = do
     else do return trace
 
 -- | MH handler
-runMH :: (es ~ '[ObsReader env, Dist, State STrace, State LPTrace, Observe, Sample])
+runMH :: (es ~ '[ObsReader env, Dist])
   => 
   -- | Model environment
      Env env       
@@ -97,8 +97,7 @@ runMH :: (es ~ '[ObsReader env, Dist, State STrace, State LPTrace, Observe, Samp
   -> Model env es a 
   -> Sampler ((a, STrace), LPTrace)
 runMH env strace α_samp =
-     handleSamp strace α_samp  . handleObs
-   . handleState Map.empty . handleState Map.empty
+     handleSamp strace α_samp . handleObs
    . traceLPs . traceSamples . handleCore env
 
 pattern Samp :: Member Sample es => PrimDist x -> Addr -> EffectSum es x
@@ -106,18 +105,6 @@ pattern Samp d α <- (prj  -> Just (Sample d α))
 
 pattern Obs :: Member Observe es => PrimDist x -> x -> Addr -> EffectSum es x
 pattern Obs d y α <- (prj -> Just (Observe d y α))
-
--- | Trace log probabilities for each Sample and Observe operation
-traceLPs :: (Member (State LPTrace) es, Member Sample es, Member Observe es) => Prog es a -> Prog es a
-traceLPs (Val x) = return x
-traceLPs (Op op k) = case op of
-  Samp (PrimDistDict d) α ->
-       Op op (\x -> modify (updateLPTrace α d x) >>
-                    traceLPs (k x))
-  Obs d y α ->
-    Op op (\ x -> modify (updateLPTrace α d y) >>
-                  traceLPs (k y))
-  _         -> Op op (traceLPs . k)
 
 -- | Selectively sample
 handleSamp :: STrace -> Addr -> Prog '[Sample] a -> Sampler a

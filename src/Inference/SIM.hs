@@ -27,7 +27,7 @@ import Trace
 import Unsafe.Coerce (unsafeCoerce)
 
 -- ||| (Section 6.1) Simulation
-simulate :: forall env es b a. (FromSTrace env, es ~ '[ObsReader env, Dist,State STrace, Observe, Sample])
+simulate :: forall env es b a. (FromSTrace env, es ~ '[ObsReader env, Dist])
   => 
   -- | A model 
      Model env es a
@@ -40,19 +40,10 @@ simulate model env = do
   return (fmap fromSTrace outputs_strace)
 
 -- | SIM handler
-runSimulate :: (es ~ '[ObsReader env, Dist, State STrace, Observe, Sample])
+runSimulate :: (es ~ '[ObsReader env, Dist])
  => Env env -> Model env es a -> Sampler (a, STrace)
-runSimulate env
-  = handleSamp . handleObs . handleState Map.empty . traceSamples . handleCore env
-
--- | Trace sampled values for each Sample operation
-traceSamples :: (Member (State STrace) es, Member Sample es) => Prog es a -> Prog es a
-traceSamples (Val x) = return x
-traceSamples (Op op k) = case prj op of
-  Just (Sample (PrimDistDict d) α) ->
-       Op op (\x -> do modify (updateSTrace α d x);
-                       traceSamples (k x))
-  Nothing -> Op op (traceSamples . k)
+runSimulate env 
+  = handleSamp . handleObs . traceSamples . handleCore env
 
 handleObs :: Prog (Observe : es) a -> Prog es  a
 handleObs (Val x) = return x
