@@ -10,6 +10,7 @@ import Examples.LDA
 import Examples.Radon
 import Examples.School
 import Examples.HMM
+import Examples.GMM
 import Sampler
 import System.Environment (getArgs)
 
@@ -50,6 +51,10 @@ parseArgs cmd = case cmd of
   "mhPredRadon" -> sampleIOFixed (mhPredRadon 1500) >>= printThenWrite
 
   "mhSchool"    -> sampleIOFixed (mhSchool 10000) >>= printThenWrite
+
+  "simGMM"      -> sampleIOFixed (simGMM 20) >>= printThenWrite
+  "mhGMM"       -> sampleIOFixed (mhGMM 4000 20) >>= printThenWrite
+
 
   _             -> putStrLn $ "unrecognised argument: " ++ cmd ++ "\n"
 

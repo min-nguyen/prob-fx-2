@@ -62,11 +62,11 @@ linRegr xs = do
  
 mkRecordLinRegr :: ([Double],  [Double],  [Double],  [Double]) -> Env LinRegrEnv
 mkRecordLinRegr (y_vals, m_vals, c_vals, σ_vals) =
-  (#y := y_vals) <:> (#m := m_vals) <:> (#c := c_vals) <:> (#σ := σ_vals) <:> nil
+  (#y := y_vals) <:> (#m := m_vals) <:> (#c := c_vals) <:> (#σ := σ_vals) <:> enil
 
 mkRecordLinRegrY :: [Double] -> Env LinRegrEnv
 mkRecordLinRegrY y_vals =
-  (#y := y_vals) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:> nil
+  (#y := y_vals) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:> enil
 
 -- Execute lin regression
 simLinRegr :: Int -> Int -> Sampler ()
@@ -79,7 +79,7 @@ lwLinRegr :: Int -> Int -> Sampler ()
 lwLinRegr n_samples n_datapoints  = do
   let n_datapoints' = fromIntegral n_datapoints
       xs            = [0 .. n_datapoints']
-      env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  nil
+      env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   LW.lw n_samples linRegr (xs, env)
   return ()
 
@@ -87,7 +87,7 @@ mhLinRegr :: Int -> Int -> Sampler ()
 mhLinRegr n_samples n_datapoints  = do
   let n_datapoints' = fromIntegral n_datapoints
       xs            = [0 .. n_datapoints']
-      env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  nil
+      env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   MH.mh n_samples linRegr [] xs env
   return ()
 
@@ -124,10 +124,10 @@ hmmNSteps n x = do
 
 -- Execute HMM
 mkRecordHMM :: ([Int], Double, Double) -> Env HMMEnv
-mkRecordHMM (ys, transp, obsp) = #y := ys <:> #trans_p := [transp] <:> #obs_p := [obsp] <:>  nil
+mkRecordHMM (ys, transp, obsp) = #y := ys <:> #trans_p := [transp] <:> #obs_p := [obsp] <:>  enil
 
 mkRecordHMMy :: [Int] -> Env HMMEnv
-mkRecordHMMy ys = #y := ys <:> #trans_p := [] <:> #obs_p := [] <:>  nil
+mkRecordHMMy ys = #y := ys <:> #trans_p := [] <:> #obs_p := [] <:>  enil
 
 hmm_data :: [Int]
 hmm_data = [0,1,1,3,4,5,5,5,6,5,6,8,8,9,7,8,9,8,10,10,7,8,10,9,10,10,14,14,14,15,14,15,14,17,17,17,16,17,14,15,16,18,17,19,20,20,20,22,23,22,23,25,21,21,23,25,24,26,28,23,25,23,27,28,28,25,28,29,28,24,27,28,28,32,32,32,33,31,33,34,32,31,33,36,37,39,36,36,32,38,38,38,38,37,40,38,38,39,40,42]
@@ -196,25 +196,25 @@ topic_data :: [String]
 topic_data     = ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA"]
 
 mkRecordTopic :: ([[Double]], [[Double]], [String]) -> Env TopicEnv
-mkRecordTopic (tps, wps, ys) =  #θ := tps <:>  #φ := wps <:> #w := ys <:> nil
+mkRecordTopic (tps, wps, ys) =  #θ := tps <:>  #φ := wps <:> #w := ys <:> enil
 
 simLDA :: Int -> Int -> Sampler ()
 simLDA n_samples n_words  = do
   let params = #θ := [[0.5, 0.5]] <:>
                #φ := [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],
                       [1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]] <:>
-               #w := [] <:> nil
+               #w := [] <:> enil
   SIM.simulateMany n_samples (documentDist vocab 2) [n_words] [params]
   return ()
 
 lwLDA :: Int -> Int -> Sampler ()
 lwLDA n_samples n_words  = do
-  let xs_envs = (n_words, #θ := [] <:>  #φ := [] <:> #w := topic_data <:> nil)
+  let xs_envs = (n_words, #θ := [] <:>  #φ := [] <:> #w := topic_data <:> enil)
   LW.lw n_samples (documentDist vocab 2) xs_envs
   return ()
 
 mhLDA :: Int -> Int -> Sampler ()
 mhLDA n_samples n_words  = do
-  let xs_envs = (n_words, #θ := [] <:>  #φ := [] <:> #w := topic_data <:> nil)
+  let xs_envs = (n_words, #θ := [] <:>  #φ := [] <:> #w := topic_data <:> enil)
   MH.mh n_samples (documentDist vocab 2) ["φ", "θ"] n_words (mkRecordTopic ([], [], topic_data))
   return ()

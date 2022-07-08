@@ -277,6 +277,33 @@ def main():
     axs2.set_ylabel("value")
     axs2.boxplot(thetas_)
     axs2.set_title('School - Metropolis Hastings Posterior (thetas)')
+
+  if arg == "simGMM":
+    xyss = data
+    x0s  = [xy[0][0] for xy in xyss]
+    x1s  = [xy[0][1] for xy in xyss]
+    ys   = [xy[1] for xy in xyss]
+    plt.scatter(x0s, x1s, c=ys)
+    plt.xlabel('x - axis')
+    plt.ylabel('y - axis')
+    plt.title('Gaussian Mixture Model')
+    plt.show()
+  if arg == "mhGMM":
+    mu_0s = [d[0] for d in data]
+    mu_1s = [d[1] for d in data]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("mu_0 values")
+    axs1.set_ylabel("frequency")
+    axs1.hist(mu_0s, bins=50)
+    axs1.set_title('GMM - Metropolis Hastings Posterior (mu_0)')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel("mu_1 values")
+    axs2.set_ylabel("frequency")
+    axs2.hist(mu_1s, bins=50)
+    axs2.set_title('GMM - Metropolis Hastings Posterior (mu_1)')
+    plt.show()
+
+
   plt.show()
   save_multi_image("model-output.pdf")
 if __name__ == "__main__":
