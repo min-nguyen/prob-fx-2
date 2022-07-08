@@ -287,7 +287,6 @@ def main():
     plt.xlabel('x - axis')
     plt.ylabel('y - axis')
     plt.title('Gaussian Mixture Model')
-    plt.show()
   if arg == "mhGMM":
     mu_0s = [d[0] for d in data]
     mu_1s = [d[1] for d in data]
@@ -301,10 +300,8 @@ def main():
     axs2.set_ylabel("frequency")
     axs2.hist(mu_1s, bins=50)
     axs2.set_title('GMM - Metropolis Hastings Posterior (mu_1)')
-    plt.show()
 
-
-  plt.show()
   save_multi_image("model-output.pdf")
+  plt.show()
 if __name__ == "__main__":
   main()
