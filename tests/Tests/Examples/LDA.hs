@@ -84,7 +84,7 @@ simLDA n_words = do
   let env_in = #θ := [[0.5, 0.5]] <:>
                #φ := [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],
                       [1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]] <:>
-               #w := [] <:> nil
+               #w := [] <:> enil
   (words, env_out) <- SIM.simulate (topicModel vocab 2 n_words) env_in 
   return words
 
@@ -97,7 +97,7 @@ mhLDA :: Int -> Int -> Sampler ([[Double]], [[Double]])
 mhLDA n_mhsteps n_words = do
   -- Do MH inference over the topic model using the above data
   let n_topics  = 2
-      env_mh_in = #θ := [] <:>  #φ := [] <:> #w := topic_data <:> nil
+      env_mh_in = #θ := [] <:>  #φ := [] <:> #w := topic_data <:> enil
   env_mh_outs <- MH.mh n_mhsteps (topicModel vocab n_topics n_words) ( env_mh_in) ["φ", "θ"]
   -- Draw the most recent sampled parameters from MH
   let env_pred   = head env_mh_outs

@@ -31,7 +31,7 @@ class FromSTrace a where
   fromSTrace :: STrace -> Env a
 
 instance FromSTrace '[] where
-  fromSTrace _ = nil
+  fromSTrace _ = enil
 
 instance (UniqueKey x env ~ 'True, KnownSymbol x, Eq a, OpenSum.Member a PrimVal, FromSTrace env) => FromSTrace ((x := a) : env) where
   fromSTrace sMap = ECons (extractSTrace (ObsVar @x, Proxy @a) sMap) (fromSTrace sMap)

@@ -52,7 +52,7 @@ hmmW n x = do
 
 simHMMw :: Int -> Sampler [(Int, Int)]
 simHMMw hmm_length = do
-  let env = #trans_p := [0.9] <:> #obs_p := [0.2] <:> #y := [] <:> nil
+  let env = #trans_p := [0.9] <:> #obs_p := [0.2] <:> #y := [] <:> enil
   bs <- SIM.simulate (handleWriterM $ hmmW hmm_length 0) env 
 
   let sim_envs_out  = snd bs
@@ -63,7 +63,7 @@ simHMMw hmm_length = do
 mhHMMw :: Int -> Int -> Sampler ([Double], [Double])
 mhHMMw mh_samples hmm_length = do
   ys <- map snd <$> simHMMw hmm_length
-  let env  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> nil
+  let env  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
   mh_envs_out <- MH.mh mh_samples (handleWriterM @[Int] $ hmmW hmm_length 0) (env)  ["trans_p", "obs_p"]
   let trans_ps    = concatMap (get #trans_p) mh_envs_out
       obs_ps      = concatMap (get #obs_p) mh_envs_out

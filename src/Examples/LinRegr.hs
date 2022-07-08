@@ -48,7 +48,7 @@ linRegrOnce x = do
 simLinRegrOnce :: Int -> Sampler [(Double, Double)]
 simLinRegrOnce n_datapoints = do
   let xs  = [0 .. fromIntegral n_datapoints]
-      env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> nil
+      env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> enil
   ys_envs <- mapM (\x -> SIM.simulate (linRegrOnce x) env) xs
   let ys = map fst ys_envs
   pure (zip xs ys)
@@ -57,7 +57,7 @@ simLinRegrOnce n_datapoints = do
 lwLinRegrOnce :: Int -> Int ->  Sampler [(Double, Double)]
 lwLinRegrOnce n_samples n_datapoints = do
   let xs  = [0 .. fromIntegral n_datapoints]
-      xys = [(x, env) | x <- xs, let env = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x]) <:> nil]
+      xys = [(x, env) | x <- xs, let env = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x]) <:> enil]
   lwTrace <- mapM (\(x, env) -> LW.lw n_samples (linRegrOnce  x) env) xys
   let -- Get output of LW and extract mu samples
       (env_outs, ps) = unzip $ concat lwTrace
@@ -68,7 +68,7 @@ lwLinRegrOnce n_samples n_datapoints = do
 mhLinRegrOnce :: Int -> Int -> Sampler ([Double], [Double])
 mhLinRegrOnce n_mhsteps n_datapoints = do
   let xs  = [0 .. fromIntegral n_datapoints]
-      xys = [(x, env) | x <- xs, let env = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x]) <:> nil]
+      xys = [(x, env) | x <- xs, let env = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x]) <:> enil]
   mhTrace <- concat <$> mapM (\(x, y) -> MH.mh n_mhsteps (linRegrOnce x) y ["m", "c"]) xys
   let -- Get output of MH and extract mu samples
       mus = concatMap (get #m) mhTrace
@@ -92,14 +92,14 @@ linRegr xs = do
 simLinRegr :: Int -> Sampler [(Double, Double)]
 simLinRegr n_datapoints = do
   let xs  = [0 .. fromIntegral n_datapoints]
-      env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> nil
+      env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> enil
   bs :: ([Double], Env LinRegrEnv) <- SIM.simulate (linRegr xs) env 
   pure $ zip xs (fst bs)
 
 lwLinRegr ::  Int -> Int ->  Sampler [(Double, Double)]
 lwLinRegr n_samples n_datapoints = do
   let xs            = [0 .. fromIntegral n_datapoints]
-      env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  nil
+      env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   (env_outs, ps) <- unzip <$> LW.lw n_samples (linRegr xs) env
   let mus = concatMap (get #m) env_outs
   pure (zip mus ps)
@@ -107,7 +107,7 @@ lwLinRegr n_samples n_datapoints = do
 mhLinRegr ::  Int -> Int ->  Sampler ([Double], [Double])
 mhLinRegr n_mhsteps n_datapoints = do
   let xs            = [0 .. fromIntegral n_datapoints]
-      env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  nil
+      env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   env_mh_outs <- MH.mh n_mhsteps (linRegr xs) env ["m", "c"]
   let mus = concatMap (get #m) env_mh_outs
   let cs = concatMap (get #c) env_mh_outs

@@ -91,7 +91,7 @@ type SIRenv = '["β" := Double, "γ"  := Double, "ρ"  := Double, "𝜉" := Int]
 -- ||| (Section 3.1, Fig 4a) SIM from SIR model: ([(s, i, r)], [𝜉])
 simSIR :: Int -> Sampler ([(Int, Int, Int)], [Reported])
 simSIR n_days = do
-  let sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #ρ := [0.3] <:> #𝜉 := [] <:> nil
+  let sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #ρ := [0.3] <:> #𝜉 := [] <:> enil
       sir_0      = Popl {s = 762, i = 1, r = 0}
   ((_, sir_trace), sim_env_out) <- SIM.simulate (hmmSIR' n_days sir_0) sim_env_in 
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
@@ -102,9 +102,9 @@ simSIR n_days = do
 mhSIR :: Int -> Int -> Sampler ([Double], [Double])
 mhSIR n_mhsteps n_days = do
   𝜉s <- snd <$> simSIR n_days
-  let mh_env_in = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> nil
+  let mh_env_in = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> enil
       sir_0           = Popl {s = 762, i = 1, r = 0}
-  mhTrace <- MH.mh n_mhsteps (hmmSIR' n_days sir_0) (mh_env_in) ["β", "ρ"]
+  mhTrace <- MH.mh n_mhsteps (hmmSIR' n_days sir_0) mh_env_in ["β", "ρ"]
   let ρs = concatMap (get #ρ) mhTrace
       βs = concatMap (get #β) mhTrace
   return (ρs, βs)

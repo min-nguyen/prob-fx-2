@@ -14,7 +14,6 @@ import Data.Kind (Type)
 import qualified Data.Set as Set
 import Data.Set (Set, (\\))
 import Data.Maybe
--- import Data.Extensible hiding (Member)
 import Env
 import Control.Monad
 import Effects.Dist

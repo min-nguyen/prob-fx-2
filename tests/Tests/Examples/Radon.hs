@@ -56,7 +56,7 @@ radonModel n_counties floor_x county_idx = do
 
 mkRecordHLR :: ([Double], [Double], [Double], [Double], [Double], [Double], [Double]) -> Env HLREnv
 mkRecordHLR (mua, mub, siga, sigb, a, b, lograds) =
-   #mu_a := mua <:> #mu_b := mub <:> #sigma_a := siga <:> #sigma_b := sigb <:> #a := a <:> #b := b <:> #log_radon := lograds <:> ENil
+   #mu_a := mua <:> #mu_b := mub <:> #sigma_a := siga <:> #sigma_b := sigb <:> #a := a <:> #b := b <:> #log_radon := lograds <:> enil
 
 simRadon :: Sampler ([Double], [Double])
 simRadon = do
@@ -72,7 +72,7 @@ simRadon = do
 mhRadonpost :: Sampler ([Double], [Double])
 mhRadonpost = do
   let env_in = mkRecordHLR ([], [], [], [], [], [], logRadon)
-  env_outs <- MH.mh 2000 (radonModel n_counties dataFloorValues countyIdx) ( env_in) ["mu_a", "mu_b", "sigma_a", "sigma_b"]
+  env_outs <- MH.mh 2000 (radonModel n_counties dataFloorValues countyIdx) env_in ["mu_a", "mu_b", "sigma_a", "sigma_b"]
   let mu_a   = concatMap (get #mu_a)  env_outs
       mu_b   = concatMap (get #mu_b)  env_outs
   return (mu_a, mu_b)
@@ -81,7 +81,7 @@ mhRadonpost = do
 mhRadon :: Int -> Sampler ([Double], [Double])
 mhRadon n_mhsteps = do
   let env_in = mkRecordHLR ([], [], [], [], [], [], logRadon)
-  env_outs <- MH.mh n_mhsteps (radonModel n_counties dataFloorValues countyIdx) ( env_in) ["mu_a", "mu_b", "sigma_a", "sigma_b"]
+  env_outs <- MH.mh n_mhsteps (radonModel n_counties dataFloorValues countyIdx) env_in ["mu_a", "mu_b", "sigma_a", "sigma_b"]
   let env_pred   = head env_outs
       as         = get #a env_pred
       bs         = get #b env_pred
