@@ -21,7 +21,7 @@ def main():
 
   data = ast.literal_eval(f.read().replace('-Infinity', '-2e308')) #
   color_map = plt.cm.get_cmap('Blues')
-  if arg == "simLinRegr":
+  if arg in ["simLinRegr", "simLinRegrs"]:
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
     xs = xys[0]
@@ -31,7 +31,7 @@ def main():
     plt.ylabel('y data points')
     plt.title('Linear regression')
     
-  if arg == "lwLinRegr":
+  if arg in ["lwLinRegr", "lwLinRegrs"]:
     mus = [d[0] for d in data]
     ps  = [d[1] for d in data]
     fig1, axs1 = plt.subplots(nrows=1)
@@ -40,15 +40,21 @@ def main():
     axs1.scatter(mus, ps)
     axs1.set_title('Linear regression - Likelihood Weighting')
     
-  if arg == "mhLinRegr":
-    mus = data
+  if arg in ["mhLinRegr", "mhLinRegrs"]:
+    mus = data[0]
+    cs  = data[1]
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("mu values", fontsize=12)
     axs1.set_ylabel("frequency")
     axs1.hist(mus, bins=25)
     axs1.set_title('Linear regression - Metropolis Hastings')
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("c values", fontsize=12)
+    axs1.set_ylabel("frequency")
+    axs1.hist(cs, bins=25)
+    axs1.set_title('Linear regression - Metropolis Hastings')
     
-  if arg == "simSIR" or arg == "simSIRS":
+  if arg in ["simSIR", "simSIRS"]:
     # y axis
     sir_values   = np.array(data[0])
     obs_infected = np.array(data[1])

@@ -19,22 +19,31 @@ availableCommands = "[simLinRegr, lwLinRegr, mhLinRegr, simSIR, simSIRS, simSIRS
 
 parseArgs :: String -> IO ()
 parseArgs cmd = case cmd of
-  "simLinRegr"  -> sampleIO simulateLinRegr >>= printThenWrite
-  "lwLinRegr"   -> sampleIO inferLwLinRegr >>= printThenWrite
-  "simSIR"      -> sampleIO simulateSIR >>= printThenWrite
-  "simSIRS"     -> sampleIO simulateSIRS >>= printThenWrite
-  "simSIRSV"    -> sampleIO simulateSIRSV >>= printThenWrite
-  "mhSIR"       -> sampleIO inferSIR >>= printThenWrite
+  "simLinRegr"  -> sampleIOFixed (simLinRegr 100) >>= printThenWrite
+  "lwLinRegr"   -> sampleIOFixed (lwLinRegr 200 100) >>= printThenWrite
+  "mhLinRegr"   -> sampleIOFixed (mhLinRegr 100 100) >>= printThenWrite
 
-  "mhLinRegr"   -> sampleIO inferMhLinRegr >>= printThenWrite
-  "simLogRegr"  -> sampleIO simulateLogRegr >>= printThenWrite
-  "lwLogRegr"   -> sampleIO inferLwLogRegr >>= printThenWrite
-  "mhLogRegr"   -> sampleIO inferMHLogRegr >>= printThenWrite
-  "simLDA"      -> sampleIO simLDA >>= printThenWrite
-  "mhLDA"       -> sampleIO mhLDA >>= printThenWrite
-  "simRadon"    -> sampleIO simRadon >>= printThenWrite
-  "mhRadon"     -> sampleIO mhRadon >>= printThenWrite
-  "mhSchool"    -> sampleIO mhSchool >>= printThenWrite
+  "simLinRegrs"  -> sampleIOFixed (simLinRegrs 100) >>= printThenWrite
+  "lwLinRegrs"   -> sampleIOFixed (lwLinRegrs 3000 10)>>= printThenWrite
+  "mhLinRegrs"   -> sampleIOFixed (mhLinRegrs 10000 50) >>= printThenWrite
+
+  "simSIR"      -> sampleIOFixed (simSIR 100) >>= printThenWrite
+  "simSIRS"     -> sampleIOFixed (simSIRS 100) >>= printThenWrite
+  "simSIRSV"    -> sampleIOFixed (simSIRSV 100) >>= printThenWrite
+  "mhSIR"       -> sampleIOFixed (mhSIR 10000 100) >>= printThenWrite
+
+  "simLogRegr"  -> sampleIOFixed (simLogRegr 50) >>= printThenWrite
+  "lwLogRegr"   -> sampleIOFixed (lwLogRegr 20000 50) >>= printThenWrite
+  "mhLogRegr"   -> sampleIOFixed (mhLogRegr 50000 50) >>= printThenWrite
+
+  "simLDA"      -> sampleIOFixed (simLDA 100) >>= printThenWrite
+  "mhLDA"       -> sampleIOFixed (mhLDA 500 100) >>= printThenWrite
+
+  "simRadon"    -> sampleIOFixed simRadon >>= printThenWrite
+  "mhRadon"     -> sampleIOFixed (mhRadon 1500) >>= printThenWrite
+
+  "mhSchool"    -> sampleIOFixed (mhSchool 10000) >>= printThenWrite
+
   _             -> putStrLn $ "unrecognised command: " ++ cmd ++ "\n"
                            ++ "available commands: " ++ availableCommands
 

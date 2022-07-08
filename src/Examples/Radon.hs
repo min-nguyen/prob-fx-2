@@ -78,10 +78,10 @@ mhRadonpost = do
   return (mu_a, mu_b)
 
 -- Return predictive posterior for intercepts and gradients
-mhRadon :: Sampler ([Double], [Double])
-mhRadon = do
+mhRadon :: Int -> Sampler ([Double], [Double])
+mhRadon n_mhsteps = do
   let env_in = mkRecordHLR ([], [], [], [], [], [], logRadon)
-  env_outs <- MH.mh 1500 (radonModel n_counties dataFloorValues countyIdx) ((), env_in) ["mu_a", "mu_b", "sigma_a", "sigma_b"]
+  env_outs <- MH.mh n_mhsteps (radonModel n_counties dataFloorValues countyIdx) ((), env_in) ["mu_a", "mu_b", "sigma_a", "sigma_b"]
   let env_pred   = head env_outs
       as         = get #a env_pred
       bs         = get #b env_pred
