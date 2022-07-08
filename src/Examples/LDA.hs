@@ -85,7 +85,7 @@ simLDA n_words = do
                #φ := [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],
                       [1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]] <:>
                #w := [] <:> nil
-  (words, env_out) <- SIM.simulate (topicModel vocab 2) env_in n_words
+  (words, env_out) <- SIM.simulate (topicModel vocab 2 n_words) env_in 
   return words
 
 -- | Inference from topic model

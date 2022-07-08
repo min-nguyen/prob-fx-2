@@ -53,7 +53,7 @@ hmmW n x = do
 simHMMw :: Int -> Sampler [(Int, Int)]
 simHMMw hmm_length = do
   let env = #trans_p := [0.9] <:> #obs_p := [0.2] <:> #y := [] <:> nil
-  bs <- SIM.simulate (handleWriterM . hmmW hmm_length) env 0
+  bs <- SIM.simulate (handleWriterM $ hmmW hmm_length 0) env 
 
   let sim_envs_out  = snd bs
       xs :: [Int]   = (snd . fst) bs

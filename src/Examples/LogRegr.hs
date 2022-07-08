@@ -45,7 +45,7 @@ simLogRegr :: Int -> Sampler [(Double, Bool)]
 simLogRegr n_datapoints = do
   let xs = map ((/ fromIntegral n_datapoints) . fromIntegral) [(-n_datapoints) .. n_datapoints]
       env = (#label := []) <:> (#m := [8]) <:> (#b := [-3]) <:> nil
-  ys_envs <- mapM (SIM.simulate logRegr env) xs
+  ys_envs <- mapM (\x -> SIM.simulate (logRegr x) env) xs
   let ys = map fst ys_envs
   pure (zip xs ys)
 
@@ -95,7 +95,7 @@ simLogRegrs n_datapoints = do
   -- Define a model environment to simulate from, providing observed values for the model parameters
       env = (#label := []) <:> (#m := [8]) <:> (#b := [-3]) <:> nil
   -- Call simulate on logistic regression
-  (ys, envs) <- SIM.simulate logRegrs env xs
+  (ys, envs) <- SIM.simulate (logRegrs xs) env 
   return (zip xs ys)
 
 -- | Likelihood-weighting over logistic regression

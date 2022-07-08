@@ -93,7 +93,7 @@ simSIR :: Int -> Sampler ([(Int, Int, Int)], [Reported])
 simSIR n_days = do
   let sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #ρ := [0.3] <:> #𝜉 := [] <:> nil
       sir_0      = Popl {s = 762, i = 1, r = 0}
-  ((_, sir_trace), sim_env_out) <- SIM.simulate (hmmSIR' n_days) sim_env_in sir_0
+  ((_, sir_trace), sim_env_out) <- SIM.simulate (hmmSIR' n_days sir_0) sim_env_in 
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
       sirs = map (\(Popl s i recov) -> (s, i, recov)) sir_trace
   return (sirs, 𝜉s)
@@ -152,7 +152,7 @@ simSIRS :: Int -> Sampler ([(Int, Int, Int)], [Reported])
 simSIRS n_days = do
   let sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #η := [0.05] <:> #ρ := [0.3] <:> #𝜉 := [] <:> nil
       sir_0      = Popl {s = 762, i = 1, r = 0}
-  ((_, sir_trace), sim_env_out) <- SIM.simulate (hmmSIRS n_days) sim_env_in sir_0
+  ((_, sir_trace), sim_env_out) <- SIM.simulate (hmmSIRS n_days sir_0) sim_env_in 
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
       sirs = map (\(Popl s i recov) -> (s, i, recov)) sir_trace
   return (sirs, 𝜉s)
@@ -227,7 +227,7 @@ simSIRSV :: Int -> Sampler ([(Int, Int, Int, Int)], [Reported])
 simSIRSV n_days = do
   let sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #η := [0.05] <:> #ω := [0.02] <:> #ρ := [0.3] <:> #𝜉 := [] <:> nil
       sirv_0      = PoplV {s' = 762, i' = 1, r' = 0, v' = 0}
-  ((_, sirv_trace), sim_env_out) <- SIM.simulate (hmmSIRSV n_days) sim_env_in sirv_0
+  ((_, sirv_trace), sim_env_out) <- SIM.simulate (hmmSIRSV n_days sirv_0) sim_env_in 
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
       sirvs = map (\(PoplV s i recov v) -> (s, i, recov, v)) sirv_trace
   return (sirvs, 𝜉s)

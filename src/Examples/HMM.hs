@@ -46,15 +46,13 @@ simHMM :: Sampler (Int, Env HMMEnv)
 simHMM = do
   let x_0 = 0; n = 10
       env = #trans_p := [0.5] <:> #obs_p := [0.8] <:> #y := [] <:> nil
-  SIM.simulate (hmmFor n) env 0
+  SIM.simulate (hmmFor n 0) env 
 
 lwHMM :: Sampler  [(Env HMMEnv, Double)]
 lwHMM   = do
   let x_0 = 0; n = 10
       env = #trans_p := [] <:> #obs_p := [] <:> #y := [0, 1, 1, 3, 4, 5, 5, 5, 6, 5] <:> nil
   LW.lw 100 (hmmFor n) (x_0, env)
-
-
 
 -- ||| (Section 2, Fig 3) Modular HMM 
 transModel ::  Double -> Int -> Model env ts Int
@@ -127,7 +125,7 @@ hmmW n x = do
 simHMMw :: Int -> Sampler [(Int, Int)]
 simHMMw hmm_length = do
   let env = #trans_p := [0.9] <:> #obs_p := [0.2] <:> #y := [] <:> nil
-  bs <- SIM.simulate (handleWriterM . hmmW hmm_length) env 0
+  bs <- SIM.simulate (handleWriterM $ hmmW hmm_length 0) env 
 
   let sim_envs_out  = snd bs
       xs :: [Int]   = (snd . fst) bs

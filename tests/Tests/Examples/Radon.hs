@@ -34,8 +34,8 @@ radonPrior = do
 
 -- n counties = 85, len(floor_x) = 919, len(county_idx) = 919
 radonModel :: Observables env '["mu_a", "mu_b", "sigma_a", "sigma_b", "a", "b", "log_radon"] Double
-  => Int -> [Int] -> [Int] -> () -> Model env es [Double]
-radonModel n_counties floor_x county_idx _ = do
+  => Int -> [Int] -> [Int] -> Model env es [Double]
+radonModel n_counties floor_x county_idx = do
   (mu_a, sigma_a, mu_b, sigma_b) <- radonPrior
   -- Intercept for each county
   a <- replicateM n_counties (normal mu_a sigma_a #a)  -- length = 85
@@ -61,7 +61,7 @@ mkRecordHLR (mua, mub, siga, sigb, a, b, lograds) =
 simRadon :: Sampler ([Double], [Double])
 simRadon = do
   let env_in = mkRecordHLR ([1.45], [-0.68], [0.3], [0.2], [], [], [])
-  (bs, env_out) <- SIM.simulate  (radonModel n_counties dataFloorValues countyIdx) env_in  ()
+  (bs, env_out) <- SIM.simulate  (radonModel n_counties dataFloorValues countyIdx) env_in 
   let basementIdxs      = findIndexes dataFloorValues 0
       noBasementIdxs    = findIndexes dataFloorValues 1
       basementPoints    = map (bs !!) basementIdxs
@@ -72,7 +72,7 @@ simRadon = do
 mhRadonpost :: Sampler ([Double], [Double])
 mhRadonpost = do
   let env_in = mkRecordHLR ([], [], [], [], [], [], logRadon)
-  env_outs <- MH.mh 2000 (radonModel n_counties dataFloorValues countyIdx) ((), env_in) ["mu_a", "mu_b", "sigma_a", "sigma_b"]
+  env_outs <- MH.mh 2000 (radonModel n_counties dataFloorValues ) (countyIdx, env_in) ["mu_a", "mu_b", "sigma_a", "sigma_b"]
   let mu_a   = concatMap (get #mu_a)  env_outs
       mu_b   = concatMap (get #mu_b)  env_outs
   return (mu_a, mu_b)
@@ -81,7 +81,7 @@ mhRadonpost = do
 mhRadon :: Int -> Sampler ([Double], [Double])
 mhRadon n_mhsteps = do
   let env_in = mkRecordHLR ([], [], [], [], [], [], logRadon)
-  env_outs <- MH.mh n_mhsteps (radonModel n_counties dataFloorValues countyIdx) ((), env_in) ["mu_a", "mu_b", "sigma_a", "sigma_b"]
+  env_outs <- MH.mh n_mhsteps (radonModel n_counties dataFloorValues) (countyIdx, env_in) ["mu_a", "mu_b", "sigma_a", "sigma_b"]
   let env_pred   = head env_outs
       as         = get #a env_pred
       bs         = get #b env_pred

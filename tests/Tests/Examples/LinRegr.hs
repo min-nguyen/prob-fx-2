@@ -49,7 +49,7 @@ simLinRegr :: Int -> Sampler [(Double, Double)]
 simLinRegr n_datapoints = do
   let xs  = [0 .. fromIntegral n_datapoints]
       env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> nil
-  ys_envs <- mapM (SIM.simulate linRegr env) xs
+  ys_envs <- mapM (\x -> SIM.simulate (linRegr x) env) xs
   let ys = map fst ys_envs
   pure (zip xs ys)
 
@@ -93,7 +93,7 @@ simLinRegrs :: Int -> Sampler [(Double, Double)]
 simLinRegrs n_datapoints = do
   let xs  = [0 .. fromIntegral n_datapoints]
       env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> nil
-  bs :: ([Double], Env LinRegrEnv) <- SIM.simulate linRegrs env xs
+  bs :: ([Double], Env LinRegrEnv) <- SIM.simulate (linRegrs xs) env 
   pure $ zip xs (fst bs)
 
 lwLinRegrs ::  Int -> Int ->  Sampler [(Double, Double)]
