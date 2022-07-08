@@ -31,41 +31,52 @@ import Effects.State
 import Unsafe.Coerce
 import Inference.SIM (handleObs)
 
+
 -- ||| (Section 6.2.2) Metropolis-Hastings
 mh :: (FromSTrace env, es ~ '[ObsReader env, Dist, Lift Sampler])
-  => 
+  =>
   -- | Number of MH iterations
-     Int                    
-  -- | A model awaiting an input
-  -> (b -> Model env es a)  
-  -- | A model input and model environment (containing observed values to condition on)
-  -> (b, Env env)           
+     Int
+  -- | A model
+  -> Model env es a
+  -- | A model environment (containing observed values to condition on)
+  -> Env env
   -- | An optional list of observable variable names (strings) to specify sample sites of interest (e.g. for interest in sampling #mu, provide "mu"). This causes other variables to not be resampled unless necessary.
-  -> [Tag]                  
+  -> [Tag]
   -- | Trace of output environments, containing values sampled for each MH iteration
-  -> Sampler [Env env]     
-mh n model  (x_0, env_0) tags = do
-  -- Perform initial run of MH with no proposal sample site
-  y0 <- runMH env_0 Map.empty ("", 0) (model x_0)
-  -- Perform n MH iterations
-  mhTrace <- foldl (>=>) return (replicate n (mhStep env_0 (model x_0) tags)) [y0]
-  -- Return sample trace
-  return $ map (\((_, strace), _) -> fromSTrace strace) mhTrace
+  -> Sampler [Env env]
+mh n model env tags  = do
+  let prog = (handleDist . handleObsRead env) (runModel model)
+  mhTrace <- mhInternal n prog Map.empty tags
+  pure (map (\((_, env_out), _) -> fromSTrace env_out) mhTrace)
+
+mhInternal :: (es ~ [Observe, Sample, Lift Sampler])
+   => Int                              -- Number of mhSteps
+   -> Prog es a                        -- Model consisting of sample and observe operations
+   -> STrace                           -- Initial sample trace
+   -> [Tag]                            -- Tags indicated sample sites of interest
+   -> Sampler (MHTrace LPTrace a)      -- Trace of all accepted outputs, samples, and logps
+mhInternal n prog strace_0 tags = do
+  -- Perform initial run of mh
+  let α_0 = ("", 0)
+  mhCtx_0 <- runMH strace_0 α_0 prog
+  -- A function performing n mhSteps using initial mhCtx. 
+  -- Note: most recent samples are at the front (head) of the trace
+  foldl (>=>) pure (replicate n (mhStep prog tags acceptMH)) [mhCtx_0]
 
 -- | Perform one step of MH
-mhStep :: (es ~ '[ObsReader env, Dist, Lift Sampler])
-  => 
+mhStep :: (es ~ '[Observe, Sample,  Lift Sampler])
+  =>
   -- | Model environment
-     Env env                  
-  -- | Model
-  -> Model env es a            
+     Prog es a
   -- | Tags indicating sample sites of interest
-  -> [Tag]                     
+  -> [Tag]
+   -> Accept p a
   -- | Trace of previous MH outputs
-  -> [((a, STrace), LPTrace)]  
+  -> [((a, STrace), p)]
   -- | Updated trace of MH outputs
-  -> Sampler [((a, STrace), LPTrace)]
-mhStep env model tags trace = do
+  -> Sampler [((a, STrace), p)]
+mhStep model tags accepter trace = do
   let -- Get previous mh output
       ((x, samples), logps) = head trace
 
@@ -75,66 +86,62 @@ mhStep env model tags trace = do
   α_samp_ind <- sample $ DiscrUniformDist 0 (Map.size sampleSites - 1)
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
 
-  ((x', samples'), logps') <- runMH env samples α_samp model
+  ((x', samples'), logps') <- runMH samples α_samp model
 
-  acceptance_ratio <- liftS $ accept α_samp samples samples' logps logps'
+  (mhCtx', acceptance_ratio) <- accepter α_samp ((x', samples'), logps') ((x, samples), logps)
   u <- sample (UniformDist 0 1)
 
   if u < acceptance_ratio
-    then do return (((x', samples'), logps'):trace)
+    then do return (mhCtx':trace)
     else do return trace
 
--- | MH handler
-runMH :: (es ~ '[ObsReader env, Dist, Lift Sampler])
-  => 
-  -- | Model environment
-     Env env       
+-- ||| MH handler
+runMH :: (es ~ '[Observe, Sample,  Lift Sampler])
+  =>
   -- | Sample trace of previous MH iteration
-  -> STrace         
+     STrace
   -- | Sample address of interest
-  -> Addr           
+  -> Addr
   -- | Model
-  -> Model env es a 
+  -> Prog es a
   -> Sampler ((a, STrace), LPTrace)
-runMH env strace α_samp =
-    handleLift . handleSamp strace α_samp . handleObs
-   . traceLPs . traceSamples . handleCore env
+runMH strace α_samp = handleLift . handleSamp strace α_samp . handleObs . traceLPs . traceSamples
 
-pattern Samp :: Member Sample es => PrimDist x -> Addr -> EffectSum es x
-pattern Samp d α <- (prj  -> Just (Sample d α))
-
-pattern Obs :: Member Observe es => PrimDist x -> x -> Addr -> EffectSum es x
-pattern Obs d y α <- (prj -> Just (Observe d y α))
-
--- | Selectively sample
+-- ||| Selectively sample
 handleSamp :: STrace -> Addr -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
 handleSamp strace α_samp (Op op k) = case discharge op of
   Right (Sample (PrimDistDict d) α) ->
-        do x <- lookupSample strace d α α_samp
-           handleSamp strace α_samp (k x)
+        do  let maybe_y = if α == α_samp then Nothing else lookupSample strace d α
+            case maybe_y of
+                Nothing -> lift (sample d) >>= (handleSamp strace α_samp . k)
+                Just x  -> (handleSamp strace α_samp . k) x
   _  -> error "Impossible: Nothing cannot occur"
 handleSamp _ _ (Val x) = return x
 
--- | Look up the sampled value for an address from the sample trace
-lookupSample :: Show a => OpenSum.Member a PrimVal => STrace -> PrimDist a -> Addr -> Addr -> Prog '[Lift Sampler] a
-lookupSample samples d α α_samp
-  | α == α_samp = lift (sample d)
-  | otherwise   =
-      case Map.lookup α samples of
-        Just (ErasedPrimDist d', x) -> do
-          if d == unsafeCoerce d'
-            then return (fromJust $ OpenSum.prj x)
-            else lift (sample d)
-        Nothing -> lift (sample d)
+lookupSample :: Show a => OpenSum.Member a PrimVal => STrace -> PrimDist a -> Addr -> Maybe a
+lookupSample strace d α = do
+    (ErasedPrimDist d', x) <- Map.lookup α strace
+    if d == unsafeCoerce d'
+      then OpenSum.prj x
+      else Nothing
+
+type MHTrace p a = [((a, STrace), p)]
+
+type MHCtx p a = ((a, STrace), p)
+
+type Accept p a = Addr                        -- proposal sample address
+               -> MHCtx LPTrace a             -- proposed mh ctx, parameterised by log probability map
+               -> MHCtx p a                   -- previous mh ctx, parameterised by arbitrary probability representation p
+               -> Sampler (MHCtx p a, Double) -- (proposed mh ctx using probability representation p, acceptance ratio)
 
 -- | Compute acceptance probability
-accept :: Addr -> STrace -> STrace -> LPTrace -> LPTrace -> IO Double
-accept x0 _Ⲭ _Ⲭ' logℙ logℙ' = do
-  let _X'sampled = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ' \\ Map.keysSet _Ⲭ)
-      _Xsampled  = Set.singleton x0 `Set.union` (Map.keysSet _Ⲭ \\ Map.keysSet _Ⲭ')
-  let dom_logα   = log (fromIntegral $ Map.size _Ⲭ) - log (fromIntegral $ Map.size _Ⲭ')
-  let _Xlogα     = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ))
-                         0 (Map.keysSet logℙ \\ _Xsampled)
-  let _X'logα    = foldl (\logα v -> logα + fromJust (Map.lookup v logℙ'))
-                         0 (Map.keysSet logℙ' \\ _X'sampled)
-  return $ exp (dom_logα + _X'logα - _Xlogα)
+acceptMH :: Accept LPTrace a
+acceptMH x0 ((a, strace'), lptrace') ((_, strace), lptrace)  = do
+  let sampled' = Set.singleton x0 `Set.union` (Map.keysSet strace' \\ Map.keysSet strace)
+      sampled  = Set.singleton x0 `Set.union` (Map.keysSet strace \\ Map.keysSet strace')
+      dom_logα = log (fromIntegral $ Map.size strace) - log (fromIntegral $ Map.size strace')
+      logα     = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace))
+                         0 (Map.keysSet lptrace \\ sampled)
+      logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
+                         0 (Map.keysSet lptrace' \\ sampled')
+  pure (((a, strace'), lptrace'), exp (dom_logα + logα' - logα))

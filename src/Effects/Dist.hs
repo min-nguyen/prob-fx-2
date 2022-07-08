@@ -43,15 +43,18 @@ data Dist a = Dist { getPrimDist :: PrimDist a, getObs :: Maybe a, getTag :: May
 -- ||| (Section 5.3) Handling Distributions
 data Sample a where
   Sample  :: PrimDist a -> Addr -> Sample a
-  
-pattern Samp :: (Member Sample es) => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> Addr -> EffectSum es x
-pattern Samp d α <- (prj -> Just (Sample (PrimDistDict d) α))
+
+pattern SampPrj :: (Member Sample es) => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> Addr -> EffectSum es x
+pattern SampPrj d α <- (prj -> Just (Sample (PrimDistDict d) α))
+
+pattern SampDis :: (Show x, OpenSum.Member x PrimVal) => PrimDist x -> Addr -> EffectSum (Sample : es) x
+pattern SampDis d α <- (discharge -> Right (Sample (PrimDistDict d) α))
 
 data Observe a where
   Observe :: PrimDist a -> a -> Addr -> Observe a
 
-pattern Obs :: (Member Observe es) => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> x -> Addr -> EffectSum es x
-pattern Obs d y α <- (prj -> Just (Observe (PrimDistDict d) y α))
+pattern ObsPrj :: (Member Observe es) => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> x -> Addr -> EffectSum es x
+pattern ObsPrj d y α <- (prj -> Just (Observe (PrimDistDict d) y α))
 
 -- | Interpret Dist to Sample or Observe, and add address
 handleDist :: Prog (Dist : es) a -> Prog (Observe : Sample : es) a

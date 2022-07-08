@@ -40,7 +40,7 @@ parseArgs cmd = case cmd of
   "simSIR"      -> sampleIOFixed (simSIR 100) >>= printThenWrite
   "simSIRS"     -> sampleIOFixed (simSIRS 100) >>= printThenWrite
   "simSIRSV"    -> sampleIOFixed (simSIRSV 100) >>= printThenWrite
-  "mhSIR"       -> sampleIOFixed (mhSIR 10000 100) >>= printThenWrite
+  "mhSIR"       -> sampleIOFixed (mhSIR 50000 100) >>= printThenWrite
 
   "simLDA"      -> sampleIOFixed (simLDA 100) >>= printThenWrite
   "mhLDA"       -> sampleIOFixed (mhLDA 500 100) >>= printThenWrite

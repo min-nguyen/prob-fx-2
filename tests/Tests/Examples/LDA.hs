@@ -98,7 +98,7 @@ mhLDA n_mhsteps n_words = do
   -- Do MH inference over the topic model using the above data
   let n_topics  = 2
       env_mh_in = #θ := [] <:>  #φ := [] <:> #w := topic_data <:> nil
-  env_mh_outs <- MH.mh n_mhsteps (topicModel vocab n_topics) (n_words, env_mh_in) ["φ", "θ"]
+  env_mh_outs <- MH.mh n_mhsteps (topicModel vocab n_topics n_words) ( env_mh_in) ["φ", "θ"]
   -- Draw the most recent sampled parameters from MH
   let env_pred   = head env_mh_outs
       θs         = get #θ env_pred

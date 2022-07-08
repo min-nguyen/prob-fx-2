@@ -104,7 +104,7 @@ mhSIR n_mhsteps n_days = do
   𝜉s <- snd <$> simSIR n_days
   let mh_env_in = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> nil
       sir_0           = Popl {s = 762, i = 1, r = 0}
-  mhTrace <- MH.mh n_mhsteps (hmmSIR' n_days) (sir_0, mh_env_in) ["β", "ρ"]
+  mhTrace <- MH.mh n_mhsteps (hmmSIR' n_days sir_0) (mh_env_in) ["β", "ρ"]
   let ρs = concatMap (get #ρ) mhTrace
       βs = concatMap (get #β) mhTrace
   return (ρs, βs)

@@ -39,7 +39,7 @@ mhSchool n_mhsteps = do
       ys        = [28, 8, -3,   7, -1,  1, 18, 12]
       sigmas    = [15, 10, 16, 11,  9, 11, 10, 18]
       env       = #mu := [] <:> #theta := [] <:> #y := ys <:> ENil
-  env_mh_out <- MH.mh n_mhsteps (schoolModel n_schools ) (sigmas, env) ["mu", "theta"]
+  env_mh_out <- MH.mh n_mhsteps (schoolModel n_schools sigmas) ( env) ["mu", "theta"]
   let mus    = concatMap (get #mu) env_mh_out
       thetas = concatMap (get #theta) env_mh_out
   return (mus, thetas)

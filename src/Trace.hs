@@ -72,9 +72,9 @@ traceLPs = handleState Map.empty . storeLPs
         storeLPs (Val x) = pure x
         storeLPs (Op u k) = do
           case u of
-            Samp d α
+            SampPrj d α
               -> Op (weaken u) (\x -> updateLPTrace α d x >>
                                       storeLPs (k x))
-            Obs d y α
+            ObsPrj d y α
               -> Op (weaken u) (\x -> updateLPTrace α d x >> storeLPs (k x))
             _ -> Op (weaken u) (storeLPs . k)
