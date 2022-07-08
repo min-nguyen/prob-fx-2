@@ -74,6 +74,16 @@ testMhLogRegrs = TestCase $ do
   output <- sampleIOFixed (mhLogRegrs 1000 10) 
   assertEqual "Testing (mhLogRegrs 1000 10)" output mhLogRegrsExpected
 
+testSimHMM :: Test
+testSimHMM = TestCase $ do
+  output <- sampleIOFixed (simHMMw 20)
+  assertEqual "Testing (simHMM 20)" output simHMMExpected
+
+testMhHMM :: Test
+testMhHMM = TestCase $ do
+  output <- sampleIOFixed (mhHMMw 5000 20)
+  assertEqual "Testing (mhHMMw 5000 20)" output mhHMMExpected
+
 testSimSIR :: Test
 testSimSIR = TestCase $ do
   output <- sampleIOFixed (simSIR 100)
@@ -110,7 +120,7 @@ testMhSchool = TestCase $ do
   assertEqual "Testing (mhSchool 1000)" output mhSchoolExpected
 
 tests :: Test
-tests = TestList [testSimLinRegr, testLwLinRegr, testMhLinRegr, testSimLinRegrs, testLwLinRegrs, testMhLinRegrs, testSimLogRegr,testLwLogRegr, testMhLogRegr, testSimLogRegrs, testLwLogRegrs, testMhLogRegrs, testSimSIR, testMhSIR, testSimLDA, testMhLDA, testSimRadon, testMhRadon, testMhSchool]
+tests = TestList [testSimLinRegr, testLwLinRegr, testMhLinRegr, testSimLinRegrs, testLwLinRegrs, testMhLinRegrs, testSimLogRegr,testLwLogRegr, testMhLogRegr, testSimLogRegrs, testLwLogRegrs, testMhLogRegrs, testSimHMM, testMhHMM, testSimSIR, testMhSIR, testSimLDA, testMhLDA, testSimRadon, testMhRadon, testMhSchool]
 
 main :: IO ()
 main = do

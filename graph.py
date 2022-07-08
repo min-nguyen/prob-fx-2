@@ -181,6 +181,31 @@ def main():
     axs2.hist(b_samples, bins=50)
     axs2.set_title('Logistic regression - Metropolis Hastings Posterior')
     
+  if arg == "simHMM":
+    xs = [d[0] for d in data]
+    ys = [d[1] for d in data]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("trans state")
+    axs1.set_ylabel("obs state")
+    axs1.scatter(xs, ys, cmap=color_map)
+    axs1.set_title('HMM - Simulation')
+    plt.show()
+  if arg == "mhHMM":
+    # Note : this works less well for certain parameters of trans_p and obs_p used for the training data
+    trans_ps_unique = data[0]
+    obs_ps_unique   = data[1]
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("trans_ps values")
+    axs1.set_ylabel("frequency")
+    axs1.hist(trans_ps_unique, bins=50)
+    axs1.set_title('HMM - Metropolis Hastings Posterior (Trans P)')
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel("obs_ps values")
+    axs2.set_ylabel("frequency")
+    axs2.hist(obs_ps_unique, bins=50)
+    axs2.set_title('HMM - Metropolis Hastings Posterior (Obs P)')
+    plt.show()
+
   if arg == "simLDA":
     words = list(np.array(data).ravel())
     _, ax = plt.subplots(nrows=1)
