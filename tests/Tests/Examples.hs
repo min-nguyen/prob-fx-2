@@ -1,10 +1,10 @@
-module Tests.Examples (module Tests.Examples.School, module Tests.Examples.SIR, module Tests.Examples.HMM, module Tests.Examples.GMM, module Tests.Examples.Radon, module Tests.Examples.LinRegr, module Tests.Examples.LDA, module Tests.Examples.LogRegr) where 
+module Tests.Examples (module Examples.School, module Examples.SIR, module Examples.HMM, module Examples.GMM, module Examples.Radon, module Examples.LinRegr, module Examples.LDA, module Examples.LogRegr) where 
 
-import Tests.Examples.School
-import Tests.Examples.SIR
-import Tests.Examples.HMM
-import Tests.Examples.GMM
-import Tests.Examples.Radon
-import Tests.Examples.LinRegr
-import Tests.Examples.LDA
-import Tests.Examples.LogRegr
+import Examples.School
+import Examples.SIR
+import Examples.HMM
+import Examples.GMM
+import Examples.Radon
+import Examples.LinRegr
+import Examples.LDA
+import Examples.LogRegr
