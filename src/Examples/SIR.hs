@@ -104,12 +104,11 @@ mhSIR n_mhsteps n_days = do
   𝜉s <- snd <$> simSIR n_days
   let mh_env_in = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> nil
       sir_0           = Popl {s = 762, i = 1, r = 0}
-  mhTrace <- MH.mh n_mhsteps (hmmSIR' n_days sir_0) (mh_env_in) ["β", "ρ"]
+  mhTrace <- MH.mh n_mhsteps (hmmSIR' n_days sir_0) mh_env_in ["β", "ρ"]
   let ρs = concatMap (get #ρ) mhTrace
       βs = concatMap (get #β) mhTrace
   return (ρs, βs)
 
- 
 -- ||| (Section 3.2) Modular Extensions to the SIR Model
 
 {- Note that the implementations below aren't as modular as we would like, due to having to redefine the data types Popl and TransParams when adding new variables to the SIR model. The file "src/Examples/SIRModular.hs" shows how one could take steps to resolve this by using extensible records. -}
