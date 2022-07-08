@@ -26,8 +26,6 @@ import Effects.State
 -- ||| (Section 6.1) Sample trace, mapping addresses of sample/observe operations to their primitive distributions and sampled values
 type STrace = Map Addr (ErasedPrimDist, OpenSum PrimVal)
 
-type Trace a = [(a, STrace)]
-
 -- | For converting sample traces, as used by simulation and inference, to output model environments
 class FromSTrace a where
   fromSTrace :: STrace -> Env a
@@ -36,13 +34,19 @@ instance FromSTrace '[] where
   fromSTrace _ = nil
 
 instance (UniqueKey x env ~ 'True, KnownSymbol x, Eq a, OpenSum.Member a PrimVal, FromSTrace env) => FromSTrace ((x := a) : env) where
-  fromSTrace sMap = ECons (extractSamples (ObsVar @x, Proxy @a) sMap) (fromSTrace sMap)
+  fromSTrace sMap = ECons (extractSTrace (ObsVar @x, Proxy @a) sMap) (fromSTrace sMap)
 
-extractSamples ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (ObsVar x, Proxy a) -> STrace -> [a]
-extractSamples (x, typ)  =
+extractSTrace ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (ObsVar x, Proxy a) -> STrace -> [a]
+extractSTrace (x, typ)  =
     map (fromJust . OpenSum.prj @a . snd . snd)
   . Map.toList
   . Map.filterWithKey (\(tag, idx) _ -> tag == varToStr x)
+
+filterSTrace :: [Tag] -> STrace -> STrace
+filterSTrace tags = Map.filterWithKey (\(tag, idx) _ -> tag `elem` tags)
+
+updateSTrace :: Show x => (Member (State STrace) es, OpenSum.Member x PrimVal) => Addr -> PrimDist x -> x -> Prog es ()
+updateSTrace α d x  = modify (Map.insert α (ErasedPrimDist d, OpenSum.inj x) :: STrace -> STrace)
 
 -- | Trace sampled values for each Sample operation
 traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, STrace)
@@ -54,9 +58,6 @@ traceSamples = handleState Map.empty . storeSamples
                 Dict -> do updateSTrace α d x
                            k x
           )
-
-updateSTrace :: Show x => (Member (State STrace) es, OpenSum.Member x PrimVal) => Addr -> PrimDist x -> x -> Prog es ()
-updateSTrace α d x  = modify (Map.insert α (ErasedPrimDist d, OpenSum.inj x) :: STrace -> STrace)
 
 -- ||| (Section 6.2.2) Log probability trace, mapping addresses of sample/observe operations to their log probabilities
 type LPTrace = Map Addr Double

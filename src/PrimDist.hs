@@ -60,6 +60,33 @@ data PrimDist a where
   DirichletDist     :: [Double] -> PrimDist [Double]
   DeterministicDist :: (Eq a, Show a, OpenSum.Member a PrimVal) => a -> PrimDist a
 
+-- | For constraining the output types of distributions
+type PrimVal = '[Int, Double, [Double], Bool, String]
+
+data Dict (a :: Constraint) where
+  Dict :: a => Dict a
+
+primDistDict :: PrimDist x -> Dict (Show x, OpenSum.Member x PrimVal)
+primDistDict d = case d of
+  HalfCauchyDist {} -> Dict
+  CauchyDist {} -> Dict
+  NormalDist {} -> Dict
+  HalfNormalDist  {} -> Dict
+  UniformDist  {} -> Dict
+  DiscrUniformDist {} -> Dict
+  GammaDist {} -> Dict
+  BetaDist {} -> Dict
+  BinomialDist {} -> Dict
+  BernoulliDist {} -> Dict
+  CategoricalDist {} -> Dict
+  DiscreteDist {} -> Dict
+  PoissonDist {} -> Dict
+  DirichletDist {} -> Dict
+  DeterministicDist {} -> Dict
+
+pattern PrimDistDict :: () => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> PrimDist x
+pattern PrimDistDict d <- d@(primDistDict -> Dict)
+
 instance Eq (PrimDist a) where
   (==) (NormalDist m s) (NormalDist m' s') = m == m' && s == s'
   (==) (CauchyDist m s) (CauchyDist m' s') = m == m' && s == s'
@@ -110,40 +137,13 @@ instance Show a => Show (PrimDist a) where
   show (DeterministicDist x) =
    "DeterministicDist(" ++ show x ++ ", " ++ ")"
   
--- | For constraining the output types of distributions
-type PrimVal = '[Int, Double, [Double], Bool, String]
-
-data Dict (a :: Constraint) where
-  Dict :: a => Dict a
-
-primDistDict :: PrimDist x -> Dict (Show x, OpenSum.Member x PrimVal)
-primDistDict d = case d of
-  HalfCauchyDist {} -> Dict
-  CauchyDist {} -> Dict
-  NormalDist {} -> Dict
-  HalfNormalDist  {} -> Dict
-  UniformDist  {} -> Dict
-  DiscrUniformDist {} -> Dict
-  GammaDist {} -> Dict
-  BetaDist {} -> Dict
-  BinomialDist {} -> Dict
-  BernoulliDist {} -> Dict
-  CategoricalDist {} -> Dict
-  DiscreteDist {} -> Dict
-  PoissonDist {} -> Dict
-  DirichletDist {} -> Dict
-  DeterministicDist {} -> Dict
-
-pattern PrimDistDict :: () => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> PrimDist x
-pattern PrimDistDict d <- d@(primDistDict -> Dict)
-
 -- | For erasing the types of primitive distributions
 data ErasedPrimDist where
   ErasedPrimDist :: forall a. Show a => PrimDist a -> ErasedPrimDist
 
 instance Show ErasedPrimDist where
   show (ErasedPrimDist d) = show d
-
+  
 -- ||| (Section 6.1) Sampling functions
 sample :: PrimDist a -> Sampler a
 sample (HalfCauchyDist σ )  =
