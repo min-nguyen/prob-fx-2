@@ -1,8 +1,8 @@
-{-# LANGUAGE AllowAmbiguousTypes, PolyKinds #-}
-{-# LANGUAGE DataKinds #-}
+module Main (main) where
 
-module Main where
+import System.Exit
 
+import Test.HUnit
 import Examples.LinRegr
 import Examples.LogRegr
 import Examples.SIR
@@ -20,11 +20,11 @@ availableCommands = "[simLinRegr, lwLinRegr, mhLinRegr, simSIR, simSIRS, simSIRS
 parseArgs :: String -> IO ()
 parseArgs cmd = case cmd of
   "simLinRegr"  -> sampleIOFixed (simLinRegr 100) >>= printThenWrite
-  "lwLinRegr"   -> sampleIOFixed (lwLinRegr 200 100) >>= printThenWrite
+  "lwLinRegr"   -> sampleIOFixed (lwLinRegr 100 50) >>= printThenWrite
   "mhLinRegr"   -> sampleIOFixed (mhLinRegr 100 100) >>= printThenWrite
 
   "simLinRegrs"  -> sampleIOFixed (simLinRegrs 100) >>= printThenWrite
-  "lwLinRegrs"   -> sampleIOFixed (lwLinRegrs 3000 10)>>= printThenWrite
+  "lwLinRegrs"   -> sampleIOFixed (lwLinRegrs 1000 10) >>= printThenWrite
   "mhLinRegrs"   -> sampleIOFixed (mhLinRegrs 10000 50) >>= printThenWrite
 
   "simSIR"      -> sampleIOFixed (simSIR 100) >>= printThenWrite
@@ -32,9 +32,13 @@ parseArgs cmd = case cmd of
   "simSIRSV"    -> sampleIOFixed (simSIRSV 100) >>= printThenWrite
   "mhSIR"       -> sampleIOFixed (mhSIR 10000 100) >>= printThenWrite
 
-  "simLogRegr"  -> sampleIOFixed (simLogRegrs 50) >>= printThenWrite
-  "lwLogRegr"   -> sampleIOFixed (lwLogRegrs 20000 50) >>= printThenWrite
-  "mhLogRegr"   -> sampleIOFixed (mhLogRegrs 50000 50) >>= printThenWrite
+  "simLogRegr"  -> sampleIOFixed (simLogRegr 50) >>= printThenWrite
+  "lwLogRegr"   -> sampleIOFixed (lwLogRegr 10 10) >>= printThenWrite
+  "mhLogRegr"   -> sampleIOFixed (mhLogRegr 1000 100) >>= printThenWrite
+
+  "simLogRegrs"  -> sampleIOFixed (simLogRegrs 50) >>= printThenWrite
+  "lwLogRegrs"   -> sampleIOFixed (lwLogRegrs 100 10) >>= printThenWrite
+  "mhLogRegrs"   -> sampleIOFixed (mhLogRegrs 50000 50) >>= printThenWrite
 
   "simLDA"      -> sampleIOFixed (simLDA 100) >>= printThenWrite
   "mhLDA"       -> sampleIOFixed (mhLDA 500 100) >>= printThenWrite

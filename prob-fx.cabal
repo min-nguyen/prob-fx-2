@@ -118,6 +118,8 @@ executable tests
   -- .hs or .lhs file containing the Main module.
   main-is:             Tests.hs
 
+  other-modules:       Expected
+
   -- Other library packages from which modules are imported.
   build-depends:       base >= 4.11 && <= 4.17,
                        aeson < 2,

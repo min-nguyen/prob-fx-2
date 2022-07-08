@@ -136,7 +136,7 @@ def main():
     axs2.hist(betas_unique, bins=55)
     axs2.set_title('HMM - Metropolis Hastings Posterior (Beta)')
     
-  if arg == "simLogRegr":
+  if arg in ["simLogRegr", "simLogRegrs"]:
     xys = np.array(data)
     xs =  np.array([xy[0] for xy in xys])
     ys =  np.array([xy[1] for xy in xys])
@@ -153,16 +153,21 @@ def main():
     plt.ylabel('y - axis')
     plt.title('Logistic regression simulation')
     
-  if arg == "lwLogRegr":
-    mus = [d[0] for d in data]
+  if arg in ["lwLogRegr", "lwLogRegrs"]:
+    mus = [d[0][0] for d in data]
+    bs  = [d[0][1] for d in data]
     ps  = [d[1] for d in data]
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel('mu value')
     axs1.set_ylabel('probability')
     axs1.scatter(mus, ps)
-    axs1.set_title('Logistic regression - Likelihood Weighting')
+    fig1, axs2 = plt.subplots(nrows=1)
+    axs2.set_xlabel('b value')
+    axs2.set_ylabel('probability')
+    axs2.scatter(bs, ps)
+    axs2.set_title('Logistic regression - Likelihood Weighting')
     
-  if arg == "mhLogRegr":
+  if arg in ["mhLogRegr", "mhLogRegrs"]:
     mu_samples = [d[0] for d in data]
     b_samples  = [d[1] for d in data]
     fig1, axs1 = plt.subplots(nrows=1)
