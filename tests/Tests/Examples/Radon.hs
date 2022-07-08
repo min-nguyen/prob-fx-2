@@ -7,13 +7,13 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant return" #-}
 
-module Examples.Radon where
+module Tests.Examples.Radon where
 
 import Control.Monad
 import Model
 import Env
 import Sampler
-import Examples.DataSets
+import Tests.Examples.DataSets
 import Inference.SIM as SIM
 import Inference.MH as MH
 import Util

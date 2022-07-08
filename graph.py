@@ -157,32 +157,31 @@ def main():
     mus = [d[0][0] for d in data]
     bs  = [d[0][1] for d in data]
     ps  = [d[1] for d in data]
-    fig1, axs1 = plt.subplots(nrows=1)
+    _, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel('mu value')
     axs1.set_ylabel('probability')
     axs1.scatter(mus, ps)
-    fig1, axs2 = plt.subplots(nrows=1)
+    _, axs2 = plt.subplots(nrows=1)
     axs2.set_xlabel('b value')
     axs2.set_ylabel('probability')
     axs2.scatter(bs, ps)
     axs2.set_title('Logistic regression - Likelihood Weighting')
     
   if arg in ["mhLogRegr", "mhLogRegrs"]:
-    mu_samples = [d[0] for d in data]
-    b_samples  = [d[1] for d in data]
-    fig1, axs1 = plt.subplots(nrows=1)
+    mu_samples = data[0]
+    b_samples  = data[1]
+    _, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("mu values")
     axs1.set_ylabel("frequency")
     axs1.hist(mu_samples, bins=50)
     axs1.set_title('Logistic regression - Metropolis Hastings Posterior')
-    fig2, axs2 = plt.subplots(nrows=1)
+    _, axs2 = plt.subplots(nrows=1)
     axs2.set_xlabel("b values")
     axs2.set_ylabel("frequency")
     axs2.hist(b_samples, bins=50)
     axs2.set_title('Logistic regression - Metropolis Hastings Posterior')
     
   if arg == "simLDA":
-    print(data)
     words = list(np.array(data).ravel())
     _, ax = plt.subplots(nrows=1)
     ws = list(set(words))
@@ -195,15 +194,15 @@ def main():
     topic_ps = data[0][0]
     topic_0s = data[1][0]
     topic_1s = data[1][1]
-    fig, ax = plt.subplots(nrows=1)
+    _, ax = plt.subplots(nrows=1)
     ax.bar(['Topic 0', 'Topic 1'], topic_ps, 0.8)
     ax.set_xticklabels(['Topic 0', 'Topic 1'])
     plt.title('Document-Topic Distribution')
-    fig0, ax0 = plt.subplots(nrows=1)
+    _, ax0 = plt.subplots(nrows=1)
     ax0.bar(ws, topic_0s, 0.8)
     ax0.set_xticklabels(ws)
     plt.title('Topic-Word Distribution 0')
-    fig1, ax1 = plt.subplots(nrows=1)
+    _, ax1 = plt.subplots(nrows=1)
     ax1.bar(ws, topic_1s, 0.8)
     ax1.set_xticklabels(ws)
     plt.title('Topic-Word Distribution 1')
@@ -213,7 +212,6 @@ def main():
     basement_xs   = [0 for i in range(len(basement_ys))]
     nobasement_ys = data[1]
     nobasement_xs = [1 for i in range(len(nobasement_ys))]
-    print(data)
     plt.scatter(basement_xs, basement_ys, color="r")
     plt.scatter(nobasement_xs, nobasement_ys, color='b')
     plt.ylabel('Log radon level')

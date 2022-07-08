@@ -116,9 +116,18 @@ executable prob-fx
 
 executable tests
   -- .hs or .lhs file containing the Main module.
-  main-is:             Tests.hs
+  main-is:              Main.hs
 
-  other-modules:       Expected
+  other-modules:        Tests.Expected,
+                        Tests.Examples,
+                        Tests.Examples.DataSets,
+                        Tests.Examples.HMM,
+                        Tests.Examples.LDA,
+                        Tests.Examples.LinRegr,
+                        Tests.Examples.LogRegr,
+                        Tests.Examples.Radon,
+                        Tests.Examples.School,
+                        Tests.Examples.SIR
 
   -- Other library packages from which modules are imported.
   build-depends:       base >= 4.11 && <= 4.17,

@@ -9,7 +9,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant pure" #-}
 
-module Examples.LogRegr where
+module Tests.Examples.LogRegr where
 
 import Control.Monad
 import Model
@@ -47,7 +47,7 @@ simLogRegr n_datapoints = do
       env = (#label := []) <:> (#m := [8]) <:> (#b := [-3]) <:> nil
   ys_envs <- mapM (SIM.simulate logRegr env) xs
   let ys = map fst ys_envs
-  pure (zip xs ys)
+  pure (zip xs ys) 
 
 lwLogRegr :: Int -> Int ->  Sampler [((Double, Double), Double)]
 lwLogRegr n_samples n_datapoints = do
