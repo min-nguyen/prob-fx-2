@@ -69,17 +69,17 @@ simRadon = do
   return (basementPoints, nobasementPoints)
 
 -- Return posterior for intercepts and gradients
-mhRadonpost :: Sampler ([Double], [Double])
-mhRadonpost = do
+mhRadon :: Int -> Sampler ([Double], [Double])
+mhRadon n_mhsteps = do
   let env_in = mkRecordHLR ([], [], [], [], [], [], logRadon)
-  env_outs <- MH.mh 2000 (radonModel n_counties dataFloorValues countyIdx) env_in ["mu_a", "mu_b", "sigma_a", "sigma_b"]
+  env_outs <- MH.mh n_mhsteps (radonModel n_counties dataFloorValues countyIdx) env_in ["mu_a", "mu_b", "sigma_a", "sigma_b"]
   let mu_a   = concatMap (get #mu_a)  env_outs
       mu_b   = concatMap (get #mu_b)  env_outs
   return (mu_a, mu_b)
 
 -- Return predictive posterior for intercepts and gradients
-mhRadon :: Int -> Sampler ([Double], [Double])
-mhRadon n_mhsteps = do
+mhPredRadon :: Int -> Sampler ([Double], [Double])
+mhPredRadon n_mhsteps = do
   let env_in = mkRecordHLR ([], [], [], [], [], [], logRadon)
   env_outs <- MH.mh n_mhsteps (radonModel n_counties dataFloorValues countyIdx) env_in ["mu_a", "mu_b", "sigma_a", "sigma_b"]
   let env_pred   = head env_outs

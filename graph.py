@@ -213,9 +213,8 @@ def main():
     freqs = [ words.count(w)  for w in ws]
     ax.bar(ws, freqs)
     ax.set_xticklabels(ws)
-    
-  if arg == "mhLDA":
-    ws          = ['DNA', 'evolution', 'parsing', 'phonology']
+  if arg == "mhPredLDA":
+    ws       = ['DNA', 'evolution', 'parsing', 'phonology']
     topic_ps = data[0][0]
     topic_0s = data[1][0]
     topic_1s = data[1][1]
@@ -241,18 +240,7 @@ def main():
     plt.scatter(nobasement_xs, nobasement_ys, color='b')
     plt.ylabel('Log radon level')
     plt.xticks([0, 1], ["basement", "no basement"])
-    
   if arg == "mhRadon":
-    intercepts = data[0]
-    gradients  = data[1]
-    plt.xticks([0, 1], ["basement", "no basement"])
-    plt.ylabel('Log radon level')
-    for (m, c) in zip(gradients, intercepts):
-      x = np.linspace(0, 1, 100)
-      y = m * x + c
-      plt.plot(x, y)
-    
-  if arg == "mhRadonpost":
     mu_a       = data[0]
     mu_b       = data[1]
     fig1, axs1 = plt.subplots(nrows=1)
@@ -265,6 +253,15 @@ def main():
     axs2.set_ylabel("frequency")
     axs2.hist(mu_b, bins=50)
     axs2.set_title('HLR - Metropolis Hastings Posterior (mu_b)')
+  if arg == "mhPredRadon":
+    intercepts = data[0]
+    gradients  = data[1]
+    plt.xticks([0, 1], ["basement", "no basement"])
+    plt.ylabel('Log radon level')
+    for (m, c) in zip(gradients, intercepts):
+      x = np.linspace(0, 1, 100)
+      y = m * x + c
+      plt.plot(x, y)
     
   if arg == "mhSchool":
     mu_samples_unique   = data[0]

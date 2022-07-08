@@ -43,10 +43,11 @@ parseArgs cmd = case cmd of
   "mhSIR"       -> sampleIOFixed (mhSIR 50000 100) >>= printThenWrite
 
   "simLDA"      -> sampleIOFixed (simLDA 100) >>= printThenWrite
-  "mhLDA"       -> sampleIOFixed (mhLDA 500 100) >>= printThenWrite
+  "mhPredLDA"   -> sampleIOFixed (mhPredLDA 500 100) >>= printThenWrite
 
   "simRadon"    -> sampleIOFixed simRadon >>= printThenWrite
-  "mhRadon"     -> sampleIOFixed (mhRadon 1500) >>= printThenWrite
+  "mhRadon"     -> sampleIOFixed (mhRadon 2000) >>= printThenWrite
+  "mhPredRadon" -> sampleIOFixed (mhPredRadon 1500) >>= printThenWrite
 
   "mhSchool"    -> sampleIOFixed (mhSchool 10000) >>= printThenWrite
 

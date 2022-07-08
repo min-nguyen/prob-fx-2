@@ -93,12 +93,12 @@ simLDA n_words = do
 topic_data :: [String]
 topic_data     = ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA"]
 
-mhLDA :: Int -> Int -> Sampler ([[Double]], [[Double]])
-mhLDA n_mhsteps n_words = do
+mhPredLDA :: Int -> Int -> Sampler ([[Double]], [[Double]])
+mhPredLDA n_mhsteps n_words = do
   -- Do MH inference over the topic model using the above data
   let n_topics  = 2
       env_mh_in = #θ := [] <:>  #φ := [] <:> #w := topic_data <:> enil
-  env_mh_outs <- MH.mh n_mhsteps (topicModel vocab n_topics n_words) (env_mh_in) ["φ", "θ"]
+  env_mh_outs <- MH.mh n_mhsteps (topicModel vocab n_topics n_words) env_mh_in ["φ", "θ"]
   -- Draw the most recent sampled parameters from MH
   let env_pred   = head env_mh_outs
       θs         = get #θ env_pred
