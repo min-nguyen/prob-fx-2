@@ -40,9 +40,9 @@ data ObsVars (xs :: [Symbol]) where
 onil :: ObsVars '[]
 onil = ONil
 
-infixr 5 !:!
-(!:!) :: ObsVar x -> ObsVars xs -> ObsVars (x : xs)
-x !:! xs = OCons xs
+infixr 5 <#>
+(<#>) :: ObsVar x -> ObsVars xs -> ObsVars (x : xs)
+x <#> xs = OCons xs
 
 -- ||| Observable variable assignment 
 data Assign x a = x := a

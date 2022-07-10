@@ -4,7 +4,10 @@
 {-# LANGUAGE GADTs #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE RankNTypes #-}
 module Inference.MH where
 
 import Data.Functor.Identity
@@ -32,7 +35,7 @@ import Inference.SIM (handleObs)
 
 
 -- ||| (Section 6.2.2) Metropolis-Hastings
-mh :: FromSTrace env
+mh :: forall env es a xs. (FromSTrace env, ValidSpec env xs)
   -- | Number of MH iterations
   => Int
   -- | A model
@@ -40,12 +43,13 @@ mh :: FromSTrace env
   -- | A model environment (containing observed values to condition on)
   -> Env env
   -- | An optional list of observable variable names (strings) to specify sample sites of interest (e.g. for interest in sampling #mu, provide "mu"). This causes other variables to not be resampled unless necessary.
-  -> [Tag]
+  -> ObsVars xs
   -- | Trace of output environments, containing values sampled for each MH iteration
   -> Sampler [Env env]
-mh n model env tags  = do
+mh n model env obsvars  = do
   -- Handle model to probabilistic progrma
   let prog = (handleDist . handleObsRead env) (runModel model)
+      tags = asTags @env obsvars
   -- Run MH for n iterations
   mhTrace <- mhInternal n prog Map.empty tags
   -- Convert each iteration's sample trace to a model environment

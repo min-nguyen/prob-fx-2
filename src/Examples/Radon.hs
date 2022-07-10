@@ -72,7 +72,7 @@ simRadon = do
 mhRadon :: Int -> Sampler ([Double], [Double])
 mhRadon n_mhsteps = do
   let env_in = mkRecordHLR ([], [], [], [], [], [], logRadon)
-  env_outs <- MH.mh n_mhsteps (radonModel n_counties dataFloorValues countyIdx) env_in ["mu_a", "mu_b", "sigma_a", "sigma_b"]
+  env_outs <- MH.mh n_mhsteps (radonModel n_counties dataFloorValues countyIdx) env_in  (#mu_a <#> #mu_b <#> #sigma_a <#> #sigma_b <#> onil)
   let mu_a   = concatMap (get #mu_a)  env_outs
       mu_b   = concatMap (get #mu_b)  env_outs
   return (mu_a, mu_b)
@@ -81,7 +81,7 @@ mhRadon n_mhsteps = do
 mhPredRadon :: Int -> Sampler ([Double], [Double])
 mhPredRadon n_mhsteps = do
   let env_in = mkRecordHLR ([], [], [], [], [], [], logRadon)
-  env_outs <- MH.mh n_mhsteps (radonModel n_counties dataFloorValues countyIdx ) env_in ["mu_a", "mu_b", "sigma_a", "sigma_b"]
+  env_outs <- MH.mh n_mhsteps (radonModel n_counties dataFloorValues countyIdx ) env_in (#mu_a <#> #mu_b <#> #sigma_a <#> #sigma_b <#> onil)
   let env_pred   = head env_outs
       as         = get #a env_pred
       bs         = get #b env_pred
