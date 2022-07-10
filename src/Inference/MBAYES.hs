@@ -6,35 +6,43 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Inference.MBAYES where
+module Inference.MBAYES
+  (  
+    toMBayes
+  , handleObs
+  , handleSamp 
+  ) where
 
-import Control.Monad.Bayes.Class
-import Effects.Dist
-import Effects.Lift
-import Effects.ObsReader
-import Env
+import Control.Monad.Bayes.Class as MB ( MonadCond(..), MonadInfer, MonadSample )
+import Effects.Dist ( Sample(..), Observe(..), Dist(getObs, getPrimDist), handleDist )
+import Effects.Lift ( handleLift, Lift, lift )
+import Effects.ObsReader ( ObsReader, handleObsRead )
+import Env ( Env )
 import Model (Model(..))
-import Numeric.Log
-import PrimDist
-import Prog
-import Trace
+import Numeric.Log ( Log(Exp) )
+import PrimDist ( logProb, sampleBayes )
+import Prog ( discharge, Prog(..), LastMember )
+import Trace ( traceSamples, FromSTrace(..) )
 
--- ||| Handle Obs and Sample separately, using the "Lift m" effect and a MTL approach to "m" 
-toMBayes :: forall m env a. (FromSTrace env, MonadInfer m) => Model env [ObsReader env, Dist, Lift m] a -> Env env -> m (a, Env env)
+-- | Handle a prob-fx model into a monad-bayes program. 
+toMBayes :: (FromSTrace env, MonadInfer m) => Model env [ObsReader env, Dist, Lift m] a -> Env env -> m (a, Env env)
 toMBayes m env = 
-   (fmap (fmap fromSTrace) . handleLift . handleSamp . handleObs . traceSamples . handleDist . handleObsRead env) (runModel m)
+     fmap (fmap fromSTrace) . handleLift . handleSamp 
+   . handleObs . traceSamples . handleDist . handleObsRead env $ runModel m
 
-handleObs :: forall m es a. MonadCond m => LastMember (Lift m) es => Prog (Observe : es) a -> Prog es a
+-- | Handle Observe operations by computing the log-probability and calling the score method of the MonadCond class
+handleObs :: MonadCond m => LastMember (Lift m) es => Prog (Observe : es) a -> Prog es a
 handleObs (Val x)  = Val x
 handleObs (Op u k) = case discharge u of
   Left u' -> do
      Op u' (handleObs . k)
   Right (Observe d y _) ->
       do let p = logProb d y
-         lift (score (Exp p))
+         lift (MB.score (Exp p))
          handleObs (k y)
 
-handleSamp :: forall m es a. MonadSample m => LastMember (Lift m) es => Prog (Sample : es) a -> Prog es a
+-- | Handle Sample operations by calling the sampling methods of the MonadSample class
+handleSamp :: MonadSample m => LastMember (Lift m) es => Prog (Sample : es) a -> Prog es a
 handleSamp (Val x) = pure x
 handleSamp (Op u k) = case discharge u of
   Left u' -> do
@@ -43,8 +51,8 @@ handleSamp (Op u k) = case discharge u of
       do y <- lift (sampleBayes d)
          handleSamp (k y)
 
--- ||| Alternative for handling Dist as the last effect directly into a monad
-handleDistMB :: forall m es a. MonadInfer m => Prog '[Dist] a -> m a
+-- | Alternative for handling Dist as the last effect directly into a monad
+handleDistMB :: MonadInfer m => Prog '[Dist] a -> m a
 handleDistMB (Val x)  = pure x
 handleDistMB (Op u k) = case discharge u of
     Right d ->
