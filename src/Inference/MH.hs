@@ -11,7 +11,6 @@
 module Inference.MH where
 
 import Control.Monad
-import Data.Functor.Identity
 import Data.Kind (Type)
 import Data.Map (Map)
 import Data.Maybe
@@ -19,7 +18,6 @@ import Data.Set (Set, (\\))
 import Effects.Dist
 import Effects.Lift
 import Effects.ObsReader
-import Effects.State
 import Env
 import Inference.SIM (handleObs)
 import Model hiding (runModelFree)
@@ -33,8 +31,7 @@ import Sampler
 import Trace
 import Unsafe.Coerce
 
-
--- ||| (Section 6.2.2) Metropolis-Hastings
+-- ||| Metropolis-Hastings
 mh :: forall env es a xs. (FromSTrace env, ValidSpec env xs)
   -- | Number of MH iterations
   => Int
@@ -48,14 +45,14 @@ mh :: forall env es a xs. (FromSTrace env, ValidSpec env xs)
   -> Sampler [Env env]
 mh n model env obsvars  = do
   -- Handle model to probabilistic progrma
-  let prog = (handleDist . handleObsRead env) (runModel model)
+  let prog = handleCore env model
       tags = asTags @env obsvars
   -- Run MH for n iterations
   mhTrace <- mhInternal n prog Map.empty tags
   -- Convert each iteration's sample trace to a model environment
   pure (map (fromSTrace . snd . fst) mhTrace)
 
--- ||| MH on a model interpreted to a probabilistic program
+-- ||| MH on a probabilistic program
 mhInternal ::
    -- | Number of MH iterations
       Int                             
@@ -104,7 +101,7 @@ mhStep model tags accepter trace = do
     then do return (mhCtx':trace)
     else do return trace
 
--- ||| MH handler
+-- ||| Handle MH once on probabilistic program
 runMH :: 
   -- | Sample trace of previous MH iteration
      STrace

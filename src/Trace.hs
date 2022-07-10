@@ -23,10 +23,10 @@ import qualified OpenSum
 import Prog
 import Effects.State
 
--- ||| (Section 6.1) Sample trace, mapping addresses of sample/observe operations to their primitive distributions and sampled values
+-- ||| Sample trace, mapping addresses of sample/observe operations to their primitive distributions and sampled values
 type STrace = Map Addr (ErasedPrimDist, OpenSum PrimVal)
 
--- | For converting sample traces, as used by simulation and inference, to output model environments
+-- ||| For converting sample traces, as used by simulation and inference, to output model environments
 class FromSTrace a where
   fromSTrace :: STrace -> Env a
 
@@ -48,7 +48,7 @@ filterSTrace tags = Map.filterWithKey (\(tag, idx) _ -> tag `elem` tags)
 updateSTrace :: Show x => (Member (State STrace) es, OpenSum.Member x PrimVal) => Addr -> PrimDist x -> x -> Prog es ()
 updateSTrace α d x  = modify (Map.insert α (ErasedPrimDist d, OpenSum.inj x) :: STrace -> STrace)
 
--- | Trace sampled values for each Sample operation
+-- ||| Trace sampled values for each Sample operation
 traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, STrace)
 traceSamples = handleState Map.empty . storeSamples
   where storeSamples :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
@@ -59,13 +59,13 @@ traceSamples = handleState Map.empty . storeSamples
                            k x
           )
 
--- ||| (Section 6.2.2) Log probability trace, mapping addresses of sample/observe operations to their log probabilities
+-- ||| Log probability trace, mapping addresses of sample/observe operations to their log probabilities
 type LPTrace = Map Addr Double
 
 updateLPTrace :: (Member (State LPTrace) es) => Addr -> PrimDist x -> x -> Prog es ()
 updateLPTrace α d x  = modify (Map.insert α (PrimDist.logProb d x) :: LPTrace -> LPTrace)
 
--- | Insert stateful operations for LPTrace when either Sample or Observe occur.
+-- ||| Insert stateful operations for LPTrace when either Sample or Observe occur.
 traceLPs ::(Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)
 traceLPs = handleState Map.empty . storeLPs
   where storeLPs :: (Member Sample es, Member Observe es) => Prog es a -> Prog (State LPTrace: es) a

@@ -22,7 +22,7 @@ import Trace
 -- ||| Handle Obs and Sample separately, using the "Lift m" effect and a MTL approach to "m" 
 toMBayes :: forall m env a. (FromSTrace env, MonadInfer m) => Model env [ObsReader env, Dist, Lift m] a -> Env env -> m (a, Env env)
 toMBayes m env = 
-   (fmap (fmap fromSTrace) . handleLift . handleSamp . handleObs . traceSamples. handleDist . handleObsRead env) (runModel m)
+   (fmap (fmap fromSTrace) . handleLift . handleSamp . handleObs . traceSamples . handleDist . handleObsRead env) (runModel m)
 
 handleObs :: forall m es a. MonadCond m => LastMember (Lift m) es => Prog (Observe : es) a -> Prog es a
 handleObs (Val x)  = Val x

@@ -1,18 +1,9 @@
 module Main (main) where
 
-import System.Exit
-
-
 import Tests.Examples
 import Tests.Expected
 import Test.HUnit
 import Sampler
-import System.Environment (getArgs)
-import Test.HUnit (Test(TestCase))
-import Tests.Expected 
-
-
-
 
 testSimLinRegrOnce :: Test
 testSimLinRegrOnce = TestCase $ do

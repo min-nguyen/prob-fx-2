@@ -8,7 +8,7 @@ module Effects.State where
 
 import Prog
 
--- ||| (Section 6.1) State effect and handler
+-- ||| State effect and handler
 data State s a where
   GetSt :: State s s
   PutSt :: s -> State s ()
@@ -22,6 +22,7 @@ putSt s = Op (inj $ PutSt s) Val
 modify :: Member (State s) es => (s -> s) -> Prog es ()
 modify f = getSt >>= putSt . f
 
+-- ||| Handle 'get' and 'put' requests
 handleState :: forall s es a. s -> Prog (State s ': es) a -> Prog es (a, s)
 handleState s m = loop s m where
   loop :: s -> Prog (State s ': es) a -> Prog es (a, s)

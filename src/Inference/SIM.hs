@@ -8,24 +8,20 @@
 module Inference.SIM where
 
 import Data.Map (Map)
-import Data.Maybe
 import Effects.Dist
 import Effects.Lift
 import Effects.ObsReader
-import Effects.State
 import Env
-import GHC.TypeLits
 import Model
 import OpenSum (OpenSum)
 import PrimDist
 import Prog
 import qualified Data.Map as Map
-import qualified OpenSum as OpenSum
 import Sampler
 import Trace
 import Unsafe.Coerce (unsafeCoerce)
 
--- ||| (Section 6.1) Simulation
+-- ||| Simulation
 simulate :: forall env es b a. (FromSTrace env, es ~ '[ObsReader env, Dist, Lift Sampler])
   => 
   -- | A model 
@@ -35,14 +31,14 @@ simulate :: forall env es b a. (FromSTrace env, es ~ '[ObsReader env, Dist, Lift
   -- | Model output and output environment  
   -> Sampler (a, Env env)   
 simulate model env = do
-  outputs_strace <- runSimulate env model
+  let prog = handleCore env model
+  outputs_strace <- runSimulate prog
   return (fmap fromSTrace outputs_strace)
 
--- | SIM handler
-runSimulate :: (es ~ '[ObsReader env, Dist, Lift Sampler])
- => Env env -> Model env es a -> Sampler (a, STrace)
-runSimulate env 
-  = handleLift . handleSamp . handleObs . traceSamples . handleCore env
+-- ||| Handle simulation on probabilistic program
+runSimulate :: Prog [Observe, Sample, Lift Sampler] a -> Sampler (a, STrace)
+runSimulate  
+  = handleLift . handleSamp . handleObs . traceSamples 
  
 handleObs :: Prog (Observe : es) a -> Prog es a
 handleObs (Val x) = return x

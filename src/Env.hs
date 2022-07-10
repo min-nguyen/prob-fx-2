@@ -17,13 +17,13 @@ module Env where
 
 import Data.Kind ( Constraint )
 import Data.Proxy ( Proxy(Proxy) )
+import Effects.Dist (Tag)
 import FindElem ( FindElem(..), P(..) )
 import GHC.OverloadedLabels ( IsLabel(..) )
 import GHC.TypeLits ( KnownSymbol, Symbol, symbolVal )
 import qualified Data.Vector as V
 import qualified GHC.TypeLits as TL
 import Unsafe.Coerce ( unsafeCoerce )
-import Effects.Dist (Tag)
 
 -- ||| Observable variable container
 data ObsVar (x :: Symbol) where

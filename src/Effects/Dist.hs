@@ -36,11 +36,14 @@ import Util ( boolToInt )
 import PrimDist
 import Prog
 
--- ||| (Section 4.2.1) Effects for distributions
--- | The Dist effect has a single operation `Dist` that takes as arguments: a primitive distribution of type `PrimDist a`, an optional observed value of type `Maybe a`, and an optional observable variable name of type `Maybe String` .
-data Dist a = Dist { getPrimDist :: PrimDist a, getObs :: Maybe a, getTag :: Maybe String}
+-- ||| Distribution effect
+data Dist a = 
+  Dist { getPrimDist :: PrimDist a  -- ^ Primitive distribution
+       , getObs :: Maybe a          -- ^ Optional observed value
+       , getTag :: Maybe String     -- ^ Optional observable variable name
+       }
 
--- ||| (Section 5.3) Handling Distributions
+-- ||| Sample effect
 data Sample a where
   Sample  :: PrimDist a -> Addr -> Sample a
 
@@ -50,13 +53,21 @@ pattern SampPrj d α <- (prj -> Just (Sample (PrimDistDict d) α))
 pattern SampDis :: (Show x, OpenSum.Member x PrimVal) => PrimDist x -> Addr -> EffectSum (Sample : es) x
 pattern SampDis d α <- (discharge -> Right (Sample (PrimDistDict d) α))
 
+-- ||| Observe effect
 data Observe a where
   Observe :: PrimDist a -> a -> Addr -> Observe a
 
 pattern ObsPrj :: (Member Observe es) => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> x -> Addr -> EffectSum es x
 pattern ObsPrj d y α <- (prj -> Just (Observe (PrimDistDict d) y α))
 
--- | Interpret Dist to Sample or Observe, and add address
+pattern ObsDis :: (Show x, OpenSum.Member x PrimVal) => PrimDist x -> x -> Addr -> EffectSum (Observe : es) x
+pattern ObsDis d y α <- (discharge -> Right (Observe (PrimDistDict d) y α))
+
+-- ||| Handle Dist to Sample or Observe, and add address
+type Tag    = String
+type Addr   = (Tag, Int)
+type TagMap = Map Tag Int
+
 handleDist :: Prog (Dist : es) a -> Prog (Observe : Sample : es) a
 handleDist = loop 0 Map.empty
   where
@@ -72,15 +83,4 @@ handleDist = loop 0 Map.empty
                 tagMap' = Map.insert tag (tagIdx + 1) tagMap
                 k'      = loop (counter + 1) tagMap' . k
     Left  u'  -> Op (weaken (weaken u')) (loop counter tagMap . k)
-
-type Tag  = String
-type Addr = (Tag, Int)
-type TagMap = Map Tag Int
-
--- | For constraining the output types of distributions
-instance Show a => Show (Dist a) where
-  show (Dist d y tag) = "Dist(" ++ show d ++ ", " ++ show y ++ ", " ++ show tag ++ ")"
-
-instance Eq (Dist a) where
-  (==) (Dist d1 _ _) (Dist d2 _ _) = d1 == d2 
 

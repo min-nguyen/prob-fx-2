@@ -7,13 +7,14 @@
 module Effects.Writer where
 import Prog
 
--- ||| (Section 5.5) Writer effect and handler
+-- ||| Writer effect and handler
 data Writer w a where
   Tell :: w -> Writer w ()
 
 tell :: Member (Writer w) ts => w -> Prog ts ()
 tell w = Op (inj $ Tell w) Val
 
+-- ||| Handle 'tell' requests
 handleWriter :: forall w ts a . Monoid w => Prog (Writer w ': ts) a -> Prog ts (a, w)
 handleWriter = loop mempty where
   loop ::  w -> Prog (Writer w ': ts) a -> Prog ts (a, w)

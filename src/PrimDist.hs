@@ -50,7 +50,7 @@ data PrimDist a where
   Normal        :: Double -> Double -> PrimDist Double
   HalfNormal    :: Double -> PrimDist Double
   Uniform       :: Double -> Double -> PrimDist Double
-  UniformD  :: Int    -> Int    -> PrimDist Int
+  UniformD      :: Int    -> Int    -> PrimDist Int
   Gamma         :: Double -> Double -> PrimDist Double
   Beta          :: Double -> Double -> PrimDist Double
   Binomial      :: Int    -> Double -> PrimDist Int
