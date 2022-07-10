@@ -15,7 +15,7 @@ import Control.Monad
 import Data.Kind (Constraint)
 import Env
 
--- | Hierarchical School Model
+-- ||| Hierarchical School Model
 type SchEnv = '[
     "mu"    ':= Double,
     "theta" ':= [Double],
@@ -30,7 +30,6 @@ schoolModel n_schools σs = do
   ηs  <- replicateM n_schools (normal' 0 1)
   θs  <- deterministic (map ((μ +) . (τ *)) ηs) #theta
   ys  <- mapM (\(θ, σ) -> normal θ σ #y) (zip θs σs)
-  let h = ""
   return θs
 
 mhSchool :: Int -> Sampler ([Double], [[Double]])

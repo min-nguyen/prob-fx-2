@@ -21,6 +21,13 @@ import Control.Monad
 import Data.Kind (Constraint)
 import Env
 import Util
+import qualified Control.Monad.Bayes.Class as MB
+import qualified Control.Monad.Bayes.Weighted as MB
+import qualified Control.Monad.Bayes.Traced as MB
+import qualified Control.Monad.Bayes.Sampler as MB
+import Trace
+import Inference.MBAYES
+import Numeric.Log
 
 -- ||| (Section 2, Fig 2) HMM Loop 
 type HMMEnv =
@@ -140,3 +147,30 @@ mhHMMw mh_samples hmm_length = do
   let trans_ps    = concatMap (get #trans_p) mh_envs_out
       obs_ps      = concatMap (get #obs_p) mh_envs_out
   pure (trans_ps, obs_ps)
+
+-- ||| HMM using monad-bayes inference
+mbayesHMM :: (FromSTrace env, MB.MonadInfer m, Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
+  => Int -> Int -> Env env -> m ((Int, [Int]), Env env)
+mbayesHMM n x = toMBayes (handleWriterM $ hmmW n x)
+
+simHMMMB :: Int -> IO [(Int, Int)]
+simHMMMB  hmm_length = do
+  let x   = 0
+      env = (#trans_p := [0.5]) <:> #obs_p := [0.9] <:> (#y := []) <:> enil
+  bs <- MB.sampleIO $ MB.prior $ mbayesHMM hmm_length x env
+  let sim_envs_out  = snd bs
+      xs :: [Int]   = (snd . fst) bs
+      ys :: [Int]   = get #y sim_envs_out
+  pure $ zip xs ys
+
+lwHMMMB :: Int -> Int -> IO [(((Int, [Int]), Env HMMEnv), Log Double)]
+lwHMMMB n_samples hmm_length = do
+  ys <- map snd <$> simHMMMB hmm_length
+  let env = (#trans_p := []) <:> #obs_p := [] <:> (#y := ys) <:>  enil
+  MB.sampleIO $ replicateM n_samples $ MB.runWeighted $ mbayesHMM hmm_length 0 env
+
+mhHMMMB :: Int -> Int -> IO [((Int, [Int]), Env HMMEnv)]
+mhHMMMB n_mhsteps hmm_length = do
+  ys <- map snd <$> simHMMMB hmm_length
+  let env = (#trans_p := []) <:> #obs_p := [] <:> (#y := ys) <:>  enil
+  MB.sampleIO $ MB.prior $ MB.mh n_mhsteps (mbayesHMM hmm_length 0 env)

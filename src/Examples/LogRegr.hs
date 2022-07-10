@@ -19,7 +19,7 @@ import Inference.SIM as SIM
 import Inference.MH as MH
 import Inference.LW as LW
 
--- | Logistic regression environment
+-- ||| Logistic regression environment
 type LogRegrEnv =
     '[  "label" ':= Bool,   -- output
         "m"     ':= Double, -- mean
@@ -29,7 +29,7 @@ type LogRegrEnv =
 sigmoid :: Double -> Double
 sigmoid x = 1 / (1 + exp((-1) * x))
 
--- | Log regression model on individual data points
+-- ||| Log regression model on individual data points
 logRegrOnce :: forall rs env.
  (Observable env "label" Bool, Observables env '["m", "b"] Double) => 
  Double -> Model env rs Bool
@@ -68,7 +68,7 @@ mhLogRegrOnce n_mhsteps n_datapoints = do
       bs  = concatMap (get #b) mhTrace
   pure (mus, bs)
 
--- | Log regression model on many data points at once
+-- ||| Log regression model on many data points at once
 logRegr :: forall rs env.
  -- Specify the "observable variables" that may later be provided observed values
  (Observable env "label" Bool, Observables env '["m", "b"] Double) => 

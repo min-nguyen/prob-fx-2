@@ -20,7 +20,7 @@ import Effects.Lift
 import Effects.ObsReader
 import Control.Monad.Bayes.Class
 
-{- Handle Obs and Sample separately, using the "Lift m" effect and a MTL approach to "m" -}
+-- ||| Handle Obs and Sample separately, using the "Lift m" effect and a MTL approach to "m" 
 toMBayes :: forall m env a. (FromSTrace env, MonadInfer m) => Model env [ObsReader env, Dist, Lift m] a -> Env env -> m (a, Env env)
 toMBayes m env = 
    (fmap (fmap fromSTrace) . handleLift . handleSamp . handleObs . traceSamples. handleDist . handleObsRead env) (runModel m)
@@ -44,7 +44,7 @@ handleSamp (Op u k) = case discharge u of
       do y <- lift (sampleBayes d)
          handleSamp (k y)
 
-{-  Alternative for handling Dist as the last effect directly into a monad -}
+-- ||| Alternative for handling Dist as the last effect directly into a monad
 handleDistMB :: forall m es a. MonadInfer m => Prog '[Dist] a -> m a
 handleDistMB (Val x)  = pure x
 handleDistMB (Op u k) = case discharge u of

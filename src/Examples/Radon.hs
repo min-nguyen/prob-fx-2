@@ -18,7 +18,7 @@ import Inference.SIM as SIM
 import Inference.MH as MH
 import Util
 
--- | Hierarchical Linear Regression [https://docs.pymc.io/en/v3/pymc-examples/examples/case_studies/multilevel_modeling.html]
+-- ||| Hierarchical Linear Regression [https://docs.pymc.io/en/v3/pymc-examples/examples/case_studies/multilevel_modeling.html]
 type HLREnv =
   '[ "mu_a" ':= Double, "mu_b" ':= Double, "sigma_a" ':= Double, "sigma_b" ':= Double,
      "a" ':= Double, "b" ':= Double, "log_radon" ':= Double]

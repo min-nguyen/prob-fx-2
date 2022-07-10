@@ -18,8 +18,8 @@ import Data.Kind (Constraint)
 import Data.List as List
 import Data.Maybe
 import Env
--- | Gaussian Mixture Model
 
+-- ||| Gaussian Mixture Model
 type GMMEnv = '[
     "mu"   ':= Double,
     "mu_k" ':= Double,

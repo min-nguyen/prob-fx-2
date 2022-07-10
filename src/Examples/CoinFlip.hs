@@ -21,7 +21,7 @@ coinFlip = do
   y <- bernoulli p #y
   return y
 
--- Desugared coin flip model
+-- ||| Desugared coin flip model
 coinFlip' :: forall env es. (Observables env '["p"] Double, Observables env '[ "y"] Bool) => Model env es Bool
 coinFlip' = Model $ do
   maybe_p  <- call (Ask @env #p)

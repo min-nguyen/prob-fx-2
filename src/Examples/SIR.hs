@@ -16,12 +16,17 @@ import Inference.MH as MH
 import Sampler
 import Env
 import Control.Monad
+import qualified Control.Monad.Bayes.Class as MB
+import qualified Control.Monad.Bayes.Weighted as MB
+import qualified Control.Monad.Bayes.Traced as MB
+import qualified Control.Monad.Bayes.Sampler as MB
+import Trace
+import Inference.MBAYES
 
 import Examples.HMM
 import Data.Extensible (Associated)
 
 -- ||| (Section 3.1 + Section 5.5 extension) The SIR model
-
 data Popl = Popl {
     s   :: Int, -- ^ Number of people susceptible to infection
     i   :: Int, -- ^ Number of people currently infected
@@ -109,10 +114,34 @@ mhSIR n_mhsteps n_days = do
       βs = concatMap (get #β) mhTrace
   return (ρs, βs)
 
+-- ||| SIR model using monad-bayes inference
+mbayesSIR :: 
+   (FromSTrace env, MB.MonadInfer m
+  , Observables env '["𝜉"] Int , Observables env '[ "β" , "γ" , "ρ"] Double) 
+  => Int -> Popl -> Env env -> m ((Popl, [Popl]), Env env)
+mbayesSIR n popl = toMBayes (hmmSIR' n popl)
+
+simSIRMB :: Int -> IO ([(Int, Int, Int)], [Reported])
+simSIRMB n_days = do
+  let sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #ρ := [0.3] <:> #𝜉 := [] <:> enil
+      sir_0      = Popl {s = 762, i = 1, r = 0}
+  ((_, sir_trace), sim_env_out) <- MB.sampleIO $ MB.prior (mbayesSIR n_days sir_0 sim_env_in)
+  let 𝜉s :: [Reported] = get #𝜉 sim_env_out
+      sirs = map (\(Popl s i recov) -> (s, i, recov)) sir_trace
+  pure (sirs, 𝜉s)
+
+mhSIRMB :: Int -> IO ([Double], [Double]) -- [(Popl, Env SIRenv)]
+mhSIRMB n_days = do
+  𝜉s <- snd <$> simSIRMB n_days
+  let sir_0      = Popl {s = 762, i = 1, r = 0}
+      env = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> enil
+  (_, env) <- unzip <$> MB.sampleIO (MB.prior $ MB.mh 100 (mbayesSIR 100 sir_0 env))
+  let ρs = concatMap (get #ρ) env
+      βs = concatMap (get #β) env
+  pure (ρs, βs)
+
 -- ||| (Section 3.2) Modular Extensions to the SIR Model
-
 {- Note that the implementations below aren't as modular as we would like, due to having to redefine the data types Popl and TransParams when adding new variables to the SIR model. The file "src/Examples/SIRModular.hs" shows how one could take steps to resolve this by using extensible records. -}
-
 
 -- || (Section 3.2)  SIRS (resusceptible) model
 data TransParamsSIRS = TransParamsSIRS {

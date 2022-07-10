@@ -40,7 +40,7 @@ mkField "s i r v"
 
 type Reported = Int
 
-{- SIR model using extensible records -}
+-- ||| SIR model using extensible records
 
 -- | SIR transition model
 transSI :: Lookups popl '["s", "i", "r"] Int => TransModel env ts Double (Record popl)
@@ -93,7 +93,7 @@ hmmSIR :: (Member (Writer [Record popl]) es,
   => Int -> Record popl -> Model env es (Record popl, [Record popl])
 hmmSIR n  = handleWriterM . hmmGen transPriorSIR obsPriorSIR transSIR obsSIR n
 
-{- SIRS (resusceptible) model -}
+-- ||| SIRS (resusceptible) model using extensible records
 
 -- | SIRS transition model
 transRS :: Lookups popl '["s", "r"] Int => TransModel env ts Double (Record popl)
@@ -121,7 +121,7 @@ hmmSIRS :: (Member (Writer [Record popl]) es,
   => Int -> Record popl -> Model env es (Record popl, [Record popl])
 hmmSIRS n = handleWriterM . hmmGen transPriorSIRS obsPriorSIR transSIRS obsSIR n
 
-{- SIRSV (resusceptible + vacc) model -}
+-- ||| SIRSV (resusceptible + vacc) model using extensible records
 
 -- | SIRSV transition model
 transSV :: Lookups popl '["s", "v"] Int => TransModel env es Double (Record popl)
