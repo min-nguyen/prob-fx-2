@@ -17,7 +17,7 @@ import Data.Function (fix)
 -- | Lift effect for lifting an arbitrary monad `m` into the effect `Lift m`
 newtype Lift m a = Lift (m a)
 
-lift :: (Member (Lift m) es) => m a -> Prog es a
+lift :: (LastMember (Lift m) es) => m a -> Prog es a
 lift = call . Lift
 
 handleLift :: forall m w. Monad m => Prog '[Lift m] w -> m w

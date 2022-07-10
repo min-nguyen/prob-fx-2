@@ -23,6 +23,7 @@ import Data.Kind
 import Data.Map (Map)
 import Numeric.Log
 import OpenSum (OpenSum)
+import qualified Control.Monad.Bayes.Class as Monad.Bayes.Class
 import qualified Data.Map as Map
 import qualified Data.Vector as V
 import qualified Data.Vector as Vec
@@ -175,6 +176,20 @@ sample (PoissonDist λ ) =
 sample (DirichletDist xs ) =
   createSampler (sampleDirichlet xs)
 sample (DeterministicDist x) = pure x
+
+sampleBayes :: Monad.Bayes.Class.MonadSample m => PrimDist a -> m a
+sampleBayes (UniformDist a b )     = Monad.Bayes.Class.uniform a b
+sampleBayes (DiscreteDist as )     = Monad.Bayes.Class.categorical (Vec.fromList as)
+sampleBayes (CategoricalDist as )  = Monad.Bayes.Class.categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
+sampleBayes (NormalDist mu std )   = Monad.Bayes.Class.normal mu std
+sampleBayes (GammaDist k t )       = Monad.Bayes.Class.gamma k t
+sampleBayes (BetaDist a b )        = Monad.Bayes.Class.beta a b
+sampleBayes (BernoulliDist p )     = Monad.Bayes.Class.bernoulli p
+sampleBayes (BinomialDist n p )    = sequence (replicate n (Monad.Bayes.Class.bernoulli p)) >>= (pure . length . filter (== True))
+sampleBayes (PoissonDist l )       = Monad.Bayes.Class.poisson l
+sampleBayes (DirichletDist as )    = Monad.Bayes.Class.dirichlet (Vec.fromList as) >>= pure . Vec.toList
+sampleBayes (PrimDistDict d)       = error ("Sampling from " ++ show d ++ " is not supported")
+
 
 -- ||| (Section 6.2) Probability density functions
 prob :: PrimDist a -> a -> Double

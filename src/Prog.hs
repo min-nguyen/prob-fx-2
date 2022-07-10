@@ -9,6 +9,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 module Prog where
 
@@ -68,8 +69,22 @@ type family Members (es :: [* -> *]) (tss :: [* -> *]) = (cs :: Constraint) | cs
   Members (e ': es) tss = (Member e tss, Members es tss)
   Members '[] tss       = ()
 
-pattern Other :: EffectSum es x -> EffectSum  (e ': es) x
-pattern Other u <- (discharge -> Left u)
+-- | Unique effect
+type family UMember (b :: Bool) (e :: * -> *) (es :: [* -> *]) :: Bool where
+  UMember 'True e (e ': es)   = 'False
+  UMember 'True e (e' ': es)  = UMember 'True e es
+  UMember 'True e '[]         = 'True
+  UMember 'False e (e ': es)  = UMember 'True e es
+  UMember 'False e (e' ': es) = UMember 'False e es
+  UMember 'False e '[]        = 'False
+
+class    (UMember 'False e es ~ True, Member e es) => UniqueMember e es
+instance (UMember 'False e es ~ True, Member e es) => UniqueMember e es
+
+-- | Last effect 
+class Member m effs => LastMember m effs | effs -> m
+instance {-# OVERLAPPABLE #-} LastMember m effs => LastMember m (eff ': effs)
+instance LastMember m (m ': '[])
 
 -- ||| (Section 5.2) Discharging effects/operations from the front of effect signatures
 discharge :: EffectSum (e ': es) x -> Either (EffectSum es x) (e x)
@@ -79,8 +94,10 @@ discharge (EffectSum n rv) = Left  $ EffectSum (n-1) rv
 weaken :: EffectSum es a -> EffectSum (any ': es) a
 weaken (EffectSum n ta) = EffectSum (n + 1) ta
 
--- | Find some existing effect e in es, leave it unhandled, and install new effect e' after every request of e. This adds the effect e' to the front of es.
--- Requires type application on usage to specify which effect is being intercepted, e.g. "installPrepend @(Reader Int)"
+pattern Other :: EffectSum es x -> EffectSum  (e ': es) x
+pattern Other u <- (discharge -> Left u)
+
+-- | Find some existing effect e in es, leave it unhandled, and install new effect e' after every request of e. This adds the effect e' to the front of es. Requires type application on usage to specify which effect is being intercepted, e.g. "installPrepend @(Reader Int)"
 install :: Member e es =>
      (a -> Prog (e' ': es) a)
   -> (forall x. x -> e x -> (x -> Prog (e' ': es) a) -> Prog (e' ': es) a)
