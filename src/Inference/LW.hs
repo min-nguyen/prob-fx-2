@@ -4,50 +4,62 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE GADTs #-}
-
 {-# LANGUAGE TypeOperators #-}
-module Inference.LW where
 
+module Inference.LW 
+  ( -- * Inference wrapper functions
+    lw
+  , lwInternal
+    -- * Inference effect handlers
+  , runLW
+  , handleObs
+  ) where
 
-import Control.Monad
-import Effects.Dist
-import Effects.Lift
-import Effects.ObsReader
+import Control.Monad ( replicateM )
+import Effects.Dist ( Sample, Observe(..), Dist )
+import Effects.Lift ( handleLift, Lift )
+import Effects.ObsReader ( ObsReader )
 import Effects.State ( modify, handleState, State )
-import Env
+import Env ( Env )
 import Inference.SIM as SIM (handleSamp)
-import Model hiding (runModelFree)
-import PrimDist
-import Prog
+import Model ( handleCore, Model )
+import PrimDist ( logProb )
+import Prog ( discharge, Prog(..) )
 import qualified Data.Map as Map
-import Sampler
-import Trace
+import Sampler ( Sampler )
+import Trace ( traceSamples, STrace, FromSTrace(..) )
 
--- ||| Likelihood Weighting (LW)
-lw :: forall env es a b. (FromSTrace env)
-    => 
-    -- | Number of LW iterations
-       Int                          
-    -- | A model
-    -> Model env [ObsReader env, Dist, Lift Sampler] a       
-    -- | A model environment (containing observed values to condition on)
-    -> Env env         
-    -- | List of n weightings for each data point
-    -> Sampler [(Env env, Double)]  
+-- | Likelihood weighting (LW) inference
+lw :: FromSTrace env
+  => 
+  -- | Number of LW iterations
+      Int                          
+  -- | Model
+  -> Model env [ObsReader env, Dist, Lift Sampler] a       
+  -- | Input model environment 
+  -> Env env         
+  -- | List of weighted output model environments 
+  -> Sampler [(Env env, Double)]  
 lw n model env = do
   let prog = handleCore env model
   lwTrace <- lwInternal n prog
   pure $ map (\((_, strace), p) -> (fromSTrace strace, p)) lwTrace
 
--- ||| Run LW 'n' times on probabilistic program 
-lwInternal :: Int -> Prog [Observe, Sample, Lift Sampler] a -> Sampler [((a, STrace), Double)]
+-- | Run LW `n` times on probabilistic program 
+lwInternal :: 
+  -- | Number of LW iterations
+     Int
+  -- | Probabilistic program 
+  -> Prog [Observe, Sample, Lift Sampler] a 
+  -- | List of weighted model outputs and sample traces
+  -> Sampler [((a, STrace), Double)]
 lwInternal n prog = replicateM n (runLW prog)
 
--- ||| Handle LW once on probabilistic program 
+-- | Handler for one iteration of LW
 runLW :: Prog [Observe, Sample, Lift Sampler] a -> Sampler ((a, STrace), Double)
 runLW  = handleLift . SIM.handleSamp . handleObs 0 . traceSamples
 
--- ||| Accumulate log probabilities of each Observe operation
+-- | Handle each Observe operation by computing and accumulating log probabilities
 handleObs :: Double -> Prog (Observe : es) a -> Prog es (a, Double)
 handleObs logp (Val x) = return (x, exp logp)
 handleObs logp (Op u k) = case discharge u of
