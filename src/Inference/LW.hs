@@ -29,7 +29,7 @@ import qualified Data.Map as Map
 import Sampler ( Sampler )
 import Trace ( traceSamples, STrace, FromSTrace(..) )
 
--- | Likelihood weighting (LW) inference
+-- | Likelihood-Weighting (LW) inference
 lw :: FromSTrace env
   => 
   -- | Number of LW iterations

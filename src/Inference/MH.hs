@@ -1,13 +1,11 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE RankNTypes #-}
+
 module Inference.MH where
 
 import Control.Monad
@@ -31,17 +29,19 @@ import Sampler
 import Trace
 import Unsafe.Coerce
 
--- ||| Metropolis-Hastings
+-- | Metropolis-Hastings (MH) inference
 mh :: forall env es a xs. (FromSTrace env, ValidSpec env xs)
   -- | Number of MH iterations
   => Int
-  -- | A model
+  -- | Model
   -> Model env [ObsReader env, Dist, Lift Sampler] a
-  -- | A model environment (containing observed values to condition on)
+  -- | Input model environment 
   -> Env env
-  -- | An optional list of observable variable names (strings) to specify sample sites of interest (e.g. for interest in sampling #mu, provide "mu"). This causes other variables to not be resampled unless necessary.
+  -- | An optional list of observable variable names to specify sample sites of interest 
+    {- For example, for interest in sampling `#mu`, provide `#mu <#> onil`. 
+       This causes other variables to not be resampled unless necessary. -}
   -> ObsVars xs
-  -- | Trace of output environments, containing values sampled for each MH iteration
+  -- | Trace of output model environments, one for each MH iteration
   -> Sampler [Env env]
 mh n model env obsvars  = do
   -- Handle model to probabilistic progrma
@@ -52,11 +52,11 @@ mh n model env obsvars  = do
   -- Convert each iteration's sample trace to a model environment
   pure (map (fromSTrace . snd . fst) mhTrace)
 
--- ||| MH on a probabilistic program
+-- | MH on a probabilistic program
 mhInternal ::
    -- | Number of MH iterations
       Int                             
-   -- | A probabilistic program
+   -- | Probabilistic program
    -> Prog [Observe, Sample, Lift Sampler] a                   
    -- | Initial sample trace   
    -> STrace                           
