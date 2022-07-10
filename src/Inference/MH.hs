@@ -93,13 +93,13 @@ mhStep model tags accepter trace = do
   -- Get possible addresses to propose new samples for
   let sampleSites = if null tags then samples else filterSTrace tags samples
   -- Draw a proposal sample address
-  α_samp_ind <- sample $ DiscrUniformDist 0 (Map.size sampleSites - 1)
+  α_samp_ind <- sample $ UniformD 0 (Map.size sampleSites - 1)
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
   -- Run MH with proposal sample address to get an MHCtx using LPTrace as its probability type
   mhCtx'_lp <- runMH samples α_samp model
   -- Compute acceptance ratio to see if we use the proposed mhCtx' (which is mhCtx'_lp with 'LPTrace' converted to some type 'p')
   (mhCtx', acceptance_ratio) <- accepter α_samp mhCtx'_lp mhCtx
-  u <- sample (UniformDist 0 1)
+  u <- sample (Uniform 0 1)
   if u < acceptance_ratio
     then do return (mhCtx':trace)
     else do return trace

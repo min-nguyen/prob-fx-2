@@ -25,7 +25,7 @@ coinFlip = do
 coinFlip' :: forall env es. (Observables env '["p"] Double, Observables env '[ "y"] Bool) => Model env es Bool
 coinFlip' = Model $ do
   maybe_p  <- call (Ask @env #p)
-  p        <- call (Dist (UniformDist 0 1) maybe_p (Just "p"))
+  p        <- call (Dist (Uniform 0 1) maybe_p (Just "p"))
   maybe_y  <- call (Ask @env #y)
-  y        <- call (Dist (BernoulliDist p) maybe_y (Just "p") )
+  y        <- call (Dist (Bernoulli p) maybe_y (Just "p") )
   return y

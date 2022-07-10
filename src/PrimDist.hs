@@ -45,23 +45,23 @@ import Util ( boolToInt )
 
 -- ||| (Section 4.2.1) Primitive distributions
 data PrimDist a where
-  HalfCauchyDist    :: Double -> PrimDist Double
-  CauchyDist        :: Double -> Double -> PrimDist Double
-  NormalDist        :: Double -> Double -> PrimDist Double
-  HalfNormalDist    :: Double -> PrimDist Double
-  UniformDist       :: Double -> Double -> PrimDist Double
-  DiscrUniformDist  :: Int    -> Int    -> PrimDist Int
-  GammaDist         :: Double -> Double -> PrimDist Double
-  BetaDist          :: Double -> Double -> PrimDist Double
-  BinomialDist      :: Int    -> Double -> PrimDist Int
-  BernoulliDist     :: Double -> PrimDist Bool
-  CategoricalDist   :: (Eq a, Show a, OpenSum.Member a PrimVal) => [(a, Double)] -> PrimDist a
-  DiscreteDist      :: [Double] -> PrimDist Int
-  PoissonDist       :: Double -> PrimDist Int
-  DirichletDist     :: [Double] -> PrimDist [Double]
-  DeterministicDist :: (Eq a, Show a, OpenSum.Member a PrimVal) => a -> PrimDist a
+  HalfCauchy    :: Double -> PrimDist Double
+  Cauchy        :: Double -> Double -> PrimDist Double
+  Normal        :: Double -> Double -> PrimDist Double
+  HalfNormal    :: Double -> PrimDist Double
+  Uniform       :: Double -> Double -> PrimDist Double
+  UniformD  :: Int    -> Int    -> PrimDist Int
+  Gamma         :: Double -> Double -> PrimDist Double
+  Beta          :: Double -> Double -> PrimDist Double
+  Binomial      :: Int    -> Double -> PrimDist Int
+  Bernoulli     :: Double -> PrimDist Bool
+  Categorical   :: [Double] -> PrimDist Int
+  Poisson       :: Double -> PrimDist Int
+  Dirichlet     :: [Double] -> PrimDist [Double]
+  Discrete      :: (Eq a, Show a, OpenSum.Member a PrimVal) => [(a, Double)] -> PrimDist a
+  Deterministic :: (Eq a, Show a, OpenSum.Member a PrimVal) => a -> PrimDist a
 
--- | For constraining the output types of distributions
+-- | For constraining the output types of disstributions
 type PrimVal = '[Int, Double, [Double], Bool, String]
 
 data Dict (a :: Constraint) where
@@ -69,74 +69,74 @@ data Dict (a :: Constraint) where
 
 primDistDict :: PrimDist x -> Dict (Show x, OpenSum.Member x PrimVal)
 primDistDict d = case d of
-  HalfCauchyDist {} -> Dict
-  CauchyDist {} -> Dict
-  NormalDist {} -> Dict
-  HalfNormalDist  {} -> Dict
-  UniformDist  {} -> Dict
-  DiscrUniformDist {} -> Dict
-  GammaDist {} -> Dict
-  BetaDist {} -> Dict
-  BinomialDist {} -> Dict
-  BernoulliDist {} -> Dict
-  CategoricalDist {} -> Dict
-  DiscreteDist {} -> Dict
-  PoissonDist {} -> Dict
-  DirichletDist {} -> Dict
-  DeterministicDist {} -> Dict
+  HalfCauchy {} -> Dict
+  Cauchy {} -> Dict
+  Normal {} -> Dict
+  HalfNormal  {} -> Dict
+  Uniform  {} -> Dict
+  UniformD {} -> Dict
+  Gamma {} -> Dict
+  Beta {} -> Dict
+  Binomial {} -> Dict
+  Bernoulli {} -> Dict
+  Discrete {} -> Dict
+  Categorical {} -> Dict
+  Poisson {} -> Dict
+  Dirichlet {} -> Dict
+  Deterministic {} -> Dict
 
 pattern PrimDistDict :: () => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> PrimDist x
 pattern PrimDistDict d <- d@(primDistDict -> Dict)
 
 instance Eq (PrimDist a) where
-  (==) (NormalDist m s) (NormalDist m' s') = m == m' && s == s'
-  (==) (CauchyDist m s) (CauchyDist m' s') = m == m' && s == s'
-  (==) (HalfCauchyDist s) (HalfCauchyDist s') = s == s'
-  (==) (HalfNormalDist s) (HalfNormalDist s') = s == s'
-  (==) (BernoulliDist p) (BernoulliDist p') = p == p'
-  (==) (BinomialDist n p) (BinomialDist n' p') = n == n' && p == p'
-  (==) (DiscreteDist ps) (DiscreteDist ps') = ps == ps'
-  (==) (BetaDist a b) (BetaDist a' b') = a == a' && b == b'
-  (==) (GammaDist a b) (GammaDist a' b') = a == a' && b == b'
-  (==) (UniformDist a b) (UniformDist a' b') = a == a' && b == b'
-  (==) (DiscrUniformDist min max) (DiscrUniformDist min' max') = min == min' && max == max'
-  (==) (PoissonDist l) (PoissonDist l') = l == l'
-  (==) (CategoricalDist xs) (CategoricalDist xs') = xs == xs'
-  (==) (DirichletDist xs) (DirichletDist xs')  = xs == xs'
-  (==) (DeterministicDist x) (DeterministicDist x') = x == x'
+  (==) (Normal m s) (Normal m' s') = m == m' && s == s'
+  (==) (Cauchy m s) (Cauchy m' s') = m == m' && s == s'
+  (==) (HalfCauchy s) (HalfCauchy s') = s == s'
+  (==) (HalfNormal s) (HalfNormal s') = s == s'
+  (==) (Bernoulli p) (Bernoulli p') = p == p'
+  (==) (Binomial n p) (Binomial n' p') = n == n' && p == p'
+  (==) (Categorical ps) (Categorical ps') = ps == ps'
+  (==) (Beta a b) (Beta a' b') = a == a' && b == b'
+  (==) (Gamma a b) (Gamma a' b') = a == a' && b == b'
+  (==) (Uniform a b) (Uniform a' b') = a == a' && b == b'
+  (==) (UniformD min max) (UniformD min' max') = min == min' && max == max'
+  (==) (Poisson l) (Poisson l') = l == l'
+  (==) (Discrete xs) (Discrete xs') = xs == xs'
+  (==) (Dirichlet xs) (Dirichlet xs')  = xs == xs'
+  (==) (Deterministic x) (Deterministic x') = x == x'
   (==) _ _ = False
 
 instance Show a => Show (PrimDist a) where
-  show (CauchyDist mu sigma) =
-   "CauchyDist(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ ")"
-  show (HalfCauchyDist sigma) =
-   "HalfCauchyDist(" ++ show sigma ++ ", " ++ ")"
-  show (NormalDist mu sigma) =
-   "NormalDist(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ ")"
-  show (HalfNormalDist sigma) =
-   "HalfNormalDist(" ++ show sigma ++ ", " ++ ")"
-  show (BernoulliDist p) =
-   "BernoulliDist(" ++ show p ++ ", " ++ ")"
-  show (BinomialDist n p) =
-   "BinomialDist(" ++ show n ++ ", " ++ show p ++ ", " ++  ")"
-  show (DiscreteDist ps) =
-   "DiscreteDist(" ++ show ps ++ ", " ++ ")"
-  show (BetaDist a b) =
-   "BetaDist(" ++ show a ++ ", " ++ show b ++ "," ++ ")"
-  show (GammaDist a b) =
-   "GammaDist(" ++ show a ++ ", " ++ show b ++ "," ++ ")"
-  show (UniformDist a b) =
-   "UniformDist(" ++ show a ++ ", " ++ show b ++ "," ++ ")"
-  show (DiscrUniformDist min max) =
-   "DiscrUniformDist(" ++ show min ++ ", " ++ show max ++ ", " ++ ")"
-  show (PoissonDist l) =
-   "PoissonDist(" ++ show l ++ ", " ++ ")"
-  show (CategoricalDist xs) =
-   "CategoricalDist(" ++ show xs ++ ", " ++ ")"
-  show (DirichletDist xs) =
-   "DirichletDist(" ++ show xs ++ ", " ++ ")"
-  show (DeterministicDist x) =
-   "DeterministicDist(" ++ show x ++ ", " ++ ")"
+  show (Cauchy mu sigma) =
+   "Cauchy(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ ")"
+  show (HalfCauchy sigma) =
+   "HalfCauchy(" ++ show sigma ++ ", " ++ ")"
+  show (Normal mu sigma) =
+   "Normal(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ ")"
+  show (HalfNormal sigma) =
+   "HalfNormal(" ++ show sigma ++ ", " ++ ")"
+  show (Bernoulli p) =
+   "Bernoulli(" ++ show p ++ ", " ++ ")"
+  show (Binomial n p) =
+   "Binomial(" ++ show n ++ ", " ++ show p ++ ", " ++  ")"
+  show (Categorical ps) =
+   "Categorical(" ++ show ps ++ ", " ++ ")"
+  show (Beta a b) =
+   "Beta(" ++ show a ++ ", " ++ show b ++ "," ++ ")"
+  show (Gamma a b) =
+   "Gamma(" ++ show a ++ ", " ++ show b ++ "," ++ ")"
+  show (Uniform a b) =
+   "Uniform(" ++ show a ++ ", " ++ show b ++ "," ++ ")"
+  show (UniformD min max) =
+   "UniformD(" ++ show min ++ ", " ++ show max ++ ", " ++ ")"
+  show (Poisson l) =
+   "Poisson(" ++ show l ++ ", " ++ ")"
+  show (Discrete xs) =
+   "Discrete(" ++ show xs ++ ", " ++ ")"
+  show (Dirichlet xs) =
+   "Dirichlet(" ++ show xs ++ ", " ++ ")"
+  show (Deterministic x) =
+   "Deterministic(" ++ show x ++ ", " ++ ")"
   
 -- | For erasing the types of primitive distributions
 data ErasedPrimDist where
@@ -147,87 +147,87 @@ instance Show ErasedPrimDist where
   
 -- ||| (Section 6.1) Sampling functions
 sample :: PrimDist a -> Sampler a
-sample (HalfCauchyDist σ )  =
+sample (HalfCauchy σ )  =
   createSampler (sampleCauchy 0 σ) >>= pure . abs
-sample (CauchyDist μ σ )  =
+sample (Cauchy μ σ )  =
   createSampler (sampleCauchy μ σ)
-sample (HalfNormalDist σ )  =
+sample (HalfNormal σ )  =
   createSampler (sampleNormal 0 σ) >>= pure . abs
-sample (NormalDist μ σ )  =
+sample (Normal μ σ )  =
   createSampler (sampleNormal μ σ)
-sample (UniformDist min max )  =
+sample (Uniform min max )  =
   createSampler (sampleUniform min max)
-sample (DiscrUniformDist min max )  =
+sample (UniformD min max )  =
   createSampler (sampleDiscreteUniform min max)
-sample (GammaDist k θ )        =
+sample (Gamma k θ )        =
   createSampler (sampleGamma k θ)
-sample (BetaDist α β  )         =
+sample (Beta α β  )         =
   createSampler (sampleBeta α β)
-sample (BinomialDist n p  )     =
+sample (Binomial n p  )     =
   createSampler (sampleBinomial n p) >>=  pure .  length . filter (== True)
-sample (BernoulliDist p )      =
+sample (Bernoulli p )      =
   createSampler (sampleBernoulli p)
-sample (CategoricalDist ps )   =
+sample (Discrete ps )   =
   createSampler (sampleCategorical (V.fromList $ fmap snd ps)) >>= \i -> pure $ fst $ ps !! i
-sample (DiscreteDist ps )      =
+sample (Categorical ps )      =
   createSampler (sampleDiscrete ps)
-sample (PoissonDist λ ) =
+sample (Poisson λ ) =
   createSampler (samplePoisson λ)
-sample (DirichletDist xs ) =
+sample (Dirichlet xs ) =
   createSampler (sampleDirichlet xs)
-sample (DeterministicDist x) = pure x
+sample (Deterministic x) = pure x
 
 sampleBayes :: MB.MonadSample m => PrimDist a -> m a
-sampleBayes (UniformDist a b )     = MB.uniform a b
-sampleBayes (DiscreteDist as )     = MB.categorical (Vec.fromList as)
-sampleBayes (CategoricalDist as )  = MB.categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
-sampleBayes (NormalDist mu std )   = MB.normal mu std
-sampleBayes (GammaDist k t )       = MB.gamma k t
-sampleBayes (BetaDist a b )        = MB.beta a b
-sampleBayes (BernoulliDist p )     = MB.bernoulli p
-sampleBayes (BinomialDist n p )    = sequence (replicate n (MB.bernoulli p)) >>= (pure . length . filter (== True))
-sampleBayes (PoissonDist l )       = MB.poisson l
-sampleBayes (DirichletDist as )    = MB.dirichlet (Vec.fromList as) >>= pure . Vec.toList
+sampleBayes (Uniform a b )     = MB.uniform a b
+sampleBayes (Categorical as )     = MB.categorical (Vec.fromList as)
+sampleBayes (Discrete as )  = MB.categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
+sampleBayes (Normal mu std )   = MB.normal mu std
+sampleBayes (Gamma k t )       = MB.gamma k t
+sampleBayes (Beta a b )        = MB.beta a b
+sampleBayes (Bernoulli p )     = MB.bernoulli p
+sampleBayes (Binomial n p )    = sequence (replicate n (MB.bernoulli p)) >>= (pure . length . filter (== True))
+sampleBayes (Poisson l )       = MB.poisson l
+sampleBayes (Dirichlet as )    = MB.dirichlet (Vec.fromList as) >>= pure . Vec.toList
 sampleBayes (PrimDistDict d)       = error ("Sampling from " ++ show d ++ " is not supported")
 
 -- ||| (Section 6.2) Probability density functions
 prob :: PrimDist a -> a -> Double
-prob (DirichletDist xs) ys =
+prob (Dirichlet xs) ys =
   let xs' = map (/(Prelude.sum xs)) xs
   in  if Prelude.sum xs' /= 1 then error "dirichlet can't normalize" else
       case dirichletDistribution (UV.fromList xs')
       of Left e -> error "dirichlet error"
          Right d -> let Exp p = dirichletDensity d (UV.fromList ys)
                         in  exp p
-prob (HalfCauchyDist σ) y
+prob (HalfCauchy σ) y
   = if y < 0 then 0 else
             2 * density (cauchyDistribution 0 σ) y
-prob (CauchyDist μ σ) y
+prob (Cauchy μ σ) y
   = density (cauchyDistribution μ σ) y
-prob (HalfNormalDist σ) y
+prob (HalfNormal σ) y
   = if y < 0 then 0 else
             2 * density (normalDistr 0 σ) y
-prob (NormalDist μ σ) y
+prob (Normal μ σ) y
   = density (normalDistr μ σ) y
-prob (UniformDist min max) y
+prob (Uniform min max) y
   = density (uniformDistr min max) y
-prob (GammaDist k θ) y
+prob (Gamma k θ) y
   = density (gammaDistr k θ) y
-prob  (BetaDist α β) y
+prob  (Beta α β) y
   = density (betaDistr α β) y
-prob (DiscrUniformDist min max) y
+prob (UniformD min max) y
   = probability (discreteUniformAB min max) y
-prob (BinomialDist n p) y
+prob (Binomial n p) y
   = probability (binomial n p) y
-prob (BernoulliDist p) i
+prob (Bernoulli p) i
   = probability (binomial 1 p) (boolToInt i)
-prob d@(CategoricalDist ps) y
+prob d@(Discrete ps) y
   = case lookup y ps of
       Nothing -> error $ "Couldn't find " ++ show y ++ " in categorical dist"
       Just p  -> p
-prob (DiscreteDist ps) y     = ps !! y
-prob (PoissonDist λ) y       = probability (poisson λ) y
-prob (DeterministicDist x) y = 1
+prob (Categorical ps) y     = ps !! y
+prob (Poisson λ) y       = probability (poisson λ) y
+prob (Deterministic x) y = 1
 
 logProb :: PrimDist a -> a -> Double
 logProb d = log . prob d

@@ -61,7 +61,7 @@ docTopicPrior n_topics = dirichlet (replicate n_topics 1) #θ
 wordDist :: Observable env "w" String =>
   [String] -> [Double] -> Model env ts String
 wordDist vocab ps =
-  categorical (zip vocab ps) #w
+  discrete (zip vocab ps) #w
 
 -- | Distribution over the topics in a document, over the distribution of words in a topic
 topicModel :: (Observables env '["φ", "θ"] [Double],
@@ -75,7 +75,7 @@ topicModel vocab n_topics n_words = do
   topic_word_ps <- replicateM n_topics $ topicWordPrior vocab
   -- Generate distribution over topics for a given document
   doc_topic_ps  <- docTopicPrior n_topics
-  replicateM n_words (do  z <- discrete' doc_topic_ps
+  replicateM n_words (do  z <- categorical' doc_topic_ps
                           let word_ps = topic_word_ps !! z
                           wordDist vocab word_ps)
 
