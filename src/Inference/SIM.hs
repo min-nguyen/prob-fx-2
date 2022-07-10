@@ -10,9 +10,9 @@ module Inference.SIM where
 import Data.Map (Map)
 import Data.Maybe
 import Effects.Dist
+import Effects.Lift
 import Effects.ObsReader
 import Effects.State
-import Effects.Lift
 import Env
 import GHC.TypeLits
 import Model

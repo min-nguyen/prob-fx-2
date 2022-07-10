@@ -8,19 +8,20 @@
 {-# LANGUAGE TypeOperators #-}
 module Inference.LW where
 
-import qualified Data.Map as Map
-import Env
-import Effects.ObsReader
-import Effects.Lift
+
 import Control.Monad
 import Effects.Dist
-import Prog
-import PrimDist
-import Model hiding (runModelFree)
-import Sampler
+import Effects.Lift
+import Effects.ObsReader
 import Effects.State ( modify, handleState, State )
-import Trace
+import Env
 import Inference.SIM as SIM (handleSamp)
+import Model hiding (runModelFree)
+import PrimDist
+import Prog
+import qualified Data.Map as Map
+import Sampler
+import Trace
 
 -- ||| (Section 6.2.1) Likelihood Weighting (LW)
 lw :: forall env es a b. (FromSTrace env)

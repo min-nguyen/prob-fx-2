@@ -14,7 +14,6 @@
 module OpenSum where
 
 import Data.Kind (Type, Constraint)
-import Data.Proxy
 import Data.Typeable
 import FindElem
 import GHC.TypeLits (Nat, KnownNat, natVal, TypeError, ErrorMessage (Text, (:$$:), (:<>:), ShowType))

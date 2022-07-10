@@ -10,28 +10,28 @@
 {-# LANGUAGE RankNTypes #-}
 module Inference.MH where
 
-import Data.Functor.Identity
-import qualified Data.Map as Map
-import Data.Map (Map)
-import Data.Kind (Type)
-import qualified Data.Set as Set
-import Data.Set (Set, (\\))
-import Data.Maybe
-import Env
 import Control.Monad
+import Data.Functor.Identity
+import Data.Kind (Type)
+import Data.Map (Map)
+import Data.Maybe
+import Data.Set (Set, (\\))
 import Effects.Dist
-import Prog
-import Model hiding (runModelFree)
-import Sampler
-import PrimDist
-import Trace
 import Effects.Lift
-import qualified OpenSum as OpenSum
-import OpenSum (OpenSum(..))
 import Effects.ObsReader
 import Effects.State
-import Unsafe.Coerce
+import Env
 import Inference.SIM (handleObs)
+import Model hiding (runModelFree)
+import OpenSum (OpenSum(..))
+import PrimDist
+import Prog
+import qualified Data.Map as Map
+import qualified Data.Set as Set
+import qualified OpenSum
+import Sampler
+import Trace
+import Unsafe.Coerce
 
 
 -- ||| (Section 6.2.2) Metropolis-Hastings
