@@ -25,9 +25,8 @@ import Prog
 import qualified OpenSum
 
 
--- ** Probabilistic model
--- $model
--- Models are embedded using an algebraic effect approach. They are represented as syntax trees (uninterpreted programs)
+-- ** Model definition
+-- $ Probabilistic models are embedded using an algebraic effect approach, represented as syntax trees (uninterpreted programs).
 
 -- | A @Model@ is indexed by a model environment @env@ containing random variables that can be provided observed values for, an effect signature @es@ of the possible effects a model can invoke, and an output type @a@ of values that the model generates.
 newtype Model env es a =
@@ -51,21 +50,17 @@ instance Monad (Model env es) where
 handleCore :: Env env -> Model env (ObsReader env : Dist : es) a -> Prog (Observe : Sample : es) a
 handleCore env m = (handleDist . handleObsRead env) (runModel m)
 
--- ** Model Distributions
--- $model-dist
--- Smart constructors for calling primitive distributions from the model type.
+-- ** Model operations
+-- $ Smart constructors for calling primitive distributions from the model type.
 
--- | Distribution smart constructors 
-
-
-deterministic' :: (Eq v, Show v, OpenSum.Member v PrimVal)
-  => v -> Model env es v
+deterministic' :: (Eq a, Show a, OpenSum.Member a PrimVal)
+  => a -> Model env es a
 deterministic' x = Model $ do
   call (Dist (Deterministic x) Nothing Nothing)
 
-deterministic :: forall env es v x. (Eq v, Show v, OpenSum.Member v PrimVal)
-  => Observable env x v
-  => v -> Var x -> Model env es v
+deterministic :: forall env es a x. (Eq a, Show a, OpenSum.Member a PrimVal)
+  => Observable env x a
+  => a -> Var x -> Model env es a
 deterministic x field = Model $ do
   let tag = Just $ varToStr field
   maybe_y <- ask @env field
@@ -95,13 +90,13 @@ categorical xs field = Model $ do
   maybe_y <- ask @env field
   call (Dist (Categorical xs) maybe_y tag)
 
-discrete' :: (Eq v, Show v, OpenSum.Member v PrimVal) => [(v, Double)] -> Model env es v
+discrete' :: (Eq a, Show a, OpenSum.Member a PrimVal) => [(a, Double)] -> Model env es a
 discrete' xs = Model $ do
   call (Dist (Discrete xs) Nothing Nothing)
 
-discrete :: forall env es v x. (Eq v, Show v, OpenSum.Member v PrimVal) => Observable env x v
-  => [(v, Double)] -> Var x
-  -> Model env es v
+discrete :: forall env es a x. (Eq a, Show a, OpenSum.Member a PrimVal) => Observable env x a
+  => [(a, Double)] -> Var x
+  -> Model env es a
 discrete xs field = Model $ do
   let tag = Just $ varToStr field
   maybe_y <- ask @env field
@@ -228,8 +223,9 @@ poisson λ field = Model $ do
   call (Dist (Poisson λ) maybe_y tag)
 
 
--- ** Wrappers 
--- | State
+-- ** Other operations
+
+-- **** State
 getStM :: (Member (State s) es) => Model env es s
 getStM = Model getSt
 
@@ -239,13 +235,13 @@ putStM s = Model (putSt s)
 handleStateM :: s -> Model env (State s : es) a -> Model env es (a, s)
 handleStateM s m = Model $ handleState s $ runModel m
 
--- | Writer
+-- **** Writer
 tellM :: Member (Writer w) es => w -> Model env es ()
 tellM w = Model $ tell w
 
-handleWriterM :: Monoid w => Model env (Writer w : es) v -> Model env es (v, w)
+handleWriterM :: Monoid w => Model env (Writer w : es) a -> Model env es (a, w)
 handleWriterM m = Model $ handleWriter $ runModel m
 
--- | Lift
+-- **** Lift
 liftM :: (Member (Lift m) es) => m a -> Model env es a
 liftM op = Model (call (Lift op))
