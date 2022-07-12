@@ -63,7 +63,7 @@ mhLogRegrOnce ::  Int -> Int ->  Sampler ([Double], [Double])
 mhLogRegrOnce n_mhsteps n_datapoints = do
   xys <- simLogRegrOnce n_datapoints
   let xys' = [(x, env) | (x, y) <- xys, let env = (#label := [y]) <:> (#m := []) <:> (#b := []) <:> enil]
-  mhTrace <- concat <$> mapM (\(x, y) -> MH.mh n_mhsteps (logRegrOnce x) y  (#m <#> #b <#> onil)) xys'
+  mhTrace <- concat <$> mapM (\(x, y) -> MH.mh n_mhsteps (logRegrOnce x) y  (#m <#> #b <#> vnil)) xys'
   let mus = concatMap (get #m) mhTrace
       bs  = concatMap (get #b) mhTrace
   pure (mus, bs)
@@ -119,7 +119,7 @@ mhLogRegr n_mhsteps n_datapoints = do
   let -- Define an environment for inference, providing observed values for the model outputs
       env = (#label := ys) <:> (#m := []) <:> (#b := []) <:> enil
   -- Run MH inference for 20000 iterations; the ["m", "b"] is optional for indicating interest in learning #m and #b in particular, causing other variables to not be resampled (unless necessary) during MH.
-  mhTrace <- MH.mh n_mhsteps (logRegr xs) env  (#m <#> #b <#> onil)
+  mhTrace <- MH.mh n_mhsteps (logRegr xs) env  (#m <#> #b <#> vnil)
   -- Retrieve values sampled for #m and #b during MH
   let m_samples = concatMap (get #m) mhTrace
       b_samples = concatMap (get #b) mhTrace

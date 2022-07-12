@@ -10,7 +10,7 @@
 module FindElem where
 import GHC.TypeLits ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
 
--- | Auxiliary type-class for proof that t is an element of the type-level list ts.
+-- | Auxiliary type-class for proof that @t@ is an element of the type-level list @ts@.
 class FindElem t ts where
   findElem :: P t ts
 

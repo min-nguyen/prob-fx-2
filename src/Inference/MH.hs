@@ -5,6 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Inference.MH 
   ( -- * Inference wrapper functions
@@ -29,7 +30,7 @@ import Data.Set (Set, (\\))
 import Effects.Dist ( Addr, Sample(..), Observe, Dist, Tag )
 import Effects.Lift ( handleLift, Lift, lift )
 import Effects.ObsReader ( ObsReader )
-import Env ( Env, ValidSpec(..), ObsVars )
+import Env ( Env, ContainsVars(..), Vars )
 import Inference.SIM (handleObs)
 import Model hiding (runModelFree)
 import OpenSum (OpenSum(..))
@@ -43,7 +44,7 @@ import Trace
 import Unsafe.Coerce ( unsafeCoerce )
 
 -- | Metropolis-Hastings (MH) inference
-mh :: forall env es a xs. (FromSTrace env, ValidSpec env xs)
+mh :: forall env es a xs. (FromSTrace env, env `ContainsVars` xs)
   -- | Number of MH iterations
   => Int
   -- | Model
@@ -51,15 +52,15 @@ mh :: forall env es a xs. (FromSTrace env, ValidSpec env xs)
   -- | Input model environment 
   -> Env env
   -- | An optional list of observable variable names to specify sample sites of interest 
-      {- For example, for interest in sampling `#mu`, provide `#mu <#> onil`. 
+      {- For example, for interest in sampling `#mu`, provide `#mu <#> vnil`. 
          This causes other variables to not be resampled unless necessary. -}
-  -> ObsVars xs
+  -> Vars xs
   -- | Trace of output model environments, one for each MH iteration
   -> Sampler [Env env]
 mh n model env obsvars  = do
   -- Handle model to probabilistic progrma
   let prog = handleCore env model
-      tags = asTags @env obsvars
+      tags = varsToStrs @env obsvars
   -- Run MH for n iterations
   mhTrace <- mhInternal n prog Map.empty tags
   -- Convert each iteration's sample trace to a model environment

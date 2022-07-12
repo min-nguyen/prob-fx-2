@@ -12,10 +12,11 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
 
 module Env where
 
-import Data.Kind ( Constraint )
+import Data.Kind ( Constraint, Type )
 import Data.Proxy ( Proxy(Proxy) )
 import Effects.Dist (Tag)
 import FindElem ( FindElem(..), P(..) )
@@ -25,98 +26,117 @@ import qualified Data.Vector as V
 import qualified GHC.TypeLits as TL
 import Unsafe.Coerce ( unsafeCoerce )
 
--- ||| Observable variable container
-data ObsVar (x :: Symbol) where
-  ObsVar :: KnownSymbol x => ObsVar x
+-- ** Observable variable 
 
-instance (KnownSymbol x, x ~ x') => IsLabel x (ObsVar x') where
-  fromLabel = ObsVar
+-- | A container for an observable variable name @x@ represented as a type-level string.
+data Var (x :: Symbol) where
+  Var :: KnownSymbol x => Var x
 
--- ||| Specification of observable variables
-data ObsVars (xs :: [Symbol]) where
-  ONil  :: ObsVars '[]
-  OCons :: ObsVars xs -> ObsVars (x : xs)
+-- | Allows the syntax @#x@ to be automatically lifted to the type @ObsVar "x"@.
+instance (KnownSymbol x, x ~ x') => IsLabel x (Var x') where
+  fromLabel = Var
 
-onil :: ObsVars '[]
-onil = ONil
+-- | A container for many observable variable names
+data Vars (xs :: [Symbol]) where
+  VNil  :: Vars '[]
+  VCons :: Vars xs -> Vars (x : xs)
+
+vnil :: Vars '[]
+vnil = VNil
 
 infixr 5 <#>
-(<#>) :: ObsVar x -> ObsVars xs -> ObsVars (x : xs)
-x <#> xs = OCons xs
+(<#>) :: Var x -> Vars xs -> Vars (x : xs)
+x <#> xs = VCons xs
 
--- ||| Observable variable assignment 
+varToStr :: forall x. Var x -> String
+varToStr Var = symbolVal (Proxy @x)
+
+-- ** Model environment
+
+-- | Assign or associate a variable @x@ with a value of type @a@
 data Assign x a = x := a
 
-type family Keys env where
-  Keys (x := a : env) = x : Keys env
-
-type family UniqueKey x env where
-  UniqueKey x ((x ':= a) : env) = False
-  UniqueKey x ((x' ':= a) : env) = UniqueKey x env
-  UniqueKey x '[] = True
-
-type family LookupType x env where
-  LookupType x ((x := a) : env) = a
-  LookupType x ((x' := a) : env) = LookupType x env
-
--- ||| Valid specification of observable variables
-class ValidSpec (env :: [Assign Symbol *]) (xs :: [Symbol])  where
-  asTags :: ObsVars xs -> [Tag]
-
-instance ValidSpec env '[] where
-  asTags _    = []
-
-instance (FindElem x (Keys env), KnownSymbol x, ValidSpec env xs) => ValidSpec env (x : xs)  where
-  asTags (OCons xs)  = varToStr (ObsVar @x) : asTags @env @xs xs
-
-varToStr :: forall x. ObsVar x -> String
-varToStr ObsVar = symbolVal (Proxy @x)
-
--- ||| (Section 5.1) Model environments
+-- | A model environment assigning traces (lists) of observed values to observable variables i.e. the type @Env ((x := a) : env)@ indicates @x@ is assigned a value of type @[a]@
 data Env (env :: [Assign Symbol *]) where
   ENil  :: Env '[]
-  ECons :: forall a x env. [a] -> Env env -> Env (x := a : env)
+  ECons :: [a] 
+        -> Env env 
+        -> Env (x := a : env)
+
+instance (KnownSymbol x, Show a, Show (Env env)) => Show (Env ((x := a) ': env)) where
+  show (ECons a env) = varToStr (Var @x) ++ ":=" ++ show a ++ ", " ++ show env
+
+instance Show (Env '[]) where
+  show ENil = "[]"
 
 enil :: Env '[]
 enil = ENil
 
 infixr 5 <:>
-(<:>) :: UniqueKey x env ~ 'True => Assign (ObsVar x) [a] -> Env env -> Env ((x ':= a) ': env)
+(<:>) :: UniqueVar x env ~ 'True => Assign (Var x) [a] -> Env env -> Env ((x ':= a) ': env)
 (_ := a) <:> env = ECons a env
 
--- ||| Constraining model environments
+-- ** Auxiliary type classes and type families 
+
 instance FindElem x ((x := a) : env) where
   findElem = P 0
 instance {-# OVERLAPPABLE #-} FindElem x env => FindElem x ((x' := a) : env) where
   findElem = P $ 1 + unP (findElem :: P x env)
 
+-- | Specifies that an environment @Env env@ has an observable variable @x@ whose observed values are of type @a@
 class (FindElem x env, LookupType x env ~ a)
   => Observable env x a where
-  get  :: ObsVar x -> Env env -> [a]
-  set  :: ObsVar x -> [a] -> Env env -> Env env
+  -- | Get the trace of observed values for @x@ from @env@
+  get  :: Var x -> Env env -> [a]
+  -- | Set the trace of observed values for @x@ from @env@
+  set  :: Var x -> [a] -> Env env -> Env env
 
 instance (FindElem x env, LookupType x env ~ a)
   => Observable env x a where
-  get _ env =
-    let idx = unP $ findElem @x @env
-        f :: Int -> Env env' -> [a]
-        f n (ECons a env) = if   n == 0
-                            then unsafeCoerce a
-                            else f (n - 1) env
-    in  f idx env
-  set _ a' env =
-    let idx = unP $ findElem @x @env
-        f :: Int -> Env env' -> Env env'
-        f n (ECons a env) = if   n == 0
-                            then ECons (unsafeCoerce a') env
-                            else ECons a (f (n - 1) env)
-    in  f idx env
+  get _ env = f idx env
+    where idx = unP $ findElem @x @env
+          f :: Int -> Env env' -> [a]
+          f n (ECons a env) | n == 0    = unsafeCoerce a
+                            | otherwise = f (n - 1) env
+  set _ a' env = f idx env
+    where idx = unP $ findElem @x @env
+          f :: Int -> Env env' -> Env env'
+          f n (ECons a env) | n == 0    = ECons (unsafeCoerce a') env
+                            | otherwise = ECons a (f (n - 1) env)
 
-type family Observables env (ks :: [Symbol]) a :: Constraint where
+-- | For each observable variable @x@ in @xs@, construct the constraint @Observable env x a@
+type Observables :: [Assign Symbol Type] -> [Symbol] -> Type -> Constraint
+type family Observables env xs a :: Constraint where
   Observables env (x ': xs) a = (Observable env x a, Observables env xs a)
   Observables env '[] a = ()
 
-instance (KnownSymbol x, Show a, Show (Env env)) => Show (Env ((x := a) ': env)) where
-  show (ECons a env) = varToStr (ObsVar @x) ++ ":=" ++ show a ++ ", " ++ show env
-instance Show (Env '[]) where
-  show ENil = "[]"
+-- | Extract the observable variables from a model environment type
+type GetVars :: [Assign Symbol Type] -> [Symbol]
+type family GetVars env where
+  GetVars (x := a : env) = x : GetVars env
+
+-- | Check whether an observable variable @x@ is unique in model environment @env@
+type UniqueVar :: Symbol -> [Assign Symbol Type] -> Bool
+type family UniqueVar x env where
+  UniqueVar x ((x ':= a) : env)  = False
+  UniqueVar x ((x' ':= a) : env) = UniqueVar x env
+  UniqueVar x '[] = True
+
+-- | Retrieve the type of observed values for variable @x@ from model environment @env@
+type LookupType :: Symbol -> [Assign Symbol Type] -> Type
+type family LookupType x env where
+  LookupType x ((x := a) : env) = a
+  LookupType x ((x' := a) : env) = LookupType x env
+
+-- | Enforce that @xs@ is a subset of observable variable names from @env@. 
+-- This class is used as a type-safe interface for allowing users to specify valid observable variable names with respect to an environment; these can then later be converted to normal strings to be used by backend inference methods.
+class ContainsVars (env :: [Assign Symbol *]) (xs :: [Symbol])  where
+  -- | Convert a set of type-level strings @xs@ to value-level strings.
+  varsToStrs :: Vars xs -> [Tag]
+
+instance ContainsVars env '[] where
+  varsToStrs _    = []
+
+instance (FindElem x (GetVars env), KnownSymbol x, ContainsVars env xs) => ContainsVars env (x : xs)  where
+  varsToStrs (VCons xs)  = varToStr (Var @x) : varsToStrs @env @xs xs
+

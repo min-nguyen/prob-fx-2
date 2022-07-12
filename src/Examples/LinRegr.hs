@@ -75,7 +75,7 @@ mhLinRegrOnce :: Int -> Int -> Sampler ([Double], [Double])
 mhLinRegrOnce n_mhsteps n_datapoints = do
   let xs  = [0 .. fromIntegral n_datapoints]
       xys = [(x, env) | x <- xs, let env = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x]) <:> enil]
-  mhTrace <- concat <$> mapM (\(x, y) -> MH.mh n_mhsteps (linRegrOnce x) y  (#m <#> #c <#> onil)) xys
+  mhTrace <- concat <$> mapM (\(x, y) -> MH.mh n_mhsteps (linRegrOnce x) y  (#m <#> #c <#> vnil)) xys
   let -- Get output of MH and extract mu samples
       mus = concatMap (get #m) mhTrace
       cs  = concatMap (get #c) mhTrace
@@ -113,7 +113,7 @@ mhLinRegr ::  Int -> Int ->  Sampler ([Double], [Double])
 mhLinRegr n_mhsteps n_datapoints = do
   let xs            = [0 .. fromIntegral n_datapoints]
       env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  env_mh_outs <- MH.mh n_mhsteps (linRegr xs) env (#m <#> #c <#> onil)
+  env_mh_outs <- MH.mh n_mhsteps (linRegr xs) env (#m <#> #c <#> vnil)
   let mus = concatMap (get #m) env_mh_outs
   let cs = concatMap (get #c) env_mh_outs
   pure (mus, cs)

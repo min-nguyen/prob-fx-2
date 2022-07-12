@@ -13,9 +13,9 @@ import Util
 
 -- ||| Effect for reading observable variables
 data ObsReader env a where
-  Ask :: Observable env x a => ObsVar x -> ObsReader env (Maybe a)
+  Ask :: Observable env x a => Var x -> ObsReader env (Maybe a)
 
-ask :: forall env es x a. Member (ObsReader env) es => Observable env x a => ObsVar x -> Prog es (Maybe a)
+ask :: forall env es x a. Member (ObsReader env) es => Observable env x a => Var x -> Prog es (Maybe a)
 ask x = call (Ask @env x)
 
 -- ||| Handle requests to read observable variables

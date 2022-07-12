@@ -52,6 +52,6 @@ mhGMM n_mhsteps n_datapoints = do
   bs <- simGMM n_datapoints
   let (xs, ys) = unzip (map fst bs)
       env =  #mu := [] <:> #mu_k := [] <:> #x := xs <:> #y := ys <:> enil
-  env_mh_out <- MH.mh n_mhsteps (gmm 2 n_datapoints) env (#mu <#> onil)
+  env_mh_out <- MH.mh n_mhsteps (gmm 2 n_datapoints) env (#mu <#> vnil)
   let mus = map (get #mu) env_mh_out
   pure mus

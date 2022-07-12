@@ -33,10 +33,10 @@ class FromSTrace a where
 instance FromSTrace '[] where
   fromSTrace _ = enil
 
-instance (UniqueKey x env ~ 'True, KnownSymbol x, Eq a, OpenSum.Member a PrimVal, FromSTrace env) => FromSTrace ((x := a) : env) where
-  fromSTrace sMap = ECons (extractSTrace (ObsVar @x, Proxy @a) sMap) (fromSTrace sMap)
+instance (UniqueVar x env ~ 'True, KnownSymbol x, Eq a, OpenSum.Member a PrimVal, FromSTrace env) => FromSTrace ((x := a) : env) where
+  fromSTrace sMap = ECons (extractSTrace (Var @x, Proxy @a) sMap) (fromSTrace sMap)
 
-extractSTrace ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (ObsVar x, Proxy a) -> STrace -> [a]
+extractSTrace ::  forall a x. (Eq a, OpenSum.Member a PrimVal) => (Var x, Proxy a) -> STrace -> [a]
 extractSTrace (x, typ)  =
     map (fromJust . OpenSum.prj @a . snd . snd)
   . Map.toList

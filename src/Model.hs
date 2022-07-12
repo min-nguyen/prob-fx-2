@@ -73,7 +73,7 @@ deterministic' x = Model $ do
 
 deterministic :: forall env es v x. (Eq v, Show v, OpenSum.Member v PrimVal)
   => Observable env x v
-  => v -> ObsVar x -> Model env es v
+  => v -> Var x -> Model env es v
 deterministic x field = Model $ do
   let tag = Just $ varToStr field
   maybe_y <- ask @env field
@@ -84,7 +84,7 @@ dirichlet' xs = Model $ do
   call (Dist (Dirichlet xs) Nothing Nothing)
 
 dirichlet :: forall env es x. Observable env x [Double]
-  => [Double] -> ObsVar x
+  => [Double] -> Var x
   -> Model env es [Double]
 dirichlet xs field = Model $ do
   let tag = Just $ varToStr field
@@ -96,7 +96,7 @@ categorical' xs = Model $ do
   call (Dist (Categorical xs) Nothing Nothing)
 
 categorical :: forall env es x. Observable env x Int
-  => [Double] -> ObsVar x
+  => [Double] -> Var x
   -> Model env es Int
 categorical xs field = Model $ do
   let tag = Just $ varToStr field
@@ -108,7 +108,7 @@ discrete' xs = Model $ do
   call (Dist (Discrete xs) Nothing Nothing)
 
 discrete :: forall env es v x. (Eq v, Show v, OpenSum.Member v PrimVal) => Observable env x v
-  => [(v, Double)] -> ObsVar x
+  => [(v, Double)] -> Var x
   -> Model env es v
 discrete xs field = Model $ do
   let tag = Just $ varToStr field
@@ -120,7 +120,7 @@ normal' mu sigma = Model $ do
   call (Dist (Normal mu sigma) Nothing Nothing)
 
 normal :: forall env es x. Observable env x Double
-  => Double -> Double -> ObsVar x
+  => Double -> Double -> Var x
   -> Model env es Double
 normal mu sigma field = Model $ do
   let tag = Just $ varToStr field
@@ -132,7 +132,7 @@ halfNormal' sigma = Model $ do
   call (Dist (HalfNormal sigma) Nothing Nothing)
 
 halfNormal :: forall env es x. Observable env x Double
-  => Double -> ObsVar x
+  => Double -> Var x
   -> Model env es Double
 halfNormal sigma field = Model $ do
   let tag = Just $ varToStr field
@@ -144,7 +144,7 @@ cauchy' mu sigma = Model $ do
   call (Dist (Cauchy mu sigma) Nothing Nothing)
 
 cauchy :: forall env es x. Observable env x Double
-  => Double -> Double -> ObsVar x
+  => Double -> Double -> Var x
   -> Model env es Double
 cauchy mu sigma field = Model $ do
   let tag = Just $ varToStr field
@@ -156,7 +156,7 @@ halfCauchy' sigma = Model $ do
   call (Dist (HalfCauchy sigma) Nothing Nothing)
 
 halfCauchy :: forall env es x. Observable env x Double
-  => Double -> ObsVar x
+  => Double -> Var x
   -> Model env es Double
 halfCauchy sigma field = Model $ do
   let tag = Just $ varToStr field
@@ -168,7 +168,7 @@ bernoulli' p = Model $ do
   call (Dist (Bernoulli p) Nothing Nothing)
 
 bernoulli :: forall env es x. Observable env x Bool
-  => Double -> ObsVar x
+  => Double -> Var x
   -> Model env es Bool
 bernoulli p field = Model $ do
   let tag = Just $ varToStr field
@@ -180,7 +180,7 @@ binomial' n p = Model $ do
   call (Dist (Binomial n p) Nothing Nothing)
 
 binomial :: forall env es x. Observable env x Int
-  => Int -> Double -> ObsVar x
+  => Int -> Double -> Var x
   -> Model env es Int
 binomial n p field = Model $ do
   let tag = Just $ varToStr field
@@ -192,7 +192,7 @@ gamma' x θ = Model $ do
   call (Dist (Gamma x θ) Nothing Nothing)
 
 gamma :: forall env es x. Observable env x Double
-  => Double -> Double -> ObsVar x
+  => Double -> Double -> Var x
   -> Model env es Double
 gamma x θ field = Model $ do
   let tag = Just $ varToStr field
@@ -204,7 +204,7 @@ beta' α β = Model $ do
   call (Dist (Beta α β) Nothing Nothing)
 
 beta :: forall env es x. Observable env x Double
-  => Double -> Double -> ObsVar x
+  => Double -> Double -> Var x
   -> Model env es Double
 beta α β field = Model $ do
   let tag = Just $ varToStr field
@@ -216,7 +216,7 @@ uniform' min max = Model $ do
   call (Dist (Uniform min max) Nothing Nothing)
 
 uniform :: forall env es x. Observable env x Double
-  => Double -> Double -> ObsVar x
+  => Double -> Double -> Var x
   -> Model env es Double
 uniform min max field = Model $ do
   let tag = Just $ varToStr field
@@ -228,7 +228,7 @@ poisson' λ = Model $ do
   call (Dist (Poisson λ) Nothing Nothing)
 
 poisson :: forall env es x. Observable env x Int
-  => Double -> ObsVar x
+  => Double -> Var x
   -> Model env es Int
 poisson λ field = Model $ do
   let tag = Just $ varToStr field
