@@ -8,6 +8,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds #-}
 
+{- | An algebraic effect embedding of probabilistic models.
+-}
+
 module Model ( 
     Model(..)
   , handleCore
@@ -46,12 +49,12 @@ module Model (
     
 import Control.Monad ( ap )
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
-import Effects.Dist
-import Effects.ObsReader
-import Env
-import OpenSum (OpenSum)
-import PrimDist
-import Prog
+import Effects.Dist ( handleDist, Dist(Dist), Observe, Sample )
+import Effects.ObsReader ( ask, handleObsRead, ObsReader )
+import Env ( varToStr, Env, Var, Observable )
+import OpenSum ( OpenSum )
+import PrimDist ( PrimVal, PrimDist(..) )
+import Prog ( call, Member, Prog )
 import qualified OpenSum
 
 
