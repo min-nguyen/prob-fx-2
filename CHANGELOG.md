@@ -27,6 +27,6 @@ Added:
 
 **PrimDist**
 Changed:
-- Removed the `Dist` suffix on the constructor names of `PrimDist`
 - Swapped names for `Discrete` and `Categorical` 
+- Removed the `Dist` suffix on the constructor names of `PrimDist`
 - `DiscreteUniform` -> `UniformD`
