@@ -8,6 +8,9 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TypeOperators #-}
 
+{- | Metropolis-Hastings inference 
+-}
+
 module Inference.MH 
   ( -- * Inference wrapper functions
       mh
@@ -55,7 +58,7 @@ import Trace
       STrace )
 import Unsafe.Coerce ( unsafeCoerce )
 
--- | Metropolis-Hastings (MH) inference
+-- | Top-level wrapper for Metropolis-Hastings (MH) inference 
 mh :: forall env es a xs. (FromSTrace env, env `ContainsVars` xs)
   -- | Number of MH iterations
   => Int
@@ -64,21 +67,22 @@ mh :: forall env es a xs. (FromSTrace env, env `ContainsVars` xs)
   -- | Input model environment 
   -> Env env
   -- | An optional list of observable variable names to specify sample sites of interest 
-      {- For example, for interest in sampling `#mu`, provide `#mu <#> vnil`. 
-         This causes other variables to not be resampled unless necessary. -}
+    {- For example, for interest in sampling @#mu@, provide @#mu <#> vnil@. 
+       This causes other variables to not be resampled unless necessary. -}
   -> Vars xs
-  -- | Trace of output model environments, one for each MH iteration
+  -- | Trace of output model environments, containing values sampled for each MH iteration
   -> Sampler [Env env]
 mh n model env obsvars  = do
-  -- Handle model to probabilistic progrma
+  -- Handle model to probabilistic program
   let prog = handleCore env model
+  -- Convert observable variables to strings
       tags = varsToStrs @env obsvars
   -- Run MH for n iterations
   mhTrace <- mhInternal n prog Map.empty tags
   -- Convert each iteration's sample trace to a model environment
   pure (map (fromSTrace . snd . fst) mhTrace)
 
--- | MH on a probabilistic program
+-- | Perform MH on a probabilistic program
 mhInternal ::
    -- | Number of MH iterations
       Int                             
@@ -98,7 +102,7 @@ mhInternal n prog strace_0 tags = do
   -- Note: most recent samples are at the front (head) of the trace
   foldl (>=>) pure (replicate n (mhStep prog tags acceptMH)) [mhCtx_0]
 
--- | Draw a new sample from one iteration of MH and then decide to reject or accept it.
+-- | Perform one iteration of MH, by drawing a new sample and then rejecting or accepting it.
 mhStep :: 
   -- | Probabilistic program
      Prog [Observe, Sample,  Lift Sampler] a
@@ -134,17 +138,18 @@ runMH ::
   -- | Sample address of interest
   -> Addr
   -- | Probabilistic program
-  -> Prog [Observe, Sample,  Lift Sampler] a
+  -> Prog [Observe, Sample, Lift Sampler] a
+  -- | Sampler generating: (model output, sample trace, log-probability trace)
   -> Sampler ((a, STrace), LPTrace)
 runMH strace α_samp = handleLift . handleSamp strace α_samp . handleObs . traceLPs . traceSamples
 
--- | Handler for selective sampling during MH
+-- | Handler for @Sample@ that selectively reuses old samples or draws new ones
 handleSamp :: 
   -- | Sample trace
      STrace 
   -- | Address of the proposal sample site for the current MH iteration
   -> Addr 
-  -- | Probabilistic program with just Sample
+  -- | Probabilistic program
   -> Prog [Sample, Lift Sampler] a 
   -> Prog '[Lift Sampler] a
 handleSamp strace α_samp (Op op k) = case discharge op of
@@ -157,8 +162,8 @@ handleSamp strace α_samp (Op op k) = case discharge op of
   where k' = handleSamp strace α_samp . k
 handleSamp _ _ (Val x) = return x
 
--- | For a given address, look up a sampled value from a sample trace, returning
---   it only if the primitive distribution it was sampled from matches the current one.
+{- | For a given address, look up a sampled value from a sample trace, returning
+     it only if the primitive distribution it was sampled from matches the current one. -}
 lookupSample :: OpenSum.Member a PrimVal =>
   -- | Address of sample site
      Addr 

@@ -33,7 +33,7 @@ toMBayes :: (FromSTrace env, MonadInfer m)
   => Model env [ObsReader env, Dist, Lift m] a 
   -- | Input model environment
   -> Env env 
-  -- | A MonadBayes program which also returns an output model environment
+  -- | A program in MonadBayes which also returns an output model environment
   -> m (a, Env env)
 toMBayes m env = 
      fmap (fmap fromSTrace) . handleLift . handleSamp 
@@ -41,6 +41,7 @@ toMBayes m env =
 
 -- | Handle @Observe@ operations by computing the log-probability and calling the @score@ method of the @MonadCond@ class
 handleObs :: (MonadCond m, LastMember (Lift m) es) 
+  -- | Probabilistic program
   => Prog (Observe : es) a 
   -> Prog es a
 handleObs (Val x)  = Val x
@@ -54,6 +55,7 @@ handleObs (Op u k) = case discharge u of
 
 -- | Handle @Sample@ operations by calling the sampling methods of the @MonadSampl@e class
 handleSamp :: (MonadSample m, LastMember (Lift m) es)
+  -- | Probabilistic program
  => Prog (Sample : es) a 
  -> Prog es a
 handleSamp (Val x) = pure x

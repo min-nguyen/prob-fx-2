@@ -3,8 +3,12 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+
+{- | Simulation 
+-}
 
 module Inference.SIM
   (-- * Inference wrapper functions
@@ -16,24 +20,22 @@ module Inference.SIM
   )
   where
 
-import Data.Map (Map)
 import Effects.Dist ( Sample(..), Observe(..), Dist )
 import Effects.Lift ( handleLift, Lift, lift )
 import Effects.ObsReader ( ObsReader )
 import Env ( Env )
 import Model ( handleCore, Model )
 import OpenSum (OpenSum)
-import PrimDist
+import PrimDist ( sample, pattern PrimDistPrf )
 import Prog ( discharge, Prog(..) )
-import qualified Data.Map as Map
 import Sampler ( Sampler )
 import Trace ( traceSamples, STrace, FromSTrace(..) )
 import Unsafe.Coerce (unsafeCoerce)
 
 -- | Simulate from a model under a given model environment
-simulate :: FromSTrace env => 
+simulate :: FromSTrace env
   -- | Model 
-     Model env [ObsReader env, Dist, Lift Sampler] a
+  => Model env [ObsReader env, Dist, Lift Sampler] a
   -- | Input model environment
   -> Env env                 
   -- | Model output and output model environment  
@@ -44,7 +46,11 @@ simulate model env = do
   return (fmap fromSTrace outputs_strace)
 
 -- | Handler for simulating once from a probabilistic program
-runSimulate :: Prog [Observe, Sample, Lift Sampler] a -> Sampler (a, STrace)
+runSimulate 
+  -- | Probabilistic program
+  :: Prog [Observe, Sample, Lift Sampler] a 
+  -- | Sampler generating: (model output, sample trace)
+  -> Sampler (a, STrace)
 runSimulate  
   = handleLift . handleSamp . handleObs . traceSamples 
  
@@ -55,7 +61,7 @@ handleObs (Op op k) = case discharge op of
   Right (Observe d y α) -> handleObs (k y)
   Left op' -> Op op' (handleObs . k)
 
--- | Handle @Sample@ operations by (lifting) IO-sampling from primitive distributions
+-- | Handle @Sample@ operations by sampling using the @Sampler@ monad
 handleSamp :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
 handleSamp (Val x) = return x
 handleSamp (Op op k) = case discharge op of

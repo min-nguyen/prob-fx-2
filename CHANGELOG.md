@@ -16,6 +16,12 @@ Changed:
 Added:
 - `putM`, `getM`, and `handleStateM` for calling and handling `State` in the `Model` type
 
+**Inference.LW**
+Changed:
+- Type signature for `lw`
+Added:
+- `lwInternal`
+
 **Env**
 Changed:
 - `ObsVar` -> `Var`, `UniqueKey` -> `UniqueVar`, `nil` -> `enil`

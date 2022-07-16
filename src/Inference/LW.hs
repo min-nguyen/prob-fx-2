@@ -47,7 +47,7 @@ lw n model env = do
   lwTrace <- lwInternal n prog
   pure $ map (\((_, strace), p) -> (fromSTrace strace, p)) lwTrace
 
--- | Run LW `n` times on probabilistic program 
+-- | Run LW n times on probabilistic program 
 lwInternal
   -- | Number of LW iterations
   :: Int
@@ -69,6 +69,7 @@ runLW = handleLift . SIM.handleSamp . handleObs 0 . traceSamples
 handleObs 
   -- | Accumulated log-probability
   :: Double 
+  -- | Probabilistic program
   -> Prog (Observe : es) a 
   -> Prog es (a, Double)
 handleObs logp (Val x) = return (x, exp logp)
