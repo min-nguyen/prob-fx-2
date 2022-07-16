@@ -6,6 +6,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
+{- | An interface that allows models in ProbFX to be translated to probabilistic programs in MonadBayes.
+-}
+
 module Inference.MBAYES
   (  
     toMBayes
@@ -24,14 +27,22 @@ import PrimDist ( logProb, sampleBayes )
 import Prog ( discharge, Prog(..), LastMember )
 import Trace ( traceSamples, FromSTrace(..) )
 
--- | Handle a prob-fx model into a monad-bayes program. 
-toMBayes :: (FromSTrace env, MonadInfer m) => Model env [ObsReader env, Dist, Lift m] a -> Env env -> m (a, Env env)
+-- | Translate a ProbFX model under a given model environment to a MonadBayes program. 
+toMBayes :: (FromSTrace env, MonadInfer m) 
+  -- | ProbFX model
+  => Model env [ObsReader env, Dist, Lift m] a 
+  -- | Input model environment
+  -> Env env 
+  -- | A MonadBayes program which also returns an output model environment
+  -> m (a, Env env)
 toMBayes m env = 
      fmap (fmap fromSTrace) . handleLift . handleSamp 
    . handleObs . traceSamples . handleDist . handleObsRead env $ runModel m
 
--- | Handle Observe operations by computing the log-probability and calling the score method of the MonadCond class
-handleObs :: MonadCond m => LastMember (Lift m) es => Prog (Observe : es) a -> Prog es a
+-- | Handle @Observe@ operations by computing the log-probability and calling the @score@ method of the @MonadCond@ class
+handleObs :: (MonadCond m, LastMember (Lift m) es) 
+  => Prog (Observe : es) a 
+  -> Prog es a
 handleObs (Val x)  = Val x
 handleObs (Op u k) = case discharge u of
   Left u' -> do 
@@ -41,8 +52,10 @@ handleObs (Op u k) = case discharge u of
          lift (MB.score (Exp p))
          handleObs (k y)
 
--- | Handle Sample operations by calling the sampling methods of the MonadSample class
-handleSamp :: MonadSample m => LastMember (Lift m) es => Prog (Sample : es) a -> Prog es a
+-- | Handle @Sample@ operations by calling the sampling methods of the @MonadSampl@e class
+handleSamp :: (MonadSample m, LastMember (Lift m) es)
+ => Prog (Sample : es) a 
+ -> Prog es a
 handleSamp (Val x) = pure x
 handleSamp (Op u k) = case discharge u of
   Left u' -> do

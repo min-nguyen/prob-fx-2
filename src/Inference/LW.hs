@@ -6,6 +6,9 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeOperators #-}
 
+{- | Likelihood-Weighting inference
+-}
+
 module Inference.LW 
   ( -- * Inference wrapper functions
     lw
@@ -29,11 +32,10 @@ import qualified Data.Map as Map
 import Sampler ( Sampler )
 import Trace ( traceSamples, STrace, FromSTrace(..) )
 
--- | Likelihood-Weighting (LW) inference
+-- | Top-level wrapper for Likelihood-Weighting (LW) inference
 lw :: FromSTrace env
-  => 
   -- | Number of LW iterations
-      Int                          
+  => Int                          
   -- | Model
   -> Model env [ObsReader env, Dist, Lift Sampler] a       
   -- | Input model environment 
@@ -46,9 +48,9 @@ lw n model env = do
   pure $ map (\((_, strace), p) -> (fromSTrace strace, p)) lwTrace
 
 -- | Run LW `n` times on probabilistic program 
-lwInternal :: 
+lwInternal
   -- | Number of LW iterations
-     Int
+  :: Int
   -- | Probabilistic program 
   -> Prog [Observe, Sample, Lift Sampler] a 
   -- | List of weighted model outputs and sample traces
@@ -56,11 +58,19 @@ lwInternal ::
 lwInternal n prog = replicateM n (runLW prog)
 
 -- | Handler for one iteration of LW
-runLW :: Prog [Observe, Sample, Lift Sampler] a -> Sampler ((a, STrace), Double)
-runLW  = handleLift . SIM.handleSamp . handleObs 0 . traceSamples
+runLW 
+  -- | Probabilistic program
+  :: Prog [Observe, Sample, Lift Sampler] a 
+  -- | Weighted model output @a@ and sample trace @STrace@
+  -> Sampler ((a, STrace), Double)
+runLW = handleLift . SIM.handleSamp . handleObs 0 . traceSamples
 
--- | Handle each Observe operation by computing and accumulating log probabilities
-handleObs :: Double -> Prog (Observe : es) a -> Prog es (a, Double)
+-- | Handle each @Observe@ operation by computing and accumulating log-probabilities
+handleObs 
+  -- | Accumulated log-probability
+  :: Double 
+  -> Prog (Observe : es) a 
+  -> Prog es (a, Double)
 handleObs logp (Val x) = return (x, exp logp)
 handleObs logp (Op u k) = case discharge u of
     Right (Observe d y α) -> do
