@@ -10,6 +10,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 {- | An open sum implementation for value types.
 -}
@@ -24,7 +25,7 @@ import GHC.TypeLits (Nat, KnownNat, natVal, TypeError, ErrorMessage (Text, (:$$:
 import qualified GHC.TypeLits as TL
 import Unsafe.Coerce ( unsafeCoerce )
 
--- | Open sum of value types
+-- | Open sum of value types @as@
 data OpenSum (as :: [*]) where
   UnsafeOpenSum :: Int -> a -> OpenSum as
 
@@ -47,13 +48,15 @@ instance forall a as. (Show a, Show (OpenSum as)) => Show (OpenSum (a : as)) whe
 instance {-# OVERLAPPING #-} Show a => Show (OpenSum '[a]) where
   show (UnsafeOpenSum i a) = show (unsafeCoerce a :: a)
 
--- | Safely inject and project a value into an open sum
+-- | Membership of type @a@ in a type-level list @as@
 class (FindElem a as) => Member (a :: *) (as :: [*]) where
+  -- | Inject a value of type @A@ into an open sum
   inj ::  a -> OpenSum as
+  -- | Attempt to project an open sum to a value of type @a@
   prj ::  OpenSum as  -> Maybe a
 
 instance (Typeable a, a ~ a') => Member a '[a'] where
-   inj x          = UnsafeOpenSum 0 x
+   inj = UnsafeOpenSum 0
    prj (UnsafeOpenSum _ x) = Just (unsafeCoerce x)
 
 instance (FindElem a as) => Member a as where
