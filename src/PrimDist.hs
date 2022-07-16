@@ -17,33 +17,51 @@
 {-# LANGUAGE ImplicitParams #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
-module PrimDist where
 
-import Data.Kind
+{- | A GADT encoding of (a selection of) primitive distributions 
+    along with their corresponding sampling and density functions.
+-}
+
+module PrimDist (
+  -- * Primitive distribution
+    PrimDist(..)
+  , PrimVal
+  , IsPrimVal(..)
+  , pattern PrimDistPrf
+  , ErasedPrimDist(..)
+  -- * Sampling
+  , sample
+  , sampleBayes
+  -- * Density
+  , prob
+  , logProb) where
+
+import Data.Kind ( Constraint )
 import Data.Map (Map)
-import Numeric.Log
 import OpenSum (OpenSum)
-import qualified Control.Monad.Bayes.Class as MB
 import qualified Data.Map as Map
 import qualified Data.Vector as V
 import qualified Data.Vector as Vec
 import qualified Data.Vector.Unboxed as UV
 import qualified OpenSum
 import qualified System.Random.MWC.Distributions as MWC
+import Statistics.Distribution ( ContDistr(density), DiscreteDistr(probability) )
+import Statistics.Distribution.Beta ( betaDistr )
+import Statistics.Distribution.Binomial ( binomial )
+import Statistics.Distribution.CauchyLorentz ( cauchyDistribution )
+import Statistics.Distribution.Dirichlet ( dirichletDensity, dirichletDistribution )
+import Statistics.Distribution.DiscreteUniform ( discreteUniformAB )
+import Statistics.Distribution.Gamma ( gammaDistr )
+import Statistics.Distribution.Normal ( normalDistr )
+import Statistics.Distribution.Poisson ( poisson )
+import Statistics.Distribution.Uniform ( uniformDistr )
 import Sampler
-import Statistics.Distribution
-import Statistics.Distribution.Beta
-import Statistics.Distribution.Binomial
-import Statistics.Distribution.CauchyLorentz
-import Statistics.Distribution.Dirichlet
-import Statistics.Distribution.DiscreteUniform
-import Statistics.Distribution.Gamma
-import Statistics.Distribution.Normal
-import Statistics.Distribution.Poisson
-import Statistics.Distribution.Uniform
 import Util ( boolToInt )
+import Numeric.Log ( Log(Exp) )
+import qualified Control.Monad.Bayes.Class as MB
 
--- ||| (Section 4.2.1) Primitive distributions
+
+-- | Primitive distribution
 data PrimDist a where
   Bernoulli     
     :: Double           -- ^ Probability of @True@
@@ -188,7 +206,7 @@ data ErasedPrimDist where
 instance Show ErasedPrimDist where
   show (ErasedPrimDist d) = show d
   
--- ||| (Section 6.1) Sampling functions
+-- | Draw a value from a primitive distribution in the @Sampler@ monad
 sample :: PrimDist a -> Sampler a
 sample (HalfCauchy σ )  =
   createSampler (sampleCauchy 0 σ) >>= pure . abs
@@ -220,36 +238,41 @@ sample (Dirichlet xs ) =
   createSampler (sampleDirichlet xs)
 sample (Deterministic x) = pure x
 
+-- | Draw a value from a primitive distribution using the @MonadSample@ type class from Monad-Bayes
 sampleBayes :: MB.MonadSample m => PrimDist a -> m a
-sampleBayes (Uniform a b )     = MB.uniform a b
-sampleBayes (Categorical as )     = MB.categorical (Vec.fromList as)
-sampleBayes (Discrete as )  = MB.categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
-sampleBayes (Normal mu std )   = MB.normal mu std
-sampleBayes (Gamma k t )       = MB.gamma k t
-sampleBayes (Beta a b )        = MB.beta a b
-sampleBayes (Bernoulli p )     = MB.bernoulli p
-sampleBayes (Binomial n p )    = sequence (replicate n (MB.bernoulli p)) >>= (pure . length . filter (== True))
-sampleBayes (Poisson l )       = MB.poisson l
-sampleBayes (Dirichlet as )    = MB.dirichlet (Vec.fromList as) >>= pure . Vec.toList
-sampleBayes (PrimDistPrf d)       = error ("Sampling from " ++ show d ++ " is not supported")
+sampleBayes (Uniform a b )    = MB.uniform a b
+sampleBayes (Categorical as ) = MB.categorical (Vec.fromList as)
+sampleBayes (Discrete as )    = MB.categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
+sampleBayes (Normal mu std )  = MB.normal mu std
+sampleBayes (Gamma k t )      = MB.gamma k t
+sampleBayes (Beta a b )       = MB.beta a b
+sampleBayes (Bernoulli p )    = MB.bernoulli p
+sampleBayes (Binomial n p )   = sequence (replicate n (MB.bernoulli p)) >>= (pure . length . filter (== True))
+sampleBayes (Poisson l )      = MB.poisson l
+sampleBayes (Dirichlet as )   = MB.dirichlet (Vec.fromList as) >>= pure . Vec.toList
+sampleBayes (PrimDistPrf d)   = error ("Sampling from " ++ show d ++ " is not supported")
 
--- ||| (Section 6.2) Probability density functions
-prob :: PrimDist a -> a -> Double
+-- | Compute the density of a primitive distribution generating an observed value
+prob :: 
+  -- | Distribution
+     PrimDist a 
+  -- | Observed value
+  -> a 
+  -- | Density
+  -> Double
 prob (Dirichlet xs) ys =
-  let xs' = map (/(Prelude.sum xs)) xs
+  let xs' = map (/Prelude.sum xs) xs
   in  if Prelude.sum xs' /= 1 then error "dirichlet can't normalize" else
       case dirichletDistribution (UV.fromList xs')
       of Left e -> error "dirichlet error"
          Right d -> let Exp p = dirichletDensity d (UV.fromList ys)
                         in  exp p
 prob (HalfCauchy σ) y
-  = if y < 0 then 0 else
-            2 * density (cauchyDistribution 0 σ) y
+  = if y < 0 then 0 else 2 * density (cauchyDistribution 0 σ) y
 prob (Cauchy μ σ) y
   = density (cauchyDistribution μ σ) y
 prob (HalfNormal σ) y
-  = if y < 0 then 0 else
-            2 * density (normalDistr 0 σ) y
+  = if y < 0 then 0 else 2 * density (normalDistr 0 σ) y
 prob (Normal μ σ) y
   = density (normalDistr μ σ) y
 prob (Uniform min max) y
@@ -268,9 +291,16 @@ prob d@(Discrete ps) y
   = case lookup y ps of
       Nothing -> error $ "Couldn't find " ++ show y ++ " in categorical dist"
       Just p  -> p
-prob (Categorical ps) y     = ps !! y
+prob (Categorical ps) y  = ps !! y
 prob (Poisson λ) y       = probability (poisson λ) y
 prob (Deterministic x) y = 1
 
-logProb :: PrimDist a -> a -> Double
+-- | Compute the log density of a primitive distribution generating an observed value
+logProb :: 
+  -- | Distribution
+     PrimDist a 
+  -- | Observed value
+  -> a 
+  -- | Log density
+  -> Double
 logProb d = log . prob d

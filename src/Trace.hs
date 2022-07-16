@@ -7,6 +7,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Trace where
 
@@ -54,9 +55,8 @@ traceSamples = handleState Map.empty . storeSamples
   where storeSamples :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
         storeSamples = install pure
           (\x tx k -> case tx of
-              Sample d α -> case primDistPrf d of
-                IsPrimVal  -> do updateSTrace α d x
-                                 k x
+              Sample (PrimDistPrf d) α -> do updateSTrace α d x
+                                             k x
           )
 
 -- ||| Log probability trace, mapping addresses of sample/observe operations to their log probabilities
