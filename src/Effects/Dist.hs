@@ -66,12 +66,11 @@ pattern ObsDis d y α <- (discharge -> Right (Observe (PrimDistDict d) y α))
 -- ||| Handle Dist to Sample or Observe, and add address
 type Tag    = String
 type Addr   = (Tag, Int)
-type TagMap = Map Tag Int
 
 handleDist :: Prog (Dist : es) a -> Prog (Observe : Sample : es) a
 handleDist = loop 0 Map.empty
   where
-  loop :: Int -> TagMap -> Prog (Dist : es) a -> Prog (Observe : Sample : es) a
+  loop :: Int ->  Map Tag Int -> Prog (Dist : es) a -> Prog (Observe : Sample : es) a
   loop _ _ (Val x) = return x
   loop counter tagMap (Op u k) = case discharge u of
     Right (Dist d maybe_y maybe_tag) ->

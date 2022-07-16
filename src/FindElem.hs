@@ -7,23 +7,30 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module FindElem where
+{- | Auxiliary definitions for finding a type in a type-level list. 
+-}
+
+module FindElem (
+    FindElem(..)
+  , Idx(..)) where
+
 import GHC.TypeLits ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
 
--- | Auxiliary type-class for proof that @t@ is an element of the type-level list @ts@.
-class FindElem t ts where
-  findElem :: P t ts
+-- | Proof that @x@ is an element of the type-level list @xs@
+class FindElem x xs where
+  findElem :: Idx x xs
 
-newtype P t ts = P {unP :: Int}
+-- | The integer index of @x@ in @xs@
+newtype Idx x xs = Idx {unIdx :: Int}
 
-instance FindElem t (t ': ts) where
-  findElem = P 0
+instance FindElem x (x ': xs) where
+  findElem = Idx 0
 
-instance {-# OVERLAPPABLE #-} FindElem t ts => FindElem t (t' : ts) where
-  findElem = P $ 1 + unP (findElem :: P t ts)
+instance {-# OVERLAPPABLE #-} FindElem x xs => FindElem x (x' : xs) where
+  findElem = Idx $ 1 + unIdx (findElem :: Idx x xs)
 
 instance TypeError ('Text "Cannot unify effect types." ':$$:
-                    'Text "Unhandled effect: " ':<>: 'ShowType t ':$$:
+                    'Text "Unhandled effect: " ':<>: 'ShowType x ':$$:
                     'Text "Perhaps check the type of effectful computation and the sequence of handlers for concordance?")
-  => FindElem t '[] where
+  => FindElem x '[] where
   findElem = error "unreachable"

@@ -53,8 +53,8 @@ instance (Typeable a, a ~ a') => Member a '[a'] where
    prj (UnsafeOpenSum _ x) = Just (unsafeCoerce x)
 
 instance (FindElem a as) => Member a as where
-  inj = UnsafeOpenSum (unP (findElem :: P a as))
-  prj = prj' (unP (findElem :: P a as))
+  inj = UnsafeOpenSum (unIdx (findElem :: Idx a as))
+  prj = prj' (unIdx (findElem :: Idx a as))
     where prj' n (UnsafeOpenSum n' x)
             | n == n'   = Just (unsafeCoerce x)
             | otherwise = Nothing

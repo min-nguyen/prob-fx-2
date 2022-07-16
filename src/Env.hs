@@ -10,16 +10,35 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE StandaloneKindSignatures #-}
 
-module Env where
+{- | This implements the model environments that users must provide upon running a model; such environments assign traces of values to the "observable variables" (random variables which can be conditioned against) of a model.
+-}
 
+module Env 
+  ( -- * Observable variable
+    Var(..)
+  , varToStr
+  , vnil
+  , (<#>)
+  , Vars(..)
+  , ContainsVars(..)
+    -- * Model environment
+  , Assign(..)
+  , Env(..)
+  , enil
+  , (<:>)
+  , Observable(..)
+  , Observables(..)
+  , UniqueVar
+  , LookupType) where
+
+import Effects.Dist ( Tag )
 import Data.Kind ( Constraint, Type )
 import Data.Proxy ( Proxy(Proxy) )
-import Effects.Dist (Tag)
-import FindElem ( FindElem(..), P(..) )
+import FindElem ( FindElem(..), Idx(..) )
 import GHC.OverloadedLabels ( IsLabel(..) )
 import GHC.TypeLits ( KnownSymbol, Symbol, symbolVal )
 import qualified Data.Vector as V
@@ -79,9 +98,9 @@ infixr 5 <:>
 -- ** Auxiliary type classes and type families 
 
 instance FindElem x ((x := a) : env) where
-  findElem = P 0
+  findElem = Idx 0
 instance {-# OVERLAPPABLE #-} FindElem x env => FindElem x ((x' := a) : env) where
-  findElem = P $ 1 + unP (findElem :: P x env)
+  findElem = Idx $ 1 + unIdx (findElem :: Idx x env)
 
 -- | Specifies that an environment @Env env@ has an observable variable @x@ whose observed values are of type @a@
 class (FindElem x env, LookupType x env ~ a)
@@ -94,12 +113,12 @@ class (FindElem x env, LookupType x env ~ a)
 instance (FindElem x env, LookupType x env ~ a)
   => Observable env x a where
   get _ env = f idx env
-    where idx = unP $ findElem @x @env
+    where idx = unIdx $ findElem @x @env
           f :: Int -> Env env' -> [a]
           f n (ECons a env) | n == 0    = unsafeCoerce a
                             | otherwise = f (n - 1) env
   set _ a' env = f idx env
-    where idx = unP $ findElem @x @env
+    where idx = unIdx $ findElem @x @env
           f :: Int -> Env env' -> Env env'
           f n (ECons a env) | n == 0    = ECons (unsafeCoerce a') env
                             | otherwise = ECons a (f (n - 1) env)
@@ -109,7 +128,7 @@ type Observables :: [Assign Symbol Type] -> [Symbol] -> Type -> Constraint
 type family Observables env xs a :: Constraint where
   Observables env (x ': xs) a = (Observable env x a, Observables env xs a)
   Observables env '[] a = ()
-
+ 
 -- | Extract the observable variables from a model environment type
 type GetVars :: [Assign Symbol Type] -> [Symbol]
 type family GetVars env where

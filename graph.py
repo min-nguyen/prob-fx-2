@@ -198,12 +198,12 @@ def main():
     axs1.set_xlabel("trans_ps values")
     axs1.set_ylabel("frequency")
     axs1.hist(trans_ps_unique, bins=50)
-    axs1.set_title('HMM - Metropolis Hastings Posterior (Trans P)')
+    axs1.set_title('HMM - Metropolis Hastings Posterior (Trans Idx)')
     fig2, axs2 = plt.subplots(nrows=1)
     axs2.set_xlabel("obs_ps values")
     axs2.set_ylabel("frequency")
     axs2.hist(obs_ps_unique, bins=50)
-    axs2.set_title('HMM - Metropolis Hastings Posterior (Obs P)')
+    axs2.set_title('HMM - Metropolis Hastings Posterior (Obs Idx)')
     plt.show()
 
   if arg == "simLDA":
