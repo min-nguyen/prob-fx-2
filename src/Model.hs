@@ -48,7 +48,6 @@ import Control.Monad ( ap )
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
 import Effects.Dist
 import Effects.ObsReader
-import Effects.State ( State, getSt, putSt, modify, handleState )
 import Env
 import OpenSum (OpenSum)
 import PrimDist
@@ -284,11 +283,3 @@ poisson λ field = Model $ do
 -- ** Other operations
 
 -- **** State
-getStM :: (Member (State s) es) => Model env es s
-getStM = Model getSt
-
-putStM :: (Member (State s) es) => s -> Model env es ()
-putStM s = Model (putSt s)
-
-handleStateM :: s -> Model env (State s : es) a -> Model env es (a, s)
-handleStateM s m = Model $ handleState s $ runModel m
