@@ -30,3 +30,19 @@ Changed:
 - Swapped names for `Discrete` and `Categorical` 
 - Removed the `Dist` suffix on the constructor names of `PrimDist`
 - `DiscreteUniform` -> `UniformD`
+
+**PrimDist**
+Changed:
+- Swapped names for `Discrete` and `Categorical` 
+- Removed the `Dist` suffix on the constructor names of `PrimDist`
+- `DiscrUniform` -> `UniformD`
+
+**Prog**
+Added:
+- `weaken`, `install`, `UniqueMember`, `LastMember`
+
+**Trace**
+Changed:
+- `updateLPTrace` and `updateSTrace` now invoke a `State` effect
+Added:
+- `traceLPs` and `traceSamples`

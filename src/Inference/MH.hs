@@ -5,6 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Inference.MH 
@@ -32,15 +33,26 @@ import Effects.Lift ( handleLift, Lift, lift )
 import Effects.ObsReader ( ObsReader )
 import Env ( Env, ContainsVars(..), Vars )
 import Inference.SIM (handleObs)
-import Model hiding (runModelFree)
+import Model ( Model, handleCore )
 import OpenSum (OpenSum(..))
 import PrimDist
+    ( ErasedPrimDist(..),
+      PrimVal,
+      PrimDist(Uniform, UniformD),
+      sample,
+      pattern PrimDistPrf )
 import Prog ( discharge, Prog(..) )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified OpenSum
 import Sampler ( Sampler )
 import Trace
+    ( traceLPs,
+      traceSamples,
+      filterSTrace,
+      LPTrace,
+      FromSTrace(..),
+      STrace )
 import Unsafe.Coerce ( unsafeCoerce )
 
 -- | Metropolis-Hastings (MH) inference
