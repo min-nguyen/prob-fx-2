@@ -12,6 +12,10 @@ Added:
 Changed:
 - Renamed `handleRead` to `handleObsRead`
 
+**Effect.State**
+Added:
+- `putM`, `getM`, and `handleStateM` for calling and handling `State` in the `Model` type
+
 **Env**
 Changed:
 - `ObsVar` -> `Var`
