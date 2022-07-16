@@ -14,7 +14,7 @@ import Model
 import Inference.SIM as SIM
 import Inference.LW as LW
 import Inference.MH as MH
-import Effects.Writer
+import Effects.Writer 
 import Prog
 import Sampler
 import Control.Monad

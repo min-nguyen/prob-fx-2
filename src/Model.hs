@@ -8,16 +8,47 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds #-}
 
-module Model where
-
-
+module Model ( 
+    Model(..)
+  , handleCore
+    -- * Distribution smart constructors
+    -- $Smart-Constructors
+  , bernoulli
+  , bernoulli'
+  , beta
+  , beta'
+  , binomial
+  , binomial'
+  , categorical
+  , categorical'
+  , cauchy
+  , cauchy'
+  , halfCauchy
+  , halfCauchy'
+  , deterministic
+  , deterministic'
+  , dirichlet
+  , dirichlet'
+  , discrete
+  , discrete'
+  , gamma
+  , gamma'
+  , normal
+  , normal'
+  , halfNormal
+  , halfNormal'
+  , poisson
+  , poisson'
+  , uniform
+  , uniform'
+  ) 
+  where
+    
 import Control.Monad ( ap )
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
 import Effects.Dist
-import Effects.Lift
 import Effects.ObsReader
 import Effects.State ( State, getSt, putSt, modify, handleState )
-import Effects.Writer
 import Env
 import OpenSum (OpenSum)
 import PrimDist
@@ -25,10 +56,16 @@ import Prog
 import qualified OpenSum
 
 
--- ** Model definition
--- $ Probabilistic models are embedded using an algebraic effect approach, represented as syntax trees (uninterpreted programs).
+{- | Models are parameterised by:
 
--- | A @Model@ is indexed by a model environment @env@ containing random variables that can be provided observed values for, an effect signature @es@ of the possible effects a model can invoke, and an output type @a@ of values that the model generates.
+1) a model environment @env@ containing random variables that can be provided observed values for, 
+
+2) an effect signature @es@ of the possible effects a model can invoke, and 
+
+3) an output type @a@ of values that the model generates. 
+
+A model initially consists of (at least) two effects: @Dist@ for calling primitive distributions and @ObsReader env@ for reading from @env@. 
+-}
 newtype Model env es a =
   Model { runModel :: ( Member Dist es            -- ^ Models can call primitive distributions
                       , Member (ObsReader env) es -- ^ Models can read observed values from the environment
@@ -46,12 +83,33 @@ instance Monad (Model env es) where
     f' <- f
     runModel $ x f'
 
--- | The initial handler for models, specialising a model under a certain environment to produce a probabilistic program consisting of @Sample@ and @Observe@ operations. 
+{- | The initial handler for models, specialising a model under a certain 
+environment to produce a probabilistic program consisting of @Sample@ and @Observe@ operations. -}
 handleCore :: Env env -> Model env (ObsReader env : Dist : es) a -> Prog (Observe : Sample : es) a
 handleCore env m = (handleDist . handleObsRead env) (runModel m)
 
--- ** Model operations
--- $ Smart constructors for calling primitive distributions from the model type.
+{- $Smart-Constructors
+
+Smart constructors for calling primitive distribution operations inside models, 
+where each distribution comes with a primed and an unprimed variant.
+
+An unprimed distribution takes the standard distribution parameters as well as 
+an observable variable. This lets one later provide observed values for that 
+variable to be conditioned against:
+
+@
+exampleModel :: Observable env "b" Bool => Model env es Bool
+exampleModel = bernoulli 0.5 #b
+@
+
+A primed distribution takes no observable variable and so cannot be conditioned against; this will always representing sampling from that distribution:
+
+@
+exampleModel' :: Model env es Bool
+exampleModel' = bernoulli' 0.5
+@
+
+-}
 
 deterministic' :: (Eq a, Show a, OpenSum.Member a PrimVal)
   => a -> Model env es a
@@ -234,14 +292,3 @@ putStM s = Model (putSt s)
 
 handleStateM :: s -> Model env (State s : es) a -> Model env es (a, s)
 handleStateM s m = Model $ handleState s $ runModel m
-
--- **** Writer
-tellM :: Member (Writer w) es => w -> Model env es ()
-tellM w = Model $ tell w
-
-handleWriterM :: Monoid w => Model env (Writer w : es) a -> Model env es (a, w)
-handleWriterM m = Model $ handleWriter $ runModel m
-
--- **** Lift
-liftM :: (Member (Lift m) es) => m a -> Model env es a
-liftM op = Model (call (Lift op))

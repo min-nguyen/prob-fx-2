@@ -59,7 +59,7 @@ handleObs (Op op k) = case discharge op of
 handleSamp :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
 handleSamp (Val x) = return x
 handleSamp (Op op k) = case discharge op of
-  Right (Sample (PrimDistDict d) α) ->
+  Right (Sample (PrimDistPrf d) α) ->
     do  x <- lift $ sample d
         handleSamp (k x)
   Left op' -> do

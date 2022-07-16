@@ -54,9 +54,9 @@ traceSamples = handleState Map.empty . storeSamples
   where storeSamples :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
         storeSamples = install pure
           (\x tx k -> case tx of
-              Sample d α -> case primDistDict d of
-                Dict -> do updateSTrace α d x
-                           k x
+              Sample d α -> case primDistPrf d of
+                IsPrimVal  -> do updateSTrace α d x
+                                 k x
           )
 
 -- ||| Log probability trace, mapping addresses of sample/observe operations to their log probabilities

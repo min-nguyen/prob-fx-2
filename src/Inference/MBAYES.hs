@@ -34,7 +34,7 @@ toMBayes m env =
 handleObs :: MonadCond m => LastMember (Lift m) es => Prog (Observe : es) a -> Prog es a
 handleObs (Val x)  = Val x
 handleObs (Op u k) = case discharge u of
-  Left u' -> do
+  Left u' -> do 
      Op u' (handleObs . k)
   Right (Observe d y _) ->
       do let p = logProb d y

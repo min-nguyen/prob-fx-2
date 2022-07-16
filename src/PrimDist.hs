@@ -45,48 +45,60 @@ import Util ( boolToInt )
 
 -- ||| (Section 4.2.1) Primitive distributions
 data PrimDist a where
-  HalfCauchy    :: Double -> PrimDist Double
-  Cauchy        :: Double -> Double -> PrimDist Double
-  Normal        :: Double -> Double -> PrimDist Double
-  HalfNormal    :: Double -> PrimDist Double
-  Uniform       :: Double -> Double -> PrimDist Double
-  UniformD      :: Int    -> Int    -> PrimDist Int
-  Gamma         :: Double -> Double -> PrimDist Double
-  Beta          :: Double -> Double -> PrimDist Double
-  Binomial      :: Int    -> Double -> PrimDist Int
-  Bernoulli     :: Double -> PrimDist Bool
-  Categorical   :: [Double] -> PrimDist Int
-  Poisson       :: Double -> PrimDist Int
-  Dirichlet     :: [Double] -> PrimDist [Double]
-  Discrete      :: (Eq a, Show a, OpenSum.Member a PrimVal) => [(a, Double)] -> PrimDist a
-  Deterministic :: (Eq a, Show a, OpenSum.Member a PrimVal) => a -> PrimDist a
-
--- | For constraining the output types of disstributions
-type PrimVal = '[Int, Double, [Double], Bool, String]
-
-data Dict (a :: Constraint) where
-  Dict :: a => Dict a
-
-primDistDict :: PrimDist x -> Dict (Show x, OpenSum.Member x PrimVal)
-primDistDict d = case d of
-  HalfCauchy {} -> Dict
-  Cauchy {} -> Dict
-  Normal {} -> Dict
-  HalfNormal  {} -> Dict
-  Uniform  {} -> Dict
-  UniformD {} -> Dict
-  Gamma {} -> Dict
-  Beta {} -> Dict
-  Binomial {} -> Dict
-  Bernoulli {} -> Dict
-  Discrete {} -> Dict
-  Categorical {} -> Dict
-  Poisson {} -> Dict
-  Dirichlet {} -> Dict
-  Deterministic {} -> Dict
-
-pattern PrimDistDict :: () => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> PrimDist x
-pattern PrimDistDict d <- d@(primDistDict -> Dict)
+  Bernoulli     
+    :: Double           -- ^ Probability of @True@
+    -> PrimDist Bool  
+  Beta          
+    :: Double           -- ^ Shape α
+    -> Double           -- ^ Shape β
+    -> PrimDist Double
+  Binomial      
+    :: Int              -- ^ Number of trials
+    -> Double           -- ^ Probability of successful trial
+    -> PrimDist Int     
+  Categorical   
+    :: [Double]         -- ^ List of @n@ probabilities
+    -> PrimDist Int     -- ^ An index from @0@ to @n - 1@
+  Cauchy        
+    :: Double           -- ^ Location
+    -> Double           -- ^ Scale
+    -> PrimDist Double
+  HalfCauchy      
+    :: Double           -- ^ Scale
+    -> PrimDist Double
+  Deterministic 
+    :: (Eq a, Show a, OpenSum.Member a PrimVal) 
+    => a                -- ^ Value of probability @1@
+    -> PrimDist a
+  Dirichlet     
+    :: [Double]         -- ^ Concentrations
+    -> PrimDist [Double]
+  Discrete      
+    :: (Eq a, Show a, OpenSum.Member a PrimVal) 
+    => [(a, Double)]    -- ^ Values and associated probabilities
+    -> PrimDist a       
+  UniformD      
+    :: Int              -- ^ Lower-bound @a@
+    -> Int              -- ^ Upper-bound @b@
+    -> PrimDist Int     
+  Gamma         
+    :: Double           -- ^ Shape k
+    -> Double           -- ^ Scale θ
+    -> PrimDist Double
+  Normal        
+    :: Double           -- ^ Mean
+    -> Double           -- ^ Standard deviation
+    -> PrimDist Double
+  HalfNormal    
+    :: Double           -- ^ Standard deviation
+    -> PrimDist Double
+  Poisson       
+    :: Double           -- ^ Rate λ
+    -> PrimDist Int
+  Uniform       
+    :: Double           -- ^ Lower-bound @a@
+    -> Double           -- ^ Upper-bound @b@
+    -> PrimDist Double  
 
 instance Eq (PrimDist a) where
   (==) (Normal m s) (Normal m' s') = m == m' && s == s'
@@ -137,7 +149,38 @@ instance Show a => Show (PrimDist a) where
    "Dirichlet(" ++ show xs ++ ", " ++ ")"
   show (Deterministic x) =
    "Deterministic(" ++ show x ++ ", " ++ ")"
+
   
+-- | An ad-hoc specification of primitive value types, for constraining the outputs of distributions
+type PrimVal = '[Int, Double, [Double], Bool, String]
+
+-- | Proof that @x@ is a primitive value
+data IsPrimVal x where
+  IsPrimVal :: (Show x, OpenSum.Member x PrimVal) => IsPrimVal x
+
+-- | For pattern-matching on an arbitrary @PrimDist@ with proof that it generates a primitive value 
+pattern PrimDistPrf :: () => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> PrimDist x
+pattern PrimDistPrf d <- d@(primDistPrf -> IsPrimVal)
+
+-- | Proof that all primitive distributions generate a primitive value
+primDistPrf :: PrimDist x -> IsPrimVal x 
+primDistPrf d = case d of
+  HalfCauchy {} -> IsPrimVal
+  Cauchy {} -> IsPrimVal
+  Normal {} -> IsPrimVal
+  HalfNormal  {} -> IsPrimVal
+  Uniform  {} -> IsPrimVal
+  UniformD {} -> IsPrimVal
+  Gamma {} -> IsPrimVal
+  Beta {} -> IsPrimVal
+  Binomial {} -> IsPrimVal
+  Bernoulli {} -> IsPrimVal
+  Categorical {} -> IsPrimVal
+  Discrete {} -> IsPrimVal
+  Poisson {} -> IsPrimVal
+  Dirichlet {} -> IsPrimVal
+  Deterministic {} -> IsPrimVal
+
 -- | For erasing the types of primitive distributions
 data ErasedPrimDist where
   ErasedPrimDist :: forall a. Show a => PrimDist a -> ErasedPrimDist
@@ -188,7 +231,7 @@ sampleBayes (Bernoulli p )     = MB.bernoulli p
 sampleBayes (Binomial n p )    = sequence (replicate n (MB.bernoulli p)) >>= (pure . length . filter (== True))
 sampleBayes (Poisson l )       = MB.poisson l
 sampleBayes (Dirichlet as )    = MB.dirichlet (Vec.fromList as) >>= pure . Vec.toList
-sampleBayes (PrimDistDict d)       = error ("Sampling from " ++ show d ++ " is not supported")
+sampleBayes (PrimDistPrf d)       = error ("Sampling from " ++ show d ++ " is not supported")
 
 -- ||| (Section 6.2) Probability density functions
 prob :: PrimDist a -> a -> Double

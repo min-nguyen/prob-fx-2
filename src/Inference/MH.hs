@@ -136,7 +136,7 @@ handleSamp ::
   -> Prog [Sample, Lift Sampler] a 
   -> Prog '[Lift Sampler] a
 handleSamp strace α_samp (Op op k) = case discharge op of
-    Right (Sample (PrimDistDict d) α) ->
+    Right (Sample (PrimDistPrf d) α) ->
       let maybe_y = if α == α_samp then Nothing else lookupSample α d strace 
       in  case maybe_y of
                   Nothing -> lift (sample d) >>= k'

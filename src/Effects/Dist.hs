@@ -10,63 +10,74 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ConstraintKinds #-}
-module Effects.Dist where
 
-import Data.Kind
+{- | The effect for primitive distributions 
+-}
+
+module Effects.Dist (
+  -- ** Address
+    Tag
+  , Addr
+  -- ** Dist effect
+  , Dist(..)
+  , handleDist
+  -- ** Sample effect
+  , Sample(..)
+  , pattern SampPrj
+  , pattern SampDis
+  -- ** Observe effect
+  , Observe(..)
+  , pattern ObsPrj
+  , pattern ObsDis
+  ) where
+
 import Data.Map (Map)
-import Data.Maybe
-import Numeric.Log
-import Prog ( call, discharge, Member, Prog(..) )
+import Data.Maybe ( fromMaybe )
+import Prog ( call, discharge, weaken, Member(..), Prog(..), EffectSum )
 import qualified Data.Map as Map
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
-import qualified OpenSum as OpenSum
-import Sampler
-import Statistics.Distribution
-import Statistics.Distribution.Beta
-import Statistics.Distribution.Binomial
-import Statistics.Distribution.CauchyLorentz
-import Statistics.Distribution.Dirichlet
-import Statistics.Distribution.DiscreteUniform
-import Statistics.Distribution.Gamma
-import Statistics.Distribution.Normal
-import Statistics.Distribution.Poisson
-import Statistics.Distribution.Uniform
+import qualified OpenSum
 import Util ( boolToInt )
-import PrimDist
-import Prog
+import PrimDist ( PrimVal, PrimDist, pattern PrimDistPrf)
 
--- ||| Distribution effect
+-- | An observable variable name assigned to a primitive distribution
+type Tag  = String
+-- | An observable variable name and the index of its run-time occurrence
+type Addr = (Tag, Int)
+
+-- | The Dist effect
 data Dist a = 
   Dist { getPrimDist :: PrimDist a  -- ^ Primitive distribution
        , getObs :: Maybe a          -- ^ Optional observed value
        , getTag :: Maybe String     -- ^ Optional observable variable name
        }
 
--- ||| Sample effect
+-- | An effect for sampling from distirbutions
 data Sample a where
   Sample  :: PrimDist a -> Addr -> Sample a
 
+-- | For projecting and then successfully pattern matching against @Sample@
 pattern SampPrj :: (Member Sample es) => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> Addr -> EffectSum es x
-pattern SampPrj d α <- (prj -> Just (Sample (PrimDistDict d) α))
+pattern SampPrj d α <- (prj -> Just (Sample (PrimDistPrf d) α))
 
+-- | For discharging and then successfully pattern matching against @Sample@
 pattern SampDis :: (Show x, OpenSum.Member x PrimVal) => PrimDist x -> Addr -> EffectSum (Sample : es) x
-pattern SampDis d α <- (discharge -> Right (Sample (PrimDistDict d) α))
+pattern SampDis d α <- (discharge -> Right (Sample (PrimDistPrf d) α))
 
--- ||| Observe effect
+-- | An effect for conditioning against observed values
 data Observe a where
   Observe :: PrimDist a -> a -> Addr -> Observe a
 
+-- | For projecting and then successfully pattern matching against @Observe@
 pattern ObsPrj :: (Member Observe es) => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> x -> Addr -> EffectSum es x
-pattern ObsPrj d y α <- (prj -> Just (Observe (PrimDistDict d) y α))
+pattern ObsPrj d y α <- (prj -> Just (Observe (PrimDistPrf d) y α))
 
+-- | For discharging and then successfully pattern matching against @Observe@
 pattern ObsDis :: (Show x, OpenSum.Member x PrimVal) => PrimDist x -> x -> Addr -> EffectSum (Observe : es) x
-pattern ObsDis d y α <- (discharge -> Right (Observe (PrimDistDict d) y α))
+pattern ObsDis d y α <- (discharge -> Right (Observe (PrimDistPrf d) y α))
 
--- ||| Handle Dist to Sample or Observe, and add address
-type Tag    = String
-type Addr   = (Tag, Int)
-
+-- | Handle the @Dist@ effect to a @Sample@ or @Observe@ effect and assign address
 handleDist :: Prog (Dist : es) a -> Prog (Observe : Sample : es) a
 handleDist = loop 0 Map.empty
   where
