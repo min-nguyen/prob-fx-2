@@ -5,5 +5,5 @@ dist-newstyle/
 model-output.txt
 sys
 *.csv
-*.dat                  
+*.dat
 !paper.pdf

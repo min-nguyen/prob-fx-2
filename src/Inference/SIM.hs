@@ -7,7 +7,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
-{- | Simulation 
+{- | Simulation
 -}
 
 module Inference.SIM
@@ -16,7 +16,7 @@ module Inference.SIM
    -- * Inference handlers
   , runSimulate
   , handleObs
-  , handleSamp 
+  , handleSamp
   )
   where
 
@@ -34,27 +34,26 @@ import Unsafe.Coerce (unsafeCoerce)
 
 -- | Simulate from a model under a given model environment
 simulate :: FromSTrace env
-  -- | Model 
+  -- | Model
   => Model env [ObsReader env, Dist, Lift Sampler] a
   -- | Input model environment
-  -> Env env                 
-  -- | Model output and output model environment  
-  -> Sampler (a, Env env)   
+  -> Env env
+  -- | (model output, output environment)
+  -> Sampler (a, Env env)
 simulate model env = do
   let prog = handleCore env model
   outputs_strace <- runSimulate prog
   return (fmap fromSTrace outputs_strace)
 
 -- | Handler for simulating once from a probabilistic program
-runSimulate 
-  -- | Probabilistic program
-  :: Prog [Observe, Sample, Lift Sampler] a 
-  -- | Sampler generating: (model output, sample trace)
+runSimulate
+  :: Prog [Observe, Sample, Lift Sampler] a
+  -- | (model output, sample trace)
   -> Sampler (a, STrace)
-runSimulate  
-  = handleLift . handleSamp . handleObs . traceSamples 
- 
--- | Handler @Observe@ operations by simply passing forward their observed value, performing no side-effects
+runSimulate
+  = handleLift . handleSamp . handleObs . traceSamples
+
+-- | Handle @Observe@ operations by simply passing forward their observed value, performing no side-effects
 handleObs :: Prog (Observe : es) a -> Prog es a
 handleObs (Val x) = return x
 handleObs (Op op k) = case discharge op of

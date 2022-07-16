@@ -8,10 +8,10 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TypeOperators #-}
 
-{- | Metropolis-Hastings inference 
+{- | Metropolis-Hastings inference
 -}
 
-module Inference.MH 
+module Inference.MH
   ( -- * Inference wrapper functions
       mh
     , mhInternal
@@ -58,16 +58,16 @@ import Trace
       STrace )
 import Unsafe.Coerce ( unsafeCoerce )
 
--- | Top-level wrapper for Metropolis-Hastings (MH) inference 
+-- | Top-level wrapper for Metropolis-Hastings (MH) inference
 mh :: forall env es a xs. (FromSTrace env, env `ContainsVars` xs)
   -- | Number of MH iterations
   => Int
   -- | Model
   -> Model env [ObsReader env, Dist, Lift Sampler] a
-  -- | Input model environment 
+  -- | Input model environment
   -> Env env
-  -- | An optional list of observable variable names to specify sample sites of interest 
-    {- For example, for interest in sampling @#mu@, provide @#mu <#> vnil@. 
+  -- | An optional list of observable variable names to specify sample sites of interest
+    {- For example, for interest in sampling @#mu@, provide @#mu <#> vnil@.
        This causes other variables to not be resampled unless necessary. -}
   -> Vars xs
   -- | Trace of output model environments, containing values sampled for each MH iteration
@@ -83,29 +83,27 @@ mh n model env obsvars  = do
   pure (map (fromSTrace . snd . fst) mhTrace)
 
 -- | Perform MH on a probabilistic program
-mhInternal ::
+mhInternal
    -- | Number of MH iterations
-      Int                             
-   -- | Probabilistic program
-   -> Prog [Observe, Sample, Lift Sampler] a                   
-   -- | Initial sample trace   
-   -> STrace                           
+   :: Int
+   -> Prog [Observe, Sample, Lift Sampler] a
+   -- | Initial sample trace
+   -> STrace
    -- | Tags indicating sample sites of interest
-   -> [Tag]                          
-   -- | Trace of all accepted outputs, samples, and logps  
-   -> Sampler  [((a, STrace), LPTrace)]  
+   -> [Tag]
+   -- | Trace of (accepted outputs, samples), logps)
+   -> Sampler [((a, STrace), LPTrace)]
 mhInternal n prog strace_0 tags = do
   -- Perform initial run of mh
   let α_0 = ("", 0)
   mhCtx_0 <- runMH strace_0 α_0 prog
-  -- A function performing n mhSteps using initial mhCtx. 
+  -- A function performing n mhSteps using initial mhCtx.
   -- Note: most recent samples are at the front (head) of the trace
   foldl (>=>) pure (replicate n (mhStep prog tags acceptMH)) [mhCtx_0]
 
 -- | Perform one iteration of MH, by drawing a new sample and then rejecting or accepting it.
-mhStep :: 
-  -- | Probabilistic program
-     Prog [Observe, Sample,  Lift Sampler] a
+mhStep
+  :: Prog [Observe, Sample,  Lift Sampler] a
   -- | Tags indicating sample sites of interest
   -> [Tag]
   -- | A mechanism for accepting proposals
@@ -132,29 +130,27 @@ mhStep model tags accepter trace = do
     else do return trace
 
 -- | Handler for one iteration of MH on probabilistic program
-runMH :: 
+runMH ::
   -- | Sample trace of previous MH iteration
      STrace
   -- | Sample address of interest
   -> Addr
-  -- | Probabilistic program
   -> Prog [Observe, Sample, Lift Sampler] a
-  -- | Sampler generating: (model output, sample trace, log-probability trace)
+  -- | (model output, sample trace, log-probability trace)
   -> Sampler ((a, STrace), LPTrace)
 runMH strace α_samp = handleLift . handleSamp strace α_samp . handleObs . traceLPs . traceSamples
 
 -- | Handler for @Sample@ that selectively reuses old samples or draws new ones
-handleSamp :: 
+handleSamp ::
   -- | Sample trace
-     STrace 
+     STrace
   -- | Address of the proposal sample site for the current MH iteration
-  -> Addr 
-  -- | Probabilistic program
-  -> Prog [Sample, Lift Sampler] a 
+  -> Addr
+  -> Prog [Sample, Lift Sampler] a
   -> Prog '[Lift Sampler] a
 handleSamp strace α_samp (Op op k) = case discharge op of
     Right (Sample (PrimDistPrf d) α) ->
-      let maybe_y = if α == α_samp then Nothing else lookupSample α d strace 
+      let maybe_y = if α == α_samp then Nothing else lookupSample α d strace
       in  case maybe_y of
                   Nothing -> lift (sample d) >>= k'
                   Just x  -> k' x
@@ -166,11 +162,11 @@ handleSamp _ _ (Val x) = return x
      it only if the primitive distribution it was sampled from matches the current one. -}
 lookupSample :: OpenSum.Member a PrimVal =>
   -- | Address of sample site
-     Addr 
+     Addr
   -- | Distribution to sample from
-  -> PrimDist a 
+  -> PrimDist a
   -- | Sample trace
-  -> STrace 
+  -> STrace
   -- | Possibly a looked-up sampled value
   -> Maybe a
 lookupSample α d strace   = do
@@ -183,15 +179,15 @@ lookupSample α d strace   = do
 type MHCtx p a = ((a, STrace), p)
 
 -- | An abstract mechanism for computing an acceptance probability
-type Accept p a = 
+type Accept p a =
   -- | Proposal sample address
-    Addr                       
+    Addr
   -- | Proposed mh ctx, parameterised by log probability map
-  -> MHCtx LPTrace a            
+  -> MHCtx LPTrace a
   -- | Previous mh ctx, parameterised by arbitrary probability representation p
-  -> MHCtx p a                   
+  -> MHCtx p a
   -- | (Proposed mh ctx using probability representation p, Acceptance ratio)
-  -> Sampler (MHCtx p a, Double) 
+  -> Sampler (MHCtx p a, Double)
 
 -- | An acceptance mechanism for MH
 acceptMH :: Accept LPTrace a

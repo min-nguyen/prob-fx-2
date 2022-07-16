@@ -18,7 +18,7 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 
-{- | A GADT encoding of (a selection of) primitive distributions 
+{- | A GADT encoding of (a selection of) primitive distributions
     along with their corresponding sampling and density functions.
 -}
 
@@ -63,60 +63,60 @@ import qualified Control.Monad.Bayes.Class as MB
 
 -- | Primitive distribution
 data PrimDist a where
-  Bernoulli     
+  Bernoulli
     :: Double           -- ^ Probability of @True@
-    -> PrimDist Bool  
-  Beta          
+    -> PrimDist Bool
+  Beta
     :: Double           -- ^ Shape α
     -> Double           -- ^ Shape β
     -> PrimDist Double
-  Binomial      
+  Binomial
     :: Int              -- ^ Number of trials
     -> Double           -- ^ Probability of successful trial
-    -> PrimDist Int     
-  Categorical   
+    -> PrimDist Int
+  Categorical
     :: [Double]         -- ^ List of @n@ probabilities
     -> PrimDist Int     -- ^ An index from @0@ to @n - 1@
-  Cauchy        
+  Cauchy
     :: Double           -- ^ Location
     -> Double           -- ^ Scale
     -> PrimDist Double
-  HalfCauchy      
+  HalfCauchy
     :: Double           -- ^ Scale
     -> PrimDist Double
-  Deterministic 
-    :: (Eq a, Show a, OpenSum.Member a PrimVal) 
+  Deterministic
+    :: (Eq a, Show a, OpenSum.Member a PrimVal)
     => a                -- ^ Value of probability @1@
     -> PrimDist a
-  Dirichlet     
+  Dirichlet
     :: [Double]         -- ^ Concentrations
     -> PrimDist [Double]
-  Discrete      
-    :: (Eq a, Show a, OpenSum.Member a PrimVal) 
+  Discrete
+    :: (Eq a, Show a, OpenSum.Member a PrimVal)
     => [(a, Double)]    -- ^ Values and associated probabilities
-    -> PrimDist a       
-  UniformD      
+    -> PrimDist a
+  UniformD
     :: Int              -- ^ Lower-bound @a@
     -> Int              -- ^ Upper-bound @b@
-    -> PrimDist Int     
-  Gamma         
+    -> PrimDist Int
+  Gamma
     :: Double           -- ^ Shape k
     -> Double           -- ^ Scale θ
     -> PrimDist Double
-  Normal        
+  Normal
     :: Double           -- ^ Mean
     -> Double           -- ^ Standard deviation
     -> PrimDist Double
-  HalfNormal    
+  HalfNormal
     :: Double           -- ^ Standard deviation
     -> PrimDist Double
-  Poisson       
+  Poisson
     :: Double           -- ^ Rate λ
     -> PrimDist Int
-  Uniform       
+  Uniform
     :: Double           -- ^ Lower-bound @a@
     -> Double           -- ^ Upper-bound @b@
-    -> PrimDist Double  
+    -> PrimDist Double
 
 instance Eq (PrimDist a) where
   (==) (Normal m s) (Normal m' s') = m == m' && s == s'
@@ -168,7 +168,7 @@ instance Show a => Show (PrimDist a) where
   show (Deterministic x) =
    "Deterministic(" ++ show x ++ ", " ++ ")"
 
-  
+
 -- | An ad-hoc specification of primitive value types, for constraining the outputs of distributions
 type PrimVal = '[Int, Double, [Double], Bool, String]
 
@@ -176,12 +176,12 @@ type PrimVal = '[Int, Double, [Double], Bool, String]
 data IsPrimVal x where
   IsPrimVal :: (Show x, OpenSum.Member x PrimVal) => IsPrimVal x
 
--- | For pattern-matching on an arbitrary @PrimDist@ with proof that it generates a primitive value 
+-- | For pattern-matching on an arbitrary @PrimDist@ with proof that it generates a primitive value
 pattern PrimDistPrf :: () => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> PrimDist x
 pattern PrimDistPrf d <- d@(primDistPrf -> IsPrimVal)
 
 -- | Proof that all primitive distributions generate a primitive value
-primDistPrf :: PrimDist x -> IsPrimVal x 
+primDistPrf :: PrimDist x -> IsPrimVal x
 primDistPrf d = case d of
   HalfCauchy {} -> IsPrimVal
   Cauchy {} -> IsPrimVal
@@ -205,7 +205,7 @@ data ErasedPrimDist where
 
 instance Show ErasedPrimDist where
   show (ErasedPrimDist d) = show d
-  
+
 -- | Draw a value from a primitive distribution in the @Sampler@ monad
 sample :: PrimDist a -> Sampler a
 sample (HalfCauchy σ )  =
@@ -253,11 +253,11 @@ sampleBayes (Dirichlet as )   = MB.dirichlet (Vec.fromList as) >>= pure . Vec.to
 sampleBayes (PrimDistPrf d)   = error ("Sampling from " ++ show d ++ " is not supported")
 
 -- | Compute the density of a primitive distribution generating an observed value
-prob :: 
+prob ::
   -- | Distribution
-     PrimDist a 
+     PrimDist a
   -- | Observed value
-  -> a 
+  -> a
   -- | Density
   -> Double
 prob (Dirichlet xs) ys =
@@ -296,11 +296,11 @@ prob (Poisson λ) y       = probability (poisson λ) y
 prob (Deterministic x) y = 1
 
 -- | Compute the log density of a primitive distribution generating an observed value
-logProb :: 
+logProb ::
   -- | Distribution
-     PrimDist a 
+     PrimDist a
   -- | Observed value
-  -> a 
+  -> a
   -- | Log density
   -> Double
 logProb d = log . prob d

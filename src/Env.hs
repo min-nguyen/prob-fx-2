@@ -17,7 +17,7 @@
 {- | This implements the model environments that users must provide upon running a model; such environments assign traces of values to the "observable variables" (random variables which can be conditioned against) of a model.
 -}
 
-module Env 
+module Env
   ( -- * Observable variable
     Var(..)
   , varToStr
@@ -79,8 +79,8 @@ data Assign x a = x := a
 -- | A model environment assigning traces (lists) of observed values to observable variables i.e. the type @Env ((x := a) : env)@ indicates @x@ is assigned a value of type @[a]@
 data Env (env :: [Assign Symbol *]) where
   ENil  :: Env '[]
-  ECons :: [a] 
-        -> Env env 
+  ECons :: [a]
+        -> Env env
         -> Env (x := a : env)
 
 instance (KnownSymbol x, Show a, Show (Env env)) => Show (Env ((x := a) ': env)) where
@@ -129,7 +129,7 @@ type Observables :: [Assign Symbol Type] -> [Symbol] -> Type -> Constraint
 type family Observables env xs a :: Constraint where
   Observables env (x ': xs) a = (Observable env x a, Observables env xs a)
   Observables env '[] a = ()
- 
+
 -- | Extract the observable variables from a model environment type
 type GetVars :: [Assign Symbol Type] -> [Symbol]
 type family GetVars env where
@@ -148,7 +148,7 @@ type family LookupType x env where
   LookupType x ((x := a) : env) = a
   LookupType x ((x' := a) : env) = LookupType x env
 
--- | Enforce that @xs@ is a subset of observable variable names from @env@. 
+-- | Enforce that @xs@ is a subset of observable variable names from @env@.
 -- This class is used as a type-safe interface for allowing users to specify valid observable variable names with respect to an environment; these can then later be converted to normal strings to be used by backend inference methods.
 class ContainsVars (env :: [Assign Symbol *]) (xs :: [Symbol])  where
   -- | Convert a set of type-level strings @xs@ to value-level strings.

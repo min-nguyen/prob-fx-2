@@ -1,5 +1,9 @@
+## [1.0.0.0]
+
 **Effect.Dist**
-- Added pattern synonyms `SampPrj`, `SampDis`, `ObsPrj`, `ObsDis` for discharging/projecting `Sample` and `Observe` effects.
+Added:
+- pattern synonyms `SampPrj`, `SampDis`, `ObsPrj`, `ObsDis` for discharging/projecting `Sample` and `Observe` effects.
+Changed:
 - `handleDist` now extends the effect signature with `Sample` and `Observe`, rather than assuming they are already part of the signature
 
 **Effect.Lift**
@@ -52,3 +56,4 @@ Changed:
 - `updateLPTrace` and `updateSTrace` now invoke a `State` effect
 Added:
 - `traceLPs` and `traceSamples` handlers for recording log-probabilities and samples
+

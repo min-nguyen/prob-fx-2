@@ -1,6 +1,6 @@
-cabal-version:       3.6
+cabal-version:       3.0
 name:                prob-fx
-version:             0.1.0.0
+version:             1.0.0.0
 license:             BSD-3-Clause
 license-file:        LICENSE.md
 copyright:           2022 Minh Nguyen
@@ -53,25 +53,26 @@ library
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >= 4.11 && <= 4.17,
-                       aeson < 2,
-                       containers,
-                       dirichlet,
-                       extensible,
-                       freer-simple,
-                       ghc-prim,
-                       lens,
-                       log-domain,
-                       membership,
-                       mtl,
-                       mwc-probability,
-                       mwc-random,
-                       primitive,
-                       random,
-                       statistics,
-                       transformers,
-                       vector,
-                       monad-bayes >= 0.1.1.2
+  build-depends:      base                          >= 4.11 && <= 4.17,
+                      ghc-prim                      >= 0.5.3 && < 0.8,
+                      deepseq                       >= 1.4.4 && < 1.5,
+                      containers                    >= 0.6.0 && < 0.7,
+                      primitive                     >= 0.7.4 && < 0.8,
+                      transformers                  >= 0.5.6 && < 0.6,
+                      random                        >= 1.2.1 && < 1.3,
+                      mtl                           >= 2.2.2 && < 2.3,
+                      vector                        >= 0.12.3 && < 0.13,
+                      dirichlet                     >= 0.1.0 && < 0.2,
+                      log-domain                    >= 0.13.2 && < 0.14,
+                      mwc-random                    >= 0.15.0 && < 0.16,
+                      extensible                    >= 0.9 && < 0.10,
+                      membership                    >= 0.0.1 && < 0.1,
+                      lens                          >= 5.1.1 && < 5.2,
+                      mwc-probability               >= 2.3.1 && < 2.4,
+                      statistics                    >= 0.16.1 && < 0.17,
+                      criterion                     >= 1.5.13 && < 1.6,
+                      split                         >= 0.2.3 && < 0.3,
+                      monad-bayes                   >= 0.1.1.2
 
   -- Directories containing source files.
   hs-source-dirs:      src

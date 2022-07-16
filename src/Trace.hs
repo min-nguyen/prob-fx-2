@@ -11,7 +11,7 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 
-{- | For recording samples and log-probabilities during model execution 
+{- | For recording samples and log-probabilities during model execution
 -}
 
 module Trace (
@@ -57,23 +57,23 @@ instance (UniqueVar x env ~ 'True, KnownSymbol x, Eq a, OpenSum.Member a PrimVal
             . Map.filterWithKey (\(tag, idx) _ -> tag == varToStr x)
 
 -- | Retrieve the sampled values for the specified observable variable names
-filterSTrace :: 
+filterSTrace ::
   -- | Observable variable names
-    [Tag]  
+    [Tag]
   -- | Sample trace
-  -> STrace 
+  -> STrace
   -- | Filtered sample trace
   -> STrace
 filterSTrace tags = Map.filterWithKey (\(tag, idx) _ -> tag `elem` tags)
 
 -- | Update a sample trace at an address
-updateSTrace :: (Show x, Member (State STrace) es, OpenSum.Member x PrimVal) => 
+updateSTrace :: (Show x, Member (State STrace) es, OpenSum.Member x PrimVal) =>
   -- | Address of sample site
-     Addr 
+     Addr
   -- | Primitive distribution at address
-  -> PrimDist x 
+  -> PrimDist x
   -- Sampled value
-  -> x 
+  -> x
   -> Prog es ()
 updateSTrace α d x  = modify (Map.insert α (ErasedPrimDist d, OpenSum.inj x) :: STrace -> STrace)
 
@@ -91,13 +91,13 @@ traceSamples = handleState Map.empty . storeSamples
 type LPTrace = Map Addr Double
 
 -- | Compute and update a log-probability trace at an address
-updateLPTrace :: (Member (State LPTrace) es) => 
+updateLPTrace :: (Member (State LPTrace) es) =>
   -- | Address of sample/observe site
-    Addr 
+    Addr
   -- | Primitive distribution at address
-  -> PrimDist x 
+  -> PrimDist x
   -- | Sampled or observed value
-  -> x 
+  -> x
   -> Prog es ()
 updateLPTrace α d x  = modify (Map.insert α (PrimDist.logProb d x) :: LPTrace -> LPTrace)
 

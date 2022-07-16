@@ -11,7 +11,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FunctionalDependencies #-}
 
-{- | An encoding for algebraic effects, based on the @freer@ monad. 
+{- | An encoding for algebraic effects, based on the @freer@ monad.
 -}
 
 module Prog (
@@ -36,10 +36,10 @@ import Unsafe.Coerce ( unsafeCoerce )
 
 -- | A program that returns a value of type @a@ and can call operations that belong to some effect @e@ in signature @es@; this represents a syntax tree whose nodes are operations and leaves are pure values.
 data Prog es a where
-  Val 
-    :: a                -- ^ pure value 
+  Val
+    :: a                -- ^ pure value
     -> Prog es a
-  Op 
+  Op
     :: EffectSum es x   -- ^ an operation belonging to some effect in @es@
     -> (x -> Prog es a) -- ^ a continuation from the result of the operation
     -> Prog es a
@@ -97,7 +97,7 @@ type family UMember (b :: Bool) (e :: * -> *) (es :: [* -> *]) :: Bool where
   UMember 'False e (e' ': es) = UMember 'False e es
   UMember 'False e '[]        = 'False
 
--- | Last effect 
+-- | Last effect
 class Member m effs => LastMember m effs | effs -> m
 instance {-# OVERLAPPABLE #-} LastMember m effs => LastMember m (eff ': effs)
 instance LastMember m (m ': '[])
