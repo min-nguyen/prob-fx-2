@@ -45,32 +45,33 @@ import qualified Data.Vector as V
 import qualified GHC.TypeLits as TL
 import Unsafe.Coerce ( unsafeCoerce )
 
--- ** Observable variable 
 
--- | A container for an observable variable name @x@ represented as a type-level string.
+-- | A container for a variable name @x@ represented as a type-level string.
 data Var (x :: Symbol) where
   Var :: KnownSymbol x => Var x
 
--- | Allows the syntax @#x@ to be automatically lifted to the type @ObsVar "x"@.
+-- | Allows the syntax @#x@ to be automatically lifted to the type @Var "x"@.
 instance (KnownSymbol x, x ~ x') => IsLabel x (Var x') where
   fromLabel = Var
+
+-- | Convert an observable variable from a type-level string to a value-level string
+varToStr :: forall x. Var x -> String
+varToStr Var = symbolVal (Proxy @x)
 
 -- | A container for many observable variable names
 data Vars (xs :: [Symbol]) where
   VNil  :: Vars '[]
   VCons :: Vars xs -> Vars (x : xs)
 
+-- | Empty set of variables
 vnil :: Vars '[]
 vnil = VNil
 
 infixr 5 <#>
+-- | Prepend a variable name to a list of variables
 (<#>) :: Var x -> Vars xs -> Vars (x : xs)
 x <#> xs = VCons xs
 
-varToStr :: forall x. Var x -> String
-varToStr Var = symbolVal (Proxy @x)
-
--- ** Model environment
 
 -- | Assign or associate a variable @x@ with a value of type @a@
 data Assign x a = x := a
@@ -88,14 +89,14 @@ instance (KnownSymbol x, Show a, Show (Env env)) => Show (Env ((x := a) ': env))
 instance Show (Env '[]) where
   show ENil = "[]"
 
+-- | Empty model environment
 enil :: Env '[]
 enil = ENil
 
 infixr 5 <:>
+-- | Prepend a variable assignment to a model environment
 (<:>) :: UniqueVar x env ~ 'True => Assign (Var x) [a] -> Env env -> Env ((x ':= a) ': env)
 (_ := a) <:> env = ECons a env
-
--- ** Auxiliary type classes and type families 
 
 instance FindElem x ((x := a) : env) where
   findElem = Idx 0

@@ -18,14 +18,9 @@ Added:
 
 **Env**
 Changed:
-- `ObsVar` -> `Var`
-- `UniqueKey` -> `UniqueVar`
-- `nil` -> `enil`
+- `ObsVar` -> `Var`, `UniqueKey` -> `UniqueVar`, `nil` -> `enil`
 Added: 
-- `vnil`
-- `(<#>)`
-- `Vars`
-- `ContainsVars`
+- `vnil`, `(<#>)`, `Vars`, `ContainsVars`, `GetVars`
 
 **Model**
 - Swapped names for `discrete` and `categorical` 
