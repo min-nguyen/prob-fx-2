@@ -10,7 +10,7 @@ possible_arguments="simLinRegrOnce, lwLinRegrOnce, mhLinRegrOnce, simLinRegr, lw
 
 if [[ $# -eq 0 ]] || [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
   echo "Usage: ./`basename $0` <arg>"
-  echo "Arg options: [$possible_arguments]" 
+  echo "Arg options: [$possible_arguments]"
 elif exists_in_list "$possible_arguments" ", " $1; then
   cabal run prob-fx $1
   python3 graph.py $1

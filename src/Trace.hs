@@ -10,7 +10,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
-
 {- | For recording samples and log-probabilities during model execution
 -}
 

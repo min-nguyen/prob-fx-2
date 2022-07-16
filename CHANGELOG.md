@@ -29,21 +29,21 @@ Added:
 **Env**
 Changed:
 - `ObsVar` -> `Var`, `UniqueKey` -> `UniqueVar`, `nil` -> `enil`
-Added: 
+Added:
 - `vnil`, `(<#>)`, `Vars`, `ContainsVars`, `GetVars`
 
 **Model**
-- Swapped names for `discrete` and `categorical` 
+- Swapped names for `discrete` and `categorical`
 
 **PrimDist**
 Changed:
-- Swapped names for `Discrete` and `Categorical` 
+- Swapped names for `Discrete` and `Categorical`
 - Removed the `Dist` suffix on the constructor names of `PrimDist`
 - `DiscrUniform` -> `UniformD`
 
 **PrimDist**
 Changed:
-- Swapped names for `Discrete` and `Categorical` 
+- Swapped names for `Discrete` and `Categorical`
 - Removed the `Dist` suffix on the constructor names of `PrimDist`
 - `DiscrUniform` -> `UniformD`
 
