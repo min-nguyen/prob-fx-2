@@ -4,6 +4,8 @@
 **Effect.Lift**
 Changed:
 - `lift` now requires `m` to be the last member of the effect signature
+Added:
+- `liftM` for lifting `m` into `Model`
 
 **Env**
 Changed:

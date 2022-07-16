@@ -29,8 +29,8 @@ newtype Lift m a = Lift (m a)
 lift :: (LastMember (Lift m) es) => m a -> Prog es a
 lift = call . Lift
 
--- | Lift a monadic computation @m a@ into the effect @Lift m@ in a model
-liftM :: (Member (Lift m) es) => m a -> Model env es a
+-- | Lift a monadic computation @m a@ into the effect @Lift m@ in a @Model@
+liftM :: (LastMember (Lift m) es) => m a -> Model env es a
 liftM op = Model (call (Lift op))
 
 -- | Handle @Lift m@ as the last effect
