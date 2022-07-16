@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE OverloadedLabels #-}
 
-module Examples.GMM where
+module GMM where
 
 import Model
 import Inference.SIM as SIM

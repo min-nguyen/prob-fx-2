@@ -1,9 +1,9 @@
 module Main (main) where
 
-import Tests.Examples
-import Tests.Expected
+import Test.Examples
+import Test.Expected
 import Test.HUnit
-import Sampler
+import Sampler 
 
 testSimLinRegrOnce :: Test
 testSimLinRegrOnce = TestCase $ do
@@ -82,8 +82,8 @@ testSimSIR = TestCase $ do
 
 testMhSIR :: Test
 testMhSIR = TestCase $ do
-  output <- sampleIOFixed (mhSIR 10000 100)
-  assertEqual "Testing (mhSIR 10000 100)" output mhSIRExpected
+  output <- sampleIOFixed (mhSIR 1000 100)
+  assertEqual "Testing (mhSIR 1000 100)" output mhSIRExpected
 
 testSimLDA :: Test
 testSimLDA = TestCase $ do

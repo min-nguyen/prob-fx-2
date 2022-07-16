@@ -8,7 +8,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant return" #-}
 {-# LANGUAGE TypeApplications #-}
-module Examples.HMM where
+module HMM where
 
 import Model
 import Inference.SIM as SIM

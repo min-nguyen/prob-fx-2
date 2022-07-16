@@ -8,7 +8,7 @@
 {-# HLINT ignore "Redundant return" #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE TypeOperators #-}
-module Examples.LinRegr where
+module LinRegr where
 
 import Prog
 import Effects.ObsReader

@@ -29,7 +29,7 @@ Added:
 Changed:
 - Swapped names for `Discrete` and `Categorical` 
 - Removed the `Dist` suffix on the constructor names of `PrimDist`
-- `DiscreteUniform` -> `UniformD`
+- `DiscrUniform` -> `UniformD`
 
 **PrimDist**
 Changed:
@@ -45,4 +45,4 @@ Added:
 Changed:
 - `updateLPTrace` and `updateSTrace` now invoke a `State` effect
 Added:
-- `traceLPs` and `traceSamples`
+- `traceLPs` and `traceSamples` handlers for recording log-probabilities and samples

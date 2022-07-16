@@ -9,7 +9,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant pure" #-}
 
-module Examples.LogRegr where
+module LogRegr where
 
 import Control.Monad
 import Model

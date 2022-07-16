@@ -36,17 +36,6 @@ library
                       Inference.MH,
                       Inference.SIM,
                       Inference.MBAYES,
-                      Examples.CoinFlip,
-                      Examples.DataSets,
-                      Examples.HMM,
-                      Examples.GMM,
-                      Examples.LDA,
-                      Examples.LinRegr,
-                      Examples.LogRegr,
-                      Examples.Radon,
-                      Examples.School,
-                      Examples.SIR,
-                      Examples.SIRModular,
                       Env,
                       FindElem,
                       Model,
@@ -93,39 +82,66 @@ library
 
 executable prob-fx
   -- .hs or .lhs file containing the Main module.
-  main-is:             Main.hs
+  main-is:            Main.hs
 
-  
+  other-modules:      CoinFlip,
+                      DataSets,
+                      HMM,
+                      GMM,
+                      LDA,
+                      LinRegr,
+                      LogRegr,
+                      Radon,
+                      School,
+                      SIR,
+                      SIRModular,
   -- Other library packages from which modules are imported.
-  build-depends:       base >= 4.11 && <= 4.17,
-                       aeson < 2,
+  build-depends:       base,
                        containers,
                        extensible,
                        split,
-                       prob-fx
+                       prob-fx,
+                       log-domain,
+                       monad-bayes,
+                       lens
+
+  hs-source-dirs:      examples
 
   -- Base language which the package is written in.
   default-language:    Haskell2010
   ghc-options:         -O2 -rtsopts -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math
-
+ 
 executable tests
   -- .hs or .lhs file containing the Main module.
-  main-is:              Main.hs
+  main-is:            Test/Main.hs
 
-  other-modules:        Tests.Expected,
-                        Tests.Examples
+  other-modules:      Test.Expected,
+                      Test.Examples,
+                      CoinFlip,
+                      DataSets,
+                      HMM,
+                      GMM,
+                      LDA,
+                      LinRegr,
+                      LogRegr,
+                      Radon,
+                      School,
+                      SIR,
+                      SIRModular
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >= 4.11 && <= 4.17,
-                       aeson < 2,
+  build-depends:       base,
                        containers,
                        extensible,
                        split,
                        prob-fx,
                        hspec,
-                       HUnit
+                       HUnit,
+                       lens,
+                       log-domain,
+                       monad-bayes
 
-  hs-source-dirs:      tests
+  hs-source-dirs:      examples
 
   -- Base language which the package is written in.
   default-language:    Haskell2010

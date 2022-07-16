@@ -6,7 +6,7 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant return" #-}
-module Examples.SIR where
+module SIR where
 
 import Prog
 import Effects.Writer
@@ -23,7 +23,7 @@ import qualified Control.Monad.Bayes.Sampler as MB
 import Trace
 import Inference.MBAYES
 
-import Examples.HMM
+import HMM
 import Data.Extensible (Associated)
 
 -- ||| (Section 3.1 + Section 5.5 extension) The SIR model

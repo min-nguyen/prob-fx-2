@@ -14,7 +14,7 @@
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use camelCase" #-}
-module Examples.LDA where
+module LDA where
 
 import Model
 import Sampler

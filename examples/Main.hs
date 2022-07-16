@@ -2,15 +2,15 @@
 {-# LANGUAGE DataKinds #-}
 
 module Main where
-
-import Examples.LinRegr
-import Examples.LogRegr
-import Examples.SIR
-import Examples.LDA
-import Examples.Radon
-import Examples.School
-import Examples.HMM
-import Examples.GMM
+ 
+import LinRegr
+import LogRegr
+import SIR
+import LDA
+import Radon
+import School
+import HMM
+import GMM
 import Sampler
 import System.Environment (getArgs)
 
@@ -41,7 +41,7 @@ parseArgs cmd = case cmd of
   "simSIR"      -> sampleIOFixed (simSIR 100) >>= printThenWrite
   "simSIRS"     -> sampleIOFixed (simSIRS 100) >>= printThenWrite
   "simSIRSV"    -> sampleIOFixed (simSIRSV 100) >>= printThenWrite
-  "mhSIR"       -> sampleIOFixed (mhSIR 5000 100) >>= printThenWrite
+  "mhSIR"       -> sampleIOFixed (mhSIR 1000 100) >>= printThenWrite
 
   "simLDA"      -> sampleIOFixed (simLDA 100) >>= printThenWrite
   "mhPredLDA"   -> sampleIOFixed (mhPredLDA 500 100) >>= printThenWrite
