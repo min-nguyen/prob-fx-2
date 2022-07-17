@@ -7,22 +7,34 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant return" #-}
 
+{- | A [case study](https://docs.pymc.io/en/v3/pymc-examples/examples/case_studies/multilevel_modeling.html)
+    by Gelman and Hill as a hierarchical linear regression model, modelling the relationship between radon levels
+    in households in different counties and whether these houses contain basements.
+-}
+
 module Radon where
 
-import Control.Monad
-import Model
-import Env
-import Sampler
-import DataSets
-import Inference.SIM as SIM
-import Inference.MH as MH
-import Util
+import Control.Monad ( replicateM )
+import Model ( Model, halfCauchy', halfNormal, normal )
+import Env ( Env(..), Observables, Observable, Assign ((:=)), (<:>), enil, (<#>), vnil, get)
+import Sampler ( Sampler )
+import DataSets ( n_counties, logRadon, countyIdx, dataFloorValues )
+import Inference.SIM as SIM ( simulate )
+import Inference.MH as MH ( mh )
+import Util ( findIndexes )
 
--- ||| Hierarchical Linear Regression [https://docs.pymc.io/en/v3/pymc-examples/examples/case_studies/multilevel_modeling.html]
-type HLREnv =
-  '[ "mu_a" ':= Double, "mu_b" ':= Double, "sigma_a" ':= Double, "sigma_b" ':= Double,
-     "a" ':= Double, "b" ':= Double, "log_radon" ':= Double]
+-- | Radon model environment
+type RadonEnv =
+  '[ "mu_a" ':= Double      -- ^ hyperprior mean for county intercept
+   , "mu_b" ':= Double      -- ^ hyperprior mean for county gradient
+   , "sigma_a" ':= Double   -- ^ hyperprior noise for county intercept
+   , "sigma_b" ':= Double   -- ^ hyperprior noise for county gradient
+   , "a" ':= Double         -- ^ intercept for a county
+   , "b" ':= Double         -- ^ gradient for a county
+   , "log_radon" ':= Double -- ^ log-radon level for a house
+   ]
 
+-- | Prior distribution over model hyperparameters
 radonPrior :: Observables env '["mu_a", "mu_b", "sigma_a", "sigma_b"] Double
   => Model env es (Double, Double, Double, Double)
 radonPrior = do
@@ -32,10 +44,17 @@ radonPrior = do
   sigma_b <- halfNormal 5 #sigma_b
   return (mu_a, sigma_a, mu_b, sigma_b)
 
--- n counties = 85, len(floor_x) = 919, len(county_idx) = 919
+-- | The Radon model
+--   We have predefined parameters: n counties = 85, len(floor_x) = 919, len(county_idx) = 919
 radonModel :: Observables env '["mu_a", "mu_b", "sigma_a", "sigma_b", "a", "b", "log_radon"] Double
-  => Int -> [Int] -> [Int] -> Model env es [Double]
-radonModel n_counties floor_x county_idx  = do
+  -- | number of counties
+  => Int
+  -- | whether each house has a basement (1) or not (0)
+  -> [Int]
+  -- | the county (as an integer) each house belongs to
+  -> [Int]
+  -> Model env es [Double]
+radonModel n_counties floor_x county_idx = do
   (mu_a, sigma_a, mu_b, sigma_b) <- radonPrior
   -- Intercept for each county
   a <- replicateM n_counties (normal mu_a sigma_a #a)  -- length = 85
@@ -54,34 +73,47 @@ radonModel n_counties floor_x county_idx  = do
   radon_like <- mapM (\rad_est -> normal rad_est eps #log_radon) radon_est
   return radon_like
 
-mkRecordHLR :: ([Double], [Double], [Double], [Double], [Double], [Double], [Double]) -> Env HLREnv
-mkRecordHLR (mua, mub, siga, sigb, a, b, lograds) =
+
+mkRadonEnv :: ([Double], [Double], [Double], [Double], [Double], [Double], [Double]) -> Env RadonEnv
+mkRadonEnv (mua, mub, siga, sigb, a, b, lograds) =
    #mu_a := mua <:> #mu_b := mub <:> #sigma_a := siga <:> #sigma_b := sigb <:> #a := a <:> #b := b <:> #log_radon := lograds <:> enil
 
+-- | Simulate from the Radon model
 simRadon :: Sampler ([Double], [Double])
 simRadon = do
-  let env_in = mkRecordHLR ([1.45], [-0.68], [0.3], [0.2], [], [], [])
-  (bs, env_out) <- SIM.simulate  (radonModel n_counties dataFloorValues countyIdx) env_in  
+  -- Specify model environment
+  let env_in = mkRadonEnv ([1.45], [-0.68], [0.3], [0.2], [], [], [])
+  -- Simulate from model
+  (bs, env_out) <- SIM.simulate  (radonModel n_counties dataFloorValues countyIdx) env_in
+  -- Retrieve and return the radon-levels for houses with basements and those without basements
   let basementIdxs      = findIndexes dataFloorValues 0
       noBasementIdxs    = findIndexes dataFloorValues 1
       basementPoints    = map (bs !!) basementIdxs
       nobasementPoints  = map (bs !!) noBasementIdxs
   return (basementPoints, nobasementPoints)
 
--- Return posterior for intercepts and gradients
+-- | Run MH inference and return posterior for hyperparameter means of intercept and gradient
 mhRadon :: Int -> Sampler ([Double], [Double])
+  -- Specify model environment
 mhRadon n_mhsteps = do
-  let env_in = mkRecordHLR ([], [], [], [], [], [], logRadon)
-  env_outs <- MH.mh n_mhsteps (radonModel n_counties dataFloorValues countyIdx) env_in  (#mu_a <#> #mu_b <#> #sigma_a <#> #sigma_b <#> vnil)
+  let env_in = mkRadonEnv ([], [], [], [], [], [], logRadon)
+  -- Run MH inference
+  env_outs <- MH.mh n_mhsteps (radonModel n_counties dataFloorValues countyIdx) env_in
+                              (#mu_a <#> #mu_b <#> #sigma_a <#> #sigma_b <#> vnil)
+  -- Retrieve sampled values for model hyperparameters mu_a and mu_b
   let mu_a   = concatMap (get #mu_a)  env_outs
       mu_b   = concatMap (get #mu_b)  env_outs
   return (mu_a, mu_b)
 
--- Return predictive posterior for intercepts and gradients
+-- | Run MH inference and return predictive posterior for intercepts and gradients
 mhPredRadon :: Int -> Sampler ([Double], [Double])
 mhPredRadon n_mhsteps = do
-  let env_in = mkRecordHLR ([], [], [], [], [], [], logRadon)
-  env_outs <- MH.mh n_mhsteps (radonModel n_counties dataFloorValues countyIdx ) env_in (#mu_a <#> #mu_b <#> #sigma_a <#> #sigma_b <#> vnil)
+  -- Specify model environment
+  let env_in = mkRadonEnv ([], [], [], [], [], [], logRadon)
+  -- Run MH inference
+  env_outs <- MH.mh n_mhsteps (radonModel n_counties dataFloorValues countyIdx ) env_in
+                              (#mu_a <#> #mu_b <#> #sigma_a <#> #sigma_b <#> vnil)
+  -- Retrieve most recently sampled values for each house's intercept and gradient, a and b
   let env_pred   = head env_outs
       as         = get #a env_pred
       bs         = get #b env_pred
