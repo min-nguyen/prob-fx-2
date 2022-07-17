@@ -9,7 +9,7 @@
 {- | An interface that allows models in ProbFX to be translated to probabilistic programs in MonadBayes.
 -}
 
-module Inference.MBAYES
+module Inference.MB
   (
     toMBayes
   , handleObs

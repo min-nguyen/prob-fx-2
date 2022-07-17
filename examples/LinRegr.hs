@@ -17,7 +17,7 @@ import Model
 import Inference.SIM as SIM
 import Inference.LW as LW
 import Inference.MH as MH
-import Inference.MBAYES
+import Inference.MB as MB
 import Effects.Dist
 import Effects.Lift
 import Sampler
@@ -26,10 +26,10 @@ import Data.Kind (Constraint)
 import Env
 import Trace
 import Numeric.Log
-import qualified Control.Monad.Bayes.Class as MB
-import qualified Control.Monad.Bayes.Weighted as MB
-import qualified Control.Monad.Bayes.Traced as MB
-import qualified Control.Monad.Bayes.Sampler as MB
+import qualified Control.Monad.Bayes.Class as Bayes
+import qualified Control.Monad.Bayes.Weighted as Bayes
+import qualified Control.Monad.Bayes.Traced as Bayes
+import qualified Control.Monad.Bayes.Sampler as Bayes
 
 -- ||| Linear regression environment
 type LinRegrEnv =
@@ -40,7 +40,7 @@ type LinRegrEnv =
    ]
 
 -- ||| (Section 1) Linear regression
-linRegrOnce :: forall env rs . 
+linRegrOnce :: forall env rs .
   Observables env '["y", "m", "c", "σ"] Double =>
   Double -> Model env rs Double
 linRegrOnce x = do
@@ -58,7 +58,7 @@ simLinRegrOnce n_datapoints = do
   ys_envs <- mapM (\x -> SIM.simulate (linRegrOnce x) env) xs
   let ys = map fst ys_envs
   pure (zip xs ys)
- 
+
 -- ||| (Section 1, Fig 1b) Perform likelihood weighting over linear regression; returns sampled mu values and associated likelihood weightings
 lwLinRegrOnce :: Int -> Int ->  Sampler [(Double, Double)]
 lwLinRegrOnce n_samples n_datapoints = do
@@ -98,7 +98,7 @@ simLinRegr :: Int -> Sampler [(Double, Double)]
 simLinRegr n_datapoints = do
   let xs  = [0 .. fromIntegral n_datapoints]
       env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> enil
-  bs :: ([Double], Env LinRegrEnv) <- SIM.simulate (linRegr xs) env 
+  bs :: ([Double], Env LinRegrEnv) <- SIM.simulate (linRegr xs) env
   pure $ zip xs (fst bs)
 
 lwLinRegr ::  Int -> Int ->  Sampler [(Double, Double)]
@@ -119,7 +119,7 @@ mhLinRegr n_mhsteps n_datapoints = do
   pure (mus, cs)
 
 -- ||| Linear regression model using monad-bayes inference
-mbayesLinRegr :: (FromSTrace env, MB.MonadInfer m, Observables env '["y", "m", "c", "σ"] Double) =>
+mbayesLinRegr :: (FromSTrace env, Bayes.MonadInfer m, Observables env '["y", "m", "c", "σ"] Double) =>
  [Double] -> Env env -> m ([Double], Env env)
 mbayesLinRegr xs = toMBayes (linRegr xs)
 
@@ -127,21 +127,21 @@ simLinRegrMB :: Int -> Int -> IO [([Double], Env LinRegrEnv)]
 simLinRegrMB n_samples n_datapoints = do
   let xs  = [0 .. fromIntegral n_datapoints]
       env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> enil
-  MB.sampleIO $ MB.prior $ replicateM n_samples (mbayesLinRegr xs env)
+  Bayes.sampleIO $ Bayes.prior $ replicateM n_samples (mbayesLinRegr xs env)
 
 lwLinRegrMB :: Int -> Int -> IO [(([Double], Env LinRegrEnv), Log Double)]
 lwLinRegrMB n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
       xs            = [0 .. n_datapoints']
       env           = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> enil
-  MB.sampleIO $ replicateM n_samples (MB.runWeighted $ mbayesLinRegr xs env)
+  Bayes.sampleIO $ replicateM n_samples (Bayes.runWeighted $ mbayesLinRegr xs env)
 
 mhLinRegrMB :: Int -> Int -> IO [([Double], Env LinRegrEnv)]
 mhLinRegrMB n_samples n_datapoints = do
   let n_datapoints' = fromIntegral n_datapoints
       xs            = [0 .. n_datapoints']
       env           = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> enil
-  mhtrace <- MB.sampleIO (MB.prior $ MB.mh n_samples (mbayesLinRegr xs env))
+  mhtrace <- Bayes.sampleIO (Bayes.prior $ Bayes.mh n_samples (mbayesLinRegr xs env))
   let (outpts, envs) = unzip mhtrace
       mus = concatMap (get #m) envs
   print mus

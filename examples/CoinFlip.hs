@@ -5,6 +5,9 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant return" #-}
 
+{- | A coin-flip model for demonstrating how primitive distributions desugar.
+-}
+
 module CoinFlip where
 
 import Prog ( call )
@@ -15,15 +18,24 @@ import Effects.Dist ( Dist(Dist) )
 import Data.Kind (Constraint)
 import Env ( Observables )
 
--- | Coin flip model
-coinFlip :: (Observables env '["p"] Double, Observables env '[ "y"] Bool) => Model env es Bool
+{- | A coin-flip model that draws a coin-bias @p@ between 0 and 1 from a uniform
+     distribution, and uses this to draw a boolean @y@ representing heads or tails.
+-}
+coinFlip
+  :: (Observables env '["p"] Double
+    , Observables env '[ "y"] Bool)
+  => Model env es Bool
 coinFlip = do
   p <- uniform 0 1 #p
   y <- bernoulli p #y
   return y
 
--- | Desugared version of coin flip model
-coinFlip' :: forall env es. (Observables env '["p"] Double, Observables env '[ "y"] Bool) => Model env es Bool
+{- | A desugared version of the above coin-flip model, after inlining the functions
+     @uniform@ and @bernoulli@.
+-}
+coinFlip'
+  :: forall env es. (Observables env '["p"] Double, Observables env '[ "y"] Bool)
+  => Model env es Bool
 coinFlip' = Model $ do
   maybe_p  <- call (Ask @env #p)
   p        <- call (Dist (Uniform 0 1) maybe_p (Just "p"))

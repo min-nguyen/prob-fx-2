@@ -16,12 +16,12 @@ import Inference.MH as MH
 import Sampler
 import Env
 import Control.Monad
-import qualified Control.Monad.Bayes.Class as MB
-import qualified Control.Monad.Bayes.Weighted as MB
-import qualified Control.Monad.Bayes.Traced as MB
-import qualified Control.Monad.Bayes.Sampler as MB
+import qualified Control.Monad.Bayes.Class as Bayes
+import qualified Control.Monad.Bayes.Weighted as Bayes
+import qualified Control.Monad.Bayes.Traced as Bayes
+import qualified Control.Monad.Bayes.Sampler as Bayes
 import Trace
-import Inference.MBAYES
+import Inference.MB as MB
 
 import HMM
 import Data.Extensible (Associated)
@@ -56,7 +56,7 @@ transSIR :: Member (Writer [Popl]) es -- || Writer effect from Section 5.5
   => TransModel env es TransParamsSIR Popl
 transSIR (TransParamsSIR beta gamma) sir = do
   sir' <- (transSI beta >=> transIR gamma) sir
-  tellM [sir'] 
+  tellM [sir']
   return sir'
 
 -- | SIR observation model
@@ -98,7 +98,7 @@ simSIR :: Int -> Sampler ([(Int, Int, Int)], [Reported])
 simSIR n_days = do
   let sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #ρ := [0.3] <:> #𝜉 := [] <:> enil
       sir_0      = Popl {s = 762, i = 1, r = 0}
-  ((_, sir_trace), sim_env_out) <- SIM.simulate (hmmSIR' n_days sir_0) sim_env_in 
+  ((_, sir_trace), sim_env_out) <- SIM.simulate (hmmSIR' n_days sir_0) sim_env_in
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
       sirs = map (\(Popl s i recov) -> (s, i, recov)) sir_trace
   return (sirs, 𝜉s)
@@ -109,15 +109,15 @@ mhSIR n_mhsteps n_days = do
   𝜉s <- snd <$> simSIR n_days
   let mh_env_in = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> enil
       sir_0           = Popl {s = 762, i = 1, r = 0}
-  mhTrace <- MH.mh n_mhsteps (hmmSIR' n_days sir_0) mh_env_in (#β <#> #ρ <#> vnil) 
+  mhTrace <- MH.mh n_mhsteps (hmmSIR' n_days sir_0) mh_env_in (#β <#> #ρ <#> vnil)
   let ρs = concatMap (get #ρ) mhTrace
       βs = concatMap (get #β) mhTrace
   return (ρs, βs)
 
 -- ||| SIR model using monad-bayes inference
-mbayesSIR :: 
-   (FromSTrace env, MB.MonadInfer m
-  , Observables env '["𝜉"] Int , Observables env '[ "β" , "γ" , "ρ"] Double) 
+mbayesSIR ::
+   (FromSTrace env, Bayes.MonadInfer m
+  , Observables env '["𝜉"] Int , Observables env '[ "β" , "γ" , "ρ"] Double)
   => Int -> Popl -> Env env -> m ((Popl, [Popl]), Env env)
 mbayesSIR n popl = toMBayes (hmmSIR' n popl)
 
@@ -125,7 +125,7 @@ simSIRMB :: Int -> IO ([(Int, Int, Int)], [Reported])
 simSIRMB n_days = do
   let sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #ρ := [0.3] <:> #𝜉 := [] <:> enil
       sir_0      = Popl {s = 762, i = 1, r = 0}
-  ((_, sir_trace), sim_env_out) <- MB.sampleIO $ MB.prior (mbayesSIR n_days sir_0 sim_env_in)
+  ((_, sir_trace), sim_env_out) <- Bayes.sampleIO $ Bayes.prior (mbayesSIR n_days sir_0 sim_env_in)
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
       sirs = map (\(Popl s i recov) -> (s, i, recov)) sir_trace
   pure (sirs, 𝜉s)
@@ -135,7 +135,7 @@ mhSIRMB n_days = do
   𝜉s <- snd <$> simSIRMB n_days
   let sir_0      = Popl {s = 762, i = 1, r = 0}
       env = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> enil
-  (_, env) <- unzip <$> MB.sampleIO (MB.prior $ MB.mh 100 (mbayesSIR 100 sir_0 env))
+  (_, env) <- unzip <$> Bayes.sampleIO (Bayes.prior $ Bayes.mh 100 (mbayesSIR 100 sir_0 env))
   let ρs = concatMap (get #ρ) env
       βs = concatMap (get #β) env
   pure (ρs, βs)
@@ -180,7 +180,7 @@ simSIRS :: Int -> Sampler ([(Int, Int, Int)], [Reported])
 simSIRS n_days = do
   let sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #η := [0.05] <:> #ρ := [0.3] <:> #𝜉 := [] <:> enil
       sir_0      = Popl {s = 762, i = 1, r = 0}
-  ((_, sir_trace), sim_env_out) <- SIM.simulate (hmmSIRS n_days sir_0) sim_env_in 
+  ((_, sir_trace), sim_env_out) <- SIM.simulate (hmmSIRS n_days sir_0) sim_env_in
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
       sirs = map (\(Popl s i recov) -> (s, i, recov)) sir_trace
   return (sirs, 𝜉s)
@@ -255,7 +255,7 @@ simSIRSV :: Int -> Sampler ([(Int, Int, Int, Int)], [Reported])
 simSIRSV n_days = do
   let sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #η := [0.05] <:> #ω := [0.02] <:> #ρ := [0.3] <:> #𝜉 := [] <:> enil
       sirv_0      = PoplV {s' = 762, i' = 1, r' = 0, v' = 0}
-  ((_, sirv_trace), sim_env_out) <- SIM.simulate (hmmSIRSV n_days sirv_0) sim_env_in 
+  ((_, sirv_trace), sim_env_out) <- SIM.simulate (hmmSIRSV n_days sirv_0) sim_env_in
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
       sirvs = map (\(PoplV s i recov v) -> (s, i, recov, v)) sirv_trace
   return (sirvs, 𝜉s)

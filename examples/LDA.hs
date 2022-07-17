@@ -23,13 +23,13 @@ import Data.Kind (Constraint)
 import Env
 import Inference.SIM as SIM ( simulate )
 import Inference.MH as MH
-import Inference.MBAYES as MBAYES
+import Inference.MB as MB
 import Trace
 import Numeric.Log
-import qualified Control.Monad.Bayes.Class as MB
-import qualified Control.Monad.Bayes.Weighted as MB
-import qualified Control.Monad.Bayes.Traced as MB
-import qualified Control.Monad.Bayes.Sampler as MB
+import qualified Control.Monad.Bayes.Class as Bayes
+import qualified Control.Monad.Bayes.Weighted as Bayes
+import qualified Control.Monad.Bayes.Traced as Bayes
+import qualified Control.Monad.Bayes.Sampler as Bayes
 
 
 -- ||| Latent dirichlet allocation environment (topic model)
@@ -96,7 +96,7 @@ simLDA n_words = do
                #φ := [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],
                       [1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]] <:>
                #w := [] <:> enil
-  (words, env_out) <- SIM.simulate (topicModel vocab 2 n_words) env_in 
+  (words, env_out) <- SIM.simulate (topicModel vocab 2 n_words) env_in
   return words
 
 -- | Inference from topic model
@@ -106,16 +106,16 @@ mhPredLDA n_mhsteps n_words = do
   let n_topics  = 2
       env_mh_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
   env_mh_outs <- MH.mh n_mhsteps (topicModel vocab n_topics n_words) env_mh_in (#φ <#> #θ <#> vnil)
-  -- Draw the most recent sampled parameters 
+  -- Draw the most recent sampled parameters
   let env_pred   = head env_mh_outs
       θs         = get #θ env_pred
       φs         = get #φ env_pred
   return (θs, φs)
 
 -- ||| Topic model using monad-bayes inference
-mbayesLDA :: (FromSTrace env, MB.MonadInfer m, Observables env '["φ", "θ"] [Double], Observable env "w" String)
+mbayesLDA :: (FromSTrace env, Bayes.MonadInfer m, Observables env '["φ", "θ"] [Double], Observable env "w" String)
   => [String] -> Int -> Int -> Env env -> m ([String], Env env)
-mbayesLDA vocab n_topics n_words = toMBayes (topicModel vocab n_topics n_words)
+mbayesLDA vocab n_topics n_words = MB.toMBayes (topicModel vocab n_topics n_words)
 
 simLDAMB :: Int -> IO ([String], Env TopicEnv)
 simLDAMB n_words  = do
@@ -123,14 +123,14 @@ simLDAMB n_words  = do
             #φ := [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],
                    [1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]] <:>
             #w := [] <:> enil
-  MB.sampleIO $ MB.prior (mbayesLDA vocab 2 n_words env) 
+  Bayes.sampleIO $ Bayes.prior (mbayesLDA vocab 2 n_words env)
 
 lwLDA :: Int -> Int -> IO [(([String], Env TopicEnv), Log Double)]
 lwLDA n_samples n_words  = do
   let env = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
-  MB.sampleIO $ replicateM n_samples (MB.runWeighted $ mbayesLDA vocab 2 n_words env) 
+  Bayes.sampleIO $ replicateM n_samples (Bayes.runWeighted $ mbayesLDA vocab 2 n_words env)
 
 mhLDA :: Int -> Int -> IO [([String], Env TopicEnv)]
 mhLDA n_mhsteps n_words  = do
   let env = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
-  MB.sampleIO $ MB.prior $ MB.mh n_mhsteps (mbayesLDA vocab 2 n_words env) 
+  Bayes.sampleIO $ Bayes.prior $ Bayes.mh n_mhsteps (mbayesLDA vocab 2 n_words env)
