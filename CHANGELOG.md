@@ -1,5 +1,10 @@
 ## [1.0.0.0]
 
+**examples**
+Added:
+- `GMM` (gaussian mixture model)
+- `LinRegr`, `HMM`, `LDA`: examples of translating models to programs in `Monad Bayes`
+
 **Effect.Dist**
 Added:
 - pattern synonyms `SampPrj`, `SampDis`, `ObsPrj`, `ObsDis` for discharging/projecting `Sample` and `Observe` effects.

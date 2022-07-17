@@ -3,7 +3,7 @@ module Main (main) where
 import Test.Examples
 import Test.Expected
 import Test.HUnit
-import Sampler 
+import Sampler
 
 testSimLinRegrOnce :: Test
 testSimLinRegrOnce = TestCase $ do
@@ -12,12 +12,12 @@ testSimLinRegrOnce = TestCase $ do
 
 testLwLinRegrOnce :: Test
 testLwLinRegrOnce = TestCase $ do
-  output <- sampleIOFixed (lwLinRegrOnce 100 50) 
+  output <- sampleIOFixed (lwLinRegrOnce 100 50)
   assertEqual "Testing (lwLinRegrOnce 100 50)" output lwLinRegrOnceExpected
 
 testMhLinRegrOnce :: Test
 testMhLinRegrOnce = TestCase $ do
-  output <- sampleIOFixed (mhLinRegrOnce 100 100) 
+  output <- sampleIOFixed (mhLinRegrOnce 100 100)
   assertEqual "Testing (mhLinRegrOnce 100 100)" output mhLinRegrOnceExpected
 
 testSimLinRegr :: Test
@@ -27,12 +27,12 @@ testSimLinRegr = TestCase $ do
 
 testLwLinRegr :: Test
 testLwLinRegr = TestCase $ do
-  output <- sampleIOFixed (lwLinRegr 1000 10) 
+  output <- sampleIOFixed (lwLinRegr 1000 10)
   assertEqual "Testing (lwLinRegr 1000 10)" output lwLinRegrExpected
 
 testMhLinRegr :: Test
 testMhLinRegr = TestCase $ do
-  output <- sampleIOFixed (mhLinRegr 10000 50) 
+  output <- sampleIOFixed (mhLinRegr 10000 50)
   assertEqual "Testing (mhLinRegr 10000 50)" output mhLinRegrExpected
 
 testSimLogRegrOnce :: Test
@@ -42,12 +42,12 @@ testSimLogRegrOnce = TestCase $ do
 
 testLwLogRegrOnce :: Test
 testLwLogRegrOnce = TestCase $ do
-  output <- sampleIOFixed (lwLogRegrOnce 10 10) 
+  output <- sampleIOFixed (lwLogRegrOnce 10 10)
   assertEqual "Testing (lwLogRegrOnce 10 10)" output lwLogRegrOnceExpected
 
 testMhLogRegrOnce :: Test
 testMhLogRegrOnce = TestCase $ do
-  output <- sampleIOFixed (mhLogRegrOnce 100 10) 
+  output <- sampleIOFixed (mhLogRegrOnce 100 10)
   assertEqual "Testing (mhLogRegrOnce 100 10)" output mhLogRegrOnceExpected
 
 testSimLogRegr :: Test
@@ -57,12 +57,12 @@ testSimLogRegr = TestCase $ do
 
 testLwLogRegr :: Test
 testLwLogRegr = TestCase $ do
-  output <- sampleIOFixed (lwLogRegr 100 10) 
+  output <- sampleIOFixed (lwLogRegr 100 10)
   assertEqual "Testing (lwLogRegr 100 10)" output lwLogRegrExpected
 
 testMhLogRegr :: Test
 testMhLogRegr = TestCase $ do
-  output <- sampleIOFixed (mhLogRegr 1000 10) 
+  output <- sampleIOFixed (mhLogRegr 1000 10)
   assertEqual "Testing (mhLogRegr 1000 10)" output mhLogRegrExpected
 
 testSimHMM :: Test

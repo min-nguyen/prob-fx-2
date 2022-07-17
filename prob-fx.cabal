@@ -95,7 +95,7 @@ executable prob-fx
                       Radon,
                       School,
                       SIR,
-                      SIRModular,
+                      SIRNonModular,
   -- Other library packages from which modules are imported.
   build-depends:       base,
                        containers,
@@ -128,7 +128,7 @@ executable tests
                       Radon,
                       School,
                       SIR,
-                      SIRModular
+                      SIRNonModular
 
   -- Other library packages from which modules are imported.
   build-depends:       base,

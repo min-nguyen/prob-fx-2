@@ -2,7 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 
 module Main where
- 
+
 import LinRegr
 import LogRegr
 import SIR

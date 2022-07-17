@@ -30,7 +30,7 @@ def main():
     plt.xlabel('x data points')
     plt.ylabel('y data points')
     plt.title('Linear regression')
-    
+
   if arg in ["lwLinRegrOnce", "lwLinRegr"]:
     mus = [d[0] for d in data]
     ps  = [d[1] for d in data]
@@ -39,7 +39,7 @@ def main():
     axs1.set_ylabel('probability')
     axs1.scatter(mus, ps)
     axs1.set_title('Linear regression - Likelihood Weighting')
-    
+
   if arg in ["mhLinRegrOnce", "mhLinRegr"]:
     mus = data[0]
     cs  = data[1]
@@ -53,7 +53,7 @@ def main():
     axs1.set_ylabel("frequency")
     axs1.hist(cs, bins=25)
     axs1.set_title('Linear regression - Metropolis Hastings')
-    
+
   if arg in ["simSIR", "simSIRS"]:
     # y axis
     sir_values   = np.array(data[0])
@@ -85,7 +85,7 @@ def main():
     plt.xlim([0,100])
     plt.ylim([0,800])
     plt.legend()
-    
+
   if arg == "simSIRSV":
     # y axis
     sirv_values   = np.array(data[0])
@@ -121,7 +121,7 @@ def main():
     plt.xlim([0,100])
     plt.ylim([0,800])
     plt.legend()
-    
+
   if arg == "mhSIR":
     rhos_unique   = data[0]
     betas_unique  = data[1]
@@ -135,7 +135,7 @@ def main():
     axs2.set_ylabel("frequency")
     axs2.hist(betas_unique, bins=55)
     axs2.set_title('HMM - Metropolis Hastings Posterior (Beta)')
-    
+
   if arg in ["simLogRegrOnce", "simLogRegr"]:
     xys = np.array(data)
     xs =  np.array([xy[0] for xy in xys])
@@ -152,7 +152,7 @@ def main():
     plt.xlabel('x - axis')
     plt.ylabel('y - axis')
     plt.title('Logistic regression simulation')
-    
+
   if arg in ["lwLogRegrOnce", "lwLogRegr"]:
     mus = [d[0][0] for d in data]
     bs  = [d[0][1] for d in data]
@@ -166,7 +166,7 @@ def main():
     axs2.set_ylabel('probability')
     axs2.scatter(bs, ps)
     axs2.set_title('Logistic regression - Likelihood Weighting')
-    
+
   if arg in ["mhLogRegrOnce", "mhLogRegr"]:
     mu_samples = data[0]
     b_samples  = data[1]
@@ -180,7 +180,7 @@ def main():
     axs2.set_ylabel("frequency")
     axs2.hist(b_samples, bins=50)
     axs2.set_title('Logistic regression - Metropolis Hastings Posterior')
-    
+
   if arg == "simHMM":
     xs = [d[0] for d in data]
     ys = [d[1] for d in data]
@@ -230,7 +230,7 @@ def main():
     ax1.bar(ws, topic_1s, 0.8)
     ax1.set_xticklabels(ws)
     plt.title('Topic-Word Distribution 1')
-    
+
   if arg == "simRadon":
     basement_ys   = data[0]
     basement_xs   = [0 for i in range(len(basement_ys))]
@@ -262,7 +262,7 @@ def main():
       x = np.linspace(0, 1, 100)
       y = m * x + c
       plt.plot(x, y)
-    
+
   if arg == "mhSchool":
     mu_samples_unique   = data[0]
     thetas              = data[1]

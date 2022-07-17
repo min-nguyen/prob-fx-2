@@ -200,12 +200,12 @@ mhHMMw mh_samples hmm_length = do
   -- Simulate a trace of observations from the HMM
   ys <- map snd <$> simHMMw hmm_length
   -- Specify a model environment containing those observations
-  let env  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
+  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
   -- Handle the Writer effect and then run MH inference
-  mh_envs_out <- MH.mh mh_samples (handleWriterM @[Int] $ hmmW hmm_length 0) env (#trans_p <#> #obs_p <#> vnil)
+  envs_out <- MH.mh mh_samples (handleWriterM @[Int] $ hmmW hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
   -- Get the trace of sampled transition and observation parameters
-  let trans_ps    = concatMap (get #trans_p) mh_envs_out
-      obs_ps      = concatMap (get #obs_p) mh_envs_out
+  let trans_ps    = concatMap (get #trans_p) envs_out
+      obs_ps      = concatMap (get #obs_p) envs_out
   pure (trans_ps, obs_ps)
 
 {- | Interfacing the HMM on top of Monad Bayes.
@@ -260,20 +260,48 @@ lwHMMMB n_samples hmm_length = do
   Bayes.sampleIO $ replicateM n_samples $ Bayes.runWeighted $ mbayesHMM hmm_length 0 env
 
 -- | Metropolis-Hastings from the HMM in Monad Bayes.
-mhHMMMB :: Int -> Int -> IO [((Int, [Int]), Env HMMEnv)]
+mhHMMMB
+  -- | metropolis-hastings iterations
+  :: Int
+  -- | number of HMM nodes
+  -> Int
+  -- | [ (((final latent state, intermediate latent states), output model environment)) ]
+  -> IO [((Int, [Int]), Env HMMEnv)]
 mhHMMMB n_mhsteps hmm_length = do
+  -- Simulate a trace of observations from the HMM
   ys <- map snd <$> simHMMMB hmm_length
+  -- Specify a model environment containing those observations
   let env = (#trans_p := []) <:> #obs_p := [] <:> (#y := ys) <:>  enil
   Bayes.sampleIO $ Bayes.prior $ Bayes.mh n_mhsteps (mbayesHMM hmm_length 0 env)
 
 {- | A higher-order, generic HMM.
 -}
-type TransModel env ts params lat   = params -> lat -> Model env ts lat
-type ObsModel env ts params lat obs = params -> lat -> Model env ts obs
 
-hmmGen :: Model env ts ps1 -> Model env ts ps2
-       -> TransModel env ts ps1 lat -> ObsModel env ts ps2 lat obs
-       -> Int -> lat -> Model env ts lat
+type TransModel env ts params lat
+  =  params           -- ^ transition parameter
+  -> lat              -- ^ previous latent state
+  -> Model env ts lat -- ^ next latent state
+
+type ObsModel env ts params lat obs
+  =  params           -- ^ observation parameter
+  -> lat              -- ^ current latent state
+  -> Model env ts obs -- ^ observation
+
+hmmGen
+  -- | prior for transition parameter
+  :: Model env ts ps1
+  -- | prior for observation parameter
+  -> Model env ts ps2
+  -- | transition sub-model
+  -> TransModel env ts ps1 lat
+  -- | observation sub-model
+  -> ObsModel env ts ps2 lat obs
+  -- | number of HMM nodes
+  -> Int
+  -- | initial latent state
+  -> lat
+  -- | final latent state
+  -> Model env ts lat
 hmmGen transPrior obsPrior transModel obsModel n x_0 = do
   ps1    <- transPrior
   ps2    <- obsPrior
