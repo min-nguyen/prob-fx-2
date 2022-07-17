@@ -39,13 +39,19 @@ import Control.Lens ( (&), (^.), (.~) )
 import Effects.Writer ( Writer, tellM, handleWriterM )
 import Model ( Model, beta, binomial', gamma, poisson )
 import Control.Monad ( (>=>) )
-import Env ( Observables, Observable, Assign ((:=)), (<:>), enil, (<#>), vnil, get)
+import Env ( Env(..), Observables, Observable, Assign ((:=)), (<:>), enil, (<#>), vnil, get)
 import HMM ( ObsModel, TransModel, hmmGen )
 import GHC.TypeLits ( Symbol )
 import Data.Kind (Constraint)
 import Sampler ( Sampler )
 import Inference.SIM as SIM ( simulate )
 import Inference.MH as MH ( mh )
+import Inference.MB as MB
+import qualified Control.Monad.Bayes.Class as Bayes
+import qualified Control.Monad.Bayes.Weighted as Bayes
+import qualified Control.Monad.Bayes.Traced as Bayes
+import qualified Control.Monad.Bayes.Sampler as Bayes
+import Trace
 
 -- | A type family for conveniently specifying multiple @Record@ fields of the same type
 type family Lookups env (ks :: [Symbol]) a :: Constraint where
@@ -126,7 +132,11 @@ hmmSIR :: (Lookups popl '["s", "i", "r"] Int
 hmmSIR n = handleWriterM . hmmGen transPriorSIR obsPriorSIR transSIR obsSIR n
 
 -- | Simulate from the SIR model
-simSIR :: Int -> Sampler ([(Int, Int, Int)], [Reported])
+simSIR
+  -- | number of days
+  :: Int
+  -- ([(s, i, r)], [𝜉])
+  -> Sampler ([(Int, Int, Int)], [Reported])
 simSIR n_days = do
   -- Specify model input of 762 susceptible and 1 infected
   let sir_0      = #s @= 762 <: #i @= 1 <: #r @= 0 <: emptyRecord
@@ -140,8 +150,14 @@ simSIR n_days = do
       sirs = map (\sir -> (sir ^. s, sir ^. i, sir ^. r)) sir_trace
   return (sirs, 𝜉s)
 
--- | MH inference from SIR model: ([ρ], [β])
-mhSIR :: Int -> Int -> Sampler ([Double], [Double])
+-- | MH inference from SIR model:
+mhSIR
+  -- | number of MH iterations
+  :: Int
+  -- | number of days
+  -> Int
+  -- | ([ρ], [β])
+  -> Sampler ([Double], [Double])
 mhSIR n_mhsteps n_days = do
   -- Simulate some observed infections
   𝜉s <- snd <$> simSIR n_days
@@ -169,7 +185,8 @@ transPriorSIRS = do
   return (pBeta, pGamma, pEta)
 
 -- | Transition model from S to R
-transRS :: Lookups popl '["s", "r"] Int => TransModel env ts Double (Record popl)
+transRS :: Lookups popl '["s", "r"] Int
+  => TransModel env ts Double (Record popl)
 transRS eta popl = do
   let (r_0, s_0) = (popl ^. r,  popl ^. s)
   dN_RS <- binomial' r_0 (1 - exp (-eta))
@@ -177,7 +194,8 @@ transRS eta popl = do
                 & s .~ (s_0 + dN_RS)
 
 -- | Transition model from S to I, I to R, and R to S
-transSIRS :: Lookups popl '["s", "i", "r"] Int => TransModel env es (Double, Double, Double) (Record popl)
+transSIRS :: Lookups popl '["s", "i", "r"] Int
+  => TransModel env es (Double, Double, Double) (Record popl)
 transSIRS (beta, gamma, eta) = transSI beta >=> transIR gamma >=> transRS eta
 
 -- | SIRS as HMM
@@ -192,7 +210,11 @@ hmmSIRS :: (Lookups popl '["s", "i", "r"] Int,
 hmmSIRS n = handleWriterM . hmmGen transPriorSIRS obsPriorSIR transSIRS obsSIR n
 
 -- | Simulate from SIRS model: ([(s, i, r)], [𝜉])
-simSIRS :: Int -> Sampler ([(Int, Int, Int)], [Reported])
+simSIRS
+  -- | number of days
+  :: Int
+  -- | ([(s, i, r)], [𝜉])
+  -> Sampler ([(Int, Int, Int)], [Reported])
 simSIRS n_days = do
   -- Specify model input of 762 susceptible and 1 infected
   let sir_0      = #s @= 762 <: #i @= 1 <: #r @= 0 <: emptyRecord
@@ -218,7 +240,8 @@ transPriorSIRSV  = do
   return (pBeta, pGamma, pEta, pOmega)
 
 -- | Transition model from S to V
-transSV :: Lookups popl '["s", "v"] Int => TransModel env es Double (Record popl)
+transSV :: Lookups popl '["s", "v"] Int
+  => TransModel env es Double (Record popl)
 transSV omega popl  = do
   let (s_0, v_0) = (popl ^. s,  popl ^. v)
   dN_SV <- binomial' s_0 (1 - exp (-omega))
@@ -226,9 +249,10 @@ transSV omega popl  = do
                 & v .~ (v_0 + dN_SV)
 
 -- | Transition model from S to I, I to R, R to S, and S to V
-transSIRSV :: Lookups popl '["s", "i", "r", "v"] Int => TransModel env ts (Double, Double, Double, Double) (Record popl)
+transSIRSV :: Lookups popl '["s", "i", "r", "v"] Int
+  => TransModel env ts (Double, Double, Double, Double) (Record popl)
 transSIRSV (beta, gamma, eta, omega) =
-  transSI beta >=> transIR gamma >=> transRS eta  >=> transSV omega
+  transSI beta >=> transIR gamma >=> transRS eta >=> transSV omega
 
 -- | SIRSV as HMM
 hmmSIRSV :: (Lookups popl '["s", "i", "r", "v"] Int,
@@ -241,8 +265,12 @@ hmmSIRSV :: (Lookups popl '["s", "i", "r", "v"] Int,
   -> Model env es (Record popl, [Record popl])
 hmmSIRSV n_days = handleWriterM . hmmGen transPriorSIRSV obsPriorSIR transSIRSV obsSIR n_days
 
--- | Simulate from SIRSV model : ([(s, i, r, v)], [𝜉])
-simSIRSV :: Int -> Sampler ([(Int, Int, Int, Int)], [Reported])
+-- | Simulate from SIRSV model
+simSIRSV
+  -- | number of days
+  :: Int
+  -- | ([(s, i, r, v)], [𝜉])
+  -> Sampler ([(Int, Int, Int, Int)], [Reported])
 simSIRSV n_days = do
   -- Specify model input of 762 susceptible and 1 infected
   let sir_0      = #s @= 762 <: #i @= 1 <: #r @= 0 <: #v @= 0 <: emptyRecord
@@ -255,3 +283,56 @@ simSIRSV n_days = do
   -- Get the true SIRSV values over n_days
       sirvs = map (\sirv -> (sirv ^. s, sirv ^. i, sirv ^. r, sirv ^. v)) sir_trace
   return (sirvs, 𝜉s)
+
+
+{- | Interfacing the SIR model on top of Monad Bayes.
+-}
+
+-- | Translate the HMM under a model environment to a program in Monad Bayes
+mbayesSIR ::
+   (FromSTrace env
+   , Bayes.MonadInfer m
+   , Lookups popl '["s", "i", "r"] Int
+   , Observables env '["𝜉"] Int
+   , Observables env '[ "β" , "γ" , "ρ"] Double)
+  -- | number of days
+  => Int
+  -- | initial population state
+  -> Record popl
+  -- | input model environment
+  -> Env env
+  -- | ((final latent state, intermediate latent states), output model environment)
+  -> m ((Record popl, [Record popl]), Env env)
+mbayesSIR n_days popl = toMBayes (hmmSIR n_days popl)
+
+-- | Simulate from the SIR model in Monad Bayes.
+simSIRMB
+  -- | number of days
+  :: Int
+  -- | ([(s, i, r)], [𝜉])
+  -> IO ([(Int, Int, Int)], [Reported])
+simSIRMB n_days = do
+  let sir_0      = #s @= 762 <: #i @= 1 <: #r @= 0 <: #v @= 0 <: emptyRecord
+      sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #ρ := [0.3] <:> #𝜉 := [] <:> enil
+  ((_, sir_trace), sim_env_out) <- Bayes.sampleIO $ Bayes.prior (mbayesSIR n_days sir_0 sim_env_in)
+  let 𝜉s :: [Reported] = get #𝜉 sim_env_out
+      sirs = map (\sir -> (sir ^. s, sir ^. i, sir ^. r)) sir_trace
+  pure (sirs, 𝜉s)
+
+-- | Metropolis-Hastings from the SIR model in Monad Bayes.
+mhSIRMB
+  -- | number of MH iterations
+  :: Int
+  -- | number of days
+  -> Int
+  -- | ([ρ], [β])
+  -> IO ([Double], [Double])
+mhSIRMB n_mhsteps n_days = do
+  𝜉s <- snd <$> simSIRMB n_days
+  let sir_0      = #s @= 762 <: #i @= 1 <: #r @= 0 <: emptyRecord
+      env = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> enil
+  (_, env) <- unzip <$> Bayes.sampleIO (Bayes.prior $ Bayes.mh n_mhsteps (mbayesSIR n_days sir_0 env))
+  -- Get the sampled values for model parameters ρ and β
+  let ρs = concatMap (get #ρ) env
+      βs = concatMap (get #β) env
+  pure (ρs, βs)
