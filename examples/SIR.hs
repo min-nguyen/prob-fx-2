@@ -46,12 +46,12 @@ import Data.Kind (Constraint)
 import Sampler ( Sampler )
 import Inference.SIM as SIM ( simulate )
 import Inference.MH as MH ( mh )
-import Inference.MB as MB
+import Inference.MB as MB ( toMBayes )
 import qualified Control.Monad.Bayes.Class as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
 import qualified Control.Monad.Bayes.Sampler as Bayes
-import Trace
+import Trace ( FromSTrace )
 
 -- | A type family for conveniently specifying multiple @Record@ fields of the same type
 type family Lookups env (ks :: [Symbol]) a :: Constraint where
@@ -71,7 +71,7 @@ type Reported = Int
 {- | SIR model.
 -}
 
--- | SIR transition prior
+-- | Transition prior
 transPriorSIR :: Observables env '["β",  "γ"] Double
   => Model env ts (Double, Double)
 transPriorSIR = do
@@ -104,15 +104,15 @@ transSIR (beta, gamma) popl = do
   tellM [popl]  -- a user effect for writing each latent SIR state to a stream [Record popl]
   return popl
 
--- | SIR observation model
+-- | Observation model parameter
 type ObsParams = Double
 
--- | SIR observation prior
+-- | Observation prior
 obsPriorSIR :: Observables env '["ρ"] Double
   => Model env ts Double
 obsPriorSIR = beta 2 7 #ρ
 
--- | SIR observation model
+-- | Observation model
 obsSIR :: Lookup s "i" Int => Observable env "𝜉" Int
   => ObsModel env ts Double (Record s) Reported
 obsSIR rho popl  = do
@@ -176,7 +176,7 @@ mhSIR n_mhsteps n_days = do
 {- | SIRS model.
 -}
 
--- | SIRS transition prior
+-- | Transition prior
 transPriorSIRS :: Observables env '["β", "η", "γ"] Double
   => Model env ts (Double, Double, Double)
 transPriorSIRS = do
@@ -231,7 +231,7 @@ simSIRS n_days = do
 {- | SIRSV model.
 -}
 
--- | SIRSV transition prior
+-- | Transition prior
 transPriorSIRSV :: Observables env '["β", "γ", "ω", "η"] Double
   => Model env ts (Double, Double, Double, Double)
 transPriorSIRSV  = do
