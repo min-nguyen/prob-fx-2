@@ -1,21 +1,9 @@
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE GADTs, TypeOperators #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE EmptyCase #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE ImplicitParams #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# LANGUAGE ViewPatterns #-}
 
 
 {- | A GADT encoding of (a selection of) primitive distributions
@@ -64,58 +52,58 @@ import qualified Control.Monad.Bayes.Class as MB
 -- | Primitive distribution
 data PrimDist a where
   Bernoulli
-    :: Double           -- ^ Probability of @True@
+    :: Double           -- ^ probability of @True@
     -> PrimDist Bool
   Beta
-    :: Double           -- ^ Shape α
-    -> Double           -- ^ Shape β
+    :: Double           -- ^ shape α
+    -> Double           -- ^ shape β
     -> PrimDist Double
   Binomial
-    :: Int              -- ^ Number of trials
-    -> Double           -- ^ Probability of successful trial
+    :: Int              -- ^ number of trials
+    -> Double           -- ^ probability of successful trial
     -> PrimDist Int
   Categorical
-    :: [Double]         -- ^ List of @n@ probabilities
-    -> PrimDist Int     -- ^ An index from @0@ to @n - 1@
+    :: [Double]         -- ^ list of @n@ probabilities
+    -> PrimDist Int     -- ^ an index from @0@ to @n - 1@
   Cauchy
-    :: Double           -- ^ Location
-    -> Double           -- ^ Scale
+    :: Double           -- ^ location
+    -> Double           -- ^ scale
     -> PrimDist Double
   HalfCauchy
-    :: Double           -- ^ Scale
+    :: Double           -- ^ scale
     -> PrimDist Double
   Deterministic
     :: (Eq a, Show a, OpenSum.Member a PrimVal)
-    => a                -- ^ Value of probability @1@
+    => a                -- ^ value of probability @1@
     -> PrimDist a
   Dirichlet
-    :: [Double]         -- ^ Concentrations
+    :: [Double]         -- ^ concentrations
     -> PrimDist [Double]
   Discrete
     :: (Eq a, Show a, OpenSum.Member a PrimVal)
-    => [(a, Double)]    -- ^ Values and associated probabilities
+    => [(a, Double)]    -- ^ values and associated probabilities
     -> PrimDist a
   UniformD
-    :: Int              -- ^ Lower-bound @a@
-    -> Int              -- ^ Upper-bound @b@
+    :: Int              -- ^ lower-bound @a@
+    -> Int              -- ^ upper-bound @b@
     -> PrimDist Int
   Gamma
-    :: Double           -- ^ Shape k
-    -> Double           -- ^ Scale θ
+    :: Double           -- ^ shape k
+    -> Double           -- ^ scale θ
     -> PrimDist Double
   Normal
-    :: Double           -- ^ Mean
-    -> Double           -- ^ Standard deviation
+    :: Double           -- ^ mean
+    -> Double           -- ^ standard deviation
     -> PrimDist Double
   HalfNormal
-    :: Double           -- ^ Standard deviation
+    :: Double           -- ^ standard deviation
     -> PrimDist Double
   Poisson
-    :: Double           -- ^ Rate λ
+    :: Double           -- ^ rate λ
     -> PrimDist Int
   Uniform
-    :: Double           -- ^ Lower-bound @a@
-    -> Double           -- ^ Upper-bound @b@
+    :: Double           -- ^ lower-bound @a@
+    -> Double           -- ^ upper-bound @b@
     -> PrimDist Double
 
 instance Eq (PrimDist a) where
@@ -254,11 +242,11 @@ sampleBayes (PrimDistPrf d)   = error ("Sampling from " ++ show d ++ " is not su
 
 -- | Compute the density of a primitive distribution generating an observed value
 prob ::
-  -- | Distribution
+  -- | distribution
      PrimDist a
-  -- | Observed value
+  -- | observed value
   -> a
-  -- | Density
+  -- | density
   -> Double
 prob (Dirichlet xs) ys =
   let xs' = map (/Prelude.sum xs) xs
@@ -297,10 +285,10 @@ prob (Deterministic x) y = 1
 
 -- | Compute the log density of a primitive distribution generating an observed value
 logProb ::
-  -- | Distribution
+  -- | distribution
      PrimDist a
-  -- | Observed value
+  -- | observed value
   -> a
-  -- | Log density
+  -- | log density
   -> Double
 logProb d = log . prob d
