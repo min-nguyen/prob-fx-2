@@ -1,12 +1,11 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
 
 {- | An algebraic effect embedding of probabilistic models.
 -}
@@ -60,17 +59,18 @@ import qualified OpenSum
 
 {- | Models are parameterised by:
 
-1) a model environment @env@ containing random variables that can be provided observed values for,
+    1) a model environment @env@ containing random variables that can be provided observed values
 
-2) an effect signature @es@ of the possible effects a model can invoke, and
+    2) an effect signature @es@ of the possible effects a model can invoke
 
-3) an output type @a@ of values that the model generates.
+    3) an output type @a@ of values that the model generates.
 
-A model initially consists of (at least) two effects: @Dist@ for calling primitive distributions and @ObsReader env@ for reading from @env@.
+    A model initially consists of (at least) two effects: @Dist@ for calling primitive distributions
+    and @ObsReader env@ for reading from @env@.
 -}
 newtype Model env es a =
-  Model { runModel :: ( Member Dist es            -- ^ Models can call primitive distributions
-                      , Member (ObsReader env) es -- ^ Models can read observed values from the environment
+  Model { runModel :: ( Member Dist es            -- models can call primitive distributions
+                      , Member (ObsReader env) es -- models can read observed values from their environment
                       )
                    => Prog es a }
   deriving Functor
@@ -85,33 +85,35 @@ instance Monad (Model env es) where
     f' <- f
     runModel $ x f'
 
-{- | The initial handler for models, specialising a model under a certain
-environment to produce a probabilistic program consisting of @Sample@ and @Observe@ operations. -}
+{- | The initial handler for models, specialising a model under a certain environment
+     to produce a probabilistic program consisting of @Sample@ and @Observe@ operations.
+-}
 handleCore :: Env env -> Model env (ObsReader env : Dist : es) a -> Prog (Observe : Sample : es) a
 handleCore env m = (handleDist . handleObsRead env) (runModel m)
 
 {- $Smart-Constructors
 
-Smart constructors for calling primitive distribution operations inside models,
-where each distribution comes with a primed and an unprimed variant.
+    Smart constructors for calling primitive distribution operations inside models,
+    where each distribution comes with a primed and an unprimed variant.
 
-An unprimed distribution takes the standard distribution parameters as well as
-an observable variable. This lets one later provide observed values for that
-variable to be conditioned against:
+    An unprimed distribution takes the standard distribution parameters as well as
+    an observable variable. This lets one later provide observed values for that
+    variable to be conditioned against:
 
-@
-exampleModel :: Observable env "b" Bool => Model env es Bool
-exampleModel = bernoulli 0.5 #b
-@
+    @
+    exampleModel :: Observable env "b" Bool => Model env es Bool
+    exampleModel = bernoulli 0.5 #b
+    @
 
-A primed distribution takes no observable variable and so cannot be conditioned against; this will always representing sampling from that distribution:
+    A primed distribution takes no observable variable and so cannot be conditioned against;
+    this will always representing sampling from that distribution:
 
-@
-exampleModel' :: Model env es Bool
-exampleModel' = bernoulli' 0.5
-@
-
+    @
+    exampleModel' :: Model env es Bool
+    exampleModel' = bernoulli' 0.5
+    @
 -}
+
 
 deterministic :: forall env es a x. (Eq a, Show a, OpenSum.Member a PrimVal, Observable env x a) => a
   -> Var x
@@ -122,7 +124,7 @@ deterministic x field = Model $ do
   call (Dist (Deterministic x) maybe_y tag)
 
 deterministic' :: (Eq a, Show a, OpenSum.Member a PrimVal) =>
-  -- | Value to be deterministically generated
+  -- | value to be deterministically generated
      a
   -> Model env es a
 deterministic' x = Model $ do
@@ -138,7 +140,7 @@ dirichlet xs field = Model $ do
   call (Dist (Dirichlet xs) maybe_y tag)
 
 dirichlet' ::
-  -- | Concentration parameters
+  -- | concentration parameters
      [Double]
   -> Model env es [Double]
 dirichlet' xs = Model $ do
@@ -154,7 +156,7 @@ discrete ps field = Model $ do
   call (Dist (Discrete ps) maybe_y tag)
 
 discrete' :: (Eq a, Show a, OpenSum.Member a PrimVal) =>
-  -- | Primitive values and their probabilities
+  -- | primitive values and their probabilities
      [(a, Double)]
   -> Model env es a
 discrete' ps = Model $ do
@@ -170,9 +172,9 @@ categorical xs field = Model $ do
   call (Dist (Categorical xs) maybe_y tag)
 
 categorical'
-  -- | List of @n@ probabilities
+  -- | list of @n@ probabilities
   :: [Double]
-  -- | Integer index from @0@ to @n - 1@
+  -- | integer index from @0@ to @n - 1@
   -> Model env es Int
 categorical' xs = Model $ do
   call (Dist (Categorical xs) Nothing Nothing)
@@ -188,9 +190,9 @@ normal mu sigma field = Model $ do
   call (Dist (Normal mu sigma) maybe_y tag)
 
 normal'
-  -- | Mean
+  -- | mean
   :: Double
-  -- | Standard deviation
+  -- | standard deviation
   -> Double
   -> Model env es Double
 normal' mu sigma = Model $ do
@@ -206,7 +208,7 @@ halfNormal sigma field = Model $ do
   call (Dist (HalfNormal sigma) maybe_y tag)
 
 halfNormal'
-  -- | Standard deviation
+  -- | standard deviation
   :: Double
   -> Model env es Double
 halfNormal' sigma = Model $ do
@@ -223,9 +225,9 @@ cauchy mu sigma field = Model $ do
   call (Dist (Cauchy mu sigma) maybe_y tag)
 
 cauchy'
-  -- | Location
+  -- | location
   :: Double
-  -- | Scale
+  -- | scale
   -> Double
   -> Model env es Double
 cauchy' mu sigma = Model $ do
@@ -241,7 +243,7 @@ halfCauchy sigma field = Model $ do
   call (Dist (HalfCauchy sigma) maybe_y tag)
 
 halfCauchy' ::
-  -- | Scale
+  -- | scale
      Double
   -> Model env es Double
 halfCauchy' sigma = Model $ do
@@ -257,7 +259,7 @@ bernoulli p field = Model $ do
   call (Dist (Bernoulli p) maybe_y tag)
 
 bernoulli' ::
-  -- | Probability of @True@
+  -- | probability of @True@
      Double
   -> Model env es Bool
 bernoulli' p = Model $ do
@@ -274,9 +276,9 @@ beta α β field = Model $ do
   call (Dist (Beta α β) maybe_y tag)
 
 beta' ::
-  -- | Shape 1 (α)
+  -- | shape 1 (α)
      Double
-  -- | Shape 2 (β)
+  -- | shape 2 (β)
   -> Double
   -> Model env es Double
 beta' α β = Model $ do
@@ -293,11 +295,11 @@ binomial n p field = Model $ do
   call (Dist (Binomial n p) maybe_y tag)
 
 binomial' ::
-  -- | Number of trials
+  -- | number of trials
      Int
-  -- | Probability of successful trial
+  -- | probability of successful trial
   -> Double
-  -- | Number of successful trials
+  -- | number of successful trials
   -> Model env es Int
 binomial' n p = Model $ do
   call (Dist (Binomial n p) Nothing Nothing)
@@ -313,9 +315,9 @@ gamma k θ field = Model $ do
   call (Dist (Gamma k θ) maybe_y tag)
 
 gamma' ::
-  -- | Shape (k)
+  -- | shape (k)
      Double
-  -- | Scale (θ)
+  -- | scale (θ)
   -> Double
   -> Model env es Double
 gamma' k θ = Model $ do
@@ -332,9 +334,9 @@ uniform min max field = Model $ do
   call (Dist (Uniform min max) maybe_y tag)
 
 uniform' ::
-  -- | Lower-bound
+  -- | lower-bound
      Double
-  -- | Upper-bound
+  -- | upper-bound
   -> Double
   -> Model env es Double
 uniform' min max = Model $ do
@@ -350,9 +352,9 @@ poisson λ field = Model $ do
   call (Dist (Poisson λ) maybe_y tag)
 
 poisson' ::
-  -- | Rate (λ)
+  -- | rate (λ)
      Double
-  -- | Number of events
+  -- | number of events
   -> Model env es Int
 poisson' λ = Model $ do
   call (Dist (Poisson λ) Nothing Nothing)

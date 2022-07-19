@@ -176,11 +176,13 @@ lookupSample α d strace   = do
       else Nothing
 
 {- | The result of a single MH iteration, where @a@ is the type of model output and
-     @p@ is some representation of probability. -}
+     @p@ is some representation of probability.
+-}
 type MHCtx p a = ((a, STrace), p)
 
 {- | An abstract mechanism for computing an acceptance probability, where @a@ is the
-     type of model output and @p@ is some representation of probability. -}
+     type of model output and @p@ is some representation of probability.
+-}
 type Accept p a =
   -- | proposal sample address
     Addr

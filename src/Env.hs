@@ -156,7 +156,8 @@ type family LookupType x env where
 -- | Enforce that @xs@ is a subset of observable variable names from @env@.
 {-   This class is used as a type-safe interface for allowing users to specify
      valid observable variable names with respect to an environment; these can
-     then later be converted to normal strings to be used by backend inference methods. -}
+     then later be converted to normal strings to be used by backend inference methods.
+-}
 class ContainsVars (env :: [Assign Symbol *]) (xs :: [Symbol])  where
   -- | Convert a set of type-level strings @xs@ to value-level strings.
   varsToStrs :: Vars xs -> [Tag]
