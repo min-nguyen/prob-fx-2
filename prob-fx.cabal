@@ -112,10 +112,10 @@ executable prob-fx
   default-language:    Haskell2010
   ghc-options:         -O2 -rtsopts -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math
 
-executable tests
-  -- .hs or .lhs file containing the Main module.
+Test-Suite test
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     examples
   main-is:            Test/Main.hs
-
   other-modules:      Test.Expected,
                       Test.Examples,
                       CoinFlip,
@@ -129,21 +129,13 @@ executable tests
                       School,
                       SIR,
                       SIRNonModular
-
-  -- Other library packages from which modules are imported.
-  build-depends:       base,
-                       containers,
-                       extensible,
-                       split,
-                       prob-fx,
-                       hspec,
-                       HUnit,
-                       lens,
-                       log-domain,
-                       monad-bayes
-
-  hs-source-dirs:      examples
-
-  -- Base language which the package is written in.
-  default-language:    Haskell2010
-  ghc-options:         -O2 -rtsopts -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math
+  build-depends:      base,
+                      containers,
+                      extensible,
+                      split,
+                      prob-fx,
+                      hspec,
+                      HUnit,
+                      lens,
+                      log-domain,
+                      monad-bayes

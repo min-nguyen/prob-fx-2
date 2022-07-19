@@ -60,8 +60,8 @@ logRegr xs = do
                     p <- normal' (m * x + b) sigma
                     -- generate as output whether the event occurs
                     y <- bernoulli (sigmoid p) #y
-                    return (ys ++ [y])) [] xs
-  return ys
+                    return (y:ys)) [] xs
+  return (reverse ys)
 
 -- | SIM from logistic regression
 simLogRegr :: Int -> Sampler [(Double, Bool)]
