@@ -1,20 +1,21 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilyDependencies #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
-{- | This implements the model environments that users must provide upon running a model; such environments assign traces of values to the "observable variables" (random variables which can be conditioned against) of a model.
+{- | This implements the model environments that users must provide upon running a model;
+     such environments assign traces of values to the "observable variables" (random
+     variables which can be conditioned against) of a model.
 -}
 
 module Env
@@ -35,16 +36,15 @@ module Env
   , UniqueVar
   , LookupType) where
 
-import Effects.Dist ( Tag )
 import Data.Kind ( Constraint, Type )
 import Data.Proxy ( Proxy(Proxy) )
+import Effects.Dist ( Tag )
 import FindElem ( FindElem(..), Idx(..) )
 import GHC.OverloadedLabels ( IsLabel(..) )
 import GHC.TypeLits ( KnownSymbol, Symbol, symbolVal )
-import qualified Data.Vector as V
-import qualified GHC.TypeLits as TL
 import Unsafe.Coerce ( unsafeCoerce )
 
+-- * Observable variable
 
 -- | A container for a variable name @x@ represented as a type-level string.
 data Var (x :: Symbol) where
@@ -73,21 +73,20 @@ infixr 5 <#>
 x <#> xs = VCons xs
 
 
--- | Assign or associate a variable @x@ with a value of type @a@
-data Assign x a = x := a
+-- * Model environment
 
--- | A model environment assigning traces (lists) of observed values to observable variables i.e. the type @Env ((x := a) : env)@ indicates @x@ is assigned a value of type @[a]@
+{- | A model environment assigning traces (lists) of observed values to observable
+     variables i.e. the type @Env ((x := a) : env)@ indicates @x@ is assigned a value
+     of type @[a]@.
+-}
 data Env (env :: [Assign Symbol *]) where
   ENil  :: Env '[]
   ECons :: [a]
         -> Env env
         -> Env (x := a : env)
 
-instance (KnownSymbol x, Show a, Show (Env env)) => Show (Env ((x := a) ': env)) where
-  show (ECons a env) = varToStr (Var @x) ++ ":=" ++ show a ++ ", " ++ show env
-
-instance Show (Env '[]) where
-  show ENil = "[]"
+-- | Assign or associate a variable @x@ with a value of type @a@
+data Assign x a = x := a
 
 -- | Empty model environment
 enil :: Env '[]
@@ -97,6 +96,12 @@ infixr 5 <:>
 -- | Prepend a variable assignment to a model environment
 (<:>) :: UniqueVar x env ~ 'True => Assign (Var x) [a] -> Env env -> Env ((x ':= a) ': env)
 (_ := a) <:> env = ECons a env
+
+instance (KnownSymbol x, Show a, Show (Env env)) => Show (Env ((x := a) ': env)) where
+  show (ECons a env) = varToStr (Var @x) ++ ":=" ++ show a ++ ", " ++ show env
+
+instance Show (Env '[]) where
+  show ENil = "[]"
 
 instance FindElem x ((x := a) : env) where
   findElem = Idx 0
@@ -149,7 +154,9 @@ type family LookupType x env where
   LookupType x ((x' := a) : env) = LookupType x env
 
 -- | Enforce that @xs@ is a subset of observable variable names from @env@.
--- This class is used as a type-safe interface for allowing users to specify valid observable variable names with respect to an environment; these can then later be converted to normal strings to be used by backend inference methods.
+{-   This class is used as a type-safe interface for allowing users to specify
+     valid observable variable names with respect to an environment; these can
+     then later be converted to normal strings to be used by backend inference methods. -}
 class ContainsVars (env :: [Assign Symbol *]) (xs :: [Symbol])  where
   -- | Convert a set of type-level strings @xs@ to value-level strings.
   varsToStrs :: Vars xs -> [Tag]
