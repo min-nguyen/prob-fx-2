@@ -1,15 +1,9 @@
-{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
 
-{- | For lifting arbitrary monadic computations into an algebraic effect setting
+{- | For lifting arbitrary monadic computations into an algebraic effect setting.
 -}
 
 module Effects.Lift (
@@ -20,21 +14,20 @@ module Effects.Lift (
 
 import Prog ( call, Member(prj), LastMember, Prog(..) )
 import Model (Model(..))
-import Data.Function (fix)
-
--- | Lift effect
-newtype Lift m a = Lift (m a)
 
 -- | Lift a monadic computation @m a@ into the effect @Lift m@
-lift :: (LastMember (Lift m) es) => m a -> Prog es a
+newtype Lift m a = Lift (m a)
+
+-- | Wrapper function for calling @Lift@ as the last effect
+lift :: LastMember (Lift m) es => m a -> Prog es a
 lift = call . Lift
 
--- | Lift a monadic computation @m a@ into the effect @Lift m@ in a @Model@
-liftM :: (LastMember (Lift m) es) => m a -> Model env es a
+-- | Wrapper function for calling @Lift@ as the last effect in a model
+liftM :: LastMember (Lift m) es => m a -> Model env es a
 liftM op = Model (call (Lift op))
 
 -- | Handle @Lift m@ as the last effect
-handleLift :: forall m w. Monad m => Prog '[Lift m] w -> m w
+handleLift :: Monad m => Prog '[Lift m] w -> m w
 handleLift (Val x) = return x
 handleLift (Op u q) = case prj u of
      Just (Lift m) -> m >>= handleLift . q
