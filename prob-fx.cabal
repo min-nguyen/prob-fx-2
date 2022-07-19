@@ -72,14 +72,14 @@ library
                       statistics                    >= 0.16.1 && < 0.17,
                       criterion                     >= 1.5.13 && < 1.6,
                       split                         >= 0.2.3 && < 0.3,
-                      monad-bayes                   >= 0.1.1.2
+                      monad-bayes                   >= 0.1.1.2  && < 0.1.1.4
 
   -- Directories containing source files.
-  hs-source-dirs:      src
+  hs-source-dirs:     src
 
   -- Base language which the package is written in.
-  default-language:    Haskell2010
-  ghc-options:         -O2 -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math
+  default-language:   Haskell2010
+  ghc-options:        -O2 -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math
 
 executable prob-fx
   -- .hs or .lhs file containing the Main module.
@@ -97,22 +97,22 @@ executable prob-fx
                       SIR,
                       SIRNonModular,
   -- Other library packages from which modules are imported.
-  build-depends:       base,
-                       containers,
-                       extensible,
-                       split,
-                       prob-fx,
-                       log-domain,
-                       monad-bayes,
-                       lens
+  build-depends:      base,
+                      containers,
+                      extensible,
+                      split,
+                      prob-fx,
+                      log-domain,
+                      monad-bayes,
+                      lens
 
-  hs-source-dirs:      examples
+  hs-source-dirs:     examples
 
   -- Base language which the package is written in.
-  default-language:    Haskell2010
-  ghc-options:         -O2 -rtsopts -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math
+  default-language:   Haskell2010
+  ghc-options:        -O2 -rtsopts -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math
 
-test-suite test
+test-suite tests
   type:               exitcode-stdio-1.0
   hs-source-dirs:     examples
   main-is:            Test/Main.hs
@@ -134,9 +134,8 @@ test-suite test
                       extensible,
                       split,
                       prob-fx,
-                      hspec,
-                      HUnit,
+                      HUnit >= 1.6.0 && < 1.7.0,
                       lens,
                       log-domain,
                       monad-bayes
-  default-language:    Haskell2010
+  default-language:   Haskell2010
