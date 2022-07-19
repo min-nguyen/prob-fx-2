@@ -1,12 +1,9 @@
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeOperators #-}
 
-{- | Likelihood-Weighting inference
+{- | Likelihood-Weighting inference.
 -}
 
 module Inference.LW
@@ -34,22 +31,22 @@ import Trace ( traceSamples, STrace, FromSTrace(..) )
 
 -- | Top-level wrapper for Likelihood-Weighting (LW) inference
 lw :: FromSTrace env
-  -- | Number of LW iterations
+  -- | number of LW iterations
   => Int
-  -- | Model
+  -- | model
   -> Model env [ObsReader env, Dist, Lift Sampler] a
-  -- | Input model environment
+  -- | input model environment
   -> Env env
-  -- | List of weighted output model environments
+  -- | [(output model environment, likelihood-weighting)]
   -> Sampler [(Env env, Double)]
 lw n model env = do
   let prog = handleCore env model
   lwTrace <- lwInternal n prog
   pure $ map (\((_, strace), p) -> (fromSTrace strace, p)) lwTrace
 
--- | Run LW n times on a probabilistic program
+-- | Run LW n times
 lwInternal
-  -- | Number of LW iterations
+  -- | number of LW iterations
   :: Int
   -> Prog [Observe, Sample, Lift Sampler] a
   -- | List of weighted model outputs @a@ and sample traces
@@ -59,15 +56,16 @@ lwInternal n prog = replicateM n (runLW prog)
 -- | Handler for one iteration of LW
 runLW
   :: Prog [Observe, Sample, Lift Sampler] a
-  -- | Weighted model output @a@ and sample trace @STrace@
+  -- | ((model output, sample trace), likelihood-weighting)
   -> Sampler ((a, STrace), Double)
 runLW = handleLift . SIM.handleSamp . handleObs 0 . traceSamples
 
--- | Handle each @Observe@ operation by computing and accumulating log-probabilities
+-- | Handle each @Observe@ operation by computing and accumulating a log probability
 handleObs
   -- | Accumulated log-probability
   :: Double
   -> Prog (Observe : es) a
+  -- | (model output, final log-probability)
   -> Prog es (a, Double)
 handleObs logp (Val x) = return (x, exp logp)
 handleObs logp (Op u k) = case discharge u of

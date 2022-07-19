@@ -10,8 +10,7 @@
 -}
 
 module Inference.MB
-  (
-    toMBayes
+  ( toMBayes
   , handleObs
   , handleSamp
   ) where
@@ -27,13 +26,13 @@ import PrimDist ( logProb, sampleBayes )
 import Prog ( discharge, Prog(..), LastMember )
 import Trace ( traceSamples, FromSTrace(..) )
 
--- | Translate a ProbFX model under a given model environment to a MonadBayes program.
+-- | Translate a ProbFX model under a given model environment to a MonadBayes program
 toMBayes :: (FromSTrace env, MonadInfer m)
-  -- | ProbFX model
+  -- | model
   => Model env [ObsReader env, Dist, Lift m] a
-  -- | Input model environment
+  -- | input model environment
   -> Env env
-  -- | A monadic computation @m@ in MonadBayes that also returns an output model environment
+  -- | a computation @m@ in MonadBayes that returns a result and an output model environment
   -> m (a, Env env)
 toMBayes m env =
      fmap (fmap fromSTrace) . handleLift . handleSamp
@@ -52,7 +51,7 @@ handleObs (Op u k) = case discharge u of
          lift (MB.score (Exp p))
          handleObs (k y)
 
--- | Handle @Sample@ operations by calling the sampling methods of the @MonadSampl@e class
+-- | Handle @Sample@ operations by calling the sampling methods of the @MonadSample@ class
 handleSamp :: (MonadSample m, LastMember (Lift m) es)
  => Prog (Sample : es) a
  -> Prog es a
