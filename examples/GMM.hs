@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE OverloadedLabels #-}
 
-{- | Gaussian mixture model (GMM) for a two-dimensional space. 
+{- | Gaussian mixture model (GMM) for a two-dimensional space.
      For simplicity, the mean along the x and y axis for a given cluster is the same.
 -}
 
@@ -22,7 +22,8 @@ import Data.List as List ( elemIndex )
 import Data.Maybe ( fromJust )
 import Env ( Observables, Observable(..), Assign(..), vnil, (<#>), enil, (<:>) )
 
--- | Gaussian Mixture Model environment
+{- | Gaussian Mixture Model environment.
+-}
 type GMMEnv = '[
     "mu"   ':= Double,  -- ^ cluster mean (for both x and y)
     "mu_k" ':= Double,  -- ^ cluster index
@@ -30,7 +31,8 @@ type GMMEnv = '[
     "y"    ':= Double   -- ^ y data point
   ]
 
--- | Gaussian Mixture Model
+{- | Gaussian Mixture Model.
+-}
 gmm :: Observables env '["mu", "mu_k", "x", "y"] Double
   => Int -- ^ num clusters
   -> Int -- ^ num data points
@@ -45,20 +47,20 @@ gmm k n = do
                    pure ((x, y), i))
 
 -- | Simulate from a GMM, with means (-2.0, -2.0) and (3.5, 3.5)
-simGMM 
+simGMM
   :: Int  -- ^ num data points
   -> Sampler [((Double, Double), Int)] -- ^ data points and their assigned cluster index
 simGMM n_datapoints = do
-  -- | Assume two clusters 
+  -- | Assume two clusters
   let n_clusters = 2
   -- | Specify model environment of two clusters with mean (-2.0, -2.0) and (3.5, 3.5)
       env =  #mu := [-2.0, 3.5] <:> #mu_k := [] <:> #x := [] <:> #y := [] <:> enil
   bs <- SIM.simulate (gmm n_clusters n_datapoints) env
   pure $ fst bs
 
-mhGMM 
-  :: Int -- ^ num data points
-  -> Int
+mhGMM
+  :: Int -- ^ num MH iterations
+  -> Int -- ^ num data points
   -> Sampler [[Double]]
 mhGMM n_mhsteps n_datapoints = do
   bs <- simGMM n_datapoints

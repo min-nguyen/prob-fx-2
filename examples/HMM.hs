@@ -5,9 +5,9 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant return" #-}
-{-# LANGUAGE TypeApplications #-}
 
 {- | A variety of possible implementations of a [Hidden Markov Model (HMM)](https://en.wikipedia.org/wiki/Hidden_Markov_model).
 -}
@@ -40,8 +40,7 @@ type HMMEnv =
      "y"       ':= Int        -- ^ observation
    ]
 
-
-{- | HMM as a loop
+{- | HMM as a loop.
 -}
 hmmFor :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
   -- | number of HMM nodes
@@ -84,7 +83,7 @@ lwHMM   = do
   LW.lw 100 (hmmFor n x_0) env
 
 
-{- | A modular HMM version.
+{- | A more modular HMM implementation.
 -}
 
 -- | HMM transition sub-model
@@ -140,7 +139,7 @@ hmm n x = do
   foldr (>=>) return (replicate n (hmmNode trans_p obs_p)) x
 
 {- | Extending the modular HMM with a user-specific effect.
-     The below example uses the @Writer@ effect for recording the intermediate latent states.
+     This example uses the @Writer@ effect for recording the intermediate latent states.
 -}
 
 hmmNodeW :: (Observable env "y" Int
