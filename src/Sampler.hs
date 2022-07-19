@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-{- | An IO-based sampling monad
+{- | An IO-based sampling monad.
 -}
 
 module Sampler (
@@ -28,14 +28,10 @@ module Sampler (
   ) where
 
 import Control.Monad ( replicateM )
-import Control.Monad.ST (ST, runST, stToIO)
 import Control.Monad.Trans (MonadIO, MonadTrans, lift)
 import Control.Monad.Trans.Reader (ReaderT, ask, mapReaderT, runReaderT)
 import Data.Map (Map)
-import Data.Set (Set)
 import GHC.Word ( Word32 )
-import qualified Data.Map as Map
-import qualified Data.Set as Set
 import qualified Data.Vector as V
 import qualified System.Random.MWC as MWC
 import qualified System.Random.MWC.Distributions as MWC.Dist
@@ -69,7 +65,8 @@ createSampler :: (MWC.GenIO -> IO a) -> Sampler a
 createSampler f = Sampler $ ask >>= lift . f
 
 {- $Sampling-functions
-Given their distribution parameters, these functions await a generator and then sample a value from the distribution in the @IO@ monad
+  Given their distribution parameters, these functions await a generator and
+  then sample a value from the distribution in the @IO@ monad.
 -}
 
 sampleRandom
@@ -78,68 +75,68 @@ sampleRandom
 sampleRandom = \gen -> MWC.uniform gen
 
 sampleCauchy
-  :: Double -- ^ Location
-  -> Double -- ^ Scale
+  :: Double -- ^ location
+  -> Double -- ^ scale
   -> (MWC.GenIO -> IO Double)
 sampleCauchy μ σ = \gen -> genContVar (cauchyDistribution μ σ) gen
 
 sampleNormal
-  :: Double -- ^ Mean
-  -> Double -- ^ Standard deviation
+  :: Double -- ^ mean
+  -> Double -- ^ standard deviation
   -> (MWC.GenIO -> IO Double)
 sampleNormal μ σ = \gen -> MWC.Dist.normal μ σ gen
 
 sampleUniform
-  :: Double -- ^ Lower-bound
-  -> Double -- ^ Upper-bound
+  :: Double -- ^ lower-bound
+  -> Double -- ^ upper-bound
   -> (MWC.GenIO -> IO Double)
 sampleUniform min max = \gen -> MWC.uniformR (min, max) gen
 
 sampleDiscreteUniform
-  :: Int -- ^ Lower-bound
-  -> Int -- ^ Upper-bound
+  :: Int -- ^ lower-bound
+  -> Int -- ^ upper-bound
   -> (MWC.GenIO -> IO Int)
 sampleDiscreteUniform min max = \gen -> MWC.uniformR (min, max) gen
 
 sampleGamma
-  :: Double -- ^ Shape k
-  -> Double -- ^ Scale θ
+  :: Double -- ^ shape k
+  -> Double -- ^ scale θ
   -> (MWC.GenIO -> IO Double)
 sampleGamma k θ = \gen -> MWC.Dist.gamma k θ gen
 
 sampleBeta
-  :: Double -- ^ Shape α
-  -> Double -- ^ Shape β
+  :: Double -- ^ shape α
+  -> Double -- ^ shape β
   -> (MWC.GenIO -> IO Double)
 sampleBeta α β = \gen -> MWC.Dist.beta α β gen
 
 sampleBernoulli
-  :: Double -- ^ Probability of @True@
+  :: Double -- ^ probability of @True@
   -> (MWC.GenIO -> IO Bool)
 sampleBernoulli p = \gen -> MWC.Dist.bernoulli p gen
 
 sampleBinomial
-  :: Int    -- ^ Number of trials
-  -> Double -- ^ Probability of successful trial
+  :: Int    -- ^ number of trials
+  -> Double -- ^ probability of successful trial
   -> (MWC.GenIO -> IO [Bool])
 sampleBinomial n p = \gen -> replicateM n (MWC.Dist.bernoulli p gen)
 
 sampleCategorical
-  :: V.Vector Double -- ^ Probabilities
+  :: V.Vector Double -- ^ probabilities
   -> (MWC.GenIO -> IO Int)
 sampleCategorical ps =  \gen -> MWC.Dist.categorical (ps) gen
 
 sampleDiscrete
-  :: [Double] -- ^ Probabilities
+  :: [Double] -- ^ probabilities
   -> (MWC.GenIO -> IO Int)
 sampleDiscrete ps = \gen -> MWC.Dist.categorical (V.fromList ps) gen
 
 samplePoisson
-  :: Double   -- ^ Rate λ
+  :: Double   -- ^ rate λ
   -> (MWC.GenIO -> IO Int)
 samplePoisson λ = \gen -> MWC.Probability.sample (MWC.Probability.poisson λ) gen
 
 sampleDirichlet
-  :: [Double] -- ^ Concentrations
+  :: [Double] -- ^ concentrations
   -> (MWC.GenIO -> IO [Double])
 sampleDirichlet xs = \gen -> MWC.Dist.dirichlet xs gen
