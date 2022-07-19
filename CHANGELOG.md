@@ -39,6 +39,10 @@ Added:
 - `mhInternal`
 - abstractions for accepting new proposals: `MHCtx`, `Accept`
 
+**Inference.MB**
+Added:
+- Handlers for translating models to programs in `monad-bayes`
+
 **Env**
 Changed:
 - `ObsVar` -> `Var`, `UniqueKey` -> `UniqueVar`, `nil` -> `enil`
