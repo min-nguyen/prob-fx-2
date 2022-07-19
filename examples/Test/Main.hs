@@ -131,9 +131,9 @@ tests = TestList [testSimLinRegrOnce, testLwLinRegrOnce, testMhLinRegrOnce, test
 
 main :: IO ()
 main = do
-  results <- runTestTT tests
-  if errors results + failures results == 0
+  Counts cases tried errors failures <- runTestTT tests
+  if errors + failures == 0
     then
       exitSuccess
-    else
+    else do
       exitWith (ExitFailure 1)
