@@ -31,6 +31,14 @@ Changed:
 Added:
 - `lwInternal`
 
+**Inference.MH**
+Changed:
+- Type signature for `mh`
+- Type signature for `accept`
+Added:
+- `mhInternal`
+- abstractions for accepting new proposals: `MHCtx`, `Accept`
+
 **Env**
 Changed:
 - `ObsVar` -> `Var`, `UniqueKey` -> `UniqueVar`, `nil` -> `enil`

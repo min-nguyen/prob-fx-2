@@ -1,14 +1,14 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeApplications #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
-{- | Metropolis-Hastings inference
+{- | Metropolis-Hastings inference.
 -}
 
 module Inference.MH
@@ -60,17 +60,17 @@ import Unsafe.Coerce ( unsafeCoerce )
 
 -- | Top-level wrapper for Metropolis-Hastings (MH) inference
 mh :: forall env es a xs. (FromSTrace env, env `ContainsVars` xs)
-  -- | Number of MH iterations
+  -- | number of MH iterations
   => Int
-  -- | Model
+  -- | model
   -> Model env [ObsReader env, Dist, Lift Sampler] a
-  -- | Input model environment
+  -- | input model environment
   -> Env env
-  -- | An optional list of observable variable names to specify sample sites of interest
-    {- For example, for interest in sampling @#mu@, provide @#mu <#> vnil@.
-       This causes other variables to not be resampled unless necessary. -}
+  -- | optional list of observable variable names (strings) to specify sample sites of interest
+  {- for example, for interest in sampling @#mu@, provide @#mu <#> vnil@ to cause other variables
+     to not be resampled unless necessary. -}
   -> Vars xs
-  -- | Trace of output model environments, containing values sampled for each MH iteration
+  -- | output model environments
   -> Sampler [Env env]
 mh n model env obsvars  = do
   -- Handle model to probabilistic program
@@ -84,14 +84,14 @@ mh n model env obsvars  = do
 
 -- | Perform MH on a probabilistic program
 mhInternal
-   -- | Number of MH iterations
+   -- | number of MH iterations
    :: Int
    -> Prog [Observe, Sample, Lift Sampler] a
-   -- | Initial sample trace
+   -- | initial sample trace
    -> STrace
-   -- | Tags indicating sample sites of interest
+   -- | tags indicating sample sites of interest
    -> [Tag]
-   -- | Trace of (accepted outputs, samples), logps)
+   -- | [(accepted outputs, samples), logps)]
    -> Sampler [((a, STrace), LPTrace)]
 mhInternal n prog strace_0 tags = do
   -- Perform initial run of mh
@@ -101,16 +101,16 @@ mhInternal n prog strace_0 tags = do
   -- Note: most recent samples are at the front (head) of the trace
   foldl (>=>) pure (replicate n (mhStep prog tags acceptMH)) [mhCtx_0]
 
--- | Perform one iteration of MH, by drawing a new sample and then rejecting or accepting it.
+-- | Perform one iteration of MH by drawing a new sample and then rejecting or accepting it.
 mhStep
   :: Prog [Observe, Sample,  Lift Sampler] a
-  -- | Tags indicating sample sites of interest
+  -- | tags indicating sample sites of interest
   -> [Tag]
-  -- | A mechanism for accepting proposals
+  -- | a mechanism for accepting proposals
   -> Accept p a
-  -- | Trace of previous MH outputs
+  -- | trace of previous MH results
   -> [((a, STrace), p)]
-  -- | Updated trace of MH outputs
+  -- | updated trace of MH results
   -> Sampler [((a, STrace), p)]
 mhStep model tags accepter trace = do
   -- Get previous MH output
@@ -129,14 +129,14 @@ mhStep model tags accepter trace = do
     then do return (mhCtx':trace)
     else do return trace
 
--- | Handler for one iteration of MH on probabilistic program
+-- | Handler for one iteration of MH
 runMH ::
-  -- | Sample trace of previous MH iteration
+  -- | sample trace of previous MH iteration
      STrace
-  -- | Sample address of interest
+  -- | sample address of interest
   -> Addr
   -> Prog [Observe, Sample, Lift Sampler] a
-  -- | (model output, sample trace, log-probability trace)
+  -- | ((model output, sample trace), log-probability trace)
   -> Sampler ((a, STrace), LPTrace)
 runMH strace α_samp = handleLift . handleSamp strace α_samp . handleObs . traceLPs . traceSamples
 
@@ -175,18 +175,20 @@ lookupSample α d strace   = do
       then OpenSum.prj x
       else Nothing
 
--- | The result of a single MH iteration, where @a@ is the type of model output and @p@ is some representation of probability.
+{- | The result of a single MH iteration, where @a@ is the type of model output and
+     @p@ is some representation of probability. -}
 type MHCtx p a = ((a, STrace), p)
 
--- | An abstract mechanism for computing an acceptance probability
+{- | An abstract mechanism for computing an acceptance probability, where @a@ is the
+     type of model output and @p@ is some representation of probability. -}
 type Accept p a =
-  -- | Proposal sample address
+  -- | proposal sample address
     Addr
-  -- | Proposed mh ctx, parameterised by log probability map
+  -- | proposed MH ctx, parameterised by a log-probability map
   -> MHCtx LPTrace a
-  -- | Previous mh ctx, parameterised by arbitrary probability representation p
+  -- | previous MH ctx, parameterised by @p@
   -> MHCtx p a
-  -- | (Proposed mh ctx using probability representation p, Acceptance ratio)
+  -- | (proposed MH ctx using probability representation p, Acceptance ratio)
   -> Sampler (MHCtx p a, Double)
 
 -- | An acceptance mechanism for MH

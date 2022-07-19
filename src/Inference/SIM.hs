@@ -1,13 +1,12 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
-{- | Simulation
+{- | Simulation.
 -}
 
 module Inference.SIM
@@ -34,9 +33,9 @@ import Unsafe.Coerce (unsafeCoerce)
 
 -- | Simulate from a model under a given model environment
 simulate :: FromSTrace env
-  -- | Model
+  -- | model
   => Model env [ObsReader env, Dist, Lift Sampler] a
-  -- | Input model environment
+  -- | input model environment
   -> Env env
   -- | (model output, output environment)
   -> Sampler (a, Env env)
@@ -60,7 +59,7 @@ handleObs (Op op k) = case discharge op of
   Right (Observe d y α) -> handleObs (k y)
   Left op' -> Op op' (handleObs . k)
 
--- | Handle @Sample@ operations by sampling using the @Sampler@ monad
+-- | Handle @Sample@ operations by using the @Sampler@ monad to draw from primitive distributions
 handleSamp :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
 handleSamp (Val x) = return x
 handleSamp (Op op k) = case discharge op of

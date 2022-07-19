@@ -57,21 +57,21 @@ instance (UniqueVar x env ~ 'True, KnownSymbol x, Eq a, OpenSum.Member a PrimVal
 
 -- | Retrieve the sampled values for the specified observable variable names
 filterSTrace ::
-  -- | Observable variable names
+  -- | observable variable names
     [Tag]
-  -- | Sample trace
+  -- | sample trace
   -> STrace
-  -- | Filtered sample trace
+  -- | filtered sample trace
   -> STrace
 filterSTrace tags = Map.filterWithKey (\(tag, idx) _ -> tag `elem` tags)
 
 -- | Update a sample trace at an address
 updateSTrace :: (Show x, Member (State STrace) es, OpenSum.Member x PrimVal) =>
-  -- | Address of sample site
+  -- | address of sample site
      Addr
-  -- | Primitive distribution at address
+  -- | primitive distribution at address
   -> PrimDist x
-  -- Sampled value
+  -- | sampled value
   -> x
   -> Prog es ()
 updateSTrace α d x  = modify (Map.insert α (ErasedPrimDist d, OpenSum.inj x) :: STrace -> STrace)
@@ -91,11 +91,11 @@ type LPTrace = Map Addr Double
 
 -- | Compute and update a log-probability trace at an address
 updateLPTrace :: (Member (State LPTrace) es) =>
-  -- | Address of sample/observe site
+  -- | address of sample/observe site
     Addr
-  -- | Primitive distribution at address
+  -- | primitive distribution at address
   -> PrimDist x
-  -- | Sampled or observed value
+  -- | sampled or observed value
   -> x
   -> Prog es ()
 updateLPTrace α d x  = modify (Map.insert α (PrimDist.logProb d x) :: LPTrace -> LPTrace)
