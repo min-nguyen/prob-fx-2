@@ -33,7 +33,7 @@ import Prog ( call, discharge, weaken, Member(..), Prog(..), EffectSum )
 import qualified OpenSum
 
 {- $Address
-   Identifiers for probabilistic operations
+   Identifiers for probabilistic operations.
 -}
 
 -- | An observable variable name assigned to a primitive distribution, representing a compile-time identifier

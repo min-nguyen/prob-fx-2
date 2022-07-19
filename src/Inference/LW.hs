@@ -49,7 +49,7 @@ lwInternal
   -- | number of LW iterations
   :: Int
   -> Prog [Observe, Sample, Lift Sampler] a
-  -- | List of weighted model outputs @a@ and sample traces
+  -- | list of weighted model outputs and sample traces
   -> Sampler [((a, STrace), Double)]
 lwInternal n prog = replicateM n (runLW prog)
 
@@ -62,7 +62,7 @@ runLW = handleLift . SIM.handleSamp . handleObs 0 . traceSamples
 
 -- | Handle each @Observe@ operation by computing and accumulating a log probability
 handleObs
-  -- | Accumulated log-probability
+  -- | accumulated log-probability
   :: Double
   -> Prog (Observe : es) a
   -- | (model output, final log-probability)

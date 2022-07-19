@@ -1,4 +1,5 @@
-{- | Some small utility functions -}
+{- | Some small utility functions.
+-}
 
 module Util (
     boolToInt

@@ -10,7 +10,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
-{- | For recording samples and log-probabilities during model execution
+{- | For recording samples and log-probabilities during model execution.
 -}
 
 module Trace (
@@ -36,10 +36,12 @@ import Prog ( Member, Prog(..), weaken, install )
 import PrimDist ( ErasedPrimDist(..), PrimVal, PrimDist, logProb, pattern PrimDistPrf )
 import Effects.State ( State, modify, handleState )
 
--- | The type of sample traces, mapping addresses of sample/observe operations to their primitive distributions and sampled values
+{- | The type of sample traces, mapping addresses of sample/observe operations
+     to their primitive distributions and sampled values.
+-}
 type STrace = Map Addr (ErasedPrimDist, OpenSum PrimVal)
 
--- | For converting sample traces, as used by simulation and inference, to output model environments
+-- | For converting sample traces to model environments
 class FromSTrace a where
   -- | Convert a sample trace to a model environment
   fromSTrace :: STrace -> Env a
@@ -86,7 +88,9 @@ traceSamples = handleState Map.empty . storeSamples
                                              k x
           )
 
--- | The type of log-probability traces, mapping addresses of @Sample@ and @Observe@ operations to their log probabilities
+{- | The type of log-probability traces, mapping addresses of sample/observe operations
+     to their log probabilities.
+-}
 type LPTrace = Map Addr Double
 
 -- | Compute and update a log-probability trace at an address

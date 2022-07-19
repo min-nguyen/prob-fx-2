@@ -33,7 +33,7 @@ ask x = call (Ask @env x)
 
 -- | Handle the @Ask@ requests of observable variables
 handleObsRead ::
-  -- | Initial model environment
+  -- | initial model environment
      Env env
   -> Prog (ObsReader env ': es) a
   -> Prog es a
