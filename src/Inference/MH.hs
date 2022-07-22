@@ -123,7 +123,7 @@ mhStep model tags accepter trace = do
   -- Run MH with proposal sample address to get an MHCtx using LPTrace as its probability type
   mhCtx'_lp <- runMH samples α_samp model
   -- Compute acceptance ratio to see if we use the proposed mhCtx' (which is mhCtx'_lp with 'LPTrace' converted to some type 'p')
-  (mhCtx', acceptance_ratio) <- accepter α_samp mhCtx'_lp mhCtx
+  (mhCtx', acceptance_ratio) <- accepter α_samp mhCtx mhCtx'_lp
   u <- sample (Uniform 0 1)
   if u < acceptance_ratio
     then do return (mhCtx':trace)
@@ -186,19 +186,19 @@ type MHCtx p a = ((a, STrace), p)
 type Accept p a =
   -- | proposal sample address
     Addr
-  -- | proposed MH ctx, parameterised by a log-probability map
-  -> MHCtx LPTrace a
   -- | previous MH ctx, parameterised by @p@
   -> MHCtx p a
+  -- | proposed MH ctx, parameterised by a log-probability map
+  -> MHCtx LPTrace a
   -- | (proposed MH ctx using probability representation p, Acceptance ratio)
   -> Sampler (MHCtx p a, Double)
 
 -- | An acceptance mechanism for MH
 acceptMH :: Accept LPTrace a
-acceptMH x0 ((a, strace'), lptrace') ((_, strace), lptrace)  = do
-  let sampled' = Set.singleton x0 `Set.union` (Map.keysSet strace' \\ Map.keysSet strace)
+acceptMH x0 ((_, strace), lptrace) ((a, strace'), lptrace') = do
+  let dom_logα = log (fromIntegral $ Map.size strace) - log (fromIntegral $ Map.size strace')
       sampled  = Set.singleton x0 `Set.union` (Map.keysSet strace \\ Map.keysSet strace')
-      dom_logα = log (fromIntegral $ Map.size strace) - log (fromIntegral $ Map.size strace')
+      sampled' = Set.singleton x0 `Set.union` (Map.keysSet strace' \\ Map.keysSet strace)
       logα     = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace))
                          0 (Map.keysSet lptrace \\ sampled)
       logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
