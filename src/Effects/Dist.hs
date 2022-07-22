@@ -31,6 +31,7 @@ import qualified Data.Map as Map
 import PrimDist ( PrimVal, PrimDist, pattern PrimDistPrf)
 import Prog ( call, discharge, weaken, Member(..), Prog(..), EffectSum )
 import qualified OpenSum
+import Util
 
 {- $Address
    Identifiers for probabilistic operations.
@@ -79,18 +80,23 @@ pattern ObsDis d y α <- (discharge -> Right (Observe (PrimDistPrf d) y α))
 
 -- | Handle the @Dist@ effect to a @Sample@ or @Observe@ effect and assign an address
 handleDist :: Prog (Dist : es) a -> Prog (Observe : Sample : es) a
-handleDist = loop 0 Map.empty
+handleDist = loop "" 0 Map.empty
   where
-  loop :: Int -> Map.Map Tag Int -> Prog (Dist : es) a -> Prog (Observe : Sample : es) a
-  loop _ _ (Val x) = return x
-  loop counter tagMap (Op u k) = case discharge u of
+  loop :: String
+       -> Int
+       -> Map.Map Tag Int
+       -> Prog (Dist : es) a
+       -> Prog (Observe : Sample : es) a
+  loop _ _ _ (Val x) = return x
+  loop prevTag counter tagMap (Op u k) = case discharge u of
     Right (Dist d maybe_y maybe_tag) ->
          case maybe_y of
               Just y  -> do call (Observe d y (tag, tagIdx)) >>= k'
               Nothing -> do call (Sample d (tag, tagIdx))    >>= k'
           where tag     = fromMaybe (show counter) maybe_tag
-                tagIdx  = Map.findWithDefault 0 tag tagMap
+                tagIdx  = let currentIdx = Map.findWithDefault 0 tag tagMap
+                          in  if tag /= prevTag then roundUp16 currentIdx else currentIdx
                 tagMap' = Map.insert tag (tagIdx + 1) tagMap
-                k'      = loop (counter + 1) tagMap' . k
-    Left  u'  -> Op (weaken (weaken u')) (loop counter tagMap . k)
+                k'      = loop tag (counter + 1) tagMap' . k
+    Left  u'  -> Op (weaken (weaken u')) (loop prevTag counter tagMap . k)
 

@@ -5,7 +5,8 @@ module Util (
     boolToInt
   , safeHead
   , safeTail
-  , findIndexes) where
+  , findIndexes
+  , roundUp16) where
 
 -- | Return @True@ for @1@ and otherwise @False@
 boolToInt :: Bool -> Int
@@ -29,3 +30,6 @@ findIndexes xs a = reverse $ go xs 0 []
   go (x:xs) i inds = if x == a then go xs (i + 1) (i:inds)
                      else go xs (i + 1) inds
   go [] i inds = inds
+
+roundUp16 :: Int -> Int
+roundUp16 n = n + (16 - (n `mod` 16))
