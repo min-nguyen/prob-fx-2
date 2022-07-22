@@ -21,7 +21,7 @@ module Trace (
   , traceSamples
   -- * Log-probability trace
   , LPTrace
-  , traceLPs) where
+  , traceLogProbs) where
 
 import Data.Map (Map)
 import Data.Maybe ( fromJust )
@@ -105,8 +105,8 @@ updateLPTrace :: (Member (State LPTrace) es) =>
 updateLPTrace α d x  = modify (Map.insert α (PrimDist.logProb d x) :: LPTrace -> LPTrace)
 
 -- | Insert stateful operations for recording the log-probabilities at each @Sample@ or @Observe@ operation
-traceLPs :: (Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)
-traceLPs = handleState Map.empty . storeLPs
+traceLogProbs :: (Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)
+traceLogProbs = handleState Map.empty . storeLPs
   where storeLPs :: (Member Sample es, Member Observe es) => Prog es a -> Prog (State LPTrace: es) a
         storeLPs (Val x) = pure x
         storeLPs (Op u k) = do

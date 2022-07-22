@@ -50,7 +50,7 @@ import qualified Data.Set as Set
 import qualified OpenSum
 import Sampler ( Sampler )
 import Trace
-    ( traceLPs,
+    ( traceLogProbs,
       traceSamples,
       filterSTrace,
       LPTrace,
@@ -138,7 +138,7 @@ runMH ::
   -> Prog [Observe, Sample, Lift Sampler] a
   -- | ((model output, sample trace), log-probability trace)
   -> Sampler ((a, STrace), LPTrace)
-runMH strace α_samp = handleLift . handleSamp strace α_samp . handleObs . traceLPs . traceSamples
+runMH strace α_samp = handleLift . handleSamp strace α_samp . handleObs . traceLogProbs . traceSamples
 
 -- | Handler for @Sample@ that selectively reuses old samples or draws new ones
 handleSamp ::

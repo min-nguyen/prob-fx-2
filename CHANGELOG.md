@@ -72,5 +72,5 @@ Added:
 Changed:
 - `updateLPTrace` and `updateSTrace` now invoke a `State` effect
 Added:
-- `traceLPs` and `traceSamples` handlers for recording log-probabilities and samples
+- `traceLogProbs` and `traceSamples` handlers for recording log-probabilities and samples
 
