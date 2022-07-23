@@ -29,6 +29,7 @@ library
   exposed-modules:
                       Effects.Dist,
                       Effects.Lift,
+                      Effects.NonDet,
                       Effects.ObsReader,
                       Effects.State,
                       Effects.Writer,
