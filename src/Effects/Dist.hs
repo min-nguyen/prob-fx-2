@@ -82,9 +82,9 @@ pattern ObsDis d y α <- (discharge -> Right (Observe (PrimDistPrf d) y α))
 handleDist :: Prog (Dist : es) a -> Prog (Observe : Sample : es) a
 handleDist = loop "" 0 Map.empty
   where
-  loop :: String
-       -> Int
-       -> Map.Map Tag Int
+  loop :: String              -- ^ the tag of the previous @Dist@ operation
+       -> Int                 -- ^ a counter for giving tags to unnamed @Dist@ operations
+       -> Map.Map Tag Int     -- ^ a mapping from tags to their run-time occurrence
        -> Prog (Dist : es) a
        -> Prog (Observe : Sample : es) a
   loop _ _ _ (Val x) = return x
@@ -94,8 +94,9 @@ handleDist = loop "" 0 Map.empty
               Just y  -> do call (Observe d y (tag, tagIdx)) >>= k'
               Nothing -> do call (Sample d (tag, tagIdx))    >>= k'
           where tag     = fromMaybe (show counter) maybe_tag
-                tagIdx  = let currentIdx = Map.findWithDefault 0 tag tagMap
-                          in  if tag /= prevTag then roundUp16 currentIdx else currentIdx
+                tagIdx  = case Map.lookup tag tagMap of
+                            Just currentIdx -> if tag /= prevTag then roundUp16 currentIdx else currentIdx
+                            Nothing         -> 0
                 tagMap' = Map.insert tag (tagIdx + 1) tagMap
                 k'      = loop tag (counter + 1) tagMap' . k
     Left  u'  -> Op (weaken (weaken u')) (loop prevTag counter tagMap . k)

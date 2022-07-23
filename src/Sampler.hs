@@ -6,7 +6,7 @@
 module Sampler (
   -- * Sampler monad
     Sampler
-  , liftS
+  , liftIO
   , sampleIO
   , sampleIOFixed
   , createSampler
@@ -45,8 +45,8 @@ newtype Sampler a = Sampler {runSampler :: ReaderT MWC.GenIO IO a}
   deriving (Functor, Applicative, Monad)
 
 -- | Lift an @IO@ computation into @Sampler@
-liftS :: IO a -> Sampler a
-liftS f = Sampler $ lift f
+liftIO :: IO a -> Sampler a
+liftIO f = Sampler $ lift f
 
 -- | Takes a @Sampler@, provides it a random generator, and runs the sampler in the @IO@ context
 sampleIO :: Sampler a -> IO a

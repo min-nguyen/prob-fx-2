@@ -39,6 +39,7 @@ library
                       Inference.MB,
                       Env,
                       FindElem,
+                      LogP,
                       Model,
                       OpenSum,
                       PrimDist,

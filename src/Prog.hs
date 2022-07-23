@@ -25,6 +25,7 @@ module Prog (
   , call
   , discharge
   , weaken
+  , weakenProg
   , install) where
 
 import Control.Monad ( (>=>) )
@@ -108,18 +109,23 @@ run :: Prog '[] a -> a
 run (Val x) = x
 run _ = error "'run' isn't defined for non-pure computations"
 
--- | Call an operation of type @e x@ in a computation
+-- | Call an operation in a computation
 call :: Member e es => e x -> Prog es x
 call e = Op (inj e) Val
 
--- | Discharges an effect @e@ from the front of an effect signature @es@
+-- | Discharge an effect from the front of an effect sum
 discharge :: EffectSum (e ': es) x -> Either (EffectSum es x) (e x)
 discharge (EffectSum 0 tv) = Right $ unsafeCoerce tv
 discharge (EffectSum n rv) = Left  $ EffectSum (n-1) rv
 
--- | Prepend an effect @e@ to the front of an effect signature @es@
+-- | Prepend an effect to the front of an effect sum
 weaken :: EffectSum es a -> EffectSum (e ': es) a
 weaken (EffectSum n ta) = EffectSum (n + 1) ta
+
+-- | Prepend an effect to the front of a computation's effect signature
+weakenProg :: Prog es a -> Prog (e : es) a
+weakenProg (Val x)   = Val x
+weakenProg (Op op k) = Op (weaken op) (weakenProg . k)
 
 {- | Find some existing effect @e@ in @es@, leave it unhandled, and call a new
      effect @e'@ after every request of @e@. This prepends @e'@ to @es@, and requires

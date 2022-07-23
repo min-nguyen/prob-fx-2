@@ -48,7 +48,7 @@ import Prog ( discharge, Prog(..) )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified OpenSum
-import Sampler ( Sampler )
+import Sampler ( Sampler, liftIO )
 import Trace
     ( traceLogProbs,
       traceSamples,
