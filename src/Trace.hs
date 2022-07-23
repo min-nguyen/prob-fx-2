@@ -30,6 +30,7 @@ import Effects.Dist ( Tag, Addr, Observe, Sample(..), pattern ObsPrj, pattern Sa
 import Env ( enil, varToStr, UniqueVar, Var(..), Env(ECons), Assign((:=)) )
 import GHC.TypeLits ( KnownSymbol )
 import OpenSum (OpenSum)
+import LogP
 import qualified Data.Map as Map
 import qualified OpenSum
 import Prog ( Member, Prog(..), weaken, install )
@@ -91,7 +92,7 @@ traceSamples = handleState Map.empty . storeSamples
 {- | The type of log-probability traces, mapping addresses of sample/observe operations
      to their log probabilities.
 -}
-type LPTrace = Map Addr Double
+type LPTrace = Map Addr LogP
 
 -- | Compute and update a log-probability trace at an address
 updateLPTrace :: (Member (State LPTrace) es) =>
@@ -102,7 +103,7 @@ updateLPTrace :: (Member (State LPTrace) es) =>
   -- | sampled or observed value
   -> x
   -> Prog es ()
-updateLPTrace α d x  = modify (Map.insert α (PrimDist.logProb d x) :: LPTrace -> LPTrace)
+updateLPTrace α d x  = modify (Map.insert α (LogP $ PrimDist.logProb d x) :: LPTrace -> LPTrace)
 
 -- | Insert stateful operations for recording the log-probabilities at each @Sample@ or @Observe@ operation
 traceLogProbs :: (Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)

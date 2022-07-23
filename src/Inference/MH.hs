@@ -34,6 +34,7 @@ import Data.Set (Set, (\\))
 import Effects.Dist ( Addr, Sample(..), Observe, Dist, Tag )
 import Effects.Lift ( handleLift, Lift, lift )
 import Effects.ObsReader ( ObsReader )
+import LogP
 import Env ( Env, ContainsVars(..), Vars )
 import Inference.SIM (handleObs)
 import Model ( Model, handleCore )
@@ -203,4 +204,4 @@ acceptMH x0 ((_, strace), lptrace) ((a, strace'), lptrace') = do
                          0 (Map.keysSet lptrace \\ sampled)
       logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
                          0 (Map.keysSet lptrace' \\ sampled')
-  pure (((a, strace'), lptrace'), exp (dom_logα + logα' - logα))
+  pure (((a, strace'), lptrace'), (exp . unLogP) (dom_logα + logα' - logα))

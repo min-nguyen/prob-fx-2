@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-{- Helper definitions for working with log-probability.
+{- To be explicit that a @Double@ is a log-probability.
 -}
 
 module LogP (
@@ -8,13 +8,14 @@ module LogP (
   , logMeanExp
   ) where
 
--- | To be explicit that a @Double@ is a log-probability
-newtype LogP = LogP { logP :: Double } deriving (Show, Num, Eq, Ord, Fractional)
+-- | The type of log-probabilities.
+--   All numerics work the same as with @Double@.
+newtype LogP = LogP { unLogP :: Double } deriving (Show, Num, Eq, Ord, Fractional, Floating)
 
 -- | Take the log-mean-exp of a list of log-probabilities
 logMeanExp :: [LogP] -> LogP
 logMeanExp logps =
-  let logws = map logP logps
+  let logws = map unLogP logps
       c = maximum logws
   in  if isInfinite c   -- to avoid @-Infinity - (-Infinity)@
       then (-1/0)
