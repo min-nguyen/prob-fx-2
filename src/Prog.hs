@@ -18,6 +18,7 @@ module Prog (
     Prog(..)
   , EffectSum
   , Member(..)
+  , Members
   , UniqueMember
   , LastMember
   -- * Auxiliary functions
@@ -72,7 +73,7 @@ class (FindElem e es) => Member (e :: * -> *) (es :: [* -> *]) where
   prj ::  EffectSum es x -> Maybe (e x)
 
 instance {-# INCOHERENT #-} (e ~ e') => Member e '[e'] where
-   inj x  = EffectSum 0 x
+   inj = EffectSum 0
    prj (EffectSum _ x) = Just (unsafeCoerce x)
 
 instance (FindElem e es) => Member e es where

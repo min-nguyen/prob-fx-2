@@ -6,7 +6,8 @@ module Util (
   , safeHead
   , safeTail
   , findIndexes
-  , roundUp16) where
+  , roundUp16
+  , uncurry3) where
 
 -- | Return @True@ for @1@ and otherwise @False@
 boolToInt :: Bool -> Int
@@ -33,3 +34,6 @@ findIndexes xs a = reverse $ go xs 0 []
 
 roundUp16 :: Int -> Int
 roundUp16 n = n + (16 - (n `mod` 16))
+
+uncurry3 :: (a -> b -> c -> d) -> ((a, b, c) -> d)
+uncurry3 f (a, b, c) = f a b c
