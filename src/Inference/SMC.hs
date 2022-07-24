@@ -1,34 +1,26 @@
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
--- {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Inference.SMC where
 
-import qualified Data.Map as Map
-import Control.Monad
-import PrimDist
-import Env
-import Prog
-import Model
-import LogP
-import Trace
-import Sampler
-import Effects.Dist
-import Effects.NonDet
-import Effects.Lift
-import Effects.ObsReader
-import Effects.State
-import qualified Inference.SIS as SIS
-import qualified Inference.SIM as SIM
+import Control.Monad ( replicateM )
+import Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe, Sample )
+import Effects.Lift ( Lift, lift )
+import Effects.NonDet ( asum, handleNonDet )
+import Effects.ObsReader ( ObsReader, handleObsRead )
+import Env ( Env )
+import LogP ( LogP(..) )
+import Model ( Model(runModel) )
 import OpenSum (OpenSum)
+import PrimDist ( PrimDist(Categorical), sample, logProb )
+import Prog ( LastMember, Prog(..), Members )
+import qualified Data.Map as Map
+import qualified Inference.SIM as SIM
+import qualified Inference.SIS as SIS
+import Sampler ( Sampler )
+import Trace ( traceSamples, FromSTrace(..) )
 
 {- | A top-level function for calling Sequential Monte Carlo on a model.
 -}
@@ -36,10 +28,11 @@ smc :: (FromSTrace env, Show a)
   => Int
   -> Model env [ObsReader env, Dist, Lift Sampler] a
   -> Env env
-  -> Sampler [((a, LogP), Env env)]
+  -> Sampler [Env env]
 smc n_particles model env = do
   let prog = (handleDist . handleObsRead env) (runModel model)
-  smcInternal n_particles prog env
+  final_ctxs <- smcInternal n_particles prog env
+  pure $ map (fromSTrace . SIS.particleSTrace . snd) final_ctxs
 
 {- | For calling Sequential Monte Carlo on a probabilistic program.
 -}
@@ -47,10 +40,9 @@ smcInternal :: (FromSTrace env, Show a)
   => Int
   -> Prog [Observe, Sample, Lift Sampler] a
   -> Env env
-  -> Sampler [((a, LogP), Env env)]
-smcInternal n_particles prog env = do
-  final_ctxs <- SIS.sis n_particles smcParticleHdlr smcResampler  SIM.handleObs SIM.handleSamp prog
-  pure $ map (\(a, SIS.ParticleCtx logp strace _) -> ((a, logp), fromSTrace strace)) final_ctxs
+  -> Sampler [(a, SIS.ParticleCtx)]
+smcInternal n_particles prog env =
+  SIS.sis n_particles smcParticleHdlr smcResampler SIM.handleObs SIM.handleSamp prog
 
 {- | Runs a population of particles to the next breakpoint in the program.
 -}
@@ -59,9 +51,9 @@ smcParticleHdlr :: Members [Observe, Sample, Lift Sampler] es
 smcParticleHdlr particles = do
   {- Merge particles into single non-deterministic program using 'asum' and run the program to the next breakpoint.
      This returns a list containing:
-      1. particles that can be resumed
-      2. the address of the @Observe@ breakpoint
-      3. the incremental sample trace since the previous breakpoint
+      1. the particles that can be resumed
+      2. the address of their @Observe@ breakpoint
+      3. their incremental sample trace since the previous breakpoint
   -}
   particles'_ctxs' <- (handleNonDet . traceSamples . breakObserve ) (asum particles)
   {- Reformat the data into a list of particles and particle contexts.

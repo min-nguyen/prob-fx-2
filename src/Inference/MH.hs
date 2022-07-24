@@ -104,7 +104,7 @@ mhInternal n prog strace_0 tags = do
 
 -- | Perform one iteration of MH by drawing a new sample and then rejecting or accepting it.
 mhStep
-  :: Prog [Observe, Sample,  Lift Sampler] a
+  :: Prog [Observe, Sample, Lift Sampler] a
   -- | tags indicating sample sites of interest
   -> [Tag]
   -- | a mechanism for accepting proposals
@@ -113,7 +113,7 @@ mhStep
   -> [((a, STrace), p)]
   -- | updated trace of MH results
   -> Sampler [((a, STrace), p)]
-mhStep model tags accepter trace = do
+mhStep prog tags accepter trace = do
   -- Get previous MH output
   let mhCtx@((_, samples), _) = head trace
   -- Get possible addresses to propose new samples for
@@ -122,7 +122,7 @@ mhStep model tags accepter trace = do
   α_samp_ind <- sample $ UniformD 0 (Map.size sampleSites - 1)
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
   -- Run MH with proposal sample address to get an MHCtx using LPTrace as its probability type
-  mhCtx'_lp <- runMH samples α_samp model
+  mhCtx'_lp <- runMH samples α_samp prog
   -- Compute acceptance ratio to see if we use the proposed mhCtx' (which is mhCtx'_lp with 'LPTrace' converted to some type 'p')
   (mhCtx', acceptance_ratio) <- accepter α_samp mhCtx mhCtx'_lp
   u <- sample (Uniform 0 1)

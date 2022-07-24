@@ -1,15 +1,12 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 {- An infrastructure for Sequential Importance Sampling (particle filter).
 -}
 
 module Inference.SIS where
-
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -19,8 +16,8 @@ import Effects.NonDet ( accumNonDet, weakenNonDet, NonDet )
 import LogP ( LogP, logMeanExp )
 import Prog ( Prog, weakenProg )
 import Sampler ( Sampler )
-import Trace
-import Util
+import Trace ( STrace )
+import Util ( uncurry3 )
 
 {- | A @ParticleResampler@ decides which of the current particles and contexts to continue execution with.
 -}

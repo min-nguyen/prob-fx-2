@@ -113,8 +113,6 @@ handleCore env m = (handleDist . handleObsRead env) (runModel m)
     exampleModel' = bernoulli' 0.5
     @
 -}
-
-
 deterministic :: forall env es a x. (Eq a, Show a, OpenSum.Member a PrimVal, Observable env x a) => a
   -> Var x
   -> Model env es a
