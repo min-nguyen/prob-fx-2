@@ -59,9 +59,12 @@ accumParticleCtx :: [ParticleCtx] -- ^ previously acccumulated context
                  -> [ParticleCtx] -- ^ incremental context
                  -> [ParticleCtx]
 accumParticleCtx ctxs ctxs' =
+  --  Compute normalised accumulated log weights
   let logprobs = let logZ = logMeanExp (map particleLogProb ctxs)
                  in  map ((+ logZ) . particleLogProb) ctxs'
+  --  Combine the sample traces
       straces  = zipWith Map.union (map particleSTrace ctxs') (map particleSTrace ctxs)
+  --  Update the Observe operations encountered
       obsaddrs = zipWith (++) (map particleObsAddrs ctxs') (map particleObsAddrs ctxs)
   in  map (uncurry3 ParticleCtx) (zip3 logprobs straces obsaddrs)
 
@@ -71,7 +74,7 @@ sis :: forall a es.
      Int                                                                    -- ^ num of particles
   -> ParticleHandler (Observe : Sample : Lift Sampler : '[]) a              -- ^ handler of particles
   -> ParticleResampler (Observe : Sample : Lift Sampler : '[])  a           -- ^ particle resampler
-  -> (forall es b. Prog (Observe : es) b -> Prog es b)                      -- ^ observe handler
+  -> (forall b es . Prog (Observe : es) b -> Prog es b)                      -- ^ observe handler
   -> (forall b. Prog '[Sample, Lift Sampler] b -> Prog '[Lift Sampler] b)   -- ^ sample handler
   -> Prog [Observe, Sample, Lift Sampler] a                                 -- ^ model
   -> Sampler [(a, ParticleCtx)]
@@ -95,9 +98,9 @@ loopSIS particleHdlr particleResamplr  population = do
   -- Run particles to next checkpoint
   (particles', ctxs') <- unzip <$> particleHdlr particles
   case accumNonDet particles' of
-    -- If all programs have finished, return with accumulated context
+    -- If all programs have finished, return their results along with their accumulated contexts
     Right vals  -> (`zip` accumParticleCtx ctxs ctxs') <$> vals
-    -- Otherwise, pick programs to continue with
+    -- Otherwise, pick the programs to continue with
     Left  _     -> do resampled_population <- particleResamplr ctxs ctxs' particles'
                       loopSIS particleHdlr particleResamplr resampled_population
 
