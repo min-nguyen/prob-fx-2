@@ -22,9 +22,11 @@ import Effects.ObsReader ( ObsReader, handleObsRead )
 import Env ( Env )
 import Model (Model(..))
 import Numeric.Log ( Log(Exp) )
+import LogP
 import PrimDist ( logProb, sampleBayes )
 import Prog ( discharge, Prog(..), LastMember )
 import Trace ( traceSamples, FromSTrace(..) )
+
 
 -- | Translate a ProbFX model under a given model environment to a MonadBayes program
 toMBayes :: (FromSTrace env, MonadInfer m)
@@ -47,7 +49,7 @@ handleObs (Op u k) = case discharge u of
   Left u' -> do
      Op u' (handleObs . k)
   Right (Observe d y _) ->
-      do let p = logProb d y
+      do let LogP p = logProb d y
          lift (MB.score (Exp p))
          handleObs (k y)
 
@@ -69,7 +71,7 @@ handleDistMB (Val x)  = pure x
 handleDistMB (Op u k) = case discharge u of
     Right d ->
       case getObs d of
-          Just y  -> do let p = logProb (getPrimDist d) y
+          Just y  -> do let LogP p = logProb (getPrimDist d) y
                         score (Exp p)
                         handleDistMB (k y)
           Nothing -> do y <- sampleBayes (getPrimDist d)

@@ -103,7 +103,7 @@ updateLPTrace :: (Member (State LPTrace) es) =>
   -- | sampled or observed value
   -> x
   -> Prog es ()
-updateLPTrace α d x  = modify (Map.insert α (LogP $ PrimDist.logProb d x) :: LPTrace -> LPTrace)
+updateLPTrace α d x  = modify (Map.insert α (PrimDist.logProb d x) :: LPTrace -> LPTrace)
 
 -- | Insert stateful operations for recording the log-probabilities at each @Sample@ or @Observe@ operation
 traceLogProbs :: (Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)

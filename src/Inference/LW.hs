@@ -21,6 +21,7 @@ import Effects.Lift ( handleLift, Lift )
 import Effects.ObsReader ( ObsReader )
 import Effects.State ( modify, handleState, State )
 import Env ( Env )
+import LogP
 import Inference.SIM as SIM (handleSamp)
 import Model ( handleCore, Model )
 import PrimDist ( logProb )
@@ -63,11 +64,11 @@ runLW = handleLift . SIM.handleSamp . handleObs 0 . traceSamples
 -- | Handle each @Observe@ operation by computing and accumulating a log probability
 handleObs
   -- | accumulated log-probability
-  :: Double
+  :: LogP
   -> Prog (Observe : es) a
-  -- | (model output, final log-probability)
+  -- | (model output, final likelihood weighting)
   -> Prog es (a, Double)
-handleObs logp (Val x) = return (x, exp logp)
+handleObs logp (Val x) = return (x, (exp . unLogP) logp)
 handleObs logp (Op u k) = case discharge u of
     Right (Observe d y α) -> do
       let logp' = logProb d y

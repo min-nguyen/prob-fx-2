@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 {- An infrastructure for Sequential Importance Sampling (particle filter).
 -}
@@ -14,22 +15,22 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Effects.Dist ( Addr, Observe, Sample )
 import Effects.Lift ( Lift, handleLift )
-import Effects.NonDet ( accumNonDet, NonDet )
+import Effects.NonDet ( accumNonDet, weakenNonDet, NonDet )
 import LogP ( LogP, logMeanExp )
 import Prog ( Prog, weakenProg )
 import Sampler ( Sampler )
 
-{- | A @Resampler@ decides which of the current particles and contexts to continue execution with.
+{- | A @ParticleResampler@ decides which of the current particles and contexts to continue execution with.
 -}
-type Resampler ctx es a
+type ParticleResampler ctx es a
   -- | the accumulated contexts of particles of the previous step
   =  [ctx]
   -- | the incremental contexts of particles since the previous step
   -> [ctx]
-  -- | the collection of current particles
+  -- | the collection of current particles that produced the incremental contexts
   -> [Prog (NonDet : es) a]
   -- | the resampled particles and corresponding contexts
-  -> Prog es ([Prog (NonDet : es) a], [ctx])
+  -> Prog es [(Prog (NonDet : es) a, ctx)]
 
 {- | A @ParticleHandler@ runs a collection of particles to the next step in the computation.
 -}
@@ -39,70 +40,53 @@ type ParticleHandler ctx es a
   -- | a list of particles at the next step and their corresponding contexts
   -> Prog es [(Prog (NonDet : es) a, ctx)]
 
-{- | The class @Accum@ is similar in spirit to @Monoid@, and defines how the contexts of particles
-     should be accumulated.
+{- | The class @Accum@ defines how the contexts of particles should be accumulated.
 -}
 class Accum ctx where
   -- | Initialise the contexts for n particles
   aempty :: Int -> [ctx]
   -- | Merge the incremental contexts with the previously accumulated contexts
-  accum  :: [ctx] -> [ctx] -> [ctx]
+  accum
+    :: [ctx] -- ^ previously acccumulated contexts
+    -> [ctx] -- ^ incremental context
+    -> [ctx]
 
 instance {-# OVERLAPPING #-} Accum LogP where
   aempty n = replicate n 0
-  accum logps_1sub0 logps_0  =
+  accum  logps_0 logps_1sub0 =
     let logZ = logMeanExp logps_0
     in  map (+ logZ) logps_1sub0
 
-instance Ord k => Accum (Map k a) where
-  aempty n = replicate n  Map.empty
-  accum  = zipWith Map.union
-
-instance {-# OVERLAPPING #-} Accum [Addr] where
-  aempty n = replicate n []
-  accum    = zipWith (++)
-
-instance (Accum a, Accum b) => Accum (a, b) where
-  aempty n = zip (aempty n) (aempty n)
-  accum xys xys' = let (x, y)    = unzip xys
-                       (x', y') = unzip xys'
-                   in  zip (accum x x') (accum y y')
-
-instance (Accum a, Accum b, Accum c) => Accum (a, b, c) where
-  aempty n = zip3 (aempty n) (aempty n) (aempty n)
-  accum xyzs xyzs' = let (x, y, z)    = unzip3 xyzs
-                         (x', y', z') = unzip3 xyzs'
-                     in  zip3 (accum x x') (accum y y') (accum z z')
-
-sis :: forall a env ctx es.
-     (Accum ctx, Show ctx, Show a)
-  => Int                                                                    -- num of particles
-  -> Resampler       ctx (Observe : Sample : Lift Sampler : '[])  a         -- resampler
-  -> ParticleHandler ctx (Observe : Sample : Lift Sampler : '[]) a          -- handler of particles
-  -> (forall es b. Prog (Observe : es) b -> Prog es b)                      -- observe handler
-  -> (forall b. Prog '[Sample, Lift Sampler] b -> Prog '[Lift Sampler] b)   -- sample handler
-  -> Prog [Observe, Sample, Lift Sampler] a                                 -- model
+sis :: forall ctx a es. (Accum ctx, Show ctx, Show a)
+  => Int                                                                    -- ^ num of particles
+  -> ParticleResampler ctx (Observe : Sample : Lift Sampler : '[])  a       -- ^ particle resampler
+  -> ParticleHandler ctx (Observe : Sample : Lift Sampler : '[]) a          -- ^ handler of particles
+  -> (forall es b. Prog (Observe : es) b -> Prog es b)                      -- ^ observe handler
+  -> (forall b. Prog '[Sample, Lift Sampler] b -> Prog '[Lift Sampler] b)   -- ^ sample handler
+  -> Prog [Observe, Sample, Lift Sampler] a                                 -- ^ model
   -> Sampler [(a, ctx)]
-sis n_particles resampler pophdl handleObs handleSamp prog = do
-  let particles_0   = replicate n_particles (weakenProg prog)
-      ctxs_0        = aempty n_particles
-  (handleLift . handleSamp . handleObs) (loopSIS n_particles resampler pophdl (particles_0, ctxs_0))
+sis n_particles resampler particleHdlr obsHdlr sampHdlr prog = do
+  -- Initialise a population of particles and contexts
+  let population :: [(Prog '[NonDet, Observe, Sample, Lift Sampler] a, ctx)]
+      population  = zip (replicate n_particles (weakenNonDet prog)) (aempty n_particles)
+  -- Execute the population until termination
+  (handleLift . sampHdlr . obsHdlr) (loopSIS resampler particleHdlr population)
 
 loopSIS :: (Show a, Show ctx, Accum ctx)
-  => Int
-  -> Resampler       ctx es  a
+  => ParticleResampler ctx es  a
   -> ParticleHandler ctx es a
-  -> ([Prog (NonDet : es) a], [ctx])   -- Particles and corresponding contexts
+  -> [(Prog (NonDet : es) a, ctx)]   -- ^ particles and corresponding contexts
   -> Prog es [(a, ctx)]
-loopSIS n_particles resampler populationHandler (particles_0, ctxs_0)  = do
+loopSIS particleResamplr particleHdlr population = do
+  -- Separate population into particles (programs) and their contexts
+  let (particles, ctxs) = unzip population
   -- Run particles to next checkpoint
-  (particles_1, ctxs_1) <- unzip <$> populationHandler particles_0
-  case accumNonDet particles_1 of
-  -- if all programs have finished, return with accumulated context
-    Right vals  -> do let ctxs' =  accum ctxs_1 ctxs_0
-                      (`zip` ctxs') <$> vals
-  -- otherwise, pick programs to continue with
-    Left  particles_1 -> do (resampledParticles_1, resampledCtxs_1) <- resampler ctxs_0 ctxs_1 particles_1
-                            loopSIS n_particles resampler populationHandler (resampledParticles_1, resampledCtxs_1)
+  (particles', ctxs') <- unzip <$> particleHdlr particles
+  case accumNonDet particles' of
+    -- If all programs have finished, return with accumulated context
+    Right vals  -> (`zip` accum ctxs ctxs') <$> vals
+    -- Otherwise, pick programs to continue with
+    Left  _     -> do resampled_population <- particleResamplr ctxs ctxs' particles'
+                      loopSIS particleResamplr particleHdlr resampled_population
 
 

@@ -44,6 +44,7 @@ import Statistics.Distribution.Normal ( normalDistr )
 import Statistics.Distribution.Poisson ( poisson )
 import Statistics.Distribution.Uniform ( uniformDistr )
 import Sampler
+import LogP
 import Util ( boolToInt )
 import Numeric.Log ( Log(Exp) )
 import qualified Control.Monad.Bayes.Class as MB
@@ -290,5 +291,5 @@ logProb ::
   -- | observed value
   -> a
   -- | log density
-  -> Double
-logProb d = log . prob d
+  -> LogP
+logProb d = LogP . log . prob d
