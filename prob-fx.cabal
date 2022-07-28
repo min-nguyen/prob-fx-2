@@ -1,6 +1,6 @@
 cabal-version:       3.0
 name:                prob-fx
-version:             1.0.0.0
+version:             0.2.0.0
 license:             BSD-3-Clause
 license-file:        LICENSE.md
 copyright:           2022 Minh Nguyen
@@ -72,7 +72,7 @@ library
                       statistics                    >= 0.16.1 && < 0.17,
                       criterion                     >= 1.5.13 && < 1.6,
                       split                         >= 0.2.3 && < 0.3,
-                      monad-bayes                   >= 0.1.1.2  && < 0.2.1
+                      monad-bayes                   >= 0.1.1.2 && < 0.2.1
 
   -- Base language which the package is written in.
   default-language:   Haskell2010

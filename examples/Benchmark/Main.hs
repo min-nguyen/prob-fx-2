@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE LambdaCase #-}
 {-# HLINT ignore "Use camelCase" #-}
 module Main where
 
@@ -42,6 +43,7 @@ benchRow :: NFData a
   -- | List of run-times
   -> IO ()
 benchRow (prog_name, prog) (_, params) = do
+  putStrLn ("Running " ++ prog_name ++ " over " ++ show params)
   -- Run program over varying parameter values and write e.g. "LinRegr-MH100, 0.23, 0.87, 1.23, 1.78, 2.45"
   means <- mapM (benchMean . sampleIO . prog) params
   writeRow fixed_fileName (prog_name, means)
@@ -49,67 +51,77 @@ benchRow (prog_name, prog) (_, params) = do
 {- | Varying over dataset size
 -}
 fixed_lw_steps :: Int
-fixed_lw_steps = 2000
+fixed_lw_steps = 1000
 fixed_mh_steps :: Int
-fixed_mh_steps = 2000
+fixed_mh_steps = 1000
 
 bench_LR :: [Int] -> IO ()
 bench_LR args = do
     let row_header = ("Dataset size", args)
     writeRow fixed_fileName row_header
     benchRow ("LR-SIM", simLinRegr) row_header
-    benchRow ("LR-LW2000", lwLinRegr fixed_lw_steps) row_header
-    benchRow ("LR-MH2000", mhLinRegr fixed_mh_steps) row_header
+    benchRow ("LR-LW" ++ show fixed_lw_steps, lwLinRegr fixed_lw_steps) row_header
+    benchRow ("LR-MH" ++ show fixed_mh_steps, mhLinRegr fixed_mh_steps) row_header
 
 bench_HMM :: [Int] -> IO ()
 bench_HMM args = do
     let row_header = ("Dataset size", args)
     writeRow fixed_fileName row_header
     benchRow ("HMM-SIM", simHMM) row_header
-    benchRow ("HMM-LW2000", lwHMM fixed_lw_steps) row_header
-    benchRow ("HMM-MH2000", mhHMM fixed_mh_steps) row_header
+    benchRow ("HMM-LW" ++ show fixed_lw_steps, lwHMM fixed_lw_steps) row_header
+    benchRow ("HMM-MH" ++ show fixed_mh_steps, mhHMM fixed_mh_steps) row_header
 
 bench_LDA :: [Int] -> IO ()
 bench_LDA args = do
     let row_header = ("Dataset size", args)
     writeRow fixed_fileName row_header
     benchRow ("LDA-SIM", simLDA) row_header
-    benchRow ("LDA-LW2000", lwLDA fixed_lw_steps) row_header
-    benchRow ("LDA-MH2000", mhPredLDA fixed_mh_steps) row_header
+    benchRow ("LDA-LW" ++ show fixed_lw_steps, lwLDA fixed_lw_steps) row_header
+    benchRow ("LDA-MH" ++ show fixed_mh_steps, mhPredLDA fixed_mh_steps) row_header
 
 {- | Varying over inference parameters
 -}
 fixed_lr_datasize :: Int
 fixed_lr_datasize = 50
 fixed_hmm_datasize :: Int
-fixed_hmm_datasize = 20
+fixed_hmm_datasize = 50
 fixed_lda_datasize :: Int
-fixed_lda_datasize = 50
+fixed_lda_datasize = 100
 
--- bench_MH :: [Int] -> IO ()
--- bench_MH args = do
---     let row_header = ("Number of steps", args)
---     writeRow fixed_fileName row_header
---     benchRow ("MH-LR50", flip mhLinRegr fixed_lr_datasize) row_header
---     benchRow ("MH-HMM20", flip mhHMM fixed_hmm_datasize) row_header
---     benchRow ("MH-LDA50", flip mhLDA fixed_lda_datasize) row_header
+bench_LW :: [Int] -> IO ()
+bench_LW args = do
+    let row_header = ("Number of iterations", args)
+    writeRow fixed_fileName row_header
+    benchRow ("LW-LR" ++ show fixed_lr_datasize, flip lwLinRegr fixed_lr_datasize) row_header
+    benchRow ("LW-HMM" ++ show fixed_hmm_datasize, flip lwHMM fixed_hmm_datasize) row_header
+    benchRow ("LW-LDA" ++ show fixed_lda_datasize, flip lwLDA fixed_lda_datasize) row_header
+
+bench_MH :: [Int] -> IO ()
+bench_MH args = do
+    let row_header = ("Number of steps", args)
+    writeRow fixed_fileName row_header
+    benchRow ("MH-LR" ++ show fixed_lr_datasize, flip mhLinRegr fixed_lr_datasize) row_header
+    benchRow ("MH-HMM" ++ show fixed_hmm_datasize, flip mhHMM fixed_hmm_datasize) row_header
+    benchRow ("MH-LDA" ++ show fixed_lda_datasize, flip mhPredLDA fixed_lda_datasize) row_header
+
+runBenchmarks :: IO ()
+runBenchmarks = do
+  -- | Read input benchmark parameters
+  content <- readFile "benchmark_params.txt"
+  let removeComments :: [String] -> [String]
+      removeComments = filter (\case []     -> False
+                                     (x:xs) -> x /= '#')
+  let args :: [[Int]]
+      args = map (map read . splitOn ",") (removeComments (lines content))
+  -- | Run benchmark programs on their corresponding parameters
+  case args of
+        [lr, hmm, lda, lw, mh] -> do
+          bench_LR lr
+          bench_HMM hmm
+          bench_LDA lda
+          bench_LW lw
+          bench_MH mh
+        _   -> error "bad input file"
 
 main :: IO ()
-main = pure ()
--- runBenchmarks :: IO ()
--- runBenchmarks = do
---   -- | Read input benchmark parameters
---   content <- readFile "../benchmark_params.txt"
---   let removeComments :: [String] -> [String]
---       removeComments = filter (\case []     -> False
---                                      (x:xs) -> x /= '#')
---   let args :: [[Int]]
---       args = map (map read . splitOn ",") (removeComments (lines content))
---   -- | Run benchmark programs on their corresponding parameters
---   case args of
---         [lr, hmm, lda, mh, smc, rmsmc] -> do
---           bench_LR lr
---           bench_HMM hmm
---           bench_LDA lda
---           bench_MH mh
---         _   -> error "bad input file"
+main = runBenchmarks
