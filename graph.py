@@ -190,6 +190,16 @@ def main():
     axs1.scatter(xs, ys, cmap=color_map)
     axs1.set_title('HMM - Simulation')
     plt.show()
+  if arg in ["lwHMM"]:
+    trans_p = data[0]
+    ps  = data[1]
+    total_p = sum(ps)
+    ps_normalised = list(map(lambda p : p/total_p, ps))
+    _, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel('trans_p value')
+    axs1.set_ylabel('probability')
+    axs1.scatter(trans_p, ps_normalised)
+    axs1.set_title('HMM - Likelihood Weighting')
   if arg == "mhHMM":
     # Note : this works less well for certain parameters of trans_p and obs_p used for the training data
     trans_ps_unique = data[0]

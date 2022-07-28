@@ -26,8 +26,8 @@ tested-with:
 
 
 library
-  exposed-modules:
-                      Effects.Dist,
+  hs-source-dirs:     src
+  exposed-modules:    Effects.Dist,
                       Effects.Lift,
                       Effects.ObsReader,
                       Effects.State,
@@ -74,17 +74,14 @@ library
                       split                         >= 0.2.3 && < 0.3,
                       monad-bayes                   >= 0.1.1.2  && < 0.1.1.4
 
-  -- Directories containing source files.
-  hs-source-dirs:     src
-
   -- Base language which the package is written in.
   default-language:   Haskell2010
   ghc-options:        -O2 -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math
 
 executable prob-fx
   -- .hs or .lhs file containing the Main module.
+  hs-source-dirs:     examples
   main-is:            Main.hs
-
   other-modules:      CoinFlip,
                       DataSets,
                       HMM,
@@ -106,16 +103,14 @@ executable prob-fx
                       monad-bayes,
                       lens
 
-  hs-source-dirs:     examples
-
   -- Base language which the package is written in.
   default-language:   Haskell2010
   ghc-options:        -O2 -rtsopts -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math
 
 executable benchmark
   -- .hs or .lhs file containing the Main module.
+  hs-source-dirs:     examples
   main-is:            Benchmark/Main.hs
-
   other-modules:      HMM,
                       LDA,
                       LinRegr
@@ -129,7 +124,6 @@ executable benchmark
                       monad-bayes,
                       statistics
 
-  hs-source-dirs:     examples
 
   -- Base language which the package is written in.
   default-language:   Haskell2010
@@ -137,6 +131,7 @@ executable benchmark
 
 test-suite tests
   type:               exitcode-stdio-1.0
+
   hs-source-dirs:     examples
   main-is:            Test/Main.hs
   other-modules:      Test.Expected,

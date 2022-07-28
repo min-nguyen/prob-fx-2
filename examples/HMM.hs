@@ -142,9 +142,10 @@ lwHMM
   -> Sampler ([Double], [Double])
 lwHMM lw_samples hmm_length = do
   -- Specify model input
+  ys <- map snd <$> simHMMw hmm_length
   let x_0 = 0
   -- Specify model environment
-      env = #trans_p := [] <:> #obs_p := [] <:> #y := [0, 1, 1, 3, 4, 5, 5, 5, 6, 5] <:> enil
+      env = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
   (envs_out, ws) <- unzip <$> LW.lw lw_samples (hmm hmm_length x_0) env
   let trans_ps    = concatMap (get #trans_p) envs_out
   pure (trans_ps, ws)
