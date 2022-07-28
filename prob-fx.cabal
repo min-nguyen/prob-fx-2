@@ -1,6 +1,6 @@
 cabal-version:       3.0
 name:                prob-fx
-version:             1.0.0.0
+version:             0.2.0.0
 license:             BSD-3-Clause
 license-file:        LICENSE.md
 copyright:           2022 Minh Nguyen
@@ -26,8 +26,8 @@ tested-with:
 
 
 library
-  exposed-modules:
-                      Effects.Dist,
+  hs-source-dirs:     src
+  exposed-modules:    Effects.Dist,
                       Effects.Lift,
                       Effects.NonDet,
                       Effects.ObsReader,
@@ -76,10 +76,7 @@ library
                       statistics                    >= 0.16.1 && < 0.17,
                       criterion                     >= 1.5.13 && < 1.6,
                       split                         >= 0.2.3 && < 0.3,
-                      monad-bayes                   >= 0.1.1.2  && < 0.1.1.4
-
-  -- Directories containing source files.
-  hs-source-dirs:     src
+                      monad-bayes                   >= 0.1.1.2 && < 0.2.1
 
   -- Base language which the package is written in.
   default-language:   Haskell2010
@@ -87,8 +84,8 @@ library
 
 executable prob-fx
   -- .hs or .lhs file containing the Main module.
+  hs-source-dirs:     examples
   main-is:            Main.hs
-
   other-modules:      CoinFlip,
                       DataSets,
                       HMM,
@@ -110,7 +107,27 @@ executable prob-fx
                       monad-bayes,
                       lens
 
+  -- Base language which the package is written in.
+  default-language:   Haskell2010
+  ghc-options:        -O2 -rtsopts -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math
+
+executable benchmark
+  -- .hs or .lhs file containing the Main module.
   hs-source-dirs:     examples
+  main-is:            Benchmark/Main.hs
+  other-modules:      HMM,
+                      LDA,
+                      LinRegr
+  -- Other library packages from which modules are imported.
+  build-depends:      base,
+                      criterion,
+                      deepseq,
+                      prob-fx,
+                      split,
+                      log-domain,
+                      monad-bayes,
+                      statistics
+
 
   -- Base language which the package is written in.
   default-language:   Haskell2010
@@ -118,6 +135,7 @@ executable prob-fx
 
 test-suite tests
   type:               exitcode-stdio-1.0
+
   hs-source-dirs:     examples
   main-is:            Test/Main.hs
   other-modules:      Test.Expected,

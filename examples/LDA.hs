@@ -18,6 +18,7 @@ import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
 import Inference.SIM as SIM ( simulate )
+import Inference.LW as LW ( lw )
 import Inference.MH as MH ( mh )
 import Inference.MB as MB ( toMBayes )
 import Trace ( FromSTrace )
@@ -130,6 +131,18 @@ simLDA n_words = do
 document :: [String]
 document = ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA"]
 
+-- | LW inference on topic model
+lwLDA :: Int -> Int -> Sampler ([[Double]], [Double])
+lwLDA n_lwsteps n_words = do
+  -- Do MH inference over the topic model using the above data
+  let n_topics  = 2
+      env_lw_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+  (env_mh_outs, ws) <- unzip <$> LW.lw n_lwsteps (topicModel vocab n_topics n_words) env_lw_in
+  -- Draw the most recent sampled parameters
+  let env_pred   = head env_mh_outs
+      θs         = get #θ env_pred
+  return (θs, ws)
+
 -- | MH inference on topic model (predictive)
 mhPredLDA :: Int -> Int -> Sampler ([[Double]], [[Double]])
 mhPredLDA n_mhsteps n_words = do
@@ -157,12 +170,12 @@ simLDAMB n_words  = do
             #w := [] <:> enil
   Bayes.sampleIO $ Bayes.prior (mbayesLDA vocab 2 n_words env)
 
-lwLDA :: Int -> Int -> IO [(([String], Env TopicEnv), Log Double)]
-lwLDA n_samples n_words  = do
+lwLDAMB :: Int -> Int -> IO [(([String], Env TopicEnv), Log Double)]
+lwLDAMB n_samples n_words  = do
   let env = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
   Bayes.sampleIO $ replicateM n_samples (Bayes.runWeighted $ mbayesLDA vocab 2 n_words env)
 
-mhLDA :: Int -> Int -> IO [([String], Env TopicEnv)]
-mhLDA n_mhsteps n_words  = do
+mhLDAMB :: Int -> Int -> IO [([String], Env TopicEnv)]
+mhLDAMB n_mhsteps n_words  = do
   let env = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
   Bayes.sampleIO $ Bayes.prior $ Bayes.mh n_mhsteps (mbayesLDA vocab 2 n_words env)

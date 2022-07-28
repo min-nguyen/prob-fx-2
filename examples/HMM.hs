@@ -64,24 +64,6 @@ hmmFor n x = do
                        | otherwise = return x_prev
   hmmLoop 0 x
 
--- | Simulate from a HMM
-simHMM :: Sampler (Int, Env HMMEnv)
-simHMM = do
-  -- Specify model inputs
-  let x_0 = 0; n = 10
-  -- Specify model environment
-      env = #trans_p := [0.5] <:> #obs_p := [0.8] <:> #y := [] <:> enil
-  SIM.simulate (hmmFor n 0) env
-
--- | Perform likelihood-weighting inference over HMM
-lwHMM :: Sampler [(Env HMMEnv, Double)]
-lwHMM   = do
-  -- Specify model inputs
-  let x_0 = 0; n = 10
-  -- Specify model environment
-      env = #trans_p := [] <:> #obs_p := [] <:> #y := [0, 1, 1, 3, 4, 5, 5, 5, 6, 5] <:> enil
-  LW.lw 100 (hmmFor n x_0) env
-
 
 {- | A more modular HMM implementation.
 -}
@@ -138,6 +120,56 @@ hmm n x = do
   obs_p   <- uniform 0 1 #obs_p
   foldr (>=>) return (replicate n (hmmNode trans_p obs_p)) x
 
+-- | Simulate from a HMM
+simHMM
+  -- | number of HMM nodes
+  :: Int
+  -> Sampler Int
+simHMM hmm_length = do
+  -- Specify model input
+  let x_0 = 0
+  -- Specify model environment
+      env = #trans_p := [0.5] <:> #obs_p := [0.8] <:> #y := [] <:> enil
+  (y, env_out) <- SIM.simulate (hmm hmm_length 0) env
+  pure y
+
+-- | Perform likelihood-weighting inference over HMM
+lwHMM
+  -- | number of LW iterations
+  :: Int
+  -- | number of HMM nodes
+  -> Int
+  -> Sampler ([Double], [Double])
+lwHMM lw_samples hmm_length = do
+  -- Specify model input
+  ys <- map snd <$> simHMMw hmm_length
+  let x_0 = 0
+  -- Specify model environment
+      env = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
+  (envs_out, ws) <- unzip <$> LW.lw lw_samples (hmm hmm_length x_0) env
+  let trans_ps    = concatMap (get #trans_p) envs_out
+  pure (trans_ps, ws)
+
+-- | Metropolis-Hastings inference over a HMM
+mhHMM
+  -- | number of MH iterations
+  :: Int
+  -- | number of HMM nodes
+  -> Int
+  -- | [(transition parameter, observation parameter)]
+  -> Sampler ([Double], [Double])
+mhHMM mh_samples hmm_length = do
+  -- Simulate a trace of observations from the HMM
+  ys <- map snd <$> simHMMw hmm_length
+  -- Specify a model environment containing those observations
+  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
+  -- Handle the Writer effect and then run MH inference
+  envs_out <- MH.mh mh_samples (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
+  -- Get the trace of sampled transition and observation parameters
+  let trans_ps    = concatMap (get #trans_p) envs_out
+      obs_ps      = concatMap (get #obs_p) envs_out
+  pure (trans_ps, obs_ps)
+
 {- | Extending the modular HMM with a user-specific effect.
      This example uses the @Writer@ effect for recording the intermediate latent states.
 -}
@@ -186,6 +218,25 @@ simHMMw hmm_length = do
   -- Get the observations
   let ys :: [Int] = get #y env_out
   pure $ zip xs ys
+
+-- | Likelihood Weighting over a HMM
+lwHMMw
+  -- | number of MH iterations
+  :: Int
+  -- | number of HMM nodes
+  -> Int
+  -- | [(transition parameter, likelihood-weighting)]
+  -> Sampler ([Double], [Double])
+lwHMMw lw_samples hmm_length = do
+  -- Simulate a trace of observations from the HMM
+  ys <- map snd <$> simHMMw hmm_length
+  -- Specify a model environment containing those observations
+  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
+  -- Handle the Writer effect and then run MH inference
+  (envs_out, ws) <- unzip <$> LW.lw lw_samples (handleWriterM @[Int] $ hmmW hmm_length 0) env_in
+  -- Get the trace of sampled transition and observation parameters
+  let trans_ps    = concatMap (get #trans_p) envs_out
+  pure (trans_ps, ws)
 
 -- | Metropolis-Hastings inference over a HMM
 mhHMMw
