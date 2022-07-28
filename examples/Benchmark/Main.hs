@@ -20,7 +20,7 @@ import Criterion (benchmark')
 {- | Benchmarking utility
 -}
 fixed_fileName :: String
-fixed_fileName = "benchmarks.csv"
+fixed_fileName = "examples/Benchmark/benchmarks.csv"
 
 appendFileLn :: String -> String -> IO ()
 appendFileLn file_name = appendFile file_name . (++ "\n")
@@ -51,9 +51,9 @@ benchRow (prog_name, prog) (_, params) = do
 {- | Varying over dataset size
 -}
 fixed_lw_steps :: Int
-fixed_lw_steps = 1000
+fixed_lw_steps = 100
 fixed_mh_steps :: Int
-fixed_mh_steps = 1000
+fixed_mh_steps = 100
 
 bench_LR :: [Int] -> IO ()
 bench_LR args = do
@@ -107,7 +107,7 @@ bench_MH args = do
 runBenchmarks :: IO ()
 runBenchmarks = do
   -- | Read input benchmark parameters
-  content <- readFile "benchmark_params.txt"
+  content <- readFile "examples/Benchmark/benchmark_params.txt"
   let removeComments :: [String] -> [String]
       removeComments = filter (\case []     -> False
                                      (x:xs) -> x /= '#')
