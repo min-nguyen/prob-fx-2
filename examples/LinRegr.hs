@@ -63,13 +63,13 @@ simLinRegr n_datapoints = do
 
 -- | Likelihood weighting over linear regression
 lwLinRegr ::  Int -> Int ->  Sampler [(Double, Double)]
-lwLinRegr n_samples n_datapoints = do
+lwLinRegr n_lwsteps n_datapoints = do
   -- Specify model inputs
   let xs            = [0 .. fromIntegral n_datapoints]
   -- Specify model environment
       env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
    -- Get the sampled values of mu and their likelihood-weighting
-  (env_outs, ps) <- unzip <$> LW.lw n_samples (linRegr xs) env
+  (env_outs, ps) <- unzip <$> LW.lw n_lwsteps (linRegr xs) env
   let mus = concatMap (get #m) env_outs
   pure (zip mus ps)
 

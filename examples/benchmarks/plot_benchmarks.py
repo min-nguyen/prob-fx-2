@@ -2,7 +2,7 @@ import csv
 import matplotlib.pyplot as plt
 import numpy as np
 
-fixed_groupSize = 4
+fixed_groupSize = 3
 
 def groupBenchmarks(file):
   def chunksOf(xs, n):
@@ -11,7 +11,12 @@ def groupBenchmarks(file):
 
   csv_reader = csv.reader(file, delimiter=',')
   raw_data = [row for row in csv_reader]
-  grouped_data = list(chunksOf(raw_data, fixed_groupSize))
+  grouped_data = list(chunksOf(raw_data, 1 + fixed_groupSize))
+  # Expect each benchmark group to be in the form
+      # > Header
+      # > Row: 1
+      # > ...
+      # > Row: fixed_groupSize
   return grouped_data
 
 def plotPage(hs_data):

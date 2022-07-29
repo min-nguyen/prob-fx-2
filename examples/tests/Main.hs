@@ -1,7 +1,7 @@
 module Main (main) where
 
-import Test.Examples
-import Test.Expected
+import Examples
+import Expected
 import Test.HUnit
 import Sampler
 import System.Exit

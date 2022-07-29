@@ -1,4 +1,4 @@
-module Test.Expected where
+module Expected where
 
 -- | sampleIOFixed (simLinRegrOnce 100)
 simLinRegrOnceExpected :: [(Double, Double)]
