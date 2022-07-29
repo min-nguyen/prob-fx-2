@@ -49,6 +49,6 @@ with open('benchmarks.csv') as benchmarks:
   plotPage(vary_data)
 
   # benchmarks for varying over inference parameters
-  vary_inf = groups[3:5]
+  vary_inf = groups[3:6]
   plotPage(vary_inf)
   plt.show()
