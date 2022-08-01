@@ -42,6 +42,7 @@ library
                       FindElem,
                       LogP,
                       Model,
+                      Node,
                       OpenSum,
                       PrimDist,
                       Prog,
