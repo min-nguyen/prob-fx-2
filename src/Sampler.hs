@@ -9,14 +9,15 @@ module Sampler (
   , liftIO
   , sampleIO
   , sampleIOFixed
-  , createSampler
+  , mkSampler
   -- * Sampling functions
-  -- $Sampling-functions
+  -- ** Raw sampling
+  -- $Raw-sampling
   , sampleRandom
   , sampleCauchy
   , sampleNormal
   , sampleUniform
-  , sampleDiscreteUniform
+  , sampleUniformD
   , sampleGamma
   , sampleBeta
   , sampleBernoulli
@@ -25,13 +26,16 @@ module Sampler (
   , sampleDiscrete
   , samplePoisson
   , sampleDirichlet
+  -- ** Inverse CDF sampling
+  -- $Inverse-sampling
   ) where
 
-import Control.Monad ( replicateM )
+import Control.Monad ( replicateM, when, (>=>) )
 import Control.Monad.Trans (MonadIO, MonadTrans, lift)
-import Control.Monad.Trans.Reader (ReaderT, ask, mapReaderT, runReaderT)
+import Control.Monad.Trans.Reader (ReaderT (..), ask, mapReaderT, runReaderT)
 import Data.Map (Map)
 import GHC.Word ( Word32 )
+import GSL.Random.Dist
 import qualified Data.Vector as V
 import qualified System.Random.MWC as MWC
 import qualified System.Random.MWC.Distributions as MWC.Dist
@@ -61,82 +65,158 @@ sampleIOCustom :: Int -> Sampler a -> IO a
 sampleIOCustom n m = initialize (V.singleton (fromIntegral n :: Word32)) >>= (runReaderT . runSampler) m
 
 -- | Takes a distribution which awaits a generator, and returns a @Sampler@
-createSampler :: (MWC.GenIO -> IO a) -> Sampler a
-createSampler f = Sampler $ ask >>= lift . f
+mkSampler :: (MWC.GenIO -> IO a) -> Sampler a
+mkSampler f = Sampler $ ask >>= lift . f
 
-{- $Sampling-functions
+{- $Raw-sampling
   Given their distribution parameters, these functions await a generator and
   then sample a value from the distribution in the @IO@ monad.
 -}
 
 sampleRandom
-  :: MWC.GenIO
-  -> IO Double
-sampleRandom = \gen -> MWC.uniform gen
+  :: Sampler Double
+sampleRandom = mkSampler MWC.uniform
 
 sampleCauchy
   :: Double -- ^ location
   -> Double -- ^ scale
-  -> (MWC.GenIO -> IO Double)
-sampleCauchy μ σ = \gen -> genContVar (cauchyDistribution μ σ) gen
+  -> Sampler Double
+sampleCauchy μ σ = mkSampler $ genContVar (cauchyDistribution μ σ)
 
 sampleNormal
   :: Double -- ^ mean
   -> Double -- ^ standard deviation
-  -> (MWC.GenIO -> IO Double)
-sampleNormal μ σ = \gen -> MWC.Dist.normal μ σ gen
+  -> Sampler Double
+sampleNormal μ σ = mkSampler $ MWC.Dist.normal μ σ
 
 sampleUniform
   :: Double -- ^ lower-bound
   -> Double -- ^ upper-bound
-  -> (MWC.GenIO -> IO Double)
-sampleUniform min max = \gen -> MWC.uniformR (min, max) gen
+  -> Sampler Double
+sampleUniform min max = mkSampler $ MWC.uniformR (min, max)
 
-sampleDiscreteUniform
+sampleUniformD
   :: Int -- ^ lower-bound
   -> Int -- ^ upper-bound
-  -> (MWC.GenIO -> IO Int)
-sampleDiscreteUniform min max = \gen -> MWC.uniformR (min, max) gen
+  -> Sampler Int
+sampleUniformD min max = mkSampler $ MWC.uniformR (min, max)
 
 sampleGamma
   :: Double -- ^ shape k
   -> Double -- ^ scale θ
-  -> (MWC.GenIO -> IO Double)
-sampleGamma k θ = \gen -> MWC.Dist.gamma k θ gen
+  -> Sampler Double
+sampleGamma k θ = mkSampler $ MWC.Dist.gamma k θ
 
 sampleBeta
   :: Double -- ^ shape α
   -> Double -- ^ shape β
-  -> (MWC.GenIO -> IO Double)
-sampleBeta α β = \gen -> MWC.Dist.beta α β gen
+  -> Sampler Double
+sampleBeta α β = mkSampler $ MWC.Dist.beta α β
 
 sampleBernoulli
   :: Double -- ^ probability of @True@
-  -> (MWC.GenIO -> IO Bool)
-sampleBernoulli p = \gen -> MWC.Dist.bernoulli p gen
+  -> Sampler Bool
+sampleBernoulli p = mkSampler $ MWC.Dist.bernoulli p
 
 sampleBinomial
   :: Int    -- ^ number of trials
   -> Double -- ^ probability of successful trial
-  -> (MWC.GenIO -> IO [Bool])
-sampleBinomial n p = \gen -> replicateM n (MWC.Dist.bernoulli p gen)
+  -> Sampler [Bool]
+sampleBinomial n p = mkSampler $ replicateM n . MWC.Dist.bernoulli p
 
 sampleCategorical
   :: V.Vector Double -- ^ probabilities
-  -> (MWC.GenIO -> IO Int)
-sampleCategorical ps =  \gen -> MWC.Dist.categorical (ps) gen
+  -> Sampler Int
+sampleCategorical ps = mkSampler $ MWC.Dist.categorical ps
 
 sampleDiscrete
   :: [Double] -- ^ probabilities
-  -> (MWC.GenIO -> IO Int)
-sampleDiscrete ps = \gen -> MWC.Dist.categorical (V.fromList ps) gen
+  -> Sampler Int
+sampleDiscrete ps = mkSampler $ MWC.Dist.categorical (V.fromList ps)
 
 samplePoisson
   :: Double   -- ^ rate λ
-  -> (MWC.GenIO -> IO Int)
-samplePoisson λ = \gen -> MWC.Probability.sample (MWC.Probability.poisson λ) gen
+  -> Sampler Int
+samplePoisson λ = mkSampler $ MWC.Probability.sample (MWC.Probability.poisson λ)
 
 sampleDirichlet
   :: [Double] -- ^ concentrations
-  -> (MWC.GenIO -> IO [Double])
-sampleDirichlet xs = \gen -> MWC.Dist.dirichlet xs gen
+  -> Sampler [Double]
+sampleDirichlet xs = mkSampler $ MWC.Dist.dirichlet xs
+
+{- $Inverse-sampling
+  Given a random double @r@ between 0 and 1, this is passed to a distribution's inverse
+  cumulative density function to draw a sampled value.
+-}
+
+sampleCauchyInv
+  :: Double -- ^ location
+  -> Double -- ^ scale
+  -> Double -- ^ r
+  -> Sampler Double
+sampleCauchyInv μ σ r = pure $ cauchyQInv (r - μ) σ
+
+sampleNormalInv
+  :: Double -- ^ mean
+  -> Double -- ^ std
+  -> Double -- ^ r
+  -> Sampler Double
+sampleNormalInv μ σ r = pure $ gaussianQInv (r - μ) σ
+
+sampleUniformInv
+  :: Double -- ^ lower-bound
+  -> Double -- ^ upper-bound
+  -> Double -- ^ r
+  -> Sampler Double
+sampleUniformInv min max r = pure $ flatQInv r min max
+
+sampleUniformDInv
+  :: Int    -- ^ lower-bound
+  -> Int    -- ^ upper-bound
+  -> Double -- ^ r
+  -> Sampler Int
+sampleUniformDInv min max =
+    sampleUniformInv (fromIntegral min) (fromIntegral max + 1) >=> pure . floor
+
+sampleGammaInv
+  :: Double -- ^ shape k
+  -> Double -- ^ shape θ
+  -> Double -- ^ r
+  -> Sampler Double
+sampleGammaInv α β r = pure $ gammaQInv r α β
+
+g = 2 ** 64
+
+sampleBetaInv
+  :: Double -- ^ shape α
+  -> Double -- ^ shape β
+  -> Double -- ^ r
+  -> Sampler Double
+sampleBetaInv α β r = pure $ betaQInv r α β
+
+sampleBernoulliInv
+  :: Double -- ^ probability of @True@
+  -> Double -- ^ r
+  -> Sampler Bool
+sampleBernoulliInv p r = pure $ r < p
+
+-- Get FFI to binomialQInv
+-- sampleBinomialInv
+--   :: Int    -- ^ number of trials
+--   -> Double -- ^ probability of successful trial
+--   -> Double -- ^ r
+--   -> Sampler [Bool]
+-- sampleBinomialInv n p r = mkSampler $ replicateM n . MWC.Dist.bernoulli p
+
+fromPMF
+  :: (Int -> Double)
+  -> r
+  -> Sampler Int
+fromPMF pmf r = f 0 1
+  where
+    f i r = do
+      when (r < 0) $ error "fromPMF: total PMF above 1"
+      let q = pmf i
+      when (q < 0 || q > 1) $ error "fromPMF: invalid probability value"
+      b <- sampleBernoulliInv (q / r) r
+      if b then pure i else f (i + 1) (r - q)

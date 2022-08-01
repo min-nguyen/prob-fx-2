@@ -37,7 +37,7 @@ import Prog ( Member, Prog(..), weaken, install )
 import PrimDist ( ErasedPrimDist(..), PrimVal, PrimDist, logProb, pattern PrimDistPrf )
 import Effects.State ( State, modify, handleState )
 
-{- | The type of sample traces, mapping addresses of sample/observe operations
+{- | The type of sample traces, mapping addresses of sample operations
      to their primitive distributions and sampled values.
 -}
 type STrace = Map Addr (ErasedPrimDist, OpenSum PrimVal)
@@ -77,7 +77,7 @@ updateSTrace :: (Show x, Member (State STrace) es, OpenSum.Member x PrimVal) =>
   -- | sampled value
   -> x
   -> Prog es ()
-updateSTrace α d x  = modify (Map.insert α (ErasedPrimDist d, OpenSum.inj x) :: STrace -> STrace)
+updateSTrace α d x = modify (Map.insert α (ErasedPrimDist d, OpenSum.inj x) :: STrace -> STrace)
 
 -- | Insert stateful operations for recording the sampled values at each @Sample@ operation
 traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, STrace)
@@ -88,6 +88,11 @@ traceSamples = handleState Map.empty . storeSamples
               Sample (PrimDistPrf d) α -> do updateSTrace α d x
                                              k x
           )
+
+{- | The type of inverse sample traces, mapping addresses of sample operations
+     to the random values between 0 and 1 passed to their inverse CDF functions.
+-}
+type STraceInv = Map Addr Double
 
 {- | The type of log-probability traces, mapping addresses of sample/observe operations
      to their log probabilities.
