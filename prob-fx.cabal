@@ -35,8 +35,6 @@ library
                       Inference.LW,
                       Inference.MH,
                       Inference.SIM,
-                      Inference.SIS,
-                      Inference.SMC,
                       Inference.MB,
                       Env,
                       FindElem,
