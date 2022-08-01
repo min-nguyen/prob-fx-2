@@ -198,33 +198,33 @@ instance Show ErasedPrimDist where
 -- | Draw a value from a primitive distribution in the @Sampler@ monad
 sample :: PrimDist a -> Sampler a
 sample (HalfCauchy σ )  =
-  createSampler (sampleCauchy 0 σ) >>= pure . abs
+  sampleCauchy 0 σ >>= pure . abs
 sample (Cauchy μ σ )  =
-  createSampler (sampleCauchy μ σ)
+  sampleCauchy μ σ
 sample (HalfNormal σ )  =
-  createSampler (sampleNormal 0 σ) >>= pure . abs
+  sampleNormal 0 σ >>= pure . abs
 sample (Normal μ σ )  =
-  createSampler (sampleNormal μ σ)
+  sampleNormal μ σ
 sample (Uniform min max )  =
-  createSampler (sampleUniform min max)
+  sampleUniform min max
 sample (UniformD min max )  =
-  createSampler (sampleDiscreteUniform min max)
+  sampleUniformD min max
 sample (Gamma k θ )        =
-  createSampler (sampleGamma k θ)
+  sampleGamma k θ
 sample (Beta α β  )         =
-  createSampler (sampleBeta α β)
+  sampleBeta α β
 sample (Binomial n p  )     =
-  createSampler (sampleBinomial n p) >>=  pure .  length . filter (== True)
+  sampleBinomial n p >>=  pure .  length . filter (== True)
 sample (Bernoulli p )      =
-  createSampler (sampleBernoulli p)
+  sampleBernoulli p
 sample (Discrete ps )   =
-  createSampler (sampleCategorical (V.fromList $ fmap snd ps)) >>= \i -> pure $ fst $ ps !! i
+  sampleCategorical (V.fromList $ fmap snd ps) >>= \i -> pure $ fst $ ps !! i
 sample (Categorical ps )      =
-  createSampler (sampleDiscrete ps)
+  sampleDiscrete ps
 sample (Poisson λ ) =
-  createSampler (samplePoisson λ)
+  samplePoisson λ
 sample (Dirichlet xs ) =
-  createSampler (sampleDirichlet xs)
+  sampleDirichlet xs
 sample (Deterministic x) = pure x
 
 -- | Draw a value from a primitive distribution using the @MonadSample@ type class from Monad-Bayes
