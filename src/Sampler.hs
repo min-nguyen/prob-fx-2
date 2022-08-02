@@ -35,7 +35,7 @@ import Control.Monad.Trans (MonadIO, MonadTrans, lift)
 import Control.Monad.Trans.Reader (ReaderT (..), ask, mapReaderT, runReaderT)
 import Data.Map (Map)
 import GHC.Word ( Word32 )
-import GSL.Random.Dist
+-- import GSL.Random.Dist
 import qualified Data.Vector as V
 import qualified System.Random.MWC as MWC
 import qualified System.Random.MWC.Distributions as MWC.Dist
@@ -147,52 +147,52 @@ sampleDirichlet xs = mkSampler $ MWC.Dist.dirichlet xs
 {- $Inverse-sampling
   Given a random double @r@ between 0 and 1, this is passed to a distribution's inverse
   cumulative density function to draw a sampled value.
--}
+-- -}
 
-sampleCauchyInv
-  :: Double -- ^ location
-  -> Double -- ^ scale
-  -> Double -- ^ r
-  -> Sampler Double
-sampleCauchyInv μ σ r = pure $ cauchyQInv (r - μ) σ
+-- sampleCauchyInv
+--   :: Double -- ^ location
+--   -> Double -- ^ scale
+--   -> Double -- ^ r
+--   -> Sampler Double
+-- sampleCauchyInv μ σ r = pure $ cauchyQInv (r - μ) σ
 
-sampleNormalInv
-  :: Double -- ^ mean
-  -> Double -- ^ std
-  -> Double -- ^ r
-  -> Sampler Double
-sampleNormalInv μ σ r = pure $ gaussianQInv (r - μ) σ
+-- sampleNormalInv
+--   :: Double -- ^ mean
+--   -> Double -- ^ std
+--   -> Double -- ^ r
+--   -> Sampler Double
+-- sampleNormalInv μ σ r = pure $ gaussianQInv (r - μ) σ
 
-sampleUniformInv
-  :: Double -- ^ lower-bound
-  -> Double -- ^ upper-bound
-  -> Double -- ^ r
-  -> Sampler Double
-sampleUniformInv min max r = pure $ flatQInv r min max
+-- sampleUniformInv
+--   :: Double -- ^ lower-bound
+--   -> Double -- ^ upper-bound
+--   -> Double -- ^ r
+--   -> Sampler Double
+-- sampleUniformInv min max r = pure $ flatQInv r min max
 
-sampleUniformDInv
-  :: Int    -- ^ lower-bound
-  -> Int    -- ^ upper-bound
-  -> Double -- ^ r
-  -> Sampler Int
-sampleUniformDInv min max =
-    sampleUniformInv (fromIntegral min) (fromIntegral max + 1) >=> pure . floor
+-- sampleUniformDInv
+--   :: Int    -- ^ lower-bound
+--   -> Int    -- ^ upper-bound
+--   -> Double -- ^ r
+--   -> Sampler Int
+-- sampleUniformDInv min max =
+--     sampleUniformInv (fromIntegral min) (fromIntegral max + 1) >=> pure . floor
 
-sampleGammaInv
-  :: Double -- ^ shape k
-  -> Double -- ^ shape θ
-  -> Double -- ^ r
-  -> Sampler Double
-sampleGammaInv α β r = pure $ gammaQInv r α β
+-- sampleGammaInv
+--   :: Double -- ^ shape k
+--   -> Double -- ^ shape θ
+--   -> Double -- ^ r
+--   -> Sampler Double
+-- sampleGammaInv α β r = pure $ gammaQInv r α β
 
-g = 2 ** 64
+-- g = 2 ** 64
 
-sampleBetaInv
-  :: Double -- ^ shape α
-  -> Double -- ^ shape β
-  -> Double -- ^ r
-  -> Sampler Double
-sampleBetaInv α β r = pure $ betaQInv r α β
+-- sampleBetaInv
+--   :: Double -- ^ shape α
+--   -> Double -- ^ shape β
+--   -> Double -- ^ r
+--   -> Sampler Double
+-- sampleBetaInv α β r = pure $ betaQInv r α β
 
 sampleBernoulliInv
   :: Double -- ^ probability of @True@
