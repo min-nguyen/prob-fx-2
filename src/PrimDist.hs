@@ -214,7 +214,7 @@ sample (Gamma k θ )        =
 sample (Beta α β  )         =
   sampleBeta α β
 sample (Binomial n p  )     =
-  sampleBinomial n p >>=  pure .  length . filter (== True)
+  sampleBinomial n p
 sample (Bernoulli p )      =
   sampleBernoulli p
 sample (Discrete ps )   =

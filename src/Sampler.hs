@@ -39,9 +39,11 @@ import qualified Data.Vector as V
 import qualified System.Random.MWC as MWC
 import qualified System.Random.MWC.Distributions as MWC.Dist
 import qualified System.Random.MWC.Probability as MWC.Probability
-import Statistics.Distribution ( ContDistr(quantile), ContGen(genContVar) )
+import Statistics.Distribution ( ContDistr(quantile), ContGen(genContVar), DiscreteDistr(..) )
 import Statistics.Distribution.Normal ( normalDistr )
 import Statistics.Distribution.Uniform ( uniformDistr )
+import Statistics.Distribution.Binomial ( binomial )
+import Statistics.Distribution.Poisson ( poisson )
 import Statistics.Distribution.Beta ( betaDistr )
 import Statistics.Distribution.Gamma ( gammaDistr )
 import Statistics.Distribution.CauchyLorentz ( cauchyDistribution )
@@ -124,8 +126,8 @@ sampleBernoulli p = mkSampler $ MWC.Dist.bernoulli p
 sampleBinomial
   :: Int    -- ^ number of trials
   -> Double -- ^ probability of successful trial
-  -> Sampler [Bool]
-sampleBinomial n p = mkSampler $ replicateM n . MWC.Dist.bernoulli p
+  -> Sampler Int
+sampleBinomial n p = mkSampler $ (length . filter (== True) <$> ) . (replicateM n . MWC.Dist.bernoulli p)
 
 sampleCategorical
   :: V.Vector Double -- ^ probabilities
@@ -152,26 +154,36 @@ sampleDirichlet xs = mkSampler $ MWC.Dist.dirichlet xs
   cumulative density function to draw a sampled value.
 -- -}
 
+{- Continuous cases.
+-}
+
+invCDF
+  :: ContDistr d
+  => d
+  -> Double
+  -> Sampler Double
+invCDF d = pure . quantile d
+
 sampleCauchyInv
   :: Double -- ^ location
   -> Double -- ^ scale
   -> Double -- ^ r
   -> Sampler Double
-sampleCauchyInv μ σ = pure . quantile (cauchyDistribution μ σ)
+sampleCauchyInv μ σ = invCDF (cauchyDistribution μ σ)
 
 sampleNormalInv
   :: Double -- ^ mean
   -> Double -- ^ std
   -> Double -- ^ r
   -> Sampler Double
-sampleNormalInv μ σ = pure . quantile (normalDistr μ σ)
+sampleNormalInv μ σ = invCDF (normalDistr μ σ)
 
 sampleUniformInv
   :: Double -- ^ lower-bound
   -> Double -- ^ upper-bound
   -> Double -- ^ r
   -> Sampler Double
-sampleUniformInv min max = pure . quantile (uniformDistr min max)
+sampleUniformInv min max = invCDF (uniformDistr min max)
 
 sampleUniformDInv
   :: Int    -- ^ lower-bound
@@ -185,14 +197,35 @@ sampleGammaInv
   -> Double -- ^ shape θ
   -> Double -- ^ r
   -> Sampler Double
-sampleGammaInv k θ  = pure . quantile (gammaDistr k θ)
+sampleGammaInv k θ  = invCDF (gammaDistr k θ)
 
 sampleBetaInv
   :: Double -- ^ shape α
   -> Double -- ^ shape β
   -> Double -- ^ r
   -> Sampler Double
-sampleBetaInv α β = pure . quantile (betaDistr α β)
+sampleBetaInv α β = invCDF (betaDistr α β)
+
+sampleDirichletInv
+  :: [Double]
+  -> Double
+  -> Sampler [Double]
+sampleDirichletInv = undefined
+
+{- Discrete cases.
+-}
+
+invCMF
+  :: (Int -> Double)  -- ^ probability mass function
+  -> Double           -- ^ r
+  -> Sampler Int
+invCMF pmf r = pure (f 0 r)
+  where
+    f :: Int -> Double -> Int
+    f i r = do
+      let q  = pmf i
+          r' = r - q
+      if r' < 0 then i else f (i + 1) r'
 
 sampleBernoulliInv
   :: Double -- ^ probability of @True@
@@ -200,23 +233,27 @@ sampleBernoulliInv
   -> Sampler Bool
 sampleBernoulliInv p r = pure $ r < p
 
--- Get FFI to binomialQInv
--- sampleBinomialInv
---   :: Int    -- ^ number of trials
---   -> Double -- ^ probability of successful trial
---   -> Double -- ^ r
---   -> Sampler [Bool]
--- sampleBinomialInv n p r = mkSampler $ replicateM n . MWC.Dist.bernoulli p
-
-fromPMF
-  :: (Int -> Double)
-  -> r
+sampleBinomialInv
+  :: Int    -- ^ number of trials
+  -> Double -- ^ probability of successful trial
+  -> Double -- ^ r
   -> Sampler Int
-fromPMF pmf r = f 0 1
-  where
-    f i r = do
-      when (r < 0) $ error "fromPMF: total PMF above 1"
-      let q = pmf i
-      when (q < 0 || q > 1) $ error "fromPMF: invalid probability value"
-      b <- sampleBernoulliInv (q / r) r
-      if b then pure i else f (i + 1) (r - q)
+sampleBinomialInv n p = invCMF (probability (binomial n p))
+
+sampleCategoricalInv
+  :: V.Vector Double
+  -> Double
+  -> Sampler Int
+sampleCategoricalInv ps = invCMF (ps V.!)
+
+sampleDiscreteInv
+  :: [Double]
+  -> Double
+  -> Sampler Int
+sampleDiscreteInv ps = invCMF (ps !!)
+
+samplePoissonInv
+  :: Double       -- ^ rate λ
+  -> Double       -- ^ r
+  -> Sampler Int
+samplePoissonInv λ = invCMF (probability (poisson λ))
