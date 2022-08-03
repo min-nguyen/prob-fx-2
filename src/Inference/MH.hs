@@ -116,14 +116,14 @@ mhStep
   -> Sampler [((a, p), STrace)]
 mhStep prog tags accepter trace = do
   -- Get previous MH output
-  let mhCtx@(_, samples) = head trace
+  let mhCtx@(_, strace) = head trace
   -- Get possible addresses to propose new samples for
-  let sampleSites = if null tags then samples else filterTrace tags samples
+  let αs = Map.keys $ if null tags then strace else filterTrace tags strace
   -- Draw a proposal sample address
-  α_samp_ind <- sample $ UniformD 0 (Map.size sampleSites - 1)
-  let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
+  α_samp_idx <- sample $ UniformD 0 (length αs - 1)
+  let α_samp = αs !! α_samp_idx
   -- Run MH with proposal sample address to get an MHCtx using LPTrace as its probability type
-  mhCtx'_lp <- runMH samples α_samp prog
+  mhCtx'_lp <- runMH strace α_samp prog
   -- Compute acceptance ratio to see if we use the proposed mhCtx' (which is mhCtx'_lp with 'LPTrace' converted to some type 'p')
   (mhCtx', acceptance_ratio) <- accepter α_samp mhCtx mhCtx'_lp
   u <- sample (Uniform 0 1)
