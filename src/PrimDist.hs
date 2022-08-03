@@ -19,6 +19,7 @@ module PrimDist (
   , ErasedPrimDist(..)
   -- * Sampling
   , sample
+  , sampleInv
   , sampleBayes
   -- * Density
   , prob
