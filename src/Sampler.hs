@@ -60,6 +60,7 @@ import Statistics.Distribution.Beta ( betaDistr )
 import Statistics.Distribution.Gamma ( gammaDistr )
 import Statistics.Distribution.CauchyLorentz ( cauchyDistribution )
 import System.Random.MWC ( initialize )
+import Util
 
 -- | Sampler type, for running IO computations alongside a random number generator
 newtype Sampler a = Sampler {runSampler :: ReaderT MWC.GenIO IO a}
@@ -219,10 +220,15 @@ sampleBetaInv
 sampleBetaInv α β = invCDF (betaDistr α β)
 
 sampleDirichletInv
-  :: [Double]
-  -> Double
+  :: [Double]  -- ^ concentrations
+  -> Double    -- ^ r
   -> Sampler [Double]
-sampleDirichletInv = undefined
+sampleDirichletInv ps r = do
+  let rs = take (length ps) (linCongGen r)
+  xs <- mapM (\(a, r) -> sampleGammaInv a 1 r) (zip ps rs)
+  let s = sum xs
+  let ys = map (/ s) xs
+  return ys
 
 {- Discrete cases.
 -}

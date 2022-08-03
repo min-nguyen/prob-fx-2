@@ -57,7 +57,7 @@ instance Applicative (Prog es) where
   (Op fx k) <*> x = Op fx ((<*> x) . k)
 
 instance Monad (Prog es) where
-  return            = Val
+  return           = Val
   Val a >>= f      = f a
   Op fx k >>= f = Op fx (k >=> f)
 

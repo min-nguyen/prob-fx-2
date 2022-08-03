@@ -7,7 +7,8 @@ module Util (
   , safeTail
   , findIndexes
   , roundUp16
-  , uncurry3) where
+  , uncurry3
+  , linCongGen) where
 
 -- | Return @True@ for @1@ and otherwise @False@
 boolToInt :: Bool -> Int
@@ -38,4 +39,11 @@ roundUp16 n = n + (16 - (n `mod` 16))
 uncurry3 :: (a -> b -> c -> d) -> ((a, b, c) -> d)
 uncurry3 f (a, b, c) = f a b c
 
--- decShift :
+-- | Generate a list of doubles from a single double
+decShift :: Double -> Int
+decShift r = floor $ r * 1e16
+
+linCongGen :: Double -> [Double]
+linCongGen r =
+  let ns = iterate (\n -> ((6364136223846793005*n) + 1442695040888963407) `mod` 2147483647) (decShift r)
+  in  drop 1 $ map ((/2147483647) . fromIntegral) ns
