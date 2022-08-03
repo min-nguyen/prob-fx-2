@@ -34,6 +34,7 @@ library
                       Effects.Writer,
                       Inference.LW,
                       Inference.MH,
+                      Inference.MHInv,
                       Inference.SIM,
                       Inference.MB,
                       Env,

@@ -18,7 +18,7 @@ module Trace (
     STrace
   , InvSTrace
   , FromSTrace(..)
-  , filterSTrace
+  , filterTrace
   , traceSamples
   -- * Log-probability trace
   , LPTrace
@@ -38,10 +38,42 @@ import Prog ( Member, Prog(..), weaken, install )
 import PrimDist ( ErasedPrimDist(..), PrimVal, PrimDist, logProb, pattern PrimDistPrf )
 import Effects.State ( State, modify, handleState )
 
+{- | The type of generic traces, mapping addresses of probabilistic operations
+     to some data.
+-}
+type Trace a = Map Addr a
+
+-- | Retrieve the values for the specified observable variable names
+filterTrace ::
+  -- | observable variable names
+    [Tag]
+  -- | trace
+  -> Map Addr a
+  -- | filtered trace
+  -> Map Addr a
+filterTrace tags = Map.filterWithKey (\(tag, idx) _ -> tag `elem` tags)
+
+-- | Update a sample trace at an address
+updateTrace :: (Member (State (Map Addr v)) es) =>
+  -- | address of sample site
+     Addr
+  -- | primitive distribution at address
+  -- | sampled value
+  -> v
+  -> Prog es ()
+updateTrace α v = modify (Map.insert α v)
+
+
+{- | The type of inverse sample traces, mapping addresses of sample operations
+     to the random values between 0 and 1 passed to their inverse CDF functions.
+-}
+type InvSTrace = Trace Double
+
+
 {- | The type of sample traces, mapping addresses of sample operations
      to their primitive distributions and sampled values.
 -}
-type STrace = Map Addr (ErasedPrimDist, OpenSum PrimVal)
+type STrace = Trace (ErasedPrimDist, OpenSum PrimVal)
 
 -- | For converting sample traces to model environments
 class FromSTrace a where
@@ -59,57 +91,21 @@ instance (UniqueVar x env ~ 'True, KnownSymbol x, Eq a, OpenSum.Member a PrimVal
             . Map.toList
             . Map.filterWithKey (\(tag, idx) _ -> tag == varToStr x)
 
--- | Retrieve the sampled values for the specified observable variable names
-filterSTrace ::
-  -- | observable variable names
-    [Tag]
-  -- | sample trace
-  -> STrace
-  -- | filtered sample trace
-  -> STrace
-filterSTrace tags = Map.filterWithKey (\(tag, idx) _ -> tag `elem` tags)
-
--- | Update a sample trace at an address
-updateSTrace :: (Show x, Member (State STrace) es, OpenSum.Member x PrimVal) =>
-  -- | address of sample site
-     Addr
-  -- | primitive distribution at address
-  -> PrimDist x
-  -- | sampled value
-  -> x
-  -> Prog es ()
-updateSTrace α d x = modify (Map.insert α (ErasedPrimDist d, OpenSum.inj x) :: STrace -> STrace)
-
 -- | Insert stateful operations for recording the sampled values at each @Sample@ operation
 traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, STrace)
 traceSamples = handleState Map.empty . storeSamples
   where storeSamples :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
         storeSamples = install pure
           (\x tx k -> case tx of
-              Sample (PrimDistPrf d) α -> do updateSTrace α d x
+              Sample (PrimDistPrf d) α -> do updateTrace α (ErasedPrimDist d, OpenSum.inj x :: OpenSum PrimVal)
                                              k x
           )
 
-{- | The type of inverse sample traces, mapping addresses of sample operations
-     to the random values between 0 and 1 passed to their inverse CDF functions.
--}
-type InvSTrace = Map Addr Double
 
 {- | The type of log-probability traces, mapping addresses of sample/observe operations
      to their log probabilities.
 -}
-type LPTrace = Map Addr LogP
-
--- | Compute and update a log-probability trace at an address
-updateLPTrace :: (Member (State LPTrace) es) =>
-  -- | address of sample/observe site
-    Addr
-  -- | primitive distribution at address
-  -> PrimDist x
-  -- | sampled or observed value
-  -> x
-  -> Prog es ()
-updateLPTrace α d x  = modify (Map.insert α (PrimDist.logProb d x) :: LPTrace -> LPTrace)
+type LPTrace = Trace LogP
 
 -- | Insert stateful operations for recording the log-probabilities at each @Sample@ or @Observe@ operation
 traceLogProbs :: (Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)
@@ -119,8 +115,7 @@ traceLogProbs = handleState Map.empty . storeLPs
         storeLPs (Op u k) = do
           case u of
             SampPrj d α
-              -> Op (weaken u) (\x -> updateLPTrace α d x >>
-                                      storeLPs (k x))
+              -> Op (weaken u) (\x -> updateTrace α (PrimDist.logProb d x) >> storeLPs (k x))
             ObsPrj d y α
-              -> Op (weaken u) (\x -> updateLPTrace α d x >> storeLPs (k x))
+              -> Op (weaken u) (\x -> updateTrace α (PrimDist.logProb d x) >> storeLPs (k x))
             _ -> Op (weaken u) (storeLPs . k)

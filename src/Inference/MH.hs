@@ -37,7 +37,7 @@ import Effects.Lift ( handleLift, Lift, lift )
 import Effects.ObsReader ( ObsReader )
 import LogP
 import Env ( Env, ContainsVars(..), Vars )
-import Inference.SIM (handleObs)
+import Inference.SIM as SIM (handleObs)
 import Model ( Model, handleCore )
 import OpenSum (OpenSum(..))
 import PrimDist
@@ -54,7 +54,7 @@ import Sampler ( Sampler, liftIO )
 import Trace
     ( traceLogProbs,
       traceSamples,
-      filterSTrace,
+      filterTrace,
       LPTrace,
       FromSTrace(..),
       STrace )
@@ -93,7 +93,7 @@ mhInternal
    -> STrace
    -- | tags indicating sample sites of interest
    -> [Tag]
-   -- | [(accepted outputs, samples), logps)]
+   -- | [(accepted outputs, logps), samples)]
    -> Sampler [((a, LPTrace), STrace)]
 mhInternal n prog strace_0 tags = do
   -- Perform initial run of mh
@@ -118,7 +118,7 @@ mhStep prog tags accepter trace = do
   -- Get previous MH output
   let mhCtx@(_, samples) = head trace
   -- Get possible addresses to propose new samples for
-  let sampleSites = if null tags then samples else filterSTrace tags samples
+  let sampleSites = if null tags then samples else filterTrace tags samples
   -- Draw a proposal sample address
   α_samp_ind <- sample $ UniformD 0 (Map.size sampleSites - 1)
   let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
@@ -138,9 +138,9 @@ runMH ::
   -- | sample address of interest
   -> Addr
   -> Prog [Observe, Sample, Lift Sampler] a
-  -- | ((model output, sample trace), log-probability trace)
+  -- | ((model output, log-probability trace), sample trace)
   -> Sampler ((a, LPTrace), STrace)
-runMH strace α_samp = handleLift . handleSamp strace α_samp . handleObs . traceSamples . traceLogProbs
+runMH strace α_samp = handleLift . handleSamp strace α_samp . SIM.handleObs . traceSamples . traceLogProbs
 
 -- | Handler for @Sample@ that selectively reuses old samples or draws new ones
 handleSamp ::
@@ -197,7 +197,7 @@ type Accept p a =
 
 -- | An acceptance mechanism for MH
 acceptMH :: Accept LPTrace a
-acceptMH x0 ((_, lptrace ), strace) ((a, lptrace'),  strace') = do
+acceptMH x0 ((_, lptrace), strace) ((a, lptrace'),  strace') = do
   let dom_logα = log (fromIntegral $ Map.size strace) - log (fromIntegral $ Map.size strace')
       sampled  = Set.singleton x0 `Set.union` (Map.keysSet strace \\ Map.keysSet strace')
       sampled' = Set.singleton x0 `Set.union` (Map.keysSet strace' \\ Map.keysSet strace)
