@@ -16,33 +16,33 @@ import Effects.Lift
 import qualified Inference.SIM as SIM
 import Sampler
 
--- | Perform one iteration of MH by drawing a new sample and then rejecting or accepting it.
-mhStep
-  :: Prog [Observe, Sample, Lift Sampler] a
-  -- | tags indicating sample sites of interest
-  -> [Tag]
-  -- | a mechanism for accepting proposals
-  -> Accept p a
-  -- | trace of previous MH results
-  -> [((a, p), InvSTrace)]
-  -- | updated trace of MH results
-  -> Sampler [((a, p), InvSTrace)]
-mhStep prog tags accepter trace = do
-  -- Get previous MH output
-  let mhCtx@(_, samples) = head trace
-  -- Get possible addresses to propose new samples for
-  let sampleSites = if Prelude.null tags then samples else filterTrace tags samples
-  -- Draw a proposal sample address
-  α_samp_ind <- sample $ UniformD 0 (Map.size sampleSites - 1)
-  let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
-  -- Run MH with proposal sample address to get an MHCtx using LPTrace as its probability type
-  mhCtx'_lp <- runMH samples prog
-  -- Compute acceptance ratio to see if we use the proposed mhCtx' (which is mhCtx'_lp with 'LPTrace' converted to some type 'p')
-  (mhCtx', acceptance_ratio) <- accepter α_samp mhCtx mhCtx'_lp
-  u <- sample (Uniform 0 1)
-  if u < acceptance_ratio
-    then do return (mhCtx':trace)
-    else do return trace
+-- -- | Perform one iteration of MH by drawing a new sample and then rejecting or accepting it.
+-- mhStep
+--   :: Prog [Observe, Sample, Lift Sampler] a
+--   -- | tags indicating sample sites of interest
+--   -> [Tag]
+--   -- | a mechanism for accepting proposals
+--   -> Accept p a
+--   -- | trace of previous MH results
+--   -> [((a, p), InvSTrace)]
+--   -- | updated trace of MH results
+--   -> Sampler [((a, p), InvSTrace)]
+-- mhStep prog tags accepter trace = do
+--   -- Get previous MH output
+--   let mhCtx@(_, strace) = head trace
+--   -- Get possible addresses to propose new samples for
+--   let sampleSites = Map.keys (if Prelude.null tags then strace else filterTrace tags strace)
+--   -- Draw a proposal sample address
+--   α_samp_ind <- sample $ UniformD 0 (length sampleSites - 1)
+--   let (α_samp, _) = sampleSites !! α_samp_ind
+--   -- Run MH with proposal sample address to get an MHCtx using LPTrace as its probability type
+--   mhCtx'_lp <- runMH samples prog
+--   -- Compute acceptance ratio to see if we use the proposed mhCtx' (which is mhCtx'_lp with 'LPTrace' converted to some type 'p')
+--   (mhCtx', acceptance_ratio) <- accepter α_samp mhCtx mhCtx'_lp
+--   u <- sample (Uniform 0 1)
+--   if u < acceptance_ratio
+--     then do return (mhCtx':trace)
+--     else do return trace
 
 -- | Handler for one iteration of MH
 runMH ::
