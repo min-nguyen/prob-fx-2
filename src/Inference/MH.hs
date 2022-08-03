@@ -19,6 +19,7 @@ module Inference.MH
     -- * Inference handlers
     , runMH
     , handleSamp
+    , handleObs
     -- * Auxiliary functions and definitions
     , lookupSample
     , MHCtx
@@ -81,7 +82,7 @@ mh n model env obsvars  = do
   -- Run MH for n iterations
   mhTrace <- mhInternal n prog Map.empty tags
   -- Convert each iteration's sample trace to a model environment
-  pure (map (fromSTrace . snd . fst) mhTrace)
+  pure (map (fromSTrace . snd) mhTrace)
 
 -- | Perform MH on a probabilistic program
 mhInternal
@@ -93,7 +94,7 @@ mhInternal
    -- | tags indicating sample sites of interest
    -> [Tag]
    -- | [(accepted outputs, samples), logps)]
-   -> Sampler [((a, STrace), LPTrace)]
+   -> Sampler [((a, LPTrace), STrace)]
 mhInternal n prog strace_0 tags = do
   -- Perform initial run of mh
   let α_0 = ("", 0)
@@ -110,12 +111,12 @@ mhStep
   -- | a mechanism for accepting proposals
   -> Accept p a
   -- | trace of previous MH results
-  -> [((a, STrace), p)]
+  -> [((a, p), STrace)]
   -- | updated trace of MH results
-  -> Sampler [((a, STrace), p)]
+  -> Sampler [((a, p), STrace)]
 mhStep prog tags accepter trace = do
   -- Get previous MH output
-  let mhCtx@((_, samples), _) = head trace
+  let mhCtx@(_, samples) = head trace
   -- Get possible addresses to propose new samples for
   let sampleSites = if null tags then samples else filterSTrace tags samples
   -- Draw a proposal sample address
@@ -138,8 +139,8 @@ runMH ::
   -> Addr
   -> Prog [Observe, Sample, Lift Sampler] a
   -- | ((model output, sample trace), log-probability trace)
-  -> Sampler ((a, STrace), LPTrace)
-runMH strace α_samp = handleLift . handleSamp strace α_samp . handleObs . traceLogProbs . traceSamples
+  -> Sampler ((a, LPTrace), STrace)
+runMH strace α_samp = handleLift . handleSamp strace α_samp . handleObs . traceSamples . traceLogProbs
 
 -- | Handler for @Sample@ that selectively reuses old samples or draws new ones
 handleSamp ::
@@ -179,7 +180,7 @@ lookupSample α d strace   = do
 {- | The result of a single MH iteration, where @a@ is the type of model output and
      @p@ is some representation of probability.
 -}
-type MHCtx p a = ((a, STrace), p)
+type MHCtx p a = ((a, p), STrace)
 
 {- | An abstract mechanism for computing an acceptance probability, where @a@ is the
      type of model output and @p@ is some representation of probability.
@@ -196,7 +197,7 @@ type Accept p a =
 
 -- | An acceptance mechanism for MH
 acceptMH :: Accept LPTrace a
-acceptMH x0 ((_, strace), lptrace) ((a, strace'), lptrace') = do
+acceptMH x0 ((_, lptrace ), strace) ((a, lptrace'),  strace') = do
   let dom_logα = log (fromIntegral $ Map.size strace) - log (fromIntegral $ Map.size strace')
       sampled  = Set.singleton x0 `Set.union` (Map.keysSet strace \\ Map.keysSet strace')
       sampled' = Set.singleton x0 `Set.union` (Map.keysSet strace' \\ Map.keysSet strace)
@@ -204,4 +205,4 @@ acceptMH x0 ((_, strace), lptrace) ((a, strace'), lptrace') = do
                          0 (Map.keysSet lptrace \\ sampled)
       logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
                          0 (Map.keysSet lptrace' \\ sampled')
-  pure (((a, strace'), lptrace'), (exp . unLogP) (dom_logα + logα' - logα))
+  pure (((a, lptrace'), strace'), (exp . unLogP) (dom_logα + logα' - logα))
