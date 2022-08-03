@@ -226,8 +226,7 @@ sampleDirichletInv
 sampleDirichletInv ps r = do
   let rs = take (length ps) (linCongGen r)
   xs <- mapM (\(a, r) -> sampleGammaInv a 1 r) (zip ps rs)
-  let s = sum xs
-  let ys = map (/ s) xs
+  let ys = map (/sum xs) xs
   return ys
 
 {- Discrete cases.

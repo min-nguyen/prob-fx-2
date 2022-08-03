@@ -16,6 +16,7 @@
 module Trace (
   -- * Sample trace
     STrace
+  , STraceInv
   , FromSTrace(..)
   , filterSTrace
   , traceSamples
