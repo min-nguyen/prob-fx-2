@@ -18,6 +18,7 @@ import LogP
 import PrimDist
 import Model
 import Effects.ObsReader
+import OpenSum
 import Env
 import Effects.Dist
 import Effects.Lift
@@ -37,7 +38,7 @@ mh :: forall env es a xs. (FromSTrace env, env `ContainsVars` xs)
      to not be resampled unless necessary. -}
   -> Vars xs
   -- | output model environments
-  -> Sampler [a]
+  -> Sampler [Env env]
 mh n model env obsvars  = do
   -- Handle model to probabilistic program
   let prog = handleCore env model
@@ -46,7 +47,7 @@ mh n model env obsvars  = do
   -- Run MH for n iterations
   mhTrace <- mhInternal n prog Map.empty tags
   -- Convert each iteration's sample trace to a model environment
-  pure (map (fst . fst) mhTrace)
+  pure (map (fromSTrace . snd . fst) mhTrace)
 
 -- | Perform MH on a probabilistic program
 mhInternal
@@ -58,7 +59,7 @@ mhInternal
    -- | tags indicating sample sites of interest
    -> [Tag]
    -- | [(accepted outputs, logps), samples)]
-   -> Sampler [((a, LPTrace), InvSTrace)]
+   -> Sampler [(((a, LPTrace), STrace), InvSTrace)]
 mhInternal n prog strace_0 tags = do
   -- Perform initial run of mh
   mhCtx_0 <- runMH strace_0 prog
@@ -74,21 +75,21 @@ mhStep
   -- | a mechanism for accepting proposals
   -> Accept p a
   -- | trace of previous MH results
-  -> [((a, p), InvSTrace)]
+  -> [(((a, p), STrace), InvSTrace)]
   -- | updated trace of MH results
-  -> Sampler [((a, p), InvSTrace)]
+  -> Sampler [(((a, p), STrace), InvSTrace)]
 mhStep prog tags accepter trace = do
   -- Get previous MH output
-  let mhCtx@(_, strace) = head trace
+  let mhCtx@(_, inv_strace) = head trace
   -- Get possible addresses to propose new samples for
-  let αs = Map.keys (if Prelude.null tags then strace else filterTrace tags strace)
+  let αs = Map.keys (if Prelude.null tags then inv_strace else filterTrace tags inv_strace)
   -- Draw a proposal sample address
   α_samp_idx <- sample $ UniformD 0 (length αs - 1)
   let α_samp = αs !! α_samp_idx
   -- Draw a new random value
   x0 <- sampleRandom
   -- Run MH with proposal sample address to get an MHCtx using LPTrace as its probability type
-  mhCtx'_lp <- runMH (Map.insert α_samp x0 strace) prog
+  mhCtx'_lp <- runMH (Map.insert α_samp x0 inv_strace) prog
   -- Compute acceptance ratio to see if we use the proposed mhCtx'
   -- (which is mhCtx'_lp with 'LPTrace' converted to some type 'p')
   (mhCtx', acceptance_ratio) <- accepter α_samp mhCtx mhCtx'_lp
@@ -104,31 +105,31 @@ runMH ::
   -- | sample address of interest
   -> Prog [Observe, Sample, Lift Sampler] a
   -- | ((model output, sample trace), log-probability trace)
-  -> Sampler ((a, LPTrace), InvSTrace)
-runMH strace  = handleLift . handleSamp strace . SIM.handleObs . traceLogProbs
+  -> Sampler (((a, LPTrace), STrace), InvSTrace)
+runMH inv_strace  = handleLift . handleSamp inv_strace . SIM.handleObs . traceSamples . traceLogProbs
 
 handleSamp ::
   -- | Sample trace
      InvSTrace
   -> Prog  [Sample, Lift Sampler] a
   -> Prog '[Lift Sampler] (a, InvSTrace)
-handleSamp strace (Val x)   = pure (x, strace)
-handleSamp strace (Op op k) = case discharge op of
+handleSamp inv_strace (Val x)   = pure (x, inv_strace)
+handleSamp inv_strace (Op op k) = case discharge op of
     Right (Sample (PrimDistPrf d) α) ->
-      case Map.lookup α strace of
+      case Map.lookup α inv_strace of
           Nothing -> do r <- lift sampleRandom
                         y <- lift (sampleInv d r)
-                        k' (Map.insert α r strace) y
+                        k' (Map.insert α r inv_strace) y
           Just r  -> do y <- lift (sampleInv d r)
-                        k' strace y
-    Left op' -> Op op' (k' strace)
+                        k' inv_strace  y
+    Left op' -> Op op' (k' inv_strace )
 
-  where k' strace' = handleSamp strace' . k
+  where k' inv_strace' = handleSamp inv_strace' . k
 
 {- | The result of a single MH iteration, where @a@ is the type of model output and
      @p@ is some representation of probability.
 -}
-type MHCtx p a = ((a, p), InvSTrace)
+type MHCtx p a = (((a, p), STrace), InvSTrace)
 
 {- | An abstract mechanism for computing an acceptance probability, where @a@ is the
      type of model output and @p@ is some representation of probability.
@@ -145,12 +146,12 @@ type Accept p a =
 
 -- | An acceptance mechanism for MH
 acceptMH :: Accept LPTrace a
-acceptMH x0 ((_, lptrace ), strace) ((a, lptrace'),  strace') = do
-  let dom_logα = log (fromIntegral $ Map.size strace) - log (fromIntegral $ Map.size strace')
-      sampled  = Set.singleton x0 `Set.union` (Map.keysSet strace \\ Map.keysSet strace')
-      sampled' = Set.singleton x0 `Set.union` (Map.keysSet strace' \\ Map.keysSet strace)
+acceptMH x0 (((_, lptrace ), strace), inv_strace) (((a, lptrace'), strace'), inv_strace') = do
+  let dom_logα = log (fromIntegral $ Map.size inv_strace) - log (fromIntegral $ Map.size inv_strace')
+      sampled  = Set.singleton x0 `Set.union` (Map.keysSet inv_strace \\ Map.keysSet inv_strace')
+      sampled' = Set.singleton x0 `Set.union` (Map.keysSet inv_strace' \\ Map.keysSet inv_strace)
       logα     = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace))
                          0 (Map.keysSet lptrace \\ sampled)
       logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
                          0 (Map.keysSet lptrace' \\ sampled')
-  pure (((a, lptrace'), strace'), (exp . unLogP) (dom_logα + logα' - logα))
+  pure ((((a, lptrace'), strace'), inv_strace'), (exp . unLogP) (dom_logα + logα' - logα))

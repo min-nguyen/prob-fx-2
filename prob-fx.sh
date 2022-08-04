@@ -6,18 +6,18 @@ function exists_in_list() {
     [[ "$LIST" =~ ($DELIMITER|^)$VALUE($DELIMITER|$) ]]
 }
 
-possible_arguments="simLinRegrOnce, lwLinRegrOnce, mhLinRegrOnce, simLinRegr, lwLinRegr, mhLinRegr, simSIR, simSIRS, simSIRSV, mhSIR, simLogRegrOnce, lwLogRegrOnce, mhLogRegrOnce, simLogRegr, lwLogRegr, mhLogRegr, simHMM, mhHMM, simLDA, mhPredLDA, simRadon, mhRadon,  mhPredRadon, mhSchool, simGMM, mhGMM"
+# possible_arguments="simLinRegrOnce, lwLinRegrOnce, mhLinRegrOnce, simLinRegr, lwLinRegr, mhLinRegr, simSIR, simSIRS, simSIRSV, mhSIR, simLogRegrOnce, lwLogRegrOnce, mhLogRegrOnce, simLogRegr, lwLogRegr, mhLogRegr, simHMM, mhHMM, simLDA, mhPredLDA, simRadon, mhRadon,  mhPredRadon, mhSchool, simGMM, mhGMM"
 
 if [[ $# -eq 0 ]] || [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
   echo "Usage: ./`basename $0` <arg>"
-  echo "Arg options: [$possible_arguments]"
+  # echo "Arg options: [$possible_arguments]"
 elif exists_in_list "$possible_arguments" ", " $1; then
   cabal run prob-fx $1
   python3 graph.py $1
 else
   echo "Argument '$1' unrecognized. "
   echo "Usage: ./`basename $0` <arg>"
-  echo "Arg options: [$possible_arguments]"
+  # echo "Arg options: [$possible_arguments]"
   exit
 fi
 
