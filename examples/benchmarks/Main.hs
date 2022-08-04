@@ -118,6 +118,14 @@ bench_MH args = do
     benchRow ("MH-HMM" ++ show fixed_hmm_datasize, flip mhHMM fixed_hmm_datasize) row_header
     benchRow ("MH-LDA" ++ show fixed_lda_datasize, flip mhPredLDA fixed_lda_datasize) row_header
 
+bench_MHInv :: [Int] -> IO ()
+bench_MHInv args = do
+    let row_header = ("Number of MHInv steps", args)
+    writeRow fixed_output_file row_header
+    benchRow ("MHInv-LR" ++ show fixed_lr_datasize, flip mhInvLinRegr fixed_lr_datasize) row_header
+    benchRow ("MHInv-HMM" ++ show fixed_hmm_datasize, flip mhInvHMM fixed_hmm_datasize) row_header
+    benchRow ("MHInv-LDA" ++ show fixed_lda_datasize, flip mhInvPredLDA fixed_lda_datasize) row_header
+
 runBenchmarks :: IO ()
 runBenchmarks = do
   -- | Read input benchmark parameters
@@ -130,12 +138,13 @@ runBenchmarks = do
   -- | Run benchmark programs on their corresponding parameters
   case args of
         [lr, hmm, lda, sim, lw, mh] -> do
-          bench_LR lr
-          bench_HMM hmm
-          bench_LDA lda
-          bench_SIM sim
-          bench_LW lw
+          -- bench_LR lr
+          -- bench_HMM hmm
+          -- bench_LDA lda
+          -- bench_SIM sim
+          -- bench_LW lw
           bench_MH mh
+          bench_MHInv mh
         _   -> error "bad input file"
 
 main :: IO ()
