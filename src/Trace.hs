@@ -64,6 +64,25 @@ updateTrace :: (Member (State (Map Addr v)) es) =>
 updateTrace α v = modify (Map.insert α v)
 
 
+{- | The type of log-probability traces, mapping addresses of sample/observe operations
+     to their log probabilities.
+-}
+type LPTrace = Trace LogP
+
+-- | Insert stateful operations for recording the log-probabilities at each @Sample@ or @Observe@ operation
+traceLogProbs :: (Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)
+traceLogProbs = handleState Map.empty . storeLPs
+  where storeLPs :: (Member Sample es, Member Observe es) => Prog es a -> Prog (State LPTrace: es) a
+        storeLPs (Val x) = pure x
+        storeLPs (Op u k) = do
+          case u of
+            SampPrj d α
+              -> Op (weaken u) (\x -> updateTrace α (PrimDist.logProb d x) >> storeLPs (k x))
+            ObsPrj d y α
+              -> Op (weaken u) (\x -> updateTrace α (PrimDist.logProb d x) >> storeLPs (k x))
+            _ -> Op (weaken u) (storeLPs . k)
+
+
 {- | The type of inverse sample traces, mapping addresses of sample operations
      to the random values between 0 and 1 passed to their inverse CDF functions.
 -}
@@ -71,7 +90,10 @@ type InvSTrace = Trace Double
 
 
 {- | The type of sample traces, mapping addresses of sample operations
-     to their primitive distributions and sampled values.
+     to their primitive distributions and sampled values. This can be used
+     to record the sampled values for the exact addresses of all sampling
+     operations, regardless of whether or not they are associated with an
+     observable variable in a model environment.
 -}
 type STrace = Trace (ErasedPrimDist, OpenSum PrimVal)
 
@@ -100,22 +122,3 @@ traceSamples = handleState Map.empty . storeSamples
               Sample (PrimDistPrf d) α -> do updateTrace α (ErasedPrimDist d, OpenSum.inj x :: OpenSum PrimVal)
                                              k x
           )
-
-
-{- | The type of log-probability traces, mapping addresses of sample/observe operations
-     to their log probabilities.
--}
-type LPTrace = Trace LogP
-
--- | Insert stateful operations for recording the log-probabilities at each @Sample@ or @Observe@ operation
-traceLogProbs :: (Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)
-traceLogProbs = handleState Map.empty . storeLPs
-  where storeLPs :: (Member Sample es, Member Observe es) => Prog es a -> Prog (State LPTrace: es) a
-        storeLPs (Val x) = pure x
-        storeLPs (Op u k) = do
-          case u of
-            SampPrj d α
-              -> Op (weaken u) (\x -> updateTrace α (PrimDist.logProb d x) >> storeLPs (k x))
-            ObsPrj d y α
-              -> Op (weaken u) (\x -> updateTrace α (PrimDist.logProb d x) >> storeLPs (k x))
-            _ -> Op (weaken u) (storeLPs . k)
