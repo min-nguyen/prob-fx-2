@@ -1,8 +1,13 @@
 {-# LANGUAGE DataKinds #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Inference.MHInv where
 
+import Control.Monad
 import qualified Data.Map as Map
 import Data.Set ((\\))
 import qualified Data.Set as Set
@@ -11,38 +16,86 @@ import Prog
 import Trace
 import LogP
 import PrimDist
+import Model
+import Effects.ObsReader
+import Env
 import Effects.Dist
 import Effects.Lift
 import qualified Inference.SIM as SIM
 import Sampler
 
--- -- | Perform one iteration of MH by drawing a new sample and then rejecting or accepting it.
--- mhStep
---   :: Prog [Observe, Sample, Lift Sampler] a
---   -- | tags indicating sample sites of interest
---   -> [Tag]
---   -- | a mechanism for accepting proposals
---   -> Accept p a
---   -- | trace of previous MH results
---   -> [((a, p), InvSTrace)]
---   -- | updated trace of MH results
---   -> Sampler [((a, p), InvSTrace)]
--- mhStep prog tags accepter trace = do
---   -- Get previous MH output
---   let mhCtx@(_, strace) = head trace
---   -- Get possible addresses to propose new samples for
---   let sampleSites = Map.keys (if Prelude.null tags then strace else filterTrace tags strace)
---   -- Draw a proposal sample address
---   α_samp_ind <- sample $ UniformD 0 (length sampleSites - 1)
---   let (α_samp, _) = sampleSites !! α_samp_ind
---   -- Run MH with proposal sample address to get an MHCtx using LPTrace as its probability type
---   mhCtx'_lp <- runMH samples prog
---   -- Compute acceptance ratio to see if we use the proposed mhCtx' (which is mhCtx'_lp with 'LPTrace' converted to some type 'p')
---   (mhCtx', acceptance_ratio) <- accepter α_samp mhCtx mhCtx'_lp
---   u <- sample (Uniform 0 1)
---   if u < acceptance_ratio
---     then do return (mhCtx':trace)
---     else do return trace
+-- | Top-level wrapper for Metropolis-Hastings (MH) inference
+mh :: forall env es a xs. (FromSTrace env, env `ContainsVars` xs)
+  -- | number of MH iterations
+  => Int
+  -- | model
+  -> Model env [ObsReader env, Dist, Lift Sampler] a
+  -- | input model environment
+  -> Env env
+  -- | optional list of observable variable names (strings) to specify sample sites of interest
+  {- for example, for interest in sampling @#mu@, provide @#mu <#> vnil@ to cause other variables
+     to not be resampled unless necessary. -}
+  -> Vars xs
+  -- | output model environments
+  -> Sampler [a]
+mh n model env obsvars  = do
+  -- Handle model to probabilistic program
+  let prog = handleCore env model
+  -- Convert observable variables to strings
+      tags = varsToStrs @env obsvars
+  -- Run MH for n iterations
+  mhTrace <- mhInternal n prog Map.empty tags
+  -- Convert each iteration's sample trace to a model environment
+  pure (map (fst . fst) mhTrace)
+
+-- | Perform MH on a probabilistic program
+mhInternal
+   -- | number of MH iterations
+   :: Int
+   -> Prog [Observe, Sample, Lift Sampler] a
+   -- | initial sample trace
+   -> InvSTrace
+   -- | tags indicating sample sites of interest
+   -> [Tag]
+   -- | [(accepted outputs, logps), samples)]
+   -> Sampler [((a, LPTrace), InvSTrace)]
+mhInternal n prog strace_0 tags = do
+  -- Perform initial run of mh
+  mhCtx_0 <- runMH strace_0 prog
+  -- A function performing n mhSteps using initial mhCtx.
+  -- Note: most recent samples are at the front (head) of the trace
+  foldl (>=>) pure (replicate n (mhStep prog tags acceptMH)) [mhCtx_0]
+
+-- | Perform one iteration of MH by drawing a new sample and then rejecting or accepting it.
+mhStep
+  :: Prog [Observe, Sample, Lift Sampler] a
+  -- | tags indicating sample sites of interest
+  -> [Tag]
+  -- | a mechanism for accepting proposals
+  -> Accept p a
+  -- | trace of previous MH results
+  -> [((a, p), InvSTrace)]
+  -- | updated trace of MH results
+  -> Sampler [((a, p), InvSTrace)]
+mhStep prog tags accepter trace = do
+  -- Get previous MH output
+  let mhCtx@(_, strace) = head trace
+  -- Get possible addresses to propose new samples for
+  let αs = Map.keys (if Prelude.null tags then strace else filterTrace tags strace)
+  -- Draw a proposal sample address
+  α_samp_idx <- sample $ UniformD 0 (length αs - 1)
+  let α_samp = αs !! α_samp_idx
+  -- Draw a new random value
+  x0 <- sampleRandom
+  -- Run MH with proposal sample address to get an MHCtx using LPTrace as its probability type
+  mhCtx'_lp <- runMH (Map.insert α_samp x0 strace) prog
+  -- Compute acceptance ratio to see if we use the proposed mhCtx'
+  -- (which is mhCtx'_lp with 'LPTrace' converted to some type 'p')
+  (mhCtx', acceptance_ratio) <- accepter α_samp mhCtx mhCtx'_lp
+  u <- sample (Uniform 0 1)
+  if u < acceptance_ratio
+    then do return (mhCtx':trace)
+    else do return trace
 
 -- | Handler for one iteration of MH
 runMH ::
