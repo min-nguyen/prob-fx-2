@@ -31,19 +31,19 @@ import Sampler ( Sampler )
 import Trace ( traceSamples, STrace, FromSTrace(..) )
 
 -- | Top-level wrapper for Likelihood-Weighting (LW) inference
-lw :: FromSTrace env
+lw
   -- | number of LW iterations
-  => Int
+  :: Int
   -- | model
   -> Model env [ObsReader env, ObsWriter env, Dist, Lift Sampler] a
   -- | input model environment
   -> Env env
   -- | [(output model environment, likelihood-weighting)]
   -> Sampler [(Env env, Double)]
-lw n model env = do
-  let prog = handleCore env model
+lw n model env_in = do
+  let prog = handleCore env_in model
   lwTrace <- lwInternal n prog
-  pure $ map (\((_, strace), p) -> (fromSTrace strace, p)) lwTrace
+  pure $ map (\((_, env_out), p) -> (env_out, p)) lwTrace
 
 -- | Run LW n times
 lwInternal
@@ -51,15 +51,15 @@ lwInternal
   :: Int
   -> Prog [Observe, Sample, Lift Sampler] a
   -- | list of weighted model outputs and sample traces
-  -> Sampler [((a, STrace), Double)]
+  -> Sampler [(a, Double)]
 lwInternal n prog = replicateM n (runLW prog)
 
 -- | Handler for one iteration of LW
 runLW
   :: Prog [Observe, Sample, Lift Sampler] a
   -- | ((model output, sample trace), likelihood-weighting)
-  -> Sampler ((a, STrace), Double)
-runLW = handleLift . SIM.handleSamp . handleObs 0 . traceSamples
+  -> Sampler (a, Double)
+runLW = handleLift . SIM.handleSamp . handleObs 0
 
 -- | Handle each @Observe@ operation by computing and accumulating a log probability
 handleObs

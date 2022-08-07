@@ -318,7 +318,7 @@ mhSIRMB n_days = do
   𝜉s <- snd <$> simSIRMB n_days
   let sir_0      = Popl {s = 762, i = 1, r = 0}
       env_in = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> enil
-  (_, envs_out) <- unzip <$> Bayes.sampleIO (Bayes.prior $ Bayes.mh 100 (mbayesSIR 100 sir_0 env_in))
-  let ρs = concatMap (get #ρ) envs_out
-      βs = concatMap (get #β) envs_out
+  (_, env_outs) <- unzip <$> Bayes.sampleIO (Bayes.prior $ Bayes.mh 100 (mbayesSIR 100 sir_0 env_in))
+  let ρs = concatMap (get #ρ) env_outs
+      βs = concatMap (get #β) env_outs
   pure (ρs, βs)
