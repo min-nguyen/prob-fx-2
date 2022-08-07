@@ -89,10 +89,11 @@ data Env (env :: [Assign Symbol *]) where
 -- | Assign or associate a variable @x@ with a value of type @a@
 data Assign x a = x := a
 
--- | Empty model environment
+-- | Nil environment
 enil :: Env '[]
 enil = ENil
 
+-- | Construct the empty version of a given environment
 emptyEnv :: Env env -> Env env
 emptyEnv (ECons _ env) = ECons [] (emptyEnv env)
 emptyEnv ENil = ENil

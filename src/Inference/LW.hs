@@ -18,7 +18,7 @@ module Inference.LW
 import Control.Monad ( replicateM )
 import Effects.Dist ( Sample, Observe(..), Dist )
 import Effects.Lift ( handleLift, Lift )
-import Effects.ObsReader
+import Effects.ObsRW
 import Effects.State ( modify, handleState, State )
 import Env ( Env )
 import LogP
@@ -35,7 +35,7 @@ lw
   -- | number of LW iterations
   :: Int
   -- | model
-  -> Model env [ObsReader env, ObsWriter env, Dist, Lift Sampler] a
+  -> Model env [ObsRW env, Dist, Lift Sampler] a
   -- | input model environment
   -> Env env
   -- | [(output model environment, likelihood-weighting)]

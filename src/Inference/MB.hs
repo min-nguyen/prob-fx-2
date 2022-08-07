@@ -18,7 +18,7 @@ module Inference.MB
 import Control.Monad.Bayes.Class as MB ( MonadCond(..), MonadInfer, MonadSample )
 import Effects.Dist ( Sample(..), Observe(..), Dist(getObs, getPrimDist), handleDist )
 import Effects.Lift ( handleLift, Lift, lift )
-import Effects.ObsReader
+import Effects.ObsRW
 import Env ( Env )
 import Model (Model(..), handleCore)
 import Numeric.Log ( Log(Exp) )
@@ -31,7 +31,7 @@ import Trace ( traceSamples, FromSTrace(..) )
 -- | Translate a ProbFX model under a given model environment to a MonadBayes program
 toMBayes :: MonadInfer m
   -- | model
-  => Model env [ObsReader env, ObsWriter env,  Dist, Lift m] a
+  => Model env [ObsRW env, Dist, Lift m] a
   -- | input model environment
   -> Env env
   -- | a computation @m@ in MonadBayes that returns a result and an output model environment

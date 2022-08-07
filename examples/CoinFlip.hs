@@ -11,7 +11,7 @@
 module CoinFlip where
 
 import Prog ( call )
-import Effects.ObsReader ( ObsReader(OAsk) )
+import Effects.ObsRW ( ObsRW(OAsk) )
 import Model ( Model(Model), bernoulli, uniform )
 import PrimDist ( PrimDist(Bernoulli, Uniform) )
 import Effects.Dist ( Dist(Dist) )

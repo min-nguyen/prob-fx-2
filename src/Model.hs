@@ -49,7 +49,7 @@ module Model (
 import Control.Monad ( ap )
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
 import Effects.Dist ( handleDist, Dist(..), Observe, Sample )
-import Effects.ObsReader
+import Effects.ObsRW
 import Env
 import OpenSum ( OpenSum )
 import PrimDist ( PrimVal, PrimDist(..) )
@@ -66,12 +66,11 @@ import Debug.Trace
     3) an output type @a@ of values that the model generates.
 
     A model initially consists of (at least) two effects: @Dist@ for calling primitive distributions
-    and @ObsReader env@ for reading from @env@.
+    and @ObsRW env@ for reading from @env@.
 -}
 newtype Model env es a =
-  Model { runModel :: ( Member Dist es            -- models can call primitive distributions
-                      , Member (ObsReader env) es -- models can read observed values from their environment
-                      , Member (ObsWriter env) es
+  Model { runModel :: ( Member Dist es        -- models can call primitive distributions
+                      , Member (ObsRW env) es -- models can read observed values from their environment
                       )
                    => Prog es a }
   deriving Functor
@@ -89,8 +88,8 @@ instance Monad (Model env es) where
 {- | The initial handler for models, specialising a model under a certain environment
      to produce a probabilistic program consisting of @Sample@ and @Observe@ operations.
 -}
-handleCore :: Env env -> Model env (ObsReader env : ObsWriter env : Dist : es) a -> Prog (Observe : Sample : es) (a, Env env)
-handleCore env_in m = (handleDist . handleObsWrite env_in . handleObsRead env_in) (runModel m)
+handleCore :: Env env -> Model env (ObsRW env : Dist : es) a -> Prog (Observe : Sample : es) (a, Env env)
+handleCore env_in m = (handleDist . handleObsRW env_in) (runModel m)
 
 {- $Smart-Constructors
 
