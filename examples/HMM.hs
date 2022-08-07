@@ -202,7 +202,7 @@ hmmW :: ( Observable env "y" Int
 hmmW n x = do
   trans_p <- uniform 0 1 #trans_p
   obs_p   <- uniform 0 1 #obs_p
-  foldr (<=<) pure  (replicate n (hmmNodeW trans_p obs_p)) x
+  foldl (>=>) pure  (replicate n (hmmNodeW trans_p obs_p)) x
 
 -- | Simulate from a HMM
 simHMMw

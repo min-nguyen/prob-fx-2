@@ -18,7 +18,7 @@ import Trace
 import LogP
 import PrimDist
 import Model
-import Effects.ObsReader
+import Effects.ObsRW
 import OpenSum
 import Env
 import Effects.Dist
@@ -31,7 +31,7 @@ mh :: forall env es a xs. (env `ContainsVars` xs)
   -- | number of MH iterations
   => Int
   -- | model
-  -> Model env [ObsReader env, ObsWriter env, Dist, Lift Sampler] a
+  -> Model env [ObsRW env, Dist, Lift Sampler] a
   -- | input model environment
   -> Env env
   -- | optional list of observable variable names (strings) to specify sample sites of interest

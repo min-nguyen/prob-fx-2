@@ -21,7 +21,7 @@ module Inference.SIM
 
 import Effects.Dist ( Sample(..), Observe(..), Dist )
 import Effects.Lift ( handleLift, Lift, lift )
-import Effects.ObsReader
+import Effects.ObsRW
 import Env ( Env )
 import Model ( handleCore, Model )
 import OpenSum (OpenSum)
@@ -34,7 +34,7 @@ import Unsafe.Coerce (unsafeCoerce)
 -- | Simulate from a model under a given model environment
 simulate
   -- | model
-  :: Model env [ObsReader env, ObsWriter env, Dist, Lift Sampler] a
+  :: Model env [ObsRW env, Dist, Lift Sampler] a
   -- | input model environment
   -> Env env
   -- | (model output, output environment)
