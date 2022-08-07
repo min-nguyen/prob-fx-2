@@ -74,7 +74,7 @@ handleObsWrite ::
 handleObsWrite env_out (Val x) = return (x, env_out)
 handleObsWrite env_out (Op op k) = case discharge op of
   Right (OTell x v) ->
-    let vs       = get x env_out
-        env_out'     = set x (vs ++ [v]) env_out
-    in  trace ("Writing " ++ show (vs ++ [v])) $ handleObsWrite  env_out' (k ())
+    let vs        = get x env_out
+        env_out'  = set x (vs ++ [v]) env_out
+    in  handleObsWrite env_out' (k ())
   Left op' -> Op op' (handleObsWrite env_out . k)

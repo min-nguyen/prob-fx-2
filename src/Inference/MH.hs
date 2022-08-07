@@ -48,7 +48,7 @@ mh n model env obsvars  = do
   -- Run MH for n iterations
   mhTrace <- mhInternal n prog Map.empty tags
   -- Convert each iteration's sample trace to a model environment
-  pure (map (fromSTrace . snd . fst) mhTrace)
+  pure (map (snd . fst . fst . fst) mhTrace)
 
 -- | Perform MH on a probabilistic program
 mhInternal
@@ -95,6 +95,7 @@ mhStep prog tags accepter trace = do
   -- (which is mhCtx'_lp with 'LPTrace' converted to some type 'p')
   (mhCtx', acceptance_ratio) <- accepter α_samp mhCtx mhCtx'_lp
   u <- sample (Uniform 0 1)
+  liftIO (putStrLn $ "accept : " ++ show acceptance_ratio)
   if u < acceptance_ratio
     then do return (mhCtx':trace)
     else do return trace
