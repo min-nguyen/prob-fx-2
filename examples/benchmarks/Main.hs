@@ -65,28 +65,25 @@ bench_LR :: [Int] -> IO ()
 bench_LR args = do
     let row_header = ("Dataset size", args)
     writeRow fixed_output_file row_header
-    -- benchRow ("LR-SIM" ++ show fixed_simulations, simLinRegr) row_header
-    -- benchRow ("LR-LW" ++ show fixed_lw_steps, lwLinRegr fixed_lw_steps) row_header
+    benchRow ("LR-SIM" ++ show fixed_simulations, simLinRegr) row_header
+    benchRow ("LR-LW" ++ show fixed_lw_steps, lwLinRegr fixed_lw_steps) row_header
     benchRow ("LR-MH" ++ show fixed_mh_steps, mhLinRegr fixed_mh_steps) row_header
-    benchRow ("LR-MH" ++ show fixed_mh_steps, mhInvLinRegr fixed_mh_steps) row_header
 
 bench_HMM :: [Int] -> IO ()
 bench_HMM args = do
     let row_header = ("Dataset size", args)
     writeRow fixed_output_file row_header
-    -- benchRow ("HMM-SIM" ++ show fixed_simulations, simHMM) row_header
-    -- benchRow ("HMM-LW" ++ show fixed_lw_steps, lwHMM fixed_lw_steps) row_header
+    benchRow ("HMM-SIM" ++ show fixed_simulations, simHMM) row_header
+    benchRow ("HMM-LW" ++ show fixed_lw_steps, lwHMM fixed_lw_steps) row_header
     benchRow ("HMM-MH" ++ show fixed_mh_steps, mhHMM fixed_mh_steps) row_header
-    benchRow ("HMM-MHInv" ++ show fixed_mh_steps, mhInvHMM fixed_mh_steps) row_header
 
 bench_LDA :: [Int] -> IO ()
 bench_LDA args = do
     let row_header = ("Dataset size", args)
     writeRow fixed_output_file row_header
-    -- benchRow ("LDA-SIM" ++ show fixed_simulations, simLDA) row_header
-    -- benchRow ("LDA-LW" ++ show fixed_lw_steps, lwLDA fixed_lw_steps) row_header
+    benchRow ("LDA-SIM" ++ show fixed_simulations, simLDA) row_header
+    benchRow ("LDA-LW" ++ show fixed_lw_steps, lwLDA fixed_lw_steps) row_header
     benchRow ("LDA-MH" ++ show fixed_mh_steps, mhPredLDA fixed_mh_steps) row_header
-    benchRow ("LDA-MHInv" ++ show fixed_mh_steps, mhInvPredLDA fixed_mh_steps) row_header
 
 {- | Varying over inference parameters
 -}
@@ -121,14 +118,6 @@ bench_MH args = do
     benchRow ("MH-HMM" ++ show fixed_hmm_datasize, flip mhHMM fixed_hmm_datasize) row_header
     benchRow ("MH-LDA" ++ show fixed_lda_datasize, flip mhPredLDA fixed_lda_datasize) row_header
 
-bench_MHInv :: [Int] -> IO ()
-bench_MHInv args = do
-    let row_header = ("Number of MHInv steps", args)
-    writeRow fixed_output_file row_header
-    benchRow ("MHInv-LR" ++ show fixed_lr_datasize, flip mhInvLinRegr fixed_lr_datasize) row_header
-    benchRow ("MHInv-HMM" ++ show fixed_hmm_datasize, flip mhInvHMM fixed_hmm_datasize) row_header
-    benchRow ("MHInv-LDA" ++ show fixed_lda_datasize, flip mhInvPredLDA fixed_lda_datasize) row_header
-
 runBenchmarks :: IO ()
 runBenchmarks = do
   -- | Read input benchmark parameters
@@ -144,10 +133,9 @@ runBenchmarks = do
           bench_LR lr
           bench_HMM hmm
           bench_LDA lda
-          -- bench_SIM sim
-          -- bench_LW lw
+          bench_SIM sim
+          bench_LW lw
           bench_MH mh
-          bench_MHInv mh
         _   -> error "bad input file"
 
 main :: IO ()

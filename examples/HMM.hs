@@ -21,7 +21,6 @@ import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, 
 import Inference.LW as LW ( lw )
 import Inference.MB as MB ( toMBayes )
 import Inference.MH as MH ( mh )
-import Inference.MHInv as MHInv ( mh )
 import Inference.SIM as SIM ( simulate )
 import Model ( Model, bernoulli', binomial, uniform )
 import Numeric.Log ( Log )
@@ -171,26 +170,6 @@ mhHMM mh_samples hmm_length = do
       obs_ps      = concatMap (get #obs_p) envs_out
   pure (trans_ps, obs_ps)
 
--- | Metropolis-Hastings inference over a HMM
-mhInvHMM
-  -- | number of MH iterations
-  :: Int
-  -- | number of HMM nodes
-  -> Int
-  -- | [(transition parameter, observation parameter)]
-  -> Sampler ([Double], [Double])
-mhInvHMM mh_samples hmm_length = do
-  -- Simulate a trace of observations from the HMM
-  ys <- map snd <$> simHMMw hmm_length
-  -- Specify a model environment containing those observations
-  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
-  -- Handle the Writer effect and then run MH inference
-  envs_out <- MHInv.mh mh_samples (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
-  -- Get the trace of sampled transition and observation parameters
-  let trans_ps    = concatMap (get #trans_p) envs_out
-      obs_ps      = concatMap (get #obs_p) envs_out
-  pure (trans_ps, obs_ps)
-
 {- | Extending the modular HMM with a user-specific effect.
      This example uses the @Writer@ effect for recording the intermediate latent states.
 -}
@@ -274,26 +253,6 @@ mhHMMw mh_samples hmm_length = do
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
   -- Handle the Writer effect and then run MH inference
   envs_out <- MH.mh mh_samples (handleWriterM @[Int] $ hmmW hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
-  -- Get the trace of sampled transition and observation parameters
-  let trans_ps    = concatMap (get #trans_p) envs_out
-      obs_ps      = concatMap (get #obs_p) envs_out
-  pure (trans_ps, obs_ps)
-
--- | Metropolis-Hastings inference over a HMM
-mhInvHMMw
-  -- | number of MH iterations
-  :: Int
-  -- | number of HMM nodes
-  -> Int
-  -- | [(transition parameter, observation parameter)]
-  -> Sampler ([Double], [Double])
-mhInvHMMw mh_samples hmm_length = do
-  -- Simulate a trace of observations from the HMM
-  ys <- map snd <$> simHMMw hmm_length
-  -- Specify a model environment containing those observations
-  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
-  -- Handle the Writer effect and then run MH inference
-  envs_out <- MHInv.mh mh_samples (handleWriterM @[Int] $ hmmW hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
   -- Get the trace of sampled transition and observation parameters
   let trans_ps    = concatMap (get #trans_p) envs_out
       obs_ps      = concatMap (get #obs_p) envs_out
