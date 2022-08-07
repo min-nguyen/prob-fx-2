@@ -134,31 +134,31 @@ testMhGMM = TestCase $ do
 tests :: Test
 tests = TestList
  [
---    testSimLinRegrOnce
---  , testLwLinRegrOnce
---  , testMhLinRegrOnce
---  , testSimLinRegr
---  , testLwLinRegr
---  , testMhLinRegr
---  , testSimLogRegrOnce
---  , testLwLogRegrOnce
---  , testMhLogRegrOnce
---  , testSimLogRegr
---  , testLwLogRegr
---  , testMhLogRegr
---  , testSimHMMw
-   testLwHMMw
+   testSimLinRegrOnce
+ , testLwLinRegrOnce
+ , testMhLinRegrOnce
+ , testSimLinRegr
+ , testLwLinRegr
+ , testMhLinRegr
+ , testSimLogRegrOnce
+ , testLwLogRegrOnce
+ , testMhLogRegrOnce
+ , testSimLogRegr
+ , testLwLogRegr
+ , testMhLogRegr
+ , testSimHMMw
+ , testLwHMMw
  , testMhHMMw
---  , testSimSIR
---  , testMhSIR
---  , testSimLDA
---  , testMhPredLDA
---  , testSimRadon
---  , testMhRadon
---  , testMhPredRadon
---  , testMhSchool
---  , testSimGMM
---  , testMhGMM
+ , testSimSIR
+ , testMhSIR
+ , testSimLDA
+ , testMhPredLDA
+ , testSimRadon
+ , testMhRadon
+ , testMhPredRadon
+ , testMhSchool
+ , testSimGMM
+ , testMhGMM
  ]
 
 
