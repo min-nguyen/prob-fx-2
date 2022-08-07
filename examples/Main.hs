@@ -19,17 +19,17 @@ printThenWrite a = print a >> writeFile "model-output.txt" (show a)
 
 parseArgs :: String -> IO ()
 parseArgs cmd = case cmd of
-  "simLinRegrOnce"  -> sampleIOFixed (simLinRegrOnce 100) >>= printThenWrite
-  "lwLinRegrOnce"   -> sampleIOFixed (lwLinRegrOnce 200 100) >>= printThenWrite
-  "mhLinRegrOnce"   -> sampleIOFixed (mhLinRegrOnce 100 100) >>= printThenWrite
+  "simLinRegrOnce"  -> sampleIOFixed (simLinRegrOnce 50) >>= printThenWrite
+  "lwLinRegrOnce"   -> sampleIOFixed (lwLinRegrOnce 50 30) >>= printThenWrite
+  "mhLinRegrOnce"   -> sampleIOFixed (mhLinRegrOnce 50 10) >>= printThenWrite
 
   "simLinRegr"  -> sampleIOFixed (simLinRegr 100) >>= printThenWrite
-  "lwLinRegr"   -> sampleIOFixed (lwLinRegr 3000 10)>>= printThenWrite
+  "lwLinRegr"   -> sampleIOFixed (lwLinRegr 1000 10)>>= printThenWrite
   "mhLinRegr"   -> sampleIOFixed (mhLinRegr 10000 50) >>= printThenWrite
 
   "simLogRegrOnce"  -> sampleIOFixed (simLogRegrOnce 50) >>= printThenWrite
   "lwLogRegrOnce"   -> sampleIOFixed (lwLogRegrOnce 10 10) >>= printThenWrite
-  "mhLogRegrOnce"   -> sampleIOFixed (mhLogRegrOnce 100 10) >>= printThenWrite
+  "mhLogRegrOnce"   -> sampleIOFixed (mhLogRegrOnce 50 10) >>= printThenWrite
 
   "simLogRegr"  -> sampleIOFixed (simLogRegr 50) >>= printThenWrite
   "lwLogRegr"   -> sampleIOFixed (lwLogRegr 100 10) >>= printThenWrite
@@ -47,10 +47,10 @@ parseArgs cmd = case cmd of
   "mhPredLDA"   -> sampleIOFixed (mhPredLDA 500 100) >>= printThenWrite
 
   "simRadon"    -> sampleIOFixed simRadon >>= printThenWrite
-  "mhRadon"     -> sampleIOFixed (mhRadon 2000) >>= printThenWrite
+  "mhRadon"     -> sampleIOFixed (mhRadon 1000) >>= printThenWrite
   "mhPredRadon" -> sampleIOFixed (mhPredRadon 1500) >>= printThenWrite
 
-  "mhSchool"    -> sampleIOFixed (mhSchool 10000) >>= printThenWrite
+  "mhSchool"    -> sampleIOFixed (mhSchool 1000) >>= printThenWrite
 
   "simGMM"      -> sampleIOFixed (simGMM 20) >>= printThenWrite
   "mhGMM"       -> sampleIOFixed (mhGMM 4000 20) >>= printThenWrite

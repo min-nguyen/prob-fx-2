@@ -1,63 +1,29 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
 
-{- | Metropolis-Hastings inference.
--}
+module Inference.MH where
 
-module Inference.MH
-  ( -- * Inference wrapper functions
-      mh
-    , mhInternal
-    , mhStep
-    -- * Inference handlers
-    , runMH
-    , handleSamp
-    -- * Auxiliary functions and definitions
-    , lookupSample
-    , MHCtx
-    , Accept
-    , acceptMH
-  ) where
-
-import Control.Monad ( (>=>) )
-import Data.Kind (Type)
-import Data.Map (Map)
-import Data.Maybe ( fromJust )
-import Data.Set (Set, (\\))
-import Effects.Dist ( Addr, Sample(..), Observe, Dist, Tag )
-import Effects.Lift ( handleLift, Lift, lift )
-import Effects.ObsReader ( ObsReader )
-import LogP
-import Env ( Env, ContainsVars(..), Vars )
-import Inference.SIM (handleObs)
-import Model ( Model, handleCore )
-import OpenSum (OpenSum(..))
-import PrimDist
-    ( ErasedPrimDist(..),
-      PrimVal,
-      PrimDist(Uniform, UniformD),
-      sample,
-      pattern PrimDistPrf )
-import Prog ( discharge, Prog(..) )
+import Control.Monad
 import qualified Data.Map as Map
+import Data.Set ((\\))
 import qualified Data.Set as Set
-import qualified OpenSum
-import Sampler ( Sampler, liftIO )
+import Data.Maybe
+import Prog
 import Trace
-    ( traceLogProbs,
-      traceSamples,
-      filterSTrace,
-      LPTrace,
-      FromSTrace(..),
-      STrace )
-import Unsafe.Coerce ( unsafeCoerce )
+import LogP
+import PrimDist
+import Model
+import Effects.ObsReader
+import OpenSum
+import Env
+import Effects.Dist
+import Effects.Lift
+import qualified Inference.SIM as SIM
+import Sampler
 
 -- | Top-level wrapper for Metropolis-Hastings (MH) inference
 mh :: forall env es a xs. (FromSTrace env, env `ContainsVars` xs)
@@ -89,15 +55,14 @@ mhInternal
    :: Int
    -> Prog [Observe, Sample, Lift Sampler] a
    -- | initial sample trace
-   -> STrace
+   -> InvSTrace
    -- | tags indicating sample sites of interest
    -> [Tag]
-   -- | [(accepted outputs, samples), logps)]
-   -> Sampler [((a, STrace), LPTrace)]
+   -- | [(accepted outputs, logps), samples)]
+   -> Sampler [(((a, LPTrace), STrace), InvSTrace)]
 mhInternal n prog strace_0 tags = do
   -- Perform initial run of mh
-  let α_0 = ("", 0)
-  mhCtx_0 <- runMH strace_0 α_0 prog
+  mhCtx_0 <- runMH strace_0 prog
   -- A function performing n mhSteps using initial mhCtx.
   -- Note: most recent samples are at the front (head) of the trace
   foldl (>=>) pure (replicate n (mhStep prog tags acceptMH)) [mhCtx_0]
@@ -110,20 +75,23 @@ mhStep
   -- | a mechanism for accepting proposals
   -> Accept p a
   -- | trace of previous MH results
-  -> [((a, STrace), p)]
+  -> [(((a, p), STrace), InvSTrace)]
   -- | updated trace of MH results
-  -> Sampler [((a, STrace), p)]
+  -> Sampler [(((a, p), STrace), InvSTrace)]
 mhStep prog tags accepter trace = do
   -- Get previous MH output
-  let mhCtx@((_, samples), _) = head trace
+  let mhCtx@(_, inv_strace) = head trace
   -- Get possible addresses to propose new samples for
-  let sampleSites = if null tags then samples else filterSTrace tags samples
+  let αs = Map.keys (if Prelude.null tags then inv_strace else filterTrace tags inv_strace)
   -- Draw a proposal sample address
-  α_samp_ind <- sample $ UniformD 0 (Map.size sampleSites - 1)
-  let (α_samp, _) = Map.elemAt α_samp_ind sampleSites
+  α_samp_idx <- sample $ UniformD 0 (length αs - 1)
+  let α_samp = αs !! α_samp_idx
+  -- Draw a new random value
+  x0 <- sampleRandom
   -- Run MH with proposal sample address to get an MHCtx using LPTrace as its probability type
-  mhCtx'_lp <- runMH samples α_samp prog
-  -- Compute acceptance ratio to see if we use the proposed mhCtx' (which is mhCtx'_lp with 'LPTrace' converted to some type 'p')
+  mhCtx'_lp <- runMH (Map.insert α_samp x0 inv_strace) prog
+  -- Compute acceptance ratio to see if we use the proposed mhCtx'
+  -- (which is mhCtx'_lp with 'LPTrace' converted to some type 'p')
   (mhCtx', acceptance_ratio) <- accepter α_samp mhCtx mhCtx'_lp
   u <- sample (Uniform 0 1)
   if u < acceptance_ratio
@@ -133,53 +101,35 @@ mhStep prog tags accepter trace = do
 -- | Handler for one iteration of MH
 runMH ::
   -- | sample trace of previous MH iteration
-     STrace
+     InvSTrace
   -- | sample address of interest
-  -> Addr
   -> Prog [Observe, Sample, Lift Sampler] a
   -- | ((model output, sample trace), log-probability trace)
-  -> Sampler ((a, STrace), LPTrace)
-runMH strace α_samp = handleLift . handleSamp strace α_samp . handleObs . traceLogProbs . traceSamples
+  -> Sampler (((a, LPTrace), STrace), InvSTrace)
+runMH inv_strace  = handleLift . handleSamp inv_strace . SIM.handleObs . traceSamples . traceLogProbs
 
--- | Handler for @Sample@ that selectively reuses old samples or draws new ones
 handleSamp ::
   -- | Sample trace
-     STrace
-  -- | Address of the proposal sample site for the current MH iteration
-  -> Addr
-  -> Prog [Sample, Lift Sampler] a
-  -> Prog '[Lift Sampler] a
-handleSamp strace α_samp (Op op k) = case discharge op of
+     InvSTrace
+  -> Prog  [Sample, Lift Sampler] a
+  -> Prog '[Lift Sampler] (a, InvSTrace)
+handleSamp inv_strace (Val x)   = pure (x, inv_strace)
+handleSamp inv_strace (Op op k) = case discharge op of
     Right (Sample (PrimDistPrf d) α) ->
-      let maybe_y = if α == α_samp then Nothing else lookupSample α d strace
-      in  case maybe_y of
-                  Nothing -> lift (sample d) >>= k'
-                  Just x  -> k' x
-    Left op' -> Op op' k'
-  where k' = handleSamp strace α_samp . k
-handleSamp _ _ (Val x) = return x
+      case Map.lookup α inv_strace of
+          Nothing -> do r <- lift sampleRandom
+                        y <- lift (sampleInv d r)
+                        k' (Map.insert α r inv_strace) y
+          Just r  -> do y <- lift (sampleInv d r)
+                        k' inv_strace  y
+    Left op' -> Op op' (k' inv_strace )
 
-{- | For a given address, look up a sampled value from a sample trace, returning
-     it only if the primitive distribution it was sampled from matches the current one. -}
-lookupSample :: OpenSum.Member a PrimVal =>
-  -- | Address of sample site
-     Addr
-  -- | Distribution to sample from
-  -> PrimDist a
-  -- | Sample trace
-  -> STrace
-  -- | Possibly a looked-up sampled value
-  -> Maybe a
-lookupSample α d strace   = do
-    (ErasedPrimDist d', x) <- Map.lookup α strace
-    if d == unsafeCoerce d'
-      then OpenSum.prj x
-      else Nothing
+  where k' inv_strace' = handleSamp inv_strace' . k
 
 {- | The result of a single MH iteration, where @a@ is the type of model output and
      @p@ is some representation of probability.
 -}
-type MHCtx p a = ((a, STrace), p)
+type MHCtx p a = (((a, p), STrace), InvSTrace)
 
 {- | An abstract mechanism for computing an acceptance probability, where @a@ is the
      type of model output and @p@ is some representation of probability.
@@ -196,12 +146,12 @@ type Accept p a =
 
 -- | An acceptance mechanism for MH
 acceptMH :: Accept LPTrace a
-acceptMH x0 ((_, strace), lptrace) ((a, strace'), lptrace') = do
-  let dom_logα = log (fromIntegral $ Map.size strace) - log (fromIntegral $ Map.size strace')
-      sampled  = Set.singleton x0 `Set.union` (Map.keysSet strace \\ Map.keysSet strace')
-      sampled' = Set.singleton x0 `Set.union` (Map.keysSet strace' \\ Map.keysSet strace)
+acceptMH x0 (((_, lptrace ), strace), inv_strace) (((a, lptrace'), strace'), inv_strace') = do
+  let dom_logα = log (fromIntegral $ Map.size inv_strace) - log (fromIntegral $ Map.size inv_strace')
+      sampled  = Set.singleton x0 `Set.union` (Map.keysSet inv_strace \\ Map.keysSet inv_strace')
+      sampled' = Set.singleton x0 `Set.union` (Map.keysSet inv_strace' \\ Map.keysSet inv_strace)
       logα     = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace))
                          0 (Map.keysSet lptrace \\ sampled)
       logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
                          0 (Map.keysSet lptrace' \\ sampled')
-  pure (((a, strace'), lptrace'), (exp . unLogP) (dom_logα + logα' - logα))
+  pure ((((a, lptrace'), strace'), inv_strace'), (exp . unLogP) (dom_logα + logα' - logα))

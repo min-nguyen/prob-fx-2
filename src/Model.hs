@@ -49,7 +49,7 @@ module Model (
 import Control.Monad ( ap )
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
 import Effects.Dist ( handleDist, Dist(Dist), Observe, Sample )
-import Effects.ObsReader ( ask, handleObsRead, ObsReader )
+import Effects.ObsReader ( oAsk, handleObsRead, ObsReader )
 import Env ( varToStr, Env, Var, Observable )
 import OpenSum ( OpenSum )
 import PrimDist ( PrimVal, PrimDist(..) )
@@ -113,79 +113,70 @@ handleCore env m = (handleDist . handleObsRead env) (runModel m)
     exampleModel' = bernoulli' 0.5
     @
 -}
-deterministic :: forall env es a x. (Eq a, Show a, OpenSum.Member a PrimVal, Observable env x a) => a
+
+callDist :: forall env x a es. Observable env x a => PrimDist a -> Var x -> Model env es a
+callDist d field = Model $ do
+  let tag =  Just $ varToStr field
+  maybe_y <- oAsk @env field
+  call (Dist d maybe_y tag)
+
+callDist' :: PrimDist a -> Model env es a
+callDist' d = Model $ call (Dist d Nothing Nothing)
+
+deterministic :: (Eq a, Show a, OpenSum.Member a PrimVal, Observable env x a) => a
   -> Var x
   -> Model env es a
-deterministic x field = Model $ do
-  let tag = Just $ varToStr field
-  maybe_y <- ask @env field
-  call (Dist (Deterministic x) maybe_y tag)
+deterministic x = callDist (Deterministic x)
 
 deterministic' :: (Eq a, Show a, OpenSum.Member a PrimVal) =>
   -- | value to be deterministically generated
      a
   -> Model env es a
-deterministic' x = Model $ do
-  call (Dist (Deterministic x) Nothing Nothing)
+deterministic' x = callDist' (Deterministic x)
 
-dirichlet :: forall env es x. Observable env x [Double] =>
+dirichlet ::Observable env x [Double] =>
      [Double]
   -> Var x
   -> Model env es [Double]
-dirichlet xs field = Model $ do
-  let tag = Just $ varToStr field
-  maybe_y <- ask @env field
-  call (Dist (Dirichlet xs) maybe_y tag)
+dirichlet xs = callDist (Dirichlet xs)
 
 dirichlet' ::
   -- | concentration parameters
      [Double]
   -> Model env es [Double]
-dirichlet' xs = Model $ do
-  call (Dist (Dirichlet xs) Nothing Nothing)
+dirichlet' xs = callDist' (Dirichlet xs)
 
-discrete :: forall env es a x. (Eq a, Show a, OpenSum.Member a PrimVal, Observable env x a) =>
+discrete :: (Eq a, Show a, OpenSum.Member a PrimVal, Observable env x a) =>
      [(a, Double)]
   -> Var x
   -> Model env es a
-discrete ps field = Model $ do
-  let tag = Just $ varToStr field
-  maybe_y <- ask @env field
-  call (Dist (Discrete ps) maybe_y tag)
+discrete ps = callDist (Discrete ps)
 
 discrete' :: (Eq a, Show a, OpenSum.Member a PrimVal) =>
   -- | primitive values and their probabilities
      [(a, Double)]
   -> Model env es a
-discrete' ps = Model $ do
-  call (Dist (Discrete ps) Nothing Nothing)
+discrete' ps = callDist' (Discrete ps)
 
-categorical :: forall env es x. Observable env x Int =>
+categorical :: Observable env x Int =>
      [Double]
   -> Var x
   -> Model env es Int
-categorical xs field = Model $ do
-  let tag = Just $ varToStr field
-  maybe_y <- ask @env field
-  call (Dist (Categorical xs) maybe_y tag)
+categorical xs = callDist (Categorical xs)
 
 categorical'
   -- | list of @n@ probabilities
   :: [Double]
   -- | integer index from @0@ to @n - 1@
   -> Model env es Int
-categorical' xs = Model $ do
-  call (Dist (Categorical xs) Nothing Nothing)
+categorical' xs = callDist' (Categorical xs)
 
-normal :: forall env es x. Observable env x Double =>
+normal :: Observable env x Double =>
      Double
   -> Double
   -> Var x
   -> Model env es Double
-normal mu sigma field = Model $ do
-  let tag = Just $ varToStr field
-  maybe_y <- ask @env field
-  call (Dist (Normal mu sigma) maybe_y tag)
+normal mu sigma = callDist (Normal mu sigma)
 
 normal'
   -- | mean
@@ -193,17 +184,13 @@ normal'
   -- | standard deviation
   -> Double
   -> Model env es Double
-normal' mu sigma = Model $ do
-  call (Dist (Normal mu sigma) Nothing Nothing)
+normal' mu sigma = callDist' (Normal mu sigma)
 
-halfNormal :: forall env es x. Observable env x Double
+halfNormal :: Observable env x Double
   => Double
   -> Var x
   -> Model env es Double
-halfNormal sigma field = Model $ do
-  let tag = Just $ varToStr field
-  maybe_y <- ask @env field
-  call (Dist (HalfNormal sigma) maybe_y tag)
+halfNormal sigma = callDist (HalfNormal sigma)
 
 halfNormal'
   -- | standard deviation
@@ -212,15 +199,12 @@ halfNormal'
 halfNormal' sigma = Model $ do
   call (Dist (HalfNormal sigma) Nothing Nothing)
 
-cauchy :: forall env es x. Observable env x Double =>
+cauchy :: Observable env x Double =>
      Double
   -> Double
   -> Var x
   -> Model env es Double
-cauchy mu sigma field = Model $ do
-  let tag = Just $ varToStr field
-  maybe_y <- ask @env field
-  call (Dist (Cauchy mu sigma) maybe_y tag)
+cauchy mu sigma = callDist (Cauchy mu sigma)
 
 cauchy'
   -- | location
@@ -228,17 +212,13 @@ cauchy'
   -- | scale
   -> Double
   -> Model env es Double
-cauchy' mu sigma = Model $ do
-  call (Dist (Cauchy mu sigma) Nothing Nothing)
+cauchy' mu sigma = callDist' (Cauchy mu sigma)
 
-halfCauchy :: forall env es x. Observable env x Double =>
+halfCauchy :: Observable env x Double =>
      Double
   -> Var x
   -> Model env es Double
-halfCauchy sigma field = Model $ do
-  let tag = Just $ varToStr field
-  maybe_y <- ask @env field
-  call (Dist (HalfCauchy sigma) maybe_y tag)
+halfCauchy sigma = callDist (HalfCauchy sigma)
 
 halfCauchy' ::
   -- | scale
@@ -247,31 +227,24 @@ halfCauchy' ::
 halfCauchy' sigma = Model $ do
   call (Dist (HalfCauchy sigma) Nothing Nothing)
 
-bernoulli :: forall env es x. Observable env x Bool =>
+bernoulli :: Observable env x Bool =>
      Double
   -> Var x
   -> Model env es Bool
-bernoulli p field = Model $ do
-  let tag = Just $ varToStr field
-  maybe_y <- ask @env field
-  call (Dist (Bernoulli p) maybe_y tag)
+bernoulli p = callDist (Bernoulli p)
 
 bernoulli' ::
   -- | probability of @True@
      Double
   -> Model env es Bool
-bernoulli' p = Model $ do
-  call (Dist (Bernoulli p) Nothing Nothing)
+bernoulli' p = callDist' (Bernoulli p)
 
-beta :: forall env es x. Observable env x Double =>
+beta :: Observable env x Double =>
      Double
   -> Double
   -> Var x
   -> Model env es Double
-beta α β field = Model $ do
-  let tag = Just $ varToStr field
-  maybe_y <- ask @env field
-  call (Dist (Beta α β) maybe_y tag)
+beta α β = callDist (Beta α β)
 
 beta' ::
   -- | shape 1 (α)
@@ -279,18 +252,14 @@ beta' ::
   -- | shape 2 (β)
   -> Double
   -> Model env es Double
-beta' α β = Model $ do
-  call (Dist (Beta α β) Nothing Nothing)
+beta' α β = callDist' (Beta α β)
 
-binomial :: forall env es x. Observable env x Int =>
+binomial :: Observable env x Int =>
      Int
   -> Double
   -> Var x
   -> Model env es Int
-binomial n p field = Model $ do
-  let tag = Just $ varToStr field
-  maybe_y <- ask @env field
-  call (Dist (Binomial n p) maybe_y tag)
+binomial n p = callDist (Binomial n p)
 
 binomial' ::
   -- | number of trials
@@ -299,18 +268,14 @@ binomial' ::
   -> Double
   -- | number of successful trials
   -> Model env es Int
-binomial' n p = Model $ do
-  call (Dist (Binomial n p) Nothing Nothing)
+binomial' n p = callDist' (Binomial n p)
 
 gamma :: forall env es x. Observable env x Double =>
      Double
   -> Double
   -> Var x
   -> Model env es Double
-gamma k θ field = Model $ do
-  let tag = Just $ varToStr field
-  maybe_y <- ask @env field
-  call (Dist (Gamma k θ) maybe_y tag)
+gamma k θ = callDist (Gamma k θ)
 
 gamma' ::
   -- | shape (k)
@@ -318,18 +283,14 @@ gamma' ::
   -- | scale (θ)
   -> Double
   -> Model env es Double
-gamma' k θ = Model $ do
-  call (Dist (Gamma k θ) Nothing Nothing)
+gamma' k θ = callDist' (Gamma k θ)
 
-uniform :: forall env es x. Observable env x Double =>
+uniform :: Observable env x Double =>
      Double
   -> Double
   -> Var x
   -> Model env es Double
-uniform min max field = Model $ do
-  let tag = Just $ varToStr field
-  maybe_y <- ask @env field
-  call (Dist (Uniform min max) maybe_y tag)
+uniform min max = callDist (Uniform min max)
 
 uniform' ::
   -- | lower-bound
@@ -337,23 +298,18 @@ uniform' ::
   -- | upper-bound
   -> Double
   -> Model env es Double
-uniform' min max = Model $ do
-  call (Dist (Uniform min max) Nothing Nothing)
+uniform' min max = callDist' (Uniform min max)
 
-poisson :: forall env es x. Observable env x Int =>
+poisson :: Observable env x Int =>
      Double
   -> Var x
   -> Model env es Int
-poisson λ field = Model $ do
-  let tag = Just $ varToStr field
-  maybe_y <- ask @env field
-  call (Dist (Poisson λ) maybe_y tag)
+poisson λ = callDist (Poisson λ)
 
 poisson' ::
   -- | rate (λ)
      Double
   -- | number of events
   -> Model env es Int
-poisson' λ = Model $ do
-  call (Dist (Poisson λ) Nothing Nothing)
+poisson' λ = callDist' (Poisson λ)
 

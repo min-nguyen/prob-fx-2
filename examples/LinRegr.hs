@@ -87,7 +87,6 @@ mhLinRegr n_mhsteps n_datapoints = do
   let cs = concatMap (get #c) env_mh_outs
   pure (mus, cs)
 
-
 {- | Linear regression model on individual data points at a time.
 -}
 linRegrOnce :: Observables env ["y", "m", "c", "σ"] Double
