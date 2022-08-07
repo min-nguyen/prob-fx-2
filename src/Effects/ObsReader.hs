@@ -11,7 +11,7 @@
 
 module Effects.ObsReader (
     ObsReader(..)
-  , ask
+  , oAsk
   , handleObsRead) where
 
 import Prog ( call, discharge, Member, Prog(..) )
@@ -21,17 +21,17 @@ import Util ( safeHead, safeTail )
 -- | The effect for reading observed values from a model environment @env@
 data ObsReader env a where
   -- | Given the observable variable @x@ is assigned a list of type @[a]@ in @env@, attempt to retrieve its head value.
-  Ask :: Observable env x a
-      => Var x                    -- ^ variable @x@ to read from
-      -> ObsReader env (Maybe a)  -- ^ the head value from @x@'s list
+  OAsk :: Observable env x a
+        => Var x                    -- ^ variable @x@ to read from
+        -> ObsReader env (Maybe a)  -- ^ the head value from @x@'s list
 
--- | Wrapper function for calling @Ask@
-ask :: forall env es x a. (Member (ObsReader env) es, Observable env x a)
+-- | Wrapper function for calling @OAsk@
+oAsk :: forall env es x a. (Member (ObsReader env) es, Observable env x a)
   => Var x
   -> Prog es (Maybe a)
-ask x = call (Ask @env x)
+oAsk x = call (OAsk @env x)
 
--- | Handle the @Ask@ requests of observable variables
+-- | Handle the @OAsk@ requests of observable variables
 handleObsRead ::
   -- | initial model environment
      Env env
@@ -39,7 +39,7 @@ handleObsRead ::
   -> Prog es a
 handleObsRead env (Val x) = return x
 handleObsRead env (Op op k) = case discharge op of
-  Right (Ask x) ->
+  Right (OAsk x) ->
     let vs       = get x env
         maybe_v  = safeHead vs
         env'     = set x (safeTail vs) env

@@ -49,7 +49,7 @@ module Model (
 import Control.Monad ( ap )
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
 import Effects.Dist ( handleDist, Dist(Dist), Observe, Sample )
-import Effects.ObsReader ( ask, handleObsRead, ObsReader )
+import Effects.ObsReader ( oAsk, handleObsRead, ObsReader )
 import Env ( varToStr, Env, Var, Observable )
 import OpenSum ( OpenSum )
 import PrimDist ( PrimVal, PrimDist(..) )
@@ -117,7 +117,7 @@ handleCore env m = (handleDist . handleObsRead env) (runModel m)
 callDist :: forall env x a es. Observable env x a => PrimDist a -> Var x -> Model env es a
 callDist d field = Model $ do
   let tag =  Just $ varToStr field
-  maybe_y <- ask @env field
+  maybe_y <- oAsk @env field
   call (Dist d maybe_y tag)
 
 callDist' :: PrimDist a -> Model env es a
