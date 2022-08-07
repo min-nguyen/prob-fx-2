@@ -8,23 +8,22 @@
 
 module Inference.MH where
 
-import Control.Monad
+import Control.Monad ( (>=>) )
 import qualified Data.Map as Map
 import Data.Set ((\\))
 import qualified Data.Set as Set
-import Data.Maybe
-import Prog
-import Trace
-import LogP
-import PrimDist
-import Model
-import Effects.ObsRW
-import OpenSum
-import Env
-import Effects.Dist
-import Effects.Lift
+import Data.Maybe ( fromJust )
+import Prog ( Prog(..), discharge )
+import Trace ( InvSTrace, LPTrace, filterTrace, traceLogProbs )
+import LogP ( LogP(unLogP) )
+import PrimDist ( PrimDist(..), sample, sampleInv )
+import Model ( Model, handleCore )
+import Effects.ObsRW ( ObsRW )
+import Env ( ContainsVars(..), Vars, Env )
+import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr )
+import Effects.Lift ( Lift, lift, handleLift )
 import qualified Inference.SIM as SIM
-import Sampler
+import Sampler ( Sampler, sampleRandom )
 
 -- | Top-level wrapper for Metropolis-Hastings (MH) inference
 mh :: forall env es a xs. (env `ContainsVars` xs)
@@ -47,7 +46,7 @@ mh n model env_in obsvars  = do
       tags = varsToStrs @env obsvars
   -- Run MH for n iterations
   mhTrace <- mhInternal n prog Map.empty tags
-  -- Convert each iteration's sample trace to a model environment
+  -- Return the accepted model environments
   pure (map (snd . fst . fst) mhTrace)
 
 -- | Perform MH on a probabilistic program
@@ -109,6 +108,7 @@ runMH ::
   -> Sampler ((a, LPTrace), InvSTrace)
 runMH inv_strace  = handleLift . handleSamp inv_strace . SIM.handleObs . traceLogProbs
 
+-- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones
 handleSamp ::
   -- | Sample trace
      InvSTrace
@@ -116,7 +116,7 @@ handleSamp ::
   -> Prog '[Lift Sampler] (a, InvSTrace)
 handleSamp inv_strace (Val x)   = pure (x, inv_strace)
 handleSamp inv_strace (Op op k) = case discharge op of
-    Right (Sample (PrimDistPrf d) α) ->
+    Right (Sample d α) ->
       case Map.lookup α inv_strace of
           Nothing -> do r <- lift sampleRandom
                         y <- lift (sampleInv d r)
