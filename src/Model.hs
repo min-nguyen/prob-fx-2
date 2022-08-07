@@ -48,7 +48,7 @@ module Model (
 
 import Control.Monad ( ap )
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
-import Effects.Dist ( handleDist, Dist(Dist), Observe, Sample (SPrint) )
+import Effects.Dist ( handleDist, Dist(..), Observe, Sample )
 import Effects.ObsReader
 import Env
 import OpenSum ( OpenSum )
@@ -90,7 +90,7 @@ instance Monad (Model env es) where
      to produce a probabilistic program consisting of @Sample@ and @Observe@ operations.
 -}
 handleCore :: Env env -> Model env (ObsReader env : ObsWriter env : Dist : es) a -> Prog (Observe : Sample : es) (a, Env env)
-handleCore env m = (handleDist . handleObsWrite (emptyEnv env) . handleObsRead env) (runModel m)
+handleCore env_in m = (handleDist . handleObsWrite env_in . handleObsRead env_in) (runModel m)
 
 {- $Smart-Constructors
 

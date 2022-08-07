@@ -18,9 +18,9 @@ module Effects.ObsReader (
   , handleObsWrite) where
 
 import Prog ( call, discharge, Member, Prog(..) )
-import Env ( Env, Var, Observable(..) )
+import Env ( Env, Var, Observable(..), emptyEnv )
 import Util ( safeHead, safeTail )
-import Debug.Trace
+
 -- | The effect for reading observed values from a model environment @env@
 data ObsReader env a where
   -- | Given the observable variable @x@ is assigned a list of type @[a]@ in @env@, attempt to retrieve its head value.
@@ -41,40 +41,40 @@ handleObsRead ::
      Env env
   -> Prog (ObsReader env ': es) a
   -> Prog es a
-handleObsRead env  (Val x) = return x
-handleObsRead env  (Op op k) = case discharge op of
+handleObsRead env_in  (Val x) = return x
+handleObsRead env_in  (Op op k) = case discharge op of
   Right (OAsk x) ->
-    let vs       = get x env
+    let vs       = get x env_in
         maybe_v  = safeHead vs
-        env'     = set x (safeTail vs) env
-    in  handleObsRead env' (k maybe_v)
-  Left op' -> Op op' (handleObsRead env . k)
+        env_in'     = set x (safeTail vs) env_in
+    in  handleObsRead env_in' (k maybe_v)
+  Left op' -> Op op' (handleObsRead env_in . k)
 
--- | The effect for reading observed values from a model environment @env@
+
+-- | The effect for writing observed values to a model environment @env@
 data ObsWriter env a where
-  -- | Given the observable variable @x@ is assigned a list of type @[a]@ in @env@, attempt to retrieve its head value.
   OTell :: (Observable env x a, Show a)
-        => Var x                    -- ^ variable @x@ to read from
+        => Var x
         -> a
         -> ObsWriter env ()
 
--- | Wrapper function for calling @OAsk@
 oTell :: forall env es x a. (Show a, Member (ObsWriter env) es, Observable env x a)
   => Var x
   -> a
   -> Prog es ()
 oTell x v = call (OTell @env x v)
 
--- | Handle the @OAsk@ requests of observable variables
 handleObsWrite ::
-  -- | initial model environment
      Env env
   -> Prog (ObsWriter env ': es) a
   -> Prog es (a, Env env)
-handleObsWrite env_out (Val x) = return (x, env_out)
-handleObsWrite env_out (Op op k) = case discharge op of
-  Right (OTell x v) ->
-    let vs        = get x env_out
-        env_out'  = set x (vs ++ [v]) env_out
-    in  handleObsWrite env_out' (k ())
-  Left op' -> Op op' (handleObsWrite env_out . k)
+handleObsWrite env_in = loop (emptyEnv env_in)
+  where
+    loop :: Env env -> Prog (ObsWriter env ': es) a -> Prog es (a, Env env)
+    loop env_out (Val x) = return (x, env_out)
+    loop env_out (Op op k) = case discharge op of
+      Right (OTell x v) ->
+        let vs        = get x env_out
+            env_out'  = set x (vs ++ [v]) env_out
+        in  loop env_out' (k ())
+      Left op' -> Op op' (loop env_out . k)

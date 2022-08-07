@@ -54,7 +54,6 @@ data Sample a where
   Sample  :: PrimDist a     -- ^ distribution to sample from
           -> Addr           -- ^ address of @Sample@ operation
           -> Sample a
-  SPrint  :: String -> Sample ()
 
 -- | For projecting and then successfully pattern matching against @Sample@
 pattern SampPrj :: (Member Sample es) => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> Addr -> EffectSum es x
