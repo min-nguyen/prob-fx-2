@@ -4,6 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE GADTs #-}
 
 module Inference.MH where
 
@@ -30,7 +31,7 @@ mh :: forall env es a xs. (FromSTrace env, env `ContainsVars` xs)
   -- | number of MH iterations
   => Int
   -- | model
-  -> Model env [ObsReader env, Dist, Lift Sampler] a
+  -> Model env [ObsReader env, ObsWriter env, Dist, Lift Sampler] a
   -- | input model environment
   -> Env env
   -- | optional list of observable variable names (strings) to specify sample sites of interest
@@ -115,6 +116,9 @@ handleSamp ::
   -> Prog '[Lift Sampler] (a, InvSTrace)
 handleSamp inv_strace (Val x)   = pure (x, inv_strace)
 handleSamp inv_strace (Op op k) = case discharge op of
+    Right (SPrint s) ->
+      do  lift $ liftIO $ print s
+          handleSamp inv_strace (k ())
     Right (Sample (PrimDistPrf d) α) ->
       case Map.lookup α inv_strace of
           Nothing -> do r <- lift sampleRandom

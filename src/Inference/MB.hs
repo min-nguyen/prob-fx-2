@@ -18,7 +18,7 @@ module Inference.MB
 import Control.Monad.Bayes.Class as MB ( MonadCond(..), MonadInfer, MonadSample )
 import Effects.Dist ( Sample(..), Observe(..), Dist(getObs, getPrimDist), handleDist )
 import Effects.Lift ( handleLift, Lift, lift )
-import Effects.ObsReader ( ObsReader, handleObsRead )
+import Effects.ObsReader
 import Env ( Env )
 import Model (Model(..))
 import Numeric.Log ( Log(Exp) )
@@ -31,14 +31,16 @@ import Trace ( traceSamples, FromSTrace(..) )
 -- | Translate a ProbFX model under a given model environment to a MonadBayes program
 toMBayes :: (FromSTrace env, MonadInfer m)
   -- | model
-  => Model env [ObsReader env, Dist, Lift m] a
+  => Model env [ObsReader env, ObsWriter env,  Dist, Lift m] a
   -- | input model environment
   -> Env env
   -- | a computation @m@ in MonadBayes that returns a result and an output model environment
   -> m (a, Env env)
 toMBayes m env =
-     fmap (fmap fromSTrace) . handleLift . handleSamp
-   . handleObs . traceSamples . handleDist . handleObsRead env $ runModel m
+     fmap fst . handleLift . handleSamp
+   . handleObs . traceSamples . handleDist . handleObsWrite env . handleObsRead env $ runModel m
+  --    fmap (fmap fromSTrace) . handleLift . handleSamp
+  --  . handleObs . traceSamples . handleDist . handleObsRead env env $ runModel m
 
 -- | Handle @Observe@ operations by computing the log-probability and calling the @score@ method of the @MonadCond@ class
 handleObs :: (MonadCond m, LastMember (Lift m) es)
@@ -64,6 +66,8 @@ handleSamp (Op u k) = case discharge u of
   Right (Sample d _) ->
       do y <- lift (sampleBayes d)
          handleSamp (k y)
+  Right (SPrint s) ->
+      do handleSamp (k ())
 
 -- | Alternative for handling Dist as the last effect directly into a monad
 handleDistMB :: MonadInfer m => Prog '[Dist] a -> m a

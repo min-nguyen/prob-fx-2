@@ -21,20 +21,20 @@ module Inference.SIM
 
 import Effects.Dist ( Sample(..), Observe(..), Dist )
 import Effects.Lift ( handleLift, Lift, lift )
-import Effects.ObsReader ( ObsReader )
+import Effects.ObsReader
 import Env ( Env )
 import Model ( handleCore, Model )
 import OpenSum (OpenSum)
 import PrimDist ( sample, pattern PrimDistPrf )
 import Prog ( discharge, Prog(..) )
-import Sampler ( Sampler )
+import Sampler ( Sampler, liftIO )
 import Trace ( traceSamples, STrace, FromSTrace(..) )
 import Unsafe.Coerce (unsafeCoerce)
 
 -- | Simulate from a model under a given model environment
 simulate :: FromSTrace env
   -- | model
-  => Model env [ObsReader env, Dist, Lift Sampler] a
+  => Model env [ObsReader env, ObsWriter env, Dist, Lift Sampler] a
   -- | input model environment
   -> Env env
   -- | (model output, output environment)
@@ -42,7 +42,8 @@ simulate :: FromSTrace env
 simulate model env = do
   let prog = handleCore env model
   outputs_strace <- runSimulate prog
-  return (fmap fromSTrace outputs_strace)
+  -- return (fmap fromSTrace outputs_strace)
+  return $ fst outputs_strace
 
 -- | Handler for simulating once from a probabilistic program
 runSimulate
@@ -66,5 +67,8 @@ handleSamp (Op op k) = case discharge op of
   Right (Sample (PrimDistPrf d) α) ->
     do  x <- lift $ sample d
         handleSamp (k x)
+  Right (SPrint s) ->
+    do  lift $ liftIO $ print s
+        handleSamp (k ())
   Left op' -> do
      Op op' (handleSamp  . k)

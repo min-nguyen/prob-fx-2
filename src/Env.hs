@@ -23,6 +23,7 @@ module Env
     Var(..)
   , varToStr
   , vnil
+  , emptyEnv
   , (<#>)
   , Vars(..)
   , ContainsVars(..)
@@ -91,6 +92,10 @@ data Assign x a = x := a
 -- | Empty model environment
 enil :: Env '[]
 enil = ENil
+
+emptyEnv :: Env env -> Env env
+emptyEnv (ECons _ env) = ECons [] (emptyEnv env)
+emptyEnv ENil = ENil
 
 infixr 5 <:>
 -- | Prepend a variable assignment to a model environment
