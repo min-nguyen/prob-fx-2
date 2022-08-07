@@ -16,7 +16,6 @@ import Model ( Model, normal, uniform )
 import Inference.SIM as SIM ( simulate )
 import Inference.LW as LW ( lw )
 import Inference.MH as MH ( mh )
-import Inference.MHInv as MHInv ( mh )
 import Inference.MB as MB ( toMBayes )
 import Sampler ( Sampler )
 import Control.Monad ( replicateM )
@@ -87,20 +86,6 @@ mhLinRegr n_mhsteps n_datapoints = do
   let mus = concatMap (get #m) env_mh_outs
   let cs = concatMap (get #c) env_mh_outs
   pure (mus, cs)
-
--- | Metropolis-Hastings over linear regression
-mhInvLinRegr ::  Int -> Int ->  Sampler [Double]
-mhInvLinRegr n_mhsteps n_datapoints = do
-  -- Specify model inputs
-  let xs            = [0 .. fromIntegral n_datapoints]
-  -- Specify model environment
-      env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  -- Run MH
-  env_mh_outs <- MHInv.mh n_mhsteps (linRegr xs) env (#m <#> #c <#> vnil)
-  -- Get the sampled values of mu and c
-  let mus = concatMap (get #m) env_mh_outs
-  let cs = concatMap (get #c) env_mh_outs
-  pure mus
 
 {- | Linear regression model on individual data points at a time.
 -}

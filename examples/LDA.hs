@@ -20,7 +20,6 @@ import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, 
 import Inference.SIM as SIM ( simulate )
 import Inference.LW as LW ( lw )
 import Inference.MH as MH ( mh )
-import Inference.MHInv as MHInv ( mh )
 import Inference.MB as MB ( toMBayes )
 import Trace ( FromSTrace )
 import Numeric.Log ( Log )
@@ -151,19 +150,6 @@ mhPredLDA n_mhsteps n_words = do
   let n_topics  = 2
       env_mh_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
   env_mh_outs <- MH.mh n_mhsteps (topicModel vocab n_topics n_words) env_mh_in (#φ <#> #θ <#> vnil)
-  -- Draw the most recent sampled parameters
-  let env_pred   = head env_mh_outs
-      θs         = get #θ env_pred
-      φs         = get #φ env_pred
-  return (θs, φs)
-
--- | MH inference on topic model (predictive)
-mhInvPredLDA :: Int -> Int -> Sampler ([[Double]], [[Double]])
-mhInvPredLDA n_mhsteps n_words = do
-  -- Do MH inference over the topic model using the above data
-  let n_topics  = 2
-      env_mh_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
-  env_mh_outs <- MHInv.mh n_mhsteps (topicModel vocab n_topics n_words) env_mh_in (#φ <#> #θ <#> vnil)
   -- Draw the most recent sampled parameters
   let env_pred   = head env_mh_outs
       θs         = get #θ env_pred
