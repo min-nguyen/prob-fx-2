@@ -22,17 +22,17 @@ module Env
   ( -- * Observable variable
     Var(..)
   , varToStr
-  , vnil
-  , emptyEnv
-  , reverseEnv
-  , (<#>)
   , Vars(..)
+  , vnil
+  , (<#>)
   , ContainsVars(..)
     -- * Model environment
   , Assign(..)
   , Env(..)
   , enil
   , (<:>)
+  , emptyEnv
+  , reverseEnv
   , Observable(..)
   , Observables(..)
   , UniqueVar

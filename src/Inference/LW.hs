@@ -15,20 +15,19 @@ module Inference.LW
   , handleObs
   ) where
 
+import Data.Bifunctor ( Bifunctor(first) )
 import Control.Monad ( replicateM )
 import Effects.Dist ( Sample, Observe(..), Dist )
 import Effects.Lift ( handleLift, Lift )
-import Effects.ObsRW
+import Effects.ObsRW ( ObsRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env )
-import LogP
+import LogP ( LogP(unLogP) )
 import Inference.SIM as SIM (handleSamp)
 import Model ( handleCore, Model )
 import PrimDist ( logProb )
 import Prog ( discharge, Prog(..) )
-import qualified Data.Map as Map
 import Sampler ( Sampler )
-import Trace ( traceSamples, STrace, FromSTrace(..) )
 
 -- | Top-level wrapper for Likelihood-Weighting (LW) inference
 lw
@@ -43,7 +42,7 @@ lw
 lw n model env_in = do
   let prog = handleCore env_in model
   lwTrace <- lwInternal n prog
-  pure $ map (\((_, env_out), p) -> (env_out, p)) lwTrace
+  pure (map (first snd) lwTrace)
 
 -- | Run LW n times
 lwInternal
