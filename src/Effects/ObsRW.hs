@@ -16,7 +16,7 @@ module Effects.ObsRW (
   , handleObsRW) where
 
 import Prog ( call, discharge, Member, Prog(..) )
-import Env ( Env, Var, Observable(..), emptyEnv )
+import Env ( Env, Var, Observable(..), emptyEnv, reverseEnv )
 import Util ( safeHead, safeTail )
 
 -- | The effect for reading and writing observed values to and from a model environment @env@
@@ -52,7 +52,7 @@ handleObsRW ::
   -> Prog es (a, Env env)
 handleObsRW env_in = loop env_in (emptyEnv env_in) where
   loop :: Env env -> Env env -> Prog (ObsRW env ': es) a -> Prog es (a, Env env)
-  loop env_in env_out (Val x) = return (x, env_out)
+  loop env_in env_out (Val x) = return (x, reverseEnv env_out)
   loop env_in env_out (Op op k) = case discharge op of
     Right (OAsk x) ->
       let vs       = get x env_in
@@ -61,6 +61,6 @@ handleObsRW env_in = loop env_in (emptyEnv env_in) where
       in  loop env_in' env_out (k maybe_v)
     Right (OTell x v) ->
       let vs        = get x env_out
-          env_out'  = set x (vs ++ [v]) env_out
+          env_out'  = set x (v:vs) env_out
       in  loop env_in env_out' (k ())
     Left op' -> Op op' (loop env_in env_out . k)
