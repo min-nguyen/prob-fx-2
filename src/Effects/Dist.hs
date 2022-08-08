@@ -28,7 +28,7 @@ module Effects.Dist (
 
 import Data.Maybe ( fromMaybe )
 import qualified Data.Map as Map
-import PrimDist ( PrimVal, PrimDist, pattern PrimDistPrf)
+import PrimDist (PrimDist)
 import Prog ( call, discharge, weaken, Member(..), Prog(..), EffectSum )
 import qualified OpenSum
 import Util
@@ -56,12 +56,12 @@ data Sample a where
           -> Sample a
 
 -- | For projecting and then successfully pattern matching against @Sample@
-pattern SampPrj :: (Member Sample es) => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> Addr -> EffectSum es x
-pattern SampPrj d α <- (prj -> Just (Sample (PrimDistPrf d) α))
+pattern SampPrj :: (Member Sample es) => PrimDist x -> Addr -> EffectSum es x
+pattern SampPrj d α <- (prj -> Just (Sample d α))
 
 -- | For discharging and then successfully pattern matching against @Sample@
-pattern SampDis :: (Show x, OpenSum.Member x PrimVal) => PrimDist x -> Addr -> EffectSum (Sample : es) x
-pattern SampDis d α <- (discharge -> Right (Sample (PrimDistPrf d) α))
+pattern SampDis :: (Show x) => PrimDist x -> Addr -> EffectSum (Sample : es) x
+pattern SampDis d α <- (discharge -> Right (Sample d α))
 
 -- | The effect @Observe@ for conditioning against observed values
 data Observe a where
@@ -71,12 +71,12 @@ data Observe a where
           -> Observe a
 
 -- | For projecting and then successfully pattern matching against @Observe@
-pattern ObsPrj :: (Member Observe es) => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> x -> Addr -> EffectSum es x
-pattern ObsPrj d y α <- (prj -> Just (Observe (PrimDistPrf d) y α))
+pattern ObsPrj :: (Member Observe es) => PrimDist x -> x -> Addr -> EffectSum es x
+pattern ObsPrj d y α <- (prj -> Just (Observe d y α))
 
 -- | For discharging and then successfully pattern matching against @Observe@
-pattern ObsDis :: (Show x, OpenSum.Member x PrimVal) => PrimDist x -> x -> Addr -> EffectSum (Observe : es) x
-pattern ObsDis d y α <- (discharge -> Right (Observe (PrimDistPrf d) y α))
+pattern ObsDis :: PrimDist x -> x -> Addr -> EffectSum (Observe : es) x
+pattern ObsDis d y α <- (discharge -> Right (Observe d y α))
 
 -- | Handle the @Dist@ effect to a @Sample@ or @Observe@ effect and assign an address
 handleDist :: Prog (Dist : es) a -> Prog (Observe : Sample : es) a

@@ -31,7 +31,6 @@ import qualified Control.Monad.Bayes.Sampler as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
 import Sampler ( Sampler, liftIO )
-import Trace ( FromSTrace )
 import Util (boolToInt)
 
 -- | A HMM environment
@@ -283,8 +282,7 @@ smcHMMw n_particles hmm_length = do
 -}
 
 -- | Translate the HMM under a model environment to a program in Monad Bayes
-mbayesHMM :: ( FromSTrace env
-             , Bayes.MonadInfer m
+mbayesHMM :: ( Bayes.MonadInfer m
              , Observable env "y" Int
              , Observables env '["obs_p", "trans_p"] Double)
   -- | number of HMM nodes
