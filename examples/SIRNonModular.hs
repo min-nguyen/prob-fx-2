@@ -38,7 +38,6 @@ import qualified Control.Monad.Bayes.Class as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
 import qualified Control.Monad.Bayes.Sampler as Bayes
-import Trace ( FromSTrace )
 
 {- | SIR model.
 -}
@@ -299,7 +298,7 @@ simSIRSV = do
 -}
 
 mbayesSIR ::
-   (FromSTrace env, Bayes.MonadInfer m
+   (Bayes.MonadInfer m
   , Observables env '["𝜉"] Int , Observables env '[ "β" , "γ" , "ρ"] Double)
   => Int -> Popl -> Env env -> m ((Popl, [Popl]), Env env)
 mbayesSIR n popl = toMBayes (hmmSIR' n popl)

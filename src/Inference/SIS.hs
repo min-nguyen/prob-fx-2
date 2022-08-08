@@ -16,7 +16,6 @@ import Effects.NonDet ( accumNonDet, weakenNonDet, NonDet )
 import LogP ( LogP, logMeanExp )
 import Prog ( Prog, weakenProg )
 import Sampler ( Sampler )
-import Trace ( STrace )
 import Util ( uncurry3 )
 
 {- | A @ParticleResampler@ decides which of the current particles and contexts to continue execution with.

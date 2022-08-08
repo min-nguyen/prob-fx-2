@@ -22,7 +22,6 @@ import Inference.LW as LW ( lw )
 import Inference.MH as MH ( mh )
 import Inference.SMC as SMC ( smc )
 import Inference.MB as MB ( toMBayes )
-import Trace ( FromSTrace )
 import Numeric.Log ( Log )
 import qualified Control.Monad.Bayes.Class as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
@@ -173,7 +172,7 @@ smcPredLDA n_particles n_words = do
 
 {- | Executing the topic model using monad-bayes.
 -}
-mbayesLDA :: (FromSTrace env, Bayes.MonadInfer m, Observables env '["φ", "θ"] [Double], Observable env "w" String)
+mbayesLDA :: (Bayes.MonadInfer m, Observables env '["φ", "θ"] [Double], Observable env "w" String)
   => [String] -> Int -> Int -> Env env -> m ([String], Env env)
 mbayesLDA vocab n_topics n_words = MB.toMBayes (topicModel vocab n_topics n_words)
 

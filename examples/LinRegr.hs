@@ -22,7 +22,6 @@ import Sampler ( Sampler )
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
-import Trace ( FromSTrace )
 import Numeric.Log ( Log )
 import qualified Control.Monad.Bayes.Class as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
@@ -157,7 +156,7 @@ mhLinRegrOnce n_mhsteps n_datapoints = do
 
 {- | Executing linear regression model using monad-bayes.
 -}
-mbayesLinRegr :: (FromSTrace env, Bayes.MonadInfer m, Observables env '["y", "m", "c", "σ"] Double) =>
+mbayesLinRegr :: (Bayes.MonadInfer m, Observables env '["y", "m", "c", "σ"] Double) =>
  [Double] -> Env env -> m ([Double], Env env)
 mbayesLinRegr xs = toMBayes (linRegr xs)
 

@@ -20,7 +20,6 @@ import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
 import Sampler ( Sampler )
-import Trace ( traceSamples, FromSTrace(..) )
 
 {- | A top-level function for calling Sequential Monte Carlo on a model.
 -}

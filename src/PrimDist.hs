@@ -13,10 +13,6 @@
 module PrimDist (
   -- * Primitive distribution
     PrimDist(..)
-  , PrimVal
-  , IsPrimVal(..)
-  , pattern PrimDistPrf
-  , ErasedPrimDist(..)
   -- * Sampling
   , sample
   , sampleInv
@@ -76,14 +72,13 @@ data PrimDist a where
     :: Double           -- ^ scale
     -> PrimDist Double
   Deterministic
-    :: (Eq a, Show a, OpenSum.Member a PrimVal)
-    => a                -- ^ value of probability @1@
+    :: a                -- ^ value of probability @1@
     -> PrimDist a
   Dirichlet
     :: [Double]         -- ^ concentrations
     -> PrimDist [Double]
   Discrete
-    :: (Eq a, Show a, OpenSum.Member a PrimVal)
+    :: (Eq a, Show a)
     => [(a, Double)]    -- ^ values and associated probabilities
     -> PrimDist a
   UniformD
@@ -109,25 +104,7 @@ data PrimDist a where
     -> Double           -- ^ upper-bound @b@
     -> PrimDist Double
 
-instance Eq (PrimDist a) where
-  (==) (Normal m s) (Normal m' s') = m == m' && s == s'
-  (==) (Cauchy m s) (Cauchy m' s') = m == m' && s == s'
-  (==) (HalfCauchy s) (HalfCauchy s') = s == s'
-  (==) (HalfNormal s) (HalfNormal s') = s == s'
-  (==) (Bernoulli p) (Bernoulli p') = p == p'
-  (==) (Binomial n p) (Binomial n' p') = n == n' && p == p'
-  (==) (Categorical ps) (Categorical ps') = ps == ps'
-  (==) (Beta a b) (Beta a' b') = a == a' && b == b'
-  (==) (Gamma a b) (Gamma a' b') = a == a' && b == b'
-  (==) (Uniform a b) (Uniform a' b') = a == a' && b == b'
-  (==) (UniformD min max) (UniformD min' max') = min == min' && max == max'
-  (==) (Poisson l) (Poisson l') = l == l'
-  (==) (Discrete xs) (Discrete xs') = xs == xs'
-  (==) (Dirichlet xs) (Dirichlet xs')  = xs == xs'
-  (==) (Deterministic x) (Deterministic x') = x == x'
-  (==) _ _ = False
-
-instance Show a => Show (PrimDist a) where
+instance Show (PrimDist a) where
   show (Cauchy mu sigma) =
    "Cauchy(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ ")"
   show (HalfCauchy sigma) =
@@ -157,45 +134,7 @@ instance Show a => Show (PrimDist a) where
   show (Dirichlet xs) =
    "Dirichlet(" ++ show xs ++ ", " ++ ")"
   show (Deterministic x) =
-   "Deterministic(" ++ show x ++ ", " ++ ")"
-
-
--- | An ad-hoc specification of primitive value types, for constraining the outputs of distributions
-type PrimVal = '[Int, Double, [Double], Bool, String]
-
--- | Proof that @x@ is a primitive value
-data IsPrimVal x where
-  IsPrimVal :: (Show x, OpenSum.Member x PrimVal) => IsPrimVal x
-
--- | For pattern-matching on an arbitrary @PrimDist@ with proof that it generates a primitive value
-pattern PrimDistPrf :: () => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> PrimDist x
-pattern PrimDistPrf d <- d@(primDistPrf -> IsPrimVal)
-
--- | Proof that all primitive distributions generate a primitive value
-primDistPrf :: PrimDist x -> IsPrimVal x
-primDistPrf d = case d of
-  HalfCauchy {} -> IsPrimVal
-  Cauchy {} -> IsPrimVal
-  Normal {} -> IsPrimVal
-  HalfNormal  {} -> IsPrimVal
-  Uniform  {} -> IsPrimVal
-  UniformD {} -> IsPrimVal
-  Gamma {} -> IsPrimVal
-  Beta {} -> IsPrimVal
-  Binomial {} -> IsPrimVal
-  Bernoulli {} -> IsPrimVal
-  Categorical {} -> IsPrimVal
-  Discrete {} -> IsPrimVal
-  Poisson {} -> IsPrimVal
-  Dirichlet {} -> IsPrimVal
-  Deterministic {} -> IsPrimVal
-
--- | For erasing the types of primitive distributions
-data ErasedPrimDist where
-  ErasedPrimDist :: forall a. Show a => PrimDist a -> ErasedPrimDist
-
-instance Show ErasedPrimDist where
-  show (ErasedPrimDist d) = show d
+   "Deterministic"
 
 -- | Draw a value from a primitive distribution in the @Sampler@ monad
 sample :: PrimDist a -> Sampler a
@@ -248,7 +187,8 @@ sampleBayes d = case d of
   (Binomial n p )   -> replicateM n (MB.bernoulli p) >>= (pure . length . filter (== True))
   (Poisson l )      -> MB.poisson l
   (Dirichlet as )   -> MB.dirichlet (Vec.fromList as) >>= pure . Vec.toList
-  (PrimDistPrf d)   -> error ("Sampling from " ++ show d ++ " is not supported")
+  (Deterministic v) -> pure v
+  _                 -> error ("Sampling from " ++ show d ++ " is not supported")
 
 -- | Compute the density of a primitive distribution generating an observed value
 prob ::
@@ -302,3 +242,4 @@ logProb ::
   -- | log density
   -> LogP
 logProb d = LogP . log . prob d
+
