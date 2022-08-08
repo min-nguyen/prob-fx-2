@@ -36,7 +36,7 @@ instance forall a as. (Eq a, Eq (OpenSum as)) => Eq (OpenSum (a : as)) where
     UnsafeOpenSum (i - 1) x == (UnsafeOpenSum (j - 1) y :: OpenSum as)
 
 instance forall a as. (Show a, Show (OpenSum as)) => Show (OpenSum (a : as)) where
-  show (UnsafeOpenSum i a) =
+  show (UnsafeOpenSum i a)    =
     if i == 0
     then show (unsafeCoerce a :: a)
     else show (UnsafeOpenSum (i - 1) a :: OpenSum as)

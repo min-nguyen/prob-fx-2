@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
-{- | The effect for reading observable variables from a model environment.
+{- | The effect for reading from and writing to observable variables from a model environment.
 -}
 
 module Effects.ObsRW (
@@ -19,13 +19,13 @@ import Prog ( call, discharge, Member, Prog(..) )
 import Env ( Env, Var, Observable(..), emptyEnv, reverseEnv )
 import Util ( safeHead, safeTail )
 
--- | The effect for reading and writing observed values to and from a model environment @env@
+-- | The 'observable read-write' effect for reading from and writing to an environment @env@
 data ObsRW env a where
-  -- | Given the observable variable @x@ is assigned a list of type @[a]@ in @env@, attempt to retrieve its head value.
-  OAsk :: Observable env x a
+  -- | Given observable variable @x@ is assigned a list of type @[a]@ in @env@, attempt to retrieve a value from the list.
+  OAsk  :: Observable env x a
         => Var x                    -- ^ variable @x@ to read from
         -> ObsRW env (Maybe a)      -- ^ head value from @x@'s list
-  -- | Given the observable variable @x@ is assigned a list of type @[a]@ in @env@, append a value to the tail of the list.
+  -- | Given observable variable @x@ is assigned a list of type @[a]@ in @env@, write a value to the the list.
   OTell :: Observable env x a
         => Var x                    -- ^ variable @x@ to write to
         -> a                        -- ^ value to write
@@ -44,11 +44,13 @@ oTell :: forall env es x a. (Show a, Member (ObsRW env) es, Observable env x a)
   -> Prog es ()
 oTell x v = call (OTell @env x v)
 
--- | Handle the @OAsk@ and @OTell~ requests of observable variables
+{- Handle the @OAsk@ operations by reading from an input model environment,
+   and handle the @OTell@ operations by writing to an output model environment  -}
 handleObsRW ::
-  -- | initial model environment
+  -- | input model environment
      Env env
   -> Prog (ObsRW env ': es) a
+  -- | (final result, output model environment)
   -> Prog es (a, Env env)
 handleObsRW env_in = loop env_in (emptyEnv env_in) where
   loop :: Env env -> Env env -> Prog (ObsRW env ': es) a -> Prog es (a, Env env)

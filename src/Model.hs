@@ -52,7 +52,7 @@ import Effects.Dist ( handleDist, Dist(..), Observe, Sample )
 import Effects.ObsRW
 import Env
 import OpenSum ( OpenSum )
-import PrimDist ( PrimVal, PrimDist(..) )
+import PrimDist ( PrimDist(..) )
 import Prog ( call, Member, Prog )
 import qualified OpenSum
 import Debug.Trace
@@ -125,12 +125,12 @@ callDist d field = Model $ do
 callDist' :: PrimDist a -> Model env es a
 callDist' d = Model $ call (Dist d Nothing Nothing)
 
-deterministic :: (Eq a, Show a, OpenSum.Member a PrimVal, Observable env x a) => a
+deterministic :: (Eq a, Show a, Observable env x a) => a
   -> Var x
   -> Model env es a
 deterministic x = callDist (Deterministic x)
 
-deterministic' :: (Eq a, Show a, OpenSum.Member a PrimVal) =>
+deterministic' :: (Eq a, Show a) =>
   -- | value to be deterministically generated
      a
   -> Model env es a
@@ -148,13 +148,13 @@ dirichlet' ::
   -> Model env es [Double]
 dirichlet' xs = callDist' (Dirichlet xs)
 
-discrete :: (Eq a, Show a, OpenSum.Member a PrimVal, Observable env x a) =>
+discrete :: (Eq a, Show a, Observable env x a) =>
      [(a, Double)]
   -> Var x
   -> Model env es a
 discrete ps = callDist (Discrete ps)
 
-discrete' :: (Eq a, Show a, OpenSum.Member a PrimVal) =>
+discrete' :: (Eq a, Show a) =>
   -- | primitive values and their probabilities
      [(a, Double)]
   -> Model env es a

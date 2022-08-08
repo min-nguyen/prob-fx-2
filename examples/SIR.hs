@@ -40,7 +40,6 @@ import qualified Control.Monad.Bayes.Class as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
 import qualified Control.Monad.Bayes.Sampler as Bayes
-import Trace ( FromSTrace )
 
 -- | A type family for conveniently specifying multiple @Record@ fields of the same type
 type family Lookups env (ks :: [Symbol]) a :: Constraint where
@@ -279,8 +278,7 @@ simSIRSV n_days = do
 
 -- | Translate the HMM under a model environment to a program in Monad Bayes
 mbayesSIR ::
-   (FromSTrace env
-   , Bayes.MonadInfer m
+   ( Bayes.MonadInfer m
    , Lookups popl '["s", "i", "r"] Int
    , Observables env '["𝜉"] Int
    , Observables env '[ "β" , "γ" , "ρ"] Double)
