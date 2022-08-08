@@ -1,6 +1,7 @@
 import sys
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.ticker import AutoMinorLocator
 import ast
 from sklearn import linear_model
 from scipy.special import expit
@@ -40,7 +41,7 @@ def main():
     axs1.scatter(mus, ps)
     axs1.set_title('Linear regression - Likelihood Weighting')
 
-  if arg in ["mhLinRegrOnce", "mhLinRegr"]:
+  if arg in ["mhLinRegrOnce", "mhLinRegr", "smcLinRegr"]:
     mus = data[0]
     cs  = data[1]
     fig1, axs1 = plt.subplots(nrows=1)
@@ -200,7 +201,7 @@ def main():
     axs1.set_ylabel('probability')
     axs1.scatter(trans_p, ps_normalised)
     axs1.set_title('HMM - Likelihood Weighting')
-  if arg == "mhHMM":
+  if arg in ["mhHMM", "smcHMM"]:
     # Note : this works less well for certain parameters of trans_p and obs_p used for the training data
     trans_ps_unique = data[0]
     obs_ps_unique   = data[1]
@@ -222,23 +223,19 @@ def main():
     ws = list(set(words))
     freqs = [ words.count(w)  for w in ws]
     ax.bar(ws, freqs)
-    ax.set_xticklabels(ws)
-  if arg == "mhPredLDA":
+  if arg in ["mhPredLDA", "smcPredLDA"]:
     ws       = ['DNA', 'evolution', 'parsing', 'phonology']
     topic_ps = data[0][0]
     topic_0s = data[1][0]
     topic_1s = data[1][1]
     _, ax = plt.subplots(nrows=1)
     ax.bar(['Topic 0', 'Topic 1'], topic_ps, 0.8)
-    ax.set_xticklabels(['Topic 0', 'Topic 1'])
     plt.title('Document-Topic Distribution')
     _, ax0 = plt.subplots(nrows=1)
     ax0.bar(ws, topic_0s, 0.8)
-    ax0.set_xticklabels(ws)
     plt.title('Topic-Word Distribution 0')
     _, ax1 = plt.subplots(nrows=1)
     ax1.bar(ws, topic_1s, 0.8)
-    ax1.set_xticklabels(ws)
     plt.title('Topic-Word Distribution 1')
 
   if arg == "simRadon":
