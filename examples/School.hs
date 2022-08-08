@@ -49,10 +49,10 @@ mhSchool n_mhsteps = do
       ys        = [28, 8, -3,   7, -1,  1, 18, 12]
       sigmas    = [15, 10, 16, 11,  9, 11, 10, 18]
   -- Specify model environment
-      env       = #mu := [] <:> #theta := [] <:> #y := ys <:> ENil
+      env_in       = #mu := [] <:> #theta := [] <:> #y := ys <:> ENil
   -- Run MH inference for 10000 iterations
-  env_mh_out <- MH.mh n_mhsteps (schoolModel n_schools sigmas) env (#mu <#> #theta <#> vnil)
+  env_outs <- MH.mh n_mhsteps (schoolModel n_schools sigmas) env_in (#mu <#> #theta <#> vnil)
   -- Retrieve and returns the trace of model parameters mu and theta
-  let mus    = concatMap (get #mu) env_mh_out
-      thetas = concatMap (get #theta) env_mh_out
+  let mus    = concatMap (get #mu) env_outs
+      thetas = concatMap (get #theta) env_outs
   return (mus, thetas)

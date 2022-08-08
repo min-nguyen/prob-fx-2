@@ -54,8 +54,8 @@ simGMM n_datapoints = do
   -- | Assume two clusters
   let n_clusters = 2
   -- | Specify model environment of two clusters with mean (-2.0, -2.0) and (3.5, 3.5)
-      env =  #mu := [-2.0, 3.5] <:> #mu_k := [] <:> #x := [] <:> #y := [] <:> enil
-  bs <- SIM.simulate (gmm n_clusters n_datapoints) env
+      env_in =  #mu := [-2.0, 3.5] <:> #mu_k := [] <:> #x := [] <:> #y := [] <:> enil
+  bs <- SIM.simulate (gmm n_clusters n_datapoints) env_in
   pure $ fst bs
 
 mhGMM
@@ -66,6 +66,6 @@ mhGMM n_mhsteps n_datapoints = do
   bs <- simGMM n_datapoints
   let (xs, ys) = unzip (map fst bs)
       env =  #mu := [] <:> #mu_k := [] <:> #x := xs <:> #y := ys <:> enil
-  env_mh_out <- MH.mh n_mhsteps (gmm 2 n_datapoints) env (#mu <#> vnil)
-  let mus = map (get #mu) env_mh_out
+  env_out <- MH.mh n_mhsteps (gmm 2 n_datapoints) env (#mu <#> vnil)
+  let mus = map (get #mu) env_out
   pure mus

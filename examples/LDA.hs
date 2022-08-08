@@ -136,10 +136,10 @@ lwLDA :: Int -> Int -> Sampler ([[Double]], [Double])
 lwLDA n_lwsteps n_words = do
   -- Do MH inference over the topic model using the above data
   let n_topics  = 2
-      env_lw_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
-  (env_mh_outs, ws) <- unzip <$> LW.lw n_lwsteps (topicModel vocab n_topics n_words) env_lw_in
+      env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+  (env_outs, ws) <- unzip <$> LW.lw n_lwsteps (topicModel vocab n_topics n_words) env_in
   -- Draw the most recent sampled parameters
-  let env_pred   = head env_mh_outs
+  let env_pred   = head env_outs
       θs         = get #θ env_pred
   return (θs, ws)
 
@@ -148,10 +148,10 @@ mhPredLDA :: Int -> Int -> Sampler ([[Double]], [[Double]])
 mhPredLDA n_mhsteps n_words = do
   -- Do MH inference over the topic model using the above data
   let n_topics  = 2
-      env_mh_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
-  env_mh_outs <- MH.mh n_mhsteps (topicModel vocab n_topics n_words) env_mh_in (#φ <#> #θ <#> vnil)
+      env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+  env_outs <- MH.mh n_mhsteps (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
   -- Draw the most recent sampled parameters
-  let env_pred   = head env_mh_outs
+  let env_pred   = head env_outs
       θs         = get #θ env_pred
       φs         = get #φ env_pred
   return (θs, φs)
@@ -164,18 +164,18 @@ mbayesLDA vocab n_topics n_words = MB.toMBayes (topicModel vocab n_topics n_word
 
 simLDAMB :: Int -> IO ([String], Env TopicEnv)
 simLDAMB n_words  = do
-  let env = #θ := [[0.5, 0.5]] <:>
+  let env_in = #θ := [[0.5, 0.5]] <:>
             #φ := [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],
                    [1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]] <:>
             #w := [] <:> enil
-  Bayes.sampleIO $ Bayes.prior (mbayesLDA vocab 2 n_words env)
+  Bayes.sampleIO $ Bayes.prior (mbayesLDA vocab 2 n_words env_in)
 
 lwLDAMB :: Int -> Int -> IO [(([String], Env TopicEnv), Log Double)]
 lwLDAMB n_samples n_words  = do
-  let env = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
-  Bayes.sampleIO $ replicateM n_samples (Bayes.runWeighted $ mbayesLDA vocab 2 n_words env)
+  let env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+  Bayes.sampleIO $ replicateM n_samples (Bayes.runWeighted $ mbayesLDA vocab 2 n_words env_in)
 
 mhLDAMB :: Int -> Int -> IO [([String], Env TopicEnv)]
 mhLDAMB n_mhsteps n_words  = do
-  let env = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
-  Bayes.sampleIO $ Bayes.prior $ Bayes.mh n_mhsteps (mbayesLDA vocab 2 n_words env)
+  let env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+  Bayes.sampleIO $ Bayes.prior $ Bayes.mh n_mhsteps (mbayesLDA vocab 2 n_words env_in)

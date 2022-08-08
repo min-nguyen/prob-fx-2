@@ -19,6 +19,7 @@ module PrimDist (
   , ErasedPrimDist(..)
   -- * Sampling
   , sample
+  , sampleInv
   , sampleBayes
   -- * Density
   , prob
@@ -48,6 +49,7 @@ import LogP ( LogP(..) )
 import Util ( boolToInt )
 import Numeric.Log ( Log(Exp) )
 import qualified Control.Monad.Bayes.Class as MB
+import Control.Monad ((>=>), replicateM)
 
 
 -- | Primitive distribution
@@ -197,49 +199,56 @@ instance Show ErasedPrimDist where
 
 -- | Draw a value from a primitive distribution in the @Sampler@ monad
 sample :: PrimDist a -> Sampler a
-sample (HalfCauchy σ )  =
-  createSampler (sampleCauchy 0 σ) >>= pure . abs
-sample (Cauchy μ σ )  =
-  createSampler (sampleCauchy μ σ)
-sample (HalfNormal σ )  =
-  createSampler (sampleNormal 0 σ) >>= pure . abs
-sample (Normal μ σ )  =
-  createSampler (sampleNormal μ σ)
-sample (Uniform min max )  =
-  createSampler (sampleUniform min max)
-sample (UniformD min max )  =
-  createSampler (sampleDiscreteUniform min max)
-sample (Gamma k θ )        =
-  createSampler (sampleGamma k θ)
-sample (Beta α β  )         =
-  createSampler (sampleBeta α β)
-sample (Binomial n p  )     =
-  createSampler (sampleBinomial n p) >>=  pure .  length . filter (== True)
-sample (Bernoulli p )      =
-  createSampler (sampleBernoulli p)
-sample (Discrete ps )   =
-  createSampler (sampleCategorical (V.fromList $ fmap snd ps)) >>= \i -> pure $ fst $ ps !! i
-sample (Categorical ps )      =
-  createSampler (sampleDiscrete ps)
-sample (Poisson λ ) =
-  createSampler (samplePoisson λ)
-sample (Dirichlet xs ) =
-  createSampler (sampleDirichlet xs)
-sample (Deterministic x) = pure x
+sample d = case d of
+  (HalfCauchy σ )     -> sampleCauchy 0 σ >>= pure . abs
+  (Cauchy μ σ )       -> sampleCauchy μ σ
+  (HalfNormal σ )     -> sampleNormal 0 σ >>= pure . abs
+  (Normal μ σ )       -> sampleNormal μ σ
+  (Uniform min max )  -> sampleUniform min max
+  (UniformD min max ) -> sampleUniformD min max
+  (Gamma k θ )        -> sampleGamma k θ
+  (Beta α β  )        -> sampleBeta α β
+  (Binomial n p  )    -> sampleBinomial n p
+  (Bernoulli p )      -> sampleBernoulli p
+  (Discrete ps )      -> sampleCategorical (V.fromList $ fmap snd ps) >>= \i -> pure $ fst $ ps !! i
+  (Categorical ps )   -> sampleDiscrete ps
+  (Poisson λ )        -> samplePoisson λ
+  (Dirichlet xs )     -> sampleDirichlet xs
+  (Deterministic x)   -> pure x
+
+-- | Draw a value from a primitive distribution in the @Sampler@ monad
+sampleInv :: PrimDist a -> Double -> Sampler a
+sampleInv d = case d of
+  (HalfCauchy σ )     -> sampleCauchyInv 0 σ >=> pure . abs
+  (Cauchy μ σ )       -> sampleCauchyInv μ σ
+  (HalfNormal σ )     -> sampleNormalInv 0 σ >=> pure . abs
+  (Normal μ σ )       -> sampleNormalInv μ σ
+  (Uniform min max )  -> sampleUniformInv min max
+  (UniformD min max ) -> sampleUniformDInv min max
+  (Gamma k θ )        -> sampleGammaInv k θ
+  (Beta α β  )        -> sampleBetaInv α β
+  (Binomial n p  )    -> sampleBinomialInv n p
+  (Bernoulli p )      -> sampleBernoulliInv p
+  (Discrete ps )      -> sampleCategoricalInv (V.fromList $ fmap snd ps) >=> \i -> pure $ fst $ ps !! i
+  (Categorical ps )   -> sampleDiscreteInv ps
+  (Poisson λ )        -> samplePoissonInv λ
+  (Dirichlet xs )     -> sampleDirichletInv xs
+  (Deterministic x)   -> const (pure x)
 
 -- | Draw a value from a primitive distribution using the @MonadSample@ type class from Monad-Bayes
 sampleBayes :: MB.MonadSample m => PrimDist a -> m a
-sampleBayes (Uniform a b )    = MB.uniform a b
-sampleBayes (Categorical as ) = MB.categorical (Vec.fromList as)
-sampleBayes (Discrete as )    = MB.categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
-sampleBayes (Normal mu std )  = MB.normal mu std
-sampleBayes (Gamma k t )      = MB.gamma k t
-sampleBayes (Beta a b )       = MB.beta a b
-sampleBayes (Bernoulli p )    = MB.bernoulli p
-sampleBayes (Binomial n p )   = sequence (replicate n (MB.bernoulli p)) >>= (pure . length . filter (== True))
-sampleBayes (Poisson l )      = MB.poisson l
-sampleBayes (Dirichlet as )   = MB.dirichlet (Vec.fromList as) >>= pure . Vec.toList
-sampleBayes (PrimDistPrf d)   = error ("Sampling from " ++ show d ++ " is not supported")
+sampleBayes d = case d of
+  (Uniform a b )    -> MB.uniform a b
+  (Categorical as ) -> MB.categorical (Vec.fromList as)
+  (Discrete as )    -> MB.categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
+  (Normal mu std )  -> MB.normal mu std
+  (Gamma k t )      -> MB.gamma k t
+  (Beta a b )       -> MB.beta a b
+  (Bernoulli p )    -> MB.bernoulli p
+  (Binomial n p )   -> replicateM n (MB.bernoulli p) >>= (pure . length . filter (== True))
+  (Poisson l )      -> MB.poisson l
+  (Dirichlet as )   -> MB.dirichlet (Vec.fromList as) >>= pure . Vec.toList
+  (PrimDistPrf d)   -> error ("Sampling from " ++ show d ++ " is not supported")
 
 -- | Compute the density of a primitive distribution generating an observed value
 prob ::

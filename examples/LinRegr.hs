@@ -56,9 +56,9 @@ simLinRegr n_datapoints = do
   -- Specify model inputs
   let xs  = [0 .. fromIntegral n_datapoints]
   -- Specify model environment
-      env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> enil
+      env_in = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> enil
   -- Simulate linear regression for each input x
-  bs :: ([Double], Env LinRegrEnv) <- SIM.simulate (linRegr xs) env
+  bs :: ([Double], Env LinRegrEnv) <- SIM.simulate (linRegr xs) env_in
   pure $ zip xs (fst bs)
 
 -- | Likelihood weighting over linear regression
@@ -67,9 +67,9 @@ lwLinRegr n_lwsteps n_datapoints = do
   -- Specify model inputs
   let xs            = [0 .. fromIntegral n_datapoints]
   -- Specify model environment
-      env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+      env_in           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
    -- Get the sampled values of mu and their likelihood-weighting
-  (env_outs, ps) <- unzip <$> LW.lw n_lwsteps (linRegr xs) env
+  (env_outs, ps) <- unzip <$> LW.lw n_lwsteps (linRegr xs) env_in
   let mus = concatMap (get #m) env_outs
   pure (zip mus ps)
 
@@ -79,14 +79,13 @@ mhLinRegr n_mhsteps n_datapoints = do
   -- Specify model inputs
   let xs            = [0 .. fromIntegral n_datapoints]
   -- Specify model environment
-      env           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+      env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   -- Run MH
-  env_mh_outs <- MH.mh n_mhsteps (linRegr xs) env (#m <#> #c <#> vnil)
+  env_outs <- MH.mh n_mhsteps (linRegr xs) env_in (#m <#> #c <#> vnil)
   -- Get the sampled values of mu and c
-  let mus = concatMap (get #m) env_mh_outs
-  let cs = concatMap (get #c) env_mh_outs
+  let mus = concatMap (get #m) env_outs
+  let cs = concatMap (get #c) env_outs
   pure (mus, cs)
-
 
 {- | Linear regression model on individual data points at a time.
 -}
@@ -107,9 +106,9 @@ simLinRegrOnce n_datapoints = do
   -- Specify model inputs
   let xs  = [0 .. fromIntegral n_datapoints]
   -- Specify model environment
-      env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> enil
+      env_in = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> enil
   -- Simulate linear regression for each input x
-  ys_envs <- mapM (\x -> SIM.simulate (linRegrOnce x) env) xs
+  ys_envs <- mapM (\x -> SIM.simulate (linRegrOnce x) env_in) xs
   let ys = map fst ys_envs
   pure (zip xs ys)
 
@@ -119,9 +118,9 @@ lwLinRegrOnce n_samples n_datapoints = do
   -- Specify model inputs
   let xs  = [0 .. fromIntegral n_datapoints]
   -- Specify model environments and pair with model input
-      xys = [(x, env) | x <- xs, let env = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x]) <:> enil]
+      xys = [(x, env_in) | x <- xs, let env_in = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x]) <:> enil]
   -- Run LW for n_samples on each pair of model input and environment
-  lwTrace <- mapM (\(x, env) -> LW.lw n_samples (linRegrOnce  x) env) xys
+  lwTrace <- mapM (\(x, env_in) -> LW.lw n_samples (linRegrOnce  x) env_in) xys
   -- Get the sampled values of mu and their likelihood-weighting
   let (env_outs, ps) = unzip $ concat lwTrace
       mus = concatMap (get #m) env_outs
@@ -133,7 +132,7 @@ mhLinRegrOnce n_mhsteps n_datapoints = do
   -- Specify model inputs
   let xs  = [0 .. fromIntegral n_datapoints]
   -- Specify model environments and pair with model input
-      xys = [(x, env) | x <- xs, let env = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x]) <:> enil]
+      xys = [(x, env_in) | x <- xs, let env_in = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x]) <:> enil]
   -- Run MH for n_mhsteps iterations on each pair of model input and environment
   mhTrace <- concat <$> mapM (\(x, y) -> MH.mh n_mhsteps (linRegrOnce x) y  (#m <#> #c <#> vnil)) xys
   -- Get the sampled values of mu and c
@@ -150,23 +149,23 @@ mbayesLinRegr xs = toMBayes (linRegr xs)
 simLinRegrMB :: Int -> Int -> IO [([Double], Env LinRegrEnv)]
 simLinRegrMB n_samples n_datapoints = do
   let xs  = [0 .. fromIntegral n_datapoints]
-      env = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> enil
-  Bayes.sampleIO $ Bayes.prior $ replicateM n_samples (mbayesLinRegr xs env)
+      env_in = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> enil
+  Bayes.sampleIO $ Bayes.prior $ replicateM n_samples (mbayesLinRegr xs env_in)
 
 lwLinRegrMB :: Int -> Int -> IO [(([Double], Env LinRegrEnv), Log Double)]
 lwLinRegrMB n_datapoints n_samples = do
   let n_datapoints' = fromIntegral n_datapoints
       xs            = [0 .. n_datapoints']
-      env           = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> enil
-  Bayes.sampleIO $ replicateM n_samples (Bayes.runWeighted $ mbayesLinRegr xs env)
+      env_in           = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> enil
+  Bayes.sampleIO $ replicateM n_samples (Bayes.runWeighted $ mbayesLinRegr xs env_in)
 
 mhLinRegrMB :: Int -> Int -> IO [([Double], Env LinRegrEnv)]
 mhLinRegrMB n_samples n_datapoints = do
   let n_datapoints' = fromIntegral n_datapoints
       xs            = [0 .. n_datapoints']
-      env           = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> enil
-  mhtrace <- Bayes.sampleIO (Bayes.prior $ Bayes.mh n_samples (mbayesLinRegr xs env))
-  let (outpts, envs) = unzip mhtrace
-      mus = concatMap (get #m) envs
+      env_in           = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> enil
+  mhtrace <- Bayes.sampleIO (Bayes.prior $ Bayes.mh n_samples (mbayesLinRegr xs env_in))
+  let (outputs, env_outs) = unzip mhtrace
+      mus = concatMap (get #m) env_outs
   print mus
   pure mhtrace
