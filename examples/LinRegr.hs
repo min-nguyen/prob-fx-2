@@ -16,6 +16,7 @@ import Model ( Model, normal, uniform )
 import Inference.SIM as SIM ( simulate )
 import Inference.LW as LW ( lw )
 import Inference.MH as MH ( mh )
+import Inference.SMC as SMC ( smc )
 import Inference.MB as MB ( toMBayes )
 import Sampler ( Sampler )
 import Control.Monad ( replicateM )
@@ -82,6 +83,19 @@ mhLinRegr n_mhsteps n_datapoints = do
       env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   -- Run MH
   env_outs <- MH.mh n_mhsteps (linRegr xs) env_in (#m <#> #c <#> vnil)
+  -- Get the sampled values of mu and c
+  let mus = concatMap (get #m) env_outs
+  let cs = concatMap (get #c) env_outs
+  pure (mus, cs)
+
+smcLinRegr ::  Int -> Int ->  Sampler ([Double], [Double])
+smcLinRegr n_particles n_datapoints = do
+  -- Specify model inputs
+  let xs            = [0 .. fromIntegral n_datapoints]
+  -- Specify model environment
+      env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+  -- Run MH
+  env_outs <- SMC.smc n_particles (linRegr xs) env_in
   -- Get the sampled values of mu and c
   let mus = concatMap (get #m) env_outs
   let cs = concatMap (get #c) env_outs

@@ -55,10 +55,10 @@ smcParticleHdlr particles = do
       2. the address of their @Observe@ breakpoint
       3. their incremental sample trace since the previous breakpoint
   -}
-  particles'_ctxs' <- (handleNonDet . traceSamples . breakObserve ) (asum particles)
+  particles'_ctxs' <- (handleNonDet . breakObserve) (asum particles)
   {- Reformat the data into a list of particles and particle contexts.
   -}
-  mapM (\((prog, logp, α), strace) -> pure (prog, SIS.ParticleCtx logp strace [α])) particles'_ctxs'
+  mapM (\(prog, logp, α) -> pure (prog, SIS.ParticleCtx logp [α])) particles'_ctxs'
 
 {- | Resamples a population of particles according to their normalised log-weights.
 -}
