@@ -21,6 +21,7 @@ import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, 
 import Inference.LW as LW ( lw )
 import Inference.MB as MB ( toMBayes )
 import Inference.MH as MH ( mh )
+import Inference.SMC as SMC ( smc )
 import Inference.SIM as SIM ( simulate )
 import Model ( Model, bernoulli', binomial, uniform )
 import Numeric.Log ( Log )
@@ -29,7 +30,7 @@ import qualified Control.Monad.Bayes.Class as Bayes
 import qualified Control.Monad.Bayes.Sampler as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
-import Sampler ( Sampler )
+import Sampler ( Sampler, liftIO )
 import Trace ( FromSTrace )
 import Util (boolToInt)
 
@@ -256,6 +257,27 @@ mhHMMw mh_samples hmm_length = do
   -- Get the trace of sampled transition and observation parameters
   let trans_ps    = concatMap (get #trans_p) env_outs
       obs_ps      = concatMap (get #obs_p) env_outs
+  pure (trans_ps, obs_ps)
+
+-- | Metropolis-Hastings inference over a HMM
+smcHMMw
+  -- | number of MH iterations
+  :: Int
+  -- | number of HMM nodes
+  -> Int
+  -- | [(transition parameter, observation parameter)]
+  -> Sampler ([Double], [Double])
+smcHMMw n_particles hmm_length = do
+  -- Simulate a trace of observations from the HMM
+  ys <- map snd <$> simHMMw hmm_length
+  -- Specify a model environment containing those observations
+  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
+  -- Handle the Writer effect and then run MH inference
+  env_outs <- SMC.smc n_particles (hmm hmm_length 0) env_in
+  -- Get the trace of sampled transition and observation parameters
+  let trans_ps    = concatMap (get #trans_p) env_outs
+      obs_ps      = concatMap (get #obs_p) env_outs
+  liftIO $ print (show ys)
   pure (trans_ps, obs_ps)
 
 {- | Interfacing the HMM on top of Monad Bayes.

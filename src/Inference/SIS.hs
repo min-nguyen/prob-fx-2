@@ -43,13 +43,12 @@ type ParticleHandler es a
 -}
 data ParticleCtx = ParticleCtx {
     particleLogProb  :: LogP    -- ^ associated log-probability
-  , particleSTrace   :: STrace  -- ^ trace of sampled values
   , particleObsAddrs :: [Addr]  -- ^ addresses of @Observe@ operations encountered so far
   }
 
 -- | Initialise the context for a particle
 emptyParticleCtx :: ParticleCtx
-emptyParticleCtx = ParticleCtx 0 Map.empty []
+emptyParticleCtx = ParticleCtx 0 []
 
 -- | Merge the incremental contexts with the previously accumulated contexts
 accumParticleCtx :: [ParticleCtx] -- ^ previously acccumulated context
@@ -59,11 +58,9 @@ accumParticleCtx ctxs ctxs' =
   --  Compute normalised accumulated log weights
   let logprobs = let logZ = logMeanExp (map particleLogProb ctxs)
                  in  map ((+ logZ) . particleLogProb) ctxs'
-  --  Combine the sample traces
-      straces  = zipWith Map.union (map particleSTrace ctxs') (map particleSTrace ctxs)
   --  Update the Observe operations encountered
       obsaddrs = zipWith (++) (map particleObsAddrs ctxs') (map particleObsAddrs ctxs)
-  in  map (uncurry3 ParticleCtx) (zip3 logprobs straces obsaddrs)
+  in  zipWith ParticleCtx logprobs obsaddrs
 
 {- | A top-level template for sequential importance sampling.
 -}
@@ -71,7 +68,7 @@ sis :: forall a es.
      Int                                                                    -- ^ num of particles
   -> ParticleHandler (Observe : Sample : Lift Sampler : '[]) a              -- ^ handler of particles
   -> ParticleResampler (Observe : Sample : Lift Sampler : '[])  a           -- ^ particle resampler
-  -> (forall b es . Prog (Observe : es) b -> Prog es b)                      -- ^ observe handler
+  -> (forall b es . Prog (Observe : es) b -> Prog es b)                     -- ^ observe handler
   -> (forall b. Prog '[Sample, Lift Sampler] b -> Prog '[Lift Sampler] b)   -- ^ sample handler
   -> Prog [Observe, Sample, Lift Sampler] a                                 -- ^ model
   -> Sampler [(a, ParticleCtx)]
