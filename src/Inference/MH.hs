@@ -4,33 +4,33 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE GADTs #-}
 
 module Inference.MH where
 
-import Control.Monad
+import Control.Monad ( (>=>) )
 import qualified Data.Map as Map
 import Data.Set ((\\))
 import qualified Data.Set as Set
-import Data.Maybe
-import Prog
-import Trace
-import LogP
-import PrimDist
-import Model
-import Effects.ObsReader
-import OpenSum
-import Env
-import Effects.Dist
-import Effects.Lift
+import Data.Maybe ( fromJust )
+import Prog ( Prog(..), discharge )
+import Trace ( InvSTrace, LPTrace, filterTrace, traceLogProbs )
+import LogP ( LogP(unLogP) )
+import PrimDist ( PrimDist(..), sample, sampleInv )
+import Model ( Model, handleCore )
+import Effects.ObsRW ( ObsRW )
+import Env ( ContainsVars(..), Vars, Env )
+import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr )
+import Effects.Lift ( Lift, lift, handleLift )
 import qualified Inference.SIM as SIM
-import Sampler
+import Sampler ( Sampler, sampleRandom )
 
 -- | Top-level wrapper for Metropolis-Hastings (MH) inference
-mh :: forall env es a xs. (FromSTrace env, env `ContainsVars` xs)
+mh :: forall env es a xs. (env `ContainsVars` xs)
   -- | number of MH iterations
   => Int
   -- | model
-  -> Model env [ObsReader env, Dist, Lift Sampler] a
+  -> Model env [ObsRW env, Dist, Lift Sampler] a
   -- | input model environment
   -> Env env
   -- | optional list of observable variable names (strings) to specify sample sites of interest
@@ -39,15 +39,15 @@ mh :: forall env es a xs. (FromSTrace env, env `ContainsVars` xs)
   -> Vars xs
   -- | output model environments
   -> Sampler [Env env]
-mh n model env obsvars  = do
+mh n model env_in obsvars  = do
   -- Handle model to probabilistic program
-  let prog = handleCore env model
+  let prog = handleCore env_in model
   -- Convert observable variables to strings
       tags = varsToStrs @env obsvars
   -- Run MH for n iterations
   mhTrace <- mhInternal n prog Map.empty tags
-  -- Convert each iteration's sample trace to a model environment
-  pure (map (fromSTrace . snd . fst) mhTrace)
+  -- Return the accepted model environments
+  pure (map (snd . fst . fst) mhTrace)
 
 -- | Perform MH on a probabilistic program
 mhInternal
@@ -59,7 +59,7 @@ mhInternal
    -- | tags indicating sample sites of interest
    -> [Tag]
    -- | [(accepted outputs, logps), samples)]
-   -> Sampler [(((a, LPTrace), STrace), InvSTrace)]
+   -> Sampler [((a, LPTrace), InvSTrace)]
 mhInternal n prog strace_0 tags = do
   -- Perform initial run of mh
   mhCtx_0 <- runMH strace_0 prog
@@ -75,9 +75,9 @@ mhStep
   -- | a mechanism for accepting proposals
   -> Accept p a
   -- | trace of previous MH results
-  -> [(((a, p), STrace), InvSTrace)]
+  -> [((a, p), InvSTrace)]
   -- | updated trace of MH results
-  -> Sampler [(((a, p), STrace), InvSTrace)]
+  -> Sampler [((a, p), InvSTrace)]
 mhStep prog tags accepter trace = do
   -- Get previous MH output
   let mhCtx@(_, inv_strace) = head trace
@@ -105,9 +105,10 @@ runMH ::
   -- | sample address of interest
   -> Prog [Observe, Sample, Lift Sampler] a
   -- | ((model output, sample trace), log-probability trace)
-  -> Sampler (((a, LPTrace), STrace), InvSTrace)
-runMH inv_strace  = handleLift . handleSamp inv_strace . SIM.handleObs . traceSamples . traceLogProbs
+  -> Sampler ((a, LPTrace), InvSTrace)
+runMH inv_strace  = handleLift . handleSamp inv_strace . SIM.handleObs . traceLogProbs
 
+-- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones
 handleSamp ::
   -- | Sample trace
      InvSTrace
@@ -115,7 +116,7 @@ handleSamp ::
   -> Prog '[Lift Sampler] (a, InvSTrace)
 handleSamp inv_strace (Val x)   = pure (x, inv_strace)
 handleSamp inv_strace (Op op k) = case discharge op of
-    Right (Sample (PrimDistPrf d) α) ->
+    Right (Sample d α) ->
       case Map.lookup α inv_strace of
           Nothing -> do r <- lift sampleRandom
                         y <- lift (sampleInv d r)
@@ -129,7 +130,7 @@ handleSamp inv_strace (Op op k) = case discharge op of
 {- | The result of a single MH iteration, where @a@ is the type of model output and
      @p@ is some representation of probability.
 -}
-type MHCtx p a = (((a, p), STrace), InvSTrace)
+type MHCtx p a = ((a, p), InvSTrace)
 
 {- | An abstract mechanism for computing an acceptance probability, where @a@ is the
      type of model output and @p@ is some representation of probability.
@@ -146,7 +147,7 @@ type Accept p a =
 
 -- | An acceptance mechanism for MH
 acceptMH :: Accept LPTrace a
-acceptMH x0 (((_, lptrace ), strace), inv_strace) (((a, lptrace'), strace'), inv_strace') = do
+acceptMH x0 ((_, lptrace ), inv_strace) ((a, lptrace'), inv_strace') = do
   let dom_logα = log (fromIntegral $ Map.size inv_strace) - log (fromIntegral $ Map.size inv_strace')
       sampled  = Set.singleton x0 `Set.union` (Map.keysSet inv_strace \\ Map.keysSet inv_strace')
       sampled' = Set.singleton x0 `Set.union` (Map.keysSet inv_strace' \\ Map.keysSet inv_strace)
@@ -154,4 +155,4 @@ acceptMH x0 (((_, lptrace ), strace), inv_strace) (((a, lptrace'), strace'), inv
                          0 (Map.keysSet lptrace \\ sampled)
       logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
                          0 (Map.keysSet lptrace' \\ sampled')
-  pure ((((a, lptrace'), strace'), inv_strace'), (exp . unLogP) (dom_logα + logα' - logα))
+  pure (((a, lptrace'), inv_strace'), (exp . unLogP) (dom_logα + logα' - logα))

@@ -48,14 +48,14 @@ module Model (
 
 import Control.Monad ( ap )
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
-import Effects.Dist ( handleDist, Dist(Dist), Observe, Sample )
-import Effects.ObsReader ( oAsk, handleObsRead, ObsReader )
-import Env ( varToStr, Env, Var, Observable )
+import Effects.Dist ( handleDist, Dist(..), Observe, Sample )
+import Effects.ObsRW
+import Env
 import OpenSum ( OpenSum )
 import PrimDist ( PrimVal, PrimDist(..) )
 import Prog ( call, Member, Prog )
 import qualified OpenSum
-
+import Debug.Trace
 
 {- | Models are parameterised by:
 
@@ -66,11 +66,11 @@ import qualified OpenSum
     3) an output type @a@ of values that the model generates.
 
     A model initially consists of (at least) two effects: @Dist@ for calling primitive distributions
-    and @ObsReader env@ for reading from @env@.
+    and @ObsRW env@ for reading from @env@.
 -}
 newtype Model env es a =
-  Model { runModel :: ( Member Dist es            -- models can call primitive distributions
-                      , Member (ObsReader env) es -- models can read observed values from their environment
+  Model { runModel :: ( Member Dist es        -- models can call primitive distributions
+                      , Member (ObsRW env) es -- models can read observed values from their environment
                       )
                    => Prog es a }
   deriving Functor
@@ -88,8 +88,8 @@ instance Monad (Model env es) where
 {- | The initial handler for models, specialising a model under a certain environment
      to produce a probabilistic program consisting of @Sample@ and @Observe@ operations.
 -}
-handleCore :: Env env -> Model env (ObsReader env : Dist : es) a -> Prog (Observe : Sample : es) a
-handleCore env m = (handleDist . handleObsRead env) (runModel m)
+handleCore :: Env env -> Model env (ObsRW env : Dist : es) a -> Prog (Observe : Sample : es) (a, Env env)
+handleCore env_in m = (handleDist . handleObsRW env_in) (runModel m)
 
 {- $Smart-Constructors
 
@@ -114,11 +114,13 @@ handleCore env m = (handleDist . handleObsRead env) (runModel m)
     @
 -}
 
-callDist :: forall env x a es. Observable env x a => PrimDist a -> Var x -> Model env es a
+callDist :: forall env x a es. Show a => Observable env x a => PrimDist a -> Var x -> Model env es a
 callDist d field = Model $ do
   let tag =  Just $ varToStr field
   maybe_y <- oAsk @env field
-  call (Dist d maybe_y tag)
+  y <- call (Dist d maybe_y tag)
+  oTell @env field y
+  pure y
 
 callDist' :: PrimDist a -> Model env es a
 callDist' d = Model $ call (Dist d Nothing Nothing)

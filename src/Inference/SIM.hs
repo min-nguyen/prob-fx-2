@@ -21,36 +21,34 @@ module Inference.SIM
 
 import Effects.Dist ( Sample(..), Observe(..), Dist )
 import Effects.Lift ( handleLift, Lift, lift )
-import Effects.ObsReader ( ObsReader )
+import Effects.ObsRW ( ObsRW )
 import Env ( Env )
 import Model ( handleCore, Model )
 import OpenSum (OpenSum)
 import PrimDist ( sample, pattern PrimDistPrf )
 import Prog ( discharge, Prog(..) )
-import Sampler ( Sampler )
-import Trace ( traceSamples, STrace, FromSTrace(..) )
+import Sampler ( Sampler, liftIO )
 import Unsafe.Coerce (unsafeCoerce)
 
 -- | Simulate from a model under a given model environment
-simulate :: FromSTrace env
+simulate
   -- | model
-  => Model env [ObsReader env, Dist, Lift Sampler] a
+  :: Model env [ObsRW env, Dist, Lift Sampler] a
   -- | input model environment
   -> Env env
   -- | (model output, output environment)
   -> Sampler (a, Env env)
-simulate model env = do
-  let prog = handleCore env model
-  outputs_strace <- runSimulate prog
-  return (fmap fromSTrace outputs_strace)
+simulate model env_in = do
+  let prog = handleCore env_in model
+  runSimulate prog
 
 -- | Handler for simulating once from a probabilistic program
 runSimulate
   :: Prog [Observe, Sample, Lift Sampler] a
   -- | (model output, sample trace)
-  -> Sampler (a, STrace)
+  -> Sampler a
 runSimulate
-  = handleLift . handleSamp . handleObs . traceSamples
+  = handleLift . handleSamp . handleObs
 
 -- | Handle @Observe@ operations by simply passing forward their observed value, performing no side-effects
 handleObs :: Prog (Observe : es) a -> Prog es a
@@ -63,7 +61,7 @@ handleObs (Op op k) = case discharge op of
 handleSamp :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
 handleSamp (Val x) = return x
 handleSamp (Op op k) = case discharge op of
-  Right (Sample (PrimDistPrf d) α) ->
+  Right (Sample d α) ->
     do  x <- lift $ sample d
         handleSamp (k x)
   Left op' -> do

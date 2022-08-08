@@ -15,8 +15,8 @@
 
 module Trace (
   -- * Sample trace
-    STrace
-  , InvSTrace
+    InvSTrace
+  , STrace
   , FromSTrace(..)
   , filterTrace
   , traceSamples
@@ -31,7 +31,7 @@ import Effects.Dist ( Tag, Addr, Observe, Sample(..), pattern ObsPrj, pattern Sa
 import Env ( enil, varToStr, UniqueVar, Var(..), Env(ECons), Assign((:=)) )
 import GHC.TypeLits ( KnownSymbol )
 import OpenSum (OpenSum)
-import LogP
+import LogP ( LogP )
 import qualified Data.Map as Map
 import qualified OpenSum
 import Prog ( Member, Prog(..), weaken, install )
