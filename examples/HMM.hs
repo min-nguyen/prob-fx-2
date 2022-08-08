@@ -259,9 +259,9 @@ mhHMMw mh_samples hmm_length = do
       obs_ps      = concatMap (get #obs_p) env_outs
   pure (trans_ps, obs_ps)
 
--- | Metropolis-Hastings inference over a HMM
+-- | SMC inference over a HMM
 smcHMMw
-  -- | number of MH iterations
+  -- | number of particles
   :: Int
   -- | number of HMM nodes
   -> Int
@@ -274,10 +274,9 @@ smcHMMw n_particles hmm_length = do
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
   -- Handle the Writer effect and then run MH inference
   env_outs <- SMC.smc n_particles (hmm hmm_length 0) env_in
-  -- Get the trace of sampled transition and observation parameters
+  -- Get the sampled transition and observation parameters of each particle
   let trans_ps    = concatMap (get #trans_p) env_outs
       obs_ps      = concatMap (get #obs_p) env_outs
-  liftIO $ print (show ys)
   pure (trans_ps, obs_ps)
 
 {- | Interfacing the HMM on top of Monad Bayes.

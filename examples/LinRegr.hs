@@ -88,17 +88,18 @@ mhLinRegr n_mhsteps n_datapoints = do
   let cs = concatMap (get #c) env_outs
   pure (mus, cs)
 
+-- | SMC over linear regression
 smcLinRegr ::  Int -> Int ->  Sampler ([Double], [Double])
 smcLinRegr n_particles n_datapoints = do
   -- Specify model inputs
   let xs            = [0 .. fromIntegral n_datapoints]
   -- Specify model environment
       env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  -- Run MH
+  -- Run SMC
   env_outs <- SMC.smc n_particles (linRegr xs) env_in
-  -- Get the sampled values of mu and c
+  -- Get the sampled values of mu and c for each particle
   let mus = concatMap (get #m) env_outs
-  let cs = concatMap (get #c) env_outs
+      cs = concatMap (get #c) env_outs
   pure (mus, cs)
 
 {- | Linear regression model on individual data points at a time.
