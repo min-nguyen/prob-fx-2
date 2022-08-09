@@ -33,7 +33,7 @@ import Data.Kind (Constraint)
 import Sampler ( Sampler )
 import Inference.SIM as SIM ( simulate )
 import Inference.MH as MH ( mh )
-import Inference.MB as MB ( toMBayes )
+import Inference.MB as MB ( handleMBayes )
 import qualified Control.Monad.Bayes.Class as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
@@ -301,7 +301,7 @@ mbayesSIR ::
    (Bayes.MonadInfer m
   , Observables env '["𝜉"] Int , Observables env '[ "β" , "γ" , "ρ"] Double)
   => Int -> Popl -> Env env -> m ((Popl, [Popl]), Env env)
-mbayesSIR n popl = toMBayes (hmmSIR' n popl)
+mbayesSIR n popl = handleMBayes (hmmSIR' n popl)
 
 simSIRMB :: Int -> IO ([(Int, Int, Int)], [Reported])
 simSIRMB n_days = do

@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE MonoLocalBinds #-}
 
 module Inference.SMC where
 
@@ -15,7 +16,7 @@ import LogP ( LogP(..) )
 import Model ( Model(runModel) )
 import OpenSum (OpenSum)
 import PrimDist ( PrimDist(Categorical), sample, logProb )
-import Prog ( LastMember, Prog(..), Members )
+import Prog ( LastMember, Prog(..), Members, Member )
 import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
@@ -72,12 +73,12 @@ smcResampler ctxs_0 ctxs_1sub0 particles = do
   let resampled_particles = map (zip particles ctxs !! ) particle_idxs
   pure resampled_particles
 
-{- | A handler that invokes a breakpoint upon matching against @Observe@, by returning:
+{- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation
        2. the log probability of the @Observe operation
        3. the address of the breakpoint
 -}
-breakObserve :: Members [Lift Sampler, Observe] es
+breakObserve :: Member Observe es
   => Prog es a
   -> Prog es (Prog es a, LogP, Addr)
 breakObserve  (Val x) = pure (Val x, 0, ("", 0))
