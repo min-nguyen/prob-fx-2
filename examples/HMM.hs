@@ -19,7 +19,7 @@ import Data.Kind (Constraint)
 import Effects.Writer ( handleWriterM, tellM, Writer )
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
 import Inference.LW as LW ( lw )
-import Inference.MB as MB ( toMBayes )
+import Inference.MB as MB ( handleMBayes )
 import Inference.MH as MH ( mh )
 import Inference.SMC as SMC ( smc )
 import Inference.SIM as SIM ( simulate )
@@ -293,7 +293,7 @@ mbayesHMM :: ( Bayes.MonadInfer m
   -> Env env
   -- | ((final latent state, intermediate latent states), output model environment)
   -> m ((Int, [Int]), Env env)
-mbayesHMM n x env_in = toMBayes (handleWriterM $ hmmW n x) env_in
+mbayesHMM n x env_in = handleMBayes (handleWriterM $ hmmW n x) env_in
 
 -- | Simulate from the HMM in Monad Bayes.
 simHMMMB

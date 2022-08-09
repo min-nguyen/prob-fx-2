@@ -10,7 +10,7 @@
 -}
 
 module Inference.MB
-  ( toMBayes
+  ( handleMBayes
   , handleObs
   , handleSamp
   ) where
@@ -27,14 +27,14 @@ import PrimDist ( logProb, sampleBayes )
 import Prog ( discharge, Prog(..), LastMember )
 
 -- | Translate a ProbFX model under a given model environment to a MonadBayes program
-toMBayes :: MonadInfer m
+handleMBayes :: MonadInfer m
   -- | model
   => Model env [ObsRW env, Dist, Lift m] a
   -- | input model environment
   -> Env env
   -- | a computation @m@ in MonadBayes that returns a result and an output model environment
   -> m (a, Env env)
-toMBayes model env_in =
+handleMBayes model env_in =
    (handleLift . handleSamp . handleObs . handleCore env_in) model
 
 -- | Handle @Observe@ operations by computing the log-probability and calling the @score@ method of the @MonadCond@ class

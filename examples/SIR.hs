@@ -35,7 +35,7 @@ import Data.Kind (Constraint)
 import Sampler ( Sampler )
 import Inference.SIM as SIM ( simulate )
 import Inference.MH as MH ( mh )
-import Inference.MB as MB ( toMBayes )
+import Inference.MB as MB ( handleMBayes )
 import qualified Control.Monad.Bayes.Class as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
@@ -290,7 +290,7 @@ mbayesSIR ::
   -> Env env
   -- | ((final latent state, intermediate latent states), output model environment)
   -> m ((Record popl, [Record popl]), Env env)
-mbayesSIR n_days popl = toMBayes (hmmSIR n_days popl)
+mbayesSIR n_days popl = handleMBayes (hmmSIR n_days popl)
 
 -- | Simulate from the SIR model in Monad Bayes.
 simSIRMB

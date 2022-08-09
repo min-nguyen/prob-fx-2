@@ -17,7 +17,7 @@ import Inference.SIM as SIM ( simulate )
 import Inference.LW as LW ( lw )
 import Inference.MH as MH ( mh )
 import Inference.SMC as SMC ( smc )
-import Inference.MB as MB ( toMBayes )
+import Inference.MB as MB ( handleMBayes )
 import Sampler ( Sampler )
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
@@ -158,7 +158,7 @@ mhLinRegrOnce n_mhsteps n_datapoints = do
 -}
 mbayesLinRegr :: (Bayes.MonadInfer m, Observables env '["y", "m", "c", "σ"] Double) =>
  [Double] -> Env env -> m ([Double], Env env)
-mbayesLinRegr xs = toMBayes (linRegr xs)
+mbayesLinRegr xs = handleMBayes (linRegr xs)
 
 simLinRegrMB :: Int -> Int -> IO [([Double], Env LinRegrEnv)]
 simLinRegrMB n_samples n_datapoints = do
