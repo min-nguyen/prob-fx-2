@@ -47,7 +47,7 @@ import Util
 -- rmsmcResampler :: forall es a.
 --      Int
 --   -> Prog [Observe, Sample, Lift Sampler] a -- the initial program, representing the entire unevaluated model execution (having already provided a model environment)
---   -> SIS.Resampler ([Addr], LogP, STrace) [Observe, Sample, Lift Sampler] a
+--   -> SIS.ParticleResampler '[Observe, Sample, Lift Sampler] a
 -- rmsmcResampler mh_steps prog ctx_0 ctx_1sub0 progs_1 = do
 --   -- run SMC resampling, ignore log weights of particles
 --   (obs_addrs, _, resampled_straces) <- unzip3 . snd <$> SMC.smcResampler ctx_0 ctx_1sub0 progs_1
@@ -71,18 +71,18 @@ import Util
 
 --   pure (moved_particles, zip3 obs_addrs moved_logWs moved_straces)
 
-{- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
-     It returns the rest of the computation.
--}
-breakObserve :: Member Observe es
-  => Addr       -- ^ Address of @Observe@ operation to break at
-  -> Prog es a
-  -> Prog es (Prog es a)
-breakObserve α_break (Val x) = pure (Val x)
-breakObserve α_break (Op op k) = case prj op of
-  Just (Observe d y α) -> do
-    if α_break == α
-      then Val (k y)
-      else Op op (breakObserve α_break . k)
-  _ -> Op op (breakObserve α_break . k)
+-- {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
+--      It returns the rest of the computation.
+-- -}
+-- breakObserve :: Member Observe es
+--   => Addr       -- ^ Address of @Observe@ operation to break at
+--   -> Prog es a
+--   -> Prog es (Prog es a)
+-- breakObserve α_break (Val x) = pure (Val x)
+-- breakObserve α_break (Op op k) = case prj op of
+--   Just (Observe d y α) -> do
+--     if α_break == α
+--       then Val (k y)
+--       else Op op (breakObserve α_break . k)
+--   _ -> Op op (breakObserve α_break . k)
 
