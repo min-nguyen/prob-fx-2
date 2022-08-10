@@ -64,13 +64,19 @@ smcInternal n_particles prog env =
   SIS.sis n_particles smcParticleHdlr smcResampler SIM.handleObs SIM.handleSamp prog
 
 {- | Runs a population of particles to the next breakpoint in the program.
+
+Maybe toy with an idea like:
+
 type ParticleHandler ctx es a
   =  Prog (NonDet : es) a
-  -> Prog es [(Prog (NonDet : es) a, ctx)]
+  -> Prog (Resample : es) a
+
+data Resample es ctx a where
+  Resample :: [(Prog (NonDet : es) a, ctx)] -> Resample es ctx [(Prog (NonDet : es) a, ctx)]
 -}
-smcParticleHdlr :: Members [Observe, Sample, Lift Sampler] es
+smcParticleHdlr :: Member Observe es
   => Prog (NonDet : es) a
-  -> Prog es [(Prog (NonDet : es) a, SMCParticle)]
+  -> Prog es ([Prog (NonDet : es) a], [SMCParticle])
 smcParticleHdlr particles = do
   {- Merge particles into single non-deterministic program using 'asum' and run the program to the next breakpoint.
      This returns a list containing:
@@ -78,45 +84,31 @@ smcParticleHdlr particles = do
       2. the address of their @Observe@ breakpoint
       3. their incremental sample trace since the previous breakpoint
   -}
-  particles'_ctxs' <- (handleNonDet . breakObserve) particles
-  {- Reformat the data into a list of particles and particle contexts.
-  -}
-  mapM (\(prog, logp, α) -> pure (prog, SMCParticle logp [α])) particles'_ctxs'
+  unzip <$> (handleNonDet . breakObserve) particles
 
 {- | Resamples a population of particles according to their normalised log-weights.
-type ParticleResampler ctx es a
-  -- | the accumulated contexts of particles of the previous step
-  =  [ctx]
-  -- | the incremental contexts of particles since the previous step
-  -> [ctx]
-  -- | the collection of current particles that produced the incremental contexts
-  -> [Prog (NonDet : es) a]
-  -- | the resampled particles and corresponding contexts
-  -> Prog es [(Prog (NonDet : es) a, ctx)]
 -}
 smcResampler :: LastMember (Lift Sampler) es
   => SIS.ParticleResampler SMCParticle es a
-smcResampler ctxs_0 ctxs_1sub0 particles = do
+smcResampler ctxs_0 (particles_1, ctxs_1)  = do
   -- Accumulate the contexts of all particles and get their normalised log-weights
-  let ctxs       = SIS.paccum ctxs_0 ctxs_1sub0
+  let ctxs       = SIS.paccum ctxs_0 ctxs_1
       logws      = map (exp . unLogP . particleLogProb) ctxs
   -- Select particles to continue with
-  particle_idxs :: [Int] <- replicateM (length particles) $ lift (sample (Categorical logws))
-  let resampled_particles = map (zip particles ctxs !! ) particle_idxs
-  pure resampled_particles
+  particle_idxs :: [Int] <- replicateM (length particles_1) $ lift (sample (Categorical logws))
+  let resampled_particles = asum $ map (particles_1 !! ) particle_idxs
+      resampled_ctxs      = map (ctxs !! ) particle_idxs
+  pure (resampled_particles, resampled_ctxs)
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation
        2. the log probability of the @Observe operation
        3. the address of the breakpoint
 -}
-data Break a where
-  Break :: Break a
-
 breakObserve :: Member Observe es
   => Prog es a
-  -> Prog es (Prog es a, LogP, Addr)
-breakObserve  (Val x) = pure (Val x, 0, ("", 0))
+  -> Prog es (Prog es a, SMCParticle)
+breakObserve  (Val x) = pure (Val x, SMCParticle 0 [("", 0)])
 breakObserve  (Op op k) = case op of
-      ObsPrj d y α -> Val (k y, logProb d y, α)
+      ObsPrj d y α -> Val (k y, SMCParticle (logProb d y) [α])
       _            -> Op op (breakObserve . k)
