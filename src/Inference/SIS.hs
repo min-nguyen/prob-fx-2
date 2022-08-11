@@ -16,7 +16,6 @@ import qualified Data.Map as Map
 import Effects.Dist ( Addr, Observe (Observe), Sample, pattern ObsPrj )
 import Effects.Lift ( Lift, handleLift )
 import Effects.NonDet ( foldVals, weakenNonDet, NonDet, asum, branchWeaken, handleNonDet )
-import Effects.Resample
 import LogP ( LogP, logMeanExp )
 import Prog ( Prog (..), weakenProg, Member, discharge, call, weaken, LastMember )
 import Sampler ( Sampler )
@@ -34,54 +33,57 @@ class ParticleCtx ctx where
   -- | Initialise the contexts for n particles
   pempty :: ctx
 
-{- | A @ParticleResampler@ decides which of the current particles and contexts to continue execution with.
+{- | A @ParticleRunner@ handler runs a particle to the next @Observe@ break point.
 -}
-type ParticleHandler ctx
+type ParticleRunner ctx
   = forall es a. Member Observe es
-  -- | particles as a single program
+  -- | a particle
   => Prog es a
-  -- | (particles suspended at the next step, corresponding contexts)
+  -- | (a particle suspended at the next step, corresponding context)
   -> Prog es (Prog es a, ctx)
 
-{- | A @ParticleResampler@ decides which of the current particles and contexts to continue execution with.
+{- | A @ParticleResampler@ handler decides which of the current particles to continue execution with.
 -}
 type ParticleResampler ctx
   =  forall es a. LastMember (Lift Sampler) es
   => Prog (Resample ctx : es) a
   -> Prog es a
 
+{- | The @Resample@ effect for resampling according.
+-}
+data Resample ctx a where
+  Resample :: ([a], [ctx]) -> Resample ctx ([a], [ctx])
+
 {- | A top-level template for sequential importance sampling.
 -}
-sis :: forall ctx a es. ParticleCtx ctx
+sis :: ParticleCtx ctx
   => Int                                                                    -- ^ num of particles
-  -> ParticleHandler ctx                                                    -- ^ handler of particles
+  -> ParticleRunner    ctx
   -> ParticleResampler ctx
-  -> (forall b. Prog '[Sample, Lift Sampler] b -> Prog '[Lift Sampler] b)   -- ^ sample handler
   -> Prog [Resample ctx, Observe, Sample, Lift Sampler] a                   -- ^ model
-  -> Sampler [(a, ctx)]
-sis n_particles particleHdlr particleResampler sampHdlr prog = do
+  -> Sampler [(a, ctx)]                                                     -- ^ (final particle output, final particle context)
+sis n_particles particleRunner particleResampler prog = do
 
   let population_0 = unzip $ replicate n_particles (weakenNonDet prog, pempty)
 
   -- Execute the population until termination
-  (handleLift
-    . sampHdlr
-    . SIM.handleObs
-    . particleResampler) -- A dummy handler that removes the Observe effect
-      (loopSIS particleHdlr  population_0)
+  (handleLift . SIM.handleSamp . SIM.handleObs . particleResampler) (loopSIS particleRunner population_0)
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
 loopSIS
-  :: (ParticleCtx ctx, Member Observe es, Member (Resample ctx) es, LastMember (Lift Sampler) es)
-  => ParticleHandler   ctx
+  :: (ParticleCtx ctx
+    , Member Observe es
+    , Member (Resample ctx) es
+    , LastMember (Lift Sampler) es)
+  => ParticleRunner ctx
   -> ([Prog (NonDet : es) a], [ctx])  -- ^ particles and corresponding contexts
   -> Prog es [(a, ctx)]
-loopSIS particleHdlr (particles, ctxs) = do
-  -- Run particles to next checkpoint
-  (particles', ctxs') <- second (ctxs `paccum`) . unzip <$> (handleNonDet . particleHdlr . asum) particles
+loopSIS particleRunner (particles, ctxs) = do
+  -- Run particles to next checkpoint and accumulate their contexts
+  (particles', ctxs') <- second (ctxs `paccum`) . unzip <$> (handleNonDet . particleRunner . asum) particles
   case foldVals particles' of
     -- If all programs have finished, return their results along with their accumulated contexts
     Right vals  -> (`zip` ctxs') <$> vals
     -- Otherwise, pick the programs to continue with
-    Left  _     -> call (Resample (particles', ctxs')) >>= loopSIS particleHdlr
+    Left  _     -> call (Resample (particles', ctxs')) >>= loopSIS particleRunner
