@@ -22,6 +22,7 @@ import Prog ( Prog (..), weakenProg, Member, discharge, call, weaken, LastMember
 import Sampler ( Sampler )
 import Util ( uncurry3 )
 import Inference.SIM as SIM
+import Data.Bifunctor
 
 {- | A @ParticleCtx@ contains data about the execution of a particular particle.
 -}
@@ -35,8 +36,8 @@ class ParticleCtx ctx where
 
 {- | A @ParticleResampler@ decides which of the current particles and contexts to continue execution with.
 -}
-type ParticleHandler ctx a
-  = forall es. Member Observe es
+type ParticleHandler ctx
+  = forall es a. Member Observe es
   -- | particles as a single program
   => Prog es a
   -- | (particles suspended at the next step, corresponding contexts)
@@ -44,51 +45,43 @@ type ParticleHandler ctx a
 
 {- | A @ParticleResampler@ decides which of the current particles and contexts to continue execution with.
 -}
-type ParticleResampler ctx a
-  = forall es. LastMember (Lift Sampler) es
-  -- | the accumulated contexts of particles of the previous step
-  => [ctx]
-  -- | (the collection of current particles that produced the incremental contexts
-  --  , the incremental contexts of particles since the previous step)
-  -> ([Prog (NonDet : es) a], [ctx])
-  -- | (resampled particles, resampled particle contexts)
-  -> Prog es ([Prog (NonDet : es) a], [ctx])
+type ParticleResampler ctx
+  =  forall es a. LastMember (Lift Sampler) es
+  => Prog (Resample ctx : es) a
+  -> Prog es a
 
 {- | A top-level template for sequential importance sampling.
 -}
 sis :: forall ctx a es. ParticleCtx ctx
   => Int                                                                    -- ^ num of particles
-  -> ParticleHandler ctx a                                                  -- ^ handler of particles
-  -> ParticleResampler ctx a       -- ^ particle resampler
+  -> ParticleHandler ctx                                                    -- ^ handler of particles
+  -> ParticleResampler ctx
   -> (forall b. Prog '[Sample, Lift Sampler] b -> Prog '[Lift Sampler] b)   -- ^ sample handler
-  -> Prog [Observe, Sample, Lift Sampler] a                                 -- ^ model
+  -> Prog [Resample ctx, Observe, Sample, Lift Sampler] a                   -- ^ model
   -> Sampler [(a, ctx)]
-sis n_particles particleHdlr particleResamplr sampHdlr prog = do
+sis n_particles particleHdlr particleResampler sampHdlr prog = do
 
   let population_0 = unzip $ replicate n_particles (weakenNonDet prog, pempty)
 
   -- Execute the population until termination
   (handleLift
     . sampHdlr
-    . SIM.handleObs) -- A dummy handler that removes the Observe effect
-      (loopSIS particleHdlr particleResamplr population_0)
+    . SIM.handleObs
+    . particleResampler) -- A dummy handler that removes the Observe effect
+      (loopSIS particleHdlr  population_0)
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
-loopSIS :: (ParticleCtx ctx, Member Observe es, LastMember (Lift Sampler) es)
-  => ParticleHandler   ctx a
-  -> ParticleResampler ctx a
+loopSIS
+  :: (ParticleCtx ctx, Member Observe es, Member (Resample ctx) es, LastMember (Lift Sampler) es)
+  => ParticleHandler   ctx
   -> ([Prog (NonDet : es) a], [ctx])  -- ^ particles and corresponding contexts
   -> Prog es [(a, ctx)]
-loopSIS particleHdlr particleResamplr (particles, ctxs) = do
+loopSIS particleHdlr (particles, ctxs) = do
   -- Run particles to next checkpoint
-  let p = (handleNonDet . particleHdlr . asum) particles
-
-
-  undefined
-  -- case foldVals particles' of
-  --   -- If all programs have finished, return their results along with their accumulated contexts
-  --   Right vals  -> (`zip` paccum ctxs ctxs') <$> vals
-  --   -- Otherwise, pick the programs to continue with
-  --   Left  _     -> particleResamplr ctxs (particles', ctxs')
-  --                    >>= loopSIS particleHdlr particleResamplr
+  (particles', ctxs') <- second (ctxs `paccum`) . unzip <$> (handleNonDet . particleHdlr . asum) particles
+  case foldVals particles' of
+    -- If all programs have finished, return their results along with their accumulated contexts
+    Right vals  -> (`zip` ctxs') <$> vals
+    -- Otherwise, pick the programs to continue with
+    Left  _     -> call (Resample (particles', ctxs')) >>= loopSIS particleHdlr

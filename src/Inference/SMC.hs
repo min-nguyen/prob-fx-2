@@ -13,12 +13,13 @@ import Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe, Sample )
 import Effects.Lift ( Lift, lift )
 import Effects.NonDet ( asum, handleNonDet, NonDet )
 import Effects.ObsRW
+import Effects.Resample (Resample(..))
 import Env ( Env )
 import LogP ( LogP(..), logMeanExp )
 import Model ( Model(runModel) )
 import OpenSum (OpenSum)
 import PrimDist ( PrimDist(Categorical), sample, logProb )
-import Prog ( LastMember, Prog(..), Members, Member )
+import Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge )
 import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
@@ -61,7 +62,7 @@ smcInternal
   -> Env env
   -> Sampler [(a, SMCParticle)]
 smcInternal n_particles prog env =
-  SIS.sis n_particles smcParticleHdlr smcResampler SIM.handleSamp prog
+  SIS.sis n_particles smcParticleHdlr handleResample SIM.handleSamp (weakenProg prog)
 
 {- | Runs a population of particles to the next breakpoint in the program.
 
@@ -80,6 +81,20 @@ data Resample es ctx a where
        2. the log probability of the @Observe operation
        3. the address of the breakpoint
 -}
+
+handleResample :: (LastMember (Lift Sampler) es) => Prog (Resample SMCParticle : es) a -> Prog es a
+handleResample (Val x) = Val x
+handleResample (Op op k) = case discharge op of
+  Left  op'               -> Op op' (handleResample  . k)
+  Right (Resample (vals, ctxs)) -> do
+    -- Accumulate the contexts of all particles and get their normalised log-weights
+    let logws      = map (exp . unLogP . particleLogProb) ctxs
+    -- Select particles to continue with
+    idxs <- replicateM (length ctxs) $ lift (sample (Categorical logws))
+    let resampled_vals = map (vals !! ) idxs
+        resampled_ctxs = map (ctxs !! ) idxs
+    (handleResample . k) (resampled_vals, resampled_ctxs)
+
 smcParticleHdlr :: Member Observe es
   => Prog es a
   -> Prog es (Prog es a, SMCParticle)
@@ -88,16 +103,3 @@ smcParticleHdlr  (Op op k) = case op of
       ObsPrj d y α -> Val (k y, SMCParticle (logProb d y) [α])
       _            -> Op op (smcParticleHdlr . k)
 
-{- | Resamples a population of particles according to their normalised log-weights.
--}
-smcResampler ::
-  SIS.ParticleResampler SMCParticle a
-smcResampler ctxs_0 (particles_1, ctxs_1)  = do
-  -- Accumulate the contexts of all particles and get their normalised log-weights
-  let ctxs       = SIS.paccum ctxs_0 ctxs_1
-      logws      = map (exp . unLogP . particleLogProb) ctxs
-  -- Select particles to continue with
-  particle_idxs :: [Int] <- replicateM (length particles_1) $ lift (sample (Categorical logws))
-  let resampled_particles = map (particles_1 !! ) particle_idxs
-      resampled_ctxs      = map (ctxs !! ) particle_idxs
-  pure (resampled_particles, resampled_ctxs)
