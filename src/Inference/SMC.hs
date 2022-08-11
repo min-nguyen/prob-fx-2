@@ -5,6 +5,7 @@
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Inference.SMC where
 
@@ -22,7 +23,7 @@ import Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge
 import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
-import Inference.SIS (Resample(..))
+import Inference.SIS (Resample(..), ParticleResampler, ParticleRunner)
 import Sampler ( Sampler )
 
 {- | The particle context for SMC
@@ -35,41 +36,37 @@ data SMCParticle = SMCParticle {
 instance SIS.ParticleCtx SMCParticle where
   pempty            = SMCParticle 0 []
   paccum ctxs ctxs' =
-    --  Compute normalised accumulated log weights
+    -- | Compute normalised accumulated log weights
     let logprobs = let logZ = logMeanExp (map particleLogProb ctxs)
                    in  map ((+ logZ) . particleLogProb) ctxs'
-    --  Update the Observe operations encountered
+    -- | Update the Observe operations encountered
         obsaddrs = zipWith (++) (map particleObsAddrs ctxs') (map particleObsAddrs ctxs)
     in  zipWith SMCParticle logprobs obsaddrs
 
 {- | A top-level function for calling Sequential Monte Carlo on a model.
 -}
-smc :: Show a
-  => Int
-  -> Model env [ObsRW env, Dist, Lift Sampler] a
-  -> Env env
-  -> Sampler [Env env]
+smc
+  :: Int                                              -- ^ number of particles
+  -> Model env [ObsRW env, Dist, Lift Sampler] a      -- ^ model
+  -> Env env                                          -- ^ input model environment
+  -> Sampler [Env env]                                -- ^ output model environments of each particle
 smc n_particles model env = do
   let prog = (handleDist . handleObsRW env) (runModel model)
-  final_ctxs <- smcInternal n_particles prog env
+  final_ctxs <- smcInternal n_particles prog
   pure $ map (snd . fst) final_ctxs
 
 {- | For calling Sequential Monte Carlo on a probabilistic program.
 -}
 smcInternal
-  :: Int
-  -> Prog [Observe, Sample, Lift Sampler] a
-  -> Env env
-  -> Sampler [(a, SMCParticle)]
-smcInternal n_particles prog env =
-  SIS.sis n_particles particleRunner particleResampler (weakenProg prog)
+  :: Int                                              -- ^ number of particles
+  -> Prog [Observe, Sample, Lift Sampler] a           -- ^ probabilistic program
+  -> Sampler [(a, SMCParticle)]                       -- ^ final particle results and contexts
+smcInternal n_particles prog =
+  SIS.sis n_particles particleRunner particleResampler (weakenProg @(Resample SMCParticle) prog)
 
-{- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
-       1. the rest of the computation
-       2. the log probability of the @Observe operation
-       3. the address of the breakpoint
+{- | A handler for resampling particles according to their normalized log-likelihoods.
 -}
-particleResampler :: (LastMember (Lift Sampler) es) => Prog (Resample SMCParticle : es) a -> Prog es a
+particleResampler :: ParticleResampler SMCParticle
 particleResampler (Val x) = Val x
 particleResampler (Op op k) = case discharge op of
   Left  op'               -> Op op' (particleResampler  . k)
@@ -82,11 +79,13 @@ particleResampler (Op op k) = case discharge op of
         resampled_ctxs = map (ctxs !! ) idxs
     (particleResampler . k) (resampled_vals, resampled_ctxs)
 
-particleRunner :: Member Observe es
-  => Prog es a
-  -> Prog es (Prog es a, SMCParticle)
-particleRunner  (Val x) = pure (Val x, SMCParticle 0 [("", 0)])
-particleRunner  (Op op k) = case op of
+{- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
+       1. the rest of the computation
+       2. the log probability of the @Observe operation + the address of the breakpoint
+-}
+particleRunner :: ParticleRunner SMCParticle
+particleRunner (Val x) = pure (Val x, SMCParticle 0 [("", 0)])
+particleRunner (Op op k) = case op of
       ObsPrj d y α -> Val (k y, SMCParticle (logProb d y) [α])
       _            -> Op op (particleRunner . k)
 

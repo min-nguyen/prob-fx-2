@@ -124,7 +124,7 @@ weaken :: EffectSum es a -> EffectSum (e ': es) a
 weaken (EffectSum n ta) = EffectSum (n + 1) ta
 
 -- | Prepend an effect to the front of a computation's effect signature
-weakenProg :: Prog es a -> Prog (e : es) a
+weakenProg :: forall e es a. Prog es a -> Prog (e : es) a
 weakenProg (Val x)   = Val x
 weakenProg (Op op k) = Op (weaken op) (weakenProg . k)
 
