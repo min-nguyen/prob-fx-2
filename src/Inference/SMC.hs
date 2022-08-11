@@ -90,14 +90,14 @@ smcParticleHdlr  (Op op k) = case op of
 
 {- | Resamples a population of particles according to their normalised log-weights.
 -}
-smcResampler :: LastMember (Lift Sampler) es
-  => SIS.ParticleResampler SMCParticle es a
+smcResampler ::
+  SIS.ParticleResampler SMCParticle a
 smcResampler ctxs_0 (particles_1, ctxs_1)  = do
   -- Accumulate the contexts of all particles and get their normalised log-weights
   let ctxs       = SIS.paccum ctxs_0 ctxs_1
       logws      = map (exp . unLogP . particleLogProb) ctxs
   -- Select particles to continue with
   particle_idxs :: [Int] <- replicateM (length particles_1) $ lift (sample (Categorical logws))
-  let resampled_particles = asum $ map (particles_1 !! ) particle_idxs
+  let resampled_particles = map (particles_1 !! ) particle_idxs
       resampled_ctxs      = map (ctxs !! ) particle_idxs
   pure (resampled_particles, resampled_ctxs)

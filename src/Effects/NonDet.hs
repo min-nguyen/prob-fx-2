@@ -10,10 +10,11 @@
 module Effects.NonDet (
     NonDet(..)
   , asum
+  , asumWeaken
   , branch
   , branchWeaken
   , weakenNonDet
-  , accumNonDet
+  , foldVals
   , handleNonDet
   ) where
 
@@ -36,6 +37,10 @@ instance Member NonDet es => Alternative (Prog es) where
 asum :: (Foldable t, Member NonDet es) => t (Prog es a) -> Prog es a
 asum = foldr (<|>) (call Empty)
 
+-- | Fold a collection of programs into a non-deterministic computation
+asumWeaken :: (Functor t, Foldable t, Member NonDet es) => t (Prog es a) -> Prog (NonDet : es) a
+asumWeaken = asum . fmap weakenNonDet
+
 -- | Branch a program into @n@ computations
 branch :: Member NonDet es => Int -> Prog es a -> Prog es a
 branch n prog = asum (replicate n prog)
@@ -55,12 +60,12 @@ weakenNonDet = branchWeaken 1
      If at least one program is unfinished, return all programs.
      If all programs have finished, return a single program that returns all results.
 -}
-accumNonDet :: [Prog es' a] -> Either [Prog es' a] (Prog es [a])
-accumNonDet (Val v : progs) = do
-  vs <- accumNonDet progs
+foldVals :: [Prog es' a] -> Either [Prog es' a] (Prog es [a])
+foldVals (Val v : progs) = do
+  vs <- foldVals progs
   pure ((v:) <$> vs)
-accumNonDet [] = pure (Val [])
-accumNonDet progs = Left progs
+foldVals [] = pure (Val [])
+foldVals progs = Left progs
 
 -- | Handle the @NonDet@ effect by running all computation branches
 handleNonDet :: Prog (NonDet ': es) a -> Prog es [a]
