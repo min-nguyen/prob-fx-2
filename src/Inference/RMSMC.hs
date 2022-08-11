@@ -6,6 +6,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Inference.RMSMC where
 
@@ -28,16 +29,15 @@ import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
 import Inference.SIS (Resample(..), ParticleResampler)
 import OpenSum (OpenSum)
-import Inference.SMC (SMCParticle(SMCParticle))
+import Inference.SMC (SMCParticle(..))
 import Effects.Lift
 import PrimDist
 
 {- | The particle context for RMSMC
 -}
 data RMSMCParticle = RMSMCParticle {
-    particleLogProb  :: LogP      -- ^ associated log-probability
-  , particleObsAddrs :: [Addr]    -- ^ addresses of @Observe@ operations encountered so far
-  , particleTrace    :: InvSTrace
+    smcParticle    :: SMCParticle
+  , particleTrace  :: InvSTrace
   }
 
 -- rmsmcToplevel :: forall env es' a. (FromSTrace env, Show a) =>
@@ -81,39 +81,42 @@ data RMSMCParticle = RMSMCParticle {
 
 --   pure (moved_particles, zip3 obs_addrs moved_logWs moved_straces)
 
+-- reduceContext :: (ctx -> ctx') -> Prog (Resample ctx : es) a -> Prog (Resample ctx' : es) a
+-- reduceContext f (Val x)   = Val x
+-- reduceContext f (Op op k) =
+
 {- | A handler for resampling particles according to their normalized log-likelihoods.
 -}
-particleResampler :: ParticleResampler RMSMCParticle
-particleResampler (Val x) = Val x
-particleResampler (Op op k) = case discharge op of
-  Left  op'               -> Op op' (particleResampler  . k)
-  Right (Resample (vals, ctxs)) -> do
-    -- | Accumulate the contexts of all particles and get their normalised log-weights
-    let logws      = map (exp . unLogP . particleLogProb) ctxs
-    -- | Select particles to continue with
-    idxs <- replicateM (length ctxs) $ lift (sample (Categorical logws))
-    let resampled_vals = map (vals !! ) idxs
-        resampled_ctxs = map (ctxs !! ) idxs
+particleResampler :: Prog [Observe, Sample, Lift Sampler] a -> ParticleResampler RMSMCParticle
+particleResampler prog_0 (Val x) = Val x
+particleResampler prog_0 (Op op k) = case discharge op of
+  Right (Resample (prts, ctxs)) ->
+    do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
+        idxs <- snd <$> SMC.particleResampler (call (Resample (prts, map smcParticle ctxs)))
+        let resampled_prts = map (prts !! ) idxs
+            resampled_ctxs = map (ctxs !! ) idxs
 
-    -- | Get most recent observe address
-    let α_break = (head . particleObsAddrs . head) resampled_ctxs
+        -- | Get most recent observe address
+        let α_break = (head . particleObsAddrs . smcParticle . head) resampled_ctxs
+        -- | Insert break point to perform MH up to
+            partial_model = breakObserve α_break prog_0
 
+        --  (particleResampler . k) (resampled_vals, resampled_ctxs)
+        undefined
+  Left op' -> Op op' (particleResampler prog_0 . k)
 
-    --  (particleResampler . k) (resampled_vals, resampled_ctxs)
-    undefined
-
--- {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
---      It returns the rest of the computation.
--- -}
--- breakObserve :: Member Observe es
---   => Addr       -- ^ Address of @Observe@ operation to break at
---   -> Prog es a
---   -> Prog es (Prog es a)
--- breakObserve α_break (Val x) = pure (Val x)
--- breakObserve α_break (Op op k) = case prj op of
---   Just (Observe d y α) -> do
---     if α_break == α
---       then Val (k y)
---       else Op op (breakObserve α_break . k)
---   _ -> Op op (breakObserve α_break . k)
+{- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
+     It returns the rest of the computation.
+-}
+breakObserve :: Member Observe es
+  => Addr       -- ^ Address of @Observe@ operation to break at
+  -> Prog es a
+  -> Prog es (Prog es a)
+breakObserve α_break (Val x) = pure (Val x)
+breakObserve α_break (Op op k) = case prj op of
+  Just (Observe d y α) -> do
+    if α_break == α
+      then Val (k y)
+      else Op op (breakObserve α_break . k)
+  _ -> Op op (breakObserve α_break . k)
 
