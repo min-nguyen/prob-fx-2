@@ -61,7 +61,7 @@ smcInternal
   -> Env env
   -> Sampler [(a, SMCParticle)]
 smcInternal n_particles prog env =
-  SIS.sis n_particles smcParticleHdlr smcResampler SIM.handleObs SIM.handleSamp prog
+  SIS.sis n_particles smcParticleHdlr smcResampler SIM.handleSamp prog
 
 {- | Runs a population of particles to the next breakpoint in the program.
 

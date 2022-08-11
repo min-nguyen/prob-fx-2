@@ -19,6 +19,7 @@ import LogP ( LogP, logMeanExp )
 import Prog ( Prog (..), weakenProg, Member, discharge, call, weaken )
 import Sampler ( Sampler )
 import Util ( uncurry3 )
+import Inference.SIM as SIM
 
 {- | A @ParticleCtx@ contains data about the execution of a particular particle.
 -}
@@ -52,16 +53,18 @@ sis :: forall ctx a es. ParticleCtx ctx
   => Int                                                                    -- ^ num of particles
   -> ParticleHandler ctx (Observe : Sample : Lift Sampler : '[]) a          -- ^ handler of particles
   -> ParticleResampler ctx (Observe : Sample : Lift Sampler : '[])  a       -- ^ particle resampler
-  -> (forall b es. Prog (Observe : es) b -> Prog es b)                      -- ^ observe handler
   -> (forall b. Prog '[Sample, Lift Sampler] b -> Prog '[Lift Sampler] b)   -- ^ sample handler
   -> Prog [Observe, Sample, Lift Sampler] a                                 -- ^ model
   -> Sampler [(a, ctx)]
-sis n_particles particleHdlr particleResamplr obsHdlr sampHdlr prog = do
+sis n_particles particleHdlr particleResamplr sampHdlr prog = do
 
   let (particles_0, ctxs_0) = (branchWeaken n_particles prog, replicate n_particles pempty)
 
   -- Execute the population until termination
-  (handleLift . sampHdlr . obsHdlr) (loopSIS particleHdlr particleResamplr (particles_0, ctxs_0))
+  (handleLift
+    . sampHdlr
+    . SIM.handleObs) -- A dummy handler that removes the Observe effect
+      (loopSIS particleHdlr particleResamplr (particles_0, ctxs_0))
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
