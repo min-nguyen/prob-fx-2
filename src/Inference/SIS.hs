@@ -16,6 +16,7 @@ import qualified Data.Map as Map
 import Effects.Dist ( Addr, Observe (Observe), Sample, pattern ObsPrj )
 import Effects.Lift ( Lift, handleLift )
 import Effects.NonDet ( foldVals, weakenNonDet, NonDet, asum, branchWeaken, handleNonDet )
+import Effects.Resample
 import LogP ( LogP, logMeanExp )
 import Prog ( Prog (..), weakenProg, Member, discharge, call, weaken, LastMember )
 import Sampler ( Sampler )
@@ -81,11 +82,13 @@ loopSIS :: (ParticleCtx ctx, Member Observe es, LastMember (Lift Sampler) es)
   -> Prog es [(a, ctx)]
 loopSIS particleHdlr particleResamplr (particles, ctxs) = do
   -- Run particles to next checkpoint
-  (particles', ctxs') <- unzip <$> (handleNonDet . particleHdlr . asum) particles
+  let p = (handleNonDet . particleHdlr . asum) particles
 
-  case foldVals particles' of
-    -- If all programs have finished, return their results along with their accumulated contexts
-    Right vals  -> (`zip` paccum ctxs ctxs') <$> vals
-    -- Otherwise, pick the programs to continue with
-    Left  _     -> particleResamplr ctxs (particles', ctxs')
-                     >>= loopSIS particleHdlr particleResamplr
+
+  undefined
+  -- case foldVals particles' of
+  --   -- If all programs have finished, return their results along with their accumulated contexts
+  --   Right vals  -> (`zip` paccum ctxs ctxs') <$> vals
+  --   -- Otherwise, pick the programs to continue with
+  --   Left  _     -> particleResamplr ctxs (particles', ctxs')
+  --                    >>= loopSIS particleHdlr particleResamplr
