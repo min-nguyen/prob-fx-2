@@ -74,17 +74,19 @@ type ParticleHandler ctx es a
 data Resample es ctx a where
   Resample :: [(Prog (NonDet : es) a, ctx)] -> Resample es ctx [(Prog (NonDet : es) a, ctx)]
 -}
+
+{- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
+       1. the rest of the computation
+       2. the log probability of the @Observe operation
+       3. the address of the breakpoint
+-}
 smcParticleHdlr :: Member Observe es
-  => Prog (NonDet : es) a
-  -> Prog es ([Prog (NonDet : es) a], [SMCParticle])
-smcParticleHdlr particles = do
-  {- Merge particles into single non-deterministic program using 'asum' and run the program to the next breakpoint.
-     This returns a list containing:
-      1. the particles that can be resumed
-      2. the address of their @Observe@ breakpoint
-      3. their incremental sample trace since the previous breakpoint
-  -}
-  unzip <$> (handleNonDet . breakObserve) particles
+  => Prog es a
+  -> Prog es (Prog es a, SMCParticle)
+smcParticleHdlr  (Val x) = pure (Val x, SMCParticle 0 [("", 0)])
+smcParticleHdlr  (Op op k) = case op of
+      ObsPrj d y α -> Val (k y, SMCParticle (logProb d y) [α])
+      _            -> Op op (smcParticleHdlr . k)
 
 {- | Resamples a population of particles according to their normalised log-weights.
 -}
@@ -99,16 +101,3 @@ smcResampler ctxs_0 (particles_1, ctxs_1)  = do
   let resampled_particles = asum $ map (particles_1 !! ) particle_idxs
       resampled_ctxs      = map (ctxs !! ) particle_idxs
   pure (resampled_particles, resampled_ctxs)
-
-{- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
-       1. the rest of the computation
-       2. the log probability of the @Observe operation
-       3. the address of the breakpoint
--}
-breakObserve :: Member Observe es
-  => Prog es a
-  -> Prog es (Prog es a, SMCParticle)
-breakObserve  (Val x) = pure (Val x, SMCParticle 0 [("", 0)])
-breakObserve  (Op op k) = case op of
-      ObsPrj d y α -> Val (k y, SMCParticle (logProb d y) [α])
-      _            -> Op op (breakObserve . k)
