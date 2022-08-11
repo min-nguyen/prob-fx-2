@@ -30,7 +30,6 @@ library
                       Effects.Lift,
                       Effects.NonDet,
                       Effects.ObsRW,
-                      Effects.Resample,
                       Effects.State,
                       Effects.Writer,
                       Inference.LW,

@@ -17,7 +17,7 @@ import Effects.Dist ( Addr, Observe (Observe), Sample, pattern ObsPrj )
 import Effects.Lift ( Lift, handleLift )
 import Effects.NonDet ( foldVals, weakenNonDet, NonDet, asum, branchWeaken, handleNonDet )
 import LogP ( LogP, logMeanExp )
-import Prog ( Prog (..), weakenProg, Member, discharge, call, weaken, LastMember )
+import Prog ( Prog (..), weakenProg, Member, discharge, call, weaken, LastMember, Members )
 import Sampler ( Sampler )
 import Util ( uncurry3 )
 import Inference.SIM as SIM
@@ -66,24 +66,23 @@ sis n_particles particleRunner particleResampler prog = do
 
   let population_0 = unzip $ replicate n_particles (weakenNonDet prog, pempty)
 
-  -- Execute the population until termination
+  -- | Execute the population until termination
   (handleLift . SIM.handleSamp . SIM.handleObs . particleResampler) (loopSIS particleRunner population_0)
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
 loopSIS
   :: (ParticleCtx ctx
-    , Member Observe es
-    , Member (Resample ctx) es
+    , Members [Observe, Resample ctx] es
     , LastMember (Lift Sampler) es)
   => ParticleRunner ctx
   -> ([Prog (NonDet : es) a], [ctx])  -- ^ particles and corresponding contexts
   -> Prog es [(a, ctx)]
 loopSIS particleRunner (particles, ctxs) = do
-  -- Run particles to next checkpoint and accumulate their contexts
+  -- | Run particles to next checkpoint and accumulate their contexts
   (particles', ctxs') <- second (ctxs `paccum`) . unzip <$> (handleNonDet . particleRunner . asum) particles
   case foldVals particles' of
-    -- If all programs have finished, return their results along with their accumulated contexts
+    -- | If all programs have finished, return their results along with their accumulated contexts
     Right vals  -> (`zip` ctxs') <$> vals
-    -- Otherwise, pick the programs to continue with
+    -- | Otherwise, pick the programs to continue with
     Left  _     -> call (Resample (particles', ctxs')) >>= loopSIS particleRunner
