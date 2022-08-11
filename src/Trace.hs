@@ -8,17 +8,18 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# LANGUAGE ViewPatterns #-}
 
 {- | For recording samples and log-probabilities during model execution.
 -}
 
 module Trace (
   -- * Sample trace
-    STrace
-  , FromSTrace(..)
-  , filterSTrace
-  , traceSamples
+    InvSTrace
+  -- , STrace
+  -- , FromSTrace(..)
+  , filterTrace
+  -- , traceSamples
   -- * Log-probability trace
   , LPTrace
   , traceLogProbs) where
@@ -30,17 +31,71 @@ import Effects.Dist ( Tag, Addr, Observe, Sample(..), pattern ObsPrj, pattern Sa
 import Env ( enil, varToStr, UniqueVar, Var(..), Env(ECons), Assign((:=)) )
 import GHC.TypeLits ( KnownSymbol )
 import OpenSum (OpenSum)
-import LogP
+import LogP ( LogP )
 import qualified Data.Map as Map
 import qualified OpenSum
 import Prog ( Member, Prog(..), weaken, install )
-import PrimDist ( ErasedPrimDist(..), PrimVal, PrimDist, logProb, pattern PrimDistPrf )
+import PrimDist (PrimDist(..), logProb)
 import Effects.State ( State, modify, handleState )
 
-{- | The type of sample traces, mapping addresses of sample/observe operations
-     to their primitive distributions and sampled values.
+{- | The type of generic traces, mapping addresses of probabilistic operations
+     to some data.
 -}
-type STrace = Map Addr (ErasedPrimDist, OpenSum PrimVal)
+type Trace a = Map Addr a
+
+-- | Retrieve the values for the specified observable variable names
+filterTrace ::
+  -- | observable variable names
+    [Tag]
+  -- | trace
+  -> Map Addr a
+  -- | filtered trace
+  -> Map Addr a
+filterTrace tags = Map.filterWithKey (\(tag, idx) _ -> tag `elem` tags)
+
+-- | Update a sample trace at an address
+updateTrace :: (Member (State (Map Addr v)) es) =>
+  -- | address of sample site
+     Addr
+  -- | primitive distribution at address
+  -- | sampled value
+  -> v
+  -> Prog es ()
+updateTrace α v = modify (Map.insert α v)
+
+
+{- | The type of log-probability traces, mapping addresses of sample/observe operations
+     to their log probabilities.
+-}
+type LPTrace = Trace LogP
+
+-- | Insert stateful operations for recording the log-probabilities at each @Sample@ or @Observe@ operation
+traceLogProbs :: (Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)
+traceLogProbs = handleState Map.empty . storeLPs
+  where storeLPs :: (Member Sample es, Member Observe es) => Prog es a -> Prog (State LPTrace: es) a
+        storeLPs (Val x) = pure x
+        storeLPs (Op u k) = do
+          case u of
+            SampPrj d α
+              -> Op (weaken u) (\x -> updateTrace α (PrimDist.logProb d x) >> storeLPs (k x))
+            ObsPrj d y α
+              -> Op (weaken u) (\x -> updateTrace α (PrimDist.logProb d x) >> storeLPs (k x))
+            _ -> Op (weaken u) (storeLPs . k)
+
+
+{- | The type of inverse sample traces, mapping addresses of sample operations
+     to the random values between 0 and 1 passed to their inverse CDF functions.
+-}
+type InvSTrace = Trace Double
+
+
+-- {- | The type of sample traces, mapping addresses of sample operations
+--      to their primitive distributions and sampled values. This can be used
+--      to record the sampled values for the exact addresses of all sampling
+--      operations, regardless of whether or not they are associated with an
+--      observable variable in a model environment.
+-- -}
+type STrace = Trace (ErasedPrimDist, OpenSum PrimVal)
 
 -- | For converting sample traces to model environments
 class FromSTrace a where
@@ -58,63 +113,49 @@ instance (UniqueVar x env ~ 'True, KnownSymbol x, Eq a, OpenSum.Member a PrimVal
             . Map.toList
             . Map.filterWithKey (\(tag, idx) _ -> tag == varToStr x)
 
--- | Retrieve the sampled values for the specified observable variable names
-filterSTrace ::
-  -- | observable variable names
-    [Tag]
-  -- | sample trace
-  -> STrace
-  -- | filtered sample trace
-  -> STrace
-filterSTrace tags = Map.filterWithKey (\(tag, idx) _ -> tag `elem` tags)
-
--- | Update a sample trace at an address
-updateSTrace :: (Show x, Member (State STrace) es, OpenSum.Member x PrimVal) =>
-  -- | address of sample site
-     Addr
-  -- | primitive distribution at address
-  -> PrimDist x
-  -- | sampled value
-  -> x
-  -> Prog es ()
-updateSTrace α d x  = modify (Map.insert α (ErasedPrimDist d, OpenSum.inj x) :: STrace -> STrace)
-
 -- | Insert stateful operations for recording the sampled values at each @Sample@ operation
 traceSamples :: (Member Sample es) => Prog es a -> Prog es (a, STrace)
 traceSamples = handleState Map.empty . storeSamples
   where storeSamples :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
         storeSamples = install pure
           (\x tx k -> case tx of
-              Sample (PrimDistPrf d) α -> do updateSTrace α d x
+              Sample (PrimDistPrf d) α -> do updateTrace α (ErasedPrimDist d, OpenSum.inj x :: OpenSum PrimVal)
                                              k x
           )
 
-{- | The type of log-probability traces, mapping addresses of sample/observe operations
-     to their log probabilities.
--}
-type LPTrace = Map Addr LogP
+-- | Forget the type of values generated by a primitive distribution
+data ErasedPrimDist where
+  ErasedPrimDist :: PrimDist a -> ErasedPrimDist
 
--- | Compute and update a log-probability trace at an address
-updateLPTrace :: (Member (State LPTrace) es) =>
-  -- | address of sample/observe site
-    Addr
-  -- | primitive distribution at address
-  -> PrimDist x
-  -- | sampled or observed value
-  -> x
-  -> Prog es ()
-updateLPTrace α d x  = modify (Map.insert α (PrimDist.logProb d x) :: LPTrace -> LPTrace)
+instance Show ErasedPrimDist where
+  show (ErasedPrimDist d) = show d
 
--- | Insert stateful operations for recording the log-probabilities at each @Sample@ or @Observe@ operation
-traceLogProbs :: (Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)
-traceLogProbs = handleState Map.empty . storeLPs
-  where storeLPs :: (Member Sample es, Member Observe es) => Prog es a -> Prog (State LPTrace: es) a
-        storeLPs (Val x) = pure x
-        storeLPs (Op u k) = do
-          case u of
-            SampPrj d α
-              -> Op (weaken u) (\x -> updateLPTrace α d x >>
-                                      storeLPs (k x))
-            ObsPrj d y α
-              -> Op (weaken u) (\x -> updateLPTrace α d x >> storeLPs (k x))
-            _ -> Op (weaken u) (storeLPs . k)
+-- | An ad-hoc specification of primitive value types, for constraining the outputs of distributions
+type PrimVal = '[Int, Double, [Double], Bool, String]
+
+-- | Proof that @x@ is a primitive value
+data IsPrimVal x where
+  IsPrimVal :: (Show x, OpenSum.Member x PrimVal) => IsPrimVal x
+
+-- | For pattern-matching on an arbitrary @PrimDist@ with proof that it generates a primitive value
+pattern PrimDistPrf :: () => (Show x, OpenSum.Member x PrimVal) => PrimDist x -> PrimDist x
+pattern PrimDistPrf d <- d@(primDistPrf -> Just IsPrimVal)
+
+-- | Proof that all primitive distributions generate a primitive value
+primDistPrf :: PrimDist x -> Maybe (IsPrimVal x)
+primDistPrf d = case d of
+  HalfCauchy {} -> Just IsPrimVal
+  Cauchy {} -> Just IsPrimVal
+  Normal {} -> Just IsPrimVal
+  HalfNormal  {} -> Just IsPrimVal
+  Uniform  {} -> Just IsPrimVal
+  UniformD {} -> Just IsPrimVal
+  Gamma {} -> Just IsPrimVal
+  Beta {} -> Just IsPrimVal
+  Binomial {} -> Just IsPrimVal
+  Bernoulli {} -> Just IsPrimVal
+  Categorical {} -> Just IsPrimVal
+  Poisson {} -> Just IsPrimVal
+  Dirichlet {} -> Just IsPrimVal
+  Deterministic {} -> Nothing
+  Discrete {} -> Nothing

@@ -7,3 +7,4 @@ sys
 *.csv
 *.dat
 !paper.pdf
+!*benchmarks.csv

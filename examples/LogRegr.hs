@@ -69,9 +69,9 @@ simLogRegr n_datapoints = do
   -- First declare the model inputs
   let xs = map ((/ fromIntegral n_datapoints) . fromIntegral) [(-n_datapoints) .. n_datapoints]
   -- Define a model environment to simulate from, providing observed values for the model parameters
-      env = (#y := []) <:> (#m := [8]) <:> (#b := [-3]) <:> enil
+      env_in = (#y := []) <:> (#m := [8]) <:> (#b := [-3]) <:> enil
   -- Call simulate on logistic regression
-  (ys, envs) <- SIM.simulate (logRegr xs) env
+  (ys, env_outs) <- SIM.simulate (logRegr xs) env_in
   return (zip xs ys)
 
 -- | Likelihood-weighting over logistic regression
@@ -83,9 +83,9 @@ lwLogRegr n_lwsteps n_datapoints = do
   -- Get values from simulating log regr
   (xs, ys) <- unzip <$> simLogRegr n_datapoints
   -- Define environment for inference, providing observed values for the model outputs
-  let env = (#y := ys) <:> (#m := []) <:> (#b := []) <:> enil
+  let env_in = (#y := ys) <:> (#m := []) <:> (#b := []) <:> enil
   -- Run LW inference for n_lwsteps iterations
-  lwTrace <- LW.lw n_lwsteps (logRegr xs) env
+  lwTrace <- LW.lw n_lwsteps (logRegr xs) env_in
   let -- Get output of LW, extract sampled parameters for #m and #b, and pair with likelihood-weighting ps
       (env_outs, ps) = unzip lwTrace
       mus = concatMap (get #m) env_outs
@@ -101,14 +101,14 @@ mhLogRegr n_mhsteps n_datapoints = do
   -- Get values from simulating log regr
   (xs, ys) <- unzip <$> simLogRegr n_datapoints
   let -- Define an environment for inference, providing observed values for the model outputs
-      env = (#y := ys) <:> (#m := []) <:> (#b := []) <:> enil
+      env_in = (#y := ys) <:> (#m := []) <:> (#b := []) <:> enil
   -- Run MH inference for n_mhsteps iterations
   {- The agument (#m <#> #b <#> vnil) is optional for indicating interest in learning #m and #b in particular,
      causing other variables to not be resampled (unless necessary) during MH. -}
-  mhTrace <- MH.mh n_mhsteps (logRegr xs) env (#m <#> #b <#> vnil)
+  env_outs <- MH.mh n_mhsteps (logRegr xs) env_in (#m <#> #b <#> vnil)
   -- Retrieve values sampled for #m and #b during MH
-  let m_samples = concatMap (get #m) mhTrace
-      b_samples = concatMap (get #b) mhTrace
+  let m_samples = concatMap (get #m) env_outs
+      b_samples = concatMap (get #b) env_outs
   pure (m_samples, b_samples)
 
 {- | Log regression model on individual data points.
@@ -127,16 +127,16 @@ logRegrOnce x = do
 simLogRegrOnce :: Int -> Sampler [(Double, Bool)]
 simLogRegrOnce n_datapoints = do
   let xs = map ((/ fromIntegral n_datapoints) . fromIntegral) [(-n_datapoints) .. n_datapoints]
-      env = (#label := []) <:> (#m := [8]) <:> (#b := [-3]) <:> enil
-  ys_envs <- mapM (\x -> SIM.simulate (logRegrOnce x) env) xs
+      env_in = (#label := []) <:> (#m := [8]) <:> (#b := [-3]) <:> enil
+  ys_envs <- mapM (\x -> SIM.simulate (logRegrOnce x) env_in) xs
   let ys = map fst ys_envs
   pure (zip xs ys)
 
 lwLogRegrOnce :: Int -> Int ->  Sampler [((Double, Double), Double)]
 lwLogRegrOnce n_samples n_datapoints = do
   xys <- simLogRegrOnce n_datapoints
-  let xys' = [(x, env) | (x, y) <- xys, let env = (#label := [y]) <:> (#m := []) <:> (#b := []) <:> enil]
-  lwTrace <- mapM (\(x, env) -> LW.lw n_samples (logRegrOnce  x) env) xys'
+  let xys' = [(x, env_in) | (x, y) <- xys, let env_in = (#label := [y]) <:> (#m := []) <:> (#b := []) <:> enil]
+  lwTrace <- mapM (\(x, env_in) -> LW.lw n_samples (logRegrOnce  x) env_in) xys'
   let (env_outs, ps) = unzip $ concat lwTrace
       mus = concatMap (get #m) env_outs
       bs  = concatMap (get #b) env_outs
@@ -145,7 +145,7 @@ lwLogRegrOnce n_samples n_datapoints = do
 mhLogRegrOnce ::  Int -> Int ->  Sampler ([Double], [Double])
 mhLogRegrOnce n_mhsteps n_datapoints = do
   xys <- simLogRegrOnce n_datapoints
-  let xys' = [(x, env) | (x, y) <- xys, let env = (#label := [y]) <:> (#m := []) <:> (#b := []) <:> enil]
+  let xys' = [(x, env_in) | (x, y) <- xys, let env_in = (#label := [y]) <:> (#m := []) <:> (#b := []) <:> enil]
   mhTrace <- concat <$> mapM (\(x, y) -> MH.mh n_mhsteps (logRegrOnce x) y  (#m <#> #b <#> vnil)) xys'
   let mus = concatMap (get #m) mhTrace
       bs  = concatMap (get #b) mhTrace

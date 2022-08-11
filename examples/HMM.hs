@@ -19,8 +19,9 @@ import Data.Kind (Constraint)
 import Effects.Writer ( handleWriterM, tellM, Writer )
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
 import Inference.LW as LW ( lw )
-import Inference.MB as MB ( toMBayes )
+import Inference.MB as MB ( handleMBayes )
 import Inference.MH as MH ( mh )
+import Inference.SMC as SMC ( smc )
 import Inference.SIM as SIM ( simulate )
 import Model ( Model, bernoulli', binomial, uniform )
 import Numeric.Log ( Log )
@@ -29,8 +30,7 @@ import qualified Control.Monad.Bayes.Class as Bayes
 import qualified Control.Monad.Bayes.Sampler as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
-import Sampler ( Sampler )
-import Trace ( FromSTrace )
+import Sampler ( Sampler, liftIO )
 import Util (boolToInt)
 
 -- | A HMM environment
@@ -129,8 +129,8 @@ simHMM hmm_length = do
   -- Specify model input
   let x_0 = 0
   -- Specify model environment
-      env = #trans_p := [0.5] <:> #obs_p := [0.8] <:> #y := [] <:> enil
-  (y, env_out) <- SIM.simulate (hmm hmm_length 0) env
+      env_in = #trans_p := [0.5] <:> #obs_p := [0.8] <:> #y := [] <:> enil
+  (y, env_out) <- SIM.simulate (hmm hmm_length 0) env_in
   pure y
 
 -- | Perform likelihood-weighting inference over HMM
@@ -145,9 +145,9 @@ lwHMM lw_samples hmm_length = do
   ys <- map snd <$> simHMMw hmm_length
   let x_0 = 0
   -- Specify model environment
-      env = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
-  (envs_out, ws) <- unzip <$> LW.lw lw_samples (hmm hmm_length x_0) env
-  let trans_ps    = concatMap (get #trans_p) envs_out
+      env_in = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
+  (env_outs, ws) <- unzip <$> LW.lw lw_samples (hmm hmm_length x_0) env_in
+  let trans_ps    = concatMap (get #trans_p) env_outs
   pure (trans_ps, ws)
 
 -- | Metropolis-Hastings inference over a HMM
@@ -164,10 +164,10 @@ mhHMM mh_samples hmm_length = do
   -- Specify a model environment containing those observations
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
   -- Handle the Writer effect and then run MH inference
-  envs_out <- MH.mh mh_samples (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
+  env_outs <- MH.mh mh_samples (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
   -- Get the trace of sampled transition and observation parameters
-  let trans_ps    = concatMap (get #trans_p) envs_out
-      obs_ps      = concatMap (get #obs_p) envs_out
+  let trans_ps    = concatMap (get #trans_p) env_outs
+      obs_ps      = concatMap (get #obs_p) env_outs
   pure (trans_ps, obs_ps)
 
 {- | Extending the modular HMM with a user-specific effect.
@@ -202,7 +202,7 @@ hmmW :: ( Observable env "y" Int
 hmmW n x = do
   trans_p <- uniform 0 1 #trans_p
   obs_p   <- uniform 0 1 #obs_p
-  foldr (<=<) pure  (replicate n (hmmNodeW trans_p obs_p)) x
+  foldl (>=>) pure  (replicate n (hmmNodeW trans_p obs_p)) x
 
 -- | Simulate from a HMM
 simHMMw
@@ -233,9 +233,9 @@ lwHMMw lw_samples hmm_length = do
   -- Specify a model environment containing those observations
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
   -- Handle the Writer effect and then run MH inference
-  (envs_out, ws) <- unzip <$> LW.lw lw_samples (handleWriterM @[Int] $ hmmW hmm_length 0) env_in
+  (env_outs, ws) <- unzip <$> LW.lw lw_samples (handleWriterM @[Int] $ hmmW hmm_length 0) env_in
   -- Get the trace of sampled transition and observation parameters
-  let trans_ps    = concatMap (get #trans_p) envs_out
+  let trans_ps    = concatMap (get #trans_p) env_outs
   pure (trans_ps, ws)
 
 -- | Metropolis-Hastings inference over a HMM
@@ -252,18 +252,37 @@ mhHMMw mh_samples hmm_length = do
   -- Specify a model environment containing those observations
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
   -- Handle the Writer effect and then run MH inference
-  envs_out <- MH.mh mh_samples (handleWriterM @[Int] $ hmmW hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
+  env_outs <- MH.mh mh_samples (handleWriterM @[Int] $ hmmW hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
   -- Get the trace of sampled transition and observation parameters
-  let trans_ps    = concatMap (get #trans_p) envs_out
-      obs_ps      = concatMap (get #obs_p) envs_out
+  let trans_ps    = concatMap (get #trans_p) env_outs
+      obs_ps      = concatMap (get #obs_p) env_outs
+  pure (trans_ps, obs_ps)
+
+-- | SMC inference over a HMM
+smcHMMw
+  -- | number of particles
+  :: Int
+  -- | number of HMM nodes
+  -> Int
+  -- | [(transition parameter, observation parameter)]
+  -> Sampler ([Double], [Double])
+smcHMMw n_particles hmm_length = do
+  -- Simulate a trace of observations from the HMM
+  ys <- map snd <$> simHMMw hmm_length
+  -- Specify a model environment containing those observations
+  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
+  -- Handle the Writer effect and then run MH inference
+  env_outs <- SMC.smc n_particles (hmm hmm_length 0) env_in
+  -- Get the sampled transition and observation parameters of each particle
+  let trans_ps    = concatMap (get #trans_p) env_outs
+      obs_ps      = concatMap (get #obs_p) env_outs
   pure (trans_ps, obs_ps)
 
 {- | Interfacing the HMM on top of Monad Bayes.
 -}
 
 -- | Translate the HMM under a model environment to a program in Monad Bayes
-mbayesHMM :: ( FromSTrace env
-             , Bayes.MonadInfer m
+mbayesHMM :: ( Bayes.MonadInfer m
              , Observable env "y" Int
              , Observables env '["obs_p", "trans_p"] Double)
   -- | number of HMM nodes
@@ -274,7 +293,7 @@ mbayesHMM :: ( FromSTrace env
   -> Env env
   -- | ((final latent state, intermediate latent states), output model environment)
   -> m ((Int, [Int]), Env env)
-mbayesHMM n x env = toMBayes (handleWriterM $ hmmW n x) env
+mbayesHMM n x env_in = handleMBayes (handleWriterM $ hmmW n x) env_in
 
 -- | Simulate from the HMM in Monad Bayes.
 simHMMMB
@@ -305,9 +324,9 @@ lwHMMMB n_samples hmm_length = do
   -- Simulate a trace of observations from the HMM
   ys <- map snd <$> simHMMMB hmm_length
   -- Specify a model environment containing those observations
-  let env = (#trans_p := []) <:> #obs_p := [] <:> (#y := ys) <:>  enil
+  let env_in = (#trans_p := []) <:> #obs_p := [] <:> (#y := ys) <:>  enil
   -- Execute the HMM in Monad Bayes under the model environment,
-  Bayes.sampleIO $ replicateM n_samples $ Bayes.runWeighted $ mbayesHMM hmm_length 0 env
+  Bayes.sampleIO $ replicateM n_samples $ Bayes.runWeighted $ mbayesHMM hmm_length 0 env_in
 
 -- | Metropolis-Hastings from the HMM in Monad Bayes.
 mhHMMMB
@@ -321,8 +340,8 @@ mhHMMMB n_mhsteps hmm_length = do
   -- Simulate a trace of observations from the HMM
   ys <- map snd <$> simHMMMB hmm_length
   -- Specify a model environment containing those observations
-  let env = (#trans_p := []) <:> #obs_p := [] <:> (#y := ys) <:>  enil
-  Bayes.sampleIO $ Bayes.prior $ Bayes.mh n_mhsteps (mbayesHMM hmm_length 0 env)
+  let env_in = (#trans_p := []) <:> #obs_p := [] <:> (#y := ys) <:>  enil
+  Bayes.sampleIO $ Bayes.prior $ Bayes.mh n_mhsteps (mbayesHMM hmm_length 0 env_in)
 
 {- | A higher-order, generic HMM.
 -}

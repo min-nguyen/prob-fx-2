@@ -35,12 +35,11 @@ import Data.Kind (Constraint)
 import Sampler ( Sampler )
 import Inference.SIM as SIM ( simulate )
 import Inference.MH as MH ( mh )
-import Inference.MB as MB ( toMBayes )
+import Inference.MB as MB ( handleMBayes )
 import qualified Control.Monad.Bayes.Class as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
 import qualified Control.Monad.Bayes.Sampler as Bayes
-import Trace ( FromSTrace )
 
 -- | A type family for conveniently specifying multiple @Record@ fields of the same type
 type family Lookups env (ks :: [Symbol]) a :: Constraint where
@@ -279,8 +278,7 @@ simSIRSV n_days = do
 
 -- | Translate the HMM under a model environment to a program in Monad Bayes
 mbayesSIR ::
-   (FromSTrace env
-   , Bayes.MonadInfer m
+   ( Bayes.MonadInfer m
    , Lookups popl '["s", "i", "r"] Int
    , Observables env '["𝜉"] Int
    , Observables env '[ "β" , "γ" , "ρ"] Double)
@@ -292,7 +290,7 @@ mbayesSIR ::
   -> Env env
   -- | ((final latent state, intermediate latent states), output model environment)
   -> m ((Record popl, [Record popl]), Env env)
-mbayesSIR n_days popl = toMBayes (hmmSIR n_days popl)
+mbayesSIR n_days popl = handleMBayes (hmmSIR n_days popl)
 
 -- | Simulate from the SIR model in Monad Bayes.
 simSIRMB

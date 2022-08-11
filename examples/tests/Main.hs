@@ -8,18 +8,18 @@ import System.Exit
 
 testSimLinRegrOnce :: Test
 testSimLinRegrOnce = TestCase $ do
-  output <- sampleIOFixed (simLinRegrOnce 100)
-  assertEqual "Testing (simLinRegrOnce 100)"  simLinRegrOnceExpected output
+  output <- sampleIOFixed (simLinRegrOnce 50)
+  assertEqual "Testing (simLinRegrOnce 50)"  simLinRegrOnceExpected output
 
 testLwLinRegrOnce :: Test
 testLwLinRegrOnce = TestCase $ do
-  output <- sampleIOFixed (lwLinRegrOnce 100 50)
-  assertEqual "Testing (lwLinRegrOnce 100 50)"  lwLinRegrOnceExpected output
+  output <- sampleIOFixed (lwLinRegrOnce 50 30)
+  assertEqual "Testing (lwLinRegrOnce 50 30)"  lwLinRegrOnceExpected output
 
 testMhLinRegrOnce :: Test
 testMhLinRegrOnce = TestCase $ do
-  output <- sampleIOFixed (mhLinRegrOnce 100 100)
-  assertEqual "Testing (mhLinRegrOnce 100 100)"  mhLinRegrOnceExpected output
+  output <- sampleIOFixed (mhLinRegrOnce 50 10)
+  assertEqual "Testing (mhLinRegrOnce 50 10)"  mhLinRegrOnceExpected output
 
 testSimLinRegr :: Test
 testSimLinRegr = TestCase $ do
@@ -36,6 +36,11 @@ testMhLinRegr = TestCase $ do
   output <- sampleIOFixed (mhLinRegr 10000 50)
   assertEqual "Testing (mhLinRegr 10000 50)"  mhLinRegrExpected output
 
+testSmcLinRegr :: Test
+testSmcLinRegr = TestCase $ do
+  output <- sampleIOFixed (smcLinRegr 120 50)
+  assertEqual "Testing (smcLinRegr 120 50)"  smcLinRegrExpected output
+
 testSimLogRegrOnce :: Test
 testSimLogRegrOnce = TestCase $ do
   output <- sampleIOFixed (simLogRegrOnce 50)
@@ -48,8 +53,8 @@ testLwLogRegrOnce = TestCase $ do
 
 testMhLogRegrOnce :: Test
 testMhLogRegrOnce = TestCase $ do
-  output <- sampleIOFixed (mhLogRegrOnce 100 10)
-  assertEqual "Testing (mhLogRegrOnce 100 10)" mhLogRegrOnceExpected output
+  output <- sampleIOFixed (mhLogRegrOnce 50 10)
+  assertEqual "Testing (mhLogRegrOnce 50 10)" mhLogRegrOnceExpected output
 
 testSimLogRegr :: Test
 testSimLogRegr = TestCase $ do
@@ -81,6 +86,11 @@ testMhHMMw = TestCase $ do
   output <- sampleIOFixed (mhHMMw 5000 20)
   assertEqual "Testing (mhHMMw 5000 20)"  mhHMMwExpected output
 
+testSmcHMMw :: Test
+testSmcHMMw = TestCase $ do
+  output <- sampleIOFixed (smcHMMw 80 30)
+  assertEqual "Testing (smcHMMw 80 30)"  smcHMMwExpected output
+
 testSimSIR :: Test
 testSimSIR = TestCase $ do
   output <- sampleIOFixed (simSIR 100)
@@ -101,6 +111,11 @@ testMhPredLDA = TestCase $ do
   output <- sampleIOFixed (mhPredLDA 500 100)
   assertEqual "Testing (mhPredLDA 500 100)"  mhPredLDAExpected output
 
+testSmcPredLDA :: Test
+testSmcPredLDA = TestCase $ do
+  output <- sampleIOFixed (smcPredLDA 100 100)
+  assertEqual "Testing (smcPredLDA 100 100)"  smcPredLDAExpected output
+
 testSimRadon :: Test
 testSimRadon = TestCase $ do
   output <- sampleIOFixed simRadon
@@ -108,8 +123,8 @@ testSimRadon = TestCase $ do
 
 testMhRadon :: Test
 testMhRadon = TestCase $ do
-  output <- sampleIOFixed (mhRadon 2000)
-  assertEqual "Testing (mhRadon 2000)"  mhRadonExpected output
+  output <- sampleIOFixed (mhRadon 1000)
+  assertEqual "Testing (mhRadon 1000)"  mhRadonExpected output
 
 testMhPredRadon :: Test
 testMhPredRadon = TestCase $ do
@@ -132,7 +147,38 @@ testMhGMM = TestCase $ do
   assertEqual "Testing (mhGMM 4000 20)"  mhGMMExpected output
 
 tests :: Test
-tests = TestList [testSimLinRegrOnce, testLwLinRegrOnce, testMhLinRegrOnce, testSimLinRegr, testLwLinRegr, testMhLinRegr, testSimLogRegrOnce, testLwLogRegrOnce, testMhLogRegrOnce, testSimLogRegr, testLwLogRegr, testMhLogRegr, testSimHMMw, testLwHMMw, testMhHMMw, testSimSIR, testMhSIR, testSimLDA, testMhPredLDA, testSimRadon, testMhRadon, testMhPredRadon, testMhSchool, testSimGMM, testMhGMM]
+tests = TestList
+ [
+   testSimLinRegrOnce
+ , testLwLinRegrOnce
+ , testMhLinRegrOnce
+ , testSimLinRegr
+ , testLwLinRegr
+ , testMhLinRegr
+ , testSmcLinRegr
+ , testSimLogRegrOnce
+ , testLwLogRegrOnce
+ , testMhLogRegrOnce
+ , testSimLogRegr
+ , testLwLogRegr
+ , testMhLogRegr
+ , testSimHMMw
+ , testLwHMMw
+ , testMhHMMw
+ , testSmcHMMw
+ , testSimSIR
+ , testMhSIR
+ , testSimLDA
+ , testMhPredLDA
+ , testSmcPredLDA
+ , testSimRadon
+ , testMhRadon
+ , testMhPredRadon
+ , testMhSchool
+ , testSimGMM
+ , testMhGMM
+ ]
+
 
 main :: IO ()
 main = do

@@ -33,12 +33,11 @@ import Data.Kind (Constraint)
 import Sampler ( Sampler )
 import Inference.SIM as SIM ( simulate )
 import Inference.MH as MH ( mh )
-import Inference.MB as MB ( toMBayes )
+import Inference.MB as MB ( handleMBayes )
 import qualified Control.Monad.Bayes.Class as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
 import qualified Control.Monad.Bayes.Sampler as Bayes
-import Trace ( FromSTrace )
 
 {- | SIR model.
 -}
@@ -299,10 +298,10 @@ simSIRSV = do
 -}
 
 mbayesSIR ::
-   (FromSTrace env, Bayes.MonadInfer m
+   (Bayes.MonadInfer m
   , Observables env '["𝜉"] Int , Observables env '[ "β" , "γ" , "ρ"] Double)
   => Int -> Popl -> Env env -> m ((Popl, [Popl]), Env env)
-mbayesSIR n popl = toMBayes (hmmSIR' n popl)
+mbayesSIR n popl = handleMBayes (hmmSIR' n popl)
 
 simSIRMB :: Int -> IO ([(Int, Int, Int)], [Reported])
 simSIRMB n_days = do
@@ -318,7 +317,7 @@ mhSIRMB n_days = do
   𝜉s <- snd <$> simSIRMB n_days
   let sir_0      = Popl {s = 762, i = 1, r = 0}
       env_in = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> enil
-  (_, envs_out) <- unzip <$> Bayes.sampleIO (Bayes.prior $ Bayes.mh 100 (mbayesSIR 100 sir_0 env_in))
-  let ρs = concatMap (get #ρ) envs_out
-      βs = concatMap (get #β) envs_out
+  (_, env_outs) <- unzip <$> Bayes.sampleIO (Bayes.prior $ Bayes.mh 100 (mbayesSIR 100 sir_0 env_in))
+  let ρs = concatMap (get #ρ) env_outs
+      βs = concatMap (get #β) env_outs
   pure (ρs, βs)

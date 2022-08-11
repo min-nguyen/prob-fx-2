@@ -22,15 +22,17 @@ module Env
   ( -- * Observable variable
     Var(..)
   , varToStr
+  , Vars(..)
   , vnil
   , (<#>)
-  , Vars(..)
   , ContainsVars(..)
     -- * Model environment
   , Assign(..)
   , Env(..)
   , enil
   , (<:>)
+  , emptyEnv
+  , reverseEnv
   , Observable(..)
   , Observables(..)
   , UniqueVar
@@ -88,9 +90,19 @@ data Env (env :: [Assign Symbol *]) where
 -- | Assign or associate a variable @x@ with a value of type @a@
 data Assign x a = x := a
 
--- | Empty model environment
+-- | Nil environment
 enil :: Env '[]
 enil = ENil
+
+-- | Construct the empty version of a given environment
+emptyEnv :: Env env -> Env env
+emptyEnv (ECons _ env) = ECons [] (emptyEnv env)
+emptyEnv ENil = ENil
+
+-- | Reverse the traces
+reverseEnv :: Env env -> Env env
+reverseEnv (ECons xs env) = ECons (reverse xs) (reverseEnv env)
+reverseEnv ENil = ENil
 
 infixr 5 <:>
 -- | Prepend a variable assignment to a model environment
