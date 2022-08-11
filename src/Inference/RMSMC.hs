@@ -20,15 +20,25 @@ import LogP
 import Control.Monad
 import Control.Applicative
 import Effects.Dist
-import Effects.Lift
 import Effects.ObsRW
 import Effects.NonDet
 import qualified Inference.MH as MH
 import qualified Inference.SMC as SMC
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
+import Inference.SIS (Resample(..), ParticleResampler)
 import OpenSum (OpenSum)
-import Util
+import Inference.SMC (SMCParticle(SMCParticle))
+import Effects.Lift
+import PrimDist
+
+{- | The particle context for RMSMC
+-}
+data RMSMCParticle = RMSMCParticle {
+    particleLogProb  :: LogP      -- ^ associated log-probability
+  , particleObsAddrs :: [Addr]    -- ^ addresses of @Observe@ operations encountered so far
+  , particleTrace    :: InvSTrace
+  }
 
 -- rmsmcToplevel :: forall env es' a. (FromSTrace env, Show a) =>
 --   (es' ~ [ObsReader env, Dist, Lift Sampler]) =>
@@ -70,6 +80,27 @@ import Util
 --       moved_logWs     = map (LogP . sum . map snd . Map.toList) obs_lptraces
 
 --   pure (moved_particles, zip3 obs_addrs moved_logWs moved_straces)
+
+{- | A handler for resampling particles according to their normalized log-likelihoods.
+-}
+particleResampler :: ParticleResampler RMSMCParticle
+particleResampler (Val x) = Val x
+particleResampler (Op op k) = case discharge op of
+  Left  op'               -> Op op' (particleResampler  . k)
+  Right (Resample (vals, ctxs)) -> do
+    -- | Accumulate the contexts of all particles and get their normalised log-weights
+    let logws      = map (exp . unLogP . particleLogProb) ctxs
+    -- | Select particles to continue with
+    idxs <- replicateM (length ctxs) $ lift (sample (Categorical logws))
+    let resampled_vals = map (vals !! ) idxs
+        resampled_ctxs = map (ctxs !! ) idxs
+
+    -- | Get most recent observe address
+    let α_break = (head . particleObsAddrs . head) resampled_ctxs
+
+
+    --  (particleResampler . k) (resampled_vals, resampled_ctxs)
+    undefined
 
 -- {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
 --      It returns the rest of the computation.
