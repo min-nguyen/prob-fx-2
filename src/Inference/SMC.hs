@@ -6,6 +6,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 {- Sequential Monte Carlo inference.
 -}
@@ -31,20 +32,20 @@ import Sampler ( Sampler )
 
 {- | The context of a particle for SMC.
 -}
-data SMCParticle = SMCParticle {
+newtype SMCParticle = SMCParticle {
     particleLogProb  :: LogP    -- ^ associated log-probability
-  , particleObsAddrs :: [Addr]  -- ^ addresses of @Observe@ operations encountered so far
-  }
+  } deriving Num
 
 instance SIS.ParticleCtx SMCParticle where
-  pempty            = SMCParticle 0 []
+  pempty            = SMCParticle 0
   paccum ctxs ctxs' =
     -- | Compute normalised accumulated log weights
     let logprobs = let logZ = logMeanExp (map particleLogProb ctxs)
                    in  map ((+ logZ) . particleLogProb) ctxs'
-    -- | Update the Observe operations encountered
-        obsaddrs = zipWith (++) (map particleObsAddrs ctxs') (map particleObsAddrs ctxs)
-    in  zipWith SMCParticle logprobs obsaddrs
+    in  map SMCParticle logprobs
+    -- -- | Update the Observe operations encountered
+    --     obsaddrs = zipWith (++) (map particleObsAddrs ctxs') (map particleObsAddrs ctxs)
+    -- in  zipWith SMCParticle logprobs obsaddrs
 
 {- | Call SMC on a model.
 -}
@@ -72,7 +73,6 @@ smcInternal n_particles prog =
 particleResampler :: ParticleResampler SMCParticle
 particleResampler (Val x) = Val x
 particleResampler (Op op k) = case discharge op of
-  Left  op'        -> Op op' (particleResampler  . k)
   Right (Resample (prts, ctxs)) -> do
     -- | Get the normalised log-weight for each particle
     let logws = map (exp . unLogP . particleLogProb) ctxs
@@ -81,14 +81,15 @@ particleResampler (Op op k) = case discharge op of
     let resampled_prts = map (prts !! ) idxs
         resampled_ctxs = map (ctxs !! ) idxs
     (particleResampler . k) ((resampled_prts, resampled_ctxs), idxs)
+  Left op' -> Op op' (particleResampler . k)
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation
        2. the log probability of the @Observe operation + the address of the breakpoint
 -}
 particleRunner :: ParticleRunner SMCParticle
-particleRunner (Val x) = pure (Val x, SMCParticle 0 [("", 0)])
+particleRunner (Val x) = pure (Val x, SMCParticle 0)
 particleRunner (Op op k) = case op of
-      ObsPrj d y α -> Val (k y, SMCParticle (logProb d y) [α])
+      ObsPrj d y α -> Val (k y, SMCParticle (logProb d y))
       _            -> Op op (particleRunner . k)
 

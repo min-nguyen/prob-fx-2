@@ -27,17 +27,19 @@ import qualified Inference.MH as MH
 import qualified Inference.SMC as SMC
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
-import Inference.SIS (Resample(..), ParticleResampler)
+import Inference.SIS (Resample(..), ParticleResampler, ParticleRunner)
 import OpenSum (OpenSum)
 import Inference.SMC (SMCParticle(..))
 import Effects.Lift
 import PrimDist
+import Data.Bifunctor
 
 {- | The particle context for RMSMC
 -}
 data RMSMCParticle = RMSMCParticle {
-    smcParticle    :: SMCParticle
-  , particleTrace  :: InvSTrace
+    smcParticle       :: SMCParticle
+  , particleObsAddrs  :: [Addr]
+  , particleTrace     :: InvSTrace
   }
 
 -- rmsmcToplevel :: forall env es' a. (FromSTrace env, Show a) =>
@@ -87,23 +89,52 @@ data RMSMCParticle = RMSMCParticle {
 
 {- | A handler for resampling particles according to their normalized log-likelihoods.
 -}
-particleResampler :: Prog [Observe, Sample, Lift Sampler] a -> ParticleResampler RMSMCParticle
-particleResampler prog_0 (Val x) = Val x
-particleResampler prog_0 (Op op k) = case discharge op of
+particleResampler :: Int -> Prog [Observe, Sample, Lift Sampler] a -> ParticleResampler RMSMCParticle
+particleResampler mh_steps prog_0 (Val x) = Val x
+particleResampler mh_steps prog_0 (Op op k) = case discharge op of
   Right (Resample (prts, ctxs)) ->
     do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
         idxs <- snd <$> SMC.particleResampler (call (Resample (prts, map smcParticle ctxs)))
-        let resampled_prts = map (prts !! ) idxs
-            resampled_ctxs = map (ctxs !! ) idxs
-
-        -- | Get most recent observe address
-        let α_break = (head . particleObsAddrs . smcParticle . head) resampled_ctxs
+        let resampled_prts   = map (prts !! ) idxs
+            resampled_ctxs   = map (ctxs !! ) idxs
+        -- | Get the trace of observe addresses up until the breakpoint
+        --   (from the context of any arbitrary particle, e.g. by using 'head')
+        let α_obs   = (particleObsAddrs . head) resampled_ctxs
+        -- | Get the observe address of the breakpoint
+            α_break = head α_obs
         -- | Insert break point to perform MH up to
             partial_model = breakObserve α_break prog_0
+        -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
+        mh_trace <- lift $ mapM ( fmap head
+                                . flip (MH.mhInternal mh_steps partial_model) []
+                                . particleTrace) resampled_ctxs
 
-        --  (particleResampler . k) (resampled_vals, resampled_ctxs)
-        undefined
-  Left op' -> Op op' (particleResampler prog_0 . k)
+        {- | Get:
+            1) the continuations of each particle from the break point (augmented with the non-det effect)
+            2) the log prob traces of each particle up until the break point
+            3) the sample traces of each particle up until the break point -}
+        let ((rejuv_prts, lp_traces), rejuv_straces) = first unzip (unzip mh_trace)
+            -- | Filter log probability traces to only include that for observe operations
+            obs_lp_traces = map (Map.filterWithKey (\α _ -> α `elem` α_obs)) lp_traces
+            -- | Recompute the log weights of all particles up until the break point
+            rejuv_lps     = map (sum . map snd . Map.toList) obs_lp_traces
+
+            rejuv_ctxs =  RMSMCParticle <$> map SMCParticle rejuv_lps <*> repeat α_obs <*> rejuv_straces
+
+        (particleResampler mh_steps prog_0 . k)
+            ((undefined, rejuv_ctxs), idxs)
+
+  Left op' -> Op op' (particleResampler mh_steps prog_0 . k)
+
+particleRunner :: InvSTrace -> ParticleRunner RMSMCParticle
+particleRunner inv_strace (Val x) = pure (Val x, RMSMCParticle 0 [] Map.empty)
+particleRunner inv_strace (Op op k) = case op of
+  SampPrj d α  -> do r <- lift sampleRandom
+                     y <- lift (sampleInv d r)
+                     particleRunner (Map.insert α r inv_strace) (k y)
+  ObsPrj d y α -> Val (k y, RMSMCParticle (SMCParticle $ logProb d y) [α] inv_strace)
+  _            -> Op op (particleRunner inv_strace . k)
+
 
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
      It returns the rest of the computation.

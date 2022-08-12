@@ -45,7 +45,7 @@ data Resample ctx a where
 {- | A @ParticleRunner@ handler runs a particle to the next @Observe@ break point.
 -}
 type ParticleRunner ctx
-  = forall es a. Member Observe es
+  = forall es a. (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
   -- | a particle
   => Prog es a
   -- | (a particle suspended at the next step, corresponding context)
@@ -75,7 +75,7 @@ sis n_particles particleRunner particleResampler prog = do
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
-loopSIS :: (ParticleCtx ctx, Members [Observe, Resample ctx] es)
+loopSIS :: (ParticleCtx ctx, Members [Resample ctx, Observe, Sample] es, LastMember (Lift Sampler) es)
   => ParticleRunner ctx                     -- ^ handler for running particles
   -> ([Prog (NonDet : es) a], [ctx])        -- ^ input particles and corresponding contexts
   -> Prog es [(a, ctx)]                     -- ^ final particle results and corresponding contexts
