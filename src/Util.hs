@@ -10,8 +10,11 @@ module Util (
   , roundUp16
   , uncurry3
   , bimap'
+  , filterByKey
   , linCongGen) where
+
 import Data.Bifunctor
+import qualified Data.Map as Map
 
 -- | Return @True@ for @1@ and otherwise @False@
 boolToInt :: Bool -> Int
@@ -53,3 +56,6 @@ linCongGen r =
 
 bimap' :: Bifunctor p => (c -> d) -> p c c -> p d d
 bimap' f = bimap f f
+
+filterByKey ::  Ord k => (k -> Bool) -> Map.Map k a -> Map.Map k a
+filterByKey f = Map.filterWithKey (\k _ -> f k)

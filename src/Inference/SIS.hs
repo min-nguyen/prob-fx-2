@@ -20,6 +20,7 @@ import LogP ( LogP, logMeanExp )
 import Prog ( Prog (..), weakenProg, Member, discharge, call, weaken, LastMember, Members )
 import Sampler ( Sampler )
 import Util ( uncurry3 )
+import Model
 import Inference.SIM as SIM
 import Data.Bifunctor
 

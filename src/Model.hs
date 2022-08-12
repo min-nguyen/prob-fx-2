@@ -12,6 +12,7 @@
 
 module Model (
     Model(..)
+  , ProbProg
   , handleCore
     -- * Distribution smart constructors
     -- $Smart-Constructors
@@ -56,6 +57,8 @@ import PrimDist ( PrimDist(..) )
 import Prog ( call, Member, Prog )
 import qualified OpenSum
 import Debug.Trace
+import Sampler
+import Effects.Lift
 
 {- | Models are parameterised by:
 
@@ -84,6 +87,10 @@ instance Monad (Model env es) where
   Model f >>= x = Model $ do
     f' <- f
     runModel $ x f'
+
+{- | Probabilistic programs are those with effects for conditioning and sampling.
+-}
+type ProbProg a = Prog [Observe, Sample, Lift Sampler] a
 
 {- | The initial handler for models, specialising a model under a certain environment
      to produce a probabilistic program consisting of @Sample@ and @Observe@ operations.

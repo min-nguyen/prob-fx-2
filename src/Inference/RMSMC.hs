@@ -1,12 +1,15 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeApplications #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use <&>" #-}
 
 module Inference.RMSMC where
 
@@ -26,66 +29,52 @@ import Effects.NonDet
 import qualified Inference.MH as MH
 import qualified Inference.SMC as SMC
 import qualified Inference.SIM as SIM
-import qualified Inference.SIS as SIS
-import Inference.SIS (Resample(..), ParticleResampler, ParticleRunner)
+import qualified Inference.SIS as SIS hiding  (particleLogProb)
+import Inference.SIS (Resample(..), ParticleResampler, ParticleRunner, ParticleCtx)
 import OpenSum (OpenSum)
-import Inference.SMC (SMCParticle(..))
+import Inference.SMC (SMCParticle, pattern SMCParticle)
 import Effects.Lift
 import PrimDist
 import Data.Bifunctor
+import Unsafe.Coerce
+import Util
 
 {- | The particle context for RMSMC
 -}
 data RMSMCParticle = RMSMCParticle {
-    smcParticle       :: SMCParticle
+    particleLogProb   :: LogP
   , particleObsAddrs  :: [Addr]
   , particleTrace     :: InvSTrace
   }
 
--- rmsmcToplevel :: forall env es' a. (FromSTrace env, Show a) =>
---   (es' ~ [ObsReader env, Dist, Lift Sampler]) =>
---   Int -> Int -> Model env es' a -> Env env -> Sampler [(a, LogP, Env env)]
--- rmsmcToplevel n_particles mh_steps model env = do
---   let prog = (handleDist . handleObsRead env) (runModel model)
---   rmsmc n_particles mh_steps prog env
+instance ParticleCtx RMSMCParticle where
+  pempty            = RMSMCParticle 0 [] Map.empty
+  paccum ctxs ctxs' =
+    -- | Compute normalised accumulated log weights
+    let log_ps   = let logZ = logMeanExp (map particleLogProb ctxs)
+                   in  map ((+ logZ) . particleLogProb) ctxs'
+        α_obs    = uncurry (zipWith (++)) (bimap' (map particleObsAddrs) (ctxs', ctxs))
+        straces  = zipWith Map.union (map particleTrace ctxs') (map particleTrace ctxs)
+    in  RMSMCParticle <$> log_ps <*> α_obs <*> straces
 
--- rmsmc :: forall env es' a. (FromSTrace env, Show a) =>
---   (es' ~ [Observe, Sample, Lift Sampler]) =>
---   Int -> Int -> Prog es' a -> Env env -> Sampler [(a, LogP, Env env)]
--- rmsmc n_particles mh_steps prog env = do
---   as_ps_straces <- SIS.sis n_particles (rmsmcResampler mh_steps prog) SMC.smcParticleHdlr SIM.handleObs SIM.handleSamp prog
---   pure $ map (\(a, (addr, p, strace)) -> (a, p, fromSTrace @env strace)) as_ps_straces
+rmsmcToplevel
+  :: Int                                          -- ^ number of SMC particles
+  -> Int                                          -- ^ number of MH steps
+  -> Model env [ObsRW env, Dist, Lift Sampler] a  -- ^ model
+  -> Env env                                      -- ^ input model environment
+  -> Sampler [Env env]                            -- ^ output model environments of each particle
+rmsmcToplevel n_particles mh_steps model env = do
+  let prog = (handleDist . handleObsRW env) (runModel model)
+  rmsmcInternal n_particles mh_steps prog env >>= pure . map (snd . fst)
 
--- rmsmcResampler :: forall es a.
---      Int
---   -> Prog [Observe, Sample, Lift Sampler] a -- the initial program, representing the entire unevaluated model execution (having already provided a model environment)
---   -> SIS.ParticleResampler '[Observe, Sample, Lift Sampler] a
--- rmsmcResampler mh_steps prog ctx_0 ctx_1sub0 progs_1 = do
---   -- run SMC resampling, ignore log weights of particles
---   (obs_addrs, _, resampled_straces) <- unzip3 . snd <$> SMC.smcResampler ctx_0 ctx_1sub0 progs_1
---   let -- get most recent observe address
---       α_break       = (head . head) obs_addrs
---       -- insert break point to perform MH up to
---       partial_model = insertBreakpoint α_break prog
-
---   -- perform metropolis-hastings using each resampled particle's sample trace
---   mhTraces <- lift $ mapM (\strace -> MH.mh mh_steps partial_model strace []) resampled_straces
---   let -- get the continuations of each particle from the break point, and weaken with non-det effect
---       moved_particles = map (weakenNonDet . fst3 . head) mhTraces
---       -- get the sample traces of each particle up until the break point
---       moved_straces   = map (snd3 . head) mhTraces
---       -- get the log prob traces of each particle up until the break point
---       lptraces        = map (thrd3 . head) mhTraces
---       -- filter log probability traces to only include that for observe operations
---       obs_lptraces    = map (Map.filterWithKey (\k a -> k `elem` head obs_addrs)) lptraces
---       -- compute log weights of particles, that is, the total log probability of each particle up until the break point
---       moved_logWs     = map (LogP . sum . map snd . Map.toList) obs_lptraces
-
---   pure (moved_particles, zip3 obs_addrs moved_logWs moved_straces)
-
--- reduceContext :: (ctx -> ctx') -> Prog (Resample ctx : es) a -> Prog (Resample ctx' : es) a
--- reduceContext f (Val x)   = Val x
--- reduceContext f (Op op k) =
+rmsmcInternal
+  :: Int
+  -> Int
+  -> Prog [Observe, Sample, Lift Sampler] a
+  -> Env env
+  -> Sampler [(a, RMSMCParticle)]
+rmsmcInternal n_particles mh_steps prog env = do
+  SIS.sis n_particles (particleRunner Map.empty) (particleResampler mh_steps prog) (weakenProg @(Resample RMSMCParticle) prog)
 
 {- | A handler for resampling particles according to their normalized log-likelihoods.
 -}
@@ -94,7 +83,7 @@ particleResampler mh_steps prog_0 (Val x) = Val x
 particleResampler mh_steps prog_0 (Op op k) = case discharge op of
   Right (Resample (prts, ctxs)) ->
     do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
-        idxs <- snd <$> SMC.particleResampler (call (Resample (prts, map smcParticle ctxs)))
+        idxs <- snd <$> SMC.particleResampler (call (Resample (prts, map (SMCParticle . particleLogProb) ctxs)))
         let resampled_prts   = map (prts !! ) idxs
             resampled_ctxs   = map (ctxs !! ) idxs
         -- | Get the trace of observe addresses up until the breakpoint
@@ -115,14 +104,15 @@ particleResampler mh_steps prog_0 (Op op k) = case discharge op of
             3) the sample traces of each particle up until the break point -}
         let ((rejuv_prts, lp_traces), rejuv_straces) = first unzip (unzip mh_trace)
             -- | Filter log probability traces to only include that for observe operations
-            obs_lp_traces = map (Map.filterWithKey (\α _ -> α `elem` α_obs)) lp_traces
+            lp_traces_obs = map (filterByKey (`elem` α_obs)) lp_traces
             -- | Recompute the log weights of all particles up until the break point
-            rejuv_lps     = map (sum . map snd . Map.toList) obs_lp_traces
+            rejuv_lps     = map (sum . map snd . Map.toList) lp_traces_obs
 
-            rejuv_ctxs =  RMSMCParticle <$> map SMCParticle rejuv_lps <*> repeat α_obs <*> rejuv_straces
+            rejuv_ctxs    = RMSMCParticle <$> rejuv_lps <*> repeat α_obs <*> rejuv_straces
 
         (particleResampler mh_steps prog_0 . k)
-            ((undefined, rejuv_ctxs), idxs)
+            ((unsafeCoerce rejuv_prts -- | TO FIX
+              , rejuv_ctxs), idxs)
 
   Left op' -> Op op' (particleResampler mh_steps prog_0 . k)
 
@@ -132,9 +122,8 @@ particleRunner inv_strace (Op op k) = case op of
   SampPrj d α  -> do r <- lift sampleRandom
                      y <- lift (sampleInv d r)
                      particleRunner (Map.insert α r inv_strace) (k y)
-  ObsPrj d y α -> Val (k y, RMSMCParticle (SMCParticle $ logProb d y) [α] inv_strace)
+  ObsPrj d y α -> Val (k y, RMSMCParticle (logProb d y) [α] inv_strace)
   _            -> Op op (particleRunner inv_strace . k)
-
 
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
      It returns the rest of the computation.

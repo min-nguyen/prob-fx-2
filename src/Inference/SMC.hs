@@ -7,6 +7,8 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use <&>" #-}
 
 {- Sequential Monte Carlo inference.
 -}
@@ -27,7 +29,7 @@ import Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge
 import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
-import Inference.SIS (Resample(..), ParticleResampler, ParticleRunner)
+import Inference.SIS (Resample(..), ParticleResampler, ParticleRunner, ParticleCtx)
 import Sampler ( Sampler )
 
 {- | The context of a particle for SMC.
@@ -36,7 +38,7 @@ newtype SMCParticle = SMCParticle {
     particleLogProb  :: LogP    -- ^ associated log-probability
   } deriving Num
 
-instance SIS.ParticleCtx SMCParticle where
+instance ParticleCtx SMCParticle where
   pempty            = SMCParticle 0
   paccum ctxs ctxs' =
     -- | Compute normalised accumulated log weights
@@ -56,8 +58,7 @@ smc
   -> Sampler [Env env]                                -- ^ output model environments of each particle
 smc n_particles model env = do
   let prog = (handleDist . handleObsRW env) (runModel model)
-  final_ctxs <- smcInternal n_particles prog
-  pure $ map (snd . fst) final_ctxs
+  smcInternal n_particles prog >>= pure . map (snd . fst)
 
 {- | Call SMC on a probabilistic program.
 -}

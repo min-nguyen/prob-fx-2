@@ -37,6 +37,7 @@ import qualified OpenSum
 import Prog ( Member, Prog(..), weaken, install )
 import PrimDist (PrimDist(..), logProb)
 import Effects.State ( State, modify, handleState )
+import Util
 
 {- | The type of generic traces, mapping addresses of probabilistic operations
      to some data.
@@ -51,7 +52,7 @@ filterTrace ::
   -> Map Addr a
   -- | filtered trace
   -> Map Addr a
-filterTrace tags = Map.filterWithKey (\(tag, idx) _ -> tag `elem` tags)
+filterTrace tags = filterByKey (\(tag, idx)  -> tag `elem` tags)
 
 -- | Update a sample trace at an address
 updateTrace :: (Member (State (Map Addr v)) es) =>
