@@ -82,12 +82,13 @@ loopSIS :: (ParticleCtx ctx, Members [Resample ctx, Observe, Sample] es, LastMem
   -> Prog es [(a, ctx)]                     -- ^ final particle results and corresponding contexts
 loopSIS particleRunner (particles, ctxs) = do
   -- | Run particles to next checkpoint and accumulate their contexts
-  lift $ liftIO $ print (length ctxs)
-  (particles', ctxs') <- second (ctxs `paccum`) . unzip <$> (handleNonDet . particleRunner . asum) particles
+  lift $ liftIO $ print ("SIS: " ++ show (length ctxs))
+  (particles', ctxs') <-  second (ctxs `paccum`) . unzip <$>  (handleNonDet . particleRunner . asum) particles
   lift $ liftIO $ print (length ctxs')
   -- | Check termination status of particles
   case foldVals particles' of
     -- | If all particles have finished, return their results and contexts
     Right vals  -> (`zip` ctxs') <$> vals
     -- | Otherwise, pick the particles to continue with
-    Left  _     -> call (Resample (particles', ctxs')) >>= loopSIS particleRunner . fst
+    Left  _     -> do ((resampled_prts, resampled_ctxs), idxs) <- call (Resample (particles', ctxs'))
+                      loopSIS particleRunner (resampled_prts, resampled_ctxs)

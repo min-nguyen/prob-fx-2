@@ -83,9 +83,12 @@ particleResampler mh_steps prog_0 (Val x) = Val x
 particleResampler mh_steps prog_0 (Op op k) = case discharge op of
   Right (Resample (prts, ctxs)) ->
     do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
+        lift $ liftIO $ print ("before resampling" ++ show (map particleTrace ctxs))
         idxs <- snd <$> SMC.particleResampler (call (Resample (prts, map (SMCParticle . particleLogProb) ctxs)))
         let resampled_prts   = map (prts !! ) idxs
             resampled_ctxs   = map (ctxs !! ) idxs
+
+        lift $ liftIO $ print ("after resampling, before mh" ++ show (map particleTrace resampled_ctxs))
         -- | Get the trace of observe addresses up until the breakpoint
         --   (from the context of any arbitrary particle, e.g. by using 'head')
         let α_obs   = (particleObsAddrs . head) resampled_ctxs
@@ -97,7 +100,7 @@ particleResampler mh_steps prog_0 (Op op k) = case discharge op of
         mh_trace <- lift $ mapM ( fmap head
                                 . flip (MH.mhInternal mh_steps partial_model) []
                                 . particleTrace) resampled_ctxs
-        lift $ liftIO $ print ("after mh" ++ show (length mh_trace))
+        lift $ liftIO $ print ("after mh" ++ show (map snd mh_trace))
         {- | Get:
             1) the continuations of each particle from the break point (augmented with the non-det effect)
             2) the log prob traces of each particle up until the break point
@@ -111,7 +114,7 @@ particleResampler mh_steps prog_0 (Op op k) = case discharge op of
             rejuv_ctxs    = zipWith3 RMSMCParticle rejuv_lps (repeat α_obs) rejuv_straces
 
         (particleResampler mh_steps prog_0 . k)
-            ((unsafeCoerce rejuv_prts -- | TO FIX
+            ((resampled_prts -- | TO FIX
               , rejuv_ctxs), idxs)
 
   Left op' -> Op op' (particleResampler mh_steps prog_0 . k)
