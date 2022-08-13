@@ -83,9 +83,7 @@ particleResampler mh_steps prog_0 (Val x) = Val x
 particleResampler mh_steps prog_0 (Op op k) = case discharge op of
   Right (Resample (prts, ctxs)) ->
     do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
-        lift $ liftIO $ print "hi1"
         idxs <- snd <$> SMC.particleResampler (call (Resample (prts, map (SMCParticle . particleLogProb) ctxs)))
-        lift $ liftIO $ print "hi2"
         let resampled_prts   = map (prts !! ) idxs
             resampled_ctxs   = map (ctxs !! ) idxs
         -- | Get the trace of observe addresses up until the breakpoint
@@ -95,12 +93,11 @@ particleResampler mh_steps prog_0 (Op op k) = case discharge op of
             α_break = head α_obs
         -- | Insert break point to perform MH up to
             partial_model = breakObserve α_break prog_0
-        lift $ liftIO $ print "hi"
         -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
         mh_trace <- lift $ mapM ( fmap head
                                 . flip (MH.mhInternal mh_steps partial_model) []
                                 . particleTrace) resampled_ctxs
-
+        lift $ liftIO $ print ("after mh" ++ show (length mh_trace))
         {- | Get:
             1) the continuations of each particle from the break point (augmented with the non-det effect)
             2) the log prob traces of each particle up until the break point
@@ -111,7 +108,7 @@ particleResampler mh_steps prog_0 (Op op k) = case discharge op of
             -- | Recompute the log weights of all particles up until the break point
             rejuv_lps     = map (sum . map snd . Map.toList) lp_traces_obs
 
-            rejuv_ctxs    = RMSMCParticle <$> rejuv_lps <*> repeat α_obs <*> rejuv_straces
+            rejuv_ctxs    = zipWith3 RMSMCParticle rejuv_lps (repeat α_obs) rejuv_straces
 
         (particleResampler mh_steps prog_0 . k)
             ((unsafeCoerce rejuv_prts -- | TO FIX

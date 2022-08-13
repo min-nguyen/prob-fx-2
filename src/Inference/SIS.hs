@@ -83,7 +83,7 @@ loopSIS :: (ParticleCtx ctx, Members [Resample ctx, Observe, Sample] es, LastMem
 loopSIS particleRunner (particles, ctxs) = do
   -- | Run particles to next checkpoint and accumulate their contexts
   lift $ liftIO $ print (length ctxs)
-  (particles', ctxs') <-  unzip <$> (handleNonDet . particleRunner . asum) particles
+  (particles', ctxs') <- second (ctxs `paccum`) . unzip <$> (handleNonDet . particleRunner . asum) particles
   lift $ liftIO $ print (length ctxs')
   -- | Check termination status of particles
   case foldVals particles' of
