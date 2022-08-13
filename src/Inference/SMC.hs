@@ -30,7 +30,7 @@ import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
 import Inference.SIS (Resample(..), ParticleResampler, ParticleRunner, ParticleCtx)
-import Sampler ( Sampler )
+import Sampler
 
 {- | The context of a particle for SMC.
 -}
@@ -75,12 +75,17 @@ particleResampler :: ParticleResampler SMCParticle
 particleResampler (Val x) = Val x
 particleResampler (Op op k) = case discharge op of
   Right (Resample (prts, ctxs)) -> do
+    lift $ liftIO $ print "hi-1.5"
     -- | Get the normalised log-weight for each particle
     let logws = map (exp . unLogP . particleLogProb) ctxs
+    lift $ liftIO $ print (length ctxs)
     -- | Select particles to continue with
     idxs <- replicateM (length ctxs) $ lift (sample (Categorical logws))
+    lift $ liftIO $ print "hi-1.7"
     let resampled_prts = map (prts !! ) idxs
         resampled_ctxs = map (ctxs !! ) idxs
+
+    lift $ liftIO $ print "hi-1.8"
     (particleResampler . k) ((resampled_prts, resampled_ctxs), idxs)
   Left op' -> Op op' (particleResampler . k)
 

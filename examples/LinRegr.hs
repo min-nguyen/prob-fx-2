@@ -17,6 +17,7 @@ import Inference.SIM as SIM ( simulate )
 import Inference.LW as LW ( lw )
 import Inference.MH as MH ( mh )
 import Inference.SMC as SMC ( smc )
+import Inference.RMSMC as RMSMC ( rmsmc )
 import Inference.MB as MB ( handleMBayes )
 import Sampler ( Sampler )
 import Control.Monad ( replicateM )
@@ -99,6 +100,20 @@ smcLinRegr n_particles n_datapoints = do
   -- Get the sampled values of mu and c for each particle
   let mus = concatMap (get #m) env_outs
       cs = concatMap (get #c) env_outs
+  pure (mus, cs)
+
+-- | SMC over linear regression
+rmsmcLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+rmsmcLinRegr n_particles n_mhsteps n_datapoints = do
+  -- Specify model inputs
+  let xs            = [0 .. fromIntegral n_datapoints]
+  -- Specify model environment
+      env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+  -- Run SMC
+  env_outs <- RMSMC.rmsmc n_particles n_mhsteps (linRegr xs) env_in
+  -- Get the sampled values of mu and c for each particle
+  let mus = concatMap (get #m) env_outs
+      cs  = concatMap (get #c) env_outs
   pure (mus, cs)
 
 {- | Linear regression model on individual data points at a time.

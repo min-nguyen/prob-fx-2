@@ -55,15 +55,15 @@ instance ParticleCtx RMSMCParticle where
                    in  map ((+ logZ) . particleLogProb) ctxs'
         α_obs    = uncurry (zipWith (++)) (bimap' (map particleObsAddrs) (ctxs', ctxs))
         straces  = zipWith Map.union (map particleTrace ctxs') (map particleTrace ctxs)
-    in  RMSMCParticle <$> log_ps <*> α_obs <*> straces
+    in  zipWith3 RMSMCParticle log_ps α_obs straces
 
-rmsmcToplevel
+rmsmc
   :: Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of MH steps
   -> Model env [ObsRW env, Dist, Lift Sampler] a  -- ^ model
   -> Env env                                      -- ^ input model environment
   -> Sampler [Env env]                            -- ^ output model environments of each particle
-rmsmcToplevel n_particles mh_steps model env = do
+rmsmc n_particles mh_steps model env = do
   let prog = (handleDist . handleObsRW env) (runModel model)
   rmsmcInternal n_particles mh_steps prog env >>= pure . map (snd . fst)
 
@@ -83,7 +83,9 @@ particleResampler mh_steps prog_0 (Val x) = Val x
 particleResampler mh_steps prog_0 (Op op k) = case discharge op of
   Right (Resample (prts, ctxs)) ->
     do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
+        lift $ liftIO $ print "hi1"
         idxs <- snd <$> SMC.particleResampler (call (Resample (prts, map (SMCParticle . particleLogProb) ctxs)))
+        lift $ liftIO $ print "hi2"
         let resampled_prts   = map (prts !! ) idxs
             resampled_ctxs   = map (ctxs !! ) idxs
         -- | Get the trace of observe addresses up until the breakpoint
@@ -93,6 +95,7 @@ particleResampler mh_steps prog_0 (Op op k) = case discharge op of
             α_break = head α_obs
         -- | Insert break point to perform MH up to
             partial_model = breakObserve α_break prog_0
+        lift $ liftIO $ print "hi"
         -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
         mh_trace <- lift $ mapM ( fmap head
                                 . flip (MH.mhInternal mh_steps partial_model) []
