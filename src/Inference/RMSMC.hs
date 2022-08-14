@@ -73,18 +73,19 @@ rmsmcInternal
   -> Prog [Observe, Sample, Lift Sampler] a
   -> Env env
   -> Sampler [(a, RMSMCParticle)]
-rmsmcInternal n_particles mh_steps prog env = do
-  SIS.sis n_particles (particleRunner Map.empty) (particleResampler mh_steps prog) (weakenProg @(Resample RMSMCParticle) prog)
+rmsmcInternal n_particles mh_steps prog_0 env = do
+  SIS.sis n_particles (particleRunner Map.empty) (particleResampler mh_steps) prog_0
 
 {- | A handler for resampling particles according to their normalized log-likelihoods.
 -}
-particleResampler :: Int -> Prog [Observe, Sample, Lift Sampler] a -> ParticleResampler RMSMCParticle
-particleResampler mh_steps prog_0 (Val x) = Val x
-particleResampler mh_steps prog_0 (Op op k) = case discharge op of
-  Right (Resample (prts, ctxs)) ->
+particleResampler :: Int -> ParticleResampler RMSMCParticle
+particleResampler mh_steps (Val x) = Val x
+particleResampler mh_steps (Op op k) = case discharge op of
+  Right (Resample (prts, ctxs, prog_0)) ->
     do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
         lift $ liftIO $ print ("before resampling" ++ show (map particleTrace ctxs))
-        idxs <- snd <$> SMC.particleResampler (call (Resample (prts, map (SMCParticle . particleLogProb) ctxs)))
+        let logws = map (exp . unLogP . particleLogProb) ctxs
+        idxs <- replicateM (length ctxs) $ lift (sample (Categorical logws))
         let resampled_prts   = map (prts !! ) idxs
             resampled_ctxs   = map (ctxs !! ) idxs
 
@@ -113,11 +114,11 @@ particleResampler mh_steps prog_0 (Op op k) = case discharge op of
 
             rejuv_ctxs    = zipWith3 RMSMCParticle rejuv_lps (repeat α_obs) rejuv_straces
 
-        (particleResampler mh_steps prog_0 . k)
-            ((resampled_prts -- | TO FIX
+        (particleResampler mh_steps  . k)
+            ((map (weakenProg @(Resample RMSMCParticle)) rejuv_prts -- | TO FIX
               , rejuv_ctxs), idxs)
 
-  Left op' -> Op op' (particleResampler mh_steps prog_0 . k)
+  Left op' -> Op op' (particleResampler mh_steps  . k)
 
 particleRunner :: InvSTrace -> ParticleRunner RMSMCParticle
 particleRunner inv_strace (Val x) = pure (Val x, RMSMCParticle 0 [] Map.empty)

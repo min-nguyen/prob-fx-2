@@ -5,6 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeApplications #-}
 
 {- An infrastructure for Sequential Importance Sampling (particle filter).
 -}
@@ -39,9 +40,11 @@ class ParticleCtx ctx where
 data Resample ctx a where
   Resample
     -- | (particles, contexts)
-    :: ([a], [ctx])
+    :: ([SISProg ctx a], [ctx], ProbProg a)
     -- | ((resampled particles, resampled contexts), resampling indexes)
-    -> Resample ctx (([a], [ctx]), [Int])
+    -> Resample ctx (([SISProg ctx a], [ctx]), [Int])
+
+type SISProg ctx a = Prog [Resample ctx, Observe, Sample, Lift Sampler] a
 
 {- | A @ParticleRunner@ handler runs a particle to the next @Observe@ break point.
 -}
@@ -62,33 +65,35 @@ type ParticleResampler ctx
 
 {- | A top-level template for sequential importance sampling.
 -}
-sis :: ParticleCtx ctx
+sis :: forall ctx a. ParticleCtx ctx
   => Int                                                      -- ^ number of particles
   -> ParticleRunner    ctx                                    -- ^ handler for running particles
   -> ParticleResampler ctx                                    -- ^ handler for resampling particles
-  -> Prog [Resample ctx, Observe, Sample, Lift Sampler] a     -- ^ model
+  -> Prog [Observe, Sample, Lift Sampler] a     -- ^ model
   -> Sampler [(a, ctx)]                                       -- ^ (final particle output, final particle context)
-sis n_particles particleRunner particleResampler prog = do
+sis n_particles particleRunner particleResampler prog_0 = do
   -- | Create an initial population of particles and contexts
-  let population = unzip $ replicate n_particles (weakenNonDet prog, pempty)
+  let population = unzip $ replicate n_particles (weakenProg @(Resample ctx) prog_0, pempty)
   -- | Execute the population until termination
-  (handleLift . SIM.handleSamp . SIM.handleObs . particleResampler) (loopSIS particleRunner population)
+  (handleLift . SIM.handleSamp . SIM.handleObs . particleResampler )
+    (loopSIS particleRunner prog_0 population)
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
-loopSIS :: (ParticleCtx ctx, Members [Resample ctx, Observe, Sample] es, LastMember (Lift Sampler) es)
+loopSIS :: (ParticleCtx ctx)
   => ParticleRunner ctx                     -- ^ handler for running particles
-  -> ([Prog (NonDet : es) a], [ctx])        -- ^ input particles and corresponding contexts
-  -> Prog es [(a, ctx)]                     -- ^ final particle results and corresponding contexts
-loopSIS particleRunner (particles, ctxs) = do
+  -> ProbProg a
+  -> ([SISProg ctx a], [ctx])        -- ^ input particles and corresponding contexts
+  -> SISProg ctx [(a, ctx)]                     -- ^ final particle results and corresponding contexts
+loopSIS particleRunner prog_0 (particles, ctxs) = do
   -- | Run particles to next checkpoint and accumulate their contexts
   lift $ liftIO $ print ("SIS: " ++ show (length ctxs))
-  (particles', ctxs') <-  second (ctxs `paccum`) . unzip <$>  (handleNonDet . particleRunner . asum) particles
+  (particles', ctxs') <-  second (ctxs `paccum`) . unzip <$> mapM particleRunner particles
   lift $ liftIO $ print (length ctxs')
   -- | Check termination status of particles
   case foldVals particles' of
     -- | If all particles have finished, return their results and contexts
     Right vals  -> (`zip` ctxs') <$> vals
     -- | Otherwise, pick the particles to continue with
-    Left  _     -> do ((resampled_prts, resampled_ctxs), idxs) <- call (Resample (particles', ctxs'))
-                      loopSIS particleRunner (resampled_prts, resampled_ctxs)
+    Left  _     -> do ((resampled_prts, resampled_ctxs), idxs) <- call (Resample (particles', ctxs', prog_0))
+                      loopSIS particleRunner prog_0 (resampled_prts, resampled_ctxs)

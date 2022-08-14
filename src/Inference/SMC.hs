@@ -67,14 +67,14 @@ smcInternal
   -> Prog [Observe, Sample, Lift Sampler] a           -- ^ probabilistic program
   -> Sampler [(a, SMCParticle)]                       -- ^ final particle results and contexts
 smcInternal n_particles prog =
-  SIS.sis n_particles particleRunner particleResampler (weakenProg @(Resample SMCParticle) prog)
+  SIS.sis n_particles particleRunner particleResampler prog
 
 {- | A handler for resampling particles according to their normalized log-likelihoods.
 -}
 particleResampler :: ParticleResampler SMCParticle
 particleResampler (Val x) = Val x
 particleResampler (Op op k) = case discharge op of
-  Right (Resample (prts, ctxs)) -> do
+  Right (Resample (prts, ctxs, prog_0)) -> do
     lift $ liftIO $ print "hi-1.5"
     -- | Get the normalised log-weight for each particle
     let logws = map (exp . unLogP . particleLogProb) ctxs
