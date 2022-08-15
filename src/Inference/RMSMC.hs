@@ -5,11 +5,13 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
+
+{- Rejuvenate-Move Sequential Monte Carlo inference.
+-}
 
 module Inference.RMSMC where
 
@@ -50,12 +52,13 @@ data RMSMCParticle = RMSMCParticle {
 instance ParticleCtx RMSMCParticle where
   pempty            = RMSMCParticle 0 [] Map.empty
   paccum ctxs ctxs' =
-    -- | Compute normalised accumulated log weights
     let log_ps   = uncurry paccum              (bimap' (particleLogProb <$>)  (ctxs, ctxs'))
         α_obs    = uncurry (zipWith (++))      (bimap' (particleObsAddrs <$>) (ctxs', ctxs))
-        straces  = uncurry (zipWith Map.union) (bimap' (particleSTrace <$>)    (ctxs', ctxs))
+        straces  = uncurry (zipWith Map.union) (bimap' (particleSTrace <$>)   (ctxs', ctxs))
     in  zipWith3 RMSMCParticle log_ps α_obs straces
 
+{- | Call RMSMC on a model.
+-}
 rmsmc
   :: Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of MH steps
@@ -66,11 +69,13 @@ rmsmc n_particles mh_steps model env = do
   let prog = (handleDist . handleObsRW env) (runModel model)
   rmsmcInternal n_particles mh_steps prog >>= pure . map (snd . fst)
 
+{- | Call RMSMC on a probabilistic program.
+-}
 rmsmcInternal
-  :: Int
-  -> Int
-  -> Prog [Observe, Sample, Lift Sampler] a
-  -> Sampler [(a, RMSMCParticle)]
+  :: Int                                          -- ^ number of SMC particles
+  -> Int                                          -- ^ number of MH steps
+  -> Prog [Observe, Sample, Lift Sampler] a       -- ^ probabilistic program
+  -> Sampler [(a, RMSMCParticle)]                 -- ^ final particle results and contexts
 rmsmcInternal n_particles mh_steps prog_0  = do
   SIS.sis n_particles particleRunner (particleResampler mh_steps) prog_0
 
