@@ -307,7 +307,7 @@ simHMMMB hmm_length = do
   -- Specify model environment
       env_in = (#trans_p := [0.5]) <:> #obs_p := [0.9] <:> (#y := []) <:> enil
   -- Execute the HMM in Monad Bayes under the model environment
-  ((_, xs), env_out) <- Bayes.sampleIO $ Bayes.prior $ mbayesHMM hmm_length x env_in
+  ((_, xs), env_out) <- Bayes.sampleIO $ Bayes.unweighted $ mbayesHMM hmm_length x env_in
   -- Get the observations
   let ys :: [Int] = get #y env_out
   pure $ zip xs ys
@@ -341,7 +341,7 @@ mhHMMMB n_mhsteps hmm_length = do
   ys <- map snd <$> simHMMMB hmm_length
   -- Specify a model environment containing those observations
   let env_in = (#trans_p := []) <:> #obs_p := [] <:> (#y := ys) <:>  enil
-  Bayes.sampleIO $ Bayes.prior $ Bayes.mh n_mhsteps (mbayesHMM hmm_length 0 env_in)
+  Bayes.sampleIO $ Bayes.unweighted $ Bayes.mh n_mhsteps (mbayesHMM hmm_length 0 env_in)
 
 {- | A higher-order, generic HMM.
 -}

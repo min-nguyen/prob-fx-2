@@ -301,7 +301,7 @@ simSIRMB
 simSIRMB n_days = do
   let sir_0      = #s @= 762 <: #i @= 1 <: #r @= 0 <: #v @= 0 <: emptyRecord
       sim_env_in = #β := [0.7] <:> #γ := [0.009] <:> #ρ := [0.3] <:> #𝜉 := [] <:> enil
-  ((_, sir_trace), sim_env_out) <- Bayes.sampleIO $ Bayes.prior (mbayesSIR n_days sir_0 sim_env_in)
+  ((_, sir_trace), sim_env_out) <- Bayes.sampleIO $ Bayes.unweighted (mbayesSIR n_days sir_0 sim_env_in)
   let 𝜉s :: [Reported] = get #𝜉 sim_env_out
       sirs = map (\sir -> (sir ^. s, sir ^. i, sir ^. r)) sir_trace
   pure (sirs, 𝜉s)
@@ -318,7 +318,7 @@ mhSIRMB n_mhsteps n_days = do
   𝜉s <- snd <$> simSIRMB n_days
   let sir_0      = #s @= 762 <: #i @= 1 <: #r @= 0 <: emptyRecord
       env = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> enil
-  (_, env) <- unzip <$> Bayes.sampleIO (Bayes.prior $ Bayes.mh n_mhsteps (mbayesSIR n_days sir_0 env))
+  (_, env) <- unzip <$> Bayes.sampleIO (Bayes.unweighted $ Bayes.mh n_mhsteps (mbayesSIR n_days sir_0 env))
   -- Get the sampled values for model parameters ρ and β
   let ρs = concatMap (get #ρ) env
       βs = concatMap (get #β) env

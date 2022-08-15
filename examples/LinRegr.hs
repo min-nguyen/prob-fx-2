@@ -179,7 +179,7 @@ simLinRegrMB :: Int -> Int -> IO [([Double], Env LinRegrEnv)]
 simLinRegrMB n_samples n_datapoints = do
   let xs  = [0 .. fromIntegral n_datapoints]
       env_in = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> enil
-  Bayes.sampleIO $ Bayes.prior $ replicateM n_samples (mbayesLinRegr xs env_in)
+  Bayes.sampleIO $ Bayes.unweighted $ replicateM n_samples (mbayesLinRegr xs env_in)
 
 lwLinRegrMB :: Int -> Int -> IO [(([Double], Env LinRegrEnv), Log Double)]
 lwLinRegrMB n_datapoints n_samples = do
@@ -193,7 +193,7 @@ mhLinRegrMB n_samples n_datapoints = do
   let n_datapoints' = fromIntegral n_datapoints
       xs            = [0 .. n_datapoints']
       env_in           = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> enil
-  mhtrace <- Bayes.sampleIO (Bayes.prior $ Bayes.mh n_samples (mbayesLinRegr xs env_in))
+  mhtrace <- Bayes.sampleIO (Bayes.unweighted $ Bayes.mh n_samples (mbayesLinRegr xs env_in))
   let (outputs, env_outs) = unzip mhtrace
       mus = concatMap (get #m) env_outs
   print mus

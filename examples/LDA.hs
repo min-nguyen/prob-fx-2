@@ -182,7 +182,7 @@ simLDAMB n_words  = do
             #φ := [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],
                    [1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]] <:>
             #w := [] <:> enil
-  Bayes.sampleIO $ Bayes.prior (mbayesLDA vocab 2 n_words env_in)
+  Bayes.sampleIO $ Bayes.unweighted (mbayesLDA vocab 2 n_words env_in)
 
 lwLDAMB :: Int -> Int -> IO [(([String], Env TopicEnv), Log Double)]
 lwLDAMB n_samples n_words  = do
@@ -192,4 +192,4 @@ lwLDAMB n_samples n_words  = do
 mhLDAMB :: Int -> Int -> IO [([String], Env TopicEnv)]
 mhLDAMB n_mhsteps n_words  = do
   let env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
-  Bayes.sampleIO $ Bayes.prior $ Bayes.mh n_mhsteps (mbayesLDA vocab 2 n_words env_in)
+  Bayes.sampleIO $ Bayes.unweighted $ Bayes.mh n_mhsteps (mbayesLDA vocab 2 n_words env_in)

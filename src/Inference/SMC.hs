@@ -77,13 +77,12 @@ particleResampler (Op op k) = case discharge op of
   Right (Resample (prts, ctxs, prog_0)) -> do
     -- | Get the normalised log-weight for each particle
     let logws = map (exp . unLogP . particleLogProb) ctxs
-    lift $ liftIO $ print (length ctxs)
     -- | Select particles to continue with
     idxs <- replicateM (length ctxs) $ lift (sample (Categorical logws))
     let resampled_prts = map (prts !! ) idxs
         resampled_ctxs = map (ctxs !! ) idxs
 
-    (particleResampler . k) (resampled_prts, resampled_ctxs)
+    (particleResampler . k) ((resampled_prts, resampled_ctxs), idxs)
   Left op' -> Op op' (particleResampler . k)
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
