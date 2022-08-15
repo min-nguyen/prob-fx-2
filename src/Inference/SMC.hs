@@ -66,8 +66,8 @@ smcInternal
   :: Int                                              -- ^ number of particles
   -> Prog [Observe, Sample, Lift Sampler] a           -- ^ probabilistic program
   -> Sampler [(a, SMCParticle)]                       -- ^ final particle results and contexts
-smcInternal n_particles prog =
-  SIS.sis n_particles particleRunner particleResampler prog
+smcInternal n_particles =
+  SIS.sis n_particles particleRunner particleResampler
 
 {- | A handler for resampling particles according to their normalized log-likelihoods.
 -}
@@ -75,18 +75,15 @@ particleResampler :: ParticleResampler SMCParticle
 particleResampler (Val x) = Val x
 particleResampler (Op op k) = case discharge op of
   Right (Resample (prts, ctxs, prog_0)) -> do
-    lift $ liftIO $ print "hi-1.5"
     -- | Get the normalised log-weight for each particle
     let logws = map (exp . unLogP . particleLogProb) ctxs
     lift $ liftIO $ print (length ctxs)
     -- | Select particles to continue with
     idxs <- replicateM (length ctxs) $ lift (sample (Categorical logws))
-    lift $ liftIO $ print "hi-1.7"
     let resampled_prts = map (prts !! ) idxs
         resampled_ctxs = map (ctxs !! ) idxs
 
-    lift $ liftIO $ print "hi-1.8"
-    (particleResampler . k) ((resampled_prts, resampled_ctxs), idxs)
+    (particleResampler . k) (resampled_prts, resampled_ctxs)
   Left op' -> Op op' (particleResampler . k)
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
@@ -96,6 +93,6 @@ particleResampler (Op op k) = case discharge op of
 particleRunner :: ParticleRunner SMCParticle
 particleRunner (Val x) = pure (Val x, SMCParticle 0)
 particleRunner (Op op k) = case op of
-      ObsPrj d y α -> Val (k y, SMCParticle (logProb d y))
-      _            -> Op op (particleRunner . k)
+  ObsPrj d y α -> Val (k y, SMCParticle (logProb d y))
+  _            -> Op op (particleRunner . k)
 

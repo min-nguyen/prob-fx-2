@@ -74,7 +74,7 @@ rmsmcInternal
   -> Env env
   -> Sampler [(a, RMSMCParticle)]
 rmsmcInternal n_particles mh_steps prog_0 env = do
-  SIS.sis n_particles (particleRunner Map.empty) (particleResampler mh_steps) prog_0
+  SIS.sis n_particles particleRunner (particleResampler mh_steps) prog_0
 
 {- | A handler for resampling particles according to their normalized log-likelihoods.
 -}
@@ -115,19 +115,20 @@ particleResampler mh_steps (Op op k) = case discharge op of
             rejuv_ctxs    = zipWith3 RMSMCParticle rejuv_lps (repeat α_obs) rejuv_straces
 
         (particleResampler mh_steps  . k)
-            ((map (weakenProg @(Resample RMSMCParticle)) rejuv_prts -- | TO FIX
-              , rejuv_ctxs), idxs)
+            (map (weakenProg @(Resample RMSMCParticle)) rejuv_prts, rejuv_ctxs)
 
   Left op' -> Op op' (particleResampler mh_steps  . k)
 
-particleRunner :: InvSTrace -> ParticleRunner RMSMCParticle
-particleRunner inv_strace (Val x) = pure (Val x, RMSMCParticle 0 [] Map.empty)
-particleRunner inv_strace (Op op k) = case op of
-  SampPrj d α  -> do r <- lift sampleRandom
-                     y <- lift (sampleInv d r)
-                     particleRunner (Map.insert α r inv_strace) (k y)
-  ObsPrj d y α -> Val (k y, RMSMCParticle (logProb d y) [α] inv_strace)
-  _            -> Op op (particleRunner inv_strace . k)
+particleRunner :: ParticleRunner RMSMCParticle
+particleRunner = loop Map.empty where
+  loop :: InvSTrace -> ParticleRunner RMSMCParticle
+  loop inv_strace (Val x) = pure (Val x, RMSMCParticle 0 [] Map.empty)
+  loop inv_strace (Op op k) = case op of
+    SampPrj d α  -> do r <- lift sampleRandom
+                       y <- lift (sampleInv d r)
+                       loop (Map.insert α r inv_strace) (k y)
+    ObsPrj d y α -> Val (k y, RMSMCParticle (logProb d y) [α] inv_strace)
+    _            -> Op op (loop inv_strace . k)
 
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
      It returns the rest of the computation.

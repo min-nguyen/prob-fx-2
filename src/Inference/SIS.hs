@@ -41,8 +41,8 @@ data Resample ctx a where
   Resample
     -- | (particles, contexts)
     :: ([SISProg ctx a], [ctx], ProbProg a)
-    -- | ((resampled particles, resampled contexts), resampling indexes)
-    -> Resample ctx (([SISProg ctx a], [ctx]), [Int])
+    -- | (resampled particles, resampled contexts)
+    -> Resample ctx ([SISProg ctx a], [ctx])
 
 type SISProg ctx a = Prog [Resample ctx, Observe, Sample, Lift Sampler] a
 
@@ -95,5 +95,5 @@ loopSIS particleRunner prog_0 (particles, ctxs) = do
     -- | If all particles have finished, return their results and contexts
     Right vals  -> (`zip` ctxs') <$> vals
     -- | Otherwise, pick the particles to continue with
-    Left  _     -> do ((resampled_prts, resampled_ctxs), idxs) <- call (Resample (particles', ctxs', prog_0))
-                      loopSIS particleRunner prog_0 (resampled_prts, resampled_ctxs)
+    Left  _     -> call (Resample (particles', ctxs', prog_0))
+                      >>= loopSIS particleRunner prog_0
