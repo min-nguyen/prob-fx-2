@@ -16,7 +16,7 @@ import Control.Monad ( replicateM )
 import Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe, Sample )
 import Effects.Lift ( Lift, lift )
 import Effects.NonDet ( asum, handleNonDet, NonDet )
-import Effects.ObsRW
+import Effects.ObsRW ( ObsRW, handleObsRW )
 import Env ( Env )
 import LogP ( LogP(..), logMeanExp )
 import Model ( Model(runModel) )
@@ -27,7 +27,7 @@ import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
 import Inference.SIS (Resample(..), ParticleResampler, ParticleRunner, ParticleCtx (..))
-import Sampler
+import Sampler ( Sampler )
 
 {- | The context of a particle for SMC.
 -}
@@ -71,7 +71,7 @@ particleResampler (Op op k) = case discharge op of
     (particleResampler . k) ((resampled_prts, resampled_ctxs), idxs)
   Left op' -> Op op' (particleResampler . k)
 
--- | Multinomial resampler (from MonadBayes)
+-- | Multinomial resampler
 multinomial :: LastMember (Lift Sampler) es => [Double] -> Prog es [Int]
 multinomial ws = replicateM (length ws) $ lift (sample (Categorical ws))
 
