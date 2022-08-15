@@ -45,7 +45,7 @@ instance ParticleCtx LogP where
 -}
 data Resample ctx a where
   Resample
-    -- | (particles, contexts)
+    -- | ((particles, contexts), initial probabilistic program)
     :: ([SISProg ctx a], [ctx], ProbProg a)
     -- | ((resampled particles, resampled contexts), idxs)
     -> Resample ctx (([SISProg ctx a], [ctx]), [Int])
@@ -75,29 +75,31 @@ sis :: forall ctx a. ParticleCtx ctx
   => Int                                                      -- ^ number of particles
   -> ParticleRunner    ctx                                    -- ^ handler for running particles
   -> ParticleResampler ctx                                    -- ^ handler for resampling particles
-  -> Prog [Observe, Sample, Lift Sampler] a     -- ^ model
-  -> Sampler [(a, ctx)]                                       -- ^ (final particle output, final particle context)
-sis n_particles particleRunner particleResampler prog_0 = do
+  -> Prog [Observe, Sample, Lift Sampler] a                   -- ^ initial probabilistic program
+  -> Prog [Observe, Sample, Lift Sampler] [(a, ctx)]          -- ^ (final particle output, final particle context)
+sis n_particles particleRunner particleResampler prog = do
   -- | Create an initial population of particles and contexts
-  let population = unzip $ replicate n_particles (weakenProg @(Resample ctx) prog_0, pempty)
+  let population = unzip $ replicate n_particles (weakenProg @(Resample ctx) prog, pempty)
   -- | Execute the population until termination
-  (handleLift . SIM.handleSamp . SIM.handleObs . particleResampler )
-    (loopSIS particleRunner prog_0 population)
+  particleResampler (loopSIS particleRunner prog population)
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
-loopSIS :: (ParticleCtx ctx)
+loopSIS :: forall ctx a. ParticleCtx ctx
   => ParticleRunner ctx                     -- ^ handler for running particles
-  -> ProbProg a
-  -> ([SISProg ctx a], [ctx])        -- ^ input particles and corresponding contexts
-  -> SISProg ctx [(a, ctx)]                     -- ^ final particle results and corresponding contexts
-loopSIS particleRunner prog_0 (particles, ctxs) = do
-  -- | Run particles to next checkpoint and accumulate their contexts
-  (particles', ctxs') <- second (ctxs `paccum`) . unzip <$> mapM particleRunner particles
-  -- | Check termination status of particles
-  case foldVals particles' of
-    -- | If all particles have finished, return their results and contexts
-    Right vals  -> (`zip` ctxs') <$> vals
-    -- | Otherwise, pick the particles to continue with
-    Left  _     -> call (Resample (particles', ctxs', prog_0))
-                      >>= loopSIS particleRunner prog_0 . fst
+  -> ProbProg a                             -- ^ initial probabilistic program
+  -> ([SISProg ctx a], [ctx])               -- ^ input particles and corresponding contexts
+  -> SISProg ctx [(a, ctx)]                 -- ^ final particle results and corresponding contexts
+loopSIS particleRunner prog = loop
+  where
+    loop :: ([SISProg ctx a], [ctx]) -> SISProg ctx [(a, ctx)]
+    loop (particles, ctxs) = do
+      -- | Run particles to next checkpoint and accumulate their contexts
+      (particles', ctxs') <- second (ctxs `paccum`) . unzip <$> mapM particleRunner particles
+      -- | Check termination status of particles
+      case foldVals particles' of
+        -- | If all particles have finished, return their results and contexts
+        Right vals  -> (`zip` ctxs') <$> vals
+        -- | Otherwise, pick the particles to continue with
+        Left  _     -> call (Resample (particles', ctxs', prog))
+                          >>= loop . fst

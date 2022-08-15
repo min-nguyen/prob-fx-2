@@ -63,12 +63,12 @@ mhInternal
    -> [Tag]
    -- | [(accepted outputs, logps), samples)]
    -> Sampler [((a, LPTrace), InvSTrace)]
-mhInternal n prog_0 strace_0 tags = do
+mhInternal n prog strace tags = do
   -- Perform initial run of mh
-  mh_ctx_0 <- runMH strace_0 prog_0
+  mh_ctx_0 <- runMH strace prog
   -- A function performing n mhSteps using initial mhCtx.
   -- Note: most recent samples are at the front (head) of the trace
-  foldl (>=>) pure (replicate n (mhStep prog_0 tags acceptMH)) [mh_ctx_0]
+  foldl (>=>) pure (replicate n (mhStep prog tags acceptMH)) [mh_ctx_0]
 
 -- | Perform one iteration of MH by drawing a new sample and then rejecting or accepting it.
 mhStep

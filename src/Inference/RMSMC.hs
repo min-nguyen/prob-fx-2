@@ -76,8 +76,8 @@ rmsmcInternal
   -> Int                                          -- ^ number of MH steps
   -> Prog [Observe, Sample, Lift Sampler] a       -- ^ probabilistic program
   -> Sampler [(a, RMSMCParticle)]                 -- ^ final particle results and contexts
-rmsmcInternal n_particles mh_steps prog_0  = do
-  SIS.sis n_particles particleRunner (particleResampler mh_steps) prog_0
+rmsmcInternal n_particles mh_steps   = do
+  handleLift . SIM.handleSamp . SIM.handleObs . SIS.sis n_particles particleRunner (particleResampler mh_steps)
 
 {- | A handler for resampling particles according to their normalized log-likelihoods.
 -}

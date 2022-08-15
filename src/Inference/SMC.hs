@@ -14,7 +14,7 @@ module Inference.SMC where
 
 import Control.Monad ( replicateM )
 import Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe, Sample )
-import Effects.Lift ( Lift, lift )
+import Effects.Lift ( Lift, lift, handleLift )
 import Effects.NonDet ( asum, handleNonDet, NonDet )
 import Effects.ObsRW ( ObsRW, handleObsRW )
 import Env ( Env )
@@ -53,7 +53,7 @@ smcInternal
   -> Prog [Observe, Sample, Lift Sampler] a           -- ^ probabilistic program
   -> Sampler [(a, SMCParticle)]                       -- ^ final particle results and contexts
 smcInternal n_particles =
-  SIS.sis n_particles particleRunner particleResampler
+  handleLift . SIM.handleSamp . SIM.handleObs . SIS.sis n_particles particleRunner particleResampler
 
 {- | A handler for resampling particles according to their normalized log-likelihoods.
 -}
