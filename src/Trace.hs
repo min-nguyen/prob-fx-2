@@ -16,10 +16,7 @@
 module Trace (
   -- * Sample trace
     InvSTrace
-  -- , STrace
-  -- , FromSTrace(..)
   , filterTrace
-  -- , traceSamples
   -- * Log-probability trace
   , LPTrace
   , traceLogProbs) where
@@ -88,6 +85,8 @@ traceLogProbs = handleState Map.empty . storeLPs
      to the random values between 0 and 1 passed to their inverse CDF functions.
 -}
 type InvSTrace = Trace Double
+
+
 
 
 -- {- | The type of sample traces, mapping addresses of sample operations

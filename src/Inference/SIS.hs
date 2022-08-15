@@ -28,12 +28,18 @@ import Data.Bifunctor
 {- | A @ParticleCtx@ contains data about the execution of a particular particle.
 -}
 class ParticleCtx ctx where
+  -- | Initialise a particle context
+  pempty :: ctx
   -- | For each particle, accumulate its incremental context and its previous context
   paccum  :: [ctx] -- ^ previously acccumulated context
           -> [ctx] -- ^ incremental context
           -> [ctx]
-  -- | Initialise the contexts for n particles
-  pempty :: ctx
+
+instance ParticleCtx LogP where
+  pempty                =  0
+  -- | Compute normalised accumulated log weights
+  paccum log_ps log_ps' = let logZ = logMeanExp log_ps
+                          in  map (+ logZ) log_ps'
 
 {- | The @Resample@ effect for resampling according to collection of particle contexts.
 -}
@@ -87,9 +93,7 @@ loopSIS :: (ParticleCtx ctx)
   -> SISProg ctx [(a, ctx)]                     -- ^ final particle results and corresponding contexts
 loopSIS particleRunner prog_0 (particles, ctxs) = do
   -- | Run particles to next checkpoint and accumulate their contexts
-  lift $ liftIO $ print ("SIS: " ++ show (length ctxs))
-  (particles', ctxs') <-  second (ctxs `paccum`) . unzip <$> mapM particleRunner particles
-  lift $ liftIO $ print (length ctxs')
+  (particles', ctxs') <- second (ctxs `paccum`) . unzip <$> mapM particleRunner particles
   -- | Check termination status of particles
   case foldVals particles' of
     -- | If all particles have finished, return their results and contexts

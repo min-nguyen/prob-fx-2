@@ -2,10 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
@@ -29,25 +26,14 @@ import Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge
 import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
-import Inference.SIS (Resample(..), ParticleResampler, ParticleRunner, ParticleCtx)
+import Inference.SIS (Resample(..), ParticleResampler, ParticleRunner, ParticleCtx (..))
 import Sampler
 
 {- | The context of a particle for SMC.
 -}
 newtype SMCParticle = SMCParticle {
-    particleLogProb  :: LogP    -- ^ associated log-probability
-  } deriving Num
-
-instance ParticleCtx SMCParticle where
-  pempty            = SMCParticle 0
-  paccum ctxs ctxs' =
-    -- | Compute normalised accumulated log weights
-    let logprobs = let logZ = logMeanExp (map particleLogProb ctxs)
-                   in  map ((+ logZ) . particleLogProb) ctxs'
-    in  map SMCParticle logprobs
-    -- -- | Update the Observe operations encountered
-    --     obsaddrs = zipWith (++) (map particleObsAddrs ctxs') (map particleObsAddrs ctxs)
-    -- in  zipWith SMCParticle logprobs obsaddrs
+    particleLogProb  :: LogP      -- ^ associated log-probability
+  } deriving (Num, ParticleCtx)
 
 {- | Call SMC on a model.
 -}
@@ -75,15 +61,32 @@ particleResampler :: ParticleResampler SMCParticle
 particleResampler (Val x) = Val x
 particleResampler (Op op k) = case discharge op of
   Right (Resample (prts, ctxs, prog_0)) -> do
-    -- | Get the normalised log-weight for each particle
-    let logws = map (exp . unLogP . particleLogProb) ctxs
+    -- | Get the weights for each particle
+    let ws = map (exp . unLogP . particleLogProb) ctxs
     -- | Select particles to continue with
-    idxs <- replicateM (length ctxs) $ lift (sample (Categorical logws))
+    idxs <- multinomial ws
     let resampled_prts = map (prts !! ) idxs
         resampled_ctxs = map (ctxs !! ) idxs
 
     (particleResampler . k) ((resampled_prts, resampled_ctxs), idxs)
   Left op' -> Op op' (particleResampler . k)
+
+-- | Multinomial resampler (from MonadBayes)
+multinomial :: LastMember (Lift Sampler) es => [Double] -> Prog es [Int]
+multinomial ws = replicateM (length ws) $ lift (sample (Categorical ws))
+
+-- | Systematic resampler
+systematic :: Double -> [Double] -> [Int]
+systematic u ps = f 0 (u / fromIntegral n) 0 0 []
+  where
+    prob i = ps !! i
+    n = length ps
+    inc = 1 / fromIntegral n
+    f i _ _ _ acc | i == n = acc
+    f i v j q acc =
+      if v < q
+        then f (i + 1) (v + inc) j q (j - 1 : acc)
+        else f i v (j + 1) (q + prob j) acc
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation

@@ -30,7 +30,7 @@ import qualified Inference.MH as MH
 import qualified Inference.SMC as SMC
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS hiding  (particleLogProb)
-import Inference.SIS (Resample(..), ParticleResampler, ParticleRunner, ParticleCtx)
+import Inference.SIS (Resample(..), ParticleResampler, ParticleRunner, ParticleCtx (..))
 import OpenSum (OpenSum)
 import Inference.SMC (SMCParticle, pattern SMCParticle)
 import Effects.Lift
@@ -44,17 +44,16 @@ import Util
 data RMSMCParticle = RMSMCParticle {
     particleLogProb   :: LogP
   , particleObsAddrs  :: [Addr]
-  , particleTrace     :: InvSTrace
+  , particleSTrace     :: InvSTrace
   }
 
 instance ParticleCtx RMSMCParticle where
   pempty            = RMSMCParticle 0 [] Map.empty
   paccum ctxs ctxs' =
     -- | Compute normalised accumulated log weights
-    let log_ps   = let logZ = logMeanExp (map particleLogProb ctxs)
-                   in  map ((+ logZ) . particleLogProb) ctxs'
-        α_obs    = uncurry (zipWith (++)) (bimap' (map particleObsAddrs) (ctxs', ctxs))
-        straces  = zipWith Map.union (map particleTrace ctxs') (map particleTrace ctxs)
+    let log_ps   = uncurry paccum              (bimap' (particleLogProb <$>)  (ctxs, ctxs'))
+        α_obs    = uncurry (zipWith (++))      (bimap' (particleObsAddrs <$>) (ctxs', ctxs))
+        straces  = uncurry (zipWith Map.union) (bimap' (particleSTrace <$>)    (ctxs', ctxs))
     in  zipWith3 RMSMCParticle log_ps α_obs straces
 
 rmsmc
@@ -83,12 +82,12 @@ particleResampler mh_steps = loop where
   loop (Op op k) = case discharge op of
     Right (Resample (prts, ctxs, prog_0)) ->
       do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
-          lift $ liftIO $ print ("before resampling" ++ show (map particleTrace ctxs))
+          lift $ liftIO $ print ("before resampling" ++ show (map particleSTrace ctxs))
           idxs <- snd <$> SMC.particleResampler (call (Resample ([], map (SMCParticle . particleLogProb) ctxs, prog_0)))
           let resampled_prts   = map (prts !! ) idxs
               resampled_ctxs   = map (ctxs !! ) idxs
 
-          lift $ liftIO $ print ("after resampling, before mh" ++ show (map particleTrace resampled_ctxs))
+          lift $ liftIO $ print ("after resampling, before mh" ++ show (map particleSTrace resampled_ctxs))
           -- | Get the trace of observe addresses up until the breakpoint
           --   (from the context of any arbitrary particle, e.g. by using 'head')
           let α_obs   = (particleObsAddrs . head) resampled_ctxs
@@ -99,7 +98,7 @@ particleResampler mh_steps = loop where
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
           mh_trace <- lift $ mapM ( fmap head
                                   . flip (MH.mhInternal mh_steps partial_model) []
-                                  . particleTrace) resampled_ctxs
+                                  . particleSTrace) resampled_ctxs
           lift $ liftIO $ print ("after mh" ++ show (map snd mh_trace))
           {- | Get:
               1) the continuations of each particle from the break point (augmented with the non-det effect)
