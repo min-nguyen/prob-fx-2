@@ -84,14 +84,10 @@ mhStep
 mhStep prog tags accepter trace = do
   -- Get previous MH output
   let mh_ctx@(_, strace) = head trace
-  -- Get possible addresses to propose new samples for
-  let αs = Map.keys (if Prelude.null tags then strace else filterTrace tags strace)
-  -- Draw a proposal sample address
-  α_samp <- sample (UniformD 0 (length αs - 1)) >>= pure . (αs !!)
-  -- Draw a new random value
-  x0 <- sampleRandom
-  -- Run MH with proposal sample address to get an MHCtx using LPTrace as its probability type
-  mh_ctx'_lp <- runMH (Map.insert α_samp x0 strace) prog
+  -- Propose a new random value for a sample site
+  (α_samp, r) <- propose strace tags
+  -- Run MH with proposed value to get an MHCtx using LPTrace as its probability type
+  mh_ctx'_lp <- runMH (Map.insert α_samp r strace) prog
   -- Compute acceptance ratio to see if we use the proposed mhCtx'
   -- (which is mhCtx'_lp with 'LPTrace' converted to some type 'p')
   (mh_ctx', acceptance_ratio) <- accepter α_samp mh_ctx mh_ctx'_lp
@@ -128,6 +124,18 @@ handleSamp strace (Op op k) = case discharge op of
     Left op' -> Op op' (k' strace )
 
   where k' strace' = handleSamp strace' . k
+
+{- | Propose a new random value at a random sample site.
+-}
+propose :: InvSTrace -> [Tag] -> Sampler (Addr, Double)
+propose strace tags = do
+  -- | Get possible addresses to propose new samples for
+  let αs = Map.keys (if Prelude.null tags then strace else filterTrace tags strace)
+  -- | Draw a proposal sample address
+  α <- sample (UniformD 0 (length αs - 1)) >>= pure . (αs !!)
+  -- | Draw a new random value
+  r <- sampleRandom
+  pure (α, r)
 
 {- | The result of a single MH iteration, where @a@ is the type of model output and
      @p@ is some representation of probability.
