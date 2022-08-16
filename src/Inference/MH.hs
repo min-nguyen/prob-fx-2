@@ -68,33 +68,29 @@ mhInternal n prog strace tags = do
   mh_ctx_0 <- runMH strace prog
   -- A function performing n mhSteps using initial mhCtx.
   -- Note: most recent samples are at the front (head) of the trace
-  foldl (>=>) pure (replicate n (mhStep prog tags acceptMH)) [mh_ctx_0]
+  foldl (>=>) pure (replicate n (mhStep prog tags)) [mh_ctx_0]
 
 -- | Perform one iteration of MH by drawing a new sample and then rejecting or accepting it.
 mhStep
   :: Prog [Observe, Sample, Lift Sampler] a
   -- | tags indicating sample sites of interest
   -> [Tag]
-  -- | a mechanism for accepting proposals
-  -> Accept p a
   -- | trace of previous MH results
-  -> [((a, p), InvSTrace)]
+  -> [((a, LPTrace), InvSTrace)]
   -- | updated trace of MH results
-  -> Sampler [((a, p), InvSTrace)]
-mhStep prog tags accepter trace = do
+  -> Sampler [((a, LPTrace), InvSTrace)]
+mhStep prog tags trace = do
   -- Get previous MH output
   let mh_ctx@(_, strace) = head trace
   -- Propose a new random value for a sample site
   (α_samp, r) <- propose strace tags
   -- Run MH with proposed value to get an MHCtx using LPTrace as its probability type
-  mh_ctx'_lp <- runMH (Map.insert α_samp r strace) prog
+  mh_ctx' <- runMH (Map.insert α_samp r strace) prog
   -- Compute acceptance ratio to see if we use the proposed mhCtx'
   -- (which is mhCtx'_lp with 'LPTrace' converted to some type 'p')
-  (mh_ctx', acceptance_ratio) <- accepter α_samp mh_ctx mh_ctx'_lp
-  u <- sample (Uniform 0 1)
-  if u < acceptance_ratio
-    then do return (mh_ctx':trace)
-    else do return trace
+  b <- accept α_samp mh_ctx mh_ctx'
+  if b then pure (mh_ctx':trace)
+       else pure trace
 
 -- | Handler for one iteration of MH
 runMH ::
@@ -137,27 +133,16 @@ propose strace tags = do
   r <- sampleRandom
   pure (α, r)
 
-{- | The result of a single MH iteration, where @a@ is the type of model output and
-     @p@ is some representation of probability.
+{- | An acceptance mechanism for MH.
 -}
-type MHCtx p a = ((a, p), InvSTrace)
-
-{- | An abstract mechanism for computing an acceptance probability, where @a@ is the
-     type of model output and @p@ is some representation of probability.
--}
-type Accept p a =
-  -- | proposal sample address
-    Addr
+accept :: Addr
   -- | previous MH ctx, parameterised by @p@
-  -> MHCtx p a
+  -> ((a, LPTrace), InvSTrace)
   -- | proposed MH ctx, parameterised by a log-probability map
-  -> MHCtx LPTrace a
+  -> ((a, LPTrace), InvSTrace)
   -- | (proposed MH ctx using probability representation p, Acceptance ratio)
-  -> Sampler (MHCtx p a, Double)
-
--- | An acceptance mechanism for MH
-acceptMH :: Accept LPTrace a
-acceptMH x0 ((_, lptrace ), strace) ((a, lptrace'), strace') = do
+  -> Sampler Bool
+accept x0 ((_, lptrace ), strace) ((a, lptrace'), strace') = do
   let dom_logα = log (fromIntegral $ Map.size strace) - log (fromIntegral $ Map.size strace')
       sampled  = Set.singleton x0 `Set.union` (Map.keysSet strace \\ Map.keysSet strace')
       sampled' = Set.singleton x0 `Set.union` (Map.keysSet strace' \\ Map.keysSet strace)
@@ -165,4 +150,6 @@ acceptMH x0 ((_, lptrace ), strace) ((a, lptrace'), strace') = do
                          0 (Map.keysSet lptrace \\ sampled)
       logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
                          0 (Map.keysSet lptrace' \\ sampled')
-  pure (((a, lptrace'), strace'), (exp . unLogP) (dom_logα + logα' - logα))
+      acceptance_ratio = (exp . unLogP) (dom_logα + logα' - logα)
+  u <- sample (Uniform 0 1)
+  pure (u < acceptance_ratio)

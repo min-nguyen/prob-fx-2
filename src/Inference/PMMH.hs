@@ -10,7 +10,9 @@ import Sampler
 import LogP
 import Trace
 import Effects.Dist
+import PrimDist
 import Effects.Lift
+import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
 import qualified Inference.MH as MH
 import qualified Inference.SIS as SIS
@@ -48,8 +50,14 @@ pmmhStep ::
   -> [Tag]                                        -- ^ tags indicating prior random variables
   -> [((a, LogP), InvSTrace)]                     -- ^ trace of previous mh outputs
   -> Sampler [((a, LogP), InvSTrace)]
-pmmhStep n_particles prog tags  =
-  MH.mhStep prog tags (undefined n_particles prog tags)
+pmmhStep n_particles prog tags pmmh_trace = do
+  let pmmh_ctx@(_, strace) = head pmmh_trace
+  -- | Propose a new random value for a sample site
+  (α_samp, r) <- MH.propose strace tags
+  pmmh_ctx'   <- runPMMH n_particles prog tags (Map.insert α_samp r strace)
+  b <- accept pmmh_ctx pmmh_ctx'
+  if b then pure (pmmh_ctx':pmmh_trace)
+       else pure pmmh_trace
 
 -- | Handle probabilistic program once under PMMH
 runPMMH ::
@@ -61,26 +69,22 @@ runPMMH ::
 runPMMH n_particles prog tags strace = do
   ((a, _), strace') <- MH.runMH strace prog
   let params = filterTrace tags strace'
-  prts   <- ( handleLift
+  prts   <- ( (map snd . fst <$>)
+            . handleLift
             . MH.handleSamp params
             . SIM.handleObs
             . SIS.sis n_particles SMC.particleRunner SMC.particleResampler) prog
-  let logZ  = logMeanExp (map (SMC.particleLogProb . snd) (fst prts))
+  let logZ  = logMeanExp (map SMC.particleLogProb prts)
   pure ((a, logZ), strace')
 
--- acceptSMC ::
---      Int
---   -> Prog '[Observe, Sample, Lift Sampler] a
---   -> [Tag]
---   -> MH.Accept LogP a
--- acceptSMC n_particles prog tags _ ((_, logZ), _) ((a, lptrace'), strace') = do
---   -- | Run SMC using prior samples
---   let params = filterTrace tags strace'
---   prts <- map snd . fst <$> ( handleLift . MH.handleSamp params . SIM.handleObs
---                               . SIS.sis n_particles SMC.particleRunner SMC.particleResampler) prog
---    -- get final log probabilities of each particle
---   let logZ'  = logMeanExp (map SMC.particleLogProb prts)
---       {-  if logW' and logW = -Infinity, this ratio can be NaN which is fine, in which case comparing u < Nan returns false
---           if logW > -Infinity and logW = -Infinity, this ratio can be Infinity, which is fine. -}
---       acceptance_ratio = exp (logP $ logW' - logW)
---   pure ((a, strace', logW'), acceptance_ratio)
+accept ::
+  -- | previous PMMH ctx
+     ((a, LogP), InvSTrace)
+  -- | proposed PMMH ctx
+  -> ((a, LogP), InvSTrace)
+  -> Sampler Bool
+accept ((_, log_p), _) ((_, log_p'), _) = do
+  let acceptance_ratio = (exp . unLogP) (log_p' - log_p)
+  u <- sample (Uniform 0 1)
+  pure (u < acceptance_ratio)
+
