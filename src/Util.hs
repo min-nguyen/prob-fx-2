@@ -1,5 +1,6 @@
 {- | Some small utility functions.
 -}
+{-# LANGUAGE RankNTypes #-}
 
 module Util (
     boolToInt
@@ -8,7 +9,12 @@ module Util (
   , findIndexes
   , roundUp16
   , uncurry3
+  , bimap'
+  , filterByKey
   , linCongGen) where
+
+import Data.Bifunctor
+import qualified Data.Map as Map
 
 -- | Return @True@ for @1@ and otherwise @False@
 boolToInt :: Bool -> Int
@@ -47,3 +53,9 @@ linCongGen :: Double -> [Double]
 linCongGen r =
   let ns = iterate (\n -> ((6364136223846793005*n) + 1442695040888963407) `mod` 2147483647) (decShift r)
   in  drop 1 $ map ((/2147483647) . fromIntegral) ns
+
+bimap' :: Bifunctor p => (c -> d) -> p c c -> p d d
+bimap' f = bimap f f
+
+filterByKey ::  Ord k => (k -> Bool) -> Map.Map k a -> Map.Map k a
+filterByKey f = Map.filterWithKey (\k _ -> f k)

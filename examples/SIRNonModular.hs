@@ -307,7 +307,7 @@ simSIRMB :: Int -> IO ([(Int, Int, Int)], [Reported])
 simSIRMB n_days = do
   let env_in = #β := [0.7] <:> #γ := [0.009] <:> #ρ := [0.3] <:> #𝜉 := [] <:> enil
       sir_0      = Popl {s = 762, i = 1, r = 0}
-  ((_, sir_trace), env_out) <- Bayes.sampleIO $ Bayes.prior (mbayesSIR n_days sir_0 env_in)
+  ((_, sir_trace), env_out) <- Bayes.sampleIO $ Bayes.unweighted (mbayesSIR n_days sir_0 env_in)
   let 𝜉s :: [Reported] = get #𝜉 env_out
       sirs = map (\(Popl s i recov) -> (s, i, recov)) sir_trace
   pure (sirs, 𝜉s)
@@ -317,7 +317,7 @@ mhSIRMB n_days = do
   𝜉s <- snd <$> simSIRMB n_days
   let sir_0      = Popl {s = 762, i = 1, r = 0}
       env_in = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> enil
-  (_, env_outs) <- unzip <$> Bayes.sampleIO (Bayes.prior $ Bayes.mh 100 (mbayesSIR 100 sir_0 env_in))
+  (_, env_outs) <- unzip <$> Bayes.sampleIO (Bayes.unweighted $ Bayes.mh 100 (mbayesSIR 100 sir_0 env_in))
   let ρs = concatMap (get #ρ) env_outs
       βs = concatMap (get #β) env_outs
   pure (ρs, βs)

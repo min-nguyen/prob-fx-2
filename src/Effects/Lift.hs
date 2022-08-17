@@ -9,11 +9,9 @@
 module Effects.Lift (
     Lift(..)
   , lift
-  , liftM
   , handleLift) where
 
 import Prog ( call, Member(prj), LastMember, Prog(..) )
-import Model (Model(..))
 
 -- | Lift a monadic computation @m a@ into the effect @Lift m@
 newtype Lift m a = Lift (m a)
@@ -21,10 +19,6 @@ newtype Lift m a = Lift (m a)
 -- | Wrapper function for calling @Lift@ as the last effect
 lift :: LastMember (Lift m) es => m a -> Prog es a
 lift = call . Lift
-
--- | Wrapper function for calling @Lift@ as the last effect in a model
-liftM :: LastMember (Lift m) es => m a -> Model env es a
-liftM op = Model (call (Lift op))
 
 -- | Handle @Lift m@ as the last effect
 handleLift :: Monad m => Prog '[Lift m] w -> m w

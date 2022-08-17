@@ -9,6 +9,8 @@
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
+{-# LANGUAGE PolyKinds #-}
 
 {- | An encoding for algebraic effects, based on the @freer@ monad.
 -}
@@ -21,6 +23,7 @@ module Prog (
   , Members
   , UniqueMember
   , LastMember
+  , Append
   -- * Auxiliary functions
   , run
   , call
@@ -92,6 +95,11 @@ type family Members (es :: [* -> *]) (ess :: [* -> *]) = (cs :: Constraint) | cs
 class    (UMember 'False e es ~ True, Member e es) => UniqueMember e es
 instance (UMember 'False e es ~ True, Member e es) => UniqueMember e es
 
+type Append :: forall a. [a] -> [a] -> [a]  -- kind signature
+type family Append xs ys where              -- header
+  Append '[]    ys = ys                     -- clause 1
+  Append (x:xs) ys = x : Append xs ys
+
 type family UMember (b :: Bool) (e :: * -> *) (es :: [* -> *]) :: Bool where
   UMember 'True e (e ': es)   = 'False
   UMember 'True e (e' ': es)  = UMember 'True e es
@@ -124,7 +132,7 @@ weaken :: EffectSum es a -> EffectSum (e ': es) a
 weaken (EffectSum n ta) = EffectSum (n + 1) ta
 
 -- | Prepend an effect to the front of a computation's effect signature
-weakenProg :: Prog es a -> Prog (e : es) a
+weakenProg :: forall e es a. Prog es a -> Prog (e : es) a
 weakenProg (Val x)   = Val x
 weakenProg (Op op k) = Op (weaken op) (weakenProg . k)
 
