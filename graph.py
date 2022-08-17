@@ -41,7 +41,7 @@ def main():
     axs1.scatter(mus, ps)
     axs1.set_title('Linear regression - Likelihood Weighting')
 
-  if arg in ["mhLinRegrOnce", "mhLinRegr", "smcLinRegr"]:
+  if arg in ["mhLinRegrOnce", "mhLinRegr", "smcLinRegr", "rmsmcLinRegr", "pmmhLinRegr"]:
     mus = data[0]
     cs  = data[1]
     fig1, axs1 = plt.subplots(nrows=1)
@@ -201,7 +201,7 @@ def main():
     axs1.set_ylabel('probability')
     axs1.scatter(trans_p, ps_normalised)
     axs1.set_title('HMM - Likelihood Weighting')
-  if arg in ["mhHMM", "smcHMM"]:
+  if arg in ["mhHMM", "smcHMM", "rmsmcHMM", "pmmhHMM"]:
     # Note : this works less well for certain parameters of trans_p and obs_p used for the training data
     trans_ps_unique = data[0]
     obs_ps_unique   = data[1]
@@ -223,7 +223,7 @@ def main():
     ws = list(set(words))
     freqs = [ words.count(w)  for w in ws]
     ax.bar(ws, freqs)
-  if arg in ["mhPredLDA", "smcPredLDA"]:
+  if arg in ["mhPredLDA", "smcPredLDA", "rmsmcPredLDA", "pmmhPredLDA"]:
     ws       = ['DNA', 'evolution', 'parsing', 'phonology']
     topic_ps = data[0][0]
     topic_0s = data[1][0]

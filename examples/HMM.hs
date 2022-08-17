@@ -23,6 +23,8 @@ import Inference.MB as MB ( handleMBayes )
 import Inference.MH as MH ( mh )
 import Inference.SMC as SMC ( smc )
 import Inference.SIM as SIM ( simulate )
+import Inference.RMSMC as RMSMC ( rmsmc )
+import Inference.PMMH as PMMH ( pmmh )
 import Model ( Model, bernoulli', binomial, uniform )
 import Numeric.Log ( Log )
 import Prog ( Member )
@@ -129,7 +131,7 @@ simHMM hmm_length = do
   -- Specify model input
   let x_0 = 0
   -- Specify model environment
-      env_in = #trans_p := [0.5] <:> #obs_p := [0.8] <:> #y := [] <:> enil
+      env_in = #trans_p := [0.9] <:> #obs_p := [0.2] <:> #y := [] <:> enil
   (y, env_out) <- SIM.simulate (hmm hmm_length 0) env_in
   pure y
 
@@ -271,9 +273,47 @@ smcHMMw n_particles hmm_length = do
   ys <- map snd <$> simHMMw hmm_length
   -- Specify a model environment containing those observations
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
-  -- Handle the Writer effect and then run MH inference
+  -- Handle the Writer effect and then run SMC inference
   env_outs <- SMC.smc n_particles (hmm hmm_length 0) env_in
   -- Get the sampled transition and observation parameters of each particle
+  let trans_ps    = concatMap (get #trans_p) env_outs
+      obs_ps      = concatMap (get #obs_p) env_outs
+  pure (trans_ps, obs_ps)
+
+-- | RMSMC inference over a HMM
+rmsmcHMMw
+  -- | number of particles
+  :: Int
+  -- | number of MH steps
+  -> Int
+  -- | number of HMM nodes
+  -> Int
+  -- | [(transition parameter, observation parameter)]
+  -> Sampler ([Double], [Double])
+rmsmcHMMw n_particles n_mhsteps hmm_length = do
+  ys <- map snd <$> simHMMw hmm_length
+  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
+
+  env_outs <- RMSMC.rmsmc n_particles n_mhsteps (hmm hmm_length 0) env_in
+  let trans_ps    = concatMap (get #trans_p) env_outs
+      obs_ps      = concatMap (get #obs_p) env_outs
+  pure (trans_ps, obs_ps)
+
+-- | PMMH inference over a HMM
+pmmhHMMw
+  -- | number of MH steps
+  :: Int
+  -- | number of particles
+  -> Int
+  -- | number of HMM nodes
+  -> Int
+  -- | [(transition parameter, observation parameter)]
+  -> Sampler ([Double], [Double])
+pmmhHMMw n_mhsteps n_particles  hmm_length = do
+  ys <- map snd <$> simHMMw hmm_length
+  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
+
+  env_outs <- PMMH.pmmh n_mhsteps n_particles (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
   let trans_ps    = concatMap (get #trans_p) env_outs
       obs_ps      = concatMap (get #obs_p) env_outs
   pure (trans_ps, obs_ps)

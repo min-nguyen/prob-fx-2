@@ -87,12 +87,10 @@ particleResampler mh_steps = loop where
   loop (Op op k) = case discharge op of
     Right (Resample (prts, ctxs, prog_0)) ->
       do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
-          lift $ liftIO $ print ("before resampling" ++ show (map particleSTrace ctxs))
           idxs <- snd <$> SMC.particleResampler (call (Resample ([], map (SMCParticle . particleLogProb) ctxs, prog_0)))
           let resampled_prts   = map (prts !! ) idxs
               resampled_ctxs   = map (ctxs !! ) idxs
 
-          lift $ liftIO $ print ("after resampling, before mh" ++ show (map particleSTrace resampled_ctxs))
           -- | Get the trace of observe addresses up until the breakpoint
           --   (from the context of any arbitrary particle, e.g. by using 'head')
           let α_obs   = (particleObsAddrs . head) resampled_ctxs
@@ -104,7 +102,6 @@ particleResampler mh_steps = loop where
           mh_trace <- lift $ mapM ( fmap head
                                   . flip (MH.mhInternal mh_steps partial_model) []
                                   . particleSTrace) resampled_ctxs
-          lift $ liftIO $ print ("after mh" ++ show (map snd mh_trace))
           {- | Get:
               1) the continuations of each particle from the break point (augmented with the non-det effect)
               2) the log prob traces of each particle up until the break point

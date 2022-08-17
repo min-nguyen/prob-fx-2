@@ -21,6 +21,8 @@ import Inference.SIM as SIM ( simulate )
 import Inference.LW as LW ( lw )
 import Inference.MH as MH ( mh )
 import Inference.SMC as SMC ( smc )
+import Inference.RMSMC as RMSMC ( rmsmc )
+import Inference.PMMH as PMMH ( pmmh )
 import Inference.MB as MB ( handleMBayes )
 import Numeric.Log ( Log )
 import qualified Control.Monad.Bayes.Class as Bayes
@@ -159,13 +161,42 @@ mhPredLDA n_mhsteps n_words = do
 -- | SMC inference on topic model (predictive)
 smcPredLDA :: Int -> Int -> Sampler ([[Double]], [[Double]])
 smcPredLDA n_particles n_words = do
-  -- Do SMC inference over the topic model using the above data
   let n_topics  = 2
       env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+
   env_outs <- SMC.smc n_particles (topicModel vocab n_topics n_words) env_in
   -- Draw a random particle's environment
   env_pred_idx <- sampleUniformD 0 (length env_outs - 1)
   let env_pred   = env_outs !! env_pred_idx
+      θs         = get #θ env_pred
+      φs         = get #φ env_pred
+  return (θs, φs)
+
+-- | RMSMC inference on topic model (predictive)
+rmsmcPredLDA :: Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
+rmsmcPredLDA n_particles n_mhsteps n_words = do
+
+  let n_topics  = 2
+      env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+
+  env_outs     <- RMSMC.rmsmc n_particles n_mhsteps (topicModel vocab n_topics n_words) env_in
+  -- Draw a random particle's environment
+  env_pred_idx <- sampleUniformD 0 (length env_outs - 1)
+  let env_pred   = env_outs !! env_pred_idx
+      θs         = get #θ env_pred
+      φs         = get #φ env_pred
+  return (θs, φs)
+
+-- | PMMH inference on topic model (predictive)
+pmmhPredLDA :: Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
+pmmhPredLDA n_mhsteps n_particles n_words = do
+
+  let n_topics  = 2
+      env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+
+  env_outs     <- PMMH.pmmh n_mhsteps n_particles  (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
+  -- Draw the most recent sampled parameters
+  let env_pred   = head env_outs
       θs         = get #θ env_pred
       φs         = get #φ env_pred
   return (θs, φs)

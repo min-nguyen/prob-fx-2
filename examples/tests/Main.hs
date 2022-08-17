@@ -41,6 +41,16 @@ testSmcLinRegr = TestCase $ do
   output <- sampleIOFixed (smcLinRegr 120 50)
   assertEqual "Testing (smcLinRegr 120 50)"  smcLinRegrExpected output
 
+testRmsmcLinRegr :: Test
+testRmsmcLinRegr = TestCase $ do
+  output <- sampleIOFixed (rmsmcLinRegr 20 200 20)
+  assertEqual "Testing (rmsmcLinRegr 20 200 20)"  rmsmcLinRegrExpected output
+
+testPmmhLinRegr :: Test
+testPmmhLinRegr = TestCase $ do
+  output <- sampleIOFixed (pmmhLinRegr 1000 20 30)
+  assertEqual "Testing (pmmhLinRegr 1000 20 30)"  pmmhLinRegrExpected output
+
 testSimLogRegrOnce :: Test
 testSimLogRegrOnce = TestCase $ do
   output <- sampleIOFixed (simLogRegrOnce 50)
@@ -91,6 +101,16 @@ testSmcHMMw = TestCase $ do
   output <- sampleIOFixed (smcHMMw 80 30)
   assertEqual "Testing (smcHMMw 80 30)"  smcHMMwExpected output
 
+testRmsmcHMMw :: Test
+testRmsmcHMMw = TestCase $ do
+  output <- sampleIOFixed (rmsmcHMMw 20 50 30)
+  assertEqual "Testing (rmsmcHMMw 20 50 30)"  rmsmcHMMwExpected output
+
+testPmmhHMMw :: Test
+testPmmhHMMw = TestCase $ do
+  output <- sampleIOFixed (pmmhHMMw 400 20 30)
+  assertEqual "Testing (pmmhHMMw 400 20 30)"  pmmhHMMwExpected output
+
 testSimSIR :: Test
 testSimSIR = TestCase $ do
   output <- sampleIOFixed (simSIR 100)
@@ -115,6 +135,16 @@ testSmcPredLDA :: Test
 testSmcPredLDA = TestCase $ do
   output <- sampleIOFixed (smcPredLDA 100 100)
   assertEqual "Testing (smcPredLDA 100 100)"  smcPredLDAExpected output
+
+testRmsmcPredLDA :: Test
+testRmsmcPredLDA = TestCase $ do
+  output <- sampleIOFixed (rmsmcPredLDA 10 30 100)
+  assertEqual "Testing (rmsmcPredLDA 10 30 100)"  rmsmcPredLDAExpected output
+
+testPmmhPredLDA :: Test
+testPmmhPredLDA = TestCase $ do
+  output <- sampleIOFixed (pmmhPredLDA 100 20 100)
+  assertEqual "Testing (pmmhPredLDA 100 20 100)"  pmmhPredLDAExpected output
 
 testSimRadon :: Test
 testSimRadon = TestCase $ do
@@ -156,6 +186,8 @@ tests = TestList
  , testLwLinRegr
  , testMhLinRegr
  , testSmcLinRegr
+ , testRmsmcLinRegr
+ , testPmmhLinRegr
  , testSimLogRegrOnce
  , testLwLogRegrOnce
  , testMhLogRegrOnce
@@ -166,11 +198,15 @@ tests = TestList
  , testLwHMMw
  , testMhHMMw
  , testSmcHMMw
+ , testRmsmcHMMw
+ , testPmmhHMMw
  , testSimSIR
  , testMhSIR
  , testSimLDA
  , testMhPredLDA
  , testSmcPredLDA
+ , testRmsmcPredLDA
+ , testPmmhPredLDA
  , testSimRadon
  , testMhRadon
  , testMhPredRadon
