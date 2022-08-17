@@ -1,6 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Inference.PMMH where
 
@@ -11,7 +13,10 @@ import LogP
 import Trace
 import Effects.Dist
 import PrimDist
+import Model
+import Env
 import Effects.Lift
+import Effects.ObsRW
 import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
 import qualified Inference.MH as MH
@@ -19,6 +24,28 @@ import qualified Inference.SIS as SIS
 import qualified Inference.SMC as SMC
 import Util
 import Inference.SMC (SMCParticle(particleLogProb, SMCParticle))
+
+pmmh :: forall env es a xs. (env `ContainsVars` xs)
+  -- | number of MH iterations
+  => Int
+  -- | number of SMC particles
+  -> Int
+  -- | model
+  -> Model env [ObsRW env, Dist, Lift Sampler] a
+  -- | input model environment
+  -> Env env
+  -- | model parameter names
+  -> Vars xs
+  -- | output model environments
+  -> Sampler [Env env]
+pmmh mh_steps n_particles model env obs_vars = do
+  let prog = (handleDist . handleObsRW env) (runModel model)
+  -- | Convert observable variables to strings
+      tags = varsToStrs @env obs_vars
+  -- | Run PMMH
+  pmmh_trace <- pmmhInternal mh_steps n_particles prog Map.empty tags
+  -- Return the accepted model environments
+  pure (map (snd . fst . fst) pmmh_trace)
 
 pmmhInternal :: forall a.
       Int                                     -- ^ number of MH steps
@@ -29,20 +56,9 @@ pmmhInternal :: forall a.
    -> Sampler  [((a, LogP), InvSTrace)]       -- ^ trace of accepted outputs, samples, and logps
 pmmhInternal mh_steps n_particles prog strace param_tags = do
   -- | Perform initial run of MH
-  mh_0 <- MH.runMH strace prog
-  -- | Get samples used for model parameters
-  let params_0 = filterTrace param_tags strace
-  -- | Perform initial run of SMC using model parameters
-  prts_0 <- map snd . fst <$> ( handleLift . MH.handleSamp params_0 . SIM.handleObs
-                              . SIS.sis n_particles SMC.particleRunner SMC.particleResampler) prog
-  -- | Compute average log probabilities
-  let logZ_0  = logMeanExp (map SMC.particleLogProb prts_0)
-  -- -- A function performing n pmmhsteps
-  -- let pmmhs  = foldl (>=>) pure (replicate mh_steps (pmmhStep n_particles prog tags))
-  -- l <- pmmhs [(y_0, strace_0, logW_0)]
-  -- -- Return pmmhTrace in correct order of execution (due to pmmhStep prepending new results onto head of trace)
-  -- pure $ reverse l
-  undefined
+  pmmh_0 <- runPMMH n_particles prog param_tags strace
+  -- | A function performing n pmmhsteps
+  foldl (>=>) pure (replicate mh_steps (pmmhStep n_particles prog param_tags)) [pmmh_0]
 
 pmmhStep ::
      Int                                          -- ^ number of particles
