@@ -4,6 +4,9 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeApplications #-}
 
+{- | Particle Marginal Metropolis-Hastings inference.
+-}
+
 module Inference.PMMH where
 
 import Control.Monad
@@ -25,19 +28,15 @@ import qualified Inference.SMC as SMC
 import Util
 import Inference.SMC (SMCParticle(particleLogProb, SMCParticle))
 
+{- | Top-level wrapper for PMMH inference.
+-}
 pmmh :: forall env es a xs. (env `ContainsVars` xs)
-  -- | number of MH iterations
-  => Int
-  -- | number of SMC particles
-  -> Int
-  -- | model
-  -> Model env [ObsRW env, Dist, Lift Sampler] a
-  -- | input model environment
-  -> Env env
-  -- | model parameter names
-  -> Vars xs
-  -- | output model environments
-  -> Sampler [Env env]
+  => Int                                            -- ^ number of MH steps
+  -> Int                                            -- ^ number of particles
+  -> Model env [ObsRW env, Dist, Lift Sampler] a    -- ^ model
+  -> Env env                                        -- ^ input environment
+  -> Vars xs                                        -- ^ variable names of model parameters
+  -> Sampler [Env env]                              -- ^ output environments
 pmmh mh_steps n_particles model env obs_vars = do
   let prog = (handleDist . handleObsRW env) (runModel model)
   -- | Convert observable variables to strings
@@ -47,6 +46,8 @@ pmmh mh_steps n_particles model env obs_vars = do
   -- Return the accepted model environments
   pure (map (snd . fst . fst) pmmh_trace)
 
+{- | Perform PMMH on a probabilistic program.
+-}
 pmmhInternal :: forall a.
       Int                                     -- ^ number of MH steps
    -> Int                                     -- ^ number of particles
@@ -60,27 +61,31 @@ pmmhInternal mh_steps n_particles prog strace param_tags = do
   -- | A function performing n pmmhsteps
   foldl (>=>) pure (replicate mh_steps (pmmhStep n_particles prog param_tags)) [pmmh_0]
 
+{- | Perform one iteration of PMMH by drawing a new sample and then rejecting or accepting it.
+-}
 pmmhStep ::
      Int                                          -- ^ number of particles
-  -> Prog [Observe, Sample, Lift Sampler] a       -- ^ model
-  -> [Tag]                                        -- ^ tags indicating prior random variables
+  -> Prog [Observe, Sample, Lift Sampler] a       -- ^ probabilistic program
+  -> [Tag]                                        -- ^ tags indicating  model parameters
   -> [((a, LogP), InvSTrace)]                     -- ^ trace of previous mh outputs
   -> Sampler [((a, LogP), InvSTrace)]
 pmmhStep n_particles prog tags pmmh_trace = do
   let pmmh_ctx@(_, strace) = head pmmh_trace
   -- | Propose a new random value for a sample site
   (α_samp, r) <- MH.propose strace tags
+  -- | Run one iteration of PMMH
   pmmh_ctx'   <- runPMMH n_particles prog tags (Map.insert α_samp r strace)
   b <- accept pmmh_ctx pmmh_ctx'
   if b then pure (pmmh_ctx':pmmh_trace)
        else pure pmmh_trace
 
--- | Handle probabilistic program once under PMMH
+{- | Handle probabilistic program using MH and compute the average log-probability using SMC.
+-}
 runPMMH ::
-     Int
-  -> Prog '[Observe, Sample, Lift Sampler] a
-  -> [Tag]
-  -> InvSTrace
+     Int                                          -- ^ number of particles
+  -> Prog '[Observe, Sample, Lift Sampler] a      -- ^ probabilistic program
+  -> [Tag]                                        -- ^ tags indicating model parameters
+  -> InvSTrace                                    -- ^ sample traces
   -> Sampler ((a, LogP), InvSTrace)
 runPMMH n_particles prog tags strace = do
   ((a, _), strace') <- MH.runMH strace prog
@@ -93,11 +98,11 @@ runPMMH n_particles prog tags strace = do
   let logZ  = logMeanExp (map SMC.particleLogProb prts)
   pure ((a, logZ), strace')
 
+{- | An acceptance mechanism for PMMH.
+-}
 accept ::
-  -- | previous PMMH ctx
-     ((a, LogP), InvSTrace)
-  -- | proposed PMMH ctx
-  -> ((a, LogP), InvSTrace)
+     ((a, LogP), InvSTrace)                 -- ^ previous PMMH ctx
+  -> ((a, LogP), InvSTrace)                 -- ^ proposed PMMH ctx
   -> Sampler Bool
 accept ((_, log_p), _) ((_, log_p'), _) = do
   let acceptance_ratio = (exp . unLogP) (log_p' - log_p)

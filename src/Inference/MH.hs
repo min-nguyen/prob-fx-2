@@ -8,6 +8,9 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
 
+{- | Metropolis-Hastings inference.
+-}
+
 module Inference.MH where
 
 import Control.Monad ( (>=>) )
@@ -27,84 +30,69 @@ import Effects.Lift ( Lift, lift, handleLift )
 import qualified Inference.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
 
--- | Top-level wrapper for Metropolis-Hastings (MH) inference
+{- | Top-level wrapper for MH inference.
+-}
 mh :: forall env es a xs. (env `ContainsVars` xs)
-  -- | number of MH iterations
-  => Int
-  -- | model
-  -> Model env [ObsRW env, Dist, Lift Sampler] a
-  -- | input model environment
-  -> Env env
-  -- | optional list of observable variable names (strings) to specify sample sites of interest
-  {- for example, for interest in sampling @#mu@, provide @#mu <#> vnil@ to cause other variables
-     to not be resampled unless necessary. -}
-  -> Vars xs
-  -- | output model environments
-  -> Sampler [Env env]
+  => Int                                          -- ^ number of MH iterations
+  -> Model env [ObsRW env, Dist, Lift Sampler] a  -- ^ model
+  -> Env env                                      -- ^ input environment
+  -> Vars xs                                      -- ^ optional observable variables
+    {- These allow one to specify sample sites of interest; for example, for interest in sampling @#mu@, provide @#mu <#> vnil@ to cause other variables to not be resampled unless necessary. -}
+  -> Sampler [Env env]                            -- ^ output model environments
 mh n model env_in obs_vars  = do
-  -- Handle model to probabilistic program
+  -- | Handle model to probabilistic program
   let prog = handleCore env_in model
-  -- Convert observable variables to strings
+  -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
-  -- Run MH for n iterations
+  -- | Run MH for n iterations
   mh_trace <- mhInternal n prog Map.empty tags
-  -- Return the accepted model environments
+  -- | Return the accepted model environments
   pure (map (snd . fst . fst) mh_trace)
 
--- | Perform MH on a probabilistic program
+{- | Perform MH on a probabilistic program.
+-}
 mhInternal
-   -- | number of MH iterations
-   :: Int
-   -- | probabilistic program
-   -> Prog [Observe, Sample, Lift Sampler] a
-   -- | initial sample trace
-   -> InvSTrace
-   -- | tags indicating sample sites of interest
-   -> [Tag]
-   -- | [(accepted outputs, logps), samples)]
-   -> Sampler [((a, LPTrace), InvSTrace)]
+   :: Int                                           -- ^ number of MH iterations
+   -> Prog [Observe, Sample, Lift Sampler] a        -- ^ probabilistic program
+   -> InvSTrace                                     -- ^ initial sample trace
+   -> [Tag]                                         -- ^ tags indicating sample sites of interest
+   -> Sampler [((a, LPTrace), InvSTrace)]           -- ^ trace of (accepted outputs, log probabilities), samples)
 mhInternal n prog strace tags = do
-  -- Perform initial run of mh
+  -- | Perform initial run of mh
   mh_ctx_0 <- runMH strace prog
-  -- A function performing n mhSteps using initial mhCtx.
-  -- Note: most recent samples are at the front (head) of the trace
+  -- | A function performing n mhSteps using initial mh_ctx. The most recent samples are at the front of the trace.
   foldl (>=>) pure (replicate n (mhStep prog tags)) [mh_ctx_0]
 
--- | Perform one iteration of MH by drawing a new sample and then rejecting or accepting it.
+{- | Perform one iteration of MH by drawing a new sample and then rejecting or accepting it.
+-}
 mhStep
-  :: Prog [Observe, Sample, Lift Sampler] a
-  -- | tags indicating sample sites of interest
-  -> [Tag]
-  -- | trace of previous MH results
-  -> [((a, LPTrace), InvSTrace)]
-  -- | updated trace of MH results
-  -> Sampler [((a, LPTrace), InvSTrace)]
+  :: Prog [Observe, Sample, Lift Sampler] a         -- ^ probabilistic program
+  -> [Tag]                                          -- ^ tags indicating sample sites of interest
+  -> [((a, LPTrace), InvSTrace)]                    -- ^ previous MH trace
+  -> Sampler [((a, LPTrace), InvSTrace)]            -- ^ updated MH trace
 mhStep prog tags trace = do
-  -- Get previous MH output
+  -- | Get previous MH output
   let mh_ctx@(_, strace) = head trace
-  -- Propose a new random value for a sample site
+  -- | Propose a new random value for a sample site
   (α_samp, r) <- propose strace tags
-  -- Run MH with proposed value to get an MHCtx using LPTrace as its probability type
+  -- | Run MH with proposed value to get an MHCtx using LPTrace as its probability type
   mh_ctx' <- runMH (Map.insert α_samp r strace) prog
-  -- Compute acceptance ratio to see if we use the proposed mhCtx'
-  -- (which is mhCtx'_lp with 'LPTrace' converted to some type 'p')
+  -- | Compute acceptance ratio to see if we use the proposed mh_ctx'
   b <- accept α_samp mh_ctx mh_ctx'
   if b then pure (mh_ctx':trace)
        else pure trace
 
--- | Handler for one iteration of MH
+{- | Handler for one iteration of MH.
+-}
 runMH ::
-  -- | sample trace of previous MH iteration
-     InvSTrace
-  -- | sample address of interest
-  -> Prog [Observe, Sample, Lift Sampler] a
-  -- | ((model output, sample trace), log-probability trace)
-  -> Sampler ((a, LPTrace), InvSTrace)
+     InvSTrace                                -- ^ sample trace of previous MH iteration
+  -> Prog [Observe, Sample, Lift Sampler] a   -- ^ probabilistic program
+  -> Sampler ((a, LPTrace), InvSTrace)        -- ^ ((model output, sample trace), log-probability trace)
 runMH strace  = handleLift . handleSamp strace . SIM.handleObs . traceLogProbs
 
--- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones
+{- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.
+-}
 handleSamp ::
-  -- | Sample trace
      InvSTrace
   -> Prog  [Sample, Lift Sampler] a
   -> Prog '[Lift Sampler] (a, InvSTrace)
@@ -135,13 +123,11 @@ propose strace tags = do
 
 {- | An acceptance mechanism for MH.
 -}
-accept :: Addr
-  -- | previous MH ctx, parameterised by @p@
-  -> ((a, LPTrace), InvSTrace)
-  -- | proposed MH ctx, parameterised by a log-probability map
-  -> ((a, LPTrace), InvSTrace)
-  -- | (proposed MH ctx using probability representation p, Acceptance ratio)
-  -> Sampler Bool
+accept ::
+     Addr                             -- ^ address of proposal site
+  -> ((a, LPTrace), InvSTrace)        -- ^ result of previous MH iteration
+  -> ((a, LPTrace), InvSTrace)        -- ^ result of current MH iteration
+  -> Sampler Bool                     -- ^ whether the current MH iteration is accepted
 accept x0 ((_, lptrace ), strace) ((a, lptrace'), strace') = do
   let dom_logα = log (fromIntegral $ Map.size strace) - log (fromIntegral $ Map.size strace')
       sampled  = Set.singleton x0 `Set.union` (Map.keysSet strace \\ Map.keysSet strace')

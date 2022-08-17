@@ -7,7 +7,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeApplications #-}
 
-{- An infrastructure for Sequential Importance Sampling (particle filter).
+{- An infrastructure for Sequential Importance Sampling.
 -}
 
 module Inference.SIS where

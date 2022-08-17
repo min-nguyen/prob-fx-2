@@ -118,6 +118,8 @@ particleResampler mh_steps = loop where
 
     Left op' -> Op op' (loop . k)
 
+{- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint at the first @Observe@ operation.
+-}
 particleRunner :: ParticleRunner RMSMCParticle
 particleRunner = loop Map.empty where
   loop :: InvSTrace -> ParticleRunner RMSMCParticle
