@@ -41,7 +41,7 @@ import Data.Bifunctor
 import Unsafe.Coerce
 import Util
 
-{- | The particle context for RMSMC
+{- | The particle context for RMSMC.
 -}
 data RMSMCParticle = RMSMCParticle {
     particleLogProb   :: LogP
@@ -79,7 +79,7 @@ rmsmcInternal
 rmsmcInternal n_particles mh_steps   = do
   handleLift . SIM.handleSamp . SIM.handleObs . SIS.sis n_particles particleRunner (particleResampler mh_steps)
 
-{- | A handler for resampling particles according to their normalized log-likelihoods.
+{- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using MH.
 -}
 particleResampler :: Int -> ParticleResampler RMSMCParticle
 particleResampler mh_steps = loop where
@@ -91,13 +91,10 @@ particleResampler mh_steps = loop where
           let resampled_prts   = map (prts !! ) idxs
               resampled_ctxs   = map (ctxs !! ) idxs
 
-          -- | Get the trace of observe addresses up until the breakpoint
-          --   (from the context of any arbitrary particle, e.g. by using 'head')
+          -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head')
           let α_obs   = (particleObsAddrs . head) resampled_ctxs
-          -- | Get the observe address of the breakpoint
-              α_break =  α_obs
           -- | Insert break point to perform MH up to
-              partial_model = breakObserve α_break prog_0
+              partial_model = breakObserve α_obs prog_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
           mh_trace <- lift $ mapM ( fmap head
                                   . flip (MH.mhInternal mh_steps partial_model) []

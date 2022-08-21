@@ -66,7 +66,7 @@ pmmhInternal mh_steps n_particles prog strace param_tags = do
 pmmhStep ::
      Int                                          -- ^ number of particles
   -> Prog [Observe, Sample, Lift Sampler] a       -- ^ probabilistic program
-  -> [Tag]                                        -- ^ tags indicating  model parameters
+  -> [Tag]                                        -- ^ tags indicating model parameters
   -> [((a, LogP), InvSTrace)]                     -- ^ trace of previous mh outputs
   -> Sampler [((a, LogP), InvSTrace)]
 pmmhStep n_particles prog tags pmmh_trace = do
