@@ -65,8 +65,8 @@ rmsmc
   -> Model env [ObsRW env, Dist, Lift Sampler] a  -- ^ model
   -> Env env                                      -- ^ input model environment
   -> Sampler [Env env]                            -- ^ output model environments of each particle
-rmsmc n_particles mh_steps model env = do
-  let prog = (handleDist . handleObsRW env) (runModel model)
+rmsmc n_particles mh_steps model env_in = do
+  let prog = (handleDist . handleObsRW env_in) (runModel model)
   rmsmcInternal n_particles mh_steps prog >>= pure . map (snd . fst)
 
 {- | Call RMSMC on a probabilistic program.

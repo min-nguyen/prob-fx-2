@@ -37,8 +37,8 @@ pmmh :: forall env es a xs. (env `ContainsVars` xs)
   -> Env env                                        -- ^ input environment
   -> Vars xs                                        -- ^ variable names of model parameters
   -> Sampler [Env env]                              -- ^ output environments
-pmmh mh_steps n_particles model env obs_vars = do
-  let prog = (handleDist . handleObsRW env) (runModel model)
+pmmh mh_steps n_particles model env_in obs_vars = do
+  let prog = (handleDist . handleObsRW env_in) (runModel model)
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
   -- | Run PMMH

@@ -23,6 +23,7 @@ import Inference.MH as MH ( mh )
 import Inference.SMC as SMC ( smc )
 import Inference.RMSMC as RMSMC ( rmsmc )
 import Inference.PMMH as PMMH ( pmmh )
+import Inference.SMC2 as SMC2 ( smc2 )
 import Inference.MB as MB ( handleMBayes )
 import Numeric.Log ( Log )
 import qualified Control.Monad.Bayes.Class as Bayes
@@ -195,6 +196,20 @@ pmmhPredLDA n_mhsteps n_particles n_words = do
       env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
 
   env_outs     <- PMMH.pmmh n_mhsteps n_particles  (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
+  -- Draw the most recent sampled parameters
+  let env_pred   = head env_outs
+      θs         = get #θ env_pred
+      φs         = get #φ env_pred
+  return (θs, φs)
+
+-- | SMC2 inference on topic model (predictive)
+smc2PredLDA :: Int ->  Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
+smc2PredLDA n_outer_particles n_mhsteps n_inner_particles n_words = do
+
+  let n_topics  = 2
+      env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+
+  env_outs     <- SMC2.smc2 n_outer_particles n_mhsteps n_inner_particles (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
   -- Draw the most recent sampled parameters
   let env_pred   = head env_outs
       θs         = get #θ env_pred

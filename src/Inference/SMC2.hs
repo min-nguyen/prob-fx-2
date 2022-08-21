@@ -9,6 +9,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
+{-# LANGUAGE TypeOperators #-}
 
 {- Sequential Monte Carlo^2 inference.
 -}
@@ -46,6 +47,36 @@ import Util
 
 type SMC2Particle = RMSMC.RMSMCParticle
 
+{- | Top-level wrapper for PMMH inference.
+-}
+smc2 :: forall env es a xs. (env `ContainsVars` xs)
+  => Int                                            -- ^ number of outer SMC particles
+  -> Int                                            -- ^ number of MH steps
+  -> Int                                            -- ^ number of inner SMC particles
+  -> Model env [ObsRW env, Dist, Lift Sampler] a    -- ^ model
+  -> Env env                                        -- ^ input environment
+  -> Vars xs                                        -- ^ variable names of model parameters
+  -> Sampler [Env env]                              -- ^ output environments
+smc2 n_outer_particles mh_steps n_inner_particles model env obs_vars = do
+  let prog = (handleDist . handleObsRW env) (runModel model)
+  -- | Convert observable variables to strings
+      tags = varsToStrs @env obs_vars
+  -- | Run SMC2
+  smc2_trace <- smc2Internal n_outer_particles mh_steps n_inner_particles  tags prog
+  -- Return the accepted model environments
+  pure (map (snd . fst) smc2_trace)
+
+smc2Internal
+  :: Int                                          -- ^ number of outer SMC particles
+  -> Int                                          -- ^ number of MH steps
+  -> Int                                          -- ^ number of inner SMC particles
+  -> [Tag]
+  -> Prog [Observe, Sample, Lift Sampler] a       -- ^ probabilistic program
+  -> Sampler [(a, SMC2Particle)]                  -- ^ final particle results and contexts
+smc2Internal n_outer_particles mh_steps n_inner_particles tags = do
+  handleLift . SIM.handleSamp . SIM.handleObs
+    . SIS.sis n_outer_particles RMSMC.particleRunner (particleResampler mh_steps n_inner_particles tags)
+
 particleResampler :: Int -> Int -> [String] -> ParticleResampler SMC2Particle
 particleResampler mh_steps n_inner_particles tags = loop where
   loop (Val x) = Val x
@@ -63,8 +94,8 @@ particleResampler mh_steps n_inner_particles tags = loop where
               partial_model = RMSMC.breakObserve α_obs prog_0
           -- | Perform PMMH using each resampled particle's sample trace and get the most recent MH iteration.
           pmmh_trace <- lift $ mapM ( fmap head
-                                  . flip (PMMH.pmmhInternal mh_steps n_inner_particles partial_model) tags
-                                  . particleSTrace) resampled_ctxs
+                                    . flip (PMMH.pmmhInternal mh_steps n_inner_particles partial_model) tags
+                                    . particleSTrace) resampled_ctxs
           {- | Get:
               1) the continuations of each particle from the break point (augmented with the non-det effect)
               2) the total log weights of each particle up until the break point
