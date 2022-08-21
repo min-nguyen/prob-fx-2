@@ -45,15 +45,15 @@ import Util
 -}
 data RMSMCParticle = RMSMCParticle {
     particleLogProb   :: LogP
-  , particleObsAddrs  :: [Addr]
-  , particleSTrace     :: InvSTrace
+  , particleObsAddrs  :: Addr
+  , particleSTrace    :: InvSTrace
   }
 
 instance ParticleCtx RMSMCParticle where
-  pempty            = RMSMCParticle 0 [] Map.empty
+  pempty            = RMSMCParticle 0 ("", 0) Map.empty
   paccum ctxs ctxs' =
     let log_ps   = uncurry paccum              (bimap' (particleLogProb <$>)  (ctxs, ctxs'))
-        α_obs    = uncurry (zipWith (++))      (bimap' (particleObsAddrs <$>) (ctxs', ctxs))
+        α_obs    = particleObsAddrs <$> ctxs'
         straces  = uncurry (zipWith Map.union) (bimap' (particleSTrace <$>)   (ctxs', ctxs))
     in  zipWith3 RMSMCParticle log_ps α_obs straces
 
@@ -95,7 +95,7 @@ particleResampler mh_steps = loop where
           --   (from the context of any arbitrary particle, e.g. by using 'head')
           let α_obs   = (particleObsAddrs . head) resampled_ctxs
           -- | Get the observe address of the breakpoint
-              α_break = head α_obs
+              α_break =  α_obs
           -- | Insert break point to perform MH up to
               partial_model = breakObserve α_break prog_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
@@ -108,9 +108,9 @@ particleResampler mh_steps = loop where
               3) the sample traces of each particle up until the break point -}
           let ((rejuv_prts, lp_traces), rejuv_straces) = first unzip (unzip mh_trace)
               -- | Filter log probability traces to only include that for observe operations
-              lp_traces_obs = map (filterByKey (`elem` α_obs)) lp_traces
+              -- lp_traces_obs = map (filterByKey (`elem` α_obs)) lp_traces
               -- | Recompute the log weights of all particles up until the break point
-              rejuv_lps     = map (sum . map snd . Map.toList) lp_traces_obs
+              rejuv_lps     = map (sum . map snd . Map.toList) lp_traces
 
               rejuv_ctxs    = zipWith3 RMSMCParticle rejuv_lps (repeat α_obs) rejuv_straces
 
@@ -123,12 +123,12 @@ particleResampler mh_steps = loop where
 particleRunner :: ParticleRunner RMSMCParticle
 particleRunner = loop Map.empty where
   loop :: InvSTrace -> ParticleRunner RMSMCParticle
-  loop inv_strace (Val x) = pure (Val x, RMSMCParticle 0 [] Map.empty)
+  loop inv_strace (Val x) = pure (Val x, RMSMCParticle 0 ("", 0) Map.empty)
   loop inv_strace (Op op k) = case op of
     SampPrj d α  -> do r <- lift sampleRandom
                        y <- lift (sampleInv d r)
                        loop (Map.insert α r inv_strace) (k y)
-    ObsPrj d y α -> Val (k y, RMSMCParticle (logProb d y) [α] inv_strace)
+    ObsPrj d y α -> Val (k y, RMSMCParticle (logProb d y) α inv_strace)
     _            -> Op op (loop inv_strace . k)
 
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
