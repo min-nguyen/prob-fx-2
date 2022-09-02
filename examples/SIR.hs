@@ -39,7 +39,7 @@ import Inference.MB as MB ( handleMBayes )
 import qualified Control.Monad.Bayes.Class as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
-import qualified Control.Monad.Bayes.Sampler as Bayes
+import qualified Control.Monad.Bayes.Sampler.Strict as Bayes
 
 -- | A type family for conveniently specifying multiple @Record@ fields of the same type
 type family Lookups env (ks :: [Symbol]) a :: Constraint where

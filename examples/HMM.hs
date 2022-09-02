@@ -30,7 +30,7 @@ import Model ( Model, bernoulli', binomial, uniform )
 import Numeric.Log ( Log )
 import Prog ( Member )
 import qualified Control.Monad.Bayes.Class as Bayes
-import qualified Control.Monad.Bayes.Sampler as Bayes
+import qualified Control.Monad.Bayes.Sampler.Strict as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
 import Sampler ( Sampler, liftIO )

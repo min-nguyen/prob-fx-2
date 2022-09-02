@@ -37,7 +37,7 @@ import Inference.MB as MB ( handleMBayes )
 import qualified Control.Monad.Bayes.Class as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
-import qualified Control.Monad.Bayes.Sampler as Bayes
+import qualified Control.Monad.Bayes.Sampler.Strict as Bayes
 
 {- | SIR model.
 -}

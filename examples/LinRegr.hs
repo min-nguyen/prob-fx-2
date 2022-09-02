@@ -27,9 +27,9 @@ import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
 import Numeric.Log ( Log )
 import qualified Control.Monad.Bayes.Class as Bayes
-import qualified Control.Monad.Bayes.Weighted as Bayes
+import qualified Control.Monad.Bayes.Sampler.Strict as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
-import qualified Control.Monad.Bayes.Sampler as Bayes
+import qualified Control.Monad.Bayes.Weighted as Bayes
 
 {- | Linear regression environment.
 -}

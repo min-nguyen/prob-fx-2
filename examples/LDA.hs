@@ -27,9 +27,9 @@ import Inference.SMC2 as SMC2 ( smc2 )
 import Inference.MB as MB ( handleMBayes )
 import Numeric.Log ( Log )
 import qualified Control.Monad.Bayes.Class as Bayes
-import qualified Control.Monad.Bayes.Weighted as Bayes
+import qualified Control.Monad.Bayes.Sampler.Strict as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
-import qualified Control.Monad.Bayes.Sampler as Bayes
+import qualified Control.Monad.Bayes.Weighted as Bayes
 
 {- | An LDA environment.
 
