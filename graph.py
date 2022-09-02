@@ -41,7 +41,7 @@ def main():
     axs1.scatter(mus, ps)
     axs1.set_title('Linear regression - Likelihood Weighting')
 
-  if arg in ["mhLinRegrOnce", "mhLinRegr", "smcLinRegr", "rmsmcLinRegr", "pmmhLinRegr"]:
+  if arg in ["mhLinRegrOnce", "mhLinRegr", "smcLinRegr", "rmsmcLinRegr", "pmmhLinRegr", "smc2LinRegr"]:
     mus = data[0]
     cs  = data[1]
     fig1, axs1 = plt.subplots(nrows=1)

@@ -42,8 +42,8 @@ smc
   -> Model env [ObsRW env, Dist, Lift Sampler] a      -- ^ model
   -> Env env                                          -- ^ input model environment
   -> Sampler [Env env]                                -- ^ output model environments of each particle
-smc n_particles model env = do
-  let prog = (handleDist . handleObsRW env) (runModel model)
+smc n_particles model env_in = do
+  let prog = (handleDist . handleObsRW env_in) (runModel model)
   smcInternal n_particles prog >>= pure . map (snd . fst)
 
 {- | Call SMC on a probabilistic program.
