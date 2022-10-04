@@ -8,30 +8,15 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE QuantifiedConstraints #-}
-{-# LANGUAGE LinearTypes #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE InstanceSigs #-}
 
 module DMap where
 
 import Type.Reflection
     ( Typeable, type (:~~:)(HRefl), eqTypeRep, typeRep )
-import Effects.Dist
-
-{- Key -}
-data Key s a where
-  Key :: forall s a. (Ord s, Typeable a) => s -> Key s a
-  deriving (Typeable)
-
-instance Show s => Show (Key s a) where
-  show (Key s) = show s
-
-instance Eq a => Eq (Key s a) where
-  Key a == Key b = a == b
-
-instance Ord a => Ord (Key s a) where
-  compare (Key a) (Key b) = compare a b
+import PrimDist
 
 {- TyEq: Test equality between two different types 'a' and 'b' -}
 class (Typeable c, Typeable b) => TyEq c b where
@@ -65,28 +50,45 @@ instance (HeteroOrd k, Typeable a, Typeable b) => TrueOrd k a b where
     LT -> TrueLT
     GT -> TrueGT
 
-{- Dependent map where we compare values of keys before comparing types of keys, by using HeteroOrd -}
+{- Dist Key -}
+type DKey = Key String
 
-data DMap k where
-  Leaf :: DMap  k
-  Node :: (HeteroOrd k, Typeable v)
-       => k v     -- key
-       -> v       -- value
-       -> DMap  k  -- left
-       -> DMap  k  -- right
-       -> DMap  k
+data Key s a where
+  Key :: forall s a. (Ord s, Typeable a) => s -> Key s a
+  deriving (Typeable)
 
-emptyD :: forall  k. DMap  k
-emptyD = Leaf
+instance Show s => Show (Key s a) where
+  show (Key s) = show s
 
-singleton :: (HeteroOrd k, Typeable v) => k v -> v -> DMap  k
+instance Eq (Key s a) where
+  Key a == Key b = a == b
+
+instance Ord (Key s a) where
+  compare :: forall k s (a :: k). Key s a -> Key s a -> Ordering
+  compare (Key a) (Key b) = compare a b
+
+{- Dist map where we compare values of keys before comparing types of keys, by using HeteroOrd -}
+
+data DMap where
+  Leaf :: DMap
+  Node :: Typeable v
+       => DKey v           -- key
+       -> PrimDist v    -- value
+       -> DMap         -- left
+       -> DMap         -- right
+       -> DMap
+
+empty :: DMap
+empty = Leaf
+
+singleton :: (Typeable v) => DKey v -> PrimDist v -> DMap
 singleton k x = Node k x Leaf Leaf
 
-lookupD :: forall k a b. (Ord (k a), Typeable a)
-  => k a -> DMap k -> Maybe a
-lookupD k = go
+lookup :: forall a b. (Eq a, Typeable a)
+  => DKey a -> DMap  -> Maybe (PrimDist a)
+lookup k = go
   where
-    go :: DMap k -> Maybe a
+    go :: DMap -> Maybe (PrimDist a)
     go Leaf = Nothing
     go (Node k' x l r) = case trueCompare k k'
         of TrueEQ HRefl -> if k' == k then Just x else Nothing
@@ -94,10 +96,10 @@ lookupD k = go
            TrueLT       -> go l
            TrueGT       -> go r
 
-insertD :: forall k v. (Typeable v, TrueOrd k v v) => k v -> v -> DMap k -> DMap k
-insertD kx x = go
+insert :: forall v. (Typeable v) => DKey v -> PrimDist v -> DMap  -> DMap
+insert kx x = go
   where
-    go :: DMap k -> DMap k
+    go :: DMap -> DMap
     go Leaf = singleton kx x
     go (Node ky y l r) =
       case trueCompare kx ky of
@@ -106,28 +108,26 @@ insertD kx x = go
         TrueLT       -> Node ky y (go l) r
         TrueGT       -> Node ky y l (go r)
 
-foldrWithKey :: Typeable k => (forall v. (Typeable v) => k v -> v -> b -> b) -> b -> DMap k -> b
+foldrWithKey :: Typeable k => (forall v. (Typeable v) => DKey v -> PrimDist v -> b -> b) -> b -> DMap  -> b
 foldrWithKey f = go
   where
     go z Leaf             = z
     go z (Node  kx x l r) = go (f kx x (go z r)) l
 
-key1 :: Key String Int
+key1 :: DKey Int
 key1 = Key "s"
 
-key2 :: Key String Double
+key2 :: DKey Double
 key2 = Key "s"
 
 cmp1 :: TrueOrdering Int Double
 cmp1 = trueCompare key1 key2
 
-map1 :: DMap (Key String)
-map1 = insertD key1 5 emptyD
+map1 :: DMap
+map1 = insert key1 (Deterministic 5) empty
 
 {- Dependent map from random variables to primitive distributions -}
 
-data DistKey s a where
-  DistKey :: forall s a. (Ord s, Typeable a) => s -> DistKey s (Dist a)
-  deriving (Typeable)
-
-type DistMap = DMap (DistKey Addr)
+-- exampleDistMap :: DistMap
+exampleDistMap :: DMap
+exampleDistMap = insert (Key "s" :: DKey Double) (Normal 0 5) empty
