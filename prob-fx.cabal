@@ -40,7 +40,7 @@ library
                       Inference.SMC2,
                       Inference.RMSMC,
                       Inference.PMMH,
-                      Inference.MB,
+                      -- Inference.MB,
                       Env,
                       LogP,
                       Model,
@@ -80,10 +80,11 @@ library
                       statistics                    >= 0.16.1 && < 0.17,
                       criterion                     >= 1.5.13 && < 1.6,
                       split                         >= 0.2.3 && < 0.3,
-                      monad-bayes                   >= 0.2.0 && < 0.2.1,
                       math-functions,
                       ad,
-                      reflection
+                      reflection,
+                      -- monad-bayes                   >= 0.2.0 && < 0.2.1,
+                      split                         >= 0.2.3 && < 0.3
 
   -- Base language which the package is written in.
   default-language:   Haskell2010
@@ -109,7 +110,7 @@ executable prob-fx
                       split,
                       prob-fx,
                       log-domain,
-                      monad-bayes,
+                      -- monad-bayes,
                       lens
   default-language:   Haskell2010
   ghc-options:        -O2 -rtsopts -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math
@@ -128,7 +129,7 @@ executable benchmarks
                       prob-fx,
                       split,
                       log-domain,
-                      monad-bayes,
+                      -- monad-bayes,
                       statistics
   default-language:   Haskell2010
   ghc-options:        -O2 -rtsopts -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math
@@ -160,6 +161,6 @@ test-suite tests
                       prob-fx,
                       HUnit >= 1.6.0 && < 1.7.0,
                       lens,
-                      log-domain,
-                      monad-bayes
+                      -- monad-bayes,
+                      log-domain
   default-language:   Haskell2010

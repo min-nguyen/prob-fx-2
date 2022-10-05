@@ -33,11 +33,13 @@ import Data.Kind (Constraint)
 import Sampler ( Sampler )
 import Inference.SIM as SIM ( simulate )
 import Inference.MH as MH ( mh )
+{-
 import Inference.MB as MB ( handleMBayes )
 import qualified Control.Monad.Bayes.Class as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
 import qualified Control.Monad.Bayes.Sampler.Strict as Bayes
+-}
 
 {- | SIR model.
 -}
@@ -295,7 +297,6 @@ simSIRSV = do
   return (sirvs, 𝜉s)
 
 {- | Interfacing the SIR model on top of Monad Bayes.
--}
 
 mbayesSIR ::
    (Bayes.MonadInfer m
@@ -321,3 +322,4 @@ mhSIRMB n_days = do
   let ρs = concatMap (get #ρ) env_outs
       βs = concatMap (get #β) env_outs
   pure (ρs, βs)
+-}

@@ -24,12 +24,14 @@ import Inference.SMC as SMC ( smc )
 import Inference.RMSMC as RMSMC ( rmsmc )
 import Inference.PMMH as PMMH ( pmmh )
 import Inference.SMC2 as SMC2 ( smc2 )
-import Inference.MB as MB ( handleMBayes )
+{-
 import Numeric.Log ( Log )
+import Inference.MB as MB ( handleMBayes )
 import qualified Control.Monad.Bayes.Class as Bayes
 import qualified Control.Monad.Bayes.Sampler.Strict as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
+-}
 
 {- | An LDA environment.
 
@@ -217,7 +219,7 @@ smc2PredLDA n_outer_particles n_mhsteps n_inner_particles n_words = do
   return (θs, φs)
 
 {- | Executing the topic model using monad-bayes.
--}
+
 mbayesLDA :: (Bayes.MonadInfer m, Observables env '["φ", "θ"] [Double], Observable env "w" String)
   => [String] -> Int -> Int -> Env env -> m ([String], Env env)
 mbayesLDA vocab n_topics n_words = MB.handleMBayes (topicModel vocab n_topics n_words)
@@ -239,3 +241,4 @@ mhLDAMB :: Int -> Int -> IO [([String], Env TopicEnv)]
 mhLDAMB n_mhsteps n_words  = do
   let env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
   Bayes.sampleIO $ Bayes.unweighted $ Bayes.mh n_mhsteps (mbayesLDA vocab 2 n_words env_in)
+-}

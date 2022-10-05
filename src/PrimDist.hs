@@ -24,7 +24,7 @@ module PrimDist (
   -- * Sampling
   , sample
   , sampleInv
-  , sampleBayes
+  -- , sampleBayes
   -- * Density
   , prob
   , logProb
@@ -53,9 +53,9 @@ import Sampler
 import LogP ( LogP(..) )
 import Util ( boolToInt )
 import Numeric.Log ( Log(Exp) )
-import qualified Control.Monad.Bayes.Class as MB
 import Control.Monad ((>=>), replicateM)
 import Data.Typeable
+-- import qualified Control.Monad.Bayes.Class as MB
 
 
 -- | Primitive distribution
@@ -187,20 +187,20 @@ sampleInv d = case d of
   (Deterministic x)   -> const (pure x)
 
 -- | Draw a value from a primitive distribution using the @MonadSample@ type class from Monad-Bayes
-sampleBayes :: MB.MonadSample m => PrimDist a -> m a
-sampleBayes d = case d of
-  (Uniform a b )    -> MB.uniform a b
-  (Categorical as ) -> MB.categorical (Vec.fromList as)
-  (Discrete as )    -> MB.categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
-  (Normal mu std )  -> MB.normal mu std
-  (Gamma k t )      -> MB.gamma k t
-  (Beta a b )       -> MB.beta a b
-  (Bernoulli p )    -> MB.bernoulli p
-  (Binomial n p )   -> replicateM n (MB.bernoulli p) >>= (pure . length . filter (== True))
-  (Poisson l )      -> MB.poisson l
-  (Dirichlet as )   -> MB.dirichlet (Vec.fromList as) >>= pure . Vec.toList
-  (Deterministic v) -> pure v
-  _                 -> error ("Sampling from " ++ show d ++ " is not supported")
+-- sampleBayes :: MB.MonadSample m => PrimDist a -> m a
+-- sampleBayes d = case d of
+--   (Uniform a b )    -> MB.uniform a b
+--   (Categorical as ) -> MB.categorical (Vec.fromList as)
+--   (Discrete as )    -> MB.categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
+--   (Normal mu std )  -> MB.normal mu std
+--   (Gamma k t )      -> MB.gamma k t
+--   (Beta a b )       -> MB.beta a b
+--   (Bernoulli p )    -> MB.bernoulli p
+--   (Binomial n p )   -> replicateM n (MB.bernoulli p) >>= (pure . length . filter (== True))
+--   (Poisson l )      -> MB.poisson l
+--   (Dirichlet as )   -> MB.dirichlet (Vec.fromList as) >>= pure . Vec.toList
+--   (Deterministic v) -> pure v
+--   _                 -> error ("Sampling from " ++ show d ++ " is not supported")
 
 -- | Compute the density of a primitive distribution generating an observed value
 prob ::
