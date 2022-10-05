@@ -34,7 +34,7 @@ module Prog (
 
 import Control.Monad ( (>=>) )
 import Data.Kind (Constraint)
-import FindElem ( Idx(unIdx), FindElem(..) )
+import TyCompare ( Idx(unIdx), FindElem(..) )
 import GHC.TypeLits ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
 import Unsafe.Coerce ( unsafeCoerce )
 

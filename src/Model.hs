@@ -59,6 +59,7 @@ import qualified OpenSum
 import Debug.Trace
 import Sampler
 import Effects.Lift
+import Data.Typeable
 
 {- | Models are parameterised by:
 
@@ -121,7 +122,7 @@ handleCore env_in m = (handleDist . handleObsRW env_in) (runModel m)
     @
 -}
 
-callDist :: forall env x a es. Show a => Observable env x a => PrimDist a -> Var x -> Model env es a
+callDist :: forall env x a es. (Typeable a, Show a) => Observable env x a => PrimDist a -> Var x -> Model env es a
 callDist d field = Model $ do
   let tag =  Just $ varToStr field
   maybe_y <- oAsk @env field
@@ -132,12 +133,12 @@ callDist d field = Model $ do
 callDist' :: PrimDist a -> Model env es a
 callDist' d = Model $ call (Dist d Nothing Nothing)
 
-deterministic :: (Eq a, Show a, Observable env x a) => a
+deterministic :: (Typeable a, Eq a, Show a, Observable env x a) => a
   -> Var x
   -> Model env es a
 deterministic x = callDist (Deterministic x)
 
-deterministic' :: (Eq a, Show a) =>
+deterministic' :: (Typeable a, Eq a, Show a) =>
   -- | value to be deterministically generated
      a
   -> Model env es a
@@ -155,13 +156,13 @@ dirichlet' ::
   -> Model env es [Double]
 dirichlet' xs = callDist' (Dirichlet xs)
 
-discrete :: (Eq a, Show a, Observable env x a) =>
+discrete :: (Typeable a, Eq a, Show a, Observable env x a) =>
      [(a, Double)]
   -> Var x
   -> Model env es a
 discrete ps = callDist (Discrete ps)
 
-discrete' :: (Eq a, Show a) =>
+discrete' :: (Typeable a, Eq a, Show a) =>
   -- | primitive values and their probabilities
      [(a, Double)]
   -> Model env es a

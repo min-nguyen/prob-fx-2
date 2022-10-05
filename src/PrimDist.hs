@@ -4,6 +4,9 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 
 {- | A GADT encoding of (a selection of) primitive distributions
@@ -13,6 +16,9 @@
 module PrimDist (
   -- * Primitive distribution
     PrimDist(..)
+  , PrimVal
+  , pattern PrimDistPrf
+  , pattern TypeableDistPrf
   -- * Sampling
   , sample
   , sampleInv
@@ -46,6 +52,7 @@ import Util ( boolToInt )
 import Numeric.Log ( Log(Exp) )
 import qualified Control.Monad.Bayes.Class as MB
 import Control.Monad ((>=>), replicateM)
+import Data.Typeable
 
 
 -- | Primitive distribution
@@ -72,13 +79,14 @@ data PrimDist a where
     :: Double           -- ^ scale
     -> PrimDist Double
   Deterministic
-    :: a                -- ^ value of probability @1@
+    :: Typeable a
+    => a                -- ^ value of probability @1@
     -> PrimDist a
   Dirichlet
     :: [Double]         -- ^ concentrations
     -> PrimDist [Double]
   Discrete
-    :: (Eq a, Show a)
+    :: (Typeable a, Eq a, Show a)
     => [(a, Double)]    -- ^ values and associated probabilities
     -> PrimDist a
   UniformD
@@ -243,3 +251,58 @@ logProb ::
   -> LogP
 logProb d = LogP . log . prob d
 
+
+{- Dictionary proofs for constraints on primitive distributions -}
+data Dict c a where
+  Dict :: c a => Dict c a
+
+-- | An ad-hoc specification of primitive value types, for constraining the outputs of distributions
+type PrimVal = '[Int, Double, [Double], Bool, String]
+
+class    (Show x, OpenSum.Member x PrimVal) => IsPrimVal x
+
+instance (Show x, OpenSum.Member x PrimVal) => IsPrimVal x
+
+-- | For pattern-matching on an arbitrary @PrimDist@ with proof that it generates a primitive value
+pattern PrimDistPrf :: () => (IsPrimVal x) => PrimDist x -> PrimDist x
+pattern PrimDistPrf d <- d@(primDistPrf -> Just Dict)
+
+primDistPrf :: PrimDist x -> Maybe (Dict IsPrimVal x)
+primDistPrf d = case d of
+  HalfCauchy {} -> Just Dict
+  Cauchy {} -> Just Dict
+  Normal {} -> Just Dict
+  HalfNormal  {} -> Just Dict
+  Uniform  {} -> Just Dict
+  UniformD {} -> Just Dict
+  Gamma {} -> Just Dict
+  Beta {} -> Just Dict
+  Binomial {} -> Just Dict
+  Bernoulli {} -> Just Dict
+  Categorical {} -> Just Dict
+  Poisson {} -> Just Dict
+  Dirichlet {} -> Just Dict
+  Deterministic {} -> Nothing
+  Discrete {} -> Nothing
+
+-- | For pattern-matching on an arbitrary @PrimDist@ with proof that it generates a primitive value
+pattern TypeableDistPrf :: () => (Typeable x) => PrimDist x -> PrimDist x
+pattern TypeableDistPrf d <- d@(typeableDistPrf -> Dict)
+
+typeableDistPrf :: PrimDist x -> Dict Typeable x
+typeableDistPrf d = case d of
+  HalfCauchy {} ->  Dict
+  Cauchy {} ->  Dict
+  Normal {} ->  Dict
+  HalfNormal  {} ->  Dict
+  Uniform  {} ->  Dict
+  UniformD {} ->  Dict
+  Gamma {} ->  Dict
+  Beta {} ->  Dict
+  Binomial {} ->  Dict
+  Bernoulli {} ->  Dict
+  Categorical {} ->  Dict
+  Poisson {} ->  Dict
+  Dirichlet {} ->  Dict
+  Discrete {} ->  Dict
+  Deterministic {} ->  Dict

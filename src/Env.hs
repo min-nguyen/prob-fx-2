@@ -41,7 +41,7 @@ module Env
 import Data.Kind ( Constraint, Type )
 import Data.Proxy ( Proxy(Proxy) )
 import Effects.Dist ( Tag )
-import FindElem ( FindElem(..), Idx(..) )
+import TyCompare ( FindElem(..), Idx(..) )
 import GHC.OverloadedLabels ( IsLabel(..) )
 import GHC.TypeLits ( KnownSymbol, Symbol, symbolVal )
 import Unsafe.Coerce ( unsafeCoerce )

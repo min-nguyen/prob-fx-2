@@ -42,7 +42,6 @@ library
                       Inference.PMMH,
                       Inference.MB,
                       Env,
-                      FindElem,
                       LogP,
                       Model,
                       Node,
@@ -51,6 +50,7 @@ library
                       Prog,
                       Sampler,
                       Trace,
+                      TyCompare,
                       Util
 
   -- Modules included in this library but not exported.

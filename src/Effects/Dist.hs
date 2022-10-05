@@ -20,15 +20,17 @@ module Effects.Dist (
   , Sample(..)
   , pattern SampPrj
   , pattern SampDis
+  , pattern SampleTypeable
   -- ** Observe effect
   , Observe(..)
   , pattern ObsPrj
   , pattern ObsDis
   ) where
 
+import Type.Reflection
 import Data.Maybe ( fromMaybe )
 import qualified Data.Map as Map
-import PrimDist (PrimDist)
+import PrimDist (PrimDist, pattern TypeableDistPrf)
 import Prog ( call, discharge, weaken, Member(..), Prog(..), EffectSum )
 import qualified OpenSum
 import Util
@@ -62,6 +64,10 @@ pattern SampPrj d α <- (prj -> Just (Sample d α))
 -- | For discharging and then successfully pattern matching against @Sample@
 pattern SampDis :: (Show x) => PrimDist x -> Addr -> EffectSum (Sample : es) x
 pattern SampDis d α <- (discharge -> Right (Sample d α))
+
+-- | For pattern matching against a typeable @Sample@
+pattern SampleTypeable :: () => Typeable x =>  PrimDist x -> Addr -> Sample x
+pattern SampleTypeable d α <- (Sample (TypeableDistPrf d) α)
 
 -- | The effect @Observe@ for conditioning against observed values
 data Observe a where

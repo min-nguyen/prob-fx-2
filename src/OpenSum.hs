@@ -16,7 +16,7 @@ module OpenSum (
 
 import Data.Kind (Type, Constraint)
 import Data.Typeable ( Typeable )
-import FindElem ( Idx(..), FindElem(..) )
+import TyCompare ( Idx(..), FindElem(..) )
 import GHC.TypeLits (Nat, KnownNat, natVal, TypeError, ErrorMessage (Text, (:$$:), (:<>:), ShowType))
 import qualified GHC.TypeLits as TL
 import Unsafe.Coerce ( unsafeCoerce )
