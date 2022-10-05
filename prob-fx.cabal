@@ -81,6 +81,7 @@ library
                       criterion                     >= 1.5.13 && < 1.6,
                       split                         >= 0.2.3 && < 0.3,
                       monad-bayes                   >= 0.2.0 && < 0.2.1,
+                      math-functions,
                       ad,
                       reflection
 

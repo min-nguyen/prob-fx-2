@@ -7,6 +7,8 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE PolyKinds #-}
 
 
 {- | A GADT encoding of (a selection of) primitive distributions
@@ -112,6 +114,7 @@ data PrimDist a where
     :: Double           -- ^ lower-bound @a@
     -> Double           -- ^ upper-bound @b@
     -> PrimDist Double
+
 
 instance Show (PrimDist a) where
   show (Cauchy mu sigma) =
@@ -252,11 +255,11 @@ logProb ::
   -> LogP
 logProb d = LogP . log . prob d
 
--- | Compute the gradient log density of a primitive distribution generating an observed value
+-- | Given fixed parameters and observed value, compute the gradients of a distribution's log-pdf w.r.t its parameters
 gradLogProb ::
      PrimDist a
   -> a
-  -> Double
+  -> PrimDist a
 gradLogProb d y = error "to do"
 
 {- Dictionary proofs for constraints on primitive distributions -}

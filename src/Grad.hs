@@ -1,32 +1,38 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use camelCase" #-}
+
 module Grad where
 
 
 -- import Numeric.AD
 import Data.Reflection
+import Numeric.AD.Mode
 import Numeric.AD.Mode.Reverse
 import Numeric.AD.Internal.Reverse
-import Statistics.Distribution ( ContDistr(density), DiscreteDistr(probability) )
-import Statistics.Distribution.Beta ( betaDistr )
-import Statistics.Distribution.Binomial ( binomial )
-import Statistics.Distribution.CauchyLorentz ( cauchyDistribution )
-import Statistics.Distribution.Dirichlet ( dirichletDensity, dirichletDistribution )
-import Statistics.Distribution.DiscreteUniform ( discreteUniformAB )
-import Statistics.Distribution.Gamma ( gammaDistr )
-import Statistics.Distribution.Normal ( normalDistr )
-import Statistics.Distribution.Poisson ( poisson )
-import Statistics.Distribution.Uniform ( uniformDistr )
+import Numeric.MathFunctions.Constants
+
+-- Log pdf using just Doubles
+normalLogPdfRaw :: [Double] -> Double
+normalLogPdfRaw [mean, variance, y] = (-ym * ym / (2 * variance)) - (log (m_sqrt_2_pi * sqrt variance))
+  where ym = y - mean
+
+-- Log pdf explicitly using Reverse s Double
+normalLogPdfRev :: Reifies s Tape => [Reverse s Double] -> Reverse s Double
+normalLogPdfRev [mean, variance, y] = (-ym * ym / (2 * variance)) - (log (auto m_sqrt_2_pi * sqrt variance))
+  where ym = y - mean
+
+-- Log pdf where "a ~ Reverse s Double" or "a ~ Double"
+normalLogPdf :: (Floating a, Mode a, Scalar a ~ Double) => [a] -> a
+normalLogPdf [mean, variance, y] = (-ym * ym / (2 * variance)) - (log (auto m_sqrt_2_pi * sqrt variance))
+  where ym = y - mean
 
 
--- normalDensity :: [Double] -> Double
--- normalDensity (x:y:xs) = density (normalDistr 0 1) x
+gradNormalLogPdf_example :: [Double]
+gradNormalLogPdf_example = grad normalLogPdf [0, 1, 0]
 
--- gradNormalDensity = grad normalDensity
-
--- g :: (Numeric.AD.Internal.Reverse.Reverse s Double) ->  (Numeric.AD.Internal.Reverse.Reverse s Double)
-g :: Reifies s Tape => Reverse s Double -> Reverse s Double
-g = log
-
-f :: Double
-f = diff g 0 -- (\[x,y,z] -> x * y * z)
+r :: Double
+r = normalLogPdf []

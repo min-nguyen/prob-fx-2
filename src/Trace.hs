@@ -28,6 +28,7 @@ module Trace (
   , GTrace
   -- * Dist trace
   , DTrace
+  , insert
   , lookupOrInsert
   , Key(..)) where
 
@@ -143,7 +144,7 @@ traceSamples = handleState Map.empty . storeSamples
 
 {- | The type of gradient traces.
 -}
-type GTrace = Trace Double
+type GTrace = DTrace
 
 {- | The type of primitive distribution traces.
 -}
