@@ -25,7 +25,8 @@ module PrimDist (
   , sampleBayes
   -- * Density
   , prob
-  , logProb) where
+  , logProb
+  , gradLogProb) where
 
 import Data.Kind ( Constraint )
 import Data.Map (Map)
@@ -251,6 +252,12 @@ logProb ::
   -> LogP
 logProb d = LogP . log . prob d
 
+-- | Compute the gradient log density of a primitive distribution generating an observed value
+gradLogProb ::
+     PrimDist a
+  -> a
+  -> Double
+gradLogProb d y = error "to do"
 
 {- Dictionary proofs for constraints on primitive distributions -}
 data Dict c a where

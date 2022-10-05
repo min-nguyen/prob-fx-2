@@ -24,6 +24,8 @@ module Trace (
   -- * Log-probability trace
   , LPTrace
   , traceLogProbs
+  -- * Gradient trace
+  , GTrace
   -- * Dist trace
   , DTrace
   , lookupOrInsert
@@ -139,6 +141,9 @@ traceSamples = handleState Map.empty . storeSamples
                                              k x
           )
 
+{- | The type of gradient traces.
+-}
+type GTrace = Trace Double
 
 {- | The type of primitive distribution traces.
 -}
