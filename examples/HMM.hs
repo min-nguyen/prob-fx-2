@@ -19,7 +19,6 @@ import Data.Kind (Constraint)
 import Effects.Writer ( handleWriterM, tellM, Writer )
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
 import Inference.LW as LW ( lw )
-import Inference.MB as MB ( handleMBayes )
 import Inference.MH as MH ( mh )
 import Inference.SMC as SMC ( smc )
 import Inference.SIM as SIM ( simulate )
@@ -27,14 +26,17 @@ import Inference.RMSMC as RMSMC ( rmsmc )
 import Inference.PMMH as PMMH ( pmmh )
 import Inference.SMC2 as SMC2 ( smc2 )
 import Model ( Model, bernoulli', binomial, uniform )
-import Numeric.Log ( Log )
 import Prog ( Member )
+import Sampler ( Sampler, liftIO )
+import Util (boolToInt)
+{-
+import Numeric.Log ( Log )
+import Inference.MB as MB ( handleMBayes )
 import qualified Control.Monad.Bayes.Class as Bayes
 import qualified Control.Monad.Bayes.Sampler.Strict as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
-import Sampler ( Sampler, liftIO )
-import Util (boolToInt)
+-}
 
 -- | A HMM environment
 type HMMEnv =
@@ -341,7 +343,6 @@ smc2HMMw n_outer_particles n_mhsteps n_inner_particles  hmm_length = do
   pure (trans_ps, obs_ps)
 
 {- | Interfacing the HMM on top of Monad Bayes.
--}
 
 -- | Translate the HMM under a model environment to a program in Monad Bayes
 mbayesHMM :: ( Bayes.MonadInfer m
@@ -404,6 +405,8 @@ mhHMMMB n_mhsteps hmm_length = do
   -- Specify a model environment containing those observations
   let env_in = (#trans_p := []) <:> #obs_p := [] <:> (#y := ys) <:>  enil
   Bayes.sampleIO $ Bayes.unweighted $ Bayes.mh n_mhsteps (mbayesHMM hmm_length 0 env_in)
+
+-}
 
 {- | A higher-order, generic HMM.
 -}

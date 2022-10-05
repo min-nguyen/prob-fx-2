@@ -20,16 +20,18 @@ import Inference.SMC as SMC ( smc )
 import Inference.RMSMC as RMSMC ( rmsmc )
 import Inference.PMMH as PMMH ( pmmh )
 import Inference.SMC2 as SMC2 ( smc2 )
-import Inference.MB as MB ( handleMBayes )
 import Sampler ( Sampler )
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
+{-
 import Numeric.Log ( Log )
+import Inference.MB as MB ( handleMBayes )
 import qualified Control.Monad.Bayes.Class as Bayes
 import qualified Control.Monad.Bayes.Sampler.Strict as Bayes
 import qualified Control.Monad.Bayes.Traced as Bayes
 import qualified Control.Monad.Bayes.Weighted as Bayes
+-}
 
 {- | Linear regression environment.
 -}
@@ -200,7 +202,6 @@ mhLinRegrOnce n_mhsteps n_datapoints = do
   pure (mus, cs)
 
 {- | Executing linear regression model using monad-bayes.
--}
 mbayesLinRegr :: (Bayes.MonadInfer m, Observables env '["y", "m", "c", "σ"] Double) =>
  [Double] -> Env env -> m ([Double], Env env)
 mbayesLinRegr xs = handleMBayes (linRegr xs)
@@ -228,3 +229,4 @@ mhLinRegrMB n_samples n_datapoints = do
       mus = concatMap (get #m) env_outs
   print mus
   pure mhtrace
+-}
