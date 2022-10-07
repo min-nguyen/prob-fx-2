@@ -40,6 +40,7 @@ library
                       Inference.SMC2,
                       Inference.RMSMC,
                       Inference.PMMH,
+                      -- Numeric.SpecFunctions.Internal,
                       -- Inference.MB,
                       Env,
                       LogP,
