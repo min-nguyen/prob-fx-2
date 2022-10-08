@@ -21,12 +21,16 @@ import Numeric.SpecFunctions (
 {- Normal -}
 -- Log pdf using Double
 normalLogPdfRaw :: [Double] -> Double
-normalLogPdfRaw [mean, variance, x] = (-xm * xm / (2 * variance)) - log (m_sqrt_2_pi * sqrt variance)
+normalLogPdfRaw [mean, variance, x]
+  | variance <= 0 = error "normalLogPdfRaw: variance <= 0"
+  | otherwise     = (-xm * xm / (2 * variance)) - log (m_sqrt_2_pi * sqrt variance)
   where xm = x - mean
 
 -- Gradient of log pdf directly
 normalGradLogPdfRaw :: [Double] -> [Double]
-normalGradLogPdfRaw [mean, variance, x] = [dm, dv, dx]
+normalGradLogPdfRaw [mean, variance, x]
+  | variance <= 0 = error "normalGradLogPdfRaw: variance <= 0"
+  | otherwise     = [dm, dv, dx]
   where xm = x - mean
         dm = xm/variance
         dv = -1/(2 * variance) + ((xm/sqrt variance)**2)/(2*variance)
@@ -51,12 +55,16 @@ normalGradLogPdf_example = grad normalLogPdf [0, 1, 0]
 {- Half Normal -}
 -- Log pdf using Double
 halfNormalLogPdfRaw :: [Double] -> Double
-halfNormalLogPdfRaw [variance, x] = (-x * x / (2 * variance)) - log (m_sqrt_2_pi * sqrt variance)
+halfNormalLogPdfRaw [variance, x]
+  | x < 0         = m_neg_inf
+  | variance <= 0 = error "halfNormalLogPdfRaw: variance <= 0"
+  | otherwise = (-x * x / (2 * variance)) - log (m_sqrt_2_pi * sqrt variance)
 
 -- Gradient of log pdf directly
 halfNormalGradLogPdfRaw :: [Double] -> [Double]
 halfNormalGradLogPdfRaw [variance, x]
-  | x < 0     = error "No gradient at x < 0"
+  | x < 0         = error "halfNormalGradLogPdfRaw: No gradient at x < 0"
+  | variance <= 0 = error "halfNormalGradLogPdfRaw: variance <= 0"
   | otherwise = [dv, dx]
   where dv = -1/(2 * variance) + ((x/sqrt variance)**2)/(2*variance)
         dx = -x/variance
@@ -64,11 +72,17 @@ halfNormalGradLogPdfRaw [variance, x]
 {- Gamma -}
 -- Log pdf using just Doubles
 gammaLogPdfRaw :: [Double] -> Double
-gammaLogPdfRaw [k, t, x] = (k - 1) * log x - (x/t) - logGamma k - (k * log t)
+gammaLogPdfRaw [k, t, x]
+  | k <= 0 || t <= 0 = error "gammaLogPdfRaw: k <= 0 || t <= 0"
+  | x <= 0           = m_neg_inf
+  | otherwise = (k - 1) * log x - (x/t) - logGamma k - (k * log t)
 
 -- Gradient of log pdf directly
 gammaGradLogPdfRaw :: [Double] -> [Double]
-gammaGradLogPdfRaw [k, t, x] = [dk, dt, dx]
+gammaGradLogPdfRaw [k, t, x]
+  | k <= 0 || t <= 0 = error "gammaGradLogPdfRaw: k <= 0 || t <= 0"
+  | x <= 0           = error "gammaGradLogPdfRaw: x <= 0 "
+  | otherwise = [dk, dt, dx]
   where dk = log x - digamma k - log t
         dt = x/(t**2) - k/t
         dx = (k - 1)/x - 1/t
@@ -77,14 +91,18 @@ gammaGradLogPdfRaw [k, t, x] = [dk, dt, dx]
 -- Log pdf using just Doubles
 betaLogPdfRaw :: [Double] -> Double
 betaLogPdfRaw [a, b, x]
-    | a <= 0 || b <= 0 = m_NaN
+    | a <= 0 || b <= 0 =  error "betaLogPdfRaw:  a <= 0 || b <= 0 "
     | x <= 0 = m_neg_inf
     | x >= 1 = m_neg_inf
     | otherwise = (a-1)*log x + (b-1)*log1p (-x) - logBeta a b
 
 -- Gradient of log pdf directly
 betaGradLogPdfRaw :: [Double] -> [Double]
-betaGradLogPdfRaw [a, b, x] = [da, db, dx]
+betaGradLogPdfRaw [a, b, x]
+  | a <= 0 || b <= 0 = error "betaGradLogPdfRaw: a <= 0 || b <= 0"
+  | x <= 0 = error "betaGradLogPdfRaw: x <= 0"
+  | x >= 1 = error "betaGradLogPdfRaw: x >= 0"
+  | otherwise = [da, db, dx]
   where digamma_ab = digamma (a + b)
         da = log x       - digamma a + digamma_ab
         db = log (1 - x) - digamma b + digamma_ab
