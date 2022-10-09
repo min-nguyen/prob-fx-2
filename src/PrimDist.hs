@@ -26,7 +26,6 @@ module PrimDist (
   , sampleInv
   -- , sampleBayes
   -- * Density
-  , prob
   , logProb
   , gradLogProb) where
 
@@ -39,7 +38,7 @@ import qualified Data.Vector as Vec
 import qualified Data.Vector.Unboxed as UV
 import qualified OpenSum
 import qualified System.Random.MWC.Distributions as MWC
-import Statistics.Distribution ( ContDistr(density), DiscreteDistr(probability) )
+import Statistics.Distribution ( ContDistr(density, logDensity), DiscreteDistr(probability, logProbability) )
 import Statistics.Distribution.Beta ( betaDistr )
 import Statistics.Distribution.Binomial ( binomial )
 import Statistics.Distribution.CauchyLorentz ( cauchyDistribution )
@@ -52,9 +51,11 @@ import Statistics.Distribution.Uniform ( uniformDistr )
 import Sampler
 import LogP ( LogP(..) )
 import Util ( boolToInt )
-import Numeric.Log ( Log(Exp) )
+import Numeric.Log ( Log(..) )
 import Control.Monad ((>=>), replicateM)
 import Data.Typeable
+import GHC.Real (infinity)
+import Numeric.MathFunctions.Constants (m_neg_inf)
 -- import qualified Control.Monad.Bayes.Class as MB
 
 
@@ -185,49 +186,6 @@ sampleInv d = case d of
   (Dirichlet xs )     -> sampleDirichletInv xs
   (Deterministic x)   -> const (pure x)
 
--- | Compute the density of a primitive distribution generating an observed value
-prob ::
-  -- | distribution
-     PrimDist a
-  -- | observed value
-  -> a
-  -- | density
-  -> Double
-prob (Dirichlet xs) ys =
-  let xs' = map (/Prelude.sum xs) xs
-  in  if Prelude.sum xs' /= 1 then error "dirichlet can't normalize" else
-      case dirichletDistribution (UV.fromList xs')
-      of Left e -> error "dirichlet error"
-         Right d -> let Exp p = dirichletDensity d (UV.fromList ys)
-                        in  exp p
-prob (HalfCauchy σ) y
-  = if y < 0 then 0 else 2 * density (cauchyDistribution 0 σ) y
-prob (Cauchy μ σ) y
-  = density (cauchyDistribution μ σ) y
-prob (HalfNormal σ) y
-  = if y < 0 then 0 else 2 * density (normalDistr 0 σ) y
-prob (Normal μ σ) y
-  = density (normalDistr μ σ) y
-prob (Uniform min max) y
-  = density (uniformDistr min max) y
-prob (Gamma k θ) y
-  = density (gammaDistr k θ) y
-prob  (Beta α β) y
-  = density (betaDistr α β) y
-prob (UniformD min max) y
-  = probability (discreteUniformAB min max) y
-prob (Binomial n p) y
-  = probability (binomial n p) y
-prob (Bernoulli p) i
-  = probability (binomial 1 p) (boolToInt i)
-prob d@(Discrete ps) y
-  = case lookup y ps of
-      Nothing -> error $ "Couldn't find " ++ show y ++ " in categorical dist"
-      Just p  -> p
-prob (Categorical ps) y  = ps !! y
-prob (Poisson λ) y       = probability (poisson λ) y
-prob (Deterministic x) y = if x == y then 1 else 0
-
 -- | Compute the log density of a primitive distribution generating an observed value
 logProb ::
   -- | distribution
@@ -236,7 +194,43 @@ logProb ::
   -> a
   -- | log density
   -> LogP
-logProb d = LogP . log . prob d
+logProb (Normal μ σ) y
+  = LogP $ logDensity (normalDistr μ σ) y
+logProb (HalfNormal σ) y
+  = LogP $ if y < 0 then m_neg_inf else log 2 + logDensity (normalDistr 0 σ) y
+logProb (Cauchy μ σ) y
+  = LogP $ logDensity (cauchyDistribution μ σ) y
+logProb (HalfCauchy σ) y
+  = LogP $ if y < 0 then m_neg_inf else log 2 + logDensity (cauchyDistribution 0 σ) y
+logProb (Gamma k θ) y
+  = LogP $ logDensity (gammaDistr k θ) y
+logProb (Beta α β) y
+  = LogP $ logDensity (betaDistr α β) y
+logProb (Uniform min max) y
+  = LogP $ logDensity (uniformDistr min max) y
+logProb (Dirichlet xs) ys =
+  let xs' = map (/Prelude.sum xs) xs
+  in  if Prelude.sum xs' /= 1 then error "Dirichlet can't normalize" else
+      case dirichletDistribution (UV.fromList xs')
+      of Left e -> error $ "Dirichlet error: " ++ e
+         Right d -> let p = dirichletDensity d (UV.fromList ys)
+                    in  LogP (ln p)
+logProb (Bernoulli p) i
+  = LogP $ logProbability (binomial 1 p) (boolToInt i)
+logProb (Binomial n p) y
+  = LogP $ logProbability (binomial n p) y
+logProb (Poisson λ) y
+  = LogP $ logProbability (poisson λ) y
+logProb (Deterministic x) y
+  = if x == y then LogP 0 else LogP m_neg_inf
+logProb (Categorical ps) y
+  = LogP $ log (ps !! y)
+logProb d@(Discrete ps) y
+  = case lookup y ps of
+      Nothing -> error $ "Couldn't find " ++ show y ++ " in Discrete dist"
+      Just p  -> LogP $ log p
+logProb (UniformD min max) y
+  = LogP $ logProbability (discreteUniformAB min max) y
 
 -- | Given fixed parameters and observed value, compute the gradients of a distribution's log-pdf w.r.t its parameters
 gradLogProb ::
