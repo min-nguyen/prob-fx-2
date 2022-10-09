@@ -69,6 +69,9 @@ halfNormalGradLogPdfRaw [variance, x]
   where dv = -1/(2 * variance) + ((x/sqrt variance)**2)/(2*variance)
         dx = -x/variance
 
+{- Cauchy -}
+
+
 {- Gamma -}
 -- Log pdf using just Doubles
 gammaLogPdfRaw :: [Double] -> Double

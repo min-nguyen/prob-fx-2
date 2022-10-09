@@ -82,7 +82,7 @@ data PrimDist a where
     :: Double           -- ^ scale
     -> PrimDist Double
   Deterministic
-    :: Typeable a
+    :: (Typeable a, Eq a)
     => a                -- ^ value of probability @1@
     -> PrimDist a
   Dirichlet
@@ -243,7 +243,7 @@ prob d@(Discrete ps) y
       Just p  -> p
 prob (Categorical ps) y  = ps !! y
 prob (Poisson λ) y       = probability (poisson λ) y
-prob (Deterministic x) y = 1
+prob (Deterministic x) y = if x == y then 1 else 0
 
 -- | Compute the log density of a primitive distribution generating an observed value
 logProb ::
