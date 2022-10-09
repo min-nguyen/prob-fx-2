@@ -117,3 +117,15 @@ dirichletLogPdfRaw [as, xs]
   | any (<= 0) xs              = m_neg_inf   -- | data should be non-negative
   | otherwise = c + sum (zipWith (\a x -> (a - 1) * log x) as xs)
   where c = - sum (map logGamma as) + logGamma (sum as)
+
+-- Gradient of log pdf directly
+dirichletGradLogPdfRaw :: [[Double]] -> [[Double]]
+dirichletGradLogPdfRaw [as, xs]
+  | length xs /= length as     = error "dirichletGradLogPdfRaw: length xs /= length as"
+  | abs (sum as - 1.0) > 1e-14 = error "dirichletGradLogPdfRaw: weights should sum to 1"
+  | abs (sum xs - 1.0) > 1e-14 = error "dirichletGradLogPdfRaw: data should sum to 1"
+  | any (<= 0) as              = error "dirichletGradLogPdfRaw: weights should be non-negative"
+  | any (<= 0) xs              = error "dirichletGradLogPdfRaw: data should be non-negative"
+  | otherwise = [zipWith derivA as xs, zipWith derivX as xs]
+  where derivA a x  = -(digamma a) - m_eulerMascheroni + log x
+        derivX a x = (a - 1) / x
