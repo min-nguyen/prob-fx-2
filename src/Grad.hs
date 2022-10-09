@@ -18,6 +18,24 @@ import Numeric.MathFunctions.Constants
 import Numeric.SpecFunctions (
   incompleteBeta, invIncompleteBeta, logBeta, logGamma, digamma, log1p)
 
+{- AD experiments
+-- Log pdf explicitly using Reverse s Double
+normalLogPdfRev :: Reifies s Tape => [Reverse s Double] -> Reverse s Double
+normalLogPdfRev [mean, variance, x] = (-xm * xm / (2 * variance)) - log (auto m_sqrt_2_pi * sqrt variance)
+  where xm = x - mean
+
+-- Log pdf where "a ~ Reverse s Double" or "a ~ Double"
+normalLogPdf :: (Floating a, Mode a, Scalar a ~ Double) => [a] -> a
+normalLogPdf [mean, variance, x] = (-xm * xm / (2 * variance)) - log (auto m_sqrt_2_pi * sqrt variance)
+  where xm = x - mean
+
+normalLogPdf_example :: Double
+normalLogPdf_example = normalLogPdf [0, 1, 0]
+
+normalGradLogPdf_example :: [Double]
+normalGradLogPdf_example = grad normalLogPdf [0, 1, 0]
+-}
+
 {- Normal -}
 -- Log pdf using Double
 normalLogPdfRaw :: [Double] -> Double
@@ -36,45 +54,50 @@ normalGradLogPdfRaw [mean, variance, x]
         dv = -1/(2 * variance) + ((xm/sqrt variance)**2)/(2*variance)
         dx = -dm
 
--- Log pdf explicitly using Reverse s Double
-normalLogPdfRev :: Reifies s Tape => [Reverse s Double] -> Reverse s Double
-normalLogPdfRev [mean, variance, x] = (-xm * xm / (2 * variance)) - log (auto m_sqrt_2_pi * sqrt variance)
-  where xm = x - mean
-
--- Log pdf where "a ~ Reverse s Double" or "a ~ Double"
-normalLogPdf :: (Floating a, Mode a, Scalar a ~ Double) => [a] -> a
-normalLogPdf [mean, variance, x] = (-xm * xm / (2 * variance)) - log (auto m_sqrt_2_pi * sqrt variance)
-  where xm = x - mean
-
-normalLogPdf_example :: Double
-normalLogPdf_example = normalLogPdf [0, 1, 0]
-
-normalGradLogPdf_example :: [Double]
-normalGradLogPdf_example = grad normalLogPdf [0, 1, 0]
-
-{- Half Normal -}
+{- HalfNormal -}
 -- Log pdf using Double
 halfNormalLogPdfRaw :: [Double] -> Double
 halfNormalLogPdfRaw [variance, x]
-  | x < 0         = m_neg_inf
-  | variance <= 0 = error "halfNormalLogPdfRaw: variance <= 0"
-  | otherwise = (-x * x / (2 * variance)) - log (m_sqrt_2_pi * sqrt variance)
+  = log 2 + normalLogPdfRaw [0, variance, x]
 
 -- Gradient of log pdf directly
 halfNormalGradLogPdfRaw :: [Double] -> [Double]
 halfNormalGradLogPdfRaw [variance, x]
   | x < 0         = error "halfNormalGradLogPdfRaw: No gradient at x < 0"
   | variance <= 0 = error "halfNormalGradLogPdfRaw: variance <= 0"
-  | otherwise = [dv, dx]
-  where dv = -1/(2 * variance) + ((x/sqrt variance)**2)/(2*variance)
-        dx = -x/variance
+  | otherwise     = tail $ normalGradLogPdfRaw [0, variance, x]
 
 {- Cauchy -}
+-- Log pdf using Double
 cauchyLogPdfRaw :: [Double] -> Double
-cauchyLogPdfRaw [mean, variance, x]
-  | variance <= 0 = error "cauchyLogPdfRaw: variance <= 0"
-  | otherwise     = -(log pi) + log variance - log (xm**2 + variance**2)
-  where xm = x - mean
+cauchyLogPdfRaw [loc, scale, x]
+  | scale <= 0 = error "cauchyLogPdfRaw: scale <= 0"
+  | otherwise     = -(log pi) + log scale - log (xloc**2 + scale**2)
+  where xloc = x - loc
+
+-- Gradient of log pdf directly
+cauchyGradLogPdfRaw :: [Double] -> [Double]
+cauchyGradLogPdfRaw [loc, scale, x]
+  | scale <= 0 = error "cauchyGradLogPdfRaw: scale <= 0"
+  | otherwise     = [dl, ds, dx]
+  where xloc      = x - loc
+        xlocSqrd  = xloc**2
+        scaleSqrd = scale**2
+        dl = (2 * xloc)/(xlocSqrd + scaleSqrd)
+        ds = 1/scale - (2 * scale)/(xlocSqrd + scaleSqrd)
+        dx = -dl
+
+{- HalfCauchy -}
+-- Log pdf using Double
+halfCauchyLogPdfRaw :: [Double] -> Double
+halfCauchyLogPdfRaw [scale, x]
+  = log 2 + cauchyLogPdfRaw [0, scale, x]
+
+-- Gradient of log pdf directly
+halfCauchyGradLogPdfRaw :: [Double] -> [Double]
+halfCauchyGradLogPdfRaw [scale, x]
+  | scale <= 0 = error "cauchyGradLogPdfRaw: scale <= 0"
+  | otherwise     = tail $ cauchyGradLogPdfRaw [0, scale, x]
 
 {- Gamma -}
 -- Log pdf using just Doubles

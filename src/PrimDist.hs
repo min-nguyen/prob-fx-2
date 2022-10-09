@@ -115,7 +115,6 @@ data PrimDist a where
     -> Double           -- ^ upper-bound @b@
     -> PrimDist Double
 
-
 instance Show (PrimDist a) where
   show (Cauchy mu sigma) =
    "Cauchy(" ++ show mu ++ ", " ++ show sigma ++ ", " ++ ")"
@@ -185,22 +184,6 @@ sampleInv d = case d of
   (Poisson λ )        -> samplePoissonInv λ
   (Dirichlet xs )     -> sampleDirichletInv xs
   (Deterministic x)   -> const (pure x)
-
--- | Draw a value from a primitive distribution using the @MonadSample@ type class from Monad-Bayes
--- sampleBayes :: MB.MonadSample m => PrimDist a -> m a
--- sampleBayes d = case d of
---   (Uniform a b )    -> MB.uniform a b
---   (Categorical as ) -> MB.categorical (Vec.fromList as)
---   (Discrete as )    -> MB.categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
---   (Normal mu std )  -> MB.normal mu std
---   (Gamma k t )      -> MB.gamma k t
---   (Beta a b )       -> MB.beta a b
---   (Bernoulli p )    -> MB.bernoulli p
---   (Binomial n p )   -> replicateM n (MB.bernoulli p) >>= (pure . length . filter (== True))
---   (Poisson l )      -> MB.poisson l
---   (Dirichlet as )   -> MB.dirichlet (Vec.fromList as) >>= pure . Vec.toList
---   (Deterministic v) -> pure v
---   _                 -> error ("Sampling from " ++ show d ++ " is not supported")
 
 -- | Compute the density of a primitive distribution generating an observed value
 prob ::
@@ -316,3 +299,20 @@ typeableDistPrf d = case d of
   Dirichlet {} ->  Dict
   Discrete {} ->  Dict
   Deterministic {} ->  Dict
+
+{- | Draw a value from a primitive distribution using the @MonadSample@ type class from Monad-Bayes
+sampleBayes :: MB.MonadSample m => PrimDist a -> m a
+sampleBayes d = case d of
+  (Uniform a b )    -> MB.uniform a b
+  (Categorical as ) -> MB.categorical (Vec.fromList as)
+  (Discrete as )    -> MB.categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
+  (Normal mu std )  -> MB.normal mu std
+  (Gamma k t )      -> MB.gamma k t
+  (Beta a b )       -> MB.beta a b
+  (Bernoulli p )    -> MB.bernoulli p
+  (Binomial n p )   -> replicateM n (MB.bernoulli p) >>= (pure . length . filter (== True))
+  (Poisson l )      -> MB.poisson l
+  (Dirichlet as )   -> MB.dirichlet (Vec.fromList as) >>= pure . Vec.toList
+  (Deterministic v) -> pure v
+  _                 -> error ("Sampling from " ++ show d ++ " is not supported")
+-}
