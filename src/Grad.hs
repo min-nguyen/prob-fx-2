@@ -91,7 +91,7 @@ gammaGradLogPdfRaw [k, t, x]
 -- Log pdf using just Doubles
 betaLogPdfRaw :: [Double] -> Double
 betaLogPdfRaw [a, b, x]
-    | a <= 0 || b <= 0 =  error "betaLogPdfRaw:  a <= 0 || b <= 0 "
+    | a <= 0 || b <= 0 = error "betaLogPdfRaw:  a <= 0 || b <= 0 "
     | x <= 0 || x >= 1 = m_neg_inf
     | otherwise = (a-1)*log x + (b-1)*log1p (-x) - logBeta a b
 

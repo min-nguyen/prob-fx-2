@@ -1,4 +1,4 @@
-module Expected where
+module Test.InferenceExpected where
 
 -- | sampleIOFixed (simLinRegrOnce 50)
 simLinRegrOnceExpected :: [(Double, Double)]

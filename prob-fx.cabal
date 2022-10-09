@@ -40,7 +40,6 @@ library
                       Inference.SMC2,
                       Inference.RMSMC,
                       Inference.PMMH,
-                      -- Numeric.SpecFunctions.Internal,
                       -- Inference.MB,
                       Env,
                       LogP,
@@ -142,9 +141,10 @@ test-suite tests
                       examples
 
   main-is:            Main.hs
-  other-modules:      Expected,
+  other-modules:      Test.PDF,
+                      Test.Inference,
+                      Test.InferenceExpected,
                       Examples,
-                      CoinFlip,
                       DataSets,
                       HMM,
                       GMM,
@@ -153,8 +153,7 @@ test-suite tests
                       LogRegr,
                       Radon,
                       School,
-                      SIR,
-                      SIRNonModular
+                      SIR
   build-depends:      base,
                       containers,
                       extensible,
