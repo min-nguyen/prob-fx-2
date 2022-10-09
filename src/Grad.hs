@@ -70,7 +70,11 @@ halfNormalGradLogPdfRaw [variance, x]
         dx = -x/variance
 
 {- Cauchy -}
-
+cauchyLogPdfRaw :: [Double] -> Double
+cauchyLogPdfRaw [mean, variance, x]
+  | variance <= 0 = error "cauchyLogPdfRaw: variance <= 0"
+  | otherwise     = -(log pi) + log variance - log (xm**2 + variance**2)
+  where xm = x - mean
 
 {- Gamma -}
 -- Log pdf using just Doubles
