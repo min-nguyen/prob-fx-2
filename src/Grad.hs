@@ -73,8 +73,8 @@ halfNormalGradLogPdfRaw [variance, x]
 -- Log pdf using just Doubles
 gammaLogPdfRaw :: [Double] -> Double
 gammaLogPdfRaw [k, t, x]
-  | k <= 0 || t <= 0 = error "gammaLogPdfRaw: k <= 0 || t <= 0"
   | x <= 0           = m_neg_inf
+  | k <= 0 || t <= 0 = error "gammaLogPdfRaw: k <= 0 || t <= 0"
   | otherwise = (k - 1) * log x - (x/t) - logGamma k - (k * log t)
 
 -- Gradient of log pdf directly
@@ -92,18 +92,28 @@ gammaGradLogPdfRaw [k, t, x]
 betaLogPdfRaw :: [Double] -> Double
 betaLogPdfRaw [a, b, x]
     | a <= 0 || b <= 0 =  error "betaLogPdfRaw:  a <= 0 || b <= 0 "
-    | x <= 0 = m_neg_inf
-    | x >= 1 = m_neg_inf
+    | x <= 0 || x >= 1 = m_neg_inf
     | otherwise = (a-1)*log x + (b-1)*log1p (-x) - logBeta a b
 
 -- Gradient of log pdf directly
 betaGradLogPdfRaw :: [Double] -> [Double]
 betaGradLogPdfRaw [a, b, x]
   | a <= 0 || b <= 0 = error "betaGradLogPdfRaw: a <= 0 || b <= 0"
-  | x <= 0 = error "betaGradLogPdfRaw: x <= 0"
-  | x >= 1 = error "betaGradLogPdfRaw: x >= 0"
+  | x <= 0 || x >= 1 = error "betaGradLogPdfRaw: x <= 0 || x >= 0"
   | otherwise = [da, db, dx]
   where digamma_ab = digamma (a + b)
         da = log x       - digamma a + digamma_ab
         db = log (1 - x) - digamma b + digamma_ab
         dx = (a - 1)/x + (b - 1)/(1 - x)
+
+{- Dirichlet -}
+-- Log pdf using just Doubles
+dirichletLogPdfRaw :: [[Double]] -> Double
+dirichletLogPdfRaw [as, xs]
+  | length xs /= length as     = m_neg_inf   -- | dimensions should match
+  | abs (sum as - 1.0) > 1e-14 = m_neg_inf   -- | weights should sum to 1
+  | abs (sum xs - 1.0) > 1e-14 = m_neg_inf   -- | data should sum to 1
+  | any (<= 0) as              = m_neg_inf   -- | weights should be non-negative
+  | any (<= 0) xs              = m_neg_inf   -- | data should be non-negative
+  | otherwise = c + sum (zipWith (\a x -> (a - 1) * log x) as xs)
+  where c = - sum (map logGamma as) + logGamma (sum as)
