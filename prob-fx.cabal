@@ -50,7 +50,6 @@ library
                       Prog,
                       Sampler,
                       Trace,
-                      Grad,
                       TyCompare,
                       Util
 

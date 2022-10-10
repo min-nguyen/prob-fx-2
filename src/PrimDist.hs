@@ -27,33 +27,24 @@ module PrimDist (
   -- , sampleBayes
   -- * Density
   , logProb
+  , logProbRaw
   , gradLogProb) where
 
+import Debug.Trace ( trace )
 import Data.Kind ( Constraint )
 import Data.Map (Map)
-import OpenSum (OpenSum)
-import qualified Data.Map as Map
 import qualified Data.Vector as V
-import qualified Data.Vector as Vec
-import qualified Data.Vector.Unboxed as UV
 import qualified OpenSum
-import qualified System.Random.MWC.Distributions as MWC
-import Statistics.Distribution ( ContDistr(density, logDensity), DiscreteDistr(probability, logProbability) )
-import Statistics.Distribution.Beta ( betaDistr )
-import Statistics.Distribution.Binomial ( binomial )
-import Statistics.Distribution.CauchyLorentz ( cauchyDistribution )
-import Statistics.Distribution.Dirichlet ( dirichletDensity, dirichletDistribution )
-import Statistics.Distribution.DiscreteUniform ( discreteUniformAB )
-import Statistics.Distribution.Gamma ( gammaDistr )
-import Statistics.Distribution.Normal ( normalDistr )
-import Statistics.Distribution.Poisson ( poisson )
-import Statistics.Distribution.Uniform ( uniformDistr )
+import Numeric.MathFunctions.Constants
+    ( m_eulerMascheroni, m_neg_inf, m_sqrt_2_pi )
+import Numeric.SpecFunctions (
+  incompleteBeta, invIncompleteBeta, logBeta, logGamma, digamma, log1p, logChoose, logFactorial)
 import Sampler
 import LogP ( LogP(..) )
 import Util ( boolToInt )
 import Numeric.Log ( Log(..) )
 import Control.Monad ((>=>), replicateM)
-import Data.Typeable
+import Data.Typeable ( Typeable )
 import GHC.Real (infinity)
 import Numeric.MathFunctions.Constants (m_neg_inf)
 -- import qualified Control.Monad.Bayes.Class as MB
@@ -151,8 +142,8 @@ instance Show (PrimDist a) where
 -- | Draw a value from a primitive distribution in the @Sampler@ monad
 sample :: PrimDist a -> Sampler a
 sample d = case d of
-  (HalfCauchy σ )     -> sampleCauchy 0 σ >>= pure . abs
-  (Cauchy μ σ )       -> sampleCauchy μ σ
+  (HalfCauchy scale ) -> sampleCauchy 0 scale >>= pure . abs
+  (Cauchy loc scale ) -> sampleCauchy loc scale
   (HalfNormal σ )     -> sampleNormal 0 σ >>= pure . abs
   (Normal μ σ )       -> sampleNormal μ σ
   (Uniform min max )  -> sampleUniform min max
@@ -187,50 +178,48 @@ sampleInv d = case d of
   (Deterministic x)   -> const (pure x)
 
 -- | Compute the log density of a primitive distribution generating an observed value
-logProb ::
+logProb :: PrimDist a -> a -> LogP
+logProb d = LogP . logProbRaw d
+
+logProbRaw ::
   -- | distribution
      PrimDist a
   -- | observed value
   -> a
   -- | log density
-  -> LogP
-logProb (Normal μ σ) y
-  = LogP $ logDensity (normalDistr μ σ) y
-logProb (HalfNormal σ) y
-  = LogP $ if y < 0 then m_neg_inf else log 2 + logDensity (normalDistr 0 σ) y
-logProb (Cauchy μ σ) y
-  = LogP $ logDensity (cauchyDistribution μ σ) y
-logProb (HalfCauchy σ) y
-  = LogP $ if y < 0 then m_neg_inf else log 2 + logDensity (cauchyDistribution 0 σ) y
-logProb (Gamma k θ) y
-  = LogP $ logDensity (gammaDistr k θ) y
-logProb (Beta α β) y
-  = LogP $ logDensity (betaDistr α β) y
-logProb (Uniform min max) y
-  = LogP $ logDensity (uniformDistr min max) y
-logProb (Dirichlet xs) ys =
-  let xs' = map (/Prelude.sum xs) xs
-  in  if Prelude.sum xs' /= 1 then error "Dirichlet can't normalize" else
-      case dirichletDistribution (UV.fromList xs')
-      of Left e -> error $ "Dirichlet error: " ++ e
-         Right d -> let p = dirichletDensity d (UV.fromList ys)
-                    in  LogP (ln p)
-logProb (Bernoulli p) i
-  = LogP $ logProbability (binomial 1 p) (boolToInt i)
-logProb (Binomial n p) y
-  = LogP $ logProbability (binomial n p) y
-logProb (Poisson λ) y
-  = LogP $ logProbability (poisson λ) y
-logProb (Deterministic x) y
-  = if x == y then LogP 0 else LogP m_neg_inf
-logProb (Categorical ps) y
-  = LogP $ log (ps !! y)
-logProb d@(Discrete ps) y
-  = case lookup y ps of
-      Nothing -> error $ "Couldn't find " ++ show y ++ " in Discrete dist"
-      Just p  -> LogP $ log p
-logProb (UniformD min max) y
-  = LogP $ logProbability (discreteUniformAB min max) y
+  -> Double
+logProbRaw (Normal μ σ) y
+  = normalLogPdfRaw μ σ y
+logProbRaw (HalfNormal σ) y
+  = halfNormalLogPdfRaw σ y
+logProbRaw (Cauchy loc scale) y
+  = cauchyLogPdfRaw loc scale y
+logProbRaw (HalfCauchy scale) y
+  = halfCauchyLogPdfRaw scale y
+logProbRaw (Gamma k θ) y
+  = gammaLogPdfRaw k θ y
+logProbRaw (Beta α β) y
+  = betaLogPdfRaw α β y
+logProbRaw (Uniform min max) y
+  = uniformLogPdfRaw min max y
+logProbRaw (Dirichlet xs) ys
+  = let xs' = map (/Prelude.sum xs) xs
+        ys' = map (/Prelude.sum ys) ys
+    in  dirichletLogPdfRaw xs' ys'
+logProbRaw (Bernoulli p) i
+  = bernoulliLogPdfRaw p i
+logProbRaw (Binomial n p) y
+  = binomialLogPdfRaw n p y
+logProbRaw (Poisson λ) y
+  = poissonLogPdfRaw λ y
+logProbRaw (Deterministic x) y
+  = deterministicLogPdfRaw x y
+logProbRaw (Categorical ps) idx
+  = categoricalLogPdfRaw ps idx
+logProbRaw (Discrete ps) y
+  = discreteLogPdfRaw ps y
+logProbRaw (UniformD min max) y
+  = uniformDLogPdfRaw min max y
 
 -- | Given fixed parameters and observed value, compute the gradients of a distribution's log-pdf w.r.t its parameters
 gradLogProb ::
@@ -239,7 +228,181 @@ gradLogProb ::
   -> PrimDist a
 gradLogProb d y = error "to do"
 
-{- Dictionary proofs for constraints on primitive distributions -}
+{- Continuous distributions
+-}
+
+-- | Normal
+normalLogPdfRaw :: Double -> Double -> Double -> Double
+normalLogPdfRaw μ σ x
+  | σ <= 0     = error "normalLogPdfRaw: σ <= 0"
+  | otherwise  = -(xμ * xμ / (2 * (σ ** 2))) - log m_sqrt_2_pi - log σ
+  where xμ = x - μ
+
+normalGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
+normalGradLogPdfRaw μ σ x
+  | σ <= 0 = error "normalGradLogPdfRaw: σ <= 0"
+  | otherwise     = (dμ, dσ, dx)
+  where xμ = x - μ
+        dμ = xμ/(σ ** 2)
+        dσ = -1/σ + (xμ**2)/(σ ** 3)
+        dx = -dμ
+
+-- | HalfNormal
+halfNormalLogPdfRaw :: Double -> Double -> Double
+halfNormalLogPdfRaw σ x
+  = log 2 + normalLogPdfRaw 0 σ x
+
+halfNormalGradLogPdfRaw :: Double -> Double -> (Double, Double)
+halfNormalGradLogPdfRaw σ x
+  | x < 0         = error "halfNormalGradLogPdfRaw: No gradient at x < 0"
+  | σ <= 0        = error "halfNormalGradLogPdfRaw: σ <= 0"
+  | otherwise     = let (_, dσ, dx) = normalGradLogPdfRaw 0 σ x in (dσ, dx)
+
+-- | Cauchy
+cauchyLogPdfRaw :: Double -> Double -> Double -> Double
+cauchyLogPdfRaw loc scale x
+  | scale <= 0 = error "cauchyLogPdfRaw: scale <= 0"
+  | otherwise     = -(log pi) + log scale - log (xloc**2 + scale**2)
+  where xloc = x - loc
+
+cauchyGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
+cauchyGradLogPdfRaw loc scale x
+  | scale <= 0 = error "cauchyGradLogPdfRaw: scale <= 0"
+  | otherwise     = (dl, ds, dx)
+  where xloc      = x - loc
+        xlocSqrd  = xloc**2
+        scaleSqrd = scale**2
+        dl = (2 * xloc)/(xlocSqrd + scaleSqrd)
+        ds = 1/scale - (2 * scale)/(xlocSqrd + scaleSqrd)
+        dx = -dl
+
+-- | HalfCauchy
+halfCauchyLogPdfRaw :: Double -> Double -> Double
+halfCauchyLogPdfRaw scale x
+  = log 2 + cauchyLogPdfRaw 0 scale x
+
+halfCauchyGradLogPdfRaw :: Double -> Double -> (Double, Double)
+halfCauchyGradLogPdfRaw scale x
+  | scale <= 0 = error "cauchyGradLogPdfRaw: scale <= 0"
+  | otherwise     = let (_, ds, dx) = cauchyGradLogPdfRaw 0 scale x in (ds, dx)
+
+-- | Gamma
+gammaLogPdfRaw :: Double -> Double -> Double -> Double
+gammaLogPdfRaw k t x
+  | x <= 0           = m_neg_inf
+  | k <= 0 || t <= 0 = error "gammaLogPdfRaw: k <= 0 || t <= 0"
+  | otherwise = (k - 1) * log x - (x/t) - logGamma k - (k * log t)
+
+gammaGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
+gammaGradLogPdfRaw k t x
+  | k <= 0 || t <= 0 = error "gammaGradLogPdfRaw: k <= 0 || t <= 0"
+  | x <= 0           = error "gammaGradLogPdfRaw: x <= 0 "
+  | otherwise = (dk, dt, dx)
+  where dk = log x - digamma k - log t
+        dt = x/(t**2) - k/t
+        dx = (k - 1)/x - 1/t
+
+-- | Beta
+betaLogPdfRaw :: Double -> Double -> Double -> Double
+betaLogPdfRaw a b x
+    | a <= 0 || b <= 0 = error "betaLogPdfRaw:  a <= 0 || b <= 0 "
+    | x <= 0 || x >= 1 = m_neg_inf
+    | otherwise = (a-1)*log x + (b-1)*log1p (-x) - logBeta a b
+
+betaGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
+betaGradLogPdfRaw a b x
+  | a <= 0 || b <= 0 = error "betaGradLogPdfRaw: a <= 0 || b <= 0"
+  | x <= 0 || x >= 1 = error "betaGradLogPdfRaw: x <= 0 || x >= 0"
+  | otherwise = (da, db, dx)
+  where digamma_ab = digamma (a + b)
+        da = log x       - digamma a + digamma_ab
+        db = log (1 - x) - digamma b + digamma_ab
+        dx = (a - 1)/x + (b - 1)/(1 - x)
+
+-- | Dirichlet
+dirichletLogPdfRaw :: [Double] -> [Double] -> Double
+dirichletLogPdfRaw as xs
+  | length xs /= length as     = trace "length xs /= length as" m_neg_inf   -- | dimensions should match
+  | abs (sum as - 1.0) > 1e-14 = trace "weights should sum to 1" m_neg_inf   -- | weights should sum to 1
+  | abs (sum xs - 1.0) > 1e-14 = trace "data should sum to 1" m_neg_inf   -- | data should sum to 1
+  | any (<= 0) as              = trace "weights should be non-negative" m_neg_inf   -- | weights should be non-negative
+  | any (<= 0) xs              =  trace "data should be non-negative" m_neg_inf   -- | data should be non-negative
+  | otherwise = c + sum (zipWith (\a x -> (a - 1) * log x) as xs)
+  where c = - sum (map logGamma as) + logGamma (sum as)
+
+dirichletGradLogPdfRaw :: [Double] -> [Double] -> ([Double], [Double])
+dirichletGradLogPdfRaw as xs
+  | length xs /= length as     = error "dirichletGradLogPdfRaw: length xs /= length as"
+  | abs (sum as - 1.0) > 1e-14 = error "dirichletGradLogPdfRaw: weights should sum to 1"
+  | abs (sum xs - 1.0) > 1e-14 = error "dirichletGradLogPdfRaw: data should sum to 1"
+  | any (<= 0) as              = error "dirichletGradLogPdfRaw: weights should be non-negative"
+  | any (<= 0) xs              = error "dirichletGradLogPdfRaw: data should be non-negative"
+  | otherwise = (zipWith derivA as xs, zipWith derivX as xs)
+  where derivA a x  = -(digamma a) - m_eulerMascheroni + log x
+        derivX a x = (a - 1) / x
+
+-- | Uniform
+uniformLogPdfRaw :: Double -> Double -> Double -> Double
+uniformLogPdfRaw min max x
+  | max <  min         = error "uniformLogPdfRaw: max < min"
+  | x < min || x > max = m_neg_inf
+  | otherwise = -log(max - min)
+
+{- Discrete distributions
+-}
+
+-- | Bernoulli
+bernoulliLogPdfRaw :: Double -> Bool -> Double
+bernoulliLogPdfRaw p y
+  | y         = log p
+  | otherwise = log (1 - p)
+
+-- | Binomial
+binomialLogPdfRaw :: Int -> Double -> Int -> Double
+binomialLogPdfRaw n p y
+  | y < 0 || y > n          = m_neg_inf
+  | n == 0                  = 0
+  | otherwise               = logChoose n y + log p * y' + log1p (-p) * ny'
+  where
+    y'  = fromIntegral   y
+    ny' = fromIntegral $ n - y
+
+-- | Poisson
+poissonLogPdfRaw :: Double -> Int -> Double
+poissonLogPdfRaw λ y
+  | λ < 0     = error "poissonLogPdfRaw:  λ < 0 "
+  | y < 0     = trace "poissonLogPdfRaw:  y < 0 " m_neg_inf
+  | otherwise = log λ * fromIntegral y - logFactorial y - λ
+
+-- | Deterministic
+deterministicLogPdfRaw :: Eq a => a -> a -> Double
+deterministicLogPdfRaw a b
+  | a == b    = 0
+  | otherwise = m_neg_inf
+
+-- | Categorical
+categoricalLogPdfRaw :: [Double] -> Int -> Double
+categoricalLogPdfRaw ps idx
+  | idx < 0 || idx >= length ps = trace "CategoricalLogPdf: idx < 0 || idx >= length ps" m_neg_inf
+  | otherwise                   = log (ps !! idx)
+
+-- | Discrete
+discreteLogPdfRaw :: (Show a, Eq a) => [(a, Double)] -> a -> Double
+discreteLogPdfRaw ps y =
+  case lookup y ps of
+      Nothing -> trace ("Couldn't find " ++ show y ++ " in Discrete dist") m_neg_inf
+      Just p  -> log p
+
+-- | UniformD
+uniformDLogPdfRaw :: Int -> Int -> Int -> Double
+uniformDLogPdfRaw min max x
+  | max <  min         = error "uniformDLogPdfRaw: max < min"
+  | x < min || x > max =  m_neg_inf
+  | otherwise          = - log (fromIntegral $ max - min + 1)
+
+
+{- Dictionary proofs for constraints on primitive distributions
+-}
 data Dict c a where
   Dict :: c a => Dict c a
 
