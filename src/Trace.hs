@@ -89,9 +89,9 @@ traceLogProbs = handleState Map.empty . storeLPs
         storeLPs (Op u k) = do
           case u of
             SampPrj d α
-              -> Op (weaken u) (\x -> updateTrace α (PrimDist.logProb d x) >> storeLPs (k x))
+              -> Op (weaken u) (\x -> updateTrace α (logProb d x) >> storeLPs (k x))
             ObsPrj d y α
-              -> Op (weaken u) (\x -> updateTrace α (PrimDist.logProb d x) >> storeLPs (k x))
+              -> Op (weaken u) (\x -> updateTrace α (logProb d x) >> storeLPs (k x))
             _ -> Op (weaken u) (storeLPs . k)
 
 
@@ -138,8 +138,8 @@ traceSamples = handleState Map.empty . storeSamples
   where storeSamples :: (Member Sample es) => Prog es a -> Prog (State STrace ': es) a
         storeSamples = install pure
           (\x tx k -> case tx of
-              Sample (PrimDistPrf d) α -> do updateTrace α (ErasedPrimDist d, OpenSum.inj x :: OpenSum PrimVal)
-                                             k x
+              Sample (PrimValDistPrf d) α -> do updateTrace α (ErasedPrimDist d, OpenSum.inj x :: OpenSum PrimVal)
+                                                k x
           )
 
 {- | The type of gradient traces.

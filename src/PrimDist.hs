@@ -19,7 +19,7 @@ module PrimDist (
   -- * Primitive distribution
     PrimDist(..)
   , PrimVal
-  , pattern PrimDistPrf
+  , pattern PrimValDistPrf
   , pattern TypeableDistPrf
   -- * Sampling
   , sample
@@ -30,9 +30,10 @@ module PrimDist (
   , logProbRaw
   , gradLogProb) where
 
-import Debug.Trace ( trace )
+import Debug.Trace
 import Data.Kind ( Constraint )
 import Data.Map (Map)
+import OpenSum (OpenSum)
 import qualified Data.Vector as V
 import qualified OpenSum
 import Numeric.MathFunctions.Constants
@@ -44,7 +45,7 @@ import LogP ( LogP(..) )
 import Util ( boolToInt )
 import Numeric.Log ( Log(..) )
 import Control.Monad ((>=>), replicateM)
-import Data.Typeable ( Typeable )
+import Data.Typeable
 import GHC.Real (infinity)
 import Numeric.MathFunctions.Constants (m_neg_inf)
 -- import qualified Control.Monad.Bayes.Class as MB
@@ -414,11 +415,11 @@ class    (Show x, OpenSum.Member x PrimVal) => IsPrimVal x
 instance (Show x, OpenSum.Member x PrimVal) => IsPrimVal x
 
 -- | For pattern-matching on an arbitrary @PrimDist@ with proof that it generates a primitive value
-pattern PrimDistPrf :: () => (IsPrimVal x) => PrimDist x -> PrimDist x
-pattern PrimDistPrf d <- d@(primDistPrf -> Just Dict)
+pattern PrimValDistPrf :: () => (IsPrimVal x) => PrimDist x -> PrimDist x
+pattern PrimValDistPrf d <- d@(primValDistPrf -> Just Dict)
 
-primDistPrf :: PrimDist x -> Maybe (Dict IsPrimVal x)
-primDistPrf d = case d of
+primValDistPrf :: PrimDist x -> Maybe (Dict IsPrimVal x)
+primValDistPrf d = case d of
   HalfCauchy {} -> Just Dict
   Cauchy {} -> Just Dict
   Normal {} -> Just Dict
