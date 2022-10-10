@@ -50,7 +50,6 @@ import GHC.Real (infinity)
 import Numeric.MathFunctions.Constants (m_neg_inf)
 -- import qualified Control.Monad.Bayes.Class as MB
 
-
 -- | Primitive distribution
 data PrimDist a where
   Bernoulli
@@ -285,7 +284,7 @@ halfCauchyLogPdfRaw scale x
 halfCauchyGradLogPdfRaw :: Double -> Double -> (Double, Double)
 halfCauchyGradLogPdfRaw scale x
   | scale <= 0 = error "cauchyGradLogPdfRaw: scale <= 0"
-  | otherwise     = let (_, ds, dx) = cauchyGradLogPdfRaw 0 scale x in (ds, dx)
+  | otherwise  = let (_, ds, dx) = cauchyGradLogPdfRaw 0 scale x in (ds, dx)
 
 -- | Gamma
 gammaLogPdfRaw :: Double -> Double -> Double -> Double
@@ -358,15 +357,28 @@ bernoulliLogPdfRaw p y
   | y         = log p
   | otherwise = log (1 - p)
 
+bernoulliGradLogPdfRaw :: Double -> Bool -> (Double, Bool)
+bernoulliGradLogPdfRaw p y = (dp, False)
+  where dp = 1/p - fromIntegral (boolToInt y)/(1 - p)
+
 -- | Binomial
 binomialLogPdfRaw :: Int -> Double -> Int -> Double
 binomialLogPdfRaw n p y
   | y < 0 || y > n          = m_neg_inf
-  | n == 0                  = 0
+  | n == 0                  = error "binomialGradLogPdfRaw: n == 0"
   | otherwise               = logChoose n y + log p * y' + log1p (-p) * ny'
   where
     y'  = fromIntegral   y
     ny' = fromIntegral $ n - y
+
+binomialGradLogPdfRaw :: Int -> Double -> Int -> (Int, Double, Int)
+binomialGradLogPdfRaw n p y
+  | y < 0 || y > n          = error "binomialGradLogPdfRaw: y < 0 || y > n"
+  | n == 0                  = error "binomialGradLogPdfRaw: n == 0"
+  | otherwise               = (dn, dp, dy)
+  where dn = 0
+        dp = fromIntegral n/p - fromIntegral (n - y)/(1 - p)
+        dy = 0
 
 -- | Poisson
 poissonLogPdfRaw :: Double -> Int -> Double
