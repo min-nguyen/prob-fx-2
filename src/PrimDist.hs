@@ -152,7 +152,7 @@ sample d = case d of
   (Beta α β  )        -> sampleBeta α β
   (Binomial n p  )    -> sampleBinomial n p
   (Bernoulli p )      -> sampleBernoulli p
-  (Discrete ps )      -> sampleCategorical (V.fromList $ fmap snd ps) >>= \i -> pure $ fst $ ps !! i
+  (Discrete ps )      -> sampleCategorical (V.fromList $ fmap snd ps) >>= (\i -> pure $ fst $ ps !! i)
   (Categorical ps )   -> sampleDiscrete ps
   (Poisson λ )        -> samplePoisson λ
   (Dirichlet xs )     -> sampleDirichlet xs
@@ -171,7 +171,7 @@ sampleInv d = case d of
   (Beta α β  )        -> sampleBetaInv α β
   (Binomial n p  )    -> sampleBinomialInv n p
   (Bernoulli p )      -> sampleBernoulliInv p
-  (Discrete ps )      -> sampleCategoricalInv (V.fromList $ fmap snd ps) >=> \i -> pure $ fst $ ps !! i
+  (Discrete xps )     -> sampleCategoricalInv (V.fromList $ fmap snd xps) >=> (\i -> pure $ fst $ xps !! i)
   (Categorical ps )   -> sampleDiscreteInv ps
   (Poisson λ )        -> samplePoissonInv λ
   (Dirichlet xs )     -> sampleDirichletInv xs
@@ -202,10 +202,8 @@ logProbRaw (Beta α β) y
   = betaLogPdfRaw α β y
 logProbRaw (Uniform min max) y
   = uniformLogPdfRaw min max y
-logProbRaw (Dirichlet xs) ys
-  = let xs' = map (/Prelude.sum xs) xs
-        ys' = map (/Prelude.sum ys) ys
-    in  dirichletLogPdfRaw xs' ys'
+logProbRaw (Dirichlet as) ys
+  = dirichletLogPdfRaw as ys
 logProbRaw (Bernoulli p) i
   = bernoulliLogPdfRaw p i
 logProbRaw (Binomial n p) y
@@ -296,7 +294,7 @@ gammaLogPdfRaw k t x
 gammaGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
 gammaGradLogPdfRaw k t x
   | k <= 0 || t <= 0 = error "gammaGradLogPdfRaw: k <= 0 || t <= 0"
-  | x <= 0           = error "gammaGradLogPdfRaw: x <= 0 "
+  | x <= 0           = error "gammaGradLogPdfRaw: x <= 0"
   | otherwise = (dk, dt, dx)
   where dk = log x - digamma k - log t
         dt = x/(t**2) - k/t
@@ -312,7 +310,7 @@ betaLogPdfRaw a b x
 betaGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
 betaGradLogPdfRaw a b x
   | a <= 0 || b <= 0 = error "betaGradLogPdfRaw: a <= 0 || b <= 0"
-  | x <= 0 || x >= 1 = error "betaGradLogPdfRaw: x <= 0 || x >= 0"
+  | x <= 0 || x >= 1 = error "betaGradLogPdfRaw: x <= 0 || x >= 1"
   | otherwise = (da, db, dx)
   where digamma_ab = digamma (a + b)
         da = log x       - digamma a + digamma_ab
@@ -322,21 +320,19 @@ betaGradLogPdfRaw a b x
 -- | Dirichlet
 dirichletLogPdfRaw :: [Double] -> [Double] -> Double
 dirichletLogPdfRaw as xs
-  | length xs /= length as     = trace "length xs /= length as" m_neg_inf   -- | dimensions should match
-  | abs (sum as - 1.0) > 1e-14 = trace "weights should sum to 1" m_neg_inf   -- | weights should sum to 1
-  | abs (sum xs - 1.0) > 1e-14 = trace "data should sum to 1" m_neg_inf   -- | data should sum to 1
-  | any (<= 0) as              = trace "weights should be non-negative" m_neg_inf   -- | weights should be non-negative
-  | any (<= 0) xs              =  trace "data should be non-negative" m_neg_inf   -- | data should be non-negative
+  | length xs /= length as     = trace "dirichletLogPdfRaw: length xs /= length as" m_neg_inf
+  | abs (sum xs - 1.0) > 1e-14 = trace "dirichletLogPdfRaw: data should sum to 1" m_neg_inf
+  | any (<= 0) as              = trace "dirichletLogPdfRaw: weights should be positive" m_neg_inf
+  | any (<  0) xs              = trace "dirichletLogPdfRaw: data should be non-negative" m_neg_inf
   | otherwise = c + sum (zipWith (\a x -> (a - 1) * log x) as xs)
   where c = - sum (map logGamma as) + logGamma (sum as)
 
 dirichletGradLogPdfRaw :: [Double] -> [Double] -> ([Double], [Double])
 dirichletGradLogPdfRaw as xs
   | length xs /= length as     = error "dirichletGradLogPdfRaw: length xs /= length as"
-  | abs (sum as - 1.0) > 1e-14 = error "dirichletGradLogPdfRaw: weights should sum to 1"
   | abs (sum xs - 1.0) > 1e-14 = error "dirichletGradLogPdfRaw: data should sum to 1"
-  | any (<= 0) as              = error "dirichletGradLogPdfRaw: weights should be non-negative"
-  | any (<= 0) xs              = error "dirichletGradLogPdfRaw: data should be non-negative"
+  | any (<= 0) as              = error "dirichletGradLogPdfRaw: weights should be positive"
+  | any (<  0) xs              = error "dirichletGradLogPdfRaw: data should be non-negative"
   | otherwise = (zipWith derivA as xs, zipWith derivX as xs)
   where derivA a x  = -(digamma a) - m_eulerMascheroni + log x
         derivX a x = (a - 1) / x
@@ -365,7 +361,7 @@ bernoulliGradLogPdfRaw p y = (dp, False)
 binomialLogPdfRaw :: Int -> Double -> Int -> Double
 binomialLogPdfRaw n p y
   | y < 0 || y > n          = m_neg_inf
-  | n == 0                  = error "binomialGradLogPdfRaw: n == 0"
+  | n < 0                   = error "binomialLogPdfRaw: n < 0"
   | otherwise               = logChoose n y + log p * y' + log1p (-p) * ny'
   where
     y'  = fromIntegral   y
@@ -374,7 +370,7 @@ binomialLogPdfRaw n p y
 binomialGradLogPdfRaw :: Int -> Double -> Int -> (Int, Double, Int)
 binomialGradLogPdfRaw n p y
   | y < 0 || y > n          = error "binomialGradLogPdfRaw: y < 0 || y > n"
-  | n == 0                  = error "binomialGradLogPdfRaw: n == 0"
+  | n < 0                   = error "binomialGradLogPdfRaw: n < 0"
   | otherwise               = (dn, dp, dy)
   where dn = 0
         dp = fromIntegral n/p - fromIntegral (n - y)/(1 - p)
@@ -410,7 +406,7 @@ discreteLogPdfRaw ps y =
 uniformDLogPdfRaw :: Int -> Int -> Int -> Double
 uniformDLogPdfRaw min max x
   | max <  min         = error "uniformDLogPdfRaw: max < min"
-  | x < min || x > max =  m_neg_inf
+  | x < min || x > max = m_neg_inf
   | otherwise          = - log (fromIntegral $ max - min + 1)
 
 

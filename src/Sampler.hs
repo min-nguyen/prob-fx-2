@@ -223,9 +223,9 @@ sampleDirichletInv
   :: [Double]  -- ^ concentrations
   -> Double    -- ^ r
   -> Sampler [Double]
-sampleDirichletInv ps r = do
-  let rs = take (length ps) (linCongGen r)
-  xs <- mapM (\(a, r) -> sampleGammaInv a 1 r) (zip ps rs)
+sampleDirichletInv as r = do
+  let rs = take (length as) (linCongGen r)
+  xs <- mapM (\(a, r) -> sampleGammaInv a 1 r) (zip as rs)
   let ys = map (/sum xs) xs
   return ys
 
