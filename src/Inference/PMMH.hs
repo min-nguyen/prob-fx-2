@@ -26,7 +26,7 @@ import qualified Inference.MH as MH
 import qualified Inference.SIS as SIS
 import qualified Inference.SMC as SMC
 import Util
-import Inference.SMC (SMCParticle(particleLogProb, SMCParticle))
+import Inference.SMC (Particle(particleLogProb, Particle))
 
 {- | Top-level wrapper for PMMH inference.
 -}

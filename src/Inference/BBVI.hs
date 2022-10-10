@@ -26,8 +26,6 @@ import Prog ( discharge, Prog(..) )
 import Sampler ( Sampler )
 import Trace
 
-
-
 handleSamp :: DTrace -> GTrace -> LogP -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
 handleSamp dtrace gtrace logW (Val x)   = return x
 handleSamp dtrace gtrace logW (Op op k) = case discharge op of

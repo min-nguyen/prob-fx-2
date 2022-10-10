@@ -31,7 +31,7 @@ import Sampler ( Sampler )
 
 {- | The context of a particle for SMC.
 -}
-newtype SMCParticle = SMCParticle {
+newtype Particle = Particle {
     particleLogProb  :: LogP      -- ^ associated log-probability
   } deriving (Num, ParticleCtx)
 
@@ -51,13 +51,13 @@ smc n_particles model env_in = do
 smcInternal
   :: Int                                              -- ^ number of particles
   -> Prog [Observe, Sample, Lift Sampler] a           -- ^ probabilistic program
-  -> Sampler [(a, SMCParticle)]                       -- ^ final particle results and contexts
+  -> Sampler [(a, Particle)]                       -- ^ final particle results and contexts
 smcInternal n_particles =
   handleLift . SIM.handleSamp . SIM.handleObs . SIS.sis n_particles particleRunner particleResampler
 
 {- | A handler for resampling particles according to their normalized log-likelihoods.
 -}
-particleResampler :: ParticleResampler SMCParticle
+particleResampler :: ParticleResampler Particle
 particleResampler (Val x) = Val x
 particleResampler (Op op k) = case discharge op of
   Right (Resample (prts, ctxs, prog_0)) -> do
@@ -92,9 +92,9 @@ systematic u ps = f 0 (u / fromIntegral n) 0 0 []
        1. the rest of the computation
        2. the log probability of the @Observe operation + the address of the breakpoint
 -}
-particleRunner :: ParticleRunner SMCParticle
-particleRunner (Val x) = pure (Val x, SMCParticle 0)
+particleRunner :: ParticleRunner Particle
+particleRunner (Val x) = pure (Val x, Particle 0)
 particleRunner (Op op k) = case op of
-  ObsPrj d y α -> Val (k y, SMCParticle (logProb d y))
+  ObsPrj d y α -> Val (k y, Particle (logProb d y))
   _            -> Op op (particleRunner . k)
 
