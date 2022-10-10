@@ -164,6 +164,8 @@ test-suite tests
                       statistics,
                       dirichlet,
                       QuickCheck,
+                      log-domain,
+                      vector,
                       -- monad-bayes,
                       log-domain
   default-language:   Haskell2010

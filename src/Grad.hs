@@ -16,7 +16,8 @@ import Numeric.AD.Mode.Reverse
 import Numeric.AD.Internal.Reverse
 import Numeric.MathFunctions.Constants
 import Numeric.SpecFunctions (
-  incompleteBeta, invIncompleteBeta, logBeta, logGamma, digamma, log1p)
+  incompleteBeta, invIncompleteBeta, logBeta, logGamma, digamma, log1p, logChoose, logFactorial)
+import Debug.Trace
 
 {- AD experiments
 -- Log pdf explicitly using Reverse s Double
@@ -36,12 +37,15 @@ normalGradLogPdf_example :: [Double]
 normalGradLogPdf_example = grad normalLogPdf [0, 1, 0]
 -}
 
+{- Continuous distributions
+-}
+
 {- Normal -}
 -- Log pdf using Double
 normalLogPdfRaw :: [Double] -> Double
 normalLogPdfRaw [mean, variance, x]
   | variance <= 0 = error "normalLogPdfRaw: variance <= 0"
-  | otherwise     = (-xm * xm / (2 * variance)) - log (m_sqrt_2_pi * sqrt variance)
+  | otherwise     = -(xm * xm / (2 * variance)) - log m_sqrt_2_pi - (log variance) / 2
   where xm = x - mean
 
 -- Gradient of log pdf directly
@@ -159,3 +163,62 @@ dirichletGradLogPdfRaw [as, xs]
   | otherwise = [zipWith derivA as xs, zipWith derivX as xs]
   where derivA a x  = -(digamma a) - m_eulerMascheroni + log x
         derivX a x = (a - 1) / x
+
+{- Uniform -}
+uniformLogPdfRaw :: [Double] -> Double
+uniformLogPdfRaw [min, max, x]
+  | max <  min         = error "uniformLogPdfRaw: max < min"
+  | x < min || x > max = m_neg_inf
+  | otherwise = -log(max - min)
+
+{- Discrete distributions
+-}
+
+{- Bernoulli -}
+bernoulliLogPdfRaw :: Double -> Bool -> Double
+bernoulliLogPdfRaw p y
+  | y         = log p
+  | otherwise = log (1 - p)
+
+{- Binomial -}
+binomialLogPdfRaw :: Int -> Double -> Int -> Double
+binomialLogPdfRaw n p y
+  | y < 0 || y > n          = m_neg_inf
+  | n == 0                  = 0
+  | otherwise               = logChoose n y + log p * y' + log1p (-p) * ny'
+  where
+    y'  = fromIntegral   y
+    ny' = fromIntegral $ n - y
+
+{- Poisson -}
+poissonLogPdfRaw :: Double -> Int -> Double
+poissonLogPdfRaw λ y
+  | λ < 0     = error "poissonLogPdfRaw:  λ < 0 "
+  | y < 0     = trace "poissonLogPdfRaw:  y < 0 " m_neg_inf
+  | otherwise = log λ * fromIntegral y - logFactorial y - λ
+
+{- Deterministic -}
+deterministicLogPdfRaw :: Eq a => a -> a -> Double
+deterministicLogPdfRaw a b
+  | a == b    = log 0
+  | otherwise = m_neg_inf
+
+{- Categorical -}
+categoricalLogPdfRaw :: [Double] -> Int -> Double
+categoricalLogPdfRaw ps idx
+  | idx < 0 || idx >= length ps = trace "CategoricalLogPdf: idx < 0 || idx >= length ps" m_neg_inf
+  | otherwise                   = log (ps !! idx)
+
+{- Discrete -}
+discreteLogPdfRaw :: (Show a, Eq a) => [(a, Double)] -> a -> Double
+discreteLogPdfRaw ps y =
+  case lookup y ps of
+      Nothing -> trace ("Couldn't find " ++ show y ++ " in Discrete dist") m_neg_inf
+      Just p  -> log p
+
+{- UniformD -}
+uniformDLogPdfRaw :: Int -> Int -> Int -> Double
+uniformDLogPdfRaw min max x
+  | max <  min         = error "uniformDLogPdfRaw: max < min"
+  | x < min || x > max =  m_neg_inf
+  | otherwise          = - log (fromIntegral $ max - min + 1)
