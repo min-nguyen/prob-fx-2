@@ -334,7 +334,7 @@ dirichletGradLogPdfRaw as xs
   | any (<= 0) as              = error "dirichletGradLogPdfRaw: weights should be positive"
   | any (<  0) xs              = error "dirichletGradLogPdfRaw: data should be non-negative"
   | otherwise = (zipWith derivA as xs, zipWith derivX as xs)
-  where derivA a x  = -(digamma a) - m_eulerMascheroni + log x
+  where derivA a x  = -(digamma a) + digamma (sum as) + log x
         derivX a x = (a - 1) / x
 
 -- | Uniform
