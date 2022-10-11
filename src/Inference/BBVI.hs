@@ -40,5 +40,5 @@ handleSamp dtrace gtrace logW (Op op k) = case discharge op of
 
 optimizerStep :: DTrace -> GTrace -> DTrace
 optimizerStep dtrace gtrace = do
-
+  -- foldr (\var grad dtrace -> )
   undefined

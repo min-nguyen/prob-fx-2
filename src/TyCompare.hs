@@ -57,7 +57,7 @@ instance (Typeable a, Typeable b) => TyEq a b where
 {- TrueOrd:  Compare two different types 'a' and 'b' for equality (using TyEq), then
              compare two different values 'x : a' and 'y : a' for ordering
 -}
-data TrueOrdering a b = TrueEQ (a :~~: b) | TrueNEQ | TrueLT | TrueGT
+data TrueOrdering a b = TrueEQ (a :~~: b) | TrueLT | TrueGT
 
 class HeteroOrd (k :: k' -> *) where
   hCompare :: k a -> k b -> Ordering

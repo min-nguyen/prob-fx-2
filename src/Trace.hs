@@ -13,6 +13,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE BangPatterns #-}
 
 {- | For recording samples and log-probabilities during model execution.
 -}
@@ -177,47 +179,59 @@ class (HeteroOrd k, Typeable a, Typeable b) => TrueOrd k a b where
   trueCompare :: k a -> k b -> TrueOrdering a b
 
 instance (HeteroOrd k, Typeable a, Typeable b) => TrueOrd k a b where
-  trueCompare a b = case hCompare a b of
-    EQ -> case eqTypeRep (typeRep @a) (typeRep @b) of
-              Just HRefl -> TrueEQ HRefl
-              Nothing    -> TrueNEQ
-    LT -> TrueLT
-    GT -> TrueGT
+  trueCompare a b = case (hCompare a b, compare (show (typeRep @a)) (show (typeRep @a))) of
+    (EQ, EQ) -> case eqTypeRep (typeRep @a) (typeRep @b) of
+                  Just HRefl -> TrueEQ HRefl
+                  Nothing    -> error "Should not happen."
+    (EQ, LT) -> TrueLT
+    (EQ, GT) -> TrueGT
+    (LT, _)  -> TrueLT
+    (GT, _)  -> TrueGT
 
 instance Ord (Key s a) where
   compare :: forall k s (a :: k). Key s a -> Key s a -> Ordering
   compare (Key a) (Key b) = compare a b
 
-empty :: DTrace
-empty = Leaf
-
 singleton :: (Typeable v) => DKey v -> PrimDist v -> DTrace
 singleton k x = Node k x Leaf Leaf
 
+-- | Lookup an entry
 lookup :: forall a b. (Eq a, Typeable a)
-  => DKey a -> DTrace  -> Maybe (PrimDist a)
-lookup k = go
+  => DKey a -> DTrace -> Maybe (PrimDist a)
+lookup kx = go
   where
     go :: DTrace -> Maybe (PrimDist a)
     go Leaf = Nothing
-    go (Node k' x l r) = case trueCompare k k'
-        of TrueEQ HRefl -> if k' == k then Just x else Nothing
-           TrueNEQ      -> Nothing
+    go (Node ky y l r) = case trueCompare kx ky
+        of TrueEQ HRefl -> Just y
            TrueLT       -> go l
            TrueGT       -> go r
 
-insert :: forall v. (Typeable v) => DKey v -> PrimDist v -> DTrace  -> DTrace
+-- | Insert a new entry
+insert :: forall v. (Typeable v)
+  => DKey v -> PrimDist v -> DTrace  -> DTrace
 insert kx d = go
   where
     go :: DTrace -> DTrace
     go Leaf = singleton kx d
-    go (Node ky y l r) =
-      case trueCompare kx ky of
-        TrueEQ HRefl -> Node kx d l r
-        TrueNEQ      -> Node ky y l r
-        TrueLT       -> Node ky y (go l) r
-        TrueGT       -> Node ky y l (go r)
+    go (Node ky y l r) = case trueCompare kx ky
+        of  TrueEQ HRefl -> Node kx d l r
+            TrueLT       -> Node ky y (go l) r
+            TrueGT       -> Node ky y l (go r)
 
+-- | Apply a function to an entry if it exists
+update :: forall a b. (Eq a, Typeable a)
+  => DKey a -> (PrimDist a -> PrimDist a) -> DTrace -> DTrace
+update kx f = go
+  where
+    go :: DTrace -> DTrace
+    go Leaf = Leaf
+    go (Node ky y l r) = case trueCompare kx ky
+        of TrueEQ HRefl -> Node kx (f y) l r
+           TrueLT       -> Node ky y (go l) r
+           TrueGT       -> Node ky y l (go r)
+
+-- | Return the entry if it exists, otherwise insert a new entry
 lookupOrInsert :: forall v. (Typeable v) => DKey v -> PrimDist v -> DTrace -> (PrimDist v, DTrace)
 lookupOrInsert kx dx  = go
   where
@@ -226,6 +240,35 @@ lookupOrInsert kx dx  = go
     go (Node ky dy l r) =
       case trueCompare kx ky of
         TrueEQ HRefl -> (dy, Node ky dy l r)
-        TrueNEQ      -> (dx, Node kx dx l r) -- ? replace key
         TrueLT       -> let (d, l') = go l in (d, Node ky dy l' r)
         TrueGT       -> let (d, r') = go r in (d, Node ky dy l r')
+
+-- | Combine the entries of two traces with an operation when their keys match,
+--   returning elements of the left trace that do not exist in the second trace.
+intersectLeftWith :: (forall v. PrimDist v -> PrimDist v -> PrimDist v) -> DTrace -> GTrace -> DTrace
+intersectLeftWith _ t1 Leaf  = t1
+intersectLeftWith _ Leaf t2  = Leaf
+intersectLeftWith f (Node k1 x1 l1 r1) t2 =
+  case maybe_x2 of
+      Nothing -> Node k1 x1 l1 r1
+      Just x2 -> Node k1 (f x1 x2) l1l2 r1r2
+    where (l2, maybe_x2, r2) =  splitLookup k1 t2
+          !l1l2 = intersectLeftWith f l1 l2
+          !r1r2 = intersectLeftWith f r1 r2
+
+-- | Split-lookup without rebalancing tree
+splitLookup :: forall a. Typeable a => DKey a -> DTrace -> (DTrace, Maybe (PrimDist a), DTrace)
+splitLookup k = go
+  where
+    go Leaf            = (Leaf, Nothing, Leaf)
+    go (Node kx x l r) = case trueCompare k kx of
+      TrueLT -> let (lt, z, gt) = go l in (lt, z, Node kx x gt r) -- As we know that `keys of gt` < `keys of`r`
+      TrueGT -> let (lt, z, gt) = go r in (Node kx x l lt, z, gt)
+      TrueEQ HRefl -> (l, Just x, r)
+
+-- | Fold over a tree
+foldr :: (forall v. (Typeable v) => DKey v -> PrimDist v -> b -> b) -> b -> DTrace -> b
+foldr f = go
+  where
+    go z Leaf             = z
+    go z (Node  kx x l r) = go (f kx x (go z r)) l
