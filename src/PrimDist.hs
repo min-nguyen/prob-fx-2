@@ -48,6 +48,7 @@ import Control.Monad ((>=>), replicateM)
 import Data.Typeable
 import GHC.Real (infinity)
 import Numeric.MathFunctions.Constants (m_neg_inf)
+import Data.Bifunctor (second)
 -- import qualified Control.Monad.Bayes.Class as MB
 
 -- | Primitive distribution
@@ -224,7 +225,46 @@ gradLogProb ::
      PrimDist a
   -> a
   -> PrimDist a
-gradLogProb d y = error "to do"
+gradLogProb (Normal μ σ) x =
+  let (dμ, dσ, _) = normalGradLogPdfRaw μ σ x
+  in  Normal dμ dσ
+gradLogProb (HalfNormal σ) x =
+  let (dσ, _) = halfNormalGradLogPdfRaw σ x
+  in  HalfNormal dσ
+gradLogProb (Cauchy loc scale) x =
+  let (dloc, dscale, _) = cauchyGradLogPdfRaw loc scale x
+  in  Cauchy dloc dscale
+gradLogProb (HalfCauchy scale) x =
+  let (dscale, _) = halfCauchyGradLogPdfRaw scale x
+  in  HalfNormal dscale
+gradLogProb (Gamma k θ) x =
+  let (dk, dθ, _) = gammaGradLogPdfRaw k θ x
+  in  Gamma dk dθ
+gradLogProb (Beta α β) x =
+  let (dα, dβ, _) = betaGradLogPdfRaw α β x
+  in Beta dα dβ
+gradLogProb (Uniform min max) y =
+  Uniform 0 0
+gradLogProb (Dirichlet as) ys =
+  let (das, _) = dirichletGradLogPdfRaw as ys
+  in  Dirichlet das
+gradLogProb (Bernoulli p) x =
+  let (dp, _) = bernoulliGradLogPdfRaw p x
+  in  Bernoulli dp
+gradLogProb (Binomial n p) y =
+  let (_, dp, _) = binomialGradLogPdfRaw n p y
+  in  Binomial 0 dp
+gradLogProb (Poisson λ) y =
+  let dλ = poissonGradLogPdfRaw λ y
+  in  Poisson  dλ
+gradLogProb (Categorical ps) idx =
+  Categorical (map (const 0) ps)
+gradLogProb (Discrete ps) y =
+  Discrete (map (second (const 0)) ps)
+gradLogProb (UniformD min max) y =
+  UniformD 0 0
+gradLogProb (Deterministic x) y =
+  error "gradLogProb for Deterministic is undefined"
 
 {- Continuous distributions
 -}
@@ -354,7 +394,7 @@ bernoulliLogPdfRaw p y
   | otherwise = log (1 - p)
 
 bernoulliGradLogPdfRaw :: Double -> Bool -> (Double, Bool)
-bernoulliGradLogPdfRaw p y = (dp, False)
+bernoulliGradLogPdfRaw p y = (dp, y)
   where dp = 1/p - fromIntegral (boolToInt y)/(1 - p)
 
 -- | Binomial
@@ -382,6 +422,12 @@ poissonLogPdfRaw λ y
   | λ < 0     = error "poissonLogPdfRaw:  λ < 0 "
   | y < 0     = trace "poissonLogPdfRaw:  y < 0 " m_neg_inf
   | otherwise = log λ * fromIntegral y - logFactorial y - λ
+
+poissonGradLogPdfRaw :: Double -> Int -> Double
+poissonGradLogPdfRaw λ y
+  | λ < 0     = error "poissonGradLogPdfRaw:  λ < 0 "
+  | y < 0     = error "poissonGradLogPdfRaw:  y < 0 "
+  | otherwise = (fromIntegral y/λ) - 1
 
 -- | Deterministic
 deterministicLogPdfRaw :: Eq a => a -> a -> Double
