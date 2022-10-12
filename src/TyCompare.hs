@@ -16,7 +16,8 @@ module TyCompare (
   , Idx(..)
   , TyEq(..)
   , HeteroOrd(..)
-  , TrueOrdering(..)) where
+  , TrueOrdering(..)
+  , TrueOrd(..)) where
 
 import Type.Reflection
     ( Typeable, type (:~~:)(HRefl), eqTypeRep, typeRep )
@@ -61,3 +62,6 @@ data TrueOrdering a b = TrueEQ (a :~~: b) | TrueLT | TrueGT
 
 class HeteroOrd (k :: k' -> *) where
   hCompare :: k a -> k b -> Ordering
+
+class (HeteroOrd k, Typeable a, Typeable b) => TrueOrd k a b where
+  trueCompare :: k a -> k b -> TrueOrdering a b

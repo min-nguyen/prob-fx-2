@@ -175,18 +175,15 @@ instance Eq (Key s a) where
 instance Ord s => HeteroOrd (Key s) where
   hCompare (Key s1) (Key s2) = compare s1 s2
 
-class (HeteroOrd k, Typeable a, Typeable b) => TrueOrd k a b where
-  trueCompare :: k a -> k b -> TrueOrdering a b
-
 instance (HeteroOrd k, Typeable a, Typeable b) => TrueOrd k a b where
   trueCompare a b = case (hCompare a b, compare (show (typeRep @a)) (show (typeRep @a))) of
+    (LT, _)  -> TrueLT
+    (GT, _)  -> TrueGT
     (EQ, EQ) -> case eqTypeRep (typeRep @a) (typeRep @b) of
                   Just HRefl -> TrueEQ HRefl
                   Nothing    -> error "Should not happen."
     (EQ, LT) -> TrueLT
     (EQ, GT) -> TrueGT
-    (LT, _)  -> TrueLT
-    (GT, _)  -> TrueGT
 
 instance Ord (Key s a) where
   compare :: forall k s (a :: k). Key s a -> Key s a -> Ordering
