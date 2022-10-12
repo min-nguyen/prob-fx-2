@@ -7,6 +7,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE InstanceSigs #-}
 
 {- | Auxiliary definitions for finding a type in a type-level list.
 -}
@@ -53,6 +54,7 @@ class (Typeable c, Typeable b) => TyEq c b where
             Nothing -> False
 
 instance (Typeable a, Typeable b) => TyEq a b where
+  tyEq :: (Typeable a, Typeable b) => a -> b -> Maybe (a :~~: b)
   tyEq x y = eqTypeRep (typeRep @a) (typeRep @b)
 
 {- TrueOrd:  Compare two different types 'a' and 'b' for equality (using TyEq), then

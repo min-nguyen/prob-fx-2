@@ -46,7 +46,7 @@ import Util
 data TracedParticle = TracedParticle {
     particleLogProb   :: LogP
   , particleObsAddr   :: Addr
-  , particleSTrace    :: InvSTrace
+  , particleSTrace    :: STrace
   }
 
 instance ParticleCtx TracedParticle where
@@ -119,7 +119,7 @@ particleResampler mh_steps = loop where
 -}
 particleRunner :: ParticleRunner TracedParticle
 particleRunner = loop Map.empty where
-  loop :: InvSTrace -> ParticleRunner TracedParticle
+  loop :: STrace -> ParticleRunner TracedParticle
   loop inv_strace (Val x) = pure (Val x, TracedParticle 0 ("", 0) Map.empty)
   loop inv_strace (Op op k) = case op of
     SampPrj d α  -> do r <- lift sampleRandom

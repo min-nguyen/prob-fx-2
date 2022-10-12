@@ -52,9 +52,9 @@ pmmhInternal :: forall a.
       Int                                     -- ^ number of MH steps
    -> Int                                     -- ^ number of particles
    -> Prog [Observe, Sample, Lift Sampler] a  -- ^ probabilistic program
-   -> InvSTrace                               -- ^ initial sample trace
+   -> STrace                               -- ^ initial sample trace
    -> [Tag]                                   -- ^ tags indicating the model parameters
-   -> Sampler  [((a, LogP), InvSTrace)]       -- ^ trace of accepted outputs, samples, and logps
+   -> Sampler  [((a, LogP), STrace)]       -- ^ trace of accepted outputs, samples, and logps
 pmmhInternal mh_steps n_particles prog strace param_tags = do
   -- | Perform initial run of MH
   pmmh_0 <- runPMMH n_particles prog param_tags strace
@@ -67,8 +67,8 @@ pmmhStep ::
      Int                                          -- ^ number of particles
   -> Prog [Observe, Sample, Lift Sampler] a       -- ^ probabilistic program
   -> [Tag]                                        -- ^ tags indicating model parameters
-  -> [((a, LogP), InvSTrace)]                     -- ^ trace of previous mh outputs
-  -> Sampler [((a, LogP), InvSTrace)]
+  -> [((a, LogP), STrace)]                     -- ^ trace of previous mh outputs
+  -> Sampler [((a, LogP), STrace)]
 pmmhStep n_particles prog tags pmmh_trace = do
   let pmmh_ctx@(_, strace) = head pmmh_trace
   -- | Propose a new random value for a sample site
@@ -85,8 +85,8 @@ runPMMH ::
      Int                                          -- ^ number of particles
   -> Prog '[Observe, Sample, Lift Sampler] a      -- ^ probabilistic program
   -> [Tag]                                        -- ^ tags indicating model parameters
-  -> InvSTrace                                    -- ^ sample traces
-  -> Sampler ((a, LogP), InvSTrace)
+  -> STrace                                    -- ^ sample traces
+  -> Sampler ((a, LogP), STrace)
 runPMMH n_particles prog tags strace = do
   ((a, _), strace') <- MH.runMH strace prog
   let params = filterTrace tags strace'
@@ -101,8 +101,8 @@ runPMMH n_particles prog tags strace = do
 {- | An acceptance mechanism for PMMH.
 -}
 accept ::
-     ((a, LogP), InvSTrace)                 -- ^ previous PMMH ctx
-  -> ((a, LogP), InvSTrace)                 -- ^ proposed PMMH ctx
+     ((a, LogP), STrace)                 -- ^ previous PMMH ctx
+  -> ((a, LogP), STrace)                 -- ^ proposed PMMH ctx
   -> Sampler Bool
 accept ((_, log_p), _) ((_, log_p'), _) = do
   let acceptance_ratio = (exp . unLogP) (log_p' - log_p)

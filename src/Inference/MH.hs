@@ -19,7 +19,7 @@ import Data.Set ((\\))
 import qualified Data.Set as Set
 import Data.Maybe ( fromJust )
 import Prog ( Prog(..), discharge )
-import Trace ( InvSTrace, LPTrace, filterTrace, traceLogProbs )
+import Trace ( STrace, LPTrace, filterTrace, traceLogProbs )
 import LogP ( LogP(unLogP) )
 import PrimDist
 import Model ( Model, handleCore )
@@ -54,9 +54,9 @@ mh n model env_in obs_vars  = do
 mhInternal
    :: Int                                           -- ^ number of MH iterations
    -> Prog [Observe, Sample, Lift Sampler] a        -- ^ probabilistic program
-   -> InvSTrace                                     -- ^ initial sample trace
+   -> STrace                                     -- ^ initial sample trace
    -> [Tag]                                         -- ^ tags indicating sample sites of interest
-   -> Sampler [((a, LPTrace), InvSTrace)]           -- ^ trace of (accepted outputs, log probabilities), samples)
+   -> Sampler [((a, LPTrace), STrace)]           -- ^ trace of (accepted outputs, log probabilities), samples)
 mhInternal n prog strace tags = do
   -- | Perform initial run of mh
   mh_ctx_0 <- runMH strace prog
@@ -68,8 +68,8 @@ mhInternal n prog strace tags = do
 mhStep
   :: Prog [Observe, Sample, Lift Sampler] a         -- ^ probabilistic program
   -> [Tag]                                          -- ^ tags indicating sample sites of interest
-  -> [((a, LPTrace), InvSTrace)]                    -- ^ previous MH trace
-  -> Sampler [((a, LPTrace), InvSTrace)]            -- ^ updated MH trace
+  -> [((a, LPTrace), STrace)]                    -- ^ previous MH trace
+  -> Sampler [((a, LPTrace), STrace)]            -- ^ updated MH trace
 mhStep prog tags trace = do
   -- | Get previous MH output
   let mh_ctx@(_, strace) = head trace
@@ -85,17 +85,17 @@ mhStep prog tags trace = do
 {- | Handler for one iteration of MH.
 -}
 runMH ::
-     InvSTrace                                -- ^ sample trace of previous MH iteration
+     STrace                                -- ^ sample trace of previous MH iteration
   -> Prog [Observe, Sample, Lift Sampler] a   -- ^ probabilistic program
-  -> Sampler ((a, LPTrace), InvSTrace)        -- ^ ((model output, sample trace), log-probability trace)
+  -> Sampler ((a, LPTrace), STrace)        -- ^ ((model output, sample trace), log-probability trace)
 runMH strace  = handleLift . handleSamp strace . SIM.handleObs . traceLogProbs
 
 {- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.
 -}
 handleSamp ::
-     InvSTrace
+     STrace
   -> Prog  [Sample, Lift Sampler] a
-  -> Prog '[Lift Sampler] (a, InvSTrace)
+  -> Prog '[Lift Sampler] (a, STrace)
 handleSamp strace (Val x)   = pure (x, strace)
 handleSamp strace (Op op k) = case discharge op of
     Right (Sample d α) ->
@@ -111,7 +111,7 @@ handleSamp strace (Op op k) = case discharge op of
 
 {- | Propose a new random value at a random sample site.
 -}
-propose :: InvSTrace -> [Tag] -> Sampler (Addr, Double)
+propose :: STrace -> [Tag] -> Sampler (Addr, Double)
 propose strace tags = do
   -- | Get possible addresses to propose new samples for
   let αs = Map.keys (if Prelude.null tags then strace else filterTrace tags strace)
@@ -125,8 +125,8 @@ propose strace tags = do
 -}
 accept ::
      Addr                             -- ^ address of proposal site
-  -> ((a, LPTrace), InvSTrace)        -- ^ result of previous MH iteration
-  -> ((a, LPTrace), InvSTrace)        -- ^ result of current MH iteration
+  -> ((a, LPTrace), STrace)        -- ^ result of previous MH iteration
+  -> ((a, LPTrace), STrace)        -- ^ result of current MH iteration
   -> Sampler Bool                     -- ^ whether the current MH iteration is accepted
 accept x0 ((_, lptrace ), strace) ((a, lptrace'), strace') = do
   let dom_logα = log (fromIntegral $ Map.size strace) - log (fromIntegral $ Map.size strace')
