@@ -13,7 +13,7 @@ module CoinFlip where
 import Prog ( call )
 import Effects.ObsRW ( ObsRW(OAsk) )
 import Model ( Model(Model), bernoulli, uniform )
-import PrimDist ( PrimDist(Bernoulli, Uniform) )
+import PrimDist ( Bernoulli(Bernoulli), Uniform(Uniform) )
 import Effects.Dist ( Dist(Dist) )
 import Data.Kind (Constraint)
 import Env ( Observables )

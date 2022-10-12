@@ -21,7 +21,7 @@ import Data.Maybe ( fromJust )
 import Prog ( Prog(..), discharge )
 import Trace ( InvSTrace, LPTrace, filterTrace, traceLogProbs )
 import LogP ( LogP(unLogP) )
-import PrimDist ( PrimDist(..), sample, sampleInv )
+import PrimDist
 import Model ( Model, handleCore )
 import Effects.ObsRW ( ObsRW )
 import Env ( ContainsVars(..), Vars, Env )

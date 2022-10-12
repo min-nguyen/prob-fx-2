@@ -46,6 +46,7 @@ import Control.Monad ( replicateM, when, (>=>) )
 import Control.Monad.Trans (MonadIO, MonadTrans, lift)
 import Control.Monad.Trans.Reader (ReaderT (..), ask, mapReaderT, runReaderT)
 import Data.Map (Map)
+import Data.Functor
 import GHC.Word ( Word32 )
 import qualified Data.Vector as V
 import qualified System.Random.MWC as MWC
@@ -148,9 +149,10 @@ sampleCategorical
 sampleCategorical ps = mkSampler $ MWC.Dist.categorical ps
 
 sampleDiscrete
-  :: [Double] -- ^ probabilities
-  -> Sampler Int
-sampleDiscrete ps = mkSampler $ MWC.Dist.categorical (V.fromList ps)
+  :: [(a, Double)] -- ^ probabilities
+  -> Sampler a
+sampleDiscrete xps = mkSampler (MWC.Dist.categorical (V.fromList ps)) <&> (xs !!)
+  where (xs, ps) = unzip xps
 
 samplePoisson
   :: Double   -- ^ rate λ
@@ -264,10 +266,11 @@ sampleCategoricalInv
 sampleCategoricalInv ps = invCMF (ps V.!)
 
 sampleDiscreteInv
-  :: [Double]
+  :: [(a, Double)]
   -> Double
-  -> Sampler Int
-sampleDiscreteInv ps = invCMF (ps !!)
+  -> Sampler a
+sampleDiscreteInv xps r = invCMF (ps !!) r <&> (xs !!)
+  where (xs, ps) = unzip xps
 
 samplePoissonInv
   :: Double       -- ^ rate λ

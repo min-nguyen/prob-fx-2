@@ -21,7 +21,7 @@ import Env ( Env )
 import LogP ( LogP(..), logMeanExp )
 import Model ( Model(runModel) )
 import OpenSum (OpenSum)
-import PrimDist ( PrimDist(Categorical), sample, logProb )
+import PrimDist ( Categorical(..), sample, logProb )
 import Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge )
 import qualified Data.Map as Map
 import qualified Inference.SIM as SIM

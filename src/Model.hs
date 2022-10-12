@@ -6,6 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE GADTs #-}
 
 {- | An algebraic effect embedding of probabilistic models.
 -}
@@ -53,7 +54,7 @@ import Effects.Dist ( handleDist, Dist(..), Observe, Sample )
 import Effects.ObsRW
 import Env
 import OpenSum ( OpenSum )
-import PrimDist ( PrimDist(..) )
+import PrimDist
 import Prog ( call, Member, Prog )
 import qualified OpenSum
 import Debug.Trace
@@ -122,7 +123,7 @@ handleCore env_in m = (handleDist . handleObsRW env_in) (runModel m)
     @
 -}
 
-callDist :: forall env x a es. (Typeable a, Show a) => Observable env x a => PrimDist a -> Var x -> Model env es a
+callDist :: forall env x d a es. (PrimDist d a,  Show a) => Observable env x a => d -> Var x -> Model env es a
 callDist d field = Model $ do
   let tag =  Just $ varToStr field
   maybe_y <- oAsk @env field
@@ -130,7 +131,7 @@ callDist d field = Model $ do
   oTell @env field y
   pure y
 
-callDist' :: PrimDist a -> Model env es a
+callDist' :: (PrimDist d a) => d -> Model env es a
 callDist' d = Model $ call (Dist d Nothing Nothing)
 
 deterministic :: (Typeable a, Eq a, Show a, Observable env x a) => a
