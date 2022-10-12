@@ -53,7 +53,7 @@ import Numeric.MathFunctions.Constants (m_neg_inf)
 import Data.Bifunctor (second)
 -- import qualified Control.Monad.Bayes.Class as MB
 
-type PrimDist d a = (Distribution d, Support d ~ a)
+type PrimDist d a = (Distribution d, Typeable d, Support d ~ a)
 
 class Distribution d where
   type family Support d :: *
