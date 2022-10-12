@@ -49,13 +49,12 @@ import Numeric.Log ( Log(..) )
 import Control.Monad ((>=>), replicateM)
 import Data.Typeable
 import GHC.Real (infinity)
-import Numeric.MathFunctions.Constants (m_neg_inf)
 import Data.Bifunctor (second)
 -- import qualified Control.Monad.Bayes.Class as MB
 
 type PrimDist d a = (Distribution d, Typeable d, Support d ~ a)
 
-class Distribution d where
+class Typeable d => Distribution d where
   type family Support d :: *
   {- | Given a random double @r@ between 0 and 1, this is passed to a distribution's inverse
        cumulative density function to draw a sampled value.
@@ -75,9 +74,13 @@ class Distribution d where
   logProb     :: d -> Support d -> LogP
   logProb d   = LogP . logProbRaw d
 
--- | Primitive distribution
--- type PrimDist d a = PrimDist {}
+  {- | Compute the gradient log-probability.
+  -}
+  gradLogProb :: d -> Support d -> d
+  gradLogProb = undefined
 
+
+-- | Bernoulli
 newtype Bernoulli = Bernoulli Double     -- ^ probability of @True@
   deriving Show
 
@@ -95,6 +98,11 @@ instance Distribution Bernoulli where
     | y         = log p
     | otherwise = log (1 - p)
 
+bernoulliGradLogPdfRaw :: Double -> Bool -> (Double, Bool)
+bernoulliGradLogPdfRaw p y = (dp, y)
+  where dp = 1/p - fromIntegral (boolToInt y)/(1 - p)
+
+-- | Beta
 data Beta = Beta Double Double  -- α, β
   deriving Show
 
@@ -113,6 +121,17 @@ instance Distribution Beta where
     | x <= 0 || x >= 1 = m_neg_inf
     | otherwise = (α-1)*log x + (β-1)*log1p (-x) - logBeta α β
 
+betaGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
+betaGradLogPdfRaw α β x
+  | α <= 0 || β <= 0 = error "betaGradLogPdfRaw: a <= 0 || β <= 0"
+  | x <= 0 || x >= 1 = error "betaGradLogPdfRaw: x <= 0 || x >= 1"
+  | otherwise = (da, db, dx)
+  where digamma_ab = digamma (α + β)
+        da = log x       - digamma α + digamma_ab
+        db = log (1 - x) - digamma β + digamma_ab
+        dx = (α - 1)/x + (β - 1)/(1 - x)
+
+-- | Binomial
 data Binomial = Binomial Int Double -- ^ number of trials, probability of success
   deriving Show
 
@@ -134,6 +153,16 @@ instance Distribution Binomial where
       y'  = fromIntegral   y
       ny' = fromIntegral $ n - y
 
+binomialGradLogPdfRaw :: Int -> Double -> Int -> (Int, Double, Int)
+binomialGradLogPdfRaw n p y
+  | y < 0 || y > n          = error "binomialGradLogPdfRaw: y < 0 || y > n"
+  | n < 0                   = error "binomialGradLogPdfRaw: n < 0"
+  | otherwise               = (dn, dp, dy)
+  where dn = 0
+        dp = fromIntegral n/p - fromIntegral (n - y)/(1 - p)
+        dy = 0
+
+-- | Categorical
 newtype Categorical = Categorical [Double]  -- ^ list of @n@ probabilities
   deriving Show
 
@@ -151,6 +180,7 @@ instance Distribution Categorical where
     | idx < 0 || idx >= length ps = trace "CategoricalLogPdf: idx < 0 || idx >= length ps" m_neg_inf
     | otherwise                   = log (ps !! idx)
 
+-- | Cauchy
 data Cauchy = Cauchy Double Double          -- ^ location, scale
   deriving Show
 
@@ -169,6 +199,18 @@ instance Distribution Cauchy where
     | otherwise     = -(log pi) + log scale - log (xloc**2 + scale**2)
     where xloc = x - loc
 
+cauchyGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
+cauchyGradLogPdfRaw loc scale x
+  | scale <= 0 = error "cauchyGradLogPdfRaw: scale <= 0"
+  | otherwise     = (dl, ds, dx)
+  where xloc      = x - loc
+        xlocSqrd  = xloc**2
+        scaleSqrd = scale**2
+        dl = (2 * xloc)/(xlocSqrd + scaleSqrd)
+        ds = 1/scale - (2 * scale)/(xlocSqrd + scaleSqrd)
+        dx = -dl
+
+-- | HalfCauchy
 newtype HalfCauchy = HalfCauchy Double      -- ^ scale
   deriving Show
 
@@ -186,13 +228,19 @@ instance Distribution HalfCauchy where
     | x < 0     = m_neg_inf
     | otherwise = log 2 + logProbRaw (Cauchy 0 scale) x
 
+halfCauchyGradLogPdfRaw :: Double -> Double -> (Double, Double)
+halfCauchyGradLogPdfRaw scale x
+  | scale <= 0 = error "cauchyGradLogPdfRaw: scale <= 0"
+  | otherwise  = let (_, ds, dx) = cauchyGradLogPdfRaw 0 scale x in (ds, dx)
+
+-- | Deterministic
 data Deterministic a where
   Deterministic
     :: (Show a, Typeable a, Eq a)
     => a                                  -- ^ value of probability @1@
     -> Deterministic a
 
-instance Distribution (Deterministic a) where
+instance Typeable a => Distribution (Deterministic a) where
   type Support (Deterministic a) = a
 
   sampleInv :: Deterministic a -> Double -> Sampler a
@@ -206,6 +254,7 @@ instance Distribution (Deterministic a) where
     | x == y    = 0
     | otherwise = m_neg_inf
 
+-- | Dirichlet
 newtype Dirichlet = Dirichlet  [Double]  -- ^ concentrations
   deriving Show
 
@@ -227,13 +276,24 @@ instance Distribution Dirichlet where
     | otherwise = c + sum (zipWith (\a x -> (a - 1) * log x) αs xs)
     where c = - sum (map logGamma αs) + logGamma (sum αs)
 
+dirichletGradLogPdfRaw :: [Double] -> [Double] -> ([Double], [Double])
+dirichletGradLogPdfRaw αs xs
+  | length xs /= length αs     = error "dirichletGradLogPdfRaw: length xs /= length αs"
+  | abs (sum xs - 1.0) > 1e-14 = error "dirichletGradLogPdfRaw: data should sum to 1"
+  | any (<= 0) αs              = error "dirichletGradLogPdfRaw: weights should be positive"
+  | any (<  0) xs              = error "dirichletGradLogPdfRaw: data should be non-negative"
+  | otherwise = (zipWith derivA αs xs, zipWith derivX αs xs)
+  where derivA a x  = -(digamma a) + digamma (sum αs) + log x
+        derivX a x = (a - 1) / x
+
+-- | Discrete
 data Discrete a where
   Discrete
     :: (Show a, Typeable a, Eq a)
     => [(a, Double)]                    -- ^ values and associated probabilities
     -> Discrete a
 
-instance Distribution (Discrete a) where
+instance Typeable a => Distribution (Discrete a) where
   type Support (Discrete a) = a
 
   sampleInv :: Discrete a -> Double -> Sampler a
@@ -248,6 +308,26 @@ instance Distribution (Discrete a) where
       Nothing -> trace ("Couldn't find " ++ show y ++ " in Discrete dist") m_neg_inf
       Just p  -> log p
 
+-- | Continuous uniform
+data Uniform = Uniform Double Double   -- ^ lower-bound @min@, upper-bound @max@
+  deriving Show
+
+instance Distribution Uniform where
+  type Support Uniform = Double
+
+  sampleInv :: Uniform -> Double -> Sampler Double
+  sampleInv (Uniform min max) = sampleUniformInv min max
+
+  sample :: Uniform -> Sampler Double
+  sample (Uniform min max) = sampleUniform min max
+
+  logProbRaw :: Uniform -> Double -> Double
+  logProbRaw (Uniform min max) x
+    | max <  min         = error "uniformLogPdfRaw: max < min"
+    | x < min || x > max = m_neg_inf
+    | otherwise          = -log(max - min)
+
+-- | Discrete uniform
 data UniformD = UniformD Int Int      -- ^ lower-bound @min@, upper-bound @max@
   deriving Show
 
@@ -266,7 +346,8 @@ instance Distribution UniformD where
     | idx < min || idx > max  = m_neg_inf
     | otherwise               = - log (fromIntegral $ max - min + 1)
 
-data Gamma = Gamma Double Double           -- ^ shape k, scale θ
+-- | Gamma
+data Gamma = Gamma Double Double   -- ^ shape @k@, scale @θ@
   deriving Show
 
 instance Distribution Gamma where
@@ -284,7 +365,17 @@ instance Distribution Gamma where
     | k <= 0 || θ <= 0 = error "gammaLogPdfRaw: k <= 0 || θ <= 0"
     | otherwise = (k - 1) * log x - (x/θ) - logGamma k - (k * log θ)
 
-data Normal = Normal Double Double      -- ^ mean μ, standard deviation σ
+gammaGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
+gammaGradLogPdfRaw k t x
+  | k <= 0 || t <= 0 = error "gammaGradLogPdfRaw: k <= 0 || t <= 0"
+  | x <= 0           = error "gammaGradLogPdfRaw: x <= 0"
+  | otherwise = (dk, dt, dx)
+  where dk = log x - digamma k - log t
+        dt = x/(t**2) - k/t
+        dx = (k - 1)/x - 1/t
+
+-- | Normal
+data Normal = Normal Double Double -- ^ mean @μ@, standard deviation @σ@
   deriving Show
 
 instance Distribution Normal where
@@ -302,7 +393,17 @@ instance Distribution Normal where
     | otherwise  = -(xμ * xμ / (2 * (σ ** 2))) - log m_sqrt_2_pi - log σ
     where xμ = x - μ
 
-newtype HalfNormal = HalfNormal Double      -- ^ standard deviation σ
+normalGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
+normalGradLogPdfRaw μ σ x
+  | σ <= 0 = error "normalGradLogPdfRaw: σ <= 0"
+  | otherwise     = (dμ, dσ, dx)
+  where xμ = x - μ
+        dμ = xμ/(σ ** 2)
+        dσ = -1/σ + (xμ**2)/(σ ** 3)
+        dx = -dμ
+
+-- | HalfNormal
+newtype HalfNormal = HalfNormal Double   -- ^ standard deviation @σ@
   deriving Show
 
 instance Distribution HalfNormal where
@@ -319,7 +420,14 @@ instance Distribution HalfNormal where
     | x < 0     = m_neg_inf
     | otherwise = log 2 + logProbRaw (Normal 0 σ) x
 
-newtype Poisson = Poisson Double           -- ^ rate λ
+halfNormalGradLogPdfRaw :: Double -> Double -> (Double, Double)
+halfNormalGradLogPdfRaw σ x
+  | x < 0         = error "halfNormalGradLogPdfRaw: No gradient at x < 0"
+  | σ <= 0        = error "halfNormalGradLogPdfRaw: σ <= 0"
+  | otherwise     = let (_, dσ, dx) = normalGradLogPdfRaw 0 σ x in (dσ, dx)
+
+-- | Poisson
+newtype Poisson = Poisson Double           -- ^ rate @λ@
   deriving Show
 
 instance Distribution Poisson where
@@ -336,168 +444,6 @@ instance Distribution Poisson where
     | λ < 0     = error "poissonLogPdfRaw:  λ < 0 "
     | y < 0     = trace "poissonLogPdfRaw:  y < 0 " m_neg_inf
     | otherwise = log λ * fromIntegral y - logFactorial y - λ
-
-data Uniform = Uniform Double Double      -- ^ lower-bound @min@, upper-bound @max@
-  deriving Show
-
-instance Distribution Uniform where
-  type Support Uniform = Double
-
-  sampleInv :: Uniform -> Double -> Sampler Double
-  sampleInv (Uniform min max) = sampleUniformInv min max
-
-  sample :: Uniform -> Sampler Double
-  sample (Uniform min max) = sampleUniform min max
-
-  logProbRaw :: Uniform -> Double -> Double
-  logProbRaw (Uniform min max) x
-    | max <  min         = error "uniformLogPdfRaw: max < min"
-    | x < min || x > max = m_neg_inf
-    | otherwise          = -log(max - min)
-
--- -- | Given fixed parameters and observed value, compute the gradients of a distribution's log-pdf w.r.t its parameters
--- gradLogProb ::
---      PrimDist a
---   -> a
---   -> PrimDist a
--- gradLogProb (Normal μ σ) x =
---   let (dμ, dσ, _) = normalGradLogPdfRaw μ σ x
---   in  Normal dμ dσ
--- gradLogProb (HalfNormal σ) x =
---   let (dσ, _) = halfNormalGradLogPdfRaw σ x
---   in  HalfNormal dσ
--- gradLogProb (Cauchy loc scale) x =
---   let (dloc, dscale, _) = cauchyGradLogPdfRaw loc scale x
---   in  Cauchy dloc dscale
--- gradLogProb (HalfCauchy scale) x =
---   let (dscale, _) = halfCauchyGradLogPdfRaw scale x
---   in  HalfNormal dscale
--- gradLogProb (Gamma k θ) x =
---   let (dk, dθ, _) = gammaGradLogPdfRaw k θ x
---   in  Gamma dk dθ
--- gradLogProb (Beta α β) x =
---   let (dα, dβ, _) = betaGradLogPdfRaw α β x
---   in Beta dα dβ
--- gradLogProb (Uniform min max) y =
---   Uniform 0 0
--- gradLogProb (Dirichlet as) ys =
---   let (das, _) = dirichletGradLogPdfRaw as ys
---   in  Dirichlet das
--- gradLogProb (Bernoulli p) x =
---   let (dp, _) = bernoulliGradLogPdfRaw p x
---   in  Bernoulli dp
--- gradLogProb (Binomial n p) y =
---   let (_, dp, _) = binomialGradLogPdfRaw n p y
---   in  Binomial 0 dp
--- gradLogProb (Poisson λ) y =
---   let dλ = poissonGradLogPdfRaw λ y
---   in  Poisson  dλ
--- gradLogProb (Categorical ps) idx =
---   Categorical (map (const 0) ps)
--- gradLogProb (Discrete ps) y =
---   Discrete (map (second (const 0)) ps)
--- gradLogProb (UniformD min max) y =
---   UniformD 0 0
--- gradLogProb (Deterministic x) y =
---   error "gradLogProb for Deterministic is undefined"
-
-{- Continuous distributions
--}
-
--- | Normal
-
-normalGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
-normalGradLogPdfRaw μ σ x
-  | σ <= 0 = error "normalGradLogPdfRaw: σ <= 0"
-  | otherwise     = (dμ, dσ, dx)
-  where xμ = x - μ
-        dμ = xμ/(σ ** 2)
-        dσ = -1/σ + (xμ**2)/(σ ** 3)
-        dx = -dμ
-
--- | HalfNormal
-
-halfNormalGradLogPdfRaw :: Double -> Double -> (Double, Double)
-halfNormalGradLogPdfRaw σ x
-  | x < 0         = error "halfNormalGradLogPdfRaw: No gradient at x < 0"
-  | σ <= 0        = error "halfNormalGradLogPdfRaw: σ <= 0"
-  | otherwise     = let (_, dσ, dx) = normalGradLogPdfRaw 0 σ x in (dσ, dx)
-
--- | Cauchy
-
-cauchyGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
-cauchyGradLogPdfRaw loc scale x
-  | scale <= 0 = error "cauchyGradLogPdfRaw: scale <= 0"
-  | otherwise     = (dl, ds, dx)
-  where xloc      = x - loc
-        xlocSqrd  = xloc**2
-        scaleSqrd = scale**2
-        dl = (2 * xloc)/(xlocSqrd + scaleSqrd)
-        ds = 1/scale - (2 * scale)/(xlocSqrd + scaleSqrd)
-        dx = -dl
-
--- | HalfCauchy
-
-halfCauchyGradLogPdfRaw :: Double -> Double -> (Double, Double)
-halfCauchyGradLogPdfRaw scale x
-  | scale <= 0 = error "cauchyGradLogPdfRaw: scale <= 0"
-  | otherwise  = let (_, ds, dx) = cauchyGradLogPdfRaw 0 scale x in (ds, dx)
-
--- | Gamma
-gammaGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
-gammaGradLogPdfRaw k t x
-  | k <= 0 || t <= 0 = error "gammaGradLogPdfRaw: k <= 0 || t <= 0"
-  | x <= 0           = error "gammaGradLogPdfRaw: x <= 0"
-  | otherwise = (dk, dt, dx)
-  where dk = log x - digamma k - log t
-        dt = x/(t**2) - k/t
-        dx = (k - 1)/x - 1/t
-
--- | Beta
-
-
-betaGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
-betaGradLogPdfRaw a b x
-  | a <= 0 || b <= 0 = error "betaGradLogPdfRaw: a <= 0 || b <= 0"
-  | x <= 0 || x >= 1 = error "betaGradLogPdfRaw: x <= 0 || x >= 1"
-  | otherwise = (da, db, dx)
-  where digamma_ab = digamma (a + b)
-        da = log x       - digamma a + digamma_ab
-        db = log (1 - x) - digamma b + digamma_ab
-        dx = (a - 1)/x + (b - 1)/(1 - x)
-
--- | Dirichlet
-
-dirichletGradLogPdfRaw :: [Double] -> [Double] -> ([Double], [Double])
-dirichletGradLogPdfRaw as xs
-  | length xs /= length as     = error "dirichletGradLogPdfRaw: length xs /= length as"
-  | abs (sum xs - 1.0) > 1e-14 = error "dirichletGradLogPdfRaw: data should sum to 1"
-  | any (<= 0) as              = error "dirichletGradLogPdfRaw: weights should be positive"
-  | any (<  0) xs              = error "dirichletGradLogPdfRaw: data should be non-negative"
-  | otherwise = (zipWith derivA as xs, zipWith derivX as xs)
-  where derivA a x  = -(digamma a) + digamma (sum as) + log x
-        derivX a x = (a - 1) / x
-
-{- Discrete distributions
--}
-
-
-bernoulliGradLogPdfRaw :: Double -> Bool -> (Double, Bool)
-bernoulliGradLogPdfRaw p y = (dp, y)
-  where dp = 1/p - fromIntegral (boolToInt y)/(1 - p)
-
--- | Binomial
-
-binomialGradLogPdfRaw :: Int -> Double -> Int -> (Int, Double, Int)
-binomialGradLogPdfRaw n p y
-  | y < 0 || y > n          = error "binomialGradLogPdfRaw: y < 0 || y > n"
-  | n < 0                   = error "binomialGradLogPdfRaw: n < 0"
-  | otherwise               = (dn, dp, dy)
-  where dn = 0
-        dp = fromIntegral n/p - fromIntegral (n - y)/(1 - p)
-        dy = 0
-
--- | Poisson
 
 poissonGradLogPdfRaw :: Double -> Int -> Double
 poissonGradLogPdfRaw λ y
@@ -561,6 +507,52 @@ instance (Show x, OpenSum.Member x PrimVal) => IsPrimVal x
 --   Dirichlet {} ->  Dict
 --   Discrete {} ->  Dict
 --   Deterministic {} ->  Dict
+
+-- -- | Given fixed parameters and observed value, compute the gradients of a distribution's log-pdf w.r.t its parameters
+-- gradLogProb ::
+--      PrimDist a
+--   -> a
+--   -> PrimDist a
+-- gradLogProb (Normal μ σ) x =
+--   let (dμ, dσ, _) = normalGradLogPdfRaw μ σ x
+--   in  Normal dμ dσ
+-- gradLogProb (HalfNormal σ) x =
+--   let (dσ, _) = halfNormalGradLogPdfRaw σ x
+--   in  HalfNormal dσ
+-- gradLogProb (Cauchy loc scale) x =
+--   let (dloc, dscale, _) = cauchyGradLogPdfRaw loc scale x
+--   in  Cauchy dloc dscale
+-- gradLogProb (HalfCauchy scale) x =
+--   let (dscale, _) = halfCauchyGradLogPdfRaw scale x
+--   in  HalfNormal dscale
+-- gradLogProb (Gamma k θ) x =
+--   let (dk, dθ, _) = gammaGradLogPdfRaw k θ x
+--   in  Gamma dk dθ
+-- gradLogProb (Beta α β) x =
+--   let (dα, dβ, _) = betaGradLogPdfRaw α β x
+--   in Beta dα dβ
+-- gradLogProb (Uniform min max) y =
+--   Uniform 0 0
+-- gradLogProb (Dirichlet as) ys =
+--   let (das, _) = dirichletGradLogPdfRaw as ys
+--   in  Dirichlet das
+-- gradLogProb (Bernoulli p) x =
+--   let (dp, _) = bernoulliGradLogPdfRaw p x
+--   in  Bernoulli dp
+-- gradLogProb (Binomial n p) y =
+--   let (_, dp, _) = binomialGradLogPdfRaw n p y
+--   in  Binomial 0 dp
+-- gradLogProb (Poisson λ) y =
+--   let dλ = poissonGradLogPdfRaw λ y
+--   in  Poisson  dλ
+-- gradLogProb (Categorical ps) idx =
+--   Categorical (map (const 0) ps)
+-- gradLogProb (Discrete ps) y =
+--   Discrete (map (second (const 0)) ps)
+-- gradLogProb (UniformD min max) y =
+--   UniformD 0 0
+-- gradLogProb (Deterministic x) y =
+--   error "gradLogProb for Deterministic is undefined"
 
 {- | Draw a value from a primitive distribution using the @MonadSample@ type class from Monad-Bayes
 sampleBayes :: MB.MonadSample m => PrimDist a -> m a

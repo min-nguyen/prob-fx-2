@@ -30,8 +30,8 @@ module Trace (
   , GTrace
   -- * Dist trace
   , DTrace
-  -- , insert
-  -- , lookupOrInsert
+  , insert
+  , lookupOrInsert
   , Key(..)) where
 
 import Type.Reflection
