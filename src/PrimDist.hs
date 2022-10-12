@@ -17,24 +17,12 @@
     along with their corresponding sampling and density functions.
 -}
 
-module PrimDist (
-  -- * Primitive distribution
-    PrimDist(..),
-    Distribution(..),
-    Bernoulli(..), Beta(..), Binomial(..), Cauchy(..), HalfCauchy(..), Categorical(..), Deterministic(..), Discrete(..), Dirichlet(..), Gamma(..), Normal(..), HalfNormal(..), Poisson(..), UniformD(..), Uniform(..),
-    PrimVal
-  -- , pattern PrimValDistPrf
-  -- , pattern TypeableDistPrf
-  -- * Sampling
-  -- , sampleBayes
-  -- * Density
-  -- , gradLogProb
-  ) where
+module PrimDist where
 
-import Debug.Trace
+import Debug.Trace ( trace )
 import Data.Kind ( Constraint )
 import Data.Map (Map)
-import Data.Functor
+import Data.Functor ( (<&>) )
 import OpenSum (OpenSum)
 import qualified Data.Vector as V
 import qualified OpenSum
@@ -47,12 +35,12 @@ import LogP ( LogP(..) )
 import Util ( boolToInt )
 import Numeric.Log ( Log(..) )
 import Control.Monad ((>=>), replicateM)
-import Data.Typeable
+import Data.Typeable ( Typeable )
 import GHC.Real (infinity)
 import Data.Bifunctor (second)
 -- import qualified Control.Monad.Bayes.Class as MB
 
-type PrimDist d a = (Distribution d, Typeable d, Support d ~ a)
+type PrimDist d a = (Distribution d, Support d ~ a)
 
 class Typeable d => Distribution d where
   type family Support d :: *
@@ -80,8 +68,9 @@ class Typeable d => Distribution d where
   gradLogProb = undefined
 
 
--- | Bernoulli
-newtype Bernoulli = Bernoulli Double     -- ^ probability of @True@
+-- | Bernoulli(p)
+--   @p@ probability of success
+newtype Bernoulli = Bernoulli Double
   deriving Show
 
 instance Distribution Bernoulli where
@@ -102,8 +91,8 @@ bernoulliGradLogPdfRaw :: Double -> Bool -> (Double, Bool)
 bernoulliGradLogPdfRaw p y = (dp, y)
   where dp = 1/p - fromIntegral (boolToInt y)/(1 - p)
 
--- | Beta
-data Beta = Beta Double Double  -- α, β
+-- | Beta(α, β)
+data Beta = Beta Double Double
   deriving Show
 
 instance Distribution Beta where
@@ -131,8 +120,9 @@ betaGradLogPdfRaw α β x
         db = log (1 - x) - digamma β + digamma_ab
         dx = (α - 1)/x + (β - 1)/(1 - x)
 
--- | Binomial
-data Binomial = Binomial Int Double -- ^ number of trials, probability of success
+-- | Binomial(n, p)
+-- | @n@ number of trials, @p@ probability of success
+data Binomial = Binomial Int Double
   deriving Show
 
 instance Distribution Binomial where
@@ -162,8 +152,9 @@ binomialGradLogPdfRaw n p y
         dp = fromIntegral n/p - fromIntegral (n - y)/(1 - p)
         dy = 0
 
--- | Categorical
-newtype Categorical = Categorical [Double]  -- ^ list of @n@ probabilities
+-- | Categorical(ps)
+--   @ps@ probabilities of each category
+newtype Categorical = Categorical [Double]
   deriving Show
 
 instance Distribution Categorical where
@@ -180,8 +171,8 @@ instance Distribution Categorical where
     | idx < 0 || idx >= length ps = trace "CategoricalLogPdf: idx < 0 || idx >= length ps" m_neg_inf
     | otherwise                   = log (ps !! idx)
 
--- | Cauchy
-data Cauchy = Cauchy Double Double          -- ^ location, scale
+-- | Cauchy(location, scale)
+data Cauchy = Cauchy Double Double
   deriving Show
 
 instance Distribution Cauchy where
@@ -210,8 +201,8 @@ cauchyGradLogPdfRaw loc scale x
         ds = 1/scale - (2 * scale)/(xlocSqrd + scaleSqrd)
         dx = -dl
 
--- | HalfCauchy
-newtype HalfCauchy = HalfCauchy Double      -- ^ scale
+-- | HalfCauchy(scale)
+newtype HalfCauchy = HalfCauchy Double
   deriving Show
 
 instance Distribution HalfCauchy where
@@ -233,7 +224,7 @@ halfCauchyGradLogPdfRaw scale x
   | scale <= 0 = error "cauchyGradLogPdfRaw: scale <= 0"
   | otherwise  = let (_, ds, dx) = cauchyGradLogPdfRaw 0 scale x in (ds, dx)
 
--- | Deterministic
+-- | Deterministic(x)
 data Deterministic a where
   Deterministic
     :: (Show a, Typeable a, Eq a)
@@ -254,8 +245,9 @@ instance Typeable a => Distribution (Deterministic a) where
     | x == y    = 0
     | otherwise = m_neg_inf
 
--- | Dirichlet
-newtype Dirichlet = Dirichlet  [Double]  -- ^ concentrations
+-- | Dirichlet(αs)
+--   @αs@ concentrations
+newtype Dirichlet = Dirichlet [Double]
   deriving Show
 
 instance Distribution Dirichlet where
@@ -286,11 +278,12 @@ dirichletGradLogPdfRaw αs xs
   where derivA a x  = -(digamma a) + digamma (sum αs) + log x
         derivX a x = (a - 1) / x
 
--- | Discrete
+-- | Discrete(xps)
+--   @xps@ values `x` and associated probabilities `p`
 data Discrete a where
   Discrete
     :: (Show a, Typeable a, Eq a)
-    => [(a, Double)]                    -- ^ values and associated probabilities
+    => [(a, Double)]
     -> Discrete a
 
 instance Typeable a => Distribution (Discrete a) where
@@ -308,8 +301,9 @@ instance Typeable a => Distribution (Discrete a) where
       Nothing -> trace ("Couldn't find " ++ show y ++ " in Discrete dist") m_neg_inf
       Just p  -> log p
 
--- | Continuous uniform
-data Uniform = Uniform Double Double   -- ^ lower-bound @min@, upper-bound @max@
+-- | ContinuousUniform(min, max)
+--   @min@ lower-bound, @max@ upper-bound
+data Uniform = Uniform Double Double
   deriving Show
 
 instance Distribution Uniform where
@@ -327,8 +321,9 @@ instance Distribution Uniform where
     | x < min || x > max = m_neg_inf
     | otherwise          = -log(max - min)
 
--- | Discrete uniform
-data UniformD = UniformD Int Int      -- ^ lower-bound @min@, upper-bound @max@
+-- | DiscreteUniform(min, max)
+--   @min@ lower-bound, @max@ upper-bound
+data UniformD = UniformD Int Int
   deriving Show
 
 instance Distribution UniformD where
@@ -346,8 +341,9 @@ instance Distribution UniformD where
     | idx < min || idx > max  = m_neg_inf
     | otherwise               = - log (fromIntegral $ max - min + 1)
 
--- | Gamma
-data Gamma = Gamma Double Double   -- ^ shape @k@, scale @θ@
+-- | Gamma(k, θ)
+--   @k@ shape, @θ@ scale
+data Gamma = Gamma Double Double
   deriving Show
 
 instance Distribution Gamma where
@@ -374,8 +370,9 @@ gammaGradLogPdfRaw k t x
         dt = x/(t**2) - k/t
         dx = (k - 1)/x - 1/t
 
--- | Normal
-data Normal = Normal Double Double -- ^ mean @μ@, standard deviation @σ@
+-- | Normal(μ, σ)
+--   @μ@ mean, @σ@ standard deviation
+data Normal = Normal Double Double
   deriving Show
 
 instance Distribution Normal where
@@ -402,8 +399,9 @@ normalGradLogPdfRaw μ σ x
         dσ = -1/σ + (xμ**2)/(σ ** 3)
         dx = -dμ
 
--- | HalfNormal
-newtype HalfNormal = HalfNormal Double   -- ^ standard deviation @σ@
+-- | HalfNormal(σ)
+--   @σ@ standard deviation
+newtype HalfNormal = HalfNormal Double
   deriving Show
 
 instance Distribution HalfNormal where
@@ -426,8 +424,9 @@ halfNormalGradLogPdfRaw σ x
   | σ <= 0        = error "halfNormalGradLogPdfRaw: σ <= 0"
   | otherwise     = let (_, dσ, dx) = normalGradLogPdfRaw 0 σ x in (dσ, dx)
 
--- | Poisson
-newtype Poisson = Poisson Double           -- ^ rate @λ@
+-- | Poisson(λ)
+--   @λ@ rate
+newtype Poisson = Poisson Double
   deriving Show
 
 instance Distribution Poisson where
@@ -451,62 +450,10 @@ poissonGradLogPdfRaw λ y
   | y < 0     = error "poissonGradLogPdfRaw:  y < 0 "
   | otherwise = (fromIntegral y/λ) - 1
 
-
 {- Dictionary proofs for constraints on primitive distributions
 -}
 data Dict c a where
   Dict :: c a => Dict c a
-
--- | An ad-hoc specification of primitive value types, for constraining the outputs of distributions
-type PrimVal = '[Int, Double, [Double], Bool, String]
-
-class    (Show x, OpenSum.Member x PrimVal) => IsPrimVal x
-
-instance (Show x, OpenSum.Member x PrimVal) => IsPrimVal x
-
--- -- | For pattern-matching on an arbitrary @PrimDist@ with proof that it generates a primitive value
--- pattern PrimValDistPrf :: () => (IsPrimVal x) => PrimDist x -> PrimDist x
--- pattern PrimValDistPrf d <- d@(primValDistPrf -> Just Dict)
-
--- primValDistPrf :: PrimDist x -> Maybe (Dict IsPrimVal x)
--- primValDistPrf d = case d of
---   HalfCauchy {} -> Just Dict
---   Cauchy {} -> Just Dict
---   Normal {} -> Just Dict
---   HalfNormal  {} -> Just Dict
---   Uniform  {} -> Just Dict
---   UniformD {} -> Just Dict
---   Gamma {} -> Just Dict
---   Beta {} -> Just Dict
---   Binomial {} -> Just Dict
---   Bernoulli {} -> Just Dict
---   Categorical {} -> Just Dict
---   Poisson {} -> Just Dict
---   Dirichlet {} -> Just Dict
---   Deterministic {} -> Nothing
---   Discrete {} -> Nothing
-
--- -- | For pattern-matching on an arbitrary @PrimDist@ with proof that it generates a primitive value
--- pattern TypeableDistPrf :: () => (Typeable x) => PrimDist x -> PrimDist x
--- pattern TypeableDistPrf d <- d@(typeableDistPrf -> Dict)
-
--- typeableDistPrf :: Distribution d => d -> Dict Typeable x
--- typeableDistPrf d = case d of
---   HalfCauchy {} ->  Dict
---   Cauchy {} ->  Dict
---   Normal {} ->  Dict
---   HalfNormal  {} ->  Dict
---   Uniform  {} ->  Dict
---   UniformD {} ->  Dict
---   Gamma {} ->  Dict
---   Beta {} ->  Dict
---   Binomial {} ->  Dict
---   Bernoulli {} ->  Dict
---   Categorical {} ->  Dict
---   Poisson {} ->  Dict
---   Dirichlet {} ->  Dict
---   Discrete {} ->  Dict
---   Deterministic {} ->  Dict
 
 -- -- | Given fixed parameters and observed value, compute the gradients of a distribution's log-pdf w.r.t its parameters
 -- gradLogProb ::
