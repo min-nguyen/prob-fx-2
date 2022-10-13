@@ -30,8 +30,12 @@ module Trace (
   , GTrace
   -- * Dist trace
   , DTrace
-  , insert
-  , lookupOrInsert
+  , DKey
+  , dinsert
+  , dlookup
+  , dlookupOrInsert
+  , dintersectLeftWith
+  , dmap
   , Key(..)) where
 
 import Type.Reflection
@@ -105,11 +109,11 @@ traceLogProbs = handleState Map.empty . storeLPs
 -}
 type GTrace = DTrace
 
-{- | The type of primitive distribution traces.
+{- | The type of differentiable primitive distribution traces.
 -}
 data DTrace where
   Leaf :: DTrace
-  Node :: (PrimDist d a)
+  Node :: (DiffDistribution d)
        => DKey d         -- key
        -> d              -- distribution
        -> DTrace         -- left
@@ -150,12 +154,12 @@ instance (HeteroOrd k, Typeable a, Typeable b) => TrueOrd k a b where
     (EQ, GT) -> TrueGT
 
 -- | Construct a single node
-singleton :: PrimDist d a => DKey d -> d -> DTrace
-singleton k x = Node k x Leaf Leaf
+dsingleton :: DiffDistribution d => DKey d -> d -> DTrace
+dsingleton k x = Node k x Leaf Leaf
 
 -- | Lookup an entry
-lookup :: Typeable d => DKey d -> DTrace -> Maybe d
-lookup kx = go
+dlookup :: Typeable d => DKey d -> DTrace -> Maybe d
+dlookup kx = go
   where
     go Leaf = Nothing
     go (Node ky y l r) = case trueCompare kx ky
@@ -164,19 +168,19 @@ lookup kx = go
            TrueGT       -> go r
 
 -- | Insert a new entry
-insert :: PrimDist d a => DKey d -> d -> DTrace  -> DTrace
-insert kx d = go
+dinsert :: DiffDistribution d => DKey d -> d -> DTrace  -> DTrace
+dinsert kx d = go
   where
     go :: DTrace -> DTrace
-    go Leaf = singleton kx d
+    go Leaf = dsingleton kx d
     go (Node ky y l r) = case trueCompare kx ky
         of  TrueEQ HRefl -> Node kx d l r
             TrueLT       -> Node ky y (go l) r
             TrueGT       -> Node ky y l (go r)
 
 -- | Apply a function to an entry if it exists
-update :: PrimDist d a => DKey d -> (d -> d) -> DTrace -> DTrace
-update kx f = go
+dupdate :: DiffDistribution d => DKey d -> (d -> d) -> DTrace -> DTrace
+dupdate kx f = go
   where
     go :: DTrace -> DTrace
     go Leaf = Leaf
@@ -186,11 +190,11 @@ update kx f = go
            TrueGT       -> Node ky y l (go r)
 
 -- | Return the entry if it exists, otherwise insert a new entry
-lookupOrInsert :: forall d a. PrimDist d a => DKey d -> d -> DTrace -> (d, DTrace)
-lookupOrInsert kx dx  = go
+dlookupOrInsert :: forall d a. DiffDistribution d => DKey d -> d -> DTrace -> (d, DTrace)
+dlookupOrInsert kx dx  = go
   where
     go :: DTrace -> (d, DTrace)
-    go Leaf             = (dx, singleton kx dx)
+    go Leaf             = (dx, dsingleton kx dx)
     go (Node ky dy l r) =
       case trueCompare kx ky of
         TrueEQ HRefl -> (dy, Node ky dy l r)
@@ -199,20 +203,20 @@ lookupOrInsert kx dx  = go
 
 -- | Combine the entries of two traces with an operation when their keys match,
 --   returning elements of the left trace that do not exist in the second trace.
-intersectLeftWith :: (forall d a. PrimDist d a => d -> d -> d) -> DTrace -> GTrace -> DTrace
-intersectLeftWith _ t1 Leaf  = t1
-intersectLeftWith _ Leaf t2  = Leaf
-intersectLeftWith f (Node k1 x1 l1 r1) t2 =
+dintersectLeftWith :: (forall d a. PrimDist d a => d -> d -> d) -> DTrace -> GTrace -> DTrace
+dintersectLeftWith _ t1 Leaf  = t1
+dintersectLeftWith _ Leaf t2  = Leaf
+dintersectLeftWith f (Node k1 x1 l1 r1) t2 =
   case maybe_x2 of
       Nothing -> Node k1 x1 l1 r1
       Just x2 -> Node k1 (f undefined undefined) l1l2 r1r2
-    where (l2, maybe_x2, r2) =  splitLookup k1 t2
-          !l1l2 = intersectLeftWith f l1 l2
-          !r1r2 = intersectLeftWith f r1 r2
+    where (l2, maybe_x2, r2) =  dsplitLookup k1 t2
+          !l1l2 = dintersectLeftWith f l1 l2
+          !r1r2 = dintersectLeftWith f r1 r2
 
 -- | Split-lookup without rebalancing tree
-splitLookup :: PrimDist d a => DKey d -> DTrace -> (DTrace, Maybe d, DTrace)
-splitLookup k = go
+dsplitLookup :: PrimDist d a => DKey d -> DTrace -> (DTrace, Maybe d, DTrace)
+dsplitLookup k = go
   where
     go Leaf            = (Leaf, Nothing, Leaf)
     go (Node kx x l r) = case trueCompare k kx of
@@ -221,8 +225,15 @@ splitLookup k = go
       TrueEQ HRefl -> (l, Just x, r)
 
 -- | Fold over a tree
-foldr :: (forall d a. PrimDist d a => DKey d -> d -> b -> b) -> b -> DTrace -> b
-foldr f = go
+dfoldr :: (forall d a. PrimDist d a => DKey d -> d -> b -> b) -> b -> DTrace -> b
+dfoldr f = go
   where
     go z Leaf             = z
     go z (Node  kx x l r) = go (f kx x (go z r)) l
+
+-- | Fold over a tree
+dmap :: (forall d a. DiffDistribution d => d -> d) -> DTrace -> DTrace
+dmap f = go
+  where
+    go  Leaf             = Leaf
+    go  (Node  kx x l r) = Node kx (f x) (go l) (go r)

@@ -148,6 +148,8 @@ smc2LinRegr n_outer_particles n_mhsteps n_inner_particles  n_datapoints = do
       cs  = concatMap (get #c) env_outs
   pure (mus, cs)
 
+
+
 {- | Linear regression model on individual data points at a time.
 -}
 linRegrOnce :: Observables env ["y", "m", "c", "σ"] Double

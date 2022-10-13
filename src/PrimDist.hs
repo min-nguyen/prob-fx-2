@@ -59,20 +59,326 @@ class Typeable d => Distribution d where
 
   {- | Compute the log density as the LogP type
   -}
-  {-# INLINE logProb #-}
   logProb     :: d -> Support d -> LogP
   logProb d   = LogP . logProbRaw d
 
   {- | Compute the probability density
   -}
-  {-# INLINE prob #-}
   prob        :: d -> Support d -> Double
   prob d      = exp . logProbRaw d
 
+  {- | Provide proof that d is differentiable
+  -}
+  isDifferentiable :: d -> Maybe (Dict DiffDistribution d)
+
+
+class Distribution d => DiffDistribution d where
   {- | Compute the gradient log-probability.
   -}
   gradLogProb :: d -> Support d -> d
-  gradLogProb = undefined
+
+  addGrad   :: d -> d -> d
+
+  scaleGrad :: Double -> d -> d
+
+
+-- | Beta(α, β)
+data Beta = Beta Double Double
+  deriving Show
+
+instance Distribution Beta where
+  type Support Beta = Double
+
+  sampleInv :: Beta -> Double -> Sampler Double
+  sampleInv (Beta α β) r
+    | r >= 0 && r <= 1 = pure $ invIncompleteBeta α β r
+    | otherwise        = error $ "Beta: r must be in [0,1] range. Got: " ++ show r
+
+  sample :: Beta -> Sampler Double
+  sample (Beta α β) = sampleBeta α β
+
+  logProbRaw :: Beta -> Double -> Double
+  logProbRaw (Beta α β) x
+    | α <= 0 || β <= 0 = error "betaLogPdfRaw: α <= 0 || β <= 0 "
+    | x <= 0 || x >= 1 = m_neg_inf
+    | otherwise = (α-1)*log x + (β-1)*log1p (-x) - logBeta α β
+
+  isDifferentiable :: Beta -> Maybe (Dict DiffDistribution Beta)
+  isDifferentiable _ = Just Dict
+
+instance DiffDistribution Beta where
+  gradLogProb :: Beta -> Double -> Beta
+  gradLogProb (Beta α β) x
+    | α <= 0 || β <= 0 = error "betaGradLogPdfRaw: a <= 0 || β <= 0"
+    | x <= 0 || x >= 1 = error "betaGradLogPdfRaw: x <= 0 || x >= 1"
+    | otherwise = Beta da db
+    where digamma_ab = digamma (α + β)
+          da = log x       - digamma α + digamma_ab
+          db = log (1 - x) - digamma β + digamma_ab
+          dx = (α - 1)/x + (β - 1)/(1 - x)
+
+  scaleGrad :: Double -> Beta -> Beta
+  scaleGrad η (Beta dα dβ) = Beta (η * dα) (η * dβ)
+
+  addGrad :: Beta -> Beta -> Beta
+  addGrad (Beta α β) (Beta dα dβ) = Beta α' β'
+    where α' = let α_new = α + dα in if α_new <= 0 then α else α_new
+          β' = let β_new = β + dβ in if β_new <= 0 then β else β_new
+
+-- | Cauchy(location, scale)
+data Cauchy = Cauchy Double Double
+  deriving Show
+
+instance Distribution Cauchy where
+  type Support Cauchy = Double
+
+  sampleInv :: Cauchy -> Double -> Sampler Double
+  sampleInv (Cauchy loc scale) r
+      | 0 < r && r < 0.5 = pure $ loc - scale / tan( pi * r )
+      | 0.5 < r && r < 1 = pure $ loc + scale / tan( pi * (1 - r) )
+      | otherwise = error  $ "Cauchy: r must be in [0,1] range. Got: " ++ show r
+
+  sample :: Cauchy -> Sampler Double
+  sample (Cauchy loc scale) = sampleCauchy loc scale
+
+  logProbRaw :: Cauchy -> Double -> Double
+  logProbRaw (Cauchy loc scale) x
+    | scale <= 0 = error "cauchyLogPdfRaw: scale <= 0"
+    | otherwise     = -(log pi) + log scale - log (xloc**2 + scale**2)
+    where xloc = x - loc
+
+  isDifferentiable :: Cauchy -> Maybe (Dict DiffDistribution Cauchy)
+  isDifferentiable _ = Just Dict
+
+instance DiffDistribution Cauchy where
+  gradLogProb :: Cauchy -> Double -> Cauchy
+  gradLogProb (Cauchy loc scale) x
+    | scale <= 0 = error "cauchyGradLogPdfRaw: scale <= 0"
+    | otherwise     = Cauchy dloc dscale
+    where xloc      = x - loc
+          xlocSqrd  = xloc**2
+          scaleSqrd = scale**2
+          dloc = (2 * xloc)/(xlocSqrd + scaleSqrd)
+          dscale = 1/scale - (2 * scale)/(xlocSqrd + scaleSqrd)
+          dx = -dloc
+
+  scaleGrad :: Double -> Cauchy -> Cauchy
+  scaleGrad η (Cauchy dloc dscale) = Cauchy (η * dloc) (η * dscale)
+
+  addGrad :: Cauchy -> Cauchy -> Cauchy
+  addGrad (Cauchy loc scale) (Cauchy dloc dscale) = Cauchy loc' scale'
+    where loc'   = loc + dloc
+          scale' = let new_scale = scale + dscale in if new_scale <= 0 then scale else new_scale
+
+-- | HalfCauchy(scale)
+newtype HalfCauchy = HalfCauchy Double
+  deriving Show
+
+instance Distribution HalfCauchy where
+  type Support HalfCauchy = Double
+
+  sampleInv :: HalfCauchy -> Double -> Sampler Double
+  sampleInv (HalfCauchy scale) r = sampleInv (Cauchy 0 scale) r <&> abs
+
+  sample :: HalfCauchy -> Sampler Double
+  sample (HalfCauchy scale)  = sample (Cauchy 0 scale) <&> abs
+
+  logProbRaw :: HalfCauchy -> Double -> Double
+  logProbRaw (HalfCauchy scale) x
+    | x < 0     = m_neg_inf
+    | otherwise = log 2 + logProbRaw (Cauchy 0 scale) x
+
+  isDifferentiable :: HalfCauchy -> Maybe (Dict DiffDistribution HalfCauchy)
+  isDifferentiable _ = Just Dict
+
+instance DiffDistribution HalfCauchy where
+  gradLogProb :: HalfCauchy -> Double -> HalfCauchy
+  gradLogProb (HalfCauchy scale) x
+    | scale <= 0 = error "cauchyGradLogPdfRaw: scale <= 0"
+    | x < 0      = error "cauchyGradLogPdfRaw: x < 0"
+    | otherwise  = let (Cauchy _ dscale) = gradLogProb (Cauchy 0 scale) x in HalfCauchy dscale
+
+  scaleGrad :: Double -> HalfCauchy -> HalfCauchy
+  scaleGrad η (HalfCauchy dscale) = HalfCauchy (η*dscale)
+
+  addGrad :: HalfCauchy -> HalfCauchy -> HalfCauchy
+  addGrad (HalfCauchy scale) (HalfCauchy dscale) = HalfCauchy scale'
+    where scale' = let new_scale = scale + dscale in if new_scale <= 0 then scale else new_scale
+
+-- | Dirichlet(αs)
+--   @αs@ concentrations
+newtype Dirichlet = Dirichlet [Double]
+  deriving Show
+
+instance Distribution Dirichlet where
+  type Support Dirichlet = [Double]
+
+  sampleInv :: Dirichlet -> Double -> Sampler [Double]
+  sampleInv (Dirichlet αs) r = do
+    let rs = take (length αs) (linCongGen r)
+    xs <- mapM (\(α, r) -> sampleInv (Gamma α 1) r) (zip αs rs)
+    pure $ map (/sum xs) xs
+
+  sample :: Dirichlet -> Sampler [Double]
+  sample (Dirichlet αs)    = sampleDirichlet αs
+
+  logProbRaw :: Dirichlet -> [Double] -> Double
+  logProbRaw (Dirichlet αs) xs
+    | length xs /= length αs     = trace "dirichletLogPdfRaw: length xs /= length αs" m_neg_inf
+    | abs (sum xs - 1.0) > 1e-14 = trace "dirichletLogPdfRaw: data should sum to 1" m_neg_inf
+    | any (<= 0) αs              = trace "dirichletLogPdfRaw: weights should be positive" m_neg_inf
+    | any (<  0) xs              = trace "dirichletLogPdfRaw: data should be non-negative" m_neg_inf
+    | otherwise = c + sum (zipWith (\a x -> (a - 1) * log x) αs xs)
+    where c = - sum (map logGamma αs) + logGamma (sum αs)
+
+  isDifferentiable :: Dirichlet -> Maybe (Dict DiffDistribution Dirichlet)
+  isDifferentiable _ = Just Dict
+
+instance DiffDistribution Dirichlet where
+  gradLogProb :: Dirichlet -> [Double] -> Dirichlet
+  gradLogProb (Dirichlet αs) xs
+    | length xs /= length αs     = error "dirichletGradLogPdfRaw: length xs /= length αs"
+    | abs (sum xs - 1.0) > 1e-14 = error "dirichletGradLogPdfRaw: data should sum to 1"
+    | any (<= 0) αs              = error "dirichletGradLogPdfRaw: weights should be positive"
+    | any (<  0) xs              = error "dirichletGradLogPdfRaw: data should be non-negative"
+    | otherwise = Dirichlet (zipWith derivA αs xs)
+    where derivA a x  = -(digamma a) + digamma (sum αs) + log x
+          derivX a x = (a - 1) / x
+
+  scaleGrad :: Double -> Dirichlet -> Dirichlet
+  scaleGrad η (Dirichlet αs) = Dirichlet (map (η*) αs)
+
+  addGrad :: Dirichlet ->Dirichlet -> Dirichlet
+  addGrad (Dirichlet αs) (Dirichlet dαs) = Dirichlet (zipWith add_dα αs dαs)
+    where add_dα α dα = let α_new = α + dα in if α_new <= 0 then α else α_new
+
+-- | Gamma(k, θ)
+--   @k@ shape, @θ@ scale
+data Gamma = Gamma Double Double
+  deriving Show
+
+instance Distribution Gamma where
+  type Support Gamma = Double
+
+  sampleInv :: Gamma -> Double -> Sampler Double
+  sampleInv (Gamma k θ) r
+      | r == 0         = pure 0
+      | r == 1         = pure m_pos_inf
+      | r > 0 && r < 1 = pure $ θ * invIncompleteGamma k r
+      | otherwise      = error $ "Gamma: r must be in [0,1] range. Got: " ++ show r
+
+  sample :: Gamma -> Sampler Double
+  sample (Gamma k θ) = sampleGamma k θ
+
+  logProbRaw :: Gamma -> Double -> Double
+  logProbRaw (Gamma k θ) x
+    | x <= 0           = m_neg_inf
+    | k <= 0 || θ <= 0 = error "gammaLogPdfRaw: k <= 0 || θ <= 0"
+    | otherwise = (k - 1) * log x - (x/θ) - logGamma k - (k * log θ)
+
+  isDifferentiable :: Gamma -> Maybe (Dict DiffDistribution Gamma)
+  isDifferentiable _ = Just Dict
+
+instance DiffDistribution Gamma where
+  gradLogProb :: Gamma -> Double -> Gamma
+  gradLogProb (Gamma k θ) x
+    | k <= 0 || θ <= 0 = error "gammaGradLogPdfRaw: k <= 0 || t <= 0"
+    | x <= 0           = error "gammaGradLogPdfRaw: x <= 0"
+    | otherwise = Gamma dk dθ
+    where dk = log x - digamma k - log θ
+          dθ = x/(θ**2) - k/θ
+          dx = (k - 1)/x - 1/θ
+
+  scaleGrad :: Double -> Gamma -> Gamma
+  scaleGrad η (Gamma dk dθ) = Gamma (η*dk) (η*dθ)
+
+  addGrad :: Gamma -> Gamma -> Gamma
+  addGrad (Gamma k θ) (Gamma dk dθ) = Gamma k' θ'
+    where k' = let k_new = k + dk in if k_new <= 0 then k else k_new
+          θ' = let θ_new = θ + dθ in if θ_new <= 0 then θ else θ_new
+
+-- | Normal(μ, σ)
+--   @μ@ mean, @σ@ standard deviation
+data Normal = Normal Double Double
+  deriving Show
+
+instance Distribution Normal where
+  type Support Normal = Double
+
+  sampleInv :: Normal -> Double -> Sampler Double
+  sampleInv (Normal μ σ) r
+    | r == 0         = pure m_neg_inf
+    | r == 1         = pure m_pos_inf
+    | r == 0.5       = pure μ
+    | r > 0 && r < 1 = pure $ (- invErfc (2 * r)) * (m_sqrt_2 * σ) + μ
+    | otherwise      = error $ "Normal: r must be in [0,1] range. Got: " ++ show r
+
+  sample :: Normal -> Sampler Double
+  sample (Normal μ σ) = sampleNormal μ σ
+
+  logProbRaw :: Normal -> Double -> Double
+  logProbRaw (Normal μ σ) x
+    | σ <= 0     = error "normalLogPdfRaw: σ <= 0"
+    | otherwise  = -(xμ * xμ / (2 * (σ ** 2))) - log m_sqrt_2_pi - log σ
+    where xμ = x - μ
+
+  isDifferentiable :: Normal -> Maybe (Dict DiffDistribution Normal)
+  isDifferentiable _ = Just Dict
+
+instance DiffDistribution Normal where
+  gradLogProb :: Normal -> Double -> Normal
+  gradLogProb (Normal μ σ) x
+    | σ <= 0      = error "normalGradLogPdfRaw: σ <= 0"
+    | otherwise   = Normal dμ dσ
+    where xμ = x - μ
+          dμ = xμ/(σ ** 2)
+          dσ = -1/σ + (xμ**2)/(σ ** 3)
+          dx = -dμ
+
+  scaleGrad :: Double -> Normal -> Normal
+  scaleGrad η (Normal dμ dσ) = Normal (η * dμ) (η * dσ)
+
+  addGrad :: Normal -> Normal -> Normal
+  addGrad (Normal μ σ) (Normal dμ dσ) = Normal μ' σ'
+    where μ' = μ + dμ
+          σ' = let σ_new = σ + dσ in if σ_new <= 0 then σ else σ_new
+
+-- | HalfNormal(σ)
+--   @σ@ standard deviation
+newtype HalfNormal = HalfNormal Double
+  deriving Show
+
+instance Distribution HalfNormal where
+  type Support HalfNormal = Double
+
+  sampleInv :: HalfNormal -> Double -> Sampler Double
+  sampleInv (HalfNormal σ) r = sampleInv (Normal 0 σ) r <&> abs
+
+  sample :: HalfNormal -> Sampler Double
+  sample (HalfNormal σ) = sample (Normal 0 σ) <&> abs
+
+  logProbRaw :: HalfNormal -> Double -> Double
+  logProbRaw (HalfNormal σ) x
+    | x < 0     = m_neg_inf
+    | otherwise = log 2 + logProbRaw (Normal 0 σ) x
+
+  isDifferentiable :: HalfNormal -> Maybe (Dict DiffDistribution HalfNormal)
+  isDifferentiable _ = Just Dict
+
+instance DiffDistribution HalfNormal where
+  gradLogProb :: HalfNormal -> Double -> HalfNormal
+  gradLogProb (HalfNormal σ) x
+    | x < 0         = error "halfNormalGradLogPdfRaw: No gradient at x < 0"
+    | σ <= 0        = error "halfNormalGradLogPdfRaw: σ <= 0"
+    | otherwise     = let Normal _ dσ = gradLogProb (Normal 0 σ) x in HalfNormal dσ
+
+  scaleGrad :: Double -> HalfNormal -> HalfNormal
+  scaleGrad η (HalfNormal dσ) = HalfNormal (η * dσ)
+
+  addGrad :: HalfNormal -> HalfNormal -> HalfNormal
+  addGrad (HalfNormal σ) (HalfNormal dσ) = HalfNormal σ'
+    where σ' = let σ_new = σ + dσ in if σ_new <= 0 then σ else σ_new
+
 
 {-# INLINE invCMF #-}
 invCMF
@@ -106,40 +412,15 @@ instance Distribution Bernoulli where
     | y         = log p
     | otherwise = log (1 - p)
 
-bernoulliGradLogPdfRaw :: Double -> Bool -> (Double, Bool)
-bernoulliGradLogPdfRaw p y = (dp, y)
+  isDifferentiable _ = Nothing
+
+bernoulliGradLogPdfRaw :: Bernoulli -> Bool -> Bernoulli
+bernoulliGradLogPdfRaw (Bernoulli p) y = Bernoulli dp
   where dp = 1/p - fromIntegral (boolToInt y)/(1 - p)
 
--- | Beta(α, β)
-data Beta = Beta Double Double
-  deriving Show
-
-instance Distribution Beta where
-  type Support Beta = Double
-
-  sampleInv :: Beta -> Double -> Sampler Double
-  sampleInv (Beta α β) r
-    | r >= 0 && r <= 1 = pure $ invIncompleteBeta α β r
-    | otherwise        = error $ "Beta: r must be in [0,1] range. Got: " ++ show r
-
-  sample :: Beta -> Sampler Double
-  sample (Beta α β) = sampleBeta α β
-
-  logProbRaw :: Beta -> Double -> Double
-  logProbRaw (Beta α β) x
-    | α <= 0 || β <= 0 = error "betaLogPdfRaw: α <= 0 || β <= 0 "
-    | x <= 0 || x >= 1 = m_neg_inf
-    | otherwise = (α-1)*log x + (β-1)*log1p (-x) - logBeta α β
-
-betaGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
-betaGradLogPdfRaw α β x
-  | α <= 0 || β <= 0 = error "betaGradLogPdfRaw: a <= 0 || β <= 0"
-  | x <= 0 || x >= 1 = error "betaGradLogPdfRaw: x <= 0 || x >= 1"
-  | otherwise = (da, db, dx)
-  where digamma_ab = digamma (α + β)
-        da = log x       - digamma α + digamma_ab
-        db = log (1 - x) - digamma β + digamma_ab
-        dx = (α - 1)/x + (β - 1)/(1 - x)
+bernoulliAddGrad :: Bernoulli -> Bernoulli -> Bernoulli
+bernoulliAddGrad (Bernoulli p) (Bernoulli dp) = Bernoulli dp
+  where p' = max (min (p + dp) 1) 0
 
 -- | Binomial(n, p)
 -- | @n@ number of trials, @p@ probability of success
@@ -164,6 +445,8 @@ instance Distribution Binomial where
     where
       y'  = fromIntegral   y
       ny' = fromIntegral $ n - y
+
+  isDifferentiable _ = Nothing
 
 binomialGradLogPdfRaw :: Int -> Double -> Int -> (Int, Double, Int)
 binomialGradLogPdfRaw n p y
@@ -194,61 +477,7 @@ instance Distribution Categorical where
     | idx < 0 || idx >= length ps = trace "CategoricalLogPdf: idx < 0 || idx >= length ps" m_neg_inf
     | otherwise                   = log (ps !! idx)
 
--- | Cauchy(location, scale)
-data Cauchy = Cauchy Double Double
-  deriving Show
-
-instance Distribution Cauchy where
-  type Support Cauchy = Double
-
-  sampleInv :: Cauchy -> Double -> Sampler Double
-  sampleInv (Cauchy loc scale) r
-      | 0 < r && r < 0.5 = pure $ loc - scale / tan( pi * r )
-      | 0.5 < r && r < 1 = pure $ loc + scale / tan( pi * (1 - r) )
-      | otherwise = error  $ "Cauchy: r must be in [0,1] range. Got: " ++ show r
-
-  sample :: Cauchy -> Sampler Double
-  sample (Cauchy loc scale) = sampleCauchy loc scale
-
-  logProbRaw :: Cauchy -> Double -> Double
-  logProbRaw (Cauchy loc scale) x
-    | scale <= 0 = error "cauchyLogPdfRaw: scale <= 0"
-    | otherwise     = -(log pi) + log scale - log (xloc**2 + scale**2)
-    where xloc = x - loc
-
-cauchyGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
-cauchyGradLogPdfRaw loc scale x
-  | scale <= 0 = error "cauchyGradLogPdfRaw: scale <= 0"
-  | otherwise     = (dl, ds, dx)
-  where xloc      = x - loc
-        xlocSqrd  = xloc**2
-        scaleSqrd = scale**2
-        dl = (2 * xloc)/(xlocSqrd + scaleSqrd)
-        ds = 1/scale - (2 * scale)/(xlocSqrd + scaleSqrd)
-        dx = -dl
-
--- | HalfCauchy(scale)
-newtype HalfCauchy = HalfCauchy Double
-  deriving Show
-
-instance Distribution HalfCauchy where
-  type Support HalfCauchy = Double
-
-  sampleInv :: HalfCauchy -> Double -> Sampler Double
-  sampleInv (HalfCauchy scale) r = sampleInv (Cauchy 0 scale) r <&> abs
-
-  sample :: HalfCauchy -> Sampler Double
-  sample (HalfCauchy scale)  = sample (Cauchy 0 scale) <&> abs
-
-  logProbRaw :: HalfCauchy -> Double -> Double
-  logProbRaw (HalfCauchy scale) x
-    | x < 0     = m_neg_inf
-    | otherwise = log 2 + logProbRaw (Cauchy 0 scale) x
-
-halfCauchyGradLogPdfRaw :: Double -> Double -> (Double, Double)
-halfCauchyGradLogPdfRaw scale x
-  | scale <= 0 = error "cauchyGradLogPdfRaw: scale <= 0"
-  | otherwise  = let (_, ds, dx) = cauchyGradLogPdfRaw 0 scale x in (ds, dx)
+  isDifferentiable _ = Nothing
 
 -- | Deterministic(x)
 data Deterministic a where
@@ -271,41 +500,7 @@ instance Typeable a => Distribution (Deterministic a) where
     | x == y    = 0
     | otherwise = m_neg_inf
 
--- | Dirichlet(αs)
---   @αs@ concentrations
-newtype Dirichlet = Dirichlet [Double]
-  deriving Show
-
-instance Distribution Dirichlet where
-  type Support Dirichlet = [Double]
-
-  sampleInv :: Dirichlet -> Double -> Sampler [Double]
-  sampleInv (Dirichlet αs) r = do
-    let rs = take (length αs) (linCongGen r)
-    xs <- mapM (\(α, r) -> sampleInv (Gamma α 1) r) (zip αs rs)
-    pure $ map (/sum xs) xs
-
-  sample :: Dirichlet -> Sampler [Double]
-  sample (Dirichlet αs)    = sampleDirichlet αs
-
-  logProbRaw :: Dirichlet -> [Double] -> Double
-  logProbRaw (Dirichlet αs) xs
-    | length xs /= length αs     = trace "dirichletLogPdfRaw: length xs /= length αs" m_neg_inf
-    | abs (sum xs - 1.0) > 1e-14 = trace "dirichletLogPdfRaw: data should sum to 1" m_neg_inf
-    | any (<= 0) αs              = trace "dirichletLogPdfRaw: weights should be positive" m_neg_inf
-    | any (<  0) xs              = trace "dirichletLogPdfRaw: data should be non-negative" m_neg_inf
-    | otherwise = c + sum (zipWith (\a x -> (a - 1) * log x) αs xs)
-    where c = - sum (map logGamma αs) + logGamma (sum αs)
-
-dirichletGradLogPdfRaw :: [Double] -> [Double] -> ([Double], [Double])
-dirichletGradLogPdfRaw αs xs
-  | length xs /= length αs     = error "dirichletGradLogPdfRaw: length xs /= length αs"
-  | abs (sum xs - 1.0) > 1e-14 = error "dirichletGradLogPdfRaw: data should sum to 1"
-  | any (<= 0) αs              = error "dirichletGradLogPdfRaw: weights should be positive"
-  | any (<  0) xs              = error "dirichletGradLogPdfRaw: data should be non-negative"
-  | otherwise = (zipWith derivA αs xs, zipWith derivX αs xs)
-  where derivA a x  = -(digamma a) + digamma (sum αs) + log x
-        derivX a x = (a - 1) / x
+  isDifferentiable _ = Nothing
 
 -- | Discrete(xps)
 --   @xps@ values `x` and associated probabilities `p`
@@ -331,6 +526,36 @@ instance Typeable a => Distribution (Discrete a) where
       Nothing -> trace ("Couldn't find " ++ show y ++ " in Discrete dist") m_neg_inf
       Just p  -> log p
 
+  isDifferentiable _ = Nothing
+
+-- | Poisson(λ)
+--   @λ@ rate
+newtype Poisson = Poisson Double
+  deriving Show
+
+instance Distribution Poisson where
+  type Support Poisson = Int
+
+  sampleInv :: Poisson -> Double -> Sampler Int
+  sampleInv (Poisson λ) = pure . invCMF (prob (Poisson λ))
+
+  sample :: Poisson -> Sampler Int
+  sample (Poisson λ) = samplePoisson λ
+
+  logProbRaw :: Poisson -> Int -> Double
+  logProbRaw (Poisson λ) y
+    | λ < 0     = error "poissonLogPdfRaw:  λ < 0 "
+    | y < 0     = trace "poissonLogPdfRaw:  y < 0 " m_neg_inf
+    | otherwise = log λ * fromIntegral y - logFactorial y - λ
+
+  isDifferentiable _ = Nothing
+
+poissonGradLogPdfRaw :: Double -> Int -> Double
+poissonGradLogPdfRaw λ y
+  | λ < 0     = error "poissonGradLogPdfRaw:  λ < 0 "
+  | y < 0     = error "poissonGradLogPdfRaw:  y < 0 "
+  | otherwise = (fromIntegral y/λ) - 1
+
 -- | ContinuousUniform(min, max)
 --   @min@ lower-bound, @max@ upper-bound
 data Uniform = Uniform Double Double
@@ -352,6 +577,8 @@ instance Distribution Uniform where
     | max <  min         = error "uniformLogPdfRaw: max < min"
     | x < min || x > max = m_neg_inf
     | otherwise          = -log(max - min)
+
+  isDifferentiable _ = Nothing
 
 -- | DiscreteUniform(min, max)
 --   @min@ lower-bound, @max@ upper-bound
@@ -377,123 +604,7 @@ instance Distribution UniformD where
     | idx < min || idx > max  = m_neg_inf
     | otherwise               = - log (fromIntegral $ max - min + 1)
 
--- | Gamma(k, θ)
---   @k@ shape, @θ@ scale
-data Gamma = Gamma Double Double
-  deriving Show
-
-instance Distribution Gamma where
-  type Support Gamma = Double
-
-  sampleInv :: Gamma -> Double -> Sampler Double
-  sampleInv (Gamma k θ) r
-      | r == 0         = pure 0
-      | r == 1         = pure m_pos_inf
-      | r > 0 && r < 1 = pure $ θ * invIncompleteGamma k r
-      | otherwise      = error $ "Gamma: r must be in [0,1] range. Got: " ++ show r
-
-  sample :: Gamma -> Sampler Double
-  sample (Gamma k θ) = sampleGamma k θ
-
-  logProbRaw :: Gamma -> Double -> Double
-  logProbRaw (Gamma k θ) x
-    | x <= 0           = m_neg_inf
-    | k <= 0 || θ <= 0 = error "gammaLogPdfRaw: k <= 0 || θ <= 0"
-    | otherwise = (k - 1) * log x - (x/θ) - logGamma k - (k * log θ)
-
-gammaGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
-gammaGradLogPdfRaw k t x
-  | k <= 0 || t <= 0 = error "gammaGradLogPdfRaw: k <= 0 || t <= 0"
-  | x <= 0           = error "gammaGradLogPdfRaw: x <= 0"
-  | otherwise = (dk, dt, dx)
-  where dk = log x - digamma k - log t
-        dt = x/(t**2) - k/t
-        dx = (k - 1)/x - 1/t
-
--- | Normal(μ, σ)
---   @μ@ mean, @σ@ standard deviation
-data Normal = Normal Double Double
-  deriving Show
-
-instance Distribution Normal where
-  type Support Normal = Double
-
-  sampleInv :: Normal -> Double -> Sampler Double
-  sampleInv (Normal μ σ) r
-    | r == 0         = pure m_neg_inf
-    | r == 1         = pure m_pos_inf
-    | r == 0.5       = pure μ
-    | r > 0 && r < 1 = pure $ (- invErfc (2 * r)) * (m_sqrt_2 * σ) + μ
-    | otherwise      = error $ "Normal: r must be in [0,1] range. Got: " ++ show r
-
-  sample :: Normal -> Sampler Double
-  sample (Normal μ σ) = sampleNormal μ σ
-
-  logProbRaw :: Normal -> Double -> Double
-  logProbRaw (Normal μ σ) x
-    | σ <= 0     = error "normalLogPdfRaw: σ <= 0"
-    | otherwise  = -(xμ * xμ / (2 * (σ ** 2))) - log m_sqrt_2_pi - log σ
-    where xμ = x - μ
-
-normalGradLogPdfRaw :: Double -> Double -> Double -> (Double, Double, Double)
-normalGradLogPdfRaw μ σ x
-  | σ <= 0 = error "normalGradLogPdfRaw: σ <= 0"
-  | otherwise     = (dμ, dσ, dx)
-  where xμ = x - μ
-        dμ = xμ/(σ ** 2)
-        dσ = -1/σ + (xμ**2)/(σ ** 3)
-        dx = -dμ
-
--- | HalfNormal(σ)
---   @σ@ standard deviation
-newtype HalfNormal = HalfNormal Double
-  deriving Show
-
-instance Distribution HalfNormal where
-  type Support HalfNormal = Double
-
-  sampleInv :: HalfNormal -> Double -> Sampler Double
-  sampleInv (HalfNormal σ) r = sampleInv (Normal 0 σ) r <&> abs
-
-  sample :: HalfNormal -> Sampler Double
-  sample (HalfNormal σ) = sample (Normal 0 σ) <&> abs
-
-  logProbRaw :: HalfNormal -> Double -> Double
-  logProbRaw (HalfNormal σ) x
-    | x < 0     = m_neg_inf
-    | otherwise = log 2 + logProbRaw (Normal 0 σ) x
-
-halfNormalGradLogPdfRaw :: Double -> Double -> (Double, Double)
-halfNormalGradLogPdfRaw σ x
-  | x < 0         = error "halfNormalGradLogPdfRaw: No gradient at x < 0"
-  | σ <= 0        = error "halfNormalGradLogPdfRaw: σ <= 0"
-  | otherwise     = let (_, dσ, dx) = normalGradLogPdfRaw 0 σ x in (dσ, dx)
-
--- | Poisson(λ)
---   @λ@ rate
-newtype Poisson = Poisson Double
-  deriving Show
-
-instance Distribution Poisson where
-  type Support Poisson = Int
-
-  sampleInv :: Poisson -> Double -> Sampler Int
-  sampleInv (Poisson λ) = pure . invCMF (prob (Poisson λ))
-
-  sample :: Poisson -> Sampler Int
-  sample (Poisson λ) = samplePoisson λ
-
-  logProbRaw :: Poisson -> Int -> Double
-  logProbRaw (Poisson λ) y
-    | λ < 0     = error "poissonLogPdfRaw:  λ < 0 "
-    | y < 0     = trace "poissonLogPdfRaw:  y < 0 " m_neg_inf
-    | otherwise = log λ * fromIntegral y - logFactorial y - λ
-
-poissonGradLogPdfRaw :: Double -> Int -> Double
-poissonGradLogPdfRaw λ y
-  | λ < 0     = error "poissonGradLogPdfRaw:  λ < 0 "
-  | y < 0     = error "poissonGradLogPdfRaw:  y < 0 "
-  | otherwise = (fromIntegral y/λ) - 1
+  isDifferentiable _ = Nothing
 
 {- Dictionary proofs for constraints on primitive distributions
 -}
