@@ -101,10 +101,10 @@ handleSamp strace (Op op k) = case discharge op of
     Right (Sample d α) ->
       case Map.lookup α strace of
           Nothing -> do r <- lift sampleRandom
-                        y <- lift (sampleInv d r)
+                        let y = sampleInv d r
                         k' (Map.insert α r strace) y
-          Just r  -> do y <- lift (sampleInv d r)
-                        k' strace  y
+          Just r  -> do let y = sampleInv d r
+                        k' strace y
     Left op' -> Op op' (k' strace )
 
   where k' strace' = handleSamp strace' . k

@@ -1,9 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -11,7 +9,6 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE RankNTypes #-}
-
 
 {- | A GADT encoding of (a selection of) primitive distributions
     along with their corresponding sampling and density functions.
@@ -37,17 +34,17 @@ import Control.Monad ((>=>), replicateM)
 import Data.Typeable ( Typeable )
 import GHC.Real (infinity)
 import Data.Bifunctor (second)
-import Util
--- import qualified Control.Monad.Bayes.Class as MB
+import Util ( linCongGen, boolToInt )
+{- import qualified Control.Monad.Bayes.Class as MB -}
 
-type PrimDist d a = (Distribution d, Support d ~ a)
-
+{- Distributions that can be sampled from and conditioned against.
+-}
 class Typeable d => Distribution d where
   type family Support d :: *
   {- | Given a random double @r@ in (0, 1], this is passed to a distribution's inverse
        cumulative density function to draw a sampled value.
   -}
-  sampleInv   :: d -> Double -> Sampler (Support d)
+  sampleInv   :: d -> Double -> Support d
 
   {- | Draw a value from a primitive distribution in the @Sampler@ monad.
   -}
@@ -57,7 +54,7 @@ class Typeable d => Distribution d where
   -}
   logProbRaw  :: d -> Support d -> Double
 
-  {- | Compute the log density as the LogP type
+  {- | Compute the log density as the @LogP@ type
   -}
   logProb     :: d -> Support d -> LogP
   logProb d   = LogP . logProbRaw d
@@ -67,11 +64,19 @@ class Typeable d => Distribution d where
   prob        :: d -> Support d -> Double
   prob d      = exp . logProbRaw d
 
-  {- | Provide proof that d is differentiable
+  {- | Provide proof that @d@ is differentiable.
   -}
   isDifferentiable :: d -> Maybe (Dict DiffDistribution d)
 
+-- | Shorthand for specifying a distribution @d@ and its type of support @a@
+type PrimDist d a = (Distribution d, Support d ~ a)
 
+-- | Dictionary proof
+data Dict c a where
+  Dict :: c a => Dict c a
+
+{- Distributions that can be differentiated with respect to their parameters
+-}
 class Distribution d => DiffDistribution d where
   {- | Compute the gradient log-probability.
   -}
@@ -89,9 +94,9 @@ data Beta = Beta Double Double
 instance Distribution Beta where
   type Support Beta = Double
 
-  sampleInv :: Beta -> Double -> Sampler Double
+  sampleInv :: Beta -> Double -> Double
   sampleInv (Beta α β) r
-    | r >= 0 && r <= 1 = pure $ invIncompleteBeta α β r
+    | r >= 0 && r <= 1 = invIncompleteBeta α β r
     | otherwise        = error $ "Beta: r must be in [0,1] range. Got: " ++ show r
 
   sample :: Beta -> Sampler Double
@@ -132,10 +137,10 @@ data Cauchy = Cauchy Double Double
 instance Distribution Cauchy where
   type Support Cauchy = Double
 
-  sampleInv :: Cauchy -> Double -> Sampler Double
+  sampleInv :: Cauchy -> Double -> Double
   sampleInv (Cauchy loc scale) r
-      | 0 < r && r < 0.5 = pure $ loc - scale / tan( pi * r )
-      | 0.5 < r && r < 1 = pure $ loc + scale / tan( pi * (1 - r) )
+      | 0 < r && r < 0.5 = loc - scale / tan( pi * r )
+      | 0.5 < r && r < 1 = loc + scale / tan( pi * (1 - r) )
       | otherwise = error  $ "Cauchy: r must be in [0,1] range. Got: " ++ show r
 
   sample :: Cauchy -> Sampler Double
@@ -177,8 +182,8 @@ newtype HalfCauchy = HalfCauchy Double
 instance Distribution HalfCauchy where
   type Support HalfCauchy = Double
 
-  sampleInv :: HalfCauchy -> Double -> Sampler Double
-  sampleInv (HalfCauchy scale) r = sampleInv (Cauchy 0 scale) r <&> abs
+  sampleInv :: HalfCauchy -> Double ->  Double
+  sampleInv (HalfCauchy scale) r = abs $ sampleInv (Cauchy 0 scale) r
 
   sample :: HalfCauchy -> Sampler Double
   sample (HalfCauchy scale)  = sample (Cauchy 0 scale) <&> abs
@@ -213,11 +218,11 @@ newtype Dirichlet = Dirichlet [Double]
 instance Distribution Dirichlet where
   type Support Dirichlet = [Double]
 
-  sampleInv :: Dirichlet -> Double -> Sampler [Double]
-  sampleInv (Dirichlet αs) r = do
+  sampleInv :: Dirichlet -> Double -> [Double]
+  sampleInv (Dirichlet αs) r =
     let rs = take (length αs) (linCongGen r)
-    xs <- mapM (\(α, r) -> sampleInv (Gamma α 1) r) (zip αs rs)
-    pure $ map (/sum xs) xs
+        xs = zipWith (\α r -> sampleInv (Gamma α 1) r) αs rs
+    in  map (/sum xs) xs
 
   sample :: Dirichlet -> Sampler [Double]
   sample (Dirichlet αs)    = sampleDirichlet αs
@@ -260,11 +265,11 @@ data Gamma = Gamma Double Double
 instance Distribution Gamma where
   type Support Gamma = Double
 
-  sampleInv :: Gamma -> Double -> Sampler Double
+  sampleInv :: Gamma -> Double -> Double
   sampleInv (Gamma k θ) r
-      | r == 0         = pure 0
-      | r == 1         = pure m_pos_inf
-      | r > 0 && r < 1 = pure $ θ * invIncompleteGamma k r
+      | r == 0         = 0
+      | r == 1         = m_pos_inf
+      | r > 0 && r < 1 = θ * invIncompleteGamma k r
       | otherwise      = error $ "Gamma: r must be in [0,1] range. Got: " ++ show r
 
   sample :: Gamma -> Sampler Double
@@ -305,12 +310,12 @@ data Normal = Normal Double Double
 instance Distribution Normal where
   type Support Normal = Double
 
-  sampleInv :: Normal -> Double -> Sampler Double
+  sampleInv :: Normal -> Double -> Double
   sampleInv (Normal μ σ) r
-    | r == 0         = pure m_neg_inf
-    | r == 1         = pure m_pos_inf
-    | r == 0.5       = pure μ
-    | r > 0 && r < 1 = pure $ (- invErfc (2 * r)) * (m_sqrt_2 * σ) + μ
+    | r == 0         = m_neg_inf
+    | r == 1         = m_pos_inf
+    | r == 0.5       = μ
+    | r > 0 && r < 1 = (- invErfc (2 * r)) * (m_sqrt_2 * σ) + μ
     | otherwise      = error $ "Normal: r must be in [0,1] range. Got: " ++ show r
 
   sample :: Normal -> Sampler Double
@@ -351,8 +356,8 @@ newtype HalfNormal = HalfNormal Double
 instance Distribution HalfNormal where
   type Support HalfNormal = Double
 
-  sampleInv :: HalfNormal -> Double -> Sampler Double
-  sampleInv (HalfNormal σ) r = sampleInv (Normal 0 σ) r <&> abs
+  sampleInv :: HalfNormal -> Double -> Double
+  sampleInv (HalfNormal σ) = abs . sampleInv (Normal 0 σ)
 
   sample :: HalfNormal -> Sampler Double
   sample (HalfNormal σ) = sample (Normal 0 σ) <&> abs
@@ -401,8 +406,8 @@ newtype Bernoulli = Bernoulli Double
 instance Distribution Bernoulli where
   type Support Bernoulli = Bool
 
-  sampleInv :: Bernoulli -> Double -> Sampler Bool
-  sampleInv (Bernoulli p) r = pure $ r < p
+  sampleInv :: Bernoulli -> Double -> Bool
+  sampleInv (Bernoulli p) r = r < p
 
   sample :: Bernoulli -> Sampler Bool
   sample (Bernoulli p) = sampleBernoulli p
@@ -430,9 +435,8 @@ data Binomial = Binomial Int Double
 instance Distribution Binomial where
   type Support Binomial = Int
 
-  sampleInv :: Binomial -> Double -> Sampler Int
-  sampleInv (Binomial n p) =
-    pure . invCMF (prob (Binomial n p))
+  sampleInv :: Binomial -> Double -> Int
+  sampleInv (Binomial n p) = invCMF (prob (Binomial n p))
 
   sample :: Binomial -> Sampler Int
   sample (Binomial n p) = sampleBinomial n p
@@ -465,9 +469,8 @@ newtype Categorical = Categorical [Double]
 instance Distribution Categorical where
   type Support Categorical = Int            -- ^ an index from @0@ to @n - 1@
 
-  sampleInv :: Categorical -> Double -> Sampler Int
-  sampleInv (Categorical ps) =
-    pure . invCMF (ps !!)
+  sampleInv :: Categorical -> Double -> Int
+  sampleInv (Categorical ps) = invCMF (ps !!)
 
   sample :: Categorical -> Sampler Int
   sample (Categorical ps) = sampleCategorical (V.fromList ps)
@@ -489,8 +492,8 @@ data Deterministic a where
 instance Typeable a => Distribution (Deterministic a) where
   type Support (Deterministic a) = a
 
-  sampleInv :: Deterministic a -> Double -> Sampler a
-  sampleInv (Deterministic x) _ = pure x
+  sampleInv :: Deterministic a -> Double -> a
+  sampleInv (Deterministic x) _ = x
 
   sample :: Deterministic a -> Sampler a
   sample (Deterministic x) = pure x
@@ -513,8 +516,8 @@ data Discrete a where
 instance Typeable a => Distribution (Discrete a) where
   type Support (Discrete a) = a
 
-  sampleInv :: Discrete a -> Double -> Sampler a
-  sampleInv (Discrete xps) r = pure $ xs !! invCMF (ps !!) r
+  sampleInv :: Discrete a -> Double -> a
+  sampleInv (Discrete xps) r = xs !! invCMF (ps !!) r
     where (xs, ps) = unzip xps
 
   sample :: Discrete a -> Sampler a
@@ -536,8 +539,8 @@ newtype Poisson = Poisson Double
 instance Distribution Poisson where
   type Support Poisson = Int
 
-  sampleInv :: Poisson -> Double -> Sampler Int
-  sampleInv (Poisson λ) = pure . invCMF (prob (Poisson λ))
+  sampleInv :: Poisson -> Double -> Int
+  sampleInv (Poisson λ) = invCMF (prob (Poisson λ))
 
   sample :: Poisson -> Sampler Int
   sample (Poisson λ) = samplePoisson λ
@@ -564,9 +567,9 @@ data Uniform = Uniform Double Double
 instance Distribution Uniform where
   type Support Uniform = Double
 
-  sampleInv :: Uniform -> Double -> Sampler Double
+  sampleInv :: Uniform -> Double -> Double
   sampleInv (Uniform min max) r
-    | r >= 0 && r <= 1 = pure $ min + (max - min) * r
+    | r >= 0 && r <= 1 = min + (max - min) * r
     | otherwise        = error $ "Uniform: r must be in [0,1] range. Got: " ++ show r
 
   sample :: Uniform -> Sampler Double
@@ -588,9 +591,9 @@ data UniformD = UniformD Int Int
 instance Distribution UniformD where
   type Support UniformD = Int
 
-  sampleInv :: UniformD -> Double -> Sampler Int
+  sampleInv :: UniformD -> Double -> Int
   sampleInv (UniformD min max) r
-     | r >= 0 && r <= 1 = pure $ floor (min' + (max' - min') * r)
+     | r >= 0 && r <= 1 = floor (min' + (max' - min') * r)
      | otherwise        = error $ "UniformD: r must be in [0,1] range. Got: " ++ show r
      where min' = fromIntegral min
            max' = fromIntegral max + 1
@@ -605,11 +608,6 @@ instance Distribution UniformD where
     | otherwise               = - log (fromIntegral $ max - min + 1)
 
   isDifferentiable _ = Nothing
-
-{- Dictionary proofs for constraints on primitive distributions
--}
-data Dict c a where
-  Dict :: c a => Dict c a
 
 -- -- | Given fixed parameters and observed value, compute the gradients of a distribution's log-pdf w.r.t its parameters
 -- gradLogProb ::
