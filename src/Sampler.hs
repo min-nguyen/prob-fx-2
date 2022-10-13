@@ -26,6 +26,21 @@ module Sampler (
   , sampleDiscrete
   , samplePoisson
   , sampleDirichlet
+  {-
+  -- ** Inverse CDF sampling
+  -- $Inverse-sampling
+  , sampleCauchyInv
+  , sampleNormalInv
+  , sampleUniformInv
+  , sampleUniformDInv
+  , sampleGammaInv
+  , sampleBetaInv
+  , sampleBernoulliInv
+  , sampleBinomialInv
+  , sampleCategoricalInv
+  , sampleDiscreteInv
+  , samplePoissonInv
+  , sampleDirichletInv -}
   ) where
 
 import Control.Monad ( replicateM, when, (>=>) )
@@ -149,3 +164,117 @@ sampleDirichlet
   :: [Double] -- ^ concentrations
   -> Sampler [Double]
 sampleDirichlet xs = mkSampler $ MWC.Dist.dirichlet xs
+
+{- $Inverse-sampling
+  Given a random double @r@ between 0 and 1, this is passed to a distribution's inverse
+  cumulative density function to draw a sampled value.
+
+{- Continuous cases.
+-}
+
+invCDF
+  :: ContDistr d
+  => d
+  -> Double
+  -> Sampler Double
+invCDF d = pure . quantile d
+
+sampleCauchyInv
+  :: Double -- ^ location
+  -> Double -- ^ scale
+  -> Double -- ^ r
+  -> Sampler Double
+sampleCauchyInv μ σ = invCDF (cauchyDistribution μ σ)
+
+sampleNormalInv
+  :: Double -- ^ mean
+  -> Double -- ^ std
+  -> Double -- ^ r
+  -> Sampler Double
+sampleNormalInv μ σ = invCDF (normalDistr μ σ)
+
+sampleUniformInv
+  :: Double -- ^ lower-bound
+  -> Double -- ^ upper-bound
+  -> Double -- ^ r
+  -> Sampler Double
+sampleUniformInv min max = invCDF (uniformDistr min max)
+
+sampleUniformDInv
+  :: Int    -- ^ lower-bound
+  -> Int    -- ^ upper-bound
+  -> Double -- ^ r
+  -> Sampler Int
+sampleUniformDInv min max = sampleUniformInv (fromIntegral min) (fromIntegral max + 1) >=> pure . floor
+
+sampleGammaInv
+  :: Double -- ^ shape k
+  -> Double -- ^ shape θ
+  -> Double -- ^ r
+  -> Sampler Double
+sampleGammaInv k θ  = invCDF (gammaDistr k θ)
+
+sampleBetaInv
+  :: Double -- ^ shape α
+  -> Double -- ^ shape β
+  -> Double -- ^ r
+  -> Sampler Double
+sampleBetaInv α β = invCDF (betaDistr α β)
+
+sampleDirichletInv
+  :: [Double]  -- ^ concentrations
+  -> Double    -- ^ r
+  -> Sampler [Double]
+sampleDirichletInv as r = do
+  let rs = take (length as) (linCongGen r)
+  xs <- mapM (\(a, r) -> sampleGammaInv a 1 r) (zip as rs)
+  let ys = map (/sum xs) xs
+  return ys
+
+{- Discrete cases.
+-}
+
+invCMF
+  :: (Int -> Double)  -- ^ probability mass function
+  -> Double           -- ^ r
+  -> Sampler Int
+invCMF pmf r = pure (f 0 r)
+  where
+    f :: Int -> Double -> Int
+    f i r = do
+      let q  = pmf i
+          r' = r - q
+      if r' < 0 then i else f (i + 1) r'
+
+sampleBernoulliInv
+  :: Double -- ^ probability of @True@
+  -> Double -- ^ r
+  -> Sampler Bool
+sampleBernoulliInv p r = pure $ r < p
+
+sampleBinomialInv
+  :: Int    -- ^ number of trials
+  -> Double -- ^ probability of successful trial
+  -> Double -- ^ r
+  -> Sampler Int
+sampleBinomialInv n p = invCMF (probability (binomial n p))
+
+sampleCategoricalInv
+  :: V.Vector Double
+  -> Double
+  -> Sampler Int
+sampleCategoricalInv ps = invCMF (ps V.!)
+
+sampleDiscreteInv
+  :: [(a, Double)]
+  -> Double
+  -> Sampler a
+sampleDiscreteInv xps r = invCMF (ps !!) r <&> (xs !!)
+  where (xs, ps) = unzip xps
+
+samplePoissonInv
+  :: Double       -- ^ rate λ
+  -> Double       -- ^ r
+  -> Sampler Int
+samplePoissonInv λ = invCMF (probability (poisson λ))
+ -}

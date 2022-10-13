@@ -59,11 +59,13 @@ class Typeable d => Distribution d where
 
   {- | Compute the log density as the LogP type
   -}
+  {-# INLINE logProb #-}
   logProb     :: d -> Support d -> LogP
   logProb d   = LogP . logProbRaw d
 
   {- | Compute the probability density
   -}
+  {-# INLINE prob #-}
   prob        :: d -> Support d -> Double
   prob d      = exp . logProbRaw d
 
