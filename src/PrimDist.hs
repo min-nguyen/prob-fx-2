@@ -27,24 +27,24 @@ import OpenSum (OpenSum)
 import qualified Data.Vector as V
 import qualified OpenSum
 import Numeric.MathFunctions.Constants
-    ( m_eulerMascheroni, m_neg_inf, m_sqrt_2_pi )
+    ( m_eulerMascheroni, m_neg_inf, m_sqrt_2_pi, m_sqrt_2, m_pos_inf )
 import Numeric.SpecFunctions (
-  incompleteBeta, invIncompleteBeta, logBeta, logGamma, digamma, log1p, logChoose, logFactorial)
+  incompleteBeta, invIncompleteBeta, logBeta, logGamma, digamma, log1p, logChoose, logFactorial, invErfc, invIncompleteGamma)
 import Sampler
 import LogP ( LogP(..) )
-import Util ( boolToInt )
 import Numeric.Log ( Log(..) )
 import Control.Monad ((>=>), replicateM)
 import Data.Typeable ( Typeable )
 import GHC.Real (infinity)
 import Data.Bifunctor (second)
+import Util
 -- import qualified Control.Monad.Bayes.Class as MB
 
 type PrimDist d a = (Distribution d, Support d ~ a)
 
 class Typeable d => Distribution d where
   type family Support d :: *
-  {- | Given a random double @r@ between 0 and 1, this is passed to a distribution's inverse
+  {- | Given a random double @r@ in (0, 1], this is passed to a distribution's inverse
        cumulative density function to draw a sampled value.
   -}
   sampleInv   :: d -> Double -> Sampler (Support d)
@@ -62,11 +62,28 @@ class Typeable d => Distribution d where
   logProb     :: d -> Support d -> LogP
   logProb d   = LogP . logProbRaw d
 
+  {- | Compute the probability density
+  -}
+  prob        :: d -> Support d -> Double
+  prob d      = exp . logProbRaw d
+
   {- | Compute the gradient log-probability.
   -}
   gradLogProb :: d -> Support d -> d
   gradLogProb = undefined
 
+{-# INLINE invCMF #-}
+invCMF
+  :: (Int -> Double)  -- ^ probability mass function
+  -> Double           -- ^ r
+  -> Int
+invCMF pmf r = f 0 r
+  where
+    f :: Int -> Double -> Int
+    f i r = do
+      let q  = pmf i
+          r' = r - q
+      if r' < 0 then i else f (i + 1) r'
 
 -- | Bernoulli(p)
 --   @p@ probability of success
@@ -77,7 +94,7 @@ instance Distribution Bernoulli where
   type Support Bernoulli = Bool
 
   sampleInv :: Bernoulli -> Double -> Sampler Bool
-  sampleInv (Bernoulli p) = sampleBernoulliInv p
+  sampleInv (Bernoulli p) r = pure $ r < p
 
   sample :: Bernoulli -> Sampler Bool
   sample (Bernoulli p) = sampleBernoulli p
@@ -99,14 +116,16 @@ instance Distribution Beta where
   type Support Beta = Double
 
   sampleInv :: Beta -> Double -> Sampler Double
-  sampleInv (Beta α β) = sampleBetaInv α β
+  sampleInv (Beta α β) r
+    | r >= 0 && r <= 1 = pure $ invIncompleteBeta α β r
+    | otherwise        = error $ "Beta: r must be in [0,1] range. Got: " ++ show r
 
   sample :: Beta -> Sampler Double
   sample (Beta α β) = sampleBeta α β
 
   logProbRaw :: Beta -> Double -> Double
   logProbRaw (Beta α β) x
-    | α <= 0 || β <= 0 = error "betaLogPdfRaw:  α <= 0 || β <= 0 "
+    | α <= 0 || β <= 0 = error "betaLogPdfRaw: α <= 0 || β <= 0 "
     | x <= 0 || x >= 1 = m_neg_inf
     | otherwise = (α-1)*log x + (β-1)*log1p (-x) - logBeta α β
 
@@ -129,7 +148,8 @@ instance Distribution Binomial where
   type Support Binomial = Int
 
   sampleInv :: Binomial -> Double -> Sampler Int
-  sampleInv (Binomial n p) = sampleBinomialInv n p
+  sampleInv (Binomial n p) =
+    pure . invCMF (prob (Binomial n p))
 
   sample :: Binomial -> Sampler Int
   sample (Binomial n p) = sampleBinomial n p
@@ -161,7 +181,8 @@ instance Distribution Categorical where
   type Support Categorical = Int            -- ^ an index from @0@ to @n - 1@
 
   sampleInv :: Categorical -> Double -> Sampler Int
-  sampleInv (Categorical ps) = sampleCategoricalInv (V.fromList ps)
+  sampleInv (Categorical ps) =
+    pure . invCMF (ps !!)
 
   sample :: Categorical -> Sampler Int
   sample (Categorical ps) = sampleCategorical (V.fromList ps)
@@ -179,9 +200,12 @@ instance Distribution Cauchy where
   type Support Cauchy = Double
 
   sampleInv :: Cauchy -> Double -> Sampler Double
-  sampleInv (Cauchy loc scale) = sampleCauchyInv loc scale
+  sampleInv (Cauchy loc scale) r
+      | 0 < r && r < 0.5 = pure $ loc - scale / tan( pi * r )
+      | 0.5 < r && r < 1 = pure $ loc + scale / tan( pi * (1 - r) )
+      | otherwise = error  $ "Cauchy: r must be in [0,1] range. Got: " ++ show r
 
-  sample :: Cauchy -> Sampler (Support Cauchy)
+  sample :: Cauchy -> Sampler Double
   sample (Cauchy loc scale) = sampleCauchy loc scale
 
   logProbRaw :: Cauchy -> Double -> Double
@@ -209,10 +233,10 @@ instance Distribution HalfCauchy where
   type Support HalfCauchy = Double
 
   sampleInv :: HalfCauchy -> Double -> Sampler Double
-  sampleInv (HalfCauchy scale) r = sampleCauchyInv 0 scale r <&> abs
+  sampleInv (HalfCauchy scale) r = sampleInv (Cauchy 0 scale) r <&> abs
 
   sample :: HalfCauchy -> Sampler Double
-  sample (HalfCauchy scale)  = sampleCauchy 0 scale <&> abs
+  sample (HalfCauchy scale)  = sample (Cauchy 0 scale) <&> abs
 
   logProbRaw :: HalfCauchy -> Double -> Double
   logProbRaw (HalfCauchy scale) x
@@ -254,7 +278,10 @@ instance Distribution Dirichlet where
   type Support Dirichlet = [Double]
 
   sampleInv :: Dirichlet -> Double -> Sampler [Double]
-  sampleInv (Dirichlet αs) = sampleDirichletInv αs
+  sampleInv (Dirichlet αs) r = do
+    let rs = take (length αs) (linCongGen r)
+    xs <- mapM (\(α, r) -> sampleInv (Gamma α 1) r) (zip αs rs)
+    pure $ map (/sum xs) xs
 
   sample :: Dirichlet -> Sampler [Double]
   sample (Dirichlet αs)    = sampleDirichlet αs
@@ -290,10 +317,11 @@ instance Typeable a => Distribution (Discrete a) where
   type Support (Discrete a) = a
 
   sampleInv :: Discrete a -> Double -> Sampler a
-  sampleInv (Discrete xps) = sampleDiscreteInv xps
+  sampleInv (Discrete xps) r = pure $ xs !! invCMF (ps !!) r
+    where (xs, ps) = unzip xps
 
   sample :: Discrete a -> Sampler a
-  sample (Discrete xps)    = sampleDiscrete xps
+  sample (Discrete xps) = sampleDiscrete xps
 
   logProbRaw :: Discrete a -> a -> Double
   logProbRaw (Discrete xps) y =
@@ -310,7 +338,9 @@ instance Distribution Uniform where
   type Support Uniform = Double
 
   sampleInv :: Uniform -> Double -> Sampler Double
-  sampleInv (Uniform min max) = sampleUniformInv min max
+  sampleInv (Uniform min max) r
+    | r >= 0 && r <= 1 = pure $ min + (max - min) * r
+    | otherwise        = error $ "Uniform: r must be in [0,1] range. Got: " ++ show r
 
   sample :: Uniform -> Sampler Double
   sample (Uniform min max) = sampleUniform min max
@@ -330,7 +360,11 @@ instance Distribution UniformD where
   type Support UniformD = Int
 
   sampleInv :: UniformD -> Double -> Sampler Int
-  sampleInv (UniformD min max) = sampleUniformDInv min max
+  sampleInv (UniformD min max) r
+     | r >= 0 && r <= 1 = pure $ floor (min' + (max' - min') * r)
+     | otherwise        = error $ "UniformD: r must be in [0,1] range. Got: " ++ show r
+     where min' = fromIntegral min
+           max' = fromIntegral max + 1
 
   sample :: UniformD -> Sampler Int
   sample (UniformD min max)    = sampleUniformD min max
@@ -350,7 +384,11 @@ instance Distribution Gamma where
   type Support Gamma = Double
 
   sampleInv :: Gamma -> Double -> Sampler Double
-  sampleInv (Gamma k θ) = sampleGammaInv k θ
+  sampleInv (Gamma k θ) r
+      | r == 0         = pure 0
+      | r == 1         = pure m_pos_inf
+      | r > 0 && r < 1 = pure $ θ * invIncompleteGamma k r
+      | otherwise      = error $ "Gamma: r must be in [0,1] range. Got: " ++ show r
 
   sample :: Gamma -> Sampler Double
   sample (Gamma k θ) = sampleGamma k θ
@@ -379,7 +417,12 @@ instance Distribution Normal where
   type Support Normal = Double
 
   sampleInv :: Normal -> Double -> Sampler Double
-  sampleInv (Normal μ σ) = sampleNormalInv μ σ
+  sampleInv (Normal μ σ) r
+    | r == 0         = pure m_neg_inf
+    | r == 1         = pure m_pos_inf
+    | r == 0.5       = pure μ
+    | r > 0 && r < 1 = pure $ (- invErfc (2 * r)) * (m_sqrt_2 * σ) + μ
+    | otherwise      = error $ "Normal: r must be in [0,1] range. Got: " ++ show r
 
   sample :: Normal -> Sampler Double
   sample (Normal μ σ) = sampleNormal μ σ
@@ -408,10 +451,10 @@ instance Distribution HalfNormal where
   type Support HalfNormal = Double
 
   sampleInv :: HalfNormal -> Double -> Sampler Double
-  sampleInv (HalfNormal σ) r = sampleNormalInv 0 σ r <&> abs
+  sampleInv (HalfNormal σ) r = sampleInv (Normal 0 σ) r <&> abs
 
   sample :: HalfNormal -> Sampler Double
-  sample (HalfNormal σ) = sampleNormal 0 σ <&> abs
+  sample (HalfNormal σ) = sample (Normal 0 σ) <&> abs
 
   logProbRaw :: HalfNormal -> Double -> Double
   logProbRaw (HalfNormal σ) x
@@ -433,7 +476,7 @@ instance Distribution Poisson where
   type Support Poisson = Int
 
   sampleInv :: Poisson -> Double -> Sampler Int
-  sampleInv (Poisson λ) = samplePoissonInv λ
+  sampleInv (Poisson λ) = pure . invCMF (prob (Poisson λ))
 
   sample :: Poisson -> Sampler Int
   sample (Poisson λ) = samplePoisson λ
