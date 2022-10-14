@@ -57,10 +57,11 @@ smcInternal n_particles =
 
 {- | A handler for resampling particles according to their normalized log-likelihoods.
 -}
-particleResampler :: ParticleResampler Particle
+particleResampler :: ParticleResampler es Particle a
 particleResampler (Val x) = Val x
 particleResampler (Op op k) = case discharge op of
-  Right (Resample (prts, ctxs, prog_0)) -> do
+  -- Right (Resample (prts, ctxs, prog_0)) -> do
+  Right (Resample (prts, ctxs)) -> do
     -- | Get the weights for each particle
     let ws = map (exp . unLogP . particleLogProb) ctxs
     -- | Select particles to continue with

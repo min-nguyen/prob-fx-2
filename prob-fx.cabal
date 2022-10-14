@@ -39,7 +39,7 @@ library
                       Inference.SMC,
                       -- Inference.SMC2,
                       -- Inference.RMSMC,
-                      -- Inference.PMMH,
+                      Inference.PMMH,
                       -- Inference.MB,
                       Env,
                       LogP,

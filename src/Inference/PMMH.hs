@@ -43,33 +43,35 @@ pmmh mh_steps n_particles model env_in obs_vars = do
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
   -- | Run PMMH
-  pmmh_trace <- pmmhInternal mh_steps n_particles prog Map.empty tags
+  pmmh_trace <- (handleLift . SIM.handleSamp . SIM.handleObs . handleAccept)
+                        (pmmhInternal mh_steps n_particles prog Map.empty tags)
   -- Return the accepted model environments
   pure (map (snd . fst . fst) pmmh_trace)
 
 {- | Perform PMMH on a probabilistic program.
 -}
-pmmhInternal :: forall a.
+pmmhInternal :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es) =>
       Int                                     -- ^ number of MH steps
    -> Int                                     -- ^ number of particles
-   -> Prog [Observe, Sample, Lift Sampler] a  -- ^ probabilistic program
+   -> Prog es a  -- ^ probabilistic program
    -> STrace                               -- ^ initial sample trace
    -> [Tag]                                   -- ^ tags indicating the model parameters
-   -> Sampler  [((a, LogP), STrace)]       -- ^ trace of accepted outputs, samples, and logps
+   -> Prog (MH.Accept LogP : es) [((a, LogP), STrace)]       -- ^ trace of accepted outputs, samples, and logps
 pmmhInternal mh_steps n_particles prog strace param_tags = do
+  let mh_prog = weakenProg prog
   -- | Perform initial run of MH
-  pmmh_0 <- runPMMH n_particles prog param_tags strace
+  pmmh_0 <- runPMMH n_particles mh_prog param_tags strace
   -- | A function performing n pmmhsteps
-  foldl (>=>) pure (replicate mh_steps (pmmhStep n_particles prog param_tags)) [pmmh_0]
+  foldl (>=>) pure (replicate mh_steps (pmmhStep n_particles mh_prog param_tags)) [pmmh_0]
 
 {- | Perform one iteration of PMMH by drawing a new sample and then rejecting or accepting it.
 -}
-pmmhStep ::
+pmmhStep ::  (Members [Observe, Sample] es, LastMember (Lift Sampler) es) =>
      Int                                          -- ^ number of particles
-  -> Prog [MH.Accept LogP, Observe, Sample, Lift Sampler] a       -- ^ probabilistic program
+  -> Prog (MH.Accept LogP : es) a       -- ^ probabilistic program
   -> [Tag]                                        -- ^ tags indicating model parameters
   -> [((a, LogP), STrace)]                     -- ^ trace of previous mh outputs
-  -> Prog [MH.Accept LogP, Observe, Sample, Lift Sampler] [((a, LogP), STrace)]
+  -> Prog (MH.Accept LogP : es) [((a, LogP), STrace)]
 pmmhStep n_particles prog tags pmmh_trace = do
   let pmmh_ctx@(_, strace) = head pmmh_trace
   -- | Propose a new random value for a sample site
@@ -82,12 +84,12 @@ pmmhStep n_particles prog tags pmmh_trace = do
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}
-runPMMH :: ()
+runPMMH :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
   => Int                                          -- ^ number of particles
-  -> Prog '[Observe, Sample, Lift Sampler] a      -- ^ probabilistic program
+  -> Prog es a      -- ^ probabilistic program
   -> [Tag]                                        -- ^ tags indicating model parameters
   -> STrace                                    -- ^ sample traces
-  -> Prog [Observe, Sample, Lift Sampler] ((a, LogP), STrace)
+  -> Prog es ((a, LogP), STrace)
 runPMMH n_particles prog tags strace = do
   ((a, _), strace') <- MH.runMH strace prog
   let params = filterTrace tags strace'
@@ -108,3 +110,11 @@ accept ((_, log_p), _) ((_, log_p'), _) = do
   u <- sample (Uniform 0 1)
   pure (u < acceptance_ratio)
 
+handleAccept :: LastMember (Lift Sampler) es => Prog (MH.Accept LogP : es) a -> Prog es a
+handleAccept (Val x)   = pure x
+handleAccept (Op op k) = case discharge op of
+  Right (MH.Accept α ((_, log_p), _) ((a, log_p'), _))
+    ->  do  let acceptance_ratio = (exp . unLogP) (log_p' - log_p)
+            u <- lift $ sample (Uniform 0 1)
+            handleAccept $ k (u < acceptance_ratio)
+  Left op' -> Op op' (handleAccept . k)

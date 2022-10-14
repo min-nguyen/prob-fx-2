@@ -37,7 +37,7 @@ data Accept ctx a where
     -- | original context
     -> ((a, ctx), STrace)
     -- | context using proposed sample
-    -> ((a, LPTrace), STrace)
+    -> ((a, ctx), STrace)
     -- | whether the proposal is accepted or not
     -> Accept ctx Bool
 
