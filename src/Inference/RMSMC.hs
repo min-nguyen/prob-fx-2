@@ -87,37 +87,36 @@ particleResampler :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es
 particleResampler  mh_steps = loop where
   loop (Val x) = Val x
   loop (Op op k) = case discharge op of
-    Right (Resample (prts, prog_0, ctxs)) ->
+    Right (Resample (prts, ctxs) prog_0) ->
       do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
-          idxs <- snd <$> SMC.particleResampler (call (Resample ([], prog_0, map (Particle . particleLogProb) ctxs)))
-          let resampled_prts   = map (prts !! ) idxs
-              resampled_ctxs   = map (ctxs !! ) idxs
-
+          idxs <- snd <$> SMC.particleResampler (call (Resample ([], map (Particle . particleLogProb) ctxs) prog_0))
+          let resampled_ctxs   = map (ctxs !! ) idxs
           -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head')
-          let α_obs   = (particleObsAddr . head) resampled_ctxs
-
+              resampled_α      = (particleObsAddr . head) resampled_ctxs
+          -- | Get the sample trace of each resampled particle
+              resampled_straces = map particleSTrace resampled_ctxs
           -- | Insert break point to perform MH up to
-              partial_model = breakObserve α_obs prog_0
+              partial_model = breakObserve resampled_α prog_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
-          mh_trace <- mapM (\resampled_ctx -> fmap head .
-                                     MH.handleAccept
-                                    $  MH.mhInternal mh_steps partial_model (particleSTrace resampled_ctx) []
-                                    ) resampled_ctxs
+          mh_trace <- mapM ( fmap head
+                           . MH.handleAccept
+                           . flip (MH.mhInternal mh_steps partial_model) []
+                           ) resampled_straces
           {- | Get:
               1) the continuations of each particle from the break point (augmented with the non-det effect)
               2) the log prob traces of each particle up until the break point
               3) the sample traces of each particle up until the break point -}
           let ((rejuv_prts, lp_traces), rejuv_straces) = first unzip (unzip mh_trace)
-              -- | Filter log probability traces to only include that for observe operations
-              -- lp_traces_obs = map (filterByKey (`elem` α_obs)) lp_traces
+          {-- | Filter log probability traces to only include that for observe operations
+              lp_traces_obs = map (filterByKey (`elem` α_obs)) lp_traces
+          -}
+
               -- | Recompute the log weights of all particles up until the break point
               rejuv_lps     = map (sum . map snd . Map.toList) lp_traces
 
-              rejuv_ctxs    = zipWith3 TracedParticle rejuv_lps (repeat α_obs) rejuv_straces
+              rejuv_ctxs    = zipWith3 TracedParticle rejuv_lps (repeat resampled_α) rejuv_straces
 
-              rejuv_prts' = (map (weakenProg) rejuv_prts)
-
-          (loop . k) ((rejuv_prts', rejuv_ctxs), idxs)
+          (loop . k) ((map weakenProg rejuv_prts, rejuv_ctxs), idxs)
 
     Left op' -> Op op' (loop . k)
 

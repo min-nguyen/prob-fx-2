@@ -44,7 +44,7 @@ pmmh mh_steps n_particles model env_in obs_vars = do
       tags = varsToStrs @env obs_vars
   -- | Run PMMH
   pmmh_trace <- (handleLift . SIM.handleSamp . SIM.handleObs . handleAccept)
-                        (pmmhInternal mh_steps n_particles prog Map.empty tags)
+                (pmmhInternal mh_steps n_particles prog Map.empty tags)
   -- Return the accepted model environments
   pure (map (snd . fst . fst) pmmh_trace)
 
@@ -78,7 +78,7 @@ pmmhStep n_particles prog tags pmmh_trace = do
   (α_samp, r) <- lift (MH.propose strace tags)
   -- | Run one iteration of PMMH
   pmmh_ctx'   <- runPMMH n_particles prog tags (Map.insert α_samp r strace)
-  b <- lift (accept pmmh_ctx pmmh_ctx')
+  b           <- call (MH.Accept ("", 0) pmmh_ctx pmmh_ctx')
   if b then pure (pmmh_ctx':pmmh_trace)
        else pure pmmh_trace
 
@@ -101,15 +101,6 @@ runPMMH n_particles prog tags strace = do
 
 {- | An acceptance mechanism for PMMH.
 -}
-accept ::
-     ((a, LogP), STrace)                 -- ^ previous PMMH ctx
-  -> ((a, LogP), STrace)                 -- ^ proposed PMMH ctx
-  -> Sampler Bool
-accept ((_, log_p), _) ((_, log_p'), _) = do
-  let acceptance_ratio = (exp . unLogP) (log_p' - log_p)
-  u <- sample (Uniform 0 1)
-  pure (u < acceptance_ratio)
-
 handleAccept :: LastMember (Lift Sampler) es => Prog (MH.Accept LogP : es) a -> Prog es a
 handleAccept (Val x)   = pure x
 handleAccept (Op op k) = case discharge op of

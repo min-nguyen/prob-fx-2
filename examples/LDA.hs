@@ -21,9 +21,9 @@ import Inference.SIM as SIM ( simulate )
 import Inference.LW as LW ( lw )
 import Inference.MH as MH ( mh )
 import Inference.SMC as SMC ( smc )
--- import Inference.RMSMC as RMSMC ( rmsmc )
--- import Inference.PMMH as PMMH ( pmmh )
--- import Inference.SMC2 as SMC2 ( smc2 )
+import Inference.RMSMC as RMSMC ( rmsmc )
+import Inference.PMMH as PMMH ( pmmh )
+import Inference.SMC2 as SMC2 ( smc2 )
 {-
 import Numeric.Log ( Log )
 import Inference.MB as MB ( handleMBayes )
@@ -175,48 +175,48 @@ smcPredLDA n_particles n_words = do
       φs         = get #φ env_pred
   return (θs, φs)
 
--- -- | RMSMC inference on topic model (predictive)
--- rmsmcPredLDA :: Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
--- rmsmcPredLDA n_particles n_mhsteps n_words = do
+-- | RMSMC inference on topic model (predictive)
+rmsmcPredLDA :: Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
+rmsmcPredLDA n_particles n_mhsteps n_words = do
 
---   let n_topics  = 2
---       env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+  let n_topics  = 2
+      env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
 
---   env_outs     <- RMSMC.rmsmc n_particles n_mhsteps (topicModel vocab n_topics n_words) env_in
---   -- Draw a random particle's environment
---   env_pred_idx <- sampleUniformD 0 (length env_outs - 1)
---   let env_pred   = env_outs !! env_pred_idx
---       θs         = get #θ env_pred
---       φs         = get #φ env_pred
---   return (θs, φs)
+  env_outs     <- RMSMC.rmsmc n_particles n_mhsteps (topicModel vocab n_topics n_words) env_in
+  -- Draw a random particle's environment
+  env_pred_idx <- sampleUniformD 0 (length env_outs - 1)
+  let env_pred   = env_outs !! env_pred_idx
+      θs         = get #θ env_pred
+      φs         = get #φ env_pred
+  return (θs, φs)
 
--- -- | PMMH inference on topic model (predictive)
--- pmmhPredLDA :: Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
--- pmmhPredLDA n_mhsteps n_particles n_words = do
+-- | PMMH inference on topic model (predictive)
+pmmhPredLDA :: Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
+pmmhPredLDA n_mhsteps n_particles n_words = do
 
---   let n_topics  = 2
---       env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+  let n_topics  = 2
+      env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
 
---   env_outs     <- PMMH.pmmh n_mhsteps n_particles  (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
---   -- Draw the most recent sampled parameters
---   let env_pred   = head env_outs
---       θs         = get #θ env_pred
---       φs         = get #φ env_pred
---   return (θs, φs)
+  env_outs     <- PMMH.pmmh n_mhsteps n_particles  (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
+  -- Draw the most recent sampled parameters
+  let env_pred   = head env_outs
+      θs         = get #θ env_pred
+      φs         = get #φ env_pred
+  return (θs, φs)
 
--- -- | SMC2 inference on topic model (predictive)
--- smc2PredLDA :: Int ->  Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
--- smc2PredLDA n_outer_particles n_mhsteps n_inner_particles n_words = do
+-- | SMC2 inference on topic model (predictive)
+smc2PredLDA :: Int ->  Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
+smc2PredLDA n_outer_particles n_mhsteps n_inner_particles n_words = do
 
---   let n_topics  = 2
---       env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+  let n_topics  = 2
+      env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
 
---   env_outs     <- SMC2.smc2 n_outer_particles n_mhsteps n_inner_particles (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
---   -- Draw the most recent sampled parameters
---   let env_pred   = head env_outs
---       θs         = get #θ env_pred
---       φs         = get #φ env_pred
---   return (θs, φs)
+  env_outs     <- SMC2.smc2 n_outer_particles n_mhsteps n_inner_particles (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
+  -- Draw the most recent sampled parameters
+  let env_pred   = head env_outs
+      θs         = get #θ env_pred
+      φs         = get #φ env_pred
+  return (θs, φs)
 
 {- | Executing the topic model using monad-bayes.
 

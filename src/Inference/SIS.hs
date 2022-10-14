@@ -45,20 +45,12 @@ instance ParticleCtx LogP where
 -}
 data Resample es ctx  a where
   Resample
-    -- | ((particles, contexts), initial probabilistic program)
-    -- :: ([SISProg ctx a], [ctx], ProbProg a)
-    :: ([Prog (Resample es ctx : es) a], Prog es a, [ctx])
+    -- | (particles, contexts)
+    :: ([Prog (Resample es ctx : es) a], [ctx])
+    -- | initial probabilistic program
+    -> Prog es a
     -- | ((resampled particles, resampled contexts), idxs)
     -> Resample es ctx  (([Prog (Resample es ctx : es) a], [ctx]), [Int])
-
--- data Resample' es a where
---   Resample'
---     -- | ((particles, contexts), initial probabilistic program)
---     -- :: ([SISProg ctx a], [ctx], ProbProg a)
---     :: ([Prog (Resample' es : es) a], [Prog es a], [TracedParticle])
---     -- | ((resampled particles, resampled contexts), idxs)
---     -> Resample' es (([Prog (Resample' es : es) a], [TracedParticle]), [Int])
-
 
 {- | A @ParticleRunner@ handler runs a particle to the next @Observe@ break point.
 -}
@@ -75,7 +67,6 @@ type ParticleResampler es ctx a
   =  LastMember (Lift Sampler) es
   => Prog (Resample es ctx : es) a
   -> Prog es a
-
 
 {- | A top-level template for sequential importance sampling.
 -}
@@ -96,9 +87,9 @@ sis n_particles particleRunner particleResampler prog = do
 loopSIS :: forall ctx es a. ParticleCtx ctx => (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
   => ParticleRunner ctx                     -- ^ handler for running particles
   -> Prog es a                             -- ^ initial probabilistic program
-  -> ([Prog (Resample es ctx  : es) a], [ctx])               -- ^ input particles and corresponding contexts
+  -> ([Prog (Resample es ctx : es) a], [ctx])               -- ^ input particles and corresponding contexts
   -> Prog (Resample es ctx  : es) [(a, ctx)]                 -- ^ final particle results and corresponding contexts
-loopSIS particleRunner prog = loop
+loopSIS particleRunner prog_0 = loop
   where
     loop :: ([Prog (Resample es ctx : es) a], [ctx]) -> Prog (Resample es ctx : es) [(a, ctx)]
     loop (particles, ctxs) = do
@@ -109,7 +100,4 @@ loopSIS particleRunner prog = loop
         -- | If all particles have finished, return their results and contexts
         Right vals  -> (`zip` ctxs') <$> vals
         -- | Otherwise, pick the particles to continue with
-        Left  _     -> --call (Resample (particles', ctxs', prog))
-                         -- >>= loop . fst
-                       call (Resample (particles', prog, ctxs'))
-                          >>= loop . fst
+        Left  _     -> call (Resample (particles', ctxs') prog_0) >>= loop . fst
