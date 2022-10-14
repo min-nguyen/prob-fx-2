@@ -17,9 +17,9 @@ import Inference.SIM as SIM ( simulate )
 import Inference.LW as LW ( lw )
 import Inference.MH as MH ( mh )
 import Inference.SMC as SMC ( smc )
-import Inference.RMSMC as RMSMC ( rmsmc )
-import Inference.PMMH as PMMH ( pmmh )
-import Inference.SMC2 as SMC2 ( smc2 )
+-- import Inference.RMSMC as RMSMC ( rmsmc )
+-- import Inference.PMMH as PMMH ( pmmh )
+-- import Inference.SMC2 as SMC2 ( smc2 )
 import Sampler ( Sampler )
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
@@ -106,47 +106,47 @@ smcLinRegr n_particles n_datapoints = do
       cs = concatMap (get #c) env_outs
   pure (mus, cs)
 
--- | SMC over linear regression
-rmsmcLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
-rmsmcLinRegr n_particles n_mhsteps n_datapoints = do
-  -- Specify model inputs
-  let xs            = [0 .. fromIntegral n_datapoints]
-  -- Specify model environment
-      env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  -- Run SMC
-  env_outs <- RMSMC.rmsmc n_particles n_mhsteps (linRegr xs) env_in
-  -- Get the sampled values of mu and c for each particle
-  let mus = concatMap (get #m) env_outs
-      cs  = concatMap (get #c) env_outs
-  pure (mus, cs)
+-- -- | SMC over linear regression
+-- rmsmcLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+-- rmsmcLinRegr n_particles n_mhsteps n_datapoints = do
+--   -- Specify model inputs
+--   let xs            = [0 .. fromIntegral n_datapoints]
+--   -- Specify model environment
+--       env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+--   -- Run SMC
+--   env_outs <- RMSMC.rmsmc n_particles n_mhsteps (linRegr xs) env_in
+--   -- Get the sampled values of mu and c for each particle
+--   let mus = concatMap (get #m) env_outs
+--       cs  = concatMap (get #c) env_outs
+--   pure (mus, cs)
 
--- | PMMH over linear regression
-pmmhLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
-pmmhLinRegr n_mhsteps n_particles  n_datapoints = do
-  -- Specify model inputs
-  let xs            = [0 .. fromIntegral n_datapoints]
-  -- Specify model environment
-      env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  -- Run SMC
-  env_outs <- PMMH.pmmh n_mhsteps n_particles (linRegr xs) env_in  (#m <#> #c <#> vnil)
-  -- Get the sampled values of mu and c for each particle
-  let mus = concatMap (get #m) env_outs
-      cs  = concatMap (get #c) env_outs
-  pure (mus, cs)
+-- -- | PMMH over linear regression
+-- pmmhLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+-- pmmhLinRegr n_mhsteps n_particles  n_datapoints = do
+--   -- Specify model inputs
+--   let xs            = [0 .. fromIntegral n_datapoints]
+--   -- Specify model environment
+--       env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+--   -- Run SMC
+--   env_outs <- PMMH.pmmh n_mhsteps n_particles (linRegr xs) env_in  (#m <#> #c <#> vnil)
+--   -- Get the sampled values of mu and c for each particle
+--   let mus = concatMap (get #m) env_outs
+--       cs  = concatMap (get #c) env_outs
+--   pure (mus, cs)
 
--- | SMC2 over linear regression
-smc2LinRegr :: Int -> Int -> Int -> Int -> Sampler ([Double], [Double])
-smc2LinRegr n_outer_particles n_mhsteps n_inner_particles  n_datapoints = do
-  -- Specify model inputs
-  let xs            = [0 .. fromIntegral n_datapoints]
-  -- Specify model environment
-      env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  -- Run SMC
-  env_outs <- SMC2.smc2 n_outer_particles n_mhsteps n_inner_particles (linRegr xs) env_in (#m <#> #c <#> vnil)
-  -- Get the sampled values of mu and c for each particle
-  let mus = concatMap (get #m) env_outs
-      cs  = concatMap (get #c) env_outs
-  pure (mus, cs)
+-- -- | SMC2 over linear regression
+-- smc2LinRegr :: Int -> Int -> Int -> Int -> Sampler ([Double], [Double])
+-- smc2LinRegr n_outer_particles n_mhsteps n_inner_particles  n_datapoints = do
+--   -- Specify model inputs
+--   let xs            = [0 .. fromIntegral n_datapoints]
+--   -- Specify model environment
+--       env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+--   -- Run SMC
+--   env_outs <- SMC2.smc2 n_outer_particles n_mhsteps n_inner_particles (linRegr xs) env_in (#m <#> #c <#> vnil)
+--   -- Get the sampled values of mu and c for each particle
+--   let mus = concatMap (get #m) env_outs
+--       cs  = concatMap (get #c) env_outs
+--   pure (mus, cs)
 
 {- | Linear regression model on individual data points at a time.
 -}

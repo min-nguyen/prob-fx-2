@@ -22,9 +22,9 @@ import Inference.LW as LW ( lw )
 import Inference.MH as MH ( mh )
 import Inference.SMC as SMC ( smc )
 import Inference.SIM as SIM ( simulate )
-import Inference.RMSMC as RMSMC ( rmsmc )
-import Inference.PMMH as PMMH ( pmmh )
-import Inference.SMC2 as SMC2 ( smc2 )
+-- import Inference.RMSMC as RMSMC ( rmsmc )
+-- import Inference.PMMH as PMMH ( pmmh )
+-- import Inference.SMC2 as SMC2 ( smc2 )
 import Model ( Model, bernoulli', binomial, uniform )
 import Prog ( Member )
 import Sampler ( Sampler, liftIO )
@@ -283,64 +283,64 @@ smcHMMw n_particles hmm_length = do
       obs_ps      = concatMap (get #obs_p) env_outs
   pure (trans_ps, obs_ps)
 
--- | RMSMC inference over a HMM
-rmsmcHMMw
-  -- | number of particles
-  :: Int
-  -- | number of MH steps
-  -> Int
-  -- | number of HMM nodes
-  -> Int
-  -- | [(transition parameter, observation parameter)]
-  -> Sampler ([Double], [Double])
-rmsmcHMMw n_particles n_mhsteps hmm_length = do
-  ys <- map snd <$> simHMMw hmm_length
-  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
+-- -- | RMSMC inference over a HMM
+-- rmsmcHMMw
+--   -- | number of particles
+--   :: Int
+--   -- | number of MH steps
+--   -> Int
+--   -- | number of HMM nodes
+--   -> Int
+--   -- | [(transition parameter, observation parameter)]
+--   -> Sampler ([Double], [Double])
+-- rmsmcHMMw n_particles n_mhsteps hmm_length = do
+--   ys <- map snd <$> simHMMw hmm_length
+--   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
-  env_outs <- RMSMC.rmsmc n_particles n_mhsteps (hmm hmm_length 0) env_in
-  let trans_ps    = concatMap (get #trans_p) env_outs
-      obs_ps      = concatMap (get #obs_p) env_outs
-  pure (trans_ps, obs_ps)
+--   env_outs <- RMSMC.rmsmc n_particles n_mhsteps (hmm hmm_length 0) env_in
+--   let trans_ps    = concatMap (get #trans_p) env_outs
+--       obs_ps      = concatMap (get #obs_p) env_outs
+--   pure (trans_ps, obs_ps)
 
--- | PMMH inference over a HMM
-pmmhHMMw
-  -- | number of MH steps
-  :: Int
-  -- | number of particles
-  -> Int
-  -- | number of HMM nodes
-  -> Int
-  -- | [(transition parameter, observation parameter)]
-  -> Sampler ([Double], [Double])
-pmmhHMMw n_mhsteps n_particles  hmm_length = do
-  ys <- map snd <$> simHMMw hmm_length
-  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
+-- -- | PMMH inference over a HMM
+-- pmmhHMMw
+--   -- | number of MH steps
+--   :: Int
+--   -- | number of particles
+--   -> Int
+--   -- | number of HMM nodes
+--   -> Int
+--   -- | [(transition parameter, observation parameter)]
+--   -> Sampler ([Double], [Double])
+-- pmmhHMMw n_mhsteps n_particles  hmm_length = do
+--   ys <- map snd <$> simHMMw hmm_length
+--   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
-  env_outs <- PMMH.pmmh n_mhsteps n_particles (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
-  let trans_ps    = concatMap (get #trans_p) env_outs
-      obs_ps      = concatMap (get #obs_p) env_outs
-  pure (trans_ps, obs_ps)
+--   env_outs <- PMMH.pmmh n_mhsteps n_particles (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
+--   let trans_ps    = concatMap (get #trans_p) env_outs
+--       obs_ps      = concatMap (get #obs_p) env_outs
+--   pure (trans_ps, obs_ps)
 
--- | SMC2 inference over a HMM
-smc2HMMw
-  -- | number of outer particles
-  :: Int
-  -- | number of MH steps
-  -> Int
-  -- | number of inner particles
-  -> Int
-  -- | number of HMM nodes
-  -> Int
-  -- | [(transition parameter, observation parameter)]
-  -> Sampler ([Double], [Double])
-smc2HMMw n_outer_particles n_mhsteps n_inner_particles  hmm_length = do
-  ys <- map snd <$> simHMMw hmm_length
-  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
+-- -- | SMC2 inference over a HMM
+-- smc2HMMw
+--   -- | number of outer particles
+--   :: Int
+--   -- | number of MH steps
+--   -> Int
+--   -- | number of inner particles
+--   -> Int
+--   -- | number of HMM nodes
+--   -> Int
+--   -- | [(transition parameter, observation parameter)]
+--   -> Sampler ([Double], [Double])
+-- smc2HMMw n_outer_particles n_mhsteps n_inner_particles  hmm_length = do
+--   ys <- map snd <$> simHMMw hmm_length
+--   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
-  env_outs <- SMC2.smc2 n_outer_particles n_mhsteps n_inner_particles (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
-  let trans_ps    = concatMap (get #trans_p) env_outs
-      obs_ps      = concatMap (get #obs_p) env_outs
-  pure (trans_ps, obs_ps)
+--   env_outs <- SMC2.smc2 n_outer_particles n_mhsteps n_inner_particles (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
+--   let trans_ps    = concatMap (get #trans_p) env_outs
+--       obs_ps      = concatMap (get #obs_p) env_outs
+--   pure (trans_ps, obs_ps)
 
 {- | Interfacing the HMM on top of Monad Bayes.
 

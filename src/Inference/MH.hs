@@ -7,6 +7,7 @@
 {-# LANGUAGE GADTs #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 {- | Metropolis-Hastings inference.
 -}
@@ -18,7 +19,7 @@ import qualified Data.Map as Map
 import Data.Set ((\\))
 import qualified Data.Set as Set
 import Data.Maybe ( fromJust )
-import Prog ( Prog(..), discharge )
+import Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg )
 import Trace ( STrace, LPTrace, filterTrace, traceLogProbs )
 import LogP ( LogP(unLogP) )
 import PrimDist
@@ -29,6 +30,16 @@ import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr )
 import Effects.Lift ( Lift, lift, handleLift )
 import qualified Inference.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
+
+data Accept ctx a where
+  Accept
+    :: Addr
+    -- | original context
+    -> ((a, ctx), STrace)
+    -- | context using proposed sample
+    -> ((a, LPTrace), STrace)
+    -- | whether the proposal is accepted or not
+    -> Accept ctx Bool
 
 {- | Top-level wrapper for MH inference.
 -}
@@ -45,67 +56,68 @@ mh n model env_in obs_vars  = do
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
   -- | Run MH for n iterations
-  mh_trace <- mhInternal n prog Map.empty tags
+  mh_trace <- (handleLift . SIM.handleSamp . SIM.handleObs . handleAccept) (mhInternal n prog Map.empty tags)
   -- | Return the accepted model environments
   pure (map (snd . fst . fst) mh_trace)
 
 {- | Perform MH on a probabilistic program.
 -}
-mhInternal
-   :: Int                                           -- ^ number of MH iterations
-   -> Prog [Observe, Sample, Lift Sampler] a        -- ^ probabilistic program
+mhInternal :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
+   => Int                                           -- ^ number of MH iterations
+   -> Prog es a        -- ^ probabilistic program
    -> STrace                                     -- ^ initial sample trace
    -> [Tag]                                         -- ^ tags indicating sample sites of interest
-   -> Sampler [((a, LPTrace), STrace)]           -- ^ trace of (accepted outputs, log probabilities), samples)
+   -> Prog (Accept LPTrace : es) [((a, LPTrace), STrace)]           -- ^ trace of (accepted outputs, log probabilities), samples)
 mhInternal n prog strace tags = do
+  let mh_prog = weakenProg prog
   -- | Perform initial run of mh
-  mh_ctx_0 <- runMH strace prog
+  mh_ctx_0 <- runMH strace mh_prog
   -- | A function performing n mhSteps using initial mh_ctx. The most recent samples are at the front of the trace.
-  foldl (>=>) pure (replicate n (mhStep prog tags)) [mh_ctx_0]
+  foldl (>=>) pure (replicate n (mhStep mh_prog tags)) [mh_ctx_0]
 
 {- | Perform one iteration of MH by drawing a new sample and then rejecting or accepting it.
 -}
-mhStep
-  :: Prog [Observe, Sample, Lift Sampler] a         -- ^ probabilistic program
+mhStep  :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
+  => Prog (Accept LPTrace : es) a         -- ^ probabilistic program
   -> [Tag]                                          -- ^ tags indicating sample sites of interest
   -> [((a, LPTrace), STrace)]                    -- ^ previous MH trace
-  -> Sampler [((a, LPTrace), STrace)]            -- ^ updated MH trace
+  -> Prog (Accept LPTrace : es) [((a, LPTrace), STrace)]            -- ^ updated MH trace
 mhStep prog tags trace = do
   -- | Get previous MH output
   let mh_ctx@(_, strace) = head trace
   -- | Propose a new random value for a sample site
-  (α_samp, r) <- propose strace tags
+  (α_samp, r) <- lift (propose strace tags)
   -- | Run MH with proposed value to get an MHCtx using LPTrace as its probability type
   mh_ctx' <- runMH (Map.insert α_samp r strace) prog
   -- | Compute acceptance ratio to see if we use the proposed mh_ctx'
-  b <- accept α_samp mh_ctx mh_ctx'
+  b <- call (Accept α_samp mh_ctx mh_ctx')
   if b then pure (mh_ctx':trace)
        else pure trace
 
 {- | Handler for one iteration of MH.
 -}
-runMH ::
-     STrace                                -- ^ sample trace of previous MH iteration
-  -> Prog [Observe, Sample, Lift Sampler] a   -- ^ probabilistic program
-  -> Sampler ((a, LPTrace), STrace)        -- ^ ((model output, sample trace), log-probability trace)
-runMH strace  = handleLift . handleSamp strace . SIM.handleObs . traceLogProbs
+runMH :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
+  => STrace                                 -- ^ sample trace of previous MH iteration
+  -> Prog es a                              -- ^ probabilistic program
+  -> Prog es ((a, LPTrace), STrace)         -- ^ ((model output, sample trace), log-probability trace)
+runMH strace  = handleSamp strace . traceLogProbs
 
 {- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.
 -}
-handleSamp ::
-     STrace
-  -> Prog  [Sample, Lift Sampler] a
-  -> Prog '[Lift Sampler] (a, STrace)
+handleSamp :: (Member Sample es, LastMember (Lift Sampler) es)
+  => STrace
+  -> Prog es a
+  -> Prog es (a, STrace)
 handleSamp strace (Val x)   = pure (x, strace)
-handleSamp strace (Op op k) = case discharge op of
-    Right (Sample d α) ->
+handleSamp strace (Op op k) = case prj op of
+    Just (Sample d α) ->
       case Map.lookup α strace of
           Nothing -> do r <- lift sampleRandom
                         y <- lift (sampleInv d r)
                         k' (Map.insert α r strace) y
           Just r  -> do y <- lift (sampleInv d r)
                         k' strace  y
-    Left op' -> Op op' (k' strace )
+    Nothing -> Op op (k' strace )
 
   where k' strace' = handleSamp strace' . k
 
@@ -123,19 +135,17 @@ propose strace tags = do
 
 {- | An acceptance mechanism for MH.
 -}
-accept ::
-     Addr                             -- ^ address of proposal site
-  -> ((a, LPTrace), STrace)        -- ^ result of previous MH iteration
-  -> ((a, LPTrace), STrace)        -- ^ result of current MH iteration
-  -> Sampler Bool                     -- ^ whether the current MH iteration is accepted
-accept x0 ((_, lptrace ), strace) ((a, lptrace'), strace') = do
-  let dom_logα = log (fromIntegral $ Map.size strace) - log (fromIntegral $ Map.size strace')
-      sampled  = Set.singleton x0 `Set.union` (Map.keysSet strace \\ Map.keysSet strace')
-      sampled' = Set.singleton x0 `Set.union` (Map.keysSet strace' \\ Map.keysSet strace)
-      logα     = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace))
-                         0 (Map.keysSet lptrace \\ sampled)
-      logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
-                         0 (Map.keysSet lptrace' \\ sampled')
-      acceptance_ratio = (exp . unLogP) (dom_logα + logα' - logα)
-  u <- sample (Uniform 0 1)
-  pure (u < acceptance_ratio)
+handleAccept :: LastMember (Lift Sampler) es => Prog (Accept LPTrace : es) a -> Prog es a
+handleAccept (Val x)   = pure x
+handleAccept (Op op k) = case discharge op of
+  Right (Accept α ((_, lptrace), strace) ((a, lptrace'), strace'))
+    ->  do  let dom_logα = log (fromIntegral $ Map.size strace) - log (fromIntegral $ Map.size strace')
+                sampled  = Set.singleton α `Set.union` (Map.keysSet strace \\ Map.keysSet strace')
+                sampled' = Set.singleton α `Set.union` (Map.keysSet strace' \\ Map.keysSet strace)
+                logα     = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace))
+                                  0 (Map.keysSet lptrace \\ sampled)
+                logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
+                                  0 (Map.keysSet lptrace' \\ sampled')
+            u <- lift $ sample (Uniform 0 1)
+            handleAccept $ k ((exp . unLogP) (dom_logα + logα' - logα) > u)
+  Left op' -> Op op' (handleAccept . k)

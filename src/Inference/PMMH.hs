@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 {- | Particle Marginal Metropolis-Hastings inference.
 -}
@@ -65,35 +66,33 @@ pmmhInternal mh_steps n_particles prog strace param_tags = do
 -}
 pmmhStep ::
      Int                                          -- ^ number of particles
-  -> Prog [Observe, Sample, Lift Sampler] a       -- ^ probabilistic program
+  -> Prog [MH.Accept LogP, Observe, Sample, Lift Sampler] a       -- ^ probabilistic program
   -> [Tag]                                        -- ^ tags indicating model parameters
   -> [((a, LogP), STrace)]                     -- ^ trace of previous mh outputs
-  -> Sampler [((a, LogP), STrace)]
+  -> Prog [MH.Accept LogP, Observe, Sample, Lift Sampler] [((a, LogP), STrace)]
 pmmhStep n_particles prog tags pmmh_trace = do
   let pmmh_ctx@(_, strace) = head pmmh_trace
   -- | Propose a new random value for a sample site
-  (α_samp, r) <- MH.propose strace tags
+  (α_samp, r) <- lift (MH.propose strace tags)
   -- | Run one iteration of PMMH
   pmmh_ctx'   <- runPMMH n_particles prog tags (Map.insert α_samp r strace)
-  b <- accept pmmh_ctx pmmh_ctx'
+  b <- lift (accept pmmh_ctx pmmh_ctx')
   if b then pure (pmmh_ctx':pmmh_trace)
        else pure pmmh_trace
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}
-runPMMH ::
-     Int                                          -- ^ number of particles
+runPMMH :: ()
+  => Int                                          -- ^ number of particles
   -> Prog '[Observe, Sample, Lift Sampler] a      -- ^ probabilistic program
   -> [Tag]                                        -- ^ tags indicating model parameters
   -> STrace                                    -- ^ sample traces
-  -> Sampler ((a, LogP), STrace)
+  -> Prog [Observe, Sample, Lift Sampler] ((a, LogP), STrace)
 runPMMH n_particles prog tags strace = do
   ((a, _), strace') <- MH.runMH strace prog
   let params = filterTrace tags strace'
   prts   <- ( (map snd . fst <$>)
-            . handleLift
             . MH.handleSamp params
-            . SIM.handleObs
             . SIS.sis n_particles SMC.particleRunner SMC.particleResampler) prog
   let logZ  = logMeanExp (map SMC.particleLogProb prts)
   pure ((a, logZ), strace')
