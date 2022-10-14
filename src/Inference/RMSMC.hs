@@ -123,7 +123,7 @@ particleRunner = loop Map.empty where
   loop inv_strace (Val x) = pure (Val x, TracedParticle 0 ("", 0) Map.empty)
   loop inv_strace (Op op k) = case op of
     SampPrj d α  -> do r <- lift sampleRandom
-                       y <- lift (sampleInv d r)
+                       let y = sampleInv d r
                        loop (Map.insert α r inv_strace) (k y)
     ObsPrj d y α -> Val (k y, TracedParticle (logProb d y) α inv_strace)
     _            -> Op op (loop inv_strace . k)
