@@ -80,31 +80,42 @@ rmsmcInternal
 rmsmcInternal n_particles mh_steps   = do
   handleLift . SIM.handleSamp . SIM.handleObs . SIS.sis n_particles particleRunner (particleResampler mh_steps)
 
+data Resample' es a where
+  Resample'
+    -- | ((particles, contexts), initial probabilistic program)
+    -- :: ([SISProg ctx a], [ctx], ProbProg a)
+    :: ([Prog (Resample' es : es) a], [Prog es a], [TracedParticle])
+    -- | ((resampled particles, resampled contexts), idxs)
+    -> Resample' es (([Prog (Resample' es : es) a], [TracedParticle]), [Int])
+
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using MH.
 -}
-particleResampler :: forall es a. Int -> Prog es a -> ParticleResampler es TracedParticle a
-particleResampler mh_steps prog_0 = loop where
+particleResampler :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
+  => Int -> (Prog (Resample' es : es) a -> Prog es a)
+particleResampler  mh_steps = loop where
   loop (Val x) = Val x
   loop (Op op k) = case discharge op of
-    Right (Resample (prts, ctxs)) ->
+    Right (Resample' (prts, prts_0, ctxs)) ->
       do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
           idxs <- snd <$> SMC.particleResampler (call (Resample ([], map (Particle . particleLogProb) ctxs)))
           let resampled_prts   = map (prts !! ) idxs
               resampled_ctxs   = map (ctxs !! ) idxs
 
           -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head')
-          let α_obs   = (particleObsAddr . head) resampled_ctxs
+          let α_obs   = (particleObsAddr . head) (resampled_ctxs)
+
           -- | Insert break point to perform MH up to
-              partial_model = breakObserve α_obs prog_0
+              partial_models = map (breakObserve α_obs ) prts_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
-          mh_trace <- mapM ( fmap head . MH.handleAccept
-                                  . flip (MH.mhInternal mh_steps partial_model) []
-                                  . particleSTrace) resampled_ctxs
+          mh_trace <- mapM (\(partial_model, resampled_ctx) -> fmap head .
+                                     MH.handleAccept
+                                    $  (MH.mhInternal mh_steps partial_model (particleSTrace resampled_ctx) [] )
+                                    ) (zip partial_models ( resampled_ctxs))
           {- | Get:
               1) the continuations of each particle from the break point (augmented with the non-det effect)
               2) the log prob traces of each particle up until the break point
               3) the sample traces of each particle up until the break point -}
-          let ((rejuv_prts :: [Prog es a], lp_traces), rejuv_straces) = first unzip (unzip mh_trace)
+          let ((rejuv_prts, lp_traces), rejuv_straces) = first unzip (unzip mh_trace)
               -- | Filter log probability traces to only include that for observe operations
               -- lp_traces_obs = map (filterByKey (`elem` α_obs)) lp_traces
               -- | Recompute the log weights of all particles up until the break point
@@ -112,7 +123,7 @@ particleResampler mh_steps prog_0 = loop where
 
               rejuv_ctxs    = zipWith3 TracedParticle rejuv_lps (repeat α_obs) rejuv_straces
 
-              rejuv_prts' :: [Prog (Resample TracedParticle : es) a] = (map (weakenProg) rejuv_prts)
+              rejuv_prts' = (map (weakenProg) rejuv_prts)
 
           (loop . k) ((rejuv_prts', rejuv_ctxs), idxs)
 
@@ -120,16 +131,26 @@ particleResampler mh_steps prog_0 = loop where
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint at the first @Observe@ operation.
 -}
-particleRunner :: ParticleRunner TracedParticle
-particleRunner = loop Map.empty where
-  loop :: STrace -> ParticleRunner TracedParticle
+particleRunner ::forall es a. (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
+  -- | a particle
+  => Prog es a
+  -- | (a particle suspended at the next step, corresponding context)
+  -> Prog es (Prog es a, (Prog es a, TracedParticle))
+particleRunner prog = do
+
+  (prog_k, prt) <- loop Map.empty prog
+  pure (prog_k, (prog, prt))
+  where
+  loop :: STrace ->  Prog es a -> Prog es (Prog es a, TracedParticle)
   loop inv_strace (Val x) = pure (Val x, TracedParticle 0 ("", 0) Map.empty)
   loop inv_strace (Op op k) = case op of
     SampPrj d α  -> do r <- lift sampleRandom
                        y <- lift (sampleInv d r)
-                       loop (Map.insert α r inv_strace) (k y)
+                       let inv_strace' = (Map.insert α r inv_strace)
+                       loop inv_strace' (k y)
     ObsPrj d y α -> Val (k y, TracedParticle (logProb d y) α inv_strace)
     _            -> Op op (loop inv_strace . k)
+
 
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
      It returns the rest of the computation.

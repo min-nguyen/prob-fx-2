@@ -43,13 +43,13 @@ instance ParticleCtx LogP where
 
 {- | The @Resample@ effect for resampling according to collection of particle contexts.
 -}
-data Resample ctx a where
+data Resample ctx  a where
   Resample
     -- | ((particles, contexts), initial probabilistic program)
     -- :: ([SISProg ctx a], [ctx], ProbProg a)
     :: ([Prog (Resample ctx : es) a], [ctx])
     -- | ((resampled particles, resampled contexts), idxs)
-    -> Resample ctx (([Prog (Resample ctx : es) a], [ctx]), [Int])
+    -> Resample ctx  (([Prog (Resample ctx : es) a], [ctx]), [Int])
 
 -- type SISProg ctx a = Prog [Resample ctx, Observe, Sample, Lift Sampler] a
 
@@ -89,8 +89,8 @@ sis n_particles particleRunner particleResampler prog = do
 loopSIS :: forall ctx es a. ParticleCtx ctx => (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
   => ParticleRunner ctx                     -- ^ handler for running particles
   -> Prog es a                             -- ^ initial probabilistic program
-  -> ([Prog (Resample ctx : es) a], [ctx])               -- ^ input particles and corresponding contexts
-  -> Prog (Resample ctx : es) [(a, ctx)]                 -- ^ final particle results and corresponding contexts
+  -> ([Prog (Resample ctx  : es) a], [ctx])               -- ^ input particles and corresponding contexts
+  -> Prog (Resample ctx  : es) [(a, ctx)]                 -- ^ final particle results and corresponding contexts
 loopSIS particleRunner prog = loop
   where
     loop :: ([Prog (Resample ctx : es) a], [ctx]) -> Prog (Resample ctx : es) [(a, ctx)]
