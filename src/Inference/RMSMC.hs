@@ -80,37 +80,29 @@ rmsmcInternal
 rmsmcInternal n_particles mh_steps   = do
   handleLift . SIM.handleSamp . SIM.handleObs . SIS.sis n_particles particleRunner (particleResampler mh_steps)
 
-data Resample' es a where
-  Resample'
-    -- | ((particles, contexts), initial probabilistic program)
-    -- :: ([SISProg ctx a], [ctx], ProbProg a)
-    :: ([Prog (Resample' es : es) a], [Prog es a], [TracedParticle])
-    -- | ((resampled particles, resampled contexts), idxs)
-    -> Resample' es (([Prog (Resample' es : es) a], [TracedParticle]), [Int])
-
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using MH.
 -}
 particleResampler :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
-  => Int -> (Prog (Resample' es : es) a -> Prog es a)
+  => Int -> (Prog (Resample es TracedParticle : es) a -> Prog es a)
 particleResampler  mh_steps = loop where
   loop (Val x) = Val x
   loop (Op op k) = case discharge op of
-    Right (Resample' (prts, prts_0, ctxs)) ->
+    Right (Resample (prts, prog_0, ctxs)) ->
       do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
-          idxs <- snd <$> SMC.particleResampler (call (Resample ([], map (Particle . particleLogProb) ctxs)))
+          idxs <- snd <$> SMC.particleResampler (call (Resample ([], prog_0, map (Particle . particleLogProb) ctxs)))
           let resampled_prts   = map (prts !! ) idxs
               resampled_ctxs   = map (ctxs !! ) idxs
 
           -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head')
-          let α_obs   = (particleObsAddr . head) (resampled_ctxs)
+          let α_obs   = (particleObsAddr . head) resampled_ctxs
 
           -- | Insert break point to perform MH up to
-              partial_models = map (breakObserve α_obs ) prts_0
+              partial_model = breakObserve α_obs prog_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
-          mh_trace <- mapM (\(partial_model, resampled_ctx) -> fmap head .
+          mh_trace <- mapM (\resampled_ctx -> fmap head .
                                      MH.handleAccept
-                                    $  (MH.mhInternal mh_steps partial_model (particleSTrace resampled_ctx) [] )
-                                    ) (zip partial_models ( resampled_ctxs))
+                                    $  MH.mhInternal mh_steps partial_model (particleSTrace resampled_ctx) []
+                                    ) resampled_ctxs
           {- | Get:
               1) the continuations of each particle from the break point (augmented with the non-det effect)
               2) the log prob traces of each particle up until the break point
@@ -135,14 +127,14 @@ particleRunner ::forall es a. (Members [Observe, Sample] es, LastMember (Lift Sa
   -- | a particle
   => Prog es a
   -- | (a particle suspended at the next step, corresponding context)
-  -> Prog es (Prog es a, (Prog es a, TracedParticle))
+  -> Prog es (Prog es a, TracedParticle)
 particleRunner prog = do
 
   (prog_k, prt) <- loop Map.empty prog
-  pure (prog_k, (prog, prt))
+  pure (prog_k,  prt)
   where
   loop :: STrace ->  Prog es a -> Prog es (Prog es a, TracedParticle)
-  loop inv_strace (Val x) = pure (Val x, TracedParticle 0 ("", 0) Map.empty)
+  loop inv_strace (Val x) = pure (Val x, TracedParticle 0 ("", 0) inv_strace)
   loop inv_strace (Op op k) = case op of
     SampPrj d α  -> do r <- lift sampleRandom
                        y <- lift (sampleInv d r)

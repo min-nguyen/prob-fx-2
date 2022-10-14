@@ -38,7 +38,7 @@ library
                       Inference.SIS,
                       Inference.SMC,
                       -- Inference.SMC2,
-                      -- Inference.RMSMC,
+                      Inference.RMSMC,
                       Inference.PMMH,
                       -- Inference.MB,
                       Env,

@@ -69,7 +69,7 @@ smc2Internal n_outer_particles mh_steps n_inner_particles tags = do
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using PMMH.
 -}
-particleResampler :: Int -> Int -> [String] -> ParticleResampler TracedParticle
+particleResampler :: Int -> Int -> [String] -> (Prog (Resample es TracedParticle : es) a -> Prog es a)
 particleResampler mh_steps n_inner_particles tags = loop where
   loop (Val x) = Val x
   loop (Op op k) = case discharge op of

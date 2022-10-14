@@ -43,15 +43,22 @@ instance ParticleCtx LogP where
 
 {- | The @Resample@ effect for resampling according to collection of particle contexts.
 -}
-data Resample ctx  a where
+data Resample es ctx  a where
   Resample
     -- | ((particles, contexts), initial probabilistic program)
     -- :: ([SISProg ctx a], [ctx], ProbProg a)
-    :: ([Prog (Resample ctx : es) a], [ctx])
+    :: ([Prog (Resample es ctx : es) a], Prog es a, [ctx])
     -- | ((resampled particles, resampled contexts), idxs)
-    -> Resample ctx  (([Prog (Resample ctx : es) a], [ctx]), [Int])
+    -> Resample es ctx  (([Prog (Resample es ctx : es) a], [ctx]), [Int])
 
--- type SISProg ctx a = Prog [Resample ctx, Observe, Sample, Lift Sampler] a
+-- data Resample' es a where
+--   Resample'
+--     -- | ((particles, contexts), initial probabilistic program)
+--     -- :: ([SISProg ctx a], [ctx], ProbProg a)
+--     :: ([Prog (Resample' es : es) a], [Prog es a], [TracedParticle])
+--     -- | ((resampled particles, resampled contexts), idxs)
+--     -> Resample' es (([Prog (Resample' es : es) a], [TracedParticle]), [Int])
+
 
 {- | A @ParticleRunner@ handler runs a particle to the next @Observe@ break point.
 -}
@@ -60,13 +67,13 @@ type ParticleRunner ctx
   -- | a particle
   => Prog es a
   -- | (a particle suspended at the next step, corresponding context)
-  -> Prog es (Prog es a, ctx)
+  -> Prog es (Prog es a,  ctx)
 
 {- | A @ParticleResampler@ handler decides which of the current particles to continue execution with.
 -}
 type ParticleResampler es ctx a
   =  LastMember (Lift Sampler) es
-  => Prog (Resample ctx : es) a
+  => Prog (Resample es ctx : es) a
   -> Prog es a
 
 
@@ -80,7 +87,7 @@ sis :: forall ctx a b es. ParticleCtx ctx => (Members [Observe, Sample] es, Last
   -> Prog es [(a, ctx)]          -- ^ (final particle output, final particle context)
 sis n_particles particleRunner particleResampler prog = do
   -- | Create an initial population of particles and contexts
-  let population = unzip $ replicate n_particles (weakenProg @(Resample ctx) prog, pempty)
+  let population = unzip $ replicate n_particles (weakenProg @(Resample es ctx) prog, pempty)
   -- | Execute the population until termination
   particleResampler (loopSIS particleRunner prog population)
 
@@ -89,14 +96,14 @@ sis n_particles particleRunner particleResampler prog = do
 loopSIS :: forall ctx es a. ParticleCtx ctx => (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
   => ParticleRunner ctx                     -- ^ handler for running particles
   -> Prog es a                             -- ^ initial probabilistic program
-  -> ([Prog (Resample ctx  : es) a], [ctx])               -- ^ input particles and corresponding contexts
-  -> Prog (Resample ctx  : es) [(a, ctx)]                 -- ^ final particle results and corresponding contexts
+  -> ([Prog (Resample es ctx  : es) a], [ctx])               -- ^ input particles and corresponding contexts
+  -> Prog (Resample es ctx  : es) [(a, ctx)]                 -- ^ final particle results and corresponding contexts
 loopSIS particleRunner prog = loop
   where
-    loop :: ([Prog (Resample ctx : es) a], [ctx]) -> Prog (Resample ctx : es) [(a, ctx)]
+    loop :: ([Prog (Resample es ctx : es) a], [ctx]) -> Prog (Resample es ctx : es) [(a, ctx)]
     loop (particles, ctxs) = do
       -- | Run particles to next checkpoint and accumulate their contexts
-      (particles', ctxs') <- second (ctxs `paccum`) . unzip <$> mapM particleRunner particles
+      (particles',  ctxs') <- second (ctxs `paccum`) . unzip <$> mapM particleRunner particles
       -- | Check termination status of particles
       case foldVals particles' of
         -- | If all particles have finished, return their results and contexts
@@ -104,5 +111,5 @@ loopSIS particleRunner prog = loop
         -- | Otherwise, pick the particles to continue with
         Left  _     -> --call (Resample (particles', ctxs', prog))
                          -- >>= loop . fst
-                       call (Resample (particles', ctxs'))
+                       call (Resample (particles', prog, ctxs'))
                           >>= loop . fst

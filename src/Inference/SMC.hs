@@ -61,7 +61,7 @@ particleResampler :: ParticleResampler es Particle a
 particleResampler (Val x) = Val x
 particleResampler (Op op k) = case discharge op of
   -- Right (Resample (prts, ctxs, prog_0)) -> do
-  Right (Resample (prts, ctxs)) -> do
+  Right (Resample (prts, prts_0, ctxs)) -> do
     -- | Get the weights for each particle
     let ws = map (exp . unLogP . particleLogProb) ctxs
     -- | Select particles to continue with
@@ -93,9 +93,14 @@ systematic u ps = f 0 (u / fromIntegral n) 0 0 []
        1. the rest of the computation
        2. the log probability of the @Observe operation + the address of the breakpoint
 -}
-particleRunner :: ParticleRunner Particle
-particleRunner (Val x) = pure (Val x, Particle 0)
-particleRunner (Op op k) = case op of
-  ObsPrj d y α -> Val (k y, Particle (logProb d y))
-  _            -> Op op (particleRunner . k)
+particleRunner :: forall es a. (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
+  -- | a particle
+  => Prog es a
+  -- | (a particle suspended at the next step, corresponding context)
+  -> Prog es (Prog es a,  Particle)
+particleRunner prog = loop prog
+  where loop (Val x) = pure (Val x,  Particle 0)
+        loop (Op op k) = case op of
+          ObsPrj d y α -> Val (k y,  Particle (logProb d y))
+          _            -> Op op (particleRunner . k)
 
