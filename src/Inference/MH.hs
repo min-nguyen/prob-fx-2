@@ -38,7 +38,7 @@ mh :: forall env a xs. (env `ContainsVars` xs)
   => Int                                          -- ^ number of MH iterations
   -> Model env [ObsRW env, Dist, Lift Sampler] a  -- ^ model
   -> Env env                                      -- ^ input environment
-  -> Vars xs                                      -- ^ optional observable variables
+  -> Vars xs                                      -- ^ optional observable variable names of interest
     {- These allow one to specify sample sites of interest; for example, for interest in sampling @#mu@
      , provide @#mu <#> vnil@ to cause other variables to not be resampled unless necessary. -}
   -> Sampler [Env env]                            -- ^ output model environments
@@ -55,10 +55,10 @@ mh n model env_in obs_vars  = do
 {- | MH inference on a probabilistic program.
 -}
 mhInternal :: ProbSig es
-  => Int
-  -> [Tag]
-  -> STrace
-  -> Prog es a
+  => Int                                   -- ^ number of MH iterations
+  -> [Tag]                                 -- ^ tags indicating variables of interest
+  -> STrace                                -- ^ initial sample trace
+  -> Prog es a                             -- ^ probabilistic program
   -> Prog es [((a, LPTrace), STrace)]
 mhInternal n tags strace_0 =
   arLoop n strace_0 handleModel (handleAccept tags)
@@ -93,7 +93,7 @@ handleSamp strace (Op op k) = case prj op of
 {- | Handler for @Accept@ for MH.
 -}
 handleAccept :: LastMember (Lift Sampler) es
-  => [Tag]
+  => [Tag]                                 -- ^ observable variable names of interest
   -> Prog (Accept LPTrace : es) a
   -> Prog es a
 handleAccept tags = loop

@@ -65,10 +65,10 @@ instance ParticleCtx TracedParticle where
 rmsmc
   :: forall env a xs. (env `ContainsVars` xs)
   => Int                                          -- ^ number of SMC particles
-  -> Int                                          -- ^ number of MH steps
+  -> Int                                          -- ^ number of MH (rejuvenation) steps
   -> Model env [ObsRW env, Dist, Lift Sampler] a  -- ^ model
   -> Env env                                      -- ^ input model environment
-  -> Vars xs
+  -> Vars xs                                      -- ^ optional observable variable names of interest
   -> Sampler [Env env]                            -- ^ output model environments of each particle
 rmsmc n_particles mh_steps model env_in obs_vars = do
   -- | Handle model to probabilistic program
@@ -83,14 +83,17 @@ rmsmc n_particles mh_steps model env_in obs_vars = do
 -}
 rmsmcInternal :: (ProbSig es)
   => Int                                          -- ^ number of SMC particles
-  -> Int                                          -- ^ number of MH steps
-  -> [Tag]
-  -> Prog es a       -- ^ probabilistic program
+  -> Int                                          -- ^ number of MH (rejuvenation) steps
+  -> [Tag]                                        -- ^ tags indicating variables of interest
+  -> Prog es a                                    -- ^ probabilistic program
   -> Prog es [(a, TracedParticle)]                -- ^ final particle results and contexts
 rmsmcInternal n_particles mh_steps tags =
   SIS.sis n_particles handleParticle (handleResample mh_steps tags)
 
-{- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint at the first @Observe@ operation.
+{- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint
+     at the first @Observe@ operation, by returning:
+       1. the rest of the computation
+       2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
 handleParticle :: forall es a. ProbSig es
   -- | a particle
@@ -111,8 +114,8 @@ handleParticle = loop Map.empty
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using MH.
 -}
 handleResample :: ProbSig es
-  => Int
-  -> [Tag]
+  => Int                                          -- ^ number of MH (rejuvenation) steps
+  -> [Tag]                                        -- ^ tags indicating variables of interest
   -> Prog (Resample es TracedParticle : es) a
   -> Prog es a
 handleResample mh_steps tags = loop where
@@ -133,7 +136,7 @@ handleResample mh_steps tags = loop where
                            . flip (MH.mhInternal mh_steps tags) partial_model
                            ) resampled_straces
           {- | Get:
-              1) the continuations of each particle from the break point (augmented with the non-det effect)
+              1) the continuations of each particle from the break point
               2) the log prob traces of each particle up until the break point
               3) the sample traces of each particle up until the break point -}
           let ((rejuv_prts, lp_traces), rejuv_straces) = first unzip (unzip mh_trace)

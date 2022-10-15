@@ -6,6 +6,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
+{-# LANGUAGE InstanceSigs #-}
 
 {- Sequential Monte Carlo inference.
 -}
@@ -13,7 +14,7 @@
 module Inference.SMC where
 
 import Control.Monad ( replicateM )
-import Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe, Sample )
+import Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe (..), Sample )
 import Effects.Lift ( Lift, lift, handleLift )
 import Effects.NonDet ( asum, handleNonDet, NonDet )
 import Effects.ObsRW ( ObsRW, handleObsRW )
@@ -28,12 +29,21 @@ import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
 import Inference.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
 import Sampler ( Sampler, sampleRandom )
+import Prog (prj)
 
 {- | The context of a particle for SMC.
 -}
 newtype Particle = Particle {
     particleLogProb  :: LogP      -- ^ associated log-probability
   } deriving (Num, ParticleCtx)
+
+instance ParticleCtx LogP where
+  pempty :: LogP
+  pempty = 0
+  -- | Compute normalised accumulated log weights
+  paccum :: [LogP] -> [LogP] -> [LogP]
+  paccum log_ps log_ps' = let logZ = logMeanExp log_ps
+                          in  map (+ logZ) log_ps'
 
 {- | Call SMC on a model.
 -}
@@ -60,26 +70,23 @@ smcInternal n_particles =
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation
-       2. the log probability of the @Observe operation + the address of the breakpoint
+       2. the log probability of the @Observe operation
 -}
 handleParticle :: Member Observe es
   -- | a particle
   => Prog es a
   -- | (a particle suspended at the next step, corresponding context)
   -> Prog es (Prog es a, Particle)
-handleParticle = loop
-  where loop (Val x) = pure (Val x,  Particle 0)
-        loop (Op op k) = case op of
-          ObsPrj d y α -> Val (k y,  Particle (logProb d y))
-          _            -> Op op (handleParticle . k)
-
+handleParticle (Val x)   = pure (Val x,  Particle 0)
+handleParticle (Op op k) = case prj op of
+  Just (Observe d y α) -> Val (k y,  Particle (logProb d y))
+  Nothing              -> Op op (handleParticle . k)
 
 {- | A handler for multinomial resampling of particles.
 -}
 handleResampleMul :: LastMember (Lift Sampler) es => ResampleHandler es Particle
 handleResampleMul (Val x) = Val x
 handleResampleMul (Op op k) = case discharge op of
-  -- Right (Resample (prts, ctxs, prog_0)) -> do
   Right (Resample (prts, ctxs) _) -> do
     -- | Get the weights for each particle
     let ws = map (exp . unLogP . particleLogProb) ctxs
@@ -96,7 +103,6 @@ handleResampleMul (Op op k) = case discharge op of
 handleResampleSys :: LastMember (Lift Sampler) es => ResampleHandler es Particle
 handleResampleSys (Val x) = Val x
 handleResampleSys (Op op k) = case discharge op of
-  -- Right (Resample (prts, ctxs, prog_0)) -> do
   Right (Resample (prts, ctxs) _) -> do
     -- | Get the weights for each particle
     let ws = map (exp . unLogP . particleLogProb) ctxs

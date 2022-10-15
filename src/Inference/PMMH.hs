@@ -52,11 +52,11 @@ pmmh mh_steps n_particles model env_in obs_vars = do
 {- | PMMH inference on a probabilistic program.
 -}
 pmmhInternal :: (ProbSig es)
-  => Int
-  -> Int
-  -> [Tag]
-  -> STrace
-  -> Prog es a
+  => Int                                          -- ^ number of MH steps
+  -> Int                                          -- ^ number of particles
+  -> [Tag]                                        -- ^ tags indicating variables of interest
+  -> STrace                                       -- ^ initial sample trace
+  -> Prog es a                                    -- ^ probabilistic program
   -> Prog es [((a, LogP), STrace)]
 pmmhInternal mh_steps n_particles tags strace_0 =
   arLoop mh_steps strace_0 (handleModel n_particles tags) (handleAccept tags)
@@ -65,8 +65,8 @@ pmmhInternal mh_steps n_particles tags strace_0 =
 -}
 handleModel :: ProbSig es
   => Int                                          -- ^ number of particles
-  -> [Tag]                                        -- ^ tags indicating model parameters
-  -> STrace                                       -- ^ sample traces
+  -> [Tag]                                        -- ^ tags indicating variables of interest
+  -> STrace                                       -- ^ sample trace
   -> Prog es a                                    -- ^ probabilistic program
   -> Prog es ((a, LogP), STrace)
 handleModel n_particles tags strace prog = do
@@ -81,7 +81,7 @@ handleModel n_particles tags strace prog = do
 {- | An acceptance mechanism for PMMH.
 -}
 handleAccept :: LastMember (Lift Sampler) es
-  => [Tag]
+  => [Tag]                                      -- ^ tags indicating variables of interest
   -> Prog (Accept LogP : es) a
   -> Prog es a
 handleAccept tags = loop where

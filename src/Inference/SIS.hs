@@ -5,9 +5,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeApplications #-}
 
-{- An infrastructure for Sequential Importance Sampling.
+{- An infrastructure for Sequential Importance (Re)Sampling.
 -}
 
 module Inference.SIS where
@@ -34,12 +33,6 @@ class ParticleCtx ctx where
   paccum  :: [ctx] -- ^ previously acccumulated context
           -> [ctx] -- ^ incremental context
           -> [ctx]
-
-instance ParticleCtx LogP where
-  pempty                =  0
-  -- | Compute normalised accumulated log weights
-  paccum log_ps log_ps' = let logZ = logMeanExp log_ps
-                          in  map (+ logZ) log_ps'
 
 {- | The @Resample@ effect for resampling according to collection of particle contexts.
 -}
