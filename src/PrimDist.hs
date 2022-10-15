@@ -86,8 +86,6 @@ class Distribution d => DiffDistribution d where
 
   scaleGrad :: Double -> d -> d
 
-
--- | Beta(α, β)
 data Beta = Beta Double Double
   deriving Show
 
@@ -182,7 +180,7 @@ newtype HalfCauchy = HalfCauchy Double
 instance Distribution HalfCauchy where
   type Support HalfCauchy = Double
 
-  sampleInv :: HalfCauchy -> Double ->  Double
+  sampleInv :: HalfCauchy -> Double -> Double
   sampleInv (HalfCauchy scale) r = abs $ sampleInv (Cauchy 0 scale) r
 
   sample :: HalfCauchy -> Sampler Double
