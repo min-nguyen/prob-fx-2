@@ -32,6 +32,7 @@ import Effects.NonDet
 import qualified Inference.MH as MH
 import qualified Inference.SMC as SMC
 import qualified Inference.SIM as SIM
+import qualified Inference.ARS as ARS
 import qualified Inference.SIS as SIS hiding  (particleLogProb)
 import Inference.SIS (Resample(..), ParticleResampler, ParticleHandler, ParticleCtx (..))
 import OpenSum (OpenSum)
@@ -101,17 +102,14 @@ handleResample mh_steps = loop where
               partial_model = breakObserve resampled_α prog_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
           mh_trace <- mapM ( fmap head
-                           . MH.handleAccept
-                           . flip (MH.mhInternal mh_steps partial_model) []
+                           . MH.handleAccept []
+                           . ARS.arInternal mh_steps partial_model MH.handleModel
                            ) resampled_straces
           {- | Get:
               1) the continuations of each particle from the break point (augmented with the non-det effect)
               2) the log prob traces of each particle up until the break point
               3) the sample traces of each particle up until the break point -}
           let ((rejuv_prts, lp_traces), rejuv_straces) = first unzip (unzip mh_trace)
-          {-- | Filter log probability traces to only include that for observe operations
-              lp_traces_obs = map (filterByKey (`elem` α_obs)) lp_traces
-          -}
 
               -- | Recompute the log weights of all particles up until the break point
               rejuv_lps     = map (sum . map snd . Map.toList) lp_traces

@@ -85,10 +85,10 @@ sis n_particles hdlParticle hdlResample prog_0 = do
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
 loopSIS :: forall ctx es a. (ParticleCtx ctx, ProbSig es)
-  => ParticleHandler ctx                     -- ^ handler for running particles
-  -> Prog es a                             -- ^ initial probabilistic program
+  => ParticleHandler ctx                                    -- ^ handler for running particles
+  -> Prog es a                                              -- ^ initial probabilistic program
   -> ([Prog (Resample es ctx : es) a], [ctx])               -- ^ input particles and corresponding contexts
-  -> Prog (Resample es ctx  : es) [(a, ctx)]                 -- ^ final particle results and corresponding contexts
+  -> Prog (Resample es ctx  : es) [(a, ctx)]                -- ^ final particle results and corresponding contexts
 loopSIS hdlParticle prog_0 = loop
   where
     loop :: ([Prog (Resample es ctx : es) a], [ctx]) -> Prog (Resample es ctx : es) [(a, ctx)]

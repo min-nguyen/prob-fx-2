@@ -30,8 +30,8 @@ import qualified Inference.SMC as SMC
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS hiding  (particleLogProb)
 import Inference.SIS (Resample(..), ParticleResampler, ParticleHandler, ParticleCtx (..))
-import OpenSum (OpenSum)
 import Inference.SMC (Particle, pattern Particle)
+import Inference.ARS as ARS
 import Effects.Lift
 import Data.Bifunctor
 
@@ -86,10 +86,9 @@ handleResample mh_steps n_inner_particles tags = loop where
               partial_model     = RMSMC.breakObserve resampled_α prog_0
           -- | Perform PMMH using each resampled particle's sample trace and get the most recent PMMH iteration.
           pmmh_trace <- mapM ( fmap head
-                             . PMMH.handleAccept
-                             . flip (PMMH.pmmhInternal mh_steps n_inner_particles partial_model) tags
+                             . PMMH.handleAccept tags
+                             . ARS.arInternal mh_steps partial_model (PMMH.handleModel n_inner_particles tags)
                              ) resampled_straces
-
           {- | Get:
               1) the continuations of each particle from the break point (augmented with the non-det effect)
               2) the total log weights of each particle up until the break point

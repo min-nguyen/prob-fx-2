@@ -24,6 +24,7 @@ import Effects.ObsRW
 import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
 import qualified Inference.MH as MH
+import Inference.ARS as ARS
 import qualified Inference.SIS as SIS
 import qualified Inference.SMC as SMC
 import Util
@@ -39,59 +40,19 @@ pmmh :: forall env es a xs. (env `ContainsVars` xs)
   -> Vars xs                                        -- ^ variable names of model parameters
   -> Sampler [Env env]                              -- ^ output environments
 pmmh mh_steps n_particles model env_in obs_vars = do
-  let prog = (handleDist . handleObsRW env_in) (runModel model)
-  -- | Convert observable variables to strings
-      tags = varsToStrs @env obs_vars
-  -- | Run PMMH
-  pmmh_trace <- (handleLift . SIM.handleSamp . SIM.handleObs . handleAccept)
-                (pmmhInternal mh_steps n_particles prog Map.empty tags)
-  -- Return the accepted model environments
-  pure (map (snd . fst . fst) pmmh_trace)
-
-{- | Perform PMMH on a probabilistic program.
--}
-pmmhInternal :: ProbSig es =>
-      Int                                     -- ^ number of MH steps
-   -> Int                                     -- ^ number of particles
-   -> Prog es a                               -- ^ probabilistic program
-   -> STrace                                  -- ^ initial sample trace
-   -> [Tag]                                   -- ^ tags indicating the model parameters
-   -> Prog (MH.Accept LogP : es) [((a, LogP), STrace)]       -- ^ trace of accepted outputs, samples, and logps
-pmmhInternal mh_steps n_particles prog strace param_tags = do
-  let mh_prog = weakenProg prog
-  -- | Perform initial run of MH
-  pmmh_0 <- runPMMH n_particles mh_prog param_tags strace
-  -- | A function performing n pmmhsteps
-  foldl (>=>) pure (replicate mh_steps (pmmhStep n_particles mh_prog param_tags)) [pmmh_0]
-
-{- | Perform one iteration of PMMH by drawing a new sample and then rejecting or accepting it.
--}
-pmmhStep :: ProbSig es =>
-     Int                                          -- ^ number of particles
-  -> Prog (MH.Accept LogP : es) a                 -- ^ probabilistic program
-  -> [Tag]                                        -- ^ tags indicating model parameters
-  -> [((a, LogP), STrace)]                        -- ^ trace of previous mh outputs
-  -> Prog (MH.Accept LogP : es) [((a, LogP), STrace)]
-pmmhStep n_particles prog tags pmmh_trace = do
-  let pmmh_ctx@((_, logW), strace) = head pmmh_trace
-  -- | Propose a new random value for a sample site
-  (α_samp, r) <- lift (MH.propose strace tags)
-  -- | Run one iteration of PMMH
-  pmmh_ctx'@((_, logW'), strace') <- runPMMH n_particles prog tags (Map.insert α_samp r strace)
-  b           <- call (MH.Accept ("", 0) logW logW')
-  if b then pure (pmmh_ctx':pmmh_trace)
-       else pure pmmh_trace
+  let tags = varsToStrs @env obs_vars
+  ar mh_steps model (handleModel n_particles tags) (handleAccept tags) env_in
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}
-runPMMH :: ProbSig es
+handleModel :: ProbSig es
   => Int                                          -- ^ number of particles
-  -> Prog es a                                    -- ^ probabilistic program
   -> [Tag]                                        -- ^ tags indicating model parameters
   -> STrace                                       -- ^ sample traces
+  -> Prog es a                                    -- ^ probabilistic program
   -> Prog es ((a, LogP), STrace)
-runPMMH n_particles prog tags strace = do
-  ((a, _), strace') <- MH.runMH strace prog
+handleModel n_particles tags strace prog = do
+  ((a, _), strace') <- MH.handleModel strace prog
   let params = filterTrace tags strace'
   prts   <- ( (map snd . fst <$>)
             . MH.handleSamp params
@@ -101,11 +62,20 @@ runPMMH n_particles prog tags strace = do
 
 {- | An acceptance mechanism for PMMH.
 -}
-handleAccept :: LastMember (Lift Sampler) es => Prog (MH.Accept LogP : es) a -> Prog es a
-handleAccept (Val x)   = pure x
-handleAccept (Op op k) = case discharge op of
-  Right (MH.Accept α log_p log_p')
-    ->  do  let acceptance_ratio = (exp . unLogP) (log_p' - log_p)
-            u <- lift $ sample (Uniform 0 1)
-            handleAccept $ k (u < acceptance_ratio)
-  Left op' -> Op op' (handleAccept . k)
+handleAccept :: LastMember (Lift Sampler) es
+  => [Tag]
+  -> Prog (Accept LogP : es) a
+  -> Prog es a
+handleAccept tags = loop where
+  loop (Val x)   = pure x
+  loop (Op op k) = case discharge op of
+    Right (Propose strace lptrace)
+        ->  do  let αs = Map.keys (if Prelude.null tags then strace else filterTrace tags strace)
+                α <- lift (sample (UniformD 0 (length αs - 1))) >>= pure . (αs !!)
+                r <- lift sampleRandom
+                (loop . k) (α, r)
+    Right (Accept α log_p log_p')
+      ->  do  let acceptance_ratio = (exp . unLogP) (log_p' - log_p)
+              u <- lift $ sample (Uniform 0 1)
+              (loop . k) (u < acceptance_ratio)
+    Left op' -> Op op' (loop . k)
