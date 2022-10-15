@@ -182,7 +182,7 @@ rmsmcPredLDA n_particles n_mhsteps n_words = do
   let n_topics  = 2
       env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
 
-  env_outs     <- RMSMC.rmsmc n_particles n_mhsteps (topicModel vocab n_topics n_words) env_in
+  env_outs     <- RMSMC.rmsmc n_particles n_mhsteps (topicModel vocab n_topics n_words) env_in vnil
   -- Draw a random particle's environment
   env_pred_idx <- sampleUniformD 0 (length env_outs - 1)
   let env_pred   = env_outs !! env_pred_idx
