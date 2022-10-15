@@ -29,7 +29,7 @@ import Inference.RMSMC ( TracedParticle(..) )
 import qualified Inference.SMC as SMC
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS hiding  (particleLogProb)
-import Inference.SIS (Resample(..), ParticleResampler, ParticleRunner, ParticleCtx (..))
+import Inference.SIS (Resample(..), ParticleResampler, ParticleHandler, ParticleCtx (..))
 import OpenSum (OpenSum)
 import Inference.SMC (Particle, pattern Particle)
 import Effects.Lift
@@ -65,11 +65,11 @@ smc2Internal
   -> Sampler [(a, TracedParticle)]                  -- ^ final particle results and contexts
 smc2Internal n_outer_particles mh_steps n_inner_particles tags = do
   handleLift . SIM.handleSamp . SIM.handleObs
-    . SIS.sis n_outer_particles RMSMC.particleRunner (handleResample mh_steps n_inner_particles tags)
+    . SIS.sis n_outer_particles RMSMC.handleParticle (handleResample mh_steps n_inner_particles tags)
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using PMMH.
 -}
-handleResample :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
+handleResample :: ProbSig es
   => Int -> Int -> [String] -> (Prog (Resample es TracedParticle : es) a -> Prog es a)
 handleResample mh_steps n_inner_particles tags = loop where
   loop (Val x) = Val x

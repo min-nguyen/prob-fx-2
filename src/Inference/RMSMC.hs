@@ -33,7 +33,7 @@ import qualified Inference.MH as MH
 import qualified Inference.SMC as SMC
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS hiding  (particleLogProb)
-import Inference.SIS (Resample(..), ParticleResampler, ParticleRunner, ParticleCtx (..))
+import Inference.SIS (Resample(..), ParticleResampler, ParticleHandler, ParticleCtx (..))
 import OpenSum (OpenSum)
 import Inference.SMC (Particle, pattern Particle)
 import Effects.Lift
@@ -76,15 +76,17 @@ rmsmcInternal
   :: Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of MH steps
   -> Prog [Observe, Sample, Lift Sampler] a       -- ^ probabilistic program
-  -> Sampler [(a, TracedParticle)]                 -- ^ final particle results and contexts
+  -> Sampler [(a, TracedParticle)]                -- ^ final particle results and contexts
 rmsmcInternal n_particles mh_steps   = do
-  handleLift . SIM.handleSamp . SIM.handleObs . SIS.sis n_particles particleRunner (particleResampler mh_steps)
+  handleLift . SIM.handleSamp . SIM.handleObs . SIS.sis n_particles handleParticle (handleResample mh_steps)
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using MH.
 -}
-particleResampler :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
-  => Int -> (Prog (Resample es TracedParticle : es) a -> Prog es a)
-particleResampler  mh_steps = loop where
+handleResample :: ProbSig es
+  => Int
+  -> Prog (Resample es TracedParticle : es) a
+  -> Prog es a
+handleResample mh_steps = loop where
   loop (Val x) = Val x
   loop (Op op k) = case discharge op of
     Right (Resample (prts, ctxs) prog_0) ->
@@ -122,14 +124,14 @@ particleResampler  mh_steps = loop where
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint at the first @Observe@ operation.
 -}
-particleRunner ::forall es a. (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
+handleParticle :: forall es a. ProbSig es
   -- | a particle
   => Prog es a
   -- | (a particle suspended at the next step, corresponding context)
   -> Prog es (Prog es a, TracedParticle)
-particleRunner = loop Map.empty
+handleParticle = loop Map.empty
   where
-  loop :: STrace ->  Prog es a -> Prog es (Prog es a, TracedParticle)
+  loop :: STrace -> Prog es a -> Prog es (Prog es a, TracedParticle)
   loop inv_strace (Val x) = pure (Val x, TracedParticle 0 ("", 0) inv_strace)
   loop inv_strace (Op op k) = case op of
     SampPrj d α  -> do r <- lift sampleRandom

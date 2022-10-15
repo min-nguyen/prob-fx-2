@@ -26,8 +26,8 @@ import Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge
 import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
-import Inference.SIS (Resample(..), ParticleResampler, ParticleRunner, ParticleCtx (..))
-import Sampler ( Sampler )
+import Inference.SIS (Resample(..), ParticleResampler, ParticleHandler, ParticleCtx (..))
+import Sampler ( Sampler, sampleRandom )
 
 {- | The context of a particle for SMC.
 -}
@@ -51,11 +51,11 @@ smc n_particles model env_in = do
 smcInternal
   :: Int                                              -- ^ number of particles
   -> Prog [Observe, Sample, Lift Sampler] a           -- ^ probabilistic program
-  -> Sampler [(a, Particle)]                       -- ^ final particle results and contexts
+  -> Sampler [(a, Particle)]                          -- ^ final particle results and contexts
 smcInternal n_particles =
   handleLift . SIM.handleSamp . SIM.handleObs . SIS.sis n_particles particleRunner handleResample
 
-{- | A handler for multinomial resampling particles according to their normalized log-likelihoods.
+{- | A handler for multinomial resampling of particles.
 -}
 handleResample :: LastMember (Lift Sampler) es => ParticleResampler es Particle
 handleResample (Val x) = Val x
@@ -72,24 +72,37 @@ handleResample (Op op k) = case discharge op of
     (handleResample . k) ((resampled_prts, resampled_ctxs), idxs)
   Left op' -> Op op' (handleResample . k)
 
--- | Systematic resampler
-systematic :: Double -> [Double] -> [Int]
-systematic u ps = f 0 (u / fromIntegral n) 0 0 []
-  where
-    prob i = ps !! i
-    n = length ps
-    inc = 1 / fromIntegral n
-    f i _ _ _ acc | i == n = acc
-    f i v j q acc =
-      if v < q
-        then f (i + 1) (v + inc) j q (j - 1 : acc)
-        else f i v (j + 1) (q + prob j) acc
+{- | A handler for systematic resampling of particles.
+-}
+handleResampleSys :: LastMember (Lift Sampler) es => ParticleResampler es Particle
+handleResampleSys (Val x) = Val x
+handleResampleSys (Op op k) = case discharge op of
+  -- Right (Resample (prts, ctxs, prog_0)) -> do
+  Right (Resample (prts, ctxs) _) -> do
+    -- | Get the weights for each particle
+    let ws = map (exp . unLogP . particleLogProb) ctxs
+    -- | Select particles to continue with
+    u <- lift sampleRandom
+    let prob i = ws !! i
+        n      = length ws
+        inc = 1 / fromIntegral n
+        f i _ _ _ acc | i == n = acc
+        f i v j q acc =
+          if v < q
+            then f (i + 1) (v + inc) j q (j - 1 : acc)
+            else f i v (j + 1) (q + prob j) acc
+        idxs = f 0 (u / fromIntegral n) 0 0 []
+        resampled_prts = map (prts !! ) idxs
+        resampled_ctxs = map (ctxs !! ) idxs
+
+    (handleResampleSys . k) ((resampled_prts, resampled_ctxs), idxs)
+  Left op' -> Op op' (handleResampleSys . k)
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation
        2. the log probability of the @Observe operation + the address of the breakpoint
 -}
-particleRunner :: forall es a. (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
+particleRunner :: Member Observe es
   -- | a particle
   => Prog es a
   -- | (a particle suspended at the next step, corresponding context)

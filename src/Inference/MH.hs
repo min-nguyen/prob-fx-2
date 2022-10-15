@@ -23,7 +23,7 @@ import Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weake
 import Trace ( STrace, LPTrace, filterTrace, traceLogProbs )
 import LogP ( LogP(unLogP) )
 import PrimDist
-import Model ( Model, handleCore )
+import Model ( Model, handleCore, ProbSig )
 import Effects.ObsRW ( ObsRW )
 import Env ( ContainsVars(..), Vars, Env )
 import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr )
@@ -62,12 +62,12 @@ mh n model env_in obs_vars  = do
 
 {- | Perform MH on a probabilistic program.
 -}
-mhInternal :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
+mhInternal :: ProbSig es
    => Int                                           -- ^ number of MH iterations
-   -> Prog es a        -- ^ probabilistic program
-   -> STrace                                     -- ^ initial sample trace
+   -> Prog es a                                     -- ^ probabilistic program
+   -> STrace                                        -- ^ initial sample trace
    -> [Tag]                                         -- ^ tags indicating sample sites of interest
-   -> Prog (Accept (LPTrace, STrace) : es) [((a, LPTrace), STrace)]           -- ^ trace of (accepted outputs, log probabilities), samples)
+   -> Prog (Accept (LPTrace, STrace) : es) [((a, LPTrace), STrace)]  -- ^ trace of (accepted outputs, log probabilities), samples)
 mhInternal n prog strace tags = do
   let mh_prog = weakenProg prog
   -- | Perform initial run of mh
@@ -77,11 +77,11 @@ mhInternal n prog strace tags = do
 
 {- | Perform one iteration of MH by drawing a new sample and then rejecting or accepting it.
 -}
-mhStep  :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
-  => Prog (Accept (LPTrace, STrace) : es) a         -- ^ probabilistic program
-  -> [Tag]                                          -- ^ tags indicating sample sites of interest
-  -> [((a, LPTrace), STrace)]                    -- ^ previous MH trace
-  -> Prog (Accept (LPTrace, STrace) : es) [((a, LPTrace), STrace)]            -- ^ updated MH trace
+mhStep :: ProbSig es
+  => Prog (Accept (LPTrace, STrace) : es) a                             -- ^ probabilistic program
+  -> [Tag]                                                              -- ^ tags indicating sample sites of interest
+  -> [((a, LPTrace), STrace)]                                           -- ^ previous MH trace
+  -> Prog (Accept (LPTrace, STrace) : es) [((a, LPTrace), STrace)]      -- ^ updated MH trace
 mhStep prog tags trace = do
   -- | Get previous MH output
   let mh_ctx@((_, lptrace), strace) = head trace
@@ -96,7 +96,7 @@ mhStep prog tags trace = do
 
 {- | Handler for one iteration of MH.
 -}
-runMH :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
+runMH :: ProbSig es
   => STrace                                 -- ^ sample trace of previous MH iteration
   -> Prog es a                              -- ^ probabilistic program
   -> Prog es ((a, LPTrace), STrace)         -- ^ ((model output, sample trace), log-probability trace)
@@ -121,19 +121,7 @@ handleSamp strace (Op op k) = case prj op of
 
   where k' strace' = handleSamp strace' . k
 
-{- | Propose a new random value at a random sample site.
--}
-propose :: STrace -> [Tag] -> Sampler (Addr, Double)
-propose strace tags = do
-  -- | Get possible addresses to propose new samples for
-  let αs = Map.keys (if Prelude.null tags then strace else filterTrace tags strace)
-  -- | Draw a proposal sample address
-  α <- sample (UniformD 0 (length αs - 1)) >>= pure . (αs !!)
-  -- | Draw a new random value
-  r <- sampleRandom
-  pure (α, r)
-
-{- | An acceptance mechanism for MH.
+{- | Handler for @Accept@ for MH.
 -}
 handleAccept :: LastMember (Lift Sampler) es => Prog (Accept (LPTrace, STrace) : es) a -> Prog es a
 handleAccept (Val x)   = pure x
@@ -149,3 +137,15 @@ handleAccept (Op op k) = case discharge op of
             u <- lift $ sample (Uniform 0 1)
             handleAccept $ k ((exp . unLogP) (dom_logα + logα' - logα) > u)
   Left op' -> Op op' (handleAccept . k)
+
+{- | Propose a new random value at a random sample site.
+-}
+propose :: STrace -> [Tag] -> Sampler (Addr, Double)
+propose strace tags = do
+  -- | Get possible addresses to propose new samples for
+  let αs = Map.keys (if Prelude.null tags then strace else filterTrace tags strace)
+  -- | Draw a proposal sample address
+  α <- sample (UniformD 0 (length αs - 1)) >>= pure . (αs !!)
+  -- | Draw a new random value
+  r <- sampleRandom
+  pure (α, r)

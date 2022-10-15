@@ -50,11 +50,11 @@ pmmh mh_steps n_particles model env_in obs_vars = do
 
 {- | Perform PMMH on a probabilistic program.
 -}
-pmmhInternal :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es) =>
+pmmhInternal :: ProbSig es =>
       Int                                     -- ^ number of MH steps
    -> Int                                     -- ^ number of particles
-   -> Prog es a  -- ^ probabilistic program
-   -> STrace                               -- ^ initial sample trace
+   -> Prog es a                               -- ^ probabilistic program
+   -> STrace                                  -- ^ initial sample trace
    -> [Tag]                                   -- ^ tags indicating the model parameters
    -> Prog (MH.Accept LogP : es) [((a, LogP), STrace)]       -- ^ trace of accepted outputs, samples, and logps
 pmmhInternal mh_steps n_particles prog strace param_tags = do
@@ -66,11 +66,11 @@ pmmhInternal mh_steps n_particles prog strace param_tags = do
 
 {- | Perform one iteration of PMMH by drawing a new sample and then rejecting or accepting it.
 -}
-pmmhStep ::  (Members [Observe, Sample] es, LastMember (Lift Sampler) es) =>
+pmmhStep :: ProbSig es =>
      Int                                          -- ^ number of particles
-  -> Prog (MH.Accept LogP : es) a       -- ^ probabilistic program
+  -> Prog (MH.Accept LogP : es) a                 -- ^ probabilistic program
   -> [Tag]                                        -- ^ tags indicating model parameters
-  -> [((a, LogP), STrace)]                     -- ^ trace of previous mh outputs
+  -> [((a, LogP), STrace)]                        -- ^ trace of previous mh outputs
   -> Prog (MH.Accept LogP : es) [((a, LogP), STrace)]
 pmmhStep n_particles prog tags pmmh_trace = do
   let pmmh_ctx@((_, logW), strace) = head pmmh_trace
@@ -84,11 +84,11 @@ pmmhStep n_particles prog tags pmmh_trace = do
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}
-runPMMH :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
+runPMMH :: ProbSig es
   => Int                                          -- ^ number of particles
-  -> Prog es a      -- ^ probabilistic program
+  -> Prog es a                                    -- ^ probabilistic program
   -> [Tag]                                        -- ^ tags indicating model parameters
-  -> STrace                                    -- ^ sample traces
+  -> STrace                                       -- ^ sample traces
   -> Prog es ((a, LogP), STrace)
 runPMMH n_particles prog tags strace = do
   ((a, _), strace') <- MH.runMH strace prog
