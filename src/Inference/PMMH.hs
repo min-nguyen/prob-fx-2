@@ -40,8 +40,26 @@ pmmh :: forall env es a xs. (env `ContainsVars` xs)
   -> Vars xs                                        -- ^ variable names of model parameters
   -> Sampler [Env env]                              -- ^ output environments
 pmmh mh_steps n_particles model env_in obs_vars = do
+  -- | Handle model to probabilistic program
+  let prog_0   = handleCore env_in model
+      strace_0 = Map.empty
+  -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
-  ar mh_steps model (handleModel n_particles tags) (handleAccept tags) env_in
+  pmmh_trace <- (handleLift . SIM.handleSamp . SIM.handleObs)
+                (pmmhInternal mh_steps n_particles tags strace_0 prog_0)
+  pure (map (snd . fst . fst) pmmh_trace)
+
+{- | PMMH inference on a probabilistic program.
+-}
+pmmhInternal :: (ProbSig es)
+  => Int
+  -> Int
+  -> [Tag]
+  -> STrace
+  -> Prog es a
+  -> Prog es [((a, LogP), STrace)]
+pmmhInternal mh_steps n_particles tags strace_0 =
+  arLoop mh_steps strace_0 (handleModel n_particles tags) (handleAccept tags)
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}

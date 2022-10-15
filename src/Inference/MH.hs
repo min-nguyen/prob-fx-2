@@ -43,11 +43,25 @@ mh :: forall env a xs. (env `ContainsVars` xs)
      , provide @#mu <#> vnil@ to cause other variables to not be resampled unless necessary. -}
   -> Sampler [Env env]                            -- ^ output model environments
 mh n model env_in obs_vars  = do
+  -- | Handle model to probabilistic program
+  let prog_0   = handleCore env_in model
+      strace_0 = Map.empty
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
-  ar n model handleModel (handleAccept tags) env_in
+  mh_trace <- (handleLift . SIM.handleSamp . SIM.handleObs)
+              (mhInternal n tags strace_0 prog_0)
+  pure (map (snd . fst . fst) mh_trace)
 
-
+{- | MH inference on a probabilistic program.
+-}
+mhInternal :: ProbSig es
+  => Int
+  -> [Tag]
+  -> STrace
+  -> Prog es a
+  -> Prog es [((a, LPTrace), STrace)]
+mhInternal n tags strace_0 =
+  arLoop n strace_0 handleModel (handleAccept tags)
 
 {- | Handler for one iteration of MH.
 -}

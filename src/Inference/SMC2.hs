@@ -29,7 +29,7 @@ import Inference.RMSMC ( TracedParticle(..) )
 import qualified Inference.SMC as SMC
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS hiding  (particleLogProb)
-import Inference.SIS (Resample(..), ParticleResampler, ParticleHandler, ParticleCtx (..))
+import Inference.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
 import Inference.SMC (Particle, pattern Particle)
 import Inference.ARS as ARS
 import Effects.Lift
@@ -46,28 +46,30 @@ smc2 :: forall env es a xs. (env `ContainsVars` xs)
   -> Vars xs                                        -- ^ variable names of model parameters
   -> Sampler [Env env]                              -- ^ output environments
 smc2 n_outer_particles mh_steps n_inner_particles model env obs_vars = do
-  let prog = (handleDist . handleObsRW env) (runModel model)
+  -- | Handle model to probabilistic program
+  let prog_0 = (handleDist . handleObsRW env) (runModel model)
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
   -- | Run SMC2
-  smc2_trace <- smc2Internal n_outer_particles mh_steps n_inner_particles tags prog
+  smc2_trace <- (handleLift . SIM.handleSamp . SIM.handleObs)
+                (smc2Internal n_outer_particles mh_steps n_inner_particles tags prog_0)
   -- Return the accepted model environments
   pure (map (snd . fst) smc2_trace)
 
 {- | Perform SMC2 on a probabilistic program.
 -}
-smc2Internal
-  :: Int                                          -- ^ number of outer SMC particles
+smc2Internal :: ProbSig es
+  => Int                                          -- ^ number of outer SMC particles
   -> Int                                          -- ^ number of MH steps
   -> Int                                          -- ^ number of inner SMC particles
   -> [Tag]                                        -- ^ tags indicating model parameters
-  -> Prog [Observe, Sample, Lift Sampler] a       -- ^ probabilistic program
-  -> Sampler [(a, TracedParticle)]                  -- ^ final particle results and contexts
-smc2Internal n_outer_particles mh_steps n_inner_particles tags = do
-  handleLift . SIM.handleSamp . SIM.handleObs
-    . SIS.sis n_outer_particles RMSMC.handleParticle (handleResample mh_steps n_inner_particles tags)
+  -> Prog es a                                    -- ^ probabilistic program
+  -> Prog es [(a, TracedParticle)]                -- ^ final particle results and contexts
+smc2Internal n_outer_particles mh_steps n_inner_particles tags =
+  SIS.sis n_outer_particles RMSMC.handleParticle (handleResample mh_steps n_inner_particles tags)
 
-{- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using PMMH.
+{- | A handler for resampling particles according to their normalized log-likelihoods,
+     and then pertrubing their sample traces using PMMH.
 -}
 handleResample :: ProbSig es
   => Int -> Int -> [String] -> (Prog (Resample es TracedParticle : es) a -> Prog es a)
@@ -76,7 +78,7 @@ handleResample mh_steps n_inner_particles tags = loop where
   loop (Op op k) = case discharge op of
     Right (Resample (prts, ctxs) prog_0) ->
       do  -- | Resample the particles according to the indexes returned by the SMC resampler
-          idxs <- snd <$> SMC.handleResample (call (Resample ([], map (Particle . particleLogProb) ctxs) prog_0))
+          idxs <- snd <$> SMC.handleResampleMul (call (Resample ([], map (Particle . particleLogProb) ctxs) prog_0))
           let resampled_ctxs    = map (ctxs !! ) idxs
           -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head')
               resampled_α       = (particleObsAddr . head) resampled_ctxs
@@ -86,8 +88,7 @@ handleResample mh_steps n_inner_particles tags = loop where
               partial_model     = RMSMC.breakObserve resampled_α prog_0
           -- | Perform PMMH using each resampled particle's sample trace and get the most recent PMMH iteration.
           pmmh_trace <- mapM ( fmap head
-                             . PMMH.handleAccept tags
-                             . ARS.arInternal mh_steps partial_model (PMMH.handleModel n_inner_particles tags)
+                             . flip (PMMH.pmmhInternal mh_steps n_inner_particles tags) partial_model
                              ) resampled_straces
           {- | Get:
               1) the continuations of each particle from the break point (augmented with the non-det effect)

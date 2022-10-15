@@ -52,7 +52,7 @@ data Resample es ctx  a where
     -- | ((resampled programs, resampled ctxs), resampled idxs)
     -> Resample es ctx (([Prog (Resample es ctx : es) a], [ctx]), [Int])
 
-{- | A @ParticleRunner@ handler runs a particle to the next @Observe@ break point.
+{- | A @ParticleHandler@  runs a particle to the next @Observe@ break point.
 -}
 type ParticleHandler ctx
   = forall es a. (ProbSig es)
@@ -61,9 +61,9 @@ type ParticleHandler ctx
   -- | (a particle suspended at the next step, corresponding context)
   -> Prog es (Prog es a,  ctx)
 
-{- | A @ParticleResampler@ handler decides which of the current particles to continue execution with.
+{- | A @ResampleHandler@ decides which of the current particles to continue execution with.
 -}
-type ParticleResampler es ctx
+type ResampleHandler es ctx
   =  forall a. (ProbSig es)
   => Prog (Resample es ctx : es) a
   -> Prog es a
