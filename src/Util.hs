@@ -9,6 +9,7 @@ module Util (
   , findIndexes
   , roundUp16
   , uncurry3
+  , fst3
   , bimap'
   , filterByKey
   , linCongGen) where
@@ -44,6 +45,9 @@ roundUp16 n = n + (16 - (n `mod` 16))
 
 uncurry3 :: (a -> b -> c -> d) -> ((a, b, c) -> d)
 uncurry3 f (a, b, c) = f a b c
+
+fst3 :: (a, b, c) -> a
+fst3 (x,_, _) = x
 
 -- | Generate a list of doubles from a single double
 decShift :: Double -> Int

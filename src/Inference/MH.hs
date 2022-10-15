@@ -35,9 +35,9 @@ data Accept ctx a where
   Accept
     :: Addr
     -- | original context
-    -> ((a, ctx), STrace)
+    -> ctx
     -- | context using proposed sample
-    -> ((a, ctx), STrace)
+    -> ctx
     -- | whether the proposal is accepted or not
     -> Accept ctx Bool
 
@@ -67,7 +67,7 @@ mhInternal :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
    -> Prog es a        -- ^ probabilistic program
    -> STrace                                     -- ^ initial sample trace
    -> [Tag]                                         -- ^ tags indicating sample sites of interest
-   -> Prog (Accept LPTrace : es) [((a, LPTrace), STrace)]           -- ^ trace of (accepted outputs, log probabilities), samples)
+   -> Prog (Accept (LPTrace, STrace) : es) [((a, LPTrace), STrace)]           -- ^ trace of (accepted outputs, log probabilities), samples)
 mhInternal n prog strace tags = do
   let mh_prog = weakenProg prog
   -- | Perform initial run of mh
@@ -78,19 +78,19 @@ mhInternal n prog strace tags = do
 {- | Perform one iteration of MH by drawing a new sample and then rejecting or accepting it.
 -}
 mhStep  :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
-  => Prog (Accept LPTrace : es) a         -- ^ probabilistic program
+  => Prog (Accept (LPTrace, STrace) : es) a         -- ^ probabilistic program
   -> [Tag]                                          -- ^ tags indicating sample sites of interest
   -> [((a, LPTrace), STrace)]                    -- ^ previous MH trace
-  -> Prog (Accept LPTrace : es) [((a, LPTrace), STrace)]            -- ^ updated MH trace
+  -> Prog (Accept (LPTrace, STrace) : es) [((a, LPTrace), STrace)]            -- ^ updated MH trace
 mhStep prog tags trace = do
   -- | Get previous MH output
-  let mh_ctx@(_, strace) = head trace
+  let mh_ctx@((_, lptrace), strace) = head trace
   -- | Propose a new random value for a sample site
   (α_samp, r) <- lift (propose strace tags)
   -- | Run MH with proposed value to get an MHCtx using LPTrace as its probability type
-  mh_ctx' <- runMH (Map.insert α_samp r strace) prog
+  mh_ctx'@((_, lptrace'), strace') <- runMH (Map.insert α_samp r strace) prog
   -- | Compute acceptance ratio to see if we use the proposed mh_ctx'
-  b <- call (Accept α_samp mh_ctx mh_ctx')
+  b <- call (Accept α_samp (lptrace, strace) (lptrace', strace'))
   if b then pure (mh_ctx':trace)
        else pure trace
 
@@ -135,10 +135,10 @@ propose strace tags = do
 
 {- | An acceptance mechanism for MH.
 -}
-handleAccept :: LastMember (Lift Sampler) es => Prog (Accept LPTrace : es) a -> Prog es a
+handleAccept :: LastMember (Lift Sampler) es => Prog (Accept (LPTrace, STrace) : es) a -> Prog es a
 handleAccept (Val x)   = pure x
 handleAccept (Op op k) = case discharge op of
-  Right (Accept α ((_, lptrace), strace) ((a, lptrace'), strace'))
+  Right (Accept α (lptrace, strace) (lptrace', strace'))
     ->  do  let dom_logα = log (fromIntegral $ Map.size strace) - log (fromIntegral $ Map.size strace')
                 sampled  = Set.singleton α `Set.union` (Map.keysSet strace \\ Map.keysSet strace')
                 sampled' = Set.singleton α `Set.union` (Map.keysSet strace' \\ Map.keysSet strace)

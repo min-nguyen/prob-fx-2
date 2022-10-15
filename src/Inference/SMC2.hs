@@ -65,18 +65,18 @@ smc2Internal
   -> Sampler [(a, TracedParticle)]                  -- ^ final particle results and contexts
 smc2Internal n_outer_particles mh_steps n_inner_particles tags = do
   handleLift . SIM.handleSamp . SIM.handleObs
-    . SIS.sis n_outer_particles RMSMC.particleRunner (particleResampler mh_steps n_inner_particles tags)
+    . SIS.sis n_outer_particles RMSMC.particleRunner (handleResample mh_steps n_inner_particles tags)
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using PMMH.
 -}
-particleResampler :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
+handleResample :: (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
   => Int -> Int -> [String] -> (Prog (Resample es TracedParticle : es) a -> Prog es a)
-particleResampler mh_steps n_inner_particles tags = loop where
+handleResample mh_steps n_inner_particles tags = loop where
   loop (Val x) = Val x
   loop (Op op k) = case discharge op of
     Right (Resample (prts, ctxs) prog_0) ->
       do  -- | Resample the particles according to the indexes returned by the SMC resampler
-          idxs <- snd <$> SMC.particleResampler (call (Resample ([], map (Particle . particleLogProb) ctxs) prog_0))
+          idxs <- snd <$> SMC.handleResample (call (Resample ([], map (Particle . particleLogProb) ctxs) prog_0))
           let resampled_ctxs    = map (ctxs !! ) idxs
           -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head')
               resampled_α       = (particleObsAddr . head) resampled_ctxs

@@ -73,12 +73,12 @@ pmmhStep ::  (Members [Observe, Sample] es, LastMember (Lift Sampler) es) =>
   -> [((a, LogP), STrace)]                     -- ^ trace of previous mh outputs
   -> Prog (MH.Accept LogP : es) [((a, LogP), STrace)]
 pmmhStep n_particles prog tags pmmh_trace = do
-  let pmmh_ctx@(_, strace) = head pmmh_trace
+  let pmmh_ctx@((_, logW), strace) = head pmmh_trace
   -- | Propose a new random value for a sample site
   (α_samp, r) <- lift (MH.propose strace tags)
   -- | Run one iteration of PMMH
-  pmmh_ctx'   <- runPMMH n_particles prog tags (Map.insert α_samp r strace)
-  b           <- call (MH.Accept ("", 0) pmmh_ctx pmmh_ctx')
+  pmmh_ctx'@((_, logW'), strace') <- runPMMH n_particles prog tags (Map.insert α_samp r strace)
+  b           <- call (MH.Accept ("", 0) logW logW')
   if b then pure (pmmh_ctx':pmmh_trace)
        else pure pmmh_trace
 
@@ -95,7 +95,7 @@ runPMMH n_particles prog tags strace = do
   let params = filterTrace tags strace'
   prts   <- ( (map snd . fst <$>)
             . MH.handleSamp params
-            . SIS.sis n_particles SMC.particleRunner SMC.particleResampler) prog
+            . SIS.sis n_particles SMC.particleRunner SMC.handleResample) prog
   let logZ  = logMeanExp (map SMC.particleLogProb prts)
   pure ((a, logZ), strace')
 
@@ -104,7 +104,7 @@ runPMMH n_particles prog tags strace = do
 handleAccept :: LastMember (Lift Sampler) es => Prog (MH.Accept LogP : es) a -> Prog es a
 handleAccept (Val x)   = pure x
 handleAccept (Op op k) = case discharge op of
-  Right (MH.Accept α ((_, log_p), _) ((a, log_p'), _))
+  Right (MH.Accept α log_p log_p')
     ->  do  let acceptance_ratio = (exp . unLogP) (log_p' - log_p)
             u <- lift $ sample (Uniform 0 1)
             handleAccept $ k (u < acceptance_ratio)

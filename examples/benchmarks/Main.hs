@@ -81,10 +81,10 @@ bench_LR args = do
               , mhLinRegr fixed_mh_steps) row_header
     benchRow ("LR-SMC-" ++ show fixed_smc_particles
               , smcLinRegr fixed_smc_particles) row_header
-    -- benchRow ("LR-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
-    --           , rmsmcLinRegr fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
-    -- benchRow ("LR-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
-    --           , pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
+    benchRow ("LR-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
+              , rmsmcLinRegr fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
+    benchRow ("LR-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
+              , pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
 
 bench_HMM :: [Int] -> IO ()
 bench_HMM args = do
@@ -161,19 +161,19 @@ bench_SMC args = do
     benchRow ("SMC-LR-" ++ show fixed_lr_datasize_inf
               , flip smcLinRegr fixed_lr_datasize_inf) row_header
 
--- bench_RMSMC :: [Int] -> IO ()
--- bench_RMSMC args = do
---     let row_header = ("Number of RMSMC rejuvenation steps", args)
---     writeRow fixed_output_file row_header
---     benchRow ("RMSMC-" ++ show fixed_rmsmc_particles_inf ++ "-LR-" ++ show fixed_lr_datasize_inf
---               , flip (rmsmcLinRegr fixed_rmsmc_particles_inf) fixed_lr_datasize_inf) row_header
+bench_RMSMC :: [Int] -> IO ()
+bench_RMSMC args = do
+    let row_header = ("Number of RMSMC rejuvenation steps", args)
+    writeRow fixed_output_file row_header
+    benchRow ("RMSMC-" ++ show fixed_rmsmc_particles_inf ++ "-LR-" ++ show fixed_lr_datasize_inf
+              , flip (rmsmcLinRegr fixed_rmsmc_particles_inf) fixed_lr_datasize_inf) row_header
 
--- bench_PMMH :: [Int] -> IO ()
--- bench_PMMH args = do
---     let row_header = ("Number of PMMH particles", args)
---     writeRow fixed_output_file row_header
---     benchRow ("PMMH-" ++ show fixed_pmmh_mhsteps_inf ++ "-LR-" ++ show fixed_lr_datasize_inf
---               , flip (pmmhLinRegr fixed_pmmh_mhsteps_inf) fixed_lr_datasize_inf) row_header
+bench_PMMH :: [Int] -> IO ()
+bench_PMMH args = do
+    let row_header = ("Number of PMMH particles", args)
+    writeRow fixed_output_file row_header
+    benchRow ("PMMH-" ++ show fixed_pmmh_mhsteps_inf ++ "-LR-" ++ show fixed_lr_datasize_inf
+              , flip (pmmhLinRegr fixed_pmmh_mhsteps_inf) fixed_lr_datasize_inf) row_header
 
 runBenchmarks :: IO ()
 runBenchmarks = do
@@ -194,8 +194,8 @@ runBenchmarks = do
           bench_LW lw
           bench_MH mh
           bench_SMC smc
-          -- bench_RMSMC rmsmc
-          -- bench_PMMH pmmh
+          bench_RMSMC rmsmc
+          bench_PMMH pmmh
         _   -> error "bad input file"
 
 main :: IO ()

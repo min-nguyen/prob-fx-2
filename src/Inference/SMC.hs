@@ -53,28 +53,24 @@ smcInternal
   -> Prog [Observe, Sample, Lift Sampler] a           -- ^ probabilistic program
   -> Sampler [(a, Particle)]                       -- ^ final particle results and contexts
 smcInternal n_particles =
-  handleLift . SIM.handleSamp . SIM.handleObs . SIS.sis n_particles particleRunner particleResampler
+  handleLift . SIM.handleSamp . SIM.handleObs . SIS.sis n_particles particleRunner handleResample
 
-{- | A handler for resampling particles according to their normalized log-likelihoods.
+{- | A handler for multinomial resampling particles according to their normalized log-likelihoods.
 -}
-particleResampler :: ParticleResampler es Particle a
-particleResampler (Val x) = Val x
-particleResampler (Op op k) = case discharge op of
+handleResample :: LastMember (Lift Sampler) es => ParticleResampler es Particle
+handleResample (Val x) = Val x
+handleResample (Op op k) = case discharge op of
   -- Right (Resample (prts, ctxs, prog_0)) -> do
   Right (Resample (prts, ctxs) _) -> do
     -- | Get the weights for each particle
     let ws = map (exp . unLogP . particleLogProb) ctxs
     -- | Select particles to continue with
-    idxs <- multinomial ws
+    idxs <- replicateM (length ws) $ lift (sample (Categorical ws))
     let resampled_prts = map (prts !! ) idxs
         resampled_ctxs = map (ctxs !! ) idxs
 
-    (particleResampler . k) ((resampled_prts, resampled_ctxs), idxs)
-  Left op' -> Op op' (particleResampler . k)
-
--- | Multinomial resampler
-multinomial :: LastMember (Lift Sampler) es => [Double] -> Prog es [Int]
-multinomial ws = replicateM (length ws) $ lift (sample (Categorical ws))
+    (handleResample . k) ((resampled_prts, resampled_ctxs), idxs)
+  Left op' -> Op op' (handleResample . k)
 
 -- | Systematic resampler
 systematic :: Double -> [Double] -> [Int]
@@ -97,8 +93,8 @@ particleRunner :: forall es a. (Members [Observe, Sample] es, LastMember (Lift S
   -- | a particle
   => Prog es a
   -- | (a particle suspended at the next step, corresponding context)
-  -> Prog es (Prog es a,  Particle)
-particleRunner prog = loop prog
+  -> Prog es (Prog es a, Particle)
+particleRunner = loop
   where loop (Val x) = pure (Val x,  Particle 0)
         loop (Op op k) = case op of
           ObsPrj d y α -> Val (k y,  Particle (logProb d y))

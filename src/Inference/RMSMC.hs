@@ -89,7 +89,7 @@ particleResampler  mh_steps = loop where
   loop (Op op k) = case discharge op of
     Right (Resample (prts, ctxs) prog_0) ->
       do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
-          idxs <- snd <$> SMC.particleResampler (call (Resample ([], map (Particle . particleLogProb) ctxs) prog_0))
+          idxs <- snd <$> SMC.handleResample (call (Resample ([], map (Particle . particleLogProb) ctxs) prog_0))
           let resampled_ctxs   = map (ctxs !! ) idxs
           -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head')
               resampled_α      = (particleObsAddr . head) resampled_ctxs
@@ -127,10 +127,7 @@ particleRunner ::forall es a. (Members [Observe, Sample] es, LastMember (Lift Sa
   => Prog es a
   -- | (a particle suspended at the next step, corresponding context)
   -> Prog es (Prog es a, TracedParticle)
-particleRunner prog = do
-
-  (prog_k, prt) <- loop Map.empty prog
-  pure (prog_k,  prt)
+particleRunner = loop Map.empty
   where
   loop :: STrace ->  Prog es a -> Prog es (Prog es a, TracedParticle)
   loop inv_strace (Val x) = pure (Val x, TracedParticle 0 ("", 0) inv_strace)

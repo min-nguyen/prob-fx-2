@@ -7,13 +7,14 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 {- | An algebraic effect embedding of probabilistic models.
 -}
 
 module Model (
     Model(..)
-  , ProbProg
+  , ProbSig
   , handleCore
     -- * Distribution smart constructors
     -- $Smart-Constructors
@@ -55,7 +56,7 @@ import Effects.ObsRW
 import Env
 import OpenSum ( OpenSum )
 import PrimDist
-import Prog ( call, Member, Prog )
+import Prog ( call, Member, Prog, Members, LastMember )
 import qualified OpenSum
 import Debug.Trace
 import Sampler
@@ -92,7 +93,7 @@ instance Monad (Model env es) where
 
 {- | Probabilistic programs are those with effects for conditioning and sampling.
 -}
-type ProbProg a = Prog [Observe, Sample, Lift Sampler] a
+type ProbSig es = (Members [Observe, Sample] es, LastMember (Lift Sampler) es)
 
 {- | The initial handler for models, specialising a model under a certain environment
      to produce a probabilistic program consisting of @Sample@ and @Observe@ operations.
