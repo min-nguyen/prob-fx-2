@@ -114,7 +114,7 @@ rmsmcLinRegr n_particles n_mhsteps n_datapoints = do
   -- Specify model environment
       env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   -- Run SMC
-  env_outs <- RMSMC.rmsmc n_particles n_mhsteps (linRegr xs) env_in
+  env_outs <- RMSMC.rmsmc n_particles n_mhsteps (linRegr xs) env_in vnil
   -- Get the sampled values of mu and c for each particle
   let mus = concatMap (get #m) env_outs
       cs  = concatMap (get #c) env_outs

@@ -297,7 +297,7 @@ rmsmcHMMw n_particles n_mhsteps hmm_length = do
   ys <- map snd <$> simHMMw hmm_length
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
-  env_outs <- RMSMC.rmsmc n_particles n_mhsteps (hmm hmm_length 0) env_in
+  env_outs <- RMSMC.rmsmc n_particles n_mhsteps (hmm hmm_length 0) env_in vnil
   let trans_ps    = concatMap (get #trans_p) env_outs
       obs_ps      = concatMap (get #obs_p) env_outs
   pure (trans_ps, obs_ps)

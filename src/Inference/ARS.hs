@@ -48,13 +48,13 @@ data Accept ctx a where
     -- | whether the proposal is accepted or not
     -> Accept ctx Bool
 
-{- | Top-level wrapper for MH inference.
+{- | Top-level template for Accept-Reject inference.
 -}
 ar :: forall env a ctx es.
      Int                                          -- ^ number of MH iterations
   -> Model env [ObsRW env, Dist, Lift Sampler] a  -- ^ model
-  -> (forall es a. ProbSig es => STrace -> Prog es a -> Prog es ((a, ctx), STrace)) -- model handler
-  -> (forall es a. ProbSig es => Prog (Accept ctx : es) a -> Prog es a)
+  -> (forall es a. ProbSig es => STrace -> Prog es a -> Prog es ((a, ctx), STrace)) -- ^ model handler
+  -> (forall es a. ProbSig es => Prog (Accept ctx : es) a -> Prog es a)  -- ^ accept handler
   -> Env env                                      -- ^ input environment
   -> Sampler [Env env]                            -- ^ output model environments
 ar n model hdlModel hdlAccept env_in = do
@@ -70,7 +70,7 @@ ar n model hdlModel hdlAccept env_in = do
 arInternal :: ProbSig es
    => Int                                           -- ^ number of MH iterations
    -> Prog es a                                     -- ^ probabilistic program
-   -> (forall es a. ProbSig es => STrace -> Prog es a -> Prog es ((a, ctx), STrace))
+   -> (forall es a. ProbSig es => STrace -> Prog es a -> Prog es ((a, ctx), STrace))  -- ^ model handler
    -> STrace                                        -- ^ initial sample trace
    -> Prog (Accept ctx : es) [((a, ctx), STrace)]  -- ^ trace of (accepted outputs, log probabilities), samples)
 arInternal n prog hdlModel strace = do
@@ -83,10 +83,10 @@ arInternal n prog hdlModel strace = do
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
 arStep :: ProbSig es
-  => Prog (Accept ctx : es) a                             -- ^ probabilistic program
-  -> (forall es a. ProbSig es => STrace -> Prog es a -> Prog es ((a, ctx), STrace))
-  -> [((a, ctx), STrace)]                                      -- ^ previous MH trace
-  -> Prog (Accept ctx : es) [((a, ctx), STrace)]      -- ^ updated MH trace
+  => Prog (Accept ctx : es) a                                                        -- ^ probabilistic program
+  -> (forall es a. ProbSig es => STrace -> Prog es a -> Prog es ((a, ctx), STrace))  -- ^ accept handler
+  -> [((a, ctx), STrace)]                                                            -- ^ previous MH trace
+  -> Prog (Accept ctx : es) [((a, ctx), STrace)]                                     -- ^ updated MH trace
 arStep prog hdlModel trace = do
   -- | Get previous MH output
   let mh_ctx@((_, ctx), strace) = head trace

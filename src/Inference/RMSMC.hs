@@ -10,6 +10,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 
 {- Rejuvenate-Move Sequential Monte Carlo inference.
 -}
@@ -62,32 +63,37 @@ instance ParticleCtx TracedParticle where
 {- | Call RMSMC on a model.
 -}
 rmsmc
-  :: Int                                          -- ^ number of SMC particles
+  :: forall env a xs. (env `ContainsVars` xs)
+  => Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of MH steps
   -> Model env [ObsRW env, Dist, Lift Sampler] a  -- ^ model
   -> Env env                                      -- ^ input model environment
+  -> Vars xs
   -> Sampler [Env env]                            -- ^ output model environments of each particle
-rmsmc n_particles mh_steps model env_in = do
+rmsmc n_particles mh_steps model env_in obs_vars = do
   let prog = (handleDist . handleObsRW env_in) (runModel model)
-  rmsmcInternal n_particles mh_steps prog >>= pure . map (snd . fst)
+      tags = varsToStrs @env obs_vars
+  rmsmcInternal n_particles mh_steps tags prog >>= pure . map (snd . fst)
 
 {- | Call RMSMC on a probabilistic program.
 -}
 rmsmcInternal
   :: Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of MH steps
+  -> [Tag]
   -> Prog [Observe, Sample, Lift Sampler] a       -- ^ probabilistic program
   -> Sampler [(a, TracedParticle)]                -- ^ final particle results and contexts
-rmsmcInternal n_particles mh_steps   = do
-  handleLift . SIM.handleSamp . SIM.handleObs . SIS.sis n_particles handleParticle (handleResample mh_steps)
+rmsmcInternal n_particles mh_steps tags  = do
+  handleLift . SIM.handleSamp . SIM.handleObs . SIS.sis n_particles handleParticle (handleResample mh_steps tags)
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using MH.
 -}
 handleResample :: ProbSig es
   => Int
+  -> [Tag]
   -> Prog (Resample es TracedParticle : es) a
   -> Prog es a
-handleResample mh_steps = loop where
+handleResample mh_steps tags = loop where
   loop (Val x) = Val x
   loop (Op op k) = case discharge op of
     Right (Resample (prts, ctxs) prog_0) ->
@@ -102,7 +108,7 @@ handleResample mh_steps = loop where
               partial_model = breakObserve resampled_α prog_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
           mh_trace <- mapM ( fmap head
-                           . MH.handleAccept []
+                           . MH.handleAccept tags
                            . ARS.arInternal mh_steps partial_model MH.handleModel
                            ) resampled_straces
           {- | Get:

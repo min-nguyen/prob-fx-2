@@ -19,7 +19,7 @@ import Effects.NonDet ( asum, handleNonDet, NonDet )
 import Effects.ObsRW ( ObsRW, handleObsRW )
 import Env ( Env )
 import LogP ( LogP(..), logMeanExp )
-import Model ( Model(runModel) )
+import Model ( Model(runModel), ProbSig )
 import OpenSum (OpenSum)
 import PrimDist ( Categorical(..), sample, logProb )
 import Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge )
@@ -44,16 +44,16 @@ smc
   -> Sampler [Env env]                                -- ^ output model environments of each particle
 smc n_particles model env_in = do
   let prog = (handleDist . handleObsRW env_in) (runModel model)
-  smcInternal n_particles prog >>= pure . map (snd . fst)
+  (handleLift . SIM.handleSamp . SIM.handleObs . smcInternal n_particles) prog >>= pure . map (snd . fst)
 
 {- | Call SMC on a probabilistic program.
 -}
-smcInternal
-  :: Int                                              -- ^ number of particles
-  -> Prog [Observe, Sample, Lift Sampler] a           -- ^ probabilistic program
-  -> Sampler [(a, Particle)]                          -- ^ final particle results and contexts
+smcInternal :: ProbSig es
+  => Int                       -- ^ number of particles
+  -> Prog es a                 -- ^ probabilistic program
+  -> Prog es [(a, Particle)]   -- ^ final particle results and contexts
 smcInternal n_particles =
-  handleLift . SIM.handleSamp . SIM.handleObs . SIS.sis n_particles particleRunner handleResample
+  SIS.sis n_particles handleParticle handleResample
 
 {- | A handler for multinomial resampling of particles.
 -}
@@ -102,14 +102,14 @@ handleResampleSys (Op op k) = case discharge op of
        1. the rest of the computation
        2. the log probability of the @Observe operation + the address of the breakpoint
 -}
-particleRunner :: Member Observe es
+handleParticle :: Member Observe es
   -- | a particle
   => Prog es a
   -- | (a particle suspended at the next step, corresponding context)
   -> Prog es (Prog es a, Particle)
-particleRunner = loop
+handleParticle = loop
   where loop (Val x) = pure (Val x,  Particle 0)
         loop (Op op k) = case op of
           ObsPrj d y α -> Val (k y,  Particle (logProb d y))
-          _            -> Op op (particleRunner . k)
+          _            -> Op op (handleParticle . k)
 

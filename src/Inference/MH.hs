@@ -47,6 +47,8 @@ mh n model env_in obs_vars  = do
   let tags = varsToStrs @env obs_vars
   ar n model handleModel (handleAccept tags) env_in
 
+
+
 {- | Handler for one iteration of MH.
 -}
 handleModel :: ProbSig es

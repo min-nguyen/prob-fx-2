@@ -56,7 +56,7 @@ handleModel n_particles tags strace prog = do
   let params = filterTrace tags strace'
   prts   <- ( (map snd . fst <$>)
             . MH.handleSamp params
-            . SIS.sis n_particles SMC.particleRunner SMC.handleResample) prog
+            . SMC.smcInternal n_particles) prog
   let logZ  = logMeanExp (map SMC.particleLogProb prts)
   pure ((a, logZ), strace')
 
