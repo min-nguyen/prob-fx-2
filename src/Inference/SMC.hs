@@ -16,7 +16,6 @@ module Inference.SMC where
 import Control.Monad ( replicateM )
 import Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe (..), Sample )
 import Effects.Lift ( Lift, lift, liftPrint, handleLift)
-import Effects.NonDet ( asum, handleNonDet, NonDet )
 import Effects.ObsRW ( ObsRW, handleObsRW )
 import Env ( Env )
 import LogP ( LogP(..), logMeanExp )

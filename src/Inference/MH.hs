@@ -35,7 +35,7 @@ import Inference.ARS
 import Util
 
 {- | Top-level wrapper for MH inference.
--- -}
+-}
 mh :: forall env a xs. (env `ContainsVars` xs)
   => Int                                          -- ^ number of MH iterations
   -> Model env [ObsRW env, Dist, Lift Sampler] a  -- ^ model
@@ -88,7 +88,7 @@ handleSamp strace (Op op k) = case prj op of
                         k' (Map.insert α r strace) y
           Just r  -> do let y = sampleInv d r
                         k' strace  y
-    Nothing -> Op op (k' strace )
+    Nothing -> Op op (k' strace)
 
   where k' strace' = handleSamp strace' . k
 
