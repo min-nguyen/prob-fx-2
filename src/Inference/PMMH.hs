@@ -10,6 +10,7 @@
 
 module Inference.PMMH where
 
+import Data.Functor
 import Control.Monad
 import Prog
 import Sampler
@@ -59,7 +60,7 @@ pmmhInternal :: (ProbSig es)
   -> Prog es a                                    -- ^ probabilistic program
   -> Prog es [((a, LogP), STrace)]
 pmmhInternal mh_steps n_particles tags strace_0 =
-  arLoop mh_steps strace_0 (handleModel n_particles tags) (handleAccept tags)
+  arLoop mh_steps strace_0 (handleModel n_particles tags) (handleAccept tags 1)
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}
@@ -82,16 +83,14 @@ handleModel n_particles tags strace prog = do
 -}
 handleAccept :: LastMember (Lift Sampler) es
   => [Tag]                                      -- ^ tags indicating variables of interest
+  -> Int                                        -- ^ number of proposal sites
   -> Prog (Accept LogP : es) a
   -> Prog es a
-handleAccept tags = loop where
+handleAccept tags n_proposals = loop where
   loop (Val x)   = pure x
   loop (Op op k) = case discharge op of
     Right (Propose strace lptrace)
-        ->  do  let αs = Map.keys (if Prelude.null tags then strace else filterTrace tags strace)
-                α <- lift (sample (UniformD 0 (length αs - 1))) >>= pure . (αs !!)
-                r <- lift sampleRandom
-                (loop . k) (α, r)
+      ->  lift (MH.propose tags n_proposals strace) >>= (loop . k)
     Right (Accept α log_p log_p')
       ->  do  let acceptance_ratio = (exp . unLogP) (log_p' - log_p)
               u <- lift $ sample (Uniform 0 1)

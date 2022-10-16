@@ -15,7 +15,7 @@ module Inference.SMC where
 
 import Control.Monad ( replicateM )
 import Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe (..), Sample )
-import Effects.Lift ( Lift, lift, handleLift )
+import Effects.Lift ( Lift, lift, liftPrint, handleLift)
 import Effects.NonDet ( asum, handleNonDet, NonDet )
 import Effects.ObsRW ( ObsRW, handleObsRW )
 import Env ( Env )
@@ -28,7 +28,7 @@ import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
 import Inference.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
-import Sampler ( Sampler, sampleRandom )
+import Sampler ( Sampler, sampleRandom)
 import Prog (prj)
 
 {- | The context of a particle for SMC.
@@ -94,7 +94,7 @@ handleResampleMul (Op op k) = case discharge op of
     idxs <- replicateM (length ws) $ lift (sample (Categorical ws))
     let resampled_prts = map (prts !! ) idxs
         resampled_ctxs = map (ctxs !! ) idxs
-
+    liftPrint ("Weights: " ++ show ws)
     (handleResampleMul . k) ((resampled_prts, resampled_ctxs), idxs)
   Left op' -> Op op' (handleResampleMul . k)
 

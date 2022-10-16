@@ -9,9 +9,11 @@
 module Effects.Lift (
     Lift(..)
   , lift
+  , liftPrint
   , handleLift) where
 
 import Prog ( call, Member(prj), LastMember, Prog(..) )
+import Sampler
 
 -- | Lift a monadic computation @m a@ into the effect @Lift m@
 newtype Lift m a = Lift (m a)
@@ -19,6 +21,10 @@ newtype Lift m a = Lift (m a)
 -- | Wrapper function for calling @Lift@ as the last effect
 lift :: LastMember (Lift m) es => m a -> Prog es a
 lift = call . Lift
+
+-- | Printing via the @Sampler@ monad in a prog
+liftPrint :: LastMember (Lift Sampler) es => String -> Prog es ()
+liftPrint = lift . liftIO . print
 
 -- | Handle @Lift m@ as the last effect
 handleLift :: Monad m => Prog '[Lift m] w -> m w

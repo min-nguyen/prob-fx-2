@@ -14,7 +14,8 @@
 
 module Inference.MH where
 
-import Control.Monad ( (>=>) )
+import Data.Functor ( (<&>) )
+import Control.Monad ( (>=>), replicateM )
 import qualified Data.Map as Map
 import Data.Set ((\\))
 import qualified Data.Set as Set
@@ -31,9 +32,10 @@ import Effects.Lift ( Lift, lift, handleLift )
 import qualified Inference.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
 import Inference.ARS
+import Util
 
 {- | Top-level wrapper for MH inference.
--}
+-- -}
 mh :: forall env a xs. (env `ContainsVars` xs)
   => Int                                          -- ^ number of MH iterations
   -> Model env [ObsRW env, Dist, Lift Sampler] a  -- ^ model
@@ -61,7 +63,7 @@ mhInternal :: ProbSig es
   -> Prog es a                             -- ^ probabilistic program
   -> Prog es [((a, LPTrace), STrace)]
 mhInternal n tags strace_0 =
-  arLoop n strace_0 handleModel (handleAccept tags)
+  arLoop n strace_0 handleModel (handleAccept tags 1)
 
 {- | Handler for one iteration of MH.
 -}
@@ -94,24 +96,19 @@ handleSamp strace (Op op k) = case prj op of
 -}
 handleAccept :: LastMember (Lift Sampler) es
   => [Tag]                                 -- ^ observable variable names of interest
+  -> Int                                   -- ^ number of proposal sites
   -> Prog (Accept LPTrace : es) a
   -> Prog es a
-handleAccept tags = loop
+handleAccept tags n_proposals = loop
  where
   loop (Val x)   = pure x
   loop (Op op k) = case discharge op of
     Right (Propose strace lptrace)
-      ->  do   -- | Get possible addresses to propose new samples for
-              let αs = Map.keys (if Prelude.null tags then strace else filterTrace tags strace)
-              -- | Draw a proposal sample address
-              α <- lift (sample (UniformD 0 (length αs - 1))) >>= pure . (αs !!)
-              -- | Draw a new random value
-              r <- lift sampleRandom
-              (loop . k) (α, r)
-    Right (Accept α lptrace lptrace')
+      ->  lift (propose tags n_proposals strace) >>= (loop . k)
+    Right (Accept αs lptrace lptrace')
       ->  do  let dom_logα = log (fromIntegral $ Map.size lptrace) - log (fromIntegral $ Map.size lptrace')
-                  sampled  = Set.singleton α `Set.union` (Map.keysSet lptrace \\ Map.keysSet lptrace')
-                  sampled' = Set.singleton α `Set.union` (Map.keysSet lptrace' \\ Map.keysSet lptrace)
+                  sampled  = Set.fromList αs `Set.union` (Map.keysSet lptrace \\ Map.keysSet lptrace')
+                  sampled' = Set.fromList αs `Set.union` (Map.keysSet lptrace' \\ Map.keysSet lptrace)
                   logα     = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace))
                                     0 (Map.keysSet lptrace \\ sampled)
                   logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
@@ -119,3 +116,20 @@ handleAccept tags = loop
               u <- lift $ sample (Uniform 0 1)
               (loop . k) ((exp . unLogP) (dom_logα + logα' - logα) > u)
     Left op' -> Op op' (loop . k)
+
+{- Propose new random values for multiple sites.
+-}
+propose
+  :: [Tag]                          -- ^ observable variable names of interest
+  -> Int                            -- ^ number of proposal sites
+  -> STrace                         -- ^ original sample trace
+  -> Sampler ([Addr], STrace)       -- ^ (proposed addresses, proposed sample trace)
+propose tags n_proposals strace = do
+  -- | Get possible addresses to propose new samples for
+  let α_range = Map.keys (if Prelude.null tags then strace else filterTrace tags strace)
+  -- | Draw proposal sample addresses
+  αs <- replicateM n_proposals (sample (UniformD 0 (length α_range - 1)) <&> (α_range !!))
+  -- | Draw new random values
+  rs <- replicateM n_proposals sampleRandom
+  let strace' = Map.union (Map.fromList (zip αs rs)) strace
+  return (αs, strace')

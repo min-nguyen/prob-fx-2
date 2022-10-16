@@ -15,7 +15,6 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Effects.Dist ( Addr, Observe (Observe), Sample, pattern ObsPrj )
 import Effects.Lift ( Lift, handleLift, lift )
-import Effects.NonDet ( foldVals, weakenNonDet, NonDet, asum, branchWeaken, handleNonDet )
 import LogP ( LogP, logMeanExp )
 import Prog ( Prog (..), weakenProg, Member, discharge, call, weaken, LastMember, Members )
 import Sampler
@@ -52,7 +51,7 @@ type ParticleHandler ctx
   -- | a particle
   => Prog es a
   -- | (a particle suspended at the next step, corresponding context)
-  -> Prog es (Prog es a,  ctx)
+  -> Prog es (Prog es a, ctx)
 
 {- | A @ResampleHandler@ decides which of the current particles to continue execution with.
 -}
@@ -94,3 +93,14 @@ loopSIS hdlParticle prog_0 = loop
         Right vals  -> (`zip` ctxs') <$> vals
         -- | Otherwise, pick the particles to continue with
         Left  _     -> call (Resample (particles', ctxs') prog_0) >>= loop . fst
+
+{- | Check whether a list of programs have all terminated.
+     If at least one program is unfinished, return all programs.
+     If all programs have finished, return a single program that returns all results.
+-}
+foldVals :: [Prog es' a] -> Either [Prog es' a] (Prog es [a])
+foldVals (Val v : progs) = do
+  vs <- foldVals progs
+  pure ((v:) <$> vs)
+foldVals []    = pure (Val [])
+foldVals progs = Left progs

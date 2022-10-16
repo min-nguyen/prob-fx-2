@@ -35,11 +35,11 @@ data Accept ctx a where
     :: STrace
     -- | original context
     -> ctx
-    -- | (proposal address, proposed random value)
-    -> Accept ctx (Addr, Double)
+    -- | (proposed addresses, proposed sample trace)
+    -> Accept ctx ([Addr], STrace)
   Accept
-    -- | address of proposal site
-    :: Addr
+    -- | address of proposal sites
+    :: [Addr]
     -- | original context
     -> ctx
     -- | context using proposed sample
@@ -66,7 +66,7 @@ arLoop n strace hdlModel hdlAccept prog_0 = hdlAccept $ do
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
 arStep :: ProbSig es
-  => (forall es a. ProbSig es => STrace -> Prog es a -> Prog es ((a, ctx), STrace))  -- ^ accept handler
+  => (forall es a. ProbSig es => STrace -> Prog es a -> Prog es ((a, ctx), STrace))  -- ^ model handler
   -> Prog (Accept ctx : es) a                                                        -- ^ probabilistic program
   -> [((a, ctx), STrace)]                                                            -- ^ previous trace
   -> Prog (Accept ctx : es) [((a, ctx), STrace)]                                     -- ^ updated trace
@@ -74,10 +74,10 @@ arStep hdlModel prog_0 trace = do
   -- | Get previous MH output
   let ar_ctx@((_, ctx), strace) = head trace
   -- | Propose a new random value for a sample site
-  (α_samp, r)                  <- call (Propose strace ctx)
+  (prp_αs, prp_strace)         <- call (Propose strace ctx)
   -- | Run MH with proposed value
-  ar_ctx'@((_, ctx'), strace') <- hdlModel (Map.insert α_samp r strace) prog_0
+  ar_ctx'@((_, ctx'), strace') <- hdlModel prp_strace prog_0
   -- | Compute acceptance ratio to see if we use the proposal
-  b                            <- call (Accept α_samp ctx ctx')
+  b                            <- call (Accept prp_αs ctx ctx')
   if b then pure (ar_ctx':trace)
        else pure trace
