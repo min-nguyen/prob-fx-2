@@ -152,18 +152,14 @@ smc2LinRegr n_outer_particles n_mhsteps n_inner_particles  n_datapoints = do
 bbviLinRegr :: IO ()
 bbviLinRegr = do
   let xs            = [1 .. 5]
-  -- Specify model environment
-      env_in        = (#y := [-3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  ((_Q_l, _G_l, logW_l), elboGradEst) <- sampleIOFixed $ bbviSteps 3 (handleCore env_in (linRegr xs))
-  putStrLn "Proposal Distributions Q_l:"
-  print _Q_l
-  putStrLn "Gradient Log-Pdfs G_l:"
-  print _G_l
-  putStrLn "Log Importance Weights logW_l:"
-  print logW_l
-  putStrLn ""
-  putStrLn "ELBO Grad Estimate g:"
-  print elboGradEst
+      env_in        = (#y := [x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+      _T            = 2
+      _L            = 3
+      linRegrProg   = handleCore env_in (linRegr xs)
+  _Q_T <- sampleIOFixed $ bbviUpdate _T _L linRegrProg
+  putStrLn $ "Final proposals after T = " ++ show _T ++ " iterations"
+  print _Q_T
+
 
 {- | Linear regression model on individual data points at a time.
 -}

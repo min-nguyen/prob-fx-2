@@ -236,7 +236,7 @@ dintersectLeftWith _ Leaf t2  = Leaf
 dintersectLeftWith f (Node k1 x1 l1 r1) t2 =
   case maybe_x2 of
       Nothing -> Node k1 x1 l1 r1
-      Just x2 -> Node k1 (f undefined undefined) l1l2 r1r2
+      Just x2 -> Node k1 (f x1 x2) l1l2 r1r2
     where (l2, maybe_x2, r2) =  dsplitLookup k1 t2
           !l1l2 = dintersectLeftWith f l1 l2
           !r1r2 = dintersectLeftWith f r1 r2
