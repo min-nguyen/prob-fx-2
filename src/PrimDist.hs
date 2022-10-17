@@ -35,7 +35,7 @@ import Control.Monad ((>=>), replicateM)
 import Data.Typeable ( Typeable )
 import GHC.Real (infinity)
 import Data.Bifunctor (second)
-import Util ( linCongGen, boolToInt, mean )
+import Util ( linCongGen, boolToInt, mean, covariance, variance )
 
 {- import qualified Control.Monad.Bayes.Class as MB -}
 
@@ -84,9 +84,13 @@ class Distribution d => DiffDistribution d where
   -}
   gradLogProb :: d -> Support d -> d
 
-  addGrad   :: d -> d -> d
+  safeAddGrad :: d -> d -> d
 
-  zeroGrad  :: d
+  zeroGrad :: d
+
+  toList   :: d -> [Double]
+
+  fromList :: [Double] -> d
 
   liftUnOp :: (Double -> Double) -> d -> d
   liftUnOp op = fromList . map op . toList
@@ -94,45 +98,24 @@ class Distribution d => DiffDistribution d where
   liftBinOp :: (Double -> Double -> Double) -> d -> d -> d
   liftBinOp op d1 d2 = fromList $ zipWith op (toList d1) (toList d2)
 
-  toList   :: d -> [Double]
-
-  fromList :: [Double] -> d
-
   covarGrad    -- Assuming our distribution has D parameters
-    :: [d]     -- ^ (f^{1:D})^{1:L}, an L-sized list of parameter sets
-    -> [d]     -- ^ (g^{1:D})^{1:L}, an L-sized list of parameter sets
+    :: [d]     -- ^ (f^{1:D})^{1:L}, an L-sized list of distributions      [(D α^1 β^1), (D α^2 β^2), .. (D α^L β^L)]
+    -> [d]     -- ^ (g^{1:D})^{1:L}, an L-sized list of distributions
     -> d       -- ^ covar((f^{1:D})^{1:L}, (g^{1:D})^{1:L})
   covarGrad fs gs =
-    fromList $ zipWith covar params_fs params_gs
+    fromList $ zipWith covariance params_fs params_gs
     where fs' = map toList fs       -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
           params_fs = transpose fs' -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
           gs' = map toList gs       -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
           params_gs = transpose gs' -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
-          covar :: (Floating a) => [a] -> [a] -> a
-          covar xs ys = sum (zipWith (*) (map f1 xs) (map f2 ys)) / (n-1)
-              where
-                n = fromIntegral $ length xs
-                m1 = mean xs
-                m2 = mean ys
-                f1 x = x - m1
-                f2 x = x - m2
 
-  varGrad
-    :: [d]
-    -> d
+  varGrad     -- Assuming our distribution has D parameters
+    :: [d]    -- ^ (g^{1:D})^{1:L}, an L-sized list of parameter sets
+    -> d      -- ^ var((g^{1:D})^{1:L})
   varGrad gs =
-    fromList $ map var params_gs
-    where gs'       = map toList gs
-          params_gs = transpose gs'
-          -- var :: (Fractional b) => [b] -> b
-          var xs = var' 0 0 0 xs / fromIntegral (length xs - 1)
-              where
-                var' _ _ s [] = s
-                var' m n s (x:xs) = var' nm (n + 1) (s + delta * (x - nm)) xs
-                  where
-                    delta = x - m
-                    nm = m + delta/fromIntegral (n + 1)
-
+    fromList $ map variance params_gs
+    where gs'       = map toList gs   -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
+          params_gs = transpose gs'   -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
 
 
 -- | Beta(α, β)
@@ -170,8 +153,8 @@ instance DiffDistribution Beta where
           db = log (1 - x) - digamma β + digamma_ab
           dx = (α - 1)/x + (β - 1)/(1 - x)
 
-  addGrad :: Beta -> Beta -> Beta
-  addGrad (Beta α β) (Beta dα dβ) = Beta α' β'
+  safeAddGrad :: Beta -> Beta -> Beta
+  safeAddGrad (Beta α β) (Beta dα dβ) = Beta α' β'
     where α' = let α_new = α + dα in if α_new <= 0 then α else α_new
           β' = let β_new = β + dβ in if β_new <= 0 then β else β_new
 
@@ -221,8 +204,8 @@ instance DiffDistribution Cauchy where
           dscale = 1/scale - (2 * scale)/(xlocSqrd + scaleSqrd)
           dx = -dloc
 
-  addGrad :: Cauchy -> Cauchy -> Cauchy
-  addGrad (Cauchy loc scale) (Cauchy dloc dscale) = Cauchy loc' scale'
+  safeAddGrad :: Cauchy -> Cauchy -> Cauchy
+  safeAddGrad (Cauchy loc scale) (Cauchy dloc dscale) = Cauchy loc' scale'
     where loc'   = loc + dloc
           scale' = let new_scale = scale + dscale in if new_scale <= 0 then scale else new_scale
 
@@ -262,8 +245,8 @@ instance DiffDistribution HalfCauchy where
     | x < 0      = error "cauchyGradLogPdfRaw: x < 0"
     | otherwise  = let (Cauchy _ dscale) = gradLogProb (Cauchy 0 scale) x in HalfCauchy dscale
 
-  addGrad :: HalfCauchy -> HalfCauchy -> HalfCauchy
-  addGrad (HalfCauchy scale) (HalfCauchy dscale) = HalfCauchy scale'
+  safeAddGrad :: HalfCauchy -> HalfCauchy -> HalfCauchy
+  safeAddGrad (HalfCauchy scale) (HalfCauchy dscale) = HalfCauchy scale'
     where scale' = let new_scale = scale + dscale in if new_scale <= 0 then scale else new_scale
 
   zeroGrad :: HalfCauchy
@@ -273,6 +256,7 @@ instance DiffDistribution HalfCauchy where
   toList (HalfCauchy scale) = [scale]
 
   fromList [scale] = (HalfCauchy scale)
+
 -- | Dirichlet(αs)
 --   @αs@ concentrations
 newtype Dirichlet = Dirichlet [Double]
@@ -313,8 +297,8 @@ instance DiffDistribution Dirichlet where
     where derivA a x  = -(digamma a) + digamma (sum αs) + log x
           derivX a x = (a - 1) / x
 
-  addGrad :: Dirichlet ->Dirichlet -> Dirichlet
-  addGrad (Dirichlet αs) (Dirichlet dαs) = Dirichlet (zipWith add_dα αs dαs)
+  safeAddGrad :: Dirichlet ->Dirichlet -> Dirichlet
+  safeAddGrad (Dirichlet αs) (Dirichlet dαs) = Dirichlet (zipWith add_dα αs dαs)
     where add_dα α dα = let α_new = α + dα in if α_new <= 0 then α else α_new
 
   zeroGrad :: Dirichlet
@@ -362,8 +346,8 @@ instance DiffDistribution Gamma where
           dθ = x/(θ**2) - k/θ
           dx = (k - 1)/x - 1/θ
 
-  addGrad :: Gamma -> Gamma -> Gamma
-  addGrad (Gamma k θ) (Gamma dk dθ) = Gamma k' θ'
+  safeAddGrad :: Gamma -> Gamma -> Gamma
+  safeAddGrad (Gamma k θ) (Gamma dk dθ) = Gamma k' θ'
     where k' = let k_new = k + dk in if k_new <= 0 then k else k_new
           θ' = let θ_new = θ + dθ in if θ_new <= 0 then θ else θ_new
 
@@ -413,8 +397,8 @@ instance DiffDistribution Normal where
           dσ = -1/σ + (xμ**2)/(σ ** 3)
           dx = -dμ
 
-  addGrad :: Normal -> Normal -> Normal
-  addGrad (Normal μ σ) (Normal dμ dσ) = Normal μ' σ'
+  safeAddGrad :: Normal -> Normal -> Normal
+  safeAddGrad (Normal μ σ) (Normal dμ dσ) = Normal μ' σ'
     where μ' = μ + dμ
           σ' = let σ_new = σ + dσ in if σ_new <= 0 then σ else σ_new
 
@@ -455,8 +439,8 @@ instance DiffDistribution HalfNormal where
     | σ <= 0        = error "halfNormalGradLogPdfRaw: σ <= 0"
     | otherwise     = let Normal _ dσ = gradLogProb (Normal 0 σ) x in HalfNormal dσ
 
-  addGrad :: HalfNormal -> HalfNormal -> HalfNormal
-  addGrad (HalfNormal σ) (HalfNormal dσ) = HalfNormal σ'
+  safeAddGrad :: HalfNormal -> HalfNormal -> HalfNormal
+  safeAddGrad (HalfNormal σ) (HalfNormal dσ) = HalfNormal σ'
     where σ' = let σ_new = σ + dσ in if σ_new <= 0 then σ else σ_new
 
   zeroGrad :: HalfNormal

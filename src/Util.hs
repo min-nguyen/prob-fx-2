@@ -14,7 +14,9 @@ module Util (
   , bimap'
   , filterByKey
   , linCongGen
-  , mean) where
+  , mean
+  , variance
+  , covariance) where
 
 import Data.Bifunctor
 import qualified Data.Map as Map
@@ -46,13 +48,19 @@ findIndexes xs a = reverse $ go xs 0 []
 roundUp16 :: Int -> Int
 roundUp16 n = n + (16 - (n `mod` 16))
 
+{- | Tuple utility functions.
+-}
 uncurry3 :: (a -> b -> c -> d) -> ((a, b, c) -> d)
 uncurry3 f (a, b, c) = f a b c
 
 fst3 :: (a, b, c) -> a
 fst3 (x,_, _) = x
 
--- | Generate a list of doubles from a single double
+bimap' :: Bifunctor p => (c -> d) -> p c c -> p d d
+bimap' f = bimap f f
+
+{- | A linear congruential generator for representing a list of doubles from a single double.
+-}
 decShift :: Double -> Int
 decShift r = floor $ r * 1e16
 
@@ -61,13 +69,33 @@ linCongGen r =
   let ns = iterate (\n -> ((6364136223846793005*n) + 1442695040888963407) `mod` 2147483647) (decShift r)
   in  drop 1 $ map ((/2147483647) . fromIntegral) ns
 
-bimap' :: Bifunctor p => (c -> d) -> p c c -> p d d
-bimap' f = bimap f f
+{- Map utility functions.
+-}
 
 filterByKey ::  Ord k => (k -> Bool) -> Map.Map k a -> Map.Map k a
 filterByKey f = Map.filterWithKey (\k _ -> f k)
 
+{- | Statistical utility functions.
+-}
 mean :: Fractional a => [a] -> a
 mean x = fst $ foldl' addElement (0,0) x
     where
       addElement (!m,!n) x = (m + (x-m)/(n+1), n+1)
+
+covariance :: [Double] -> [Double] -> Double
+covariance xs ys = sum (zipWith (*) (map f1 xs) (map f2 ys)) / (n-1)
+  where
+    n = fromIntegral $ length xs
+    m1 = mean xs
+    m2 = mean ys
+    f1 x = x - m1
+    f2 x = x - m2
+
+variance :: [Double] -> Double
+variance xs = var' 0 0 0 xs / fromIntegral (length xs - 1)
+  where
+    var' _ _ s [] = s
+    var' m n s (x:xs) = var' nm (n + 1) (s + delta * (x - nm)) xs
+      where
+        delta = x - m
+        nm = m + delta/fromIntegral (n + 1)

@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use camelCase" #-}
-module Test.PDF where
+module Test.Numerics where
 
 import qualified Data.Vector.Unboxed as UV
 import Numeric.Log ( Log(ln) )
@@ -25,9 +25,6 @@ import Model (bernoulli)
 
 c_error_margin :: Double
 c_error_margin = 0.0000001
-
-hspecQuickTest :: Gen Bool -> Test
-hspecQuickTest prog = TestCase $ quickCheckResult prog >>= assert . isSuccess
 
 {- Continuous distributions
 -}
@@ -160,6 +157,13 @@ unnecessary tests:
 - Discrete
 - Deterministic
 -}
+
+
+
+{-
+-}
+hspecQuickTest :: Gen Bool -> Test
+hspecQuickTest prog = TestCase $ quickCheckResult prog >>= assert . isSuccess
 
 testLogPdfs :: Test
 testLogPdfs = TestList $ map hspecQuickTest [testNormalLogPdf, testHalfNormalLogPdf, testCauchyLogPdf, testHalfCauchyLogPdf, testGammaLogPdf, testBetaLogPdf, testDirichletLogPdf, testUniformLogPdf, testBernoulliLogPdf, testBinomialLogPdf, testPoissonLogPdf, testUniformDLogPdf]

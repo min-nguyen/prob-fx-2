@@ -142,7 +142,7 @@ test-suite tests
                       examples
 
   main-is:            Main.hs
-  other-modules:      Test.PDF,
+  other-modules:      Test.Numerics,
                       Test.Inference,
                       Test.InferenceExpected,
                       Examples,

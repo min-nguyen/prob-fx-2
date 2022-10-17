@@ -38,35 +38,24 @@ handleSamp
   -> LogP     -- ^ total importance weight    logW
   -> Prog '[Sample, Lift Sampler] a
   -> Prog '[Lift Sampler] ((DTrace, GTrace, LogP), a)
-handleSamp qTrace gradTrace logW (Val x)   = return ((qTrace, gradTrace, logW), x)
-handleSamp qTrace gradTrace logW (Op op k) = case discharge op of
+handleSamp traceQ traceG logW (Val x)   = return ((traceQ, traceG, logW), x)
+handleSamp traceQ traceG logW (Op op k) = case discharge op of
   Right (Sample d α) -> do
-    (x, q, qTrace', gradTrace') <- case isDifferentiable d of
+    (x, q, traceQ', traceG') <- case isDifferentiable d of
           Nothing   -> do x <- lift (sample d)
-                          pure (x, d, qTrace, gradTrace)
+                          pure (x, d, traceQ, traceG)
           Just Dict -> do -- | Get the recently proposed distribution, else initialise with prior
-                          let (q, qTrace') = dlookupOrInsert (Key α) d qTrace
+                          let (q, traceQ') = dlookupOrInsert (Key α) d traceQ
                           x <- lift (sample q)
                           -- | Store the gradient log-probability of the proposed distribution
-                          let gradTrace' = dinsert (Key α) (gradLogProb q x) gradTrace
-                          pure (x, q, qTrace', gradTrace')
+                          let traceG' = dinsert (Key α) (gradLogProb q x) traceG
+                          pure (x, q, traceQ', traceG')
     -- | Update the log-weight
     let logW' = logW + logProb d x - logProb q x
     -- lift $ liftIO $ print $ "logW is" ++ show logW'
-    handleSamp qTrace' gradTrace' logW' (k x)
+    handleSamp traceQ' traceG' logW' (k x)
   Left op' -> do
-     Op op' (handleSamp qTrace gradTrace logW . k)
-
-optimizerStep
-  :: Double  -- ^ learning rate             η
-  -> DTrace  -- ^ optimisable distributions Q
-  -> GTrace  -- ^ elbo gradient estimates   g
-  -> DTrace  -- ^ updated distributions     Q'
-optimizerStep η =
-  dintersectLeftWith (\d elboGradEst ->
-    case isDifferentiable d of
-      Nothing   -> d
-      Just Dict -> addGrad d (liftUnOp (*η) elboGradEst))
+     Op op' (handleSamp traceQ traceG logW . k)
 
 -- | Handle each @Observe@ operation by computing and accumulating a log probability
 handleObs
@@ -100,20 +89,20 @@ estELBOGrad :: forall d. DiffDistribution d
   -> d         -- ^   g(v)
 estELBOGrad v traceGs traceFs =
   let {-  G_v^{1:L} -}
-      vG :: [d] = map (fromJust . dlookup v) traceGs
+      traceGs_v :: [d] = map (fromJust . dlookup v) traceGs
       {-  F_v^{1:L} -}
-      vF :: [d] = -- trace ("G(" ++ show v ++"): " ++ show vG) $
+      traceFs_v :: [d] = -- trace ("G(" ++ show v ++"): " ++ show vG) $
                     map (fromJust . dlookup v) traceFs
       {- | Compute the baseline vector constant b_v for a random variable's associated parameters
               b_v = covar(F_v^{1:L}, G_v^{1:L}) / var(G_v^{1:L}) -}
-      vB :: d = -- trace ("F(" ++ show v ++"): " ++ show vF) $
-                    liftBinOp (/) (covarGrad vF vG) (varGrad vG)
+      baseline_v :: d = -- trace ("F(" ++ show v ++"): " ++ show vF) $
+                    liftBinOp (/) (covarGrad traceFs_v traceGs_v) (varGrad traceGs_v)
 
       {- | Compute the gradient estimate for v
               grad_v = Sum (F_v^{1:L} - b_v * G_v^{1:L}) / L -}
       _L          = -- trace ("vB(" ++ show v ++"): " ++ show vB) $
                           length traceGs
-      elboGrads   = zipWith (\vG_l vF_l -> liftBinOp (-) vF_l (liftBinOp (*) vB vG_l)) vG vF
+      elboGrads   = zipWith (\vG_l vF_l -> liftBinOp (-) vF_l (liftBinOp (*) baseline_v vG_l)) traceGs_v traceFs_v
       elboGradEst = liftUnOp (/fromIntegral _L) $ foldr (liftBinOp (+)) zeroGrad elboGrads
   in  -- trace ("ElboGrads(" ++ show v ++"): " ++ show elboGrads)
       elboGradEst
@@ -126,29 +115,84 @@ estELBOGrads logWs traceGs =
                   dinsert var (estELBOGrad var traceGs traceFs) elboGrads
             ) dempty (dkeys $ head traceGs)
 
-{- | Execute a model once and accumulate:
-      - proposal distributions Q_l
+optimizerStep
+  :: Double  -- ^ learning rate             η
+  -> DTrace  -- ^ optimisable distributions Q
+  -> GTrace  -- ^ elbo gradient estimates   g
+  -> DTrace  -- ^ updated distributions     Q'
+optimizerStep η =
+  dintersectLeftWith (\d elboGradEst ->
+    case isDifferentiable d of
+      Nothing   -> d
+      Just Dict -> safeAddGrad d (liftUnOp (*η) elboGradEst))
+
+{- | Execute a model once for iteration l, and accumulate:
       - gradient log-pdfs G_l
       - total importance weight logW_l
 -}
-bbviStep ::
-  Prog [Observe, Sample, Lift Sampler] a
+bbviStep
+  :: DTrace
+  -> Prog [Observe, Sample, Lift Sampler] a
   -> Sampler (DTrace, GTrace, LogP)
-bbviStep prog = do
+bbviStep _Q prog = do
   let logW_l = 0
-      _Q_l   = dempty
       _G_l   = dempty
 
-  ((_Q_l, _G_l, logW_l_samp), (x, logW_l_obs)) <- handleLift $ handleSamp _Q_l _G_l 0 (handleObs 0 prog)
-  let logW_l = logW_l_samp + logW_l_obs
-  pure (_Q_l, _G_l, logW_l)
+  ((_Q', _G'_l, logW_l_samp), (x, logW_l_obs)) <- handleLift $ handleSamp _Q _G_l 0 (handleObs 0 prog)
+  let logW'_l = logW_l_samp + logW_l_obs
+  pure (_Q', _G'_l, logW'_l)
 
+{- | Execute a model for L iterations, and return for each iteration l:
+      - the gradient log-pdfs G_l
+      - the total importance weight logW_l
+-}
 bbviSteps
-  :: Int
+  :: Int          -- ^ number of samples to estimate gradient over (L)
+  -> DTrace       -- ^ initial proposal distributions (Q)
   -> Prog [Observe, Sample, Lift Sampler] a
-  -> Sampler (([DTrace], [GTrace], [LogP]), GTrace)
-bbviSteps _L prog = do
-  bbvi_trace <- replicateM _L (bbviStep prog)
+  -> Sampler ((GTrace, [GTrace], [LogP]), DTrace)
+bbviSteps _L _Q prog = do
+
+  bbvi_trace <- replicateM _L (bbviStep  _Q prog)
   let (traceQs, traceGs, logWs) = unzip3 bbvi_trace
-  let  elboGradEst = estELBOGrads logWs traceGs
-  pure ((traceQs, traceGs, logWs), elboGradEst)
+  -- | _Q' and _Q are different only if _Q was empty (i.e. for the very first call of `bbviSteps`)
+      _Q'          = head traceQs
+      elboGradEst  = estELBOGrads logWs traceGs
+      opt_Q'       = optimizerStep 1.0 _Q' elboGradEst
+
+  pure ((elboGradEst, traceGs, logWs), opt_Q')
+
+bbviUpdate
+  :: Int        -- ^ T
+  -> Int        -- ^ L
+  -> Prog [Observe, Sample, Lift Sampler] a
+  -> Sampler DTrace
+bbviUpdate _T _L prog = do
+  -- | Initialise proposal distributions
+  ((_, _, _), _Q0) <- bbviSteps _L dempty prog
+
+  bbviLoop 0 _Q0
+
+  where
+    bbviLoop :: Int -> DTrace -> Sampler DTrace
+    bbviLoop t _Q
+      | t >= _T    = pure _Q
+      | otherwise = do
+          liftIO $ putStrLn $ "## ITERATION t = " ++ show t ++ " ##"
+          ((elboGradEst, traceGs, logWs), _Q') <- bbviSteps _L _Q prog
+          liftIO $ putStrLn "Proposal Distributions Q:"
+          liftIO $ print _Q
+          liftIO $ putStrLn ""
+          liftIO $ putStrLn "Gradient Log-Pdfs G_l for {1:L}:"
+          liftIO $ print traceGs
+          liftIO $ putStrLn "Log Importance Weights logW_l for {1:L}:"
+          liftIO $ print logWs
+          liftIO $ putStrLn ""
+          liftIO $ putStrLn "ELBO Grad Estimate g:"
+          liftIO $ print elboGradEst
+          liftIO $ putStrLn ""
+          liftIO $ putStrLn "Updated Proposal Distributions Q':"
+          liftIO $ print _Q'
+          liftIO $ putStrLn ""
+
+          bbviLoop (t + 1) _Q'
