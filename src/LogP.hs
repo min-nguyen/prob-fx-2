@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE InstanceSigs #-}
 
 {- To be explicit that a @Double@ is a log-probability.
 -}
@@ -10,7 +11,11 @@ module LogP (
 
 -- | The type of log-probabilities.
 --   All numerics work the same as with @Double@.
-newtype LogP = LogP { unLogP :: Double } deriving (Show, Num, Eq, Ord, Fractional, Floating)
+newtype LogP = LogP { unLogP :: Double } deriving (Num, Eq, Ord, Fractional, Floating)
+
+instance Show LogP where
+  show :: LogP -> String
+  show (LogP p) = "LogP {" ++ show p ++ "}"
 
 -- | Take the log-mean-exp of a list of log-probabilities
 logMeanExp :: [LogP] -> LogP
