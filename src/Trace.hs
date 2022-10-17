@@ -9,7 +9,6 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ConstraintKinds #-}
@@ -31,12 +30,15 @@ module Trace (
   -- * Dist trace
   , DTrace
   , DKey
+  , dempty
+  , dkeys
   , dinsert
   , dlookup
   , dlookupOrInsert
   , dintersectLeftWith
   , dmap
-  , Key(..)) where
+  , Key(..)
+  , Some(..)) where
 
 import Type.Reflection
     ( Typeable, type (:~~:)(HRefl), eqTypeRep, typeRep )
@@ -152,6 +154,19 @@ instance (HeteroOrd k, Typeable a, Typeable b) => TrueOrd k a b where
                   Nothing    -> error "Should not happen."
     (EQ, LT) -> TrueLT
     (EQ, GT) -> TrueGT
+
+data Some k where
+  Some :: DiffDistribution d => k d -> Some k
+
+dkeys :: DTrace -> [Some DKey]
+dkeys = go
+  where
+    go Leaf = []
+    go (Node ky y l r) = Some ky : go l ++ go r
+
+-- | Construct an empty trace
+dempty :: DTrace
+dempty = Leaf
 
 -- | Construct a single node
 dsingleton :: DiffDistribution d => DKey d -> d -> DTrace
