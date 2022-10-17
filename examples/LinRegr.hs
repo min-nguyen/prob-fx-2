@@ -21,7 +21,7 @@ import Inference.RMSMC as RMSMC ( rmsmc )
 import Inference.PMMH as PMMH ( pmmh )
 import Inference.SMC2 as SMC2 ( smc2 )
 import Inference.BBVI as BBVI
-import Sampler ( Sampler, sampleIO )
+import Sampler ( Sampler, sampleIO, sampleIOFixed )
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
@@ -151,13 +151,19 @@ smc2LinRegr n_outer_particles n_mhsteps n_inner_particles  n_datapoints = do
 
 bbviLinRegr :: IO ()
 bbviLinRegr = do
-  let xs            = [0 .. 10]
+  let xs            = [1 .. 5]
   -- Specify model environment
-      env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  (_Q_l, _G_l, logW_l, x) <- sampleIO $ bbviStep (handleCore env_in (linRegr xs))
+      env_in        = (#y := [-3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+  ((_Q_l, _G_l, logW_l), elboGradEst) <- sampleIOFixed $ bbviSteps 3 (handleCore env_in (linRegr xs))
+  putStrLn "Proposal Distributions Q_l:"
   print _Q_l
+  putStrLn "Gradient Log-Pdfs G_l:"
   print _G_l
+  putStrLn "Log Importance Weights logW_l:"
   print logW_l
+  putStrLn ""
+  putStrLn "ELBO Grad Estimate g:"
+  print elboGradEst
 
 {- | Linear regression model on individual data points at a time.
 -}

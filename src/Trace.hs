@@ -122,12 +122,15 @@ data DTrace where
        -> DTrace         -- right
        -> DTrace
 
+instance {-# OVERLAPPING #-} Show [DTrace] where
+  show (x:xs) = show x ++ "\n" ++ show xs
+  show []     = ""
 instance Show DTrace where
   show :: DTrace -> String
   show Leaf = ""
-  show (Node (Key var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ")"
-                                 ++ showNewline l
-                                 ++ showNewline r
+  show (Node (Key var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ") "
+                                 ++ show l
+                                 ++ show r
     where showNewline Leaf  = ""
           showNewline node  = "\n" ++ show node
 
