@@ -27,8 +27,9 @@ import LogP ( LogP(unLogP) )
 import Model ( handleCore, Model )
 import PrimDist
 import Prog ( discharge, Prog(..) )
-import Sampler ( Sampler )
+import Sampler ( Sampler, sampleIO )
 import Trace
+import Model
 
 handleSamp
   :: DTrace   -- ^ optimisable distributions  Q
@@ -64,6 +65,20 @@ optimizerStep η =
     case isDifferentiable d of
       Nothing   -> d
       Just Dict -> addGrad d (liftUnOp (*η) elboGradEst))
+
+-- | Handle each @Observe@ operation by computing and accumulating a log probability
+handleObs
+  -- | accumulated log-probability
+  :: LogP
+  -> Prog (Observe : es) a
+  -- | (model output, final likelihood weighting)
+  -> Prog es (a, LogP)
+handleObs logW (Val x) = return (x, logW)
+handleObs logW (Op u k) = case discharge u of
+    Right (Observe d y α) -> do
+      let logW' = logProb d y
+      handleObs (logW + logW') (k y)
+    Left op' -> Op op' (handleObs logW . k)
 
 {- | Scale each iteration's gradient trace by the iteration's total log weight.
      For each gradient trace G^l, uniformly scale all gradients to produce F^l = logW^l * G^l
@@ -105,4 +120,16 @@ estELBOGrads logWs traceGs =
                   dinsert var (estELBOGrad var traceGs traceFs) elboGrads
             ) dempty (dkeys $ head traceGs)
 
--- bbviStep :: Int ->
+bbviStep ::
+  Prog [Observe, Sample, Lift Sampler] a
+  -> Sampler (DTrace, GTrace, LogP, a)
+bbviStep prog = do
+  let logW_l = 0
+      _Q_l   = dempty
+      _G_l   = dempty
+
+  ((_Q_l, _G_l, logW_l_samp), (x, logW_l_obs)) <- handleLift $ handleSamp _Q_l _G_l 0 (handleObs 0 prog)
+  let logW_l = logW_l_samp + logW_l_obs
+  pure (_Q_l, _G_l, logW_l, x)
+
+

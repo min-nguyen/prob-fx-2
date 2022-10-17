@@ -41,7 +41,7 @@ import Util ( linCongGen, boolToInt, mean )
 
 {- Distributions that can be sampled from and conditioned against.
 -}
-class Typeable d => Distribution d where
+class (Show d, Typeable d) => Distribution d where
   type family Support d :: *
   {- | Given a random double @r@ in (0, 1], this is passed to a distribution's inverse
        cumulative density function to draw a sampled value.
@@ -569,7 +569,10 @@ data Deterministic a where
     => a                                  -- ^ value of probability @1@
     -> Deterministic a
 
-instance Typeable a => Distribution (Deterministic a) where
+instance Show a => Show (Deterministic a) where
+  show (Deterministic x) = "Deterministic " ++ show x
+
+instance (Show a, Typeable a) => Distribution (Deterministic a) where
   type Support (Deterministic a) = a
 
   sampleInv :: Deterministic a -> Double -> a
@@ -593,7 +596,10 @@ data Discrete a where
     => [(a, Double)]
     -> Discrete a
 
-instance Typeable a => Distribution (Discrete a) where
+instance Show a => Show (Discrete a) where
+  show (Discrete xps) = "Deterministic " ++ show xps
+
+instance (Show a, Typeable a) => Distribution (Discrete a) where
   type Support (Discrete a) = a
 
   sampleInv :: Discrete a -> Double -> a

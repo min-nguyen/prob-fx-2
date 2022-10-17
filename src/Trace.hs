@@ -122,6 +122,15 @@ data DTrace where
        -> DTrace         -- right
        -> DTrace
 
+instance Show DTrace where
+  show :: DTrace -> String
+  show Leaf = ""
+  show (Node (Key var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ")"
+                                 ++ showNewline l
+                                 ++ showNewline r
+    where showNewline Leaf  = ""
+          showNewline node  = "\n" ++ show node
+
 type DKey = Key Addr
 
 data Key s a where

@@ -4,6 +4,8 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE InstanceSigs #-}
 
 {- | The effects for primitive distributions, sampling, and observing.
 -}
@@ -43,6 +45,10 @@ import Util
 type Tag  = String
 -- | An observable variable name and the index of its run-time occurrence, representing a run-time identifier
 type Addr = (Tag, Int)
+
+instance {-# OVERLAPPING #-} Show (String, Int) where
+  show :: (String, Int) -> String
+  show (x, n) = "⟨" ++ x ++ "," ++ show n ++ "⟩"
 
 -- | The effect @Dist@ for primitive distributions
 data Dist a where

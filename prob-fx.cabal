@@ -41,6 +41,7 @@ library
                       Inference.RMSMC,
                       Inference.PMMH,
                       Inference.ARS,
+                      Inference.BBVI,
                       -- Inference.MB,
                       Env,
                       LogP,
