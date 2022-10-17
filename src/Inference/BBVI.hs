@@ -1,9 +1,12 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE RankNTypes #-}
 
 {- | Likelihood-Weighting inference.
 -}
@@ -11,7 +14,8 @@
 module Inference.BBVI
   where
 
-
+import Data.Functor
+import Data.Maybe
 import Data.Bifunctor ( Bifunctor(first) )
 import Control.Monad ( replicateM )
 import Effects.Dist
@@ -26,7 +30,12 @@ import Prog ( discharge, Prog(..) )
 import Sampler ( Sampler )
 import Trace
 
-handleSamp :: DTrace -> GTrace -> LogP -> Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] ((DTrace, GTrace, LogP), a)
+handleSamp
+  :: DTrace   -- ^ optimisable distributions  Q
+  -> GTrace   -- ^ gradients of log-pdfs      G
+  -> LogP     -- ^ total importance weight    logW
+  -> Prog '[Sample, Lift Sampler] a
+  -> Prog '[Lift Sampler] ((DTrace, GTrace, LogP), a)
 handleSamp qTrace gradTrace logW (Val x)   = return ((qTrace, gradTrace, logW), x)
 handleSamp qTrace gradTrace logW (Op op k) = case discharge op of
   Right (Sample d α) -> do
@@ -45,20 +54,55 @@ handleSamp qTrace gradTrace logW (Op op k) = case discharge op of
   Left op' -> do
      Op op' (handleSamp qTrace gradTrace logW . k)
 
-optimizerStep :: Double -> DTrace -> GTrace -> DTrace
+optimizerStep
+  :: Double  -- ^ learning rate             η
+  -> DTrace  -- ^ optimisable distributions Q
+  -> GTrace  -- ^ elbo gradient estimates   g
+  -> DTrace  -- ^ updated distributions     Q'
 optimizerStep η =
-  dintersectLeftWith (\d g ->
+  dintersectLeftWith (\d elboGradEst ->
     case isDifferentiable d of
       Nothing   -> d
-      Just Dict -> addGrad d (scaleGrad η g))
+      Just Dict -> addGrad d (liftUnOp (*η) elboGradEst))
 
--- | Scale each iteration's gradient trace by the iteration's total log weight
-scaleGradients :: [(LogP, GTrace)] -> [GTrace]
-scaleGradients wgs =
-  let (logWs, gradTraces) = unzip wgs
-  in  zipWith (\logW -> dmap (scaleGrad (unLogP logW))) logWs gradTraces
+{- | Scale each iteration's gradient trace by the iteration's total log weight.
+     For each gradient trace G^l, uniformly scale all gradients to produce F^l = logW^l * G^l
+-}
+scaleGrads
+  :: [LogP]     -- ^ logW^{1:L}
+  -> [GTrace]   -- ^ G^{1:L}
+  -> [GTrace]   -- ^ F^{1:L}
+scaleGrads =
+  zipWith (\logW -> dmap (liftUnOp (* unLogP logW)))
 
-computeBaseline :: DiffDistribution d => DKey d -> [GTrace] -> [GTrace] -> Double
-computeBaseline x gradTraces weightedGradTraces =
-  let f = map (dlookup x) gradTraces
-  in  undefined
+-- | Compute the ELBO gradient estimate g for a random variable v's associated parameters
+estELBOGrad :: forall d. DiffDistribution d
+  => DKey d    -- ^   v
+  -> [GTrace]  -- ^   G^{1:L}
+  -> [GTrace]  -- ^   F^{1:L}
+  -> d         -- ^   g(v)
+estELBOGrad v traceGs traceFs =
+  let {-  G_v^{1:L} -}
+      vG = map (fromJust . dlookup v) traceGs
+      {-  F_v^{1:L} -}
+      vF = map (fromJust . dlookup v) traceFs
+      {- | Compute the baseline vector constant b_v for a random variable's associated parameters
+              b_v = covar(F_v^{1:L}, G_v^{1:L}) / var(G_v^{1:L}) -}
+      vB :: d = fromList $ zipWith (/) (toList $ covarGrad vF vG) (toList $ varGrad vG)
+
+      {- | Compute the gradient estimate for v
+              grad_v = Sum (F_v^{1:L} - b_v * G_v^{1:L}) / L -}
+      _L          = length traceGs
+      elboGrads   = zipWith (\vG_l vF_l -> liftBinOp (-) vF_l (liftBinOp (*) vB vG_l)) vG vF
+      elboGradEst = liftUnOp (/fromIntegral _L) $ foldr (liftBinOp (+)) zeroGrad elboGrads
+  in  elboGradEst
+
+-- | Compute the ELBO gradient estimates g for all random variables
+estELBOGrads ::  [LogP] -> [GTrace] -> GTrace
+estELBOGrads logWs traceGs =
+  let traceFs = scaleGrads logWs traceGs
+  in  foldr (\(Some var) elboGrads ->
+                  dinsert var (estELBOGrad var traceGs traceFs) elboGrads
+            ) dempty (dkeys $ head traceGs)
+
+-- bbviStep :: Int ->

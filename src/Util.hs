@@ -1,6 +1,7 @@
 {- | Some small utility functions.
 -}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE BangPatterns #-}
 
 module Util (
     boolToInt
@@ -12,10 +13,12 @@ module Util (
   , fst3
   , bimap'
   , filterByKey
-  , linCongGen) where
+  , linCongGen
+  , mean) where
 
 import Data.Bifunctor
 import qualified Data.Map as Map
+import Data.Foldable
 
 -- | Return @True@ for @1@ and otherwise @False@
 boolToInt :: Bool -> Int
@@ -63,3 +66,8 @@ bimap' f = bimap f f
 
 filterByKey ::  Ord k => (k -> Bool) -> Map.Map k a -> Map.Map k a
 filterByKey f = Map.filterWithKey (\k _ -> f k)
+
+mean :: Fractional a => [a] -> a
+mean x = fst $ foldl' addElement (0,0) x
+    where
+      addElement (!m,!n) x = (m + (x-m)/(n+1), n+1)
