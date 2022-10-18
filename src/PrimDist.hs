@@ -103,7 +103,7 @@ class Distribution d => DiffDistribution d where
     -> [d]     -- ^ (g^{1:D})^{1:L}, an L-sized list of distributions
     -> d       -- ^ covar((f^{1:D})^{1:L}, (g^{1:D})^{1:L})
   covarGrad fs gs =
-    fromList $ zipWith covariance params_fs params_gs
+    fromList $ zipWith Util.covariance params_fs params_gs
     where fs' = map toList fs       -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
           params_fs = transpose fs' -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
           gs' = map toList gs       -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
@@ -113,7 +113,7 @@ class Distribution d => DiffDistribution d where
     :: [d]    -- ^ (g^{1:D})^{1:L}, an L-sized list of parameter sets
     -> d      -- ^ var((g^{1:D})^{1:L})
   varGrad gs =
-    fromList $ map variance params_gs
+    fromList $ map Util.variance params_gs
     where gs'       = map toList gs   -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
           params_gs = transpose gs'   -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
 
