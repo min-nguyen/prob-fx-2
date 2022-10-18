@@ -22,7 +22,8 @@ module Effects.Dist (
   , Sample(..)
   , pattern SampPrj
   , pattern SampDis
-  -- , pattern SampleTypeable
+  -- ** Score effect
+  , Score(..)
   -- ** Observe effect
   , Observe(..)
   , pattern ObsPrj
@@ -74,9 +75,13 @@ pattern SampPrj d α <- (prj -> Just (Sample d α))
 pattern SampDis :: (Show x) =>  (Distribution d, x ~ Support d) => d -> Addr -> EffectSum (Sample : es) x
 pattern SampDis d α <- (discharge -> Right (Sample d α))
 
--- | For pattern matching against a typeable @Sample@
--- pattern SampleTypeable :: (Distribution d, x ~ Support d) => Typeable x =>  d -> Addr -> Sample x
--- pattern SampleTypeable d α <- (Sample (TypeableDistPrf d) α)
+-- | The effect @Score@ for distributions with support for gradient log-pdfs
+data Score a where
+  Score  :: (DiffDistribution d, a ~ Support d)
+         => d              -- ^ distribution
+         -> Addr           -- ^ address of operation
+         -> Score (a, d)   -- ^ observed point, gradient log-pdf
+
 
 -- | The effect @Observe@ for conditioning against observed values
 data Observe a where
@@ -116,4 +121,3 @@ handleDist = loop "" 0 Map.empty
                 tagMap' = Map.insert tag (tagIdx + 1) tagMap
                 k'      = loop tag (counter + 1) tagMap' . k
     Left  u'  -> Op (weaken (weaken u')) (loop prevTag counter tagMap . k)
-

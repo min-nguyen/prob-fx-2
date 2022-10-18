@@ -26,12 +26,13 @@ import Env ( Env )
 import LogP ( LogP(unLogP) )
 import Model ( handleCore, Model )
 import PrimDist
-import Prog ( discharge, Prog(..) )
+import Prog ( discharge, Prog(..), call, weaken, LastMember )
 import Sampler
 import Trace
 import Model
 import Debug.Trace
 
+{-
 handleSamp
   :: DTrace   -- ^ optimisable distributions  Q
   -> GTrace   -- ^ gradients of log-pdfs      G
@@ -56,6 +57,23 @@ handleSamp traceQ traceG logW (Op op k) = case discharge op of
     handleSamp traceQ' traceG' logW' (k x)
   Left op' -> do
      Op op' (handleSamp traceQ traceG logW . k)
+-}
+-- handleScore
+--   ::
+
+-- | Replace each @Sample@ with a @Score@ operation if its distribution is differentiable
+handleSamp
+  :: LastMember (Lift Sampler) es
+  => Prog (Sample : es) a
+  -> Prog (Score : es) a
+handleSamp (Val x)   = return x
+handleSamp (Op op k) = case discharge op of
+  Right (Sample d α) ->
+    case isDifferentiable d of
+          Nothing   -> lift (sample d)  >>= handleSamp . k
+          Just Dict -> call (Score d α) >>= handleSamp . k . fst
+  Left op' -> do
+     Op (weaken op') (handleSamp . k)
 
 -- | Handle each @Observe@ operation by computing and accumulating a log probability
 handleObs
