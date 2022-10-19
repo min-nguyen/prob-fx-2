@@ -24,6 +24,7 @@ module Effects.Dist (
   , pattern SampDis
   -- ** Score effect
   , Score(..)
+  , pattern ScorePrj
   -- ** Observe effect
   , Observe(..)
   , pattern ObsPrj
@@ -78,10 +79,14 @@ pattern SampDis d α <- (discharge -> Right (Sample d α))
 -- | The effect @Score@ for distributions with support for gradient log-pdfs
 data Score a where
   Score  :: (DiffDistribution d, a ~ Support d)
-         => d              -- ^ distribution
+         => d              -- ^ original distribution
+         -> d              -- ^ proposal distribution
          -> Addr           -- ^ address of operation
-         -> Score (a, d)   -- ^ observed point, gradient log-pdf
+         -> Score a        -- ^ observed point
 
+-- | For projecting and then successfully pattern matching against @Score@
+pattern ScorePrj :: (Member Score es) => (DiffDistribution d, x ~ Support d) => d -> d -> Addr -> EffectSum es x
+pattern ScorePrj d q α <- (prj -> Just (Score d q α))
 
 -- | The effect @Observe@ for conditioning against observed values
 data Observe a where

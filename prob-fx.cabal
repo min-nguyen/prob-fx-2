@@ -92,7 +92,8 @@ library
   ghc-options:        -O2 -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math
 
 executable prob-fx
-  hs-source-dirs:     examples
+  hs-source-dirs:     examples,
+                      src
   main-is:            Main.hs
   other-modules:      CoinFlip,
                       DataSets,
@@ -111,6 +112,7 @@ executable prob-fx
                       split,
                       prob-fx,
                       log-domain,
+                      statistics, mwc-probability, mwc-random, vector, transformers, mtl, math-functions,
                       -- monad-bayes,
                       lens
   default-language:   Haskell2010

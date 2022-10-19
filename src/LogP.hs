@@ -1,5 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 {- To be explicit that a @Double@ is a log-probability.
 -}
@@ -7,6 +8,7 @@
 module LogP (
     LogP(..)
   , logMeanExp
+  , normaliseLogPs
   ) where
 
 -- | The type of log-probabilities.
@@ -15,7 +17,7 @@ newtype LogP = LogP { unLogP :: Double } deriving (Num, Eq, Ord, Fractional, Flo
 
 instance Show LogP where
   show :: LogP -> String
-  show (LogP p) = "LogP {" ++ show p ++ "}"
+  show (LogP p) = "LogP {" ++ show (p, exp p) ++ "}"
 
 -- | Take the log-mean-exp of a list of log-probabilities
 logMeanExp :: [LogP] -> LogP
@@ -25,3 +27,7 @@ logMeanExp logps =
   in  if isInfinite c   -- to avoid @-Infinity - (-Infinity)@
       then (-1/0)
       else LogP $ c + log ((1.0/fromIntegral (length logws)) * sum (map (\logw -> exp (logw - c)) logws))
+
+-- | Scale all log-probabilities by setting the maximum probability to 1
+normaliseLogPs ::  [LogP] -> [LogP]
+normaliseLogPs xs =  map (\x -> x - maximum xs) xs

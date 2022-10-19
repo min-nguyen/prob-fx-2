@@ -26,7 +26,7 @@ import Env ( Env )
 import Model ( handleCore, Model )
 import OpenSum (OpenSum)
 import PrimDist ( sample )
-import Prog ( discharge, Prog(..) )
+import Prog ( discharge, Prog(..), LastMember )
 import Sampler ( Sampler, liftIO )
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -51,14 +51,19 @@ runSimulate
   = handleLift . handleSamp . handleObs
 
 -- | Handle @Observe@ operations by simply passing forward their observed value, performing no side-effects
-handleObs :: Prog (Observe : es) a -> Prog es a
+handleObs
+  :: Prog (Observe : es) a
+  -> Prog es a
 handleObs (Val x) = return x
 handleObs (Op op k) = case discharge op of
   Right (Observe d y α) -> handleObs (k y)
   Left op' -> Op op' (handleObs . k)
 
 -- | Handle @Sample@ operations by using the @Sampler@ monad to draw from primitive distributions
-handleSamp :: Prog '[Sample, Lift Sampler] a -> Prog '[Lift Sampler] a
+handleSamp
+  :: LastMember (Lift Sampler) es
+  => Prog (Sample : es) a
+  -> Prog es a
 handleSamp (Val x) = return x
 handleSamp (Op op k) = case discharge op of
   Right (Sample d α) ->
