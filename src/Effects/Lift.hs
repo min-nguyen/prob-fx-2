@@ -10,6 +10,7 @@ module Effects.Lift (
     Lift(..)
   , lift
   , liftPrint
+  , liftPutStrLn
   , handleLift) where
 
 import Prog ( call, Member(prj), LastMember, Prog(..) )
@@ -22,8 +23,11 @@ newtype Lift m a = Lift (m a)
 lift :: LastMember (Lift m) es => m a -> Prog es a
 lift = call . Lift
 
-liftPrint :: LastMember (Lift Sampler) es => String -> Prog es ()
+liftPrint :: LastMember (Lift Sampler) es => Show a => a -> Prog es ()
 liftPrint = lift . liftIO . print
+
+liftPutStrLn :: LastMember (Lift Sampler) es => String -> Prog es ()
+liftPutStrLn = lift . liftIO . putStrLn
 
 -- | Handle @Lift m@ as the last effect
 handleLift :: Monad m => Prog '[Lift m] w -> m w

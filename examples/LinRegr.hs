@@ -149,15 +149,13 @@ smc2LinRegr n_outer_particles n_mhsteps n_inner_particles  n_datapoints = do
       cs  = concatMap (get #c) env_outs
   pure (mus, cs)
 
-bbviLinRegr :: IO ()
-bbviLinRegr = do
+bbviLinRegr :: Int -> Int -> IO ()
+bbviLinRegr t_steps l_samples = do
   let xs            = [1 .. 5]
-      env_in        = (#y := [x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-      _T            = 2
-      _L            = 3
+      env_in        = (#y := [-2*x + 2| x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
       linRegrProg   = handleCore env_in (linRegr xs)
-  _Q_T <- sampleIOFixed $ bbviUpdate _T _L linRegrProg
-  putStrLn $ "Final proposals after T = " ++ show _T ++ " iterations"
+  _Q_T <- sampleIOFixed $ bbvi t_steps l_samples linRegrProg
+  putStrLn $ "Final proposals after T = " ++ show t_steps ++ " iterations"
   print _Q_T
 
 
