@@ -107,7 +107,7 @@ smcLinRegr n_particles n_datapoints = do
       cs = concatMap (get #c) env_outs
   pure (mus, cs)
 
--- | SMC over linear regression
+-- | RMSMC over linear regression
 rmsmcLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
 rmsmcLinRegr n_particles n_mhsteps n_datapoints = do
   -- Specify model inputs
@@ -149,6 +149,7 @@ smc2LinRegr n_outer_particles n_mhsteps n_inner_particles  n_datapoints = do
       cs  = concatMap (get #c) env_outs
   pure (mus, cs)
 
+-- | BBVI over linear regression
 bbviLinRegr :: Int -> Int -> IO ()
 bbviLinRegr t_steps l_samples = do
   let xs            = [1 .. 5]
