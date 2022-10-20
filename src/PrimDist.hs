@@ -19,6 +19,7 @@ module PrimDist where
 import Debug.Trace ( trace )
 import Data.Kind ( Constraint )
 import Data.Map (Map)
+import Data.List
 import Data.Functor ( (<&>) )
 import OpenSum (OpenSum)
 import qualified Data.Vector as V
@@ -34,12 +35,13 @@ import Control.Monad ((>=>), replicateM)
 import Data.Typeable ( Typeable )
 import GHC.Real (infinity)
 import Data.Bifunctor (second)
-import Util ( linCongGen, boolToInt )
+import Util ( linCongGen, boolToInt, mean, covariance, variance )
+
 {- import qualified Control.Monad.Bayes.Class as MB -}
 
 {- Distributions that can be sampled from and conditioned against.
 -}
-class Typeable d => Distribution d where
+class (Show d, Typeable d) => Distribution d where
   type family Support d :: *
   {- | Given a random double @r@ in (0, 1], this is passed to a distribution's inverse
        cumulative density function to draw a sampled value.
@@ -66,14 +68,14 @@ class Typeable d => Distribution d where
 
   {- | Provide proof that @d@ is differentiable.
   -}
-  isDifferentiable :: d -> Maybe (Dict DiffDistribution d)
+  isDifferentiable :: d -> Maybe (Witness DiffDistribution d)
 
 -- | Shorthand for specifying a distribution @d@ and its type of support @a@
 type PrimDist d a = (Distribution d, Support d ~ a)
 
 -- | Dictionary proof
-data Dict c a where
-  Dict :: c a => Dict c a
+data Witness c a where
+  Witness :: c a => Witness c a
 
 {- Distributions that can be differentiated with respect to their parameters
 -}
@@ -82,9 +84,38 @@ class Distribution d => DiffDistribution d where
   -}
   gradLogProb :: d -> Support d -> d
 
-  addGrad   :: d -> d -> d
+  safeAddGrad :: d -> d -> d
 
-  scaleGrad :: Double -> d -> d
+  zeroGrad :: d
+
+  toList   :: d -> [Double]
+
+  fromList :: [Double] -> d
+
+  liftUnOp :: (Double -> Double) -> d -> d
+  liftUnOp op = fromList . map op . toList
+
+  liftBinOp :: (Double -> Double -> Double) -> d -> d -> d
+  liftBinOp op d1 d2 = fromList $ zipWith op (toList d1) (toList d2)
+
+  covarGrad    -- Assuming our distribution has D parameters
+    :: [d]     -- ^ (f^{1:D})^{1:L}, an L-sized list of distributions      [(D α^1 β^1), (D α^2 β^2), .. (D α^L β^L)]
+    -> [d]     -- ^ (g^{1:D})^{1:L}, an L-sized list of distributions
+    -> d       -- ^ covar((f^{1:D})^{1:L}, (g^{1:D})^{1:L})
+  covarGrad fs gs =
+    fromList $ zipWith Util.covariance params_fs params_gs
+    where fs' = map toList fs       -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
+          params_fs = transpose fs' -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
+          gs' = map toList gs       -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
+          params_gs = transpose gs' -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
+
+  varGrad     -- Assuming our distribution has D parameters
+    :: [d]    -- ^ (g^{1:D})^{1:L}, an L-sized list of parameter sets
+    -> d      -- ^ var((g^{1:D})^{1:L})
+  varGrad gs =
+    fromList $ map Util.variance params_gs
+    where gs'       = map toList gs   -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
+          params_gs = transpose gs'   -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
 
 data Beta = Beta Double Double
   deriving Show
@@ -106,8 +137,8 @@ instance Distribution Beta where
     | x <= 0 || x >= 1 = m_neg_inf
     | otherwise = (α-1)*log x + (β-1)*log1p (-x) - logBeta α β
 
-  isDifferentiable :: Beta -> Maybe (Dict DiffDistribution Beta)
-  isDifferentiable _ = Just Dict
+  isDifferentiable :: Beta -> Maybe (Witness DiffDistribution Beta)
+  isDifferentiable _ = Just Witness
 
 instance DiffDistribution Beta where
   gradLogProb :: Beta -> Double -> Beta
@@ -120,13 +151,19 @@ instance DiffDistribution Beta where
           db = log (1 - x) - digamma β + digamma_ab
           dx = (α - 1)/x + (β - 1)/(1 - x)
 
-  scaleGrad :: Double -> Beta -> Beta
-  scaleGrad η (Beta dα dβ) = Beta (η * dα) (η * dβ)
-
-  addGrad :: Beta -> Beta -> Beta
-  addGrad (Beta α β) (Beta dα dβ) = Beta α' β'
+  safeAddGrad :: Beta -> Beta -> Beta
+  safeAddGrad (Beta α β) (Beta dα dβ) = Beta α' β'
     where α' = let α_new = α + dα in if α_new <= 0 then α else α_new
           β' = let β_new = β + dβ in if β_new <= 0 then β else β_new
+
+  zeroGrad :: Beta
+  zeroGrad = Beta 0 0
+
+  toList :: Beta -> [Double]
+  toList (Beta dα dβ) = [dα, dβ]
+
+  fromList :: [Double] -> Beta
+  fromList [dα, dβ] = (Beta dα dβ)
 
 -- | Cauchy(location, scale)
 data Cauchy = Cauchy Double Double
@@ -150,8 +187,8 @@ instance Distribution Cauchy where
     | otherwise     = -(log pi) + log scale - log (xloc**2 + scale**2)
     where xloc = x - loc
 
-  isDifferentiable :: Cauchy -> Maybe (Dict DiffDistribution Cauchy)
-  isDifferentiable _ = Just Dict
+  isDifferentiable :: Cauchy -> Maybe (Witness DiffDistribution Cauchy)
+  isDifferentiable _ = Just Witness
 
 instance DiffDistribution Cauchy where
   gradLogProb :: Cauchy -> Double -> Cauchy
@@ -165,13 +202,18 @@ instance DiffDistribution Cauchy where
           dscale = 1/scale - (2 * scale)/(xlocSqrd + scaleSqrd)
           dx = -dloc
 
-  scaleGrad :: Double -> Cauchy -> Cauchy
-  scaleGrad η (Cauchy dloc dscale) = Cauchy (η * dloc) (η * dscale)
-
-  addGrad :: Cauchy -> Cauchy -> Cauchy
-  addGrad (Cauchy loc scale) (Cauchy dloc dscale) = Cauchy loc' scale'
+  safeAddGrad :: Cauchy -> Cauchy -> Cauchy
+  safeAddGrad (Cauchy loc scale) (Cauchy dloc dscale) = Cauchy loc' scale'
     where loc'   = loc + dloc
           scale' = let new_scale = scale + dscale in if new_scale <= 0 then scale else new_scale
+
+  zeroGrad :: Cauchy
+  zeroGrad = Cauchy 0 0
+
+  toList :: Cauchy -> [Double]
+  toList (Cauchy loc scale) = [loc, scale]
+
+  fromList [loc, scale] = (Cauchy loc scale)
 
 -- | HalfCauchy(scale)
 newtype HalfCauchy = HalfCauchy Double
@@ -191,8 +233,8 @@ instance Distribution HalfCauchy where
     | x < 0     = m_neg_inf
     | otherwise = log 2 + logProbRaw (Cauchy 0 scale) x
 
-  isDifferentiable :: HalfCauchy -> Maybe (Dict DiffDistribution HalfCauchy)
-  isDifferentiable _ = Just Dict
+  isDifferentiable :: HalfCauchy -> Maybe (Witness DiffDistribution HalfCauchy)
+  isDifferentiable _ = Just Witness
 
 instance DiffDistribution HalfCauchy where
   gradLogProb :: HalfCauchy -> Double -> HalfCauchy
@@ -201,12 +243,17 @@ instance DiffDistribution HalfCauchy where
     | x < 0      = error "cauchyGradLogPdfRaw: x < 0"
     | otherwise  = let (Cauchy _ dscale) = gradLogProb (Cauchy 0 scale) x in HalfCauchy dscale
 
-  scaleGrad :: Double -> HalfCauchy -> HalfCauchy
-  scaleGrad η (HalfCauchy dscale) = HalfCauchy (η*dscale)
-
-  addGrad :: HalfCauchy -> HalfCauchy -> HalfCauchy
-  addGrad (HalfCauchy scale) (HalfCauchy dscale) = HalfCauchy scale'
+  safeAddGrad :: HalfCauchy -> HalfCauchy -> HalfCauchy
+  safeAddGrad (HalfCauchy scale) (HalfCauchy dscale) = HalfCauchy scale'
     where scale' = let new_scale = scale + dscale in if new_scale <= 0 then scale else new_scale
+
+  zeroGrad :: HalfCauchy
+  zeroGrad = HalfCauchy 0
+
+  toList :: HalfCauchy -> [Double]
+  toList (HalfCauchy scale) = [scale]
+
+  fromList [scale] = (HalfCauchy scale)
 
 -- | Dirichlet(αs)
 --   @αs@ concentrations
@@ -234,8 +281,8 @@ instance Distribution Dirichlet where
     | otherwise = c + sum (zipWith (\a x -> (a - 1) * log x) αs xs)
     where c = - sum (map logGamma αs) + logGamma (sum αs)
 
-  isDifferentiable :: Dirichlet -> Maybe (Dict DiffDistribution Dirichlet)
-  isDifferentiable _ = Just Dict
+  isDifferentiable :: Dirichlet -> Maybe (Witness DiffDistribution Dirichlet)
+  isDifferentiable _ = Just Witness
 
 instance DiffDistribution Dirichlet where
   gradLogProb :: Dirichlet -> [Double] -> Dirichlet
@@ -248,12 +295,17 @@ instance DiffDistribution Dirichlet where
     where derivA a x  = -(digamma a) + digamma (sum αs) + log x
           derivX a x = (a - 1) / x
 
-  scaleGrad :: Double -> Dirichlet -> Dirichlet
-  scaleGrad η (Dirichlet αs) = Dirichlet (map (η*) αs)
-
-  addGrad :: Dirichlet ->Dirichlet -> Dirichlet
-  addGrad (Dirichlet αs) (Dirichlet dαs) = Dirichlet (zipWith add_dα αs dαs)
+  safeAddGrad :: Dirichlet ->Dirichlet -> Dirichlet
+  safeAddGrad (Dirichlet αs) (Dirichlet dαs) = Dirichlet (zipWith add_dα αs dαs)
     where add_dα α dα = let α_new = α + dα in if α_new <= 0 then α else α_new
+
+  zeroGrad :: Dirichlet
+  zeroGrad = Dirichlet (repeat 0)
+
+  toList :: Dirichlet -> [Double]
+  toList (Dirichlet dαs) = dαs
+
+  fromList dαs = Dirichlet dαs
 
 -- | Gamma(k, θ)
 --   @k@ shape, @θ@ scale
@@ -279,8 +331,8 @@ instance Distribution Gamma where
     | k <= 0 || θ <= 0 = error "gammaLogPdfRaw: k <= 0 || θ <= 0"
     | otherwise = (k - 1) * log x - (x/θ) - logGamma k - (k * log θ)
 
-  isDifferentiable :: Gamma -> Maybe (Dict DiffDistribution Gamma)
-  isDifferentiable _ = Just Dict
+  isDifferentiable :: Gamma -> Maybe (Witness DiffDistribution Gamma)
+  isDifferentiable _ = Just Witness
 
 instance DiffDistribution Gamma where
   gradLogProb :: Gamma -> Double -> Gamma
@@ -292,13 +344,18 @@ instance DiffDistribution Gamma where
           dθ = x/(θ**2) - k/θ
           dx = (k - 1)/x - 1/θ
 
-  scaleGrad :: Double -> Gamma -> Gamma
-  scaleGrad η (Gamma dk dθ) = Gamma (η*dk) (η*dθ)
-
-  addGrad :: Gamma -> Gamma -> Gamma
-  addGrad (Gamma k θ) (Gamma dk dθ) = Gamma k' θ'
+  safeAddGrad :: Gamma -> Gamma -> Gamma
+  safeAddGrad (Gamma k θ) (Gamma dk dθ) = Gamma k' θ'
     where k' = let k_new = k + dk in if k_new <= 0 then k else k_new
           θ' = let θ_new = θ + dθ in if θ_new <= 0 then θ else θ_new
+
+  zeroGrad :: Gamma
+  zeroGrad = Gamma 0 0
+
+  toList :: Gamma -> [Double]
+  toList (Gamma dk dθ) = [dk, dθ]
+
+  fromList [dk, dθ] = Gamma dk dθ
 
 -- | Normal(μ, σ)
 --   @μ@ mean, @σ@ standard deviation
@@ -325,8 +382,8 @@ instance Distribution Normal where
     | otherwise  = -(xμ * xμ / (2 * (σ ** 2))) - log m_sqrt_2_pi - log σ
     where xμ = x - μ
 
-  isDifferentiable :: Normal -> Maybe (Dict DiffDistribution Normal)
-  isDifferentiable _ = Just Dict
+  isDifferentiable :: Normal -> Maybe (Witness DiffDistribution Normal)
+  isDifferentiable _ = Just Witness
 
 instance DiffDistribution Normal where
   gradLogProb :: Normal -> Double -> Normal
@@ -338,13 +395,18 @@ instance DiffDistribution Normal where
           dσ = -1/σ + (xμ**2)/(σ ** 3)
           dx = -dμ
 
-  scaleGrad :: Double -> Normal -> Normal
-  scaleGrad η (Normal dμ dσ) = Normal (η * dμ) (η * dσ)
-
-  addGrad :: Normal -> Normal -> Normal
-  addGrad (Normal μ σ) (Normal dμ dσ) = Normal μ' σ'
+  safeAddGrad :: Normal -> Normal -> Normal
+  safeAddGrad (Normal μ σ) (Normal dμ dσ) = Normal μ' σ'
     where μ' = μ + dμ
           σ' = let σ_new = σ + dσ in if σ_new <= 0 then σ else σ_new
+
+  zeroGrad :: Normal
+  zeroGrad = Normal 0 0
+
+  toList :: Normal -> [Double]
+  toList (Normal dμ dσ) = [dμ, dσ]
+
+  fromList [dμ, dσ] = Normal dμ dσ
 
 -- | HalfNormal(σ)
 --   @σ@ standard deviation
@@ -365,8 +427,8 @@ instance Distribution HalfNormal where
     | x < 0     = m_neg_inf
     | otherwise = log 2 + logProbRaw (Normal 0 σ) x
 
-  isDifferentiable :: HalfNormal -> Maybe (Dict DiffDistribution HalfNormal)
-  isDifferentiable _ = Just Dict
+  isDifferentiable :: HalfNormal -> Maybe (Witness DiffDistribution HalfNormal)
+  isDifferentiable _ = Just Witness
 
 instance DiffDistribution HalfNormal where
   gradLogProb :: HalfNormal -> Double -> HalfNormal
@@ -375,13 +437,17 @@ instance DiffDistribution HalfNormal where
     | σ <= 0        = error "halfNormalGradLogPdfRaw: σ <= 0"
     | otherwise     = let Normal _ dσ = gradLogProb (Normal 0 σ) x in HalfNormal dσ
 
-  scaleGrad :: Double -> HalfNormal -> HalfNormal
-  scaleGrad η (HalfNormal dσ) = HalfNormal (η * dσ)
-
-  addGrad :: HalfNormal -> HalfNormal -> HalfNormal
-  addGrad (HalfNormal σ) (HalfNormal dσ) = HalfNormal σ'
+  safeAddGrad :: HalfNormal -> HalfNormal -> HalfNormal
+  safeAddGrad (HalfNormal σ) (HalfNormal dσ) = HalfNormal σ'
     where σ' = let σ_new = σ + dσ in if σ_new <= 0 then σ else σ_new
 
+  zeroGrad :: HalfNormal
+  zeroGrad = HalfNormal 0
+
+  toList :: HalfNormal -> [Double]
+  toList (HalfNormal σ) = [σ]
+
+  fromList [σ] = HalfNormal σ
 
 {-# INLINE invCMF #-}
 invCMF
@@ -487,7 +553,10 @@ data Deterministic a where
     => a                                  -- ^ value of probability @1@
     -> Deterministic a
 
-instance Typeable a => Distribution (Deterministic a) where
+instance Show a => Show (Deterministic a) where
+  show (Deterministic x) = "Deterministic " ++ show x
+
+instance (Show a, Typeable a) => Distribution (Deterministic a) where
   type Support (Deterministic a) = a
 
   sampleInv :: Deterministic a -> Double -> a
@@ -511,7 +580,10 @@ data Discrete a where
     => [(a, Double)]
     -> Discrete a
 
-instance Typeable a => Distribution (Discrete a) where
+instance Show a => Show (Discrete a) where
+  show (Discrete xps) = "Deterministic " ++ show xps
+
+instance (Show a, Typeable a) => Distribution (Discrete a) where
   type Support (Discrete a) = a
 
   sampleInv :: Discrete a -> Double -> a

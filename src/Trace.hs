@@ -9,7 +9,6 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ConstraintKinds #-}
@@ -25,25 +24,29 @@ module Trace (
   , filterTrace
   -- * Log-probability trace
   , LPTrace
-  , traceLogProbs
+  -- , traceLogProbs
   -- * Gradient trace
   , GTrace
   -- * Dist trace
   , DTrace
   , DKey
+  , dempty
+  , dkeys
   , dinsert
   , dlookup
+  , dlookupDefault
   , dlookupOrInsert
   , dintersectLeftWith
   , dmap
-  , Key(..)) where
+  , Key(..)
+  , Some(..)) where
 
 import Type.Reflection
     ( Typeable, type (:~~:)(HRefl), eqTypeRep, typeRep )
 import Data.Map (Map)
-import Data.Maybe ( fromJust )
+import Data.Maybe ( fromJust, fromMaybe )
 import Data.Proxy ( Proxy(..) )
-import Effects.Dist ( Tag, Addr, Observe, Sample(..), pattern ObsPrj, pattern SampPrj )
+import Effects.Dist ( Tag, Addr, Observe, Sample(..), Score(..), pattern ObsPrj, pattern SampPrj )
 import Env ( enil, varToStr, UniqueVar, Var(..), Env(ECons), Assign((:=)) )
 import GHC.TypeLits ( KnownSymbol )
 import OpenSum (OpenSum)
@@ -55,6 +58,7 @@ import PrimDist
 import Effects.State ( State, modify, handleState )
 import Util
 import TyCompare
+import Prog (Member(..))
 
 {- | The type of generic traces, mapping addresses of probabilistic operations
      to some data.
@@ -71,16 +75,6 @@ filterTrace ::
   -> Map Addr a
 filterTrace tags = filterByKey (\(tag, idx)  -> tag `elem` tags)
 
--- | Update a sample trace at an address
-updateTrace :: (Member (State (Map Addr v)) es) =>
-  -- | address of sample site
-     Addr
-  -- | primitive distribution at address
-  -- | sampled value
-  -> v
-  -> Prog es ()
-updateTrace α v = modify (Map.insert α v)
-
 {- | The type of inverse sample traces, mapping addresses of Sample operations
      to the random values between 0 and 1 passed to their inverse CDF functions.
 -}
@@ -90,20 +84,6 @@ type STrace = Trace Double
      to their log probabilities.
 -}
 type LPTrace = Trace LogP
-
--- | Insert stateful operations for recording the log-probabilities at each @Sample@ or @Observe@ operation
-traceLogProbs :: (Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)
-traceLogProbs = handleState Map.empty . storeLPs
-  where storeLPs :: (Member Sample es, Member Observe es) => Prog es a -> Prog (State LPTrace: es) a
-        storeLPs (Val x) = pure x
-        storeLPs (Op u k) = do
-          case u of
-            SampPrj d α
-              -> Op (weaken u) (\x -> updateTrace α (logProb d x) >> storeLPs (k x))
-            ObsPrj d y α
-              -> Op (weaken u) (\x -> updateTrace α (logProb d x) >> storeLPs (k x))
-            _ -> Op (weaken u) (storeLPs . k)
-
 
 {- | The type of gradient traces.
 -}
@@ -119,6 +99,19 @@ data DTrace where
        -> DTrace         -- left
        -> DTrace         -- right
        -> DTrace
+
+instance {-# OVERLAPPING #-} Show [DTrace] where
+  show (x:xs) = show x ++ "\n" ++ show xs
+  show []     = ""
+
+instance Show DTrace where
+  show :: DTrace -> String
+  show Leaf = ""
+  show (Node (Key var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ") "
+                                 ++ show l
+                                 ++ show r
+    where showNewline Leaf  = ""
+          showNewline node  = "\n" ++ show node
 
 type DKey = Key Addr
 
@@ -152,6 +145,19 @@ instance (HeteroOrd k, Typeable a, Typeable b) => TrueOrd k a b where
                   Nothing    -> error "Should not happen."
     (EQ, LT) -> TrueLT
     (EQ, GT) -> TrueGT
+
+data Some k where
+  Some :: DiffDistribution d => k d -> Some k
+
+dkeys :: DTrace -> [Some DKey]
+dkeys = go
+  where
+    go Leaf = []
+    go (Node ky y l r) = Some ky : go l ++ go r
+
+-- | Construct an empty trace
+dempty :: DTrace
+dempty = Leaf
 
 -- | Construct a single node
 dsingleton :: DiffDistribution d => DKey d -> d -> DTrace
@@ -189,6 +195,9 @@ dupdate kx f = go
            TrueLT       -> Node ky y (go l) r
            TrueGT       -> Node ky y l (go r)
 
+dlookupDefault :: Typeable d => DKey d -> DTrace -> d -> d
+dlookupDefault kx dmap def = fromMaybe def (dlookup kx dmap)
+
 -- | Return the entry if it exists, otherwise insert a new entry
 dlookupOrInsert :: forall d a. DiffDistribution d => DKey d -> d -> DTrace -> (d, DTrace)
 dlookupOrInsert kx dx  = go
@@ -203,13 +212,13 @@ dlookupOrInsert kx dx  = go
 
 -- | Combine the entries of two traces with an operation when their keys match,
 --   returning elements of the left trace that do not exist in the second trace.
-dintersectLeftWith :: (forall d a. PrimDist d a => d -> d -> d) -> DTrace -> GTrace -> DTrace
+dintersectLeftWith :: (forall d. DiffDistribution d  => d -> d -> d) -> DTrace -> GTrace -> DTrace
 dintersectLeftWith _ t1 Leaf  = t1
 dintersectLeftWith _ Leaf t2  = Leaf
 dintersectLeftWith f (Node k1 x1 l1 r1) t2 =
   case maybe_x2 of
       Nothing -> Node k1 x1 l1 r1
-      Just x2 -> Node k1 (f undefined undefined) l1l2 r1r2
+      Just x2 -> Node k1 (f x1 x2) l1l2 r1r2
     where (l2, maybe_x2, r2) =  dsplitLookup k1 t2
           !l1l2 = dintersectLeftWith f l1 l2
           !r1r2 = dintersectLeftWith f r1 r2

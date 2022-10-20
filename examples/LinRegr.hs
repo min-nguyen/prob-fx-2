@@ -12,7 +12,7 @@
 
 module LinRegr where
 
-import Model ( Model, normal, uniform )
+import Model ( Model, normal, uniform, handleCore )
 import Inference.SIM as SIM ( simulate )
 import Inference.LW as LW ( lw )
 import Inference.MH as MH ( mh )
@@ -20,7 +20,8 @@ import Inference.SMC as SMC ( smc )
 import Inference.RMSMC as RMSMC ( rmsmc )
 import Inference.PMMH as PMMH ( pmmh )
 import Inference.SMC2 as SMC2 ( smc2 )
-import Sampler ( Sampler )
+import Inference.BBVI as BBVI
+import Sampler ( Sampler, sampleIO, sampleIOFixed )
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
@@ -148,6 +149,13 @@ smc2LinRegr n_outer_particles n_mhsteps n_inner_particles  n_datapoints = do
       cs  = concatMap (get #c) env_outs
   pure (mus, cs)
 
+bbviLinRegr :: Int -> Int -> IO ()
+bbviLinRegr t_steps l_samples = do
+  let xs            = [1 .. 5]
+      env_in        = (#y := [-2*x + 2| x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+  _Q_T <- sampleIOFixed $ bbvi t_steps l_samples (linRegr xs) env_in
+  putStrLn $ "Final proposals after T = " ++ show t_steps ++ " iterations"
+  print _Q_T
 
 
 {- | Linear regression model on individual data points at a time.
