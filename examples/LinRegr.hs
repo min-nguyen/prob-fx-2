@@ -153,8 +153,7 @@ bbviLinRegr :: Int -> Int -> IO ()
 bbviLinRegr t_steps l_samples = do
   let xs            = [1 .. 5]
       env_in        = (#y := [-2*x + 2| x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-      linRegrProg   = handleCore env_in (linRegr xs)
-  _Q_T <- sampleIOFixed $ bbvi t_steps l_samples linRegrProg
+  _Q_T <- sampleIOFixed $ bbvi t_steps l_samples (linRegr xs) env_in
   putStrLn $ "Final proposals after T = " ++ show t_steps ++ " iterations"
   print _Q_T
 

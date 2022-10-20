@@ -68,14 +68,14 @@ class (Show d, Typeable d) => Distribution d where
 
   {- | Provide proof that @d@ is differentiable.
   -}
-  isDifferentiable :: d -> Maybe (Dict DiffDistribution d)
+  isDifferentiable :: d -> Maybe (Witness DiffDistribution d)
 
 -- | Shorthand for specifying a distribution @d@ and its type of support @a@
 type PrimDist d a = (Distribution d, Support d ~ a)
 
 -- | Dictionary proof
-data Dict c a where
-  Dict :: c a => Dict c a
+data Witness c a where
+  Witness :: c a => Witness c a
 
 {- Distributions that can be differentiated with respect to their parameters
 -}
@@ -137,8 +137,8 @@ instance Distribution Beta where
     | x <= 0 || x >= 1 = m_neg_inf
     | otherwise = (α-1)*log x + (β-1)*log1p (-x) - logBeta α β
 
-  isDifferentiable :: Beta -> Maybe (Dict DiffDistribution Beta)
-  isDifferentiable _ = Just Dict
+  isDifferentiable :: Beta -> Maybe (Witness DiffDistribution Beta)
+  isDifferentiable _ = Just Witness
 
 instance DiffDistribution Beta where
   gradLogProb :: Beta -> Double -> Beta
@@ -187,8 +187,8 @@ instance Distribution Cauchy where
     | otherwise     = -(log pi) + log scale - log (xloc**2 + scale**2)
     where xloc = x - loc
 
-  isDifferentiable :: Cauchy -> Maybe (Dict DiffDistribution Cauchy)
-  isDifferentiable _ = Just Dict
+  isDifferentiable :: Cauchy -> Maybe (Witness DiffDistribution Cauchy)
+  isDifferentiable _ = Just Witness
 
 instance DiffDistribution Cauchy where
   gradLogProb :: Cauchy -> Double -> Cauchy
@@ -233,8 +233,8 @@ instance Distribution HalfCauchy where
     | x < 0     = m_neg_inf
     | otherwise = log 2 + logProbRaw (Cauchy 0 scale) x
 
-  isDifferentiable :: HalfCauchy -> Maybe (Dict DiffDistribution HalfCauchy)
-  isDifferentiable _ = Just Dict
+  isDifferentiable :: HalfCauchy -> Maybe (Witness DiffDistribution HalfCauchy)
+  isDifferentiable _ = Just Witness
 
 instance DiffDistribution HalfCauchy where
   gradLogProb :: HalfCauchy -> Double -> HalfCauchy
@@ -281,8 +281,8 @@ instance Distribution Dirichlet where
     | otherwise = c + sum (zipWith (\a x -> (a - 1) * log x) αs xs)
     where c = - sum (map logGamma αs) + logGamma (sum αs)
 
-  isDifferentiable :: Dirichlet -> Maybe (Dict DiffDistribution Dirichlet)
-  isDifferentiable _ = Just Dict
+  isDifferentiable :: Dirichlet -> Maybe (Witness DiffDistribution Dirichlet)
+  isDifferentiable _ = Just Witness
 
 instance DiffDistribution Dirichlet where
   gradLogProb :: Dirichlet -> [Double] -> Dirichlet
@@ -331,8 +331,8 @@ instance Distribution Gamma where
     | k <= 0 || θ <= 0 = error "gammaLogPdfRaw: k <= 0 || θ <= 0"
     | otherwise = (k - 1) * log x - (x/θ) - logGamma k - (k * log θ)
 
-  isDifferentiable :: Gamma -> Maybe (Dict DiffDistribution Gamma)
-  isDifferentiable _ = Just Dict
+  isDifferentiable :: Gamma -> Maybe (Witness DiffDistribution Gamma)
+  isDifferentiable _ = Just Witness
 
 instance DiffDistribution Gamma where
   gradLogProb :: Gamma -> Double -> Gamma
@@ -382,8 +382,8 @@ instance Distribution Normal where
     | otherwise  = -(xμ * xμ / (2 * (σ ** 2))) - log m_sqrt_2_pi - log σ
     where xμ = x - μ
 
-  isDifferentiable :: Normal -> Maybe (Dict DiffDistribution Normal)
-  isDifferentiable _ = Just Dict
+  isDifferentiable :: Normal -> Maybe (Witness DiffDistribution Normal)
+  isDifferentiable _ = Just Witness
 
 instance DiffDistribution Normal where
   gradLogProb :: Normal -> Double -> Normal
@@ -427,8 +427,8 @@ instance Distribution HalfNormal where
     | x < 0     = m_neg_inf
     | otherwise = log 2 + logProbRaw (Normal 0 σ) x
 
-  isDifferentiable :: HalfNormal -> Maybe (Dict DiffDistribution HalfNormal)
-  isDifferentiable _ = Just Dict
+  isDifferentiable :: HalfNormal -> Maybe (Witness DiffDistribution HalfNormal)
+  isDifferentiable _ = Just Witness
 
 instance DiffDistribution HalfNormal where
   gradLogProb :: HalfNormal -> Double -> HalfNormal
