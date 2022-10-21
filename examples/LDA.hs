@@ -5,6 +5,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE TypeApplications #-}
 
 {- | A [Latent Dirichlet Allocation (LDA)](https://en.wikipedia.org/wiki/Latent_Dirichlet_allocation) model
      (or topic model) for learning the distribution over words and topics in a text document.
@@ -16,9 +17,13 @@ import Model ( Model, dirichlet, discrete, categorical' )
 import Sampler ( Sampler, sampleUniformD, liftIO )
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
-import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
+import GHC.TypeNats
+import Data.Proxy
+import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>), Vars (VCons) )
 import Trace
 import PrimDist
+import Vec (Vec)
+import qualified Vec
 import Inference.SIM as SIM ( simulate )
 import Inference.LW as LW ( lw )
 import Inference.MH as MH ( mh )
@@ -56,60 +61,63 @@ type TopicEnv =
    ]
 
 -- | Prior distribution for topics in a document
-docTopicPrior :: Observable env "θ" [Double]
+docTopicPrior :: (KnownNat n, Observable env "θ" (Vec n Double))
   -- | number of topics
-  => Int
+  => Proxy n
   -- | probability of each topic
-  -> Model env ts [Double]
-docTopicPrior n_topics = dirichlet (replicate n_topics 1) #θ
+  -> Model env ts (Vec n Double)
+docTopicPrior n_topics = dirichlet (Vec.replicateNat n_topics 1) #θ
 
 -- | Prior distribution for words in a topic
-topicWordPrior :: Observable env "φ" [Double]
+topicWordPrior :: forall m env ts. Observable env "φ" (Vec m Double)
   -- | vocabulary
-  => [String]
+  => Vec m String
   -- | probability of each word
-  -> Model env ts [Double]
+  -> Model env ts (Vec m Double)
 topicWordPrior vocab
-  = dirichlet (replicate (length vocab) 1) #φ
+  = dirichlet (Vec.replicateNat (Proxy @m) 1) #φ
 
 -- | A distribution generating words according to their probabilities
 wordDist :: Observable env "w" String
   -- | vocabulary
-  => [String]
+  => Vec m String
   -- | probability of each word
   -> [Double]
   -- | generated word
   -> Model env ts String
 wordDist vocab ps =
-  discrete (zip vocab ps) #w
+  discrete (zip (Vec.toList vocab) ps) #w
 
 -- | Distribution over the topics in a document, over the distribution of words in a topic
-topicModel :: (Observables env '["φ", "θ"] [Double],
+topicModel :: (Observable env "φ" (Vec m Double),
+               Observable env "θ" (Vec n Double),
                Observable env "w" String)
   -- | vocabulary
-  => [String]
+  => Vec m String
   -- | number of topics
-  -> Int
+  -> Proxy n
   -- | number of words
   -> Int
   -- | generated words
   -> Model env ts [String]
 topicModel vocab n_topics n_words = do
   -- Generate distribution over words for each topic
-  topic_word_ps <- replicateM n_topics $ topicWordPrior vocab
+  topic_word_ps <- Vec.replicateMNat n_topics $ topicWordPrior vocab
+  let topic_word_ps' = map Vec.toList $ Vec.toList topic_word_ps
   -- Generate distribution over topics for a given document
   doc_topic_ps  <- docTopicPrior n_topics
-  replicateM n_words (do  z <- categorical' doc_topic_ps
-                          let word_ps = topic_word_ps !! z
+  replicateM n_words (do  z <- categorical' (Vec.toList doc_topic_ps)
+                          let word_ps = topic_word_ps' !! z
                           wordDist vocab word_ps)
 
 -- | Topic distribution over many topics
-topicModels :: (Observables env '["φ", "θ"] [Double],
-                Observable env "w" String)
+topicModels :: (Observable env "φ" (Vec m Double),
+               Observable env "θ" (Vec n Double),
+               Observable env "w" String)
   -- | vocabulary
-  => [String]
+  => Vec m String
   -- | number of topics
-  -> Int
+  -> Proxy n
   -- | number of words for each document
   -> [Int]
   -- | generated words for each document
@@ -119,14 +127,14 @@ topicModels vocab n_topics doc_words = do
 
 
 -- | Example possible vocabulary
-vocab :: [String]
-vocab = ["DNA", "evolution", "parsing", "phonology"]
+vocab :: Vec 4 String
+vocab = fromJust $ Vec.fromList ["DNA", "evolution", "parsing", "phonology"]
 
 -- | Simulating from topic model
 simLDA :: Int -> Sampler [String]
 simLDA n_words = do
   -- Specify model inputs
-  let n_topics = 2
+  let n_topics = Proxy @2
   -- Specify model environment
       env_in = #θ := [[0.5, 0.5]] <:>
                #φ := [[0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],
@@ -231,10 +239,11 @@ bbviLDA t_steps l_samples n_words = do
 
   traceQ <- BBVI.bbvi t_steps l_samples (topicModel vocab n_topics n_words) env_in
   -- Draw the most recent sampled parameters
-  let θ_dist     = toList . fromJust $ dlookup (DKey ("θ", 0) :: DKey Dirichlet) traceQ
-      φ0_dist    = toList . fromJust $ dlookup (DKey ("φ", 0) :: DKey Dirichlet) traceQ
-      φ1_dist    = toList . fromJust $ dlookup (DKey ("φ", 1) :: DKey Dirichlet) traceQ
-  return (θ_dist, φ0_dist, φ1_dist)
+  -- let θ_dist     = toList . fromJust $ dlookup (DKey ("θ", 0) :: DKey Dirichlet) traceQ
+  --     φ0_dist    = toList . fromJust $ dlookup (DKey ("φ", 0) :: DKey Dirichlet) traceQ
+  --     φ1_dist    = toList . fromJust $ dlookup (DKey ("φ", 1) :: DKey Dirichlet) traceQ
+  -- return (θ_dist, φ0_dist, φ1_dist)
+  undefined
 
 {- | Executing the topic model using monad-bayes.
 

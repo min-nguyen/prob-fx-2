@@ -53,7 +53,8 @@ library
                       Sampler,
                       Trace,
                       TyCompare,
-                      Util
+                      Util,
+                      Vec
 
   -- Modules included in this library but not exported.
   -- other-modules:
@@ -85,6 +86,7 @@ library
                       ad,
                       reflection,
                       vec,
+                      fin,
                       -- monad-bayes                   >= 0.2.0 && < 0.2.1,
                       split                         >= 0.2.3 && < 0.3
 
@@ -114,6 +116,7 @@ executable prob-fx
                       split,
                       prob-fx,
                       log-domain,
+                      -- the below row of dependencies are only necessary if 'src' is included as a hs-source-dir
                       statistics, mwc-probability, mwc-random, vector, transformers, mtl, math-functions,
                       -- monad-bayes,
                       lens

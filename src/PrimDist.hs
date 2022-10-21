@@ -9,6 +9,7 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
 
 {- | A GADT encoding of (a selection of) primitive distributions
     along with their corresponding sampling and density functions.
@@ -20,12 +21,10 @@ import           Debug.Trace ( trace )
 import           Data.Kind ( Constraint )
 import           Data.List ( transpose )
 import           Data.Functor ( (<&>) )
+import           Data.Proxy
+import qualified Data.Vector as Vector
 import           OpenSum (OpenSum)
 import qualified OpenSum
-import qualified Data.Vec.Lazy as Vec
-import           Data.Vec.Lazy (Vec)
-import qualified Data.Vector as Vector
-import           Data.Vector (Vector)
 import           Numeric.MathFunctions.Constants
   ( m_eulerMascheroni, m_neg_inf, m_sqrt_2_pi, m_sqrt_2, m_pos_inf )
 import           Numeric.SpecFunctions
@@ -35,6 +34,10 @@ import           LogP ( LogP(..) )
 import           Control.Monad ((>=>), replicateM)
 import           Data.Typeable ( Typeable )
 import           Util ( linCongGen, boolToInt, mean, covariance, variance )
+import GHC.TypeNats
+import qualified Vec as Vec
+import Vec (Vec)
+import Data.Maybe
 
 {- import qualified Control.Monad.Bayes.Class as MB
    import           Numeric.Log ( Log(..) )
@@ -81,6 +84,7 @@ data Witness c a where
 {- Distributions that can be differentiated with respect to their parameters
 -}
 class Distribution d => DiffDistribution d where
+  -- type family Arity d :: Nat
   {- | Compute the gradient log-probability.
   -}
   gradLogProb :: d -> Support d -> d
@@ -260,55 +264,57 @@ instance DiffDistribution HalfCauchy where
 
 -- | Dirichlet(αs)
 --   @αs@ concentrations
-newtype Dirichlet = Dirichlet [Double]
+
+newtype Dirichlet (n :: Nat) = Dirichlet (Vec n Double)
   deriving Show
 
-instance Distribution Dirichlet where
-  type Support Dirichlet = [Double]
+instance (KnownNat n) => Distribution (Dirichlet n) where
+  type Support (Dirichlet n) = Vec n Double
 
-  sampleInv :: Dirichlet -> Double -> [Double]
+  sampleInv :: Dirichlet n -> Double -> Vec n Double
   sampleInv (Dirichlet αs) r =
-    let rs = take (length αs) (linCongGen r)
-        xs = zipWith (\α r -> sampleInv (Gamma α 1) r) αs rs
-    in  map (/sum xs) xs
+    let rs = (fromJust . Vec.fromList . take (length αs)) (linCongGen r)
+        xs = Vec.zipWith (\α r -> sampleInv (Gamma α 1) r) αs rs
+    in  Vec.map (/sum xs) xs
 
-  sample :: Dirichlet -> Sampler [Double]
-  sample (Dirichlet αs)    = sampleDirichlet αs
+  sample :: Dirichlet n -> Sampler (Vec n Double)
+  sample (Dirichlet αs) = sampleDirichlet (Vec.toList αs) <&> fromJust . Vec.fromList
 
-  logProbRaw :: Dirichlet -> [Double] -> Double
+  logProbRaw :: Dirichlet n -> Vec n Double -> Double
   logProbRaw (Dirichlet αs) xs
     | length xs /= length αs     = trace "dirichletLogPdfRaw: length xs /= length αs" m_neg_inf
     | abs (sum xs - 1.0) > 1e-14 = trace "dirichletLogPdfRaw: data should sum to 1" m_neg_inf
     | any (<= 0) αs              = trace "dirichletLogPdfRaw: weights should be positive" m_neg_inf
     | any (<  0) xs              = trace "dirichletLogPdfRaw: data should be non-negative" m_neg_inf
-    | otherwise = c + sum (zipWith (\a x -> (a - 1) * log x) αs xs)
-    where c = - sum (map logGamma αs) + logGamma (sum αs)
+    | otherwise = c + sum (Vec.zipWith (\a x -> (a - 1) * log x) αs xs)
+    where c = - sum (Vec.map logGamma αs) + logGamma (sum αs)
 
-  isDifferentiable :: Dirichlet -> Maybe (Witness DiffDistribution Dirichlet)
+  isDifferentiable :: Dirichlet n -> Maybe (Witness DiffDistribution (Dirichlet n))
   isDifferentiable _ = Just Witness
 
-instance DiffDistribution Dirichlet where
-  gradLogProb :: Dirichlet -> [Double] -> Dirichlet
+instance (KnownNat n) => DiffDistribution (Dirichlet n) where
+  gradLogProb :: Dirichlet n -> Vec n Double -> Dirichlet n
   gradLogProb (Dirichlet αs) xs
     | length xs /= length αs     = error "dirichletGradLogPdfRaw: length xs /= length αs"
     | abs (sum xs - 1.0) > 1e-14 = error "dirichletGradLogPdfRaw: data should sum to 1"
     | any (<= 0) αs              = error "dirichletGradLogPdfRaw: weights should be positive"
     | any (<  0) xs              = error "dirichletGradLogPdfRaw: data should be non-negative"
-    | otherwise = Dirichlet (zipWith derivA αs xs)
+    | otherwise = Dirichlet (Vec.zipWith derivA αs xs)
     where derivA a x  = -(digamma a) + digamma (sum αs) + log x
           derivX a x = (a - 1) / x
 
-  safeAddGrad :: Dirichlet ->Dirichlet -> Dirichlet
-  safeAddGrad (Dirichlet αs) (Dirichlet dαs) = Dirichlet (zipWith add_dα αs dαs)
+  safeAddGrad :: Dirichlet n -> Dirichlet n -> Dirichlet n
+  safeAddGrad (Dirichlet αs) (Dirichlet dαs) = Dirichlet (Vec.zipWith add_dα αs dαs)
     where add_dα α dα = let α_new = α + dα in if α_new <= 0 then α else α_new
 
-  zeroGrad :: Dirichlet
-  zeroGrad = Dirichlet (repeat 0)
+  zeroGrad :: Dirichlet n
+  zeroGrad = Dirichlet (Vec.replicateNat (Proxy @n) 0)
 
-  toList :: Dirichlet -> [Double]
-  toList (Dirichlet dαs) = dαs
+  toList :: Dirichlet n -> [Double]
+  toList (Dirichlet dαs) = Vec.toList dαs
 
-  fromList dαs = Dirichlet dαs
+  fromList :: [Double] -> Dirichlet n
+  fromList dαs = Dirichlet (fromJust $ Vec.fromList dαs)
 
 -- | Gamma(k, θ)
 --   @k@ shape, @θ@ scale

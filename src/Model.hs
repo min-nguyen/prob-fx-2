@@ -51,12 +51,14 @@ module Model (
 
 import Control.Monad ( ap )
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
+import GHC.TypeNats
 import Effects.Dist ( handleDist, Dist(..), Observe, Sample )
 import Effects.ObsRW
 import Env
 import OpenSum ( OpenSum )
 import PrimDist
 import Prog ( call, Member, Prog, Members, LastMember )
+import Vec
 import qualified OpenSum
 import Debug.Trace
 import Sampler
@@ -146,16 +148,16 @@ deterministic' :: (Typeable a, Eq a, Show a) =>
   -> Model env es a
 deterministic' x = callDist' (Deterministic x)
 
-dirichlet ::Observable env x [Double] =>
-     [Double]
+dirichlet :: (Observable env x (Vec n Double), KnownNat n) =>
+     Vec n Double
   -> Var x
-  -> Model env es [Double]
+  -> Model env es (Vec n Double)
 dirichlet xs = callDist (Dirichlet xs)
 
-dirichlet' ::
+dirichlet' :: (Typeable n, KnownNat n) =>
   -- | concentration parameters
-     [Double]
-  -> Model env es [Double]
+     Vec n Double
+  -> Model env es (Vec n Double)
 dirichlet' xs = callDist' (Dirichlet xs)
 
 discrete :: (Typeable a, Eq a, Show a, Observable env x a) =>
