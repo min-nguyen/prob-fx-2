@@ -193,7 +193,8 @@ def main():
     plt.show()
   if arg in ["lwHMM"]:
     trans_p = data[0]
-    ps  = data[1]
+    obs_p   = data[1]
+    ps      = data[2]
     total_p = sum(ps)
     ps_normalised = list(map(lambda p : p/total_p, ps))
     _, axs1 = plt.subplots(nrows=1)
@@ -201,7 +202,12 @@ def main():
     axs1.set_ylabel('probability')
     axs1.scatter(trans_p, ps_normalised)
     axs1.set_title('HMM - Likelihood Weighting')
-  if arg in ["mhHMM", "smcHMM", "rmsmcHMM", "pmmhHMM"]:
+    _, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel('obs_p value')
+    axs1.set_ylabel('probability')
+    axs1.scatter(obs_p, ps_normalised)
+    axs1.set_title('HMM - Likelihood Weighting')
+  if arg in ["mhHMM", "smcHMM", "rmsmcHMM", "pmmhHMM", "smc2HMM"]:
     # Note : this works less well for certain parameters of trans_p and obs_p used for the training data
     trans_ps_unique = data[0]
     obs_ps_unique   = data[1]

@@ -21,10 +21,12 @@ import Inference.RMSMC as RMSMC ( rmsmc )
 import Inference.PMMH as PMMH ( pmmh )
 import Inference.SMC2 as SMC2 ( smc2 )
 import Inference.BBVI as BBVI
-import Sampler ( Sampler, sampleIO, sampleIOFixed )
+import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
+import Trace
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
+import Effects.Lift
 {-
 import Numeric.Log ( Log )
 import Inference.MB as MB ( handleMBayes )
@@ -150,13 +152,13 @@ smc2LinRegr n_outer_particles n_mhsteps n_inner_particles  n_datapoints = do
   pure (mus, cs)
 
 -- | BBVI over linear regression
-bbviLinRegr :: Int -> Int -> IO ()
+bbviLinRegr :: Int -> Int -> Sampler DTrace
 bbviLinRegr t_steps l_samples = do
   let xs            = [1 .. 5]
       env_in        = (#y := [-2*x + 2| x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  _Q_T <- sampleIOFixed $ bbvi t_steps l_samples (linRegr xs) env_in
-  putStrLn $ "Final proposals after T = " ++ show t_steps ++ " iterations"
-  print _Q_T
+  traceQ <- BBVI.bbvi t_steps l_samples (linRegr xs) env_in
+  liftIO . print $ "Final proposals after T = " ++ show t_steps ++ " iterations"
+  pure traceQ
 
 
 {- | Linear regression model on individual data points at a time.
