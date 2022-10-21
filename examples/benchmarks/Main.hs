@@ -114,18 +114,18 @@ bench_LDA :: [Int] -> IO ()
 bench_LDA args = do
     let row_header = ("Dataset size", args)
     writeRow fixed_output_file row_header
-    -- benchRow ("LDA-[ ]-SIM-" ++ show fixed_simulations
-    --           , simLDA) row_header
-    -- benchRow ("LDA-[ ]-LW-" ++ show fixed_lw_steps
-    --           , lwLDA fixed_lw_steps) row_header
-    -- benchRow ("LDA-[ ]-MH-" ++ show fixed_mh_steps
-    --           , mhPredLDA fixed_mh_steps) row_header
-    -- benchRow ("LDA-[ ]-SMC-" ++ show fixed_mh_steps
-    --           , smcPredLDA fixed_smc_particles) row_header
-    -- benchRow ("LDA-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
-    --           , rmsmcPredLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
-    -- benchRow ("LDA-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
-    --           , pmmhPredLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
+    benchRow ("LDA-[ ]-SIM-" ++ show fixed_simulations
+              , simLDA) row_header
+    benchRow ("LDA-[ ]-LW-" ++ show fixed_lw_steps
+              , lwLDA fixed_lw_steps) row_header
+    benchRow ("LDA-[ ]-MH-" ++ show fixed_mh_steps
+              , mhPredLDA fixed_mh_steps) row_header
+    benchRow ("LDA-[ ]-SMC-" ++ show fixed_mh_steps
+              , smcPredLDA fixed_smc_particles) row_header
+    benchRow ("LDA-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
+              , rmsmcPredLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
+    benchRow ("LDA-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
+              , pmmhPredLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
     benchRow ("LDA-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
               , bbviLDA fixed_bbvi_steps fixed_bbvi_samples) row_header
 
@@ -233,16 +233,16 @@ runBenchmarks = do
   -- | Run benchmark programs on their corresponding parameters
   case args of
         [lr, hmm, lda, sim, lw, mh, smc, rmsmc, pmmh, bbvi] -> do
-          -- bench_LR lr
-          -- bench_HMM hmm
+          bench_LR lr
+          bench_HMM hmm
           bench_LDA lda
-          -- bench_SIM sim
-          -- bench_LW lw
-          -- bench_MH mh
-          -- bench_SMC smc
-          -- bench_RMSMC rmsmc
-          -- bench_PMMH pmmh
-          -- bench_BBVI bbvi
+          bench_SIM sim
+          bench_LW lw
+          bench_MH mh
+          bench_SMC smc
+          bench_RMSMC rmsmc
+          bench_PMMH pmmh
+          bench_BBVI bbvi
         _   -> error "bad input file"
 
 main :: IO ()
