@@ -39,11 +39,11 @@ import Data.Bifunctor
 -}
 smc2 :: forall env es a xs. (env `ContainsVars` xs)
   => Int                                            -- ^ number of outer SMC particles
-  -> Int                                            -- ^ number of MH steps
+  -> Int                                            -- ^ number of PMMH steps
   -> Int                                            -- ^ number of inner SMC particles
   -> Model env [ObsRW env, Dist, Lift Sampler] a    -- ^ model
   -> Env env                                        -- ^ input environment
-  -> Vars xs                                        -- ^ variable names of model parameters
+  -> Vars xs                                        -- ^ optional observable variable names of interest
   -> Sampler [Env env]                              -- ^ output environments
 smc2 n_outer_particles mh_steps n_inner_particles model env obs_vars = do
   -- | Handle model to probabilistic program
@@ -60,9 +60,9 @@ smc2 n_outer_particles mh_steps n_inner_particles model env obs_vars = do
 -}
 smc2Internal :: ProbSig es
   => Int                                          -- ^ number of outer SMC particles
-  -> Int                                          -- ^ number of MH steps
+  -> Int                                          -- ^ number of PMMH steps
   -> Int                                          -- ^ number of inner SMC particles
-  -> [Tag]                                        -- ^ tags indicating model parameters
+  -> [Tag]                                        -- ^ tags indicating variables of interest
   -> Prog es a                                    -- ^ probabilistic program
   -> Prog es [(a, TracedParticle)]                -- ^ final particle results and contexts
 smc2Internal n_outer_particles mh_steps n_inner_particles tags =
@@ -72,7 +72,11 @@ smc2Internal n_outer_particles mh_steps n_inner_particles tags =
      and then pertrubing their sample traces using PMMH.
 -}
 handleResample :: ProbSig es
-  => Int -> Int -> [String] -> (Prog (Resample es TracedParticle : es) a -> Prog es a)
+  => Int                                           -- ^ number of PMMH steps
+  -> Int                                           -- ^ number of inner SMC particles
+  -> [String]                                      -- ^ tags indicating variables of interest
+  -> Prog (Resample es TracedParticle : es) a
+  -> Prog es a
 handleResample mh_steps n_inner_particles tags = loop where
   loop (Val x) = Val x
   loop (Op op k) = case discharge op of

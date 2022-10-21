@@ -22,8 +22,6 @@ import           Data.List ( transpose )
 import           Data.Functor ( (<&>) )
 import           OpenSum (OpenSum)
 import qualified OpenSum
-import qualified Data.Vec.Lazy as Vec
-import           Data.Vec.Lazy (Vec)
 import qualified Data.Vector as Vector
 import           Data.Vector (Vector)
 import           Numeric.MathFunctions.Constants

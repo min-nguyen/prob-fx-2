@@ -27,23 +27,25 @@ import Effects.Lift ( Lift, lift, handleLift )
 import qualified Inference.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
 
+{- | The @Accept@ effect for proposing samples and accepting/rejecting according a context.
+-}
 data Accept ctx a where
   Propose
     -- | original sample trace
     :: STrace
     -- | original context
     -> ctx
-    -> Accept ctx (Addr, Double)
+    -- | (proposed addresses, proposed sample trace)
+    -> Accept ctx ([Addr], STrace)
   Accept
-    -- | address of proposal site
-    :: Addr
+    -- | address of proposal sites
+    :: [Addr]
     -- | original context
     -> ctx
     -- | context using proposed sample
     -> ctx
     -- | whether the proposal is accepted or not
     -> Accept ctx Bool
-
 
 {- | Template for Accept-Reject inference on a probabilistic program.
 -}
@@ -53,29 +55,29 @@ arLoop :: ProbSig es
    -> (forall es a. ProbSig es => STrace -> Prog es a -> Prog es ((a, ctx), STrace))  -- ^ model handler
    -> (forall es a. ProbSig es => Prog (Accept ctx : es) a -> Prog es a)              -- ^ accept handler
    -> Prog es a                                                                       -- ^ probabilistic program
-   -> Prog es [((a, ctx), STrace)]  -- ^ trace of (accepted outputs, log probabilities), samples)
+   -> Prog es [((a, ctx), STrace)]                                                    -- ^ trace of ((accepted outputs, contexts), samples)
 arLoop n strace hdlModel hdlAccept prog_0 = hdlAccept $ do
-  let mh_prog_0 = weakenProg prog_0
+  let ar_prog_0 = weakenProg prog_0
   -- | Perform initial run of mh
-  mh_ctx_0 <- hdlModel strace mh_prog_0
+  ar_ctx_0 <- hdlModel strace ar_prog_0
   -- | A function performing n mhSteps using initial mh_ctx. The most recent samples are at the front of the trace.
-  foldl (>=>) pure (replicate n (arStep hdlModel mh_prog_0)) [mh_ctx_0]
+  foldl (>=>) pure (replicate n (arStep hdlModel ar_prog_0)) [ar_ctx_0]
 
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
 arStep :: ProbSig es
-  => (forall es a. ProbSig es => STrace -> Prog es a -> Prog es ((a, ctx), STrace))  -- ^ accept handler
+  => (forall es a. ProbSig es => STrace -> Prog es a -> Prog es ((a, ctx), STrace))  -- ^ model handler
   -> Prog (Accept ctx : es) a                                                        -- ^ probabilistic program
-  -> [((a, ctx), STrace)]                                                            -- ^ previous MH trace
-  -> Prog (Accept ctx : es) [((a, ctx), STrace)]                                     -- ^ updated MH trace
+  -> [((a, ctx), STrace)]                                                            -- ^ previous trace
+  -> Prog (Accept ctx : es) [((a, ctx), STrace)]                                     -- ^ updated trace
 arStep hdlModel prog_0 trace = do
   -- | Get previous MH output
-  let mh_ctx@((_, ctx), strace) = head trace
+  let ar_ctx@((_, ctx), strace) = head trace
   -- | Propose a new random value for a sample site
-  (α_samp, r)                  <- call (Propose strace ctx)
+  (prp_αs, prp_strace)         <- call (Propose strace ctx)
   -- | Run MH with proposed value
-  mh_ctx'@((_, ctx'), strace') <- hdlModel (Map.insert α_samp r strace) prog_0
+  ar_ctx'@((_, ctx'), strace') <- hdlModel prp_strace prog_0
   -- | Compute acceptance ratio to see if we use the proposal
-  b                            <- call (Accept α_samp ctx ctx')
-  if b then pure (mh_ctx':trace)
+  b                            <- call (Accept prp_αs ctx ctx')
+  if b then pure (ar_ctx':trace)
        else pure trace
