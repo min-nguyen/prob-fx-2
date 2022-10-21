@@ -94,7 +94,6 @@ handleResampleMul (Op op k) = case discharge op of
     idxs <- replicateM (length ws) $ lift (sample (Categorical ws))
     let resampled_prts = map (prts !! ) idxs
         resampled_ctxs = map (ctxs !! ) idxs
-    liftPrint ("Weights: " ++ show ws)
     (handleResampleMul . k) ((resampled_prts, resampled_ctxs), idxs)
   Left op' -> Op op' (handleResampleMul . k)
 
