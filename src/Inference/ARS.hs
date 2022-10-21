@@ -16,7 +16,7 @@ import Data.Set ((\\))
 import qualified Data.Set as Set
 import Data.Maybe ( fromJust )
 import Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg )
-import Trace ( STrace, LPTrace, filterTrace, traceLogProbs )
+import Trace ( STrace, LPTrace, filterTrace )
 import LogP ( LogP(unLogP) )
 import PrimDist
 import Model ( Model, handleCore, ProbSig )

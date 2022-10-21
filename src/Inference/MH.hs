@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
@@ -20,15 +21,16 @@ import qualified Data.Map as Map
 import Data.Set ((\\))
 import qualified Data.Set as Set
 import Data.Maybe ( fromJust )
-import Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg )
-import Trace ( STrace, LPTrace, filterTrace, traceLogProbs )
+import Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg, weaken )
+import Trace ( STrace, LPTrace, filterTrace )
 import LogP ( LogP(unLogP) )
 import PrimDist
 import Model ( Model, handleCore, ProbSig )
 import Effects.ObsRW ( ObsRW )
 import Env ( ContainsVars(..), Vars, Env )
-import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr )
+import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr, pattern SampPrj, pattern ObsPrj )
 import Effects.Lift ( Lift, lift, handleLift )
+import Effects.State
 import qualified Inference.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
 import Inference.ARS
@@ -133,3 +135,15 @@ propose tags n_proposals strace = do
   rs <- replicateM n_proposals sampleRandom
   let strace' = Map.union (Map.fromList (zip αs rs)) strace
   return (αs, strace')
+
+{- | Insert stateful operations for recording the log-probabilities at each @Sample@ or @Observe@ operation.
+-}
+traceLogProbs :: (Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)
+traceLogProbs = handleState Map.empty . storeLPs
+  where storeLPs :: (Member Sample es, Member Observe es) => Prog es a -> Prog (State LPTrace: es) a
+        storeLPs (Val x) = pure x
+        storeLPs (Op op k) = do
+          case op of
+            SampPrj d α  -> Op (weaken op) (\x -> modify (Map.insert α (logProb d x)) >> storeLPs (k x))
+            ObsPrj d y α -> Op (weaken op) (\x -> modify (Map.insert α (logProb d x)) >> storeLPs (k x))
+            _ -> Op (weaken op) (storeLPs . k)

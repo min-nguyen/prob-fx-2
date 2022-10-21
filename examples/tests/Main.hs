@@ -3,7 +3,7 @@ module Main (main) where
 import Test.HUnit
 import System.Exit
 import Test.Inference ( testInference )
-import Test.PDF ( testLogPdfs )
+import Test.Numerics ( testLogPdfs )
 
 
 main :: IO ()
