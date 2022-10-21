@@ -266,7 +266,6 @@ instance DiffDistribution HalfCauchy where
 
 -- | Dirichlet(αs)
 --   @αs@ concentrations
-
 newtype Dirichlet (n :: Nat) = Dirichlet (Vec n Double)
   deriving Show
 

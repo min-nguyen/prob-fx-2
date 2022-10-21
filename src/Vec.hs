@@ -11,9 +11,11 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Vec (module Vec, module GHC.TypeNats, module Data.Vector) where
 
+import Data.Maybe
 import           Data.Proxy
 import           GHC.TypeNats
 import qualified Data.Vector as Vector
@@ -23,19 +25,24 @@ import           Data.Vector (Vector)
 newtype Vec (n :: Nat) a = UnsafeMkVec { getVector :: Vector a }
     deriving (Show, Foldable)
 
-
-
 mkVec :: forall n a. KnownNat n => Vector a -> Maybe (Vec n a)
 mkVec v | length v == l = Just (UnsafeMkVec v)
         | otherwise     = Nothing
   where
     l = fromIntegral (natVal (Proxy @n))
 
+
 fromList :: forall n a. KnownNat n => [a] -> Maybe (Vec n a)
 fromList = mkVec . Vector.fromList
 
-toList :: forall n a. KnownNat n => Vec n a -> [a]
+fromList' :: forall n a. KnownNat n => [a] -> Vec n a
+fromList' = fromJust . fromList
+
+toList :: forall n a. Vec n a -> [a]
 toList (UnsafeMkVec xs) = Vector.toList xs
+
+toList2d :: forall n m a. (KnownNat n, KnownNat m) => Vec m (Vec n a) -> [[a]]
+toList2d (UnsafeMkVec xs) = Vector.toList $ Vector.map toList xs
 
 zipWith :: (a -> b -> c) -> Vec n a -> Vec n b -> Vec n c
 zipWith f (UnsafeMkVec xs) (UnsafeMkVec ys) = UnsafeMkVec (Vector.zipWith f xs ys)
@@ -48,6 +55,9 @@ replicate n a = mkVec (Vector.replicate n a)
 
 replicateNat :: forall n a . KnownNat n => Proxy n -> a -> Vec n a
 replicateNat n a = UnsafeMkVec (Vector.replicate (fromIntegral $ natVal (Proxy @n)) a)
+
+replicateM :: forall m n a. Monad m => Int -> m a -> m (Vec n a)
+replicateM n a = fmap UnsafeMkVec (Vector.replicateM n a)
 
 replicateMNat :: forall m n a . Monad m => KnownNat n => Proxy n -> m a -> m (Vec n a)
 replicateMNat n a = fmap UnsafeMkVec (Vector.replicateM (fromIntegral $ natVal (Proxy @n)) a)
