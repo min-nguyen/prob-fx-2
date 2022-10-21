@@ -16,28 +16,29 @@
 
 module PrimDist where
 
-import Debug.Trace ( trace )
-import Data.Kind ( Constraint )
-import Data.Map (Map)
-import Data.List
-import Data.Functor ( (<&>) )
-import OpenSum (OpenSum)
-import qualified Data.Vector as V
+import           Debug.Trace ( trace )
+import           Data.Kind ( Constraint )
+import           Data.List ( transpose )
+import           Data.Functor ( (<&>) )
+import           OpenSum (OpenSum)
 import qualified OpenSum
-import Numeric.MathFunctions.Constants
-    ( m_eulerMascheroni, m_neg_inf, m_sqrt_2_pi, m_sqrt_2, m_pos_inf )
-import Numeric.SpecFunctions (
-  incompleteBeta, invIncompleteBeta, logBeta, logGamma, digamma, log1p, logChoose, logFactorial, invErfc, invIncompleteGamma)
-import Sampler
-import LogP ( LogP(..) )
-import Numeric.Log ( Log(..) )
-import Control.Monad ((>=>), replicateM)
-import Data.Typeable ( Typeable )
-import GHC.Real (infinity)
-import Data.Bifunctor (second)
-import Util ( linCongGen, boolToInt, mean, covariance, variance )
+import qualified Data.Vec.Lazy as Vec
+import           Data.Vec.Lazy (Vec)
+import qualified Data.Vector as Vector
+import           Data.Vector (Vector)
+import           Numeric.MathFunctions.Constants
+  ( m_eulerMascheroni, m_neg_inf, m_sqrt_2_pi, m_sqrt_2, m_pos_inf )
+import           Numeric.SpecFunctions
+  ( incompleteBeta, invIncompleteBeta, logBeta, logGamma, digamma, log1p, logChoose, logFactorial, invErfc, invIncompleteGamma)
+import           Sampler
+import           LogP ( LogP(..) )
+import           Control.Monad ((>=>), replicateM)
+import           Data.Typeable ( Typeable )
+import           Util ( linCongGen, boolToInt, mean, covariance, variance )
 
-{- import qualified Control.Monad.Bayes.Class as MB -}
+{- import qualified Control.Monad.Bayes.Class as MB
+   import           Numeric.Log ( Log(..) )
+-}
 
 {- Distributions that can be sampled from and conditioned against.
 -}
@@ -539,7 +540,7 @@ instance Distribution Categorical where
   sampleInv (Categorical ps) = invCMF (ps !!)
 
   sample :: Categorical -> Sampler Int
-  sample (Categorical ps) = sampleCategorical (V.fromList ps)
+  sample (Categorical ps) = sampleCategorical (Vector.fromList ps)
 
   logProbRaw :: Categorical -> Int -> Double
   logProbRaw (Categorical ps) idx

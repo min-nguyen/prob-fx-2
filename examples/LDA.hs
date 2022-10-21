@@ -231,9 +231,9 @@ bbviLDA t_steps l_samples n_words = do
 
   traceQ <- BBVI.bbvi t_steps l_samples (topicModel vocab n_topics n_words) env_in
   -- Draw the most recent sampled parameters
-  let θ_dist     = toList . fromJust $ dlookup (Key ("θ", 0) :: DKey Dirichlet) traceQ
-      φ0_dist    = toList . fromJust $ dlookup (Key ("φ", 0) :: DKey Dirichlet) traceQ
-      φ1_dist    = toList . fromJust $ dlookup (Key ("φ", 1) :: DKey Dirichlet) traceQ
+  let θ_dist     = toList . fromJust $ dlookup (DKey ("θ", 0) :: DKey Dirichlet) traceQ
+      φ0_dist    = toList . fromJust $ dlookup (DKey ("φ", 0) :: DKey Dirichlet) traceQ
+      φ1_dist    = toList . fromJust $ dlookup (DKey ("φ", 1) :: DKey Dirichlet) traceQ
   return (θ_dist, φ0_dist, φ1_dist)
 
 {- | Executing the topic model using monad-bayes.

@@ -29,8 +29,8 @@ module Trace (
   , GTrace
   -- * Dist trace
   , DTrace
-  , DKey
-  , unKey
+  , DKey(..)
+  , Some(..)
   , dempty
   , dkeys
   , dinsert
@@ -38,9 +38,7 @@ module Trace (
   , dlookupDefault
   , dlookupOrInsert
   , dintersectLeftWith
-  , dmap
-  , Key(..)
-  , Some(..)) where
+  , dmap) where
 
 import Type.Reflection
     ( Typeable, type (:~~:)(HRefl), eqTypeRep, typeRep )
@@ -108,36 +106,33 @@ instance {-# OVERLAPPING #-} Show [DTrace] where
 instance Show DTrace where
   show :: DTrace -> String
   show Leaf = ""
-  show (Node (Key var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ") "
+  show (Node (DKey var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ") "
                                  ++ show l
                                  ++ show r
     where showNewline Leaf  = ""
           showNewline node  = "\n" ++ show node
 
-type DKey = Key Addr
-
-data Key s a where
-  Key :: forall s a. (Ord s, Typeable a) => s -> Key s a
+{-
+-}
+data DKey a where
+  DKey :: forall a. (Typeable a) => Addr -> DKey a
   deriving (Typeable)
 
-unKey :: Key s a -> s
-unKey (Key α) = α
+instance Show (DKey a) where
+  show :: DKey a -> String
+  show (DKey s) = show s
 
-instance Show s => Show (Key s a) where
-  show :: Key s a -> String
-  show (Key s) = show s
+instance Eq (DKey  a) where
+  (==) :: DKey a -> DKey a -> Bool
+  DKey a == DKey b = a == b
 
-instance Eq (Key s a) where
-  (==) :: Key s a -> Key s a -> Bool
-  Key a == Key b = a == b
+instance Ord (DKey a) where
+  compare :: DKey a -> DKey a -> Ordering
+  compare (DKey s1) (DKey s2) = compare s1 s2
 
-instance Ord (Key s a) where
-  compare :: Key s a -> Key s a -> Ordering
-  compare (Key s1) (Key s2) = compare s1 s2
-
-instance Ord s => HeteroOrd (Key s) where
-  hCompare :: Key s a -> Key s b -> Ordering
-  hCompare (Key s1) (Key s2) = compare s1 s2
+instance HeteroOrd DKey where
+  hCompare :: DKey a -> DKey b -> Ordering
+  hCompare (DKey s1) (DKey s2) = compare s1 s2
 
 instance (HeteroOrd k, Typeable a, Typeable b) => TrueOrd k a b where
   trueCompare :: k a -> k b -> TrueOrdering a b
@@ -178,10 +173,8 @@ dlookup kx = go where
          TrueGT       -> go r
 
 -- | Insert a new entry
-dinsert :: forall d. DiffDistribution d => Addr -> d -> DTrace  -> DTrace
-dinsert α d = go where
-  kx :: DKey d
-  kx = Key α
+dinsert :: forall d. DiffDistribution d => DKey d -> d -> DTrace  -> DTrace
+dinsert kx d = go where
   go :: DTrace -> DTrace
   go Leaf = dsingleton kx d
   go (Node ky y l r) = case trueCompare kx ky
@@ -199,9 +192,8 @@ dupdate kx f = go where
          TrueLT       -> Node ky y (go l) r
          TrueGT       -> Node ky y l (go r)
 
-dlookupDefault :: Typeable d => Addr -> DTrace -> d -> d
-dlookupDefault α dmap def = fromMaybe def (dlookup kx dmap)
-  where kx = Key α
+dlookupDefault :: Typeable d => DKey d -> DTrace -> d -> d
+dlookupDefault kx dmap def = fromMaybe def (dlookup kx dmap)
 
 -- | Return the entry if it exists, otherwise insert a new entry
 dlookupOrInsert :: forall d a. DiffDistribution d => DKey d -> d -> DTrace -> (d, DTrace)
