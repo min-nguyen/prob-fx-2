@@ -49,7 +49,7 @@ benchRow :: NFData a
 benchRow (prog_name, prog) (_, params) = do
   putStrLn ("Running " ++ prog_name ++ " over " ++ show params)
   -- Run program over varying parameter values and write e.g. "LinRegr-MH100, 0.23, 0.87, 1.23, 1.78, 2.45"
-  means <- mapM (benchMean . sampleIO . prog) params
+  means <- mapM (benchMean . sampleIOFixed . prog) params
   writeRow fixed_output_file (prog_name, means)
 
 {- | Varying over dataset size

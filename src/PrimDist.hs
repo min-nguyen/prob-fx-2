@@ -296,7 +296,7 @@ instance DiffDistribution Dirichlet where
     where derivA a x  = -(digamma a) + digamma (sum αs) + log x
           derivX a x = (a - 1) / x
 
-  safeAddGrad :: Dirichlet ->Dirichlet -> Dirichlet
+  safeAddGrad :: Dirichlet -> Dirichlet -> Dirichlet
   safeAddGrad (Dirichlet αs) (Dirichlet dαs) = Dirichlet (zipWith add_dα αs dαs)
     where add_dα α dα = let α_new = α + dα in if α_new <= 0 then α else α_new
 
