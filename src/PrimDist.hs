@@ -117,6 +117,8 @@ class Distribution d => DiffDistribution d where
     where gs'       = map toList gs   -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
           params_gs = transpose gs'   -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
 
+
+-- | Beta(α, β)
 data Beta = Beta Double Double
   deriving Show
 
@@ -222,7 +224,7 @@ newtype HalfCauchy = HalfCauchy Double
 instance Distribution HalfCauchy where
   type Support HalfCauchy = Double
 
-  sampleInv :: HalfCauchy -> Double -> Double
+  sampleInv :: HalfCauchy -> Double ->  Double
   sampleInv (HalfCauchy scale) r = abs $ sampleInv (Cauchy 0 scale) r
 
   sample :: HalfCauchy -> Sampler Double

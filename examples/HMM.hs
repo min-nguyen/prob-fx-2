@@ -25,10 +25,15 @@ import Inference.SIM as SIM ( simulate )
 import Inference.RMSMC as RMSMC ( rmsmc )
 import Inference.PMMH as PMMH ( pmmh )
 import Inference.SMC2 as SMC2 ( smc2 )
-import Model ( Model, bernoulli', binomial, uniform )
-import Prog ( Member )
+import Inference.BBVI as BBVI
+import Model ( Model (..), bernoulli', binomial, uniform, beta )
+import Prog ( Member, LastMember )
 import Sampler ( Sampler, liftIO )
 import Util (boolToInt)
+import Effects.Lift
+import Trace
+import PrimDist
+import Data.Maybe
 {-
 import Numeric.Log ( Log )
 import Inference.MB as MB ( handleMBayes )
@@ -47,17 +52,18 @@ type HMMEnv =
 
 {- | HMM as a loop.
 -}
-hmmFor :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
+hmmFor :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double
+          , LastMember (Lift Sampler) es)
   -- | number of HMM nodes
   => Int
   -- | initial HMM latent state
   -> Int
   -- | final HMM latent state
-  -> Model env ts Int
+  -> Model env es Int
 hmmFor n x = do
   -- Draw transition and observation parameters from prior distributions
-  trans_p <- uniform 0 1 #trans_p
-  obs_p   <- uniform 0 1 #obs_p
+  trans_p <- beta 2 5 #trans_p
+  obs_p   <- beta 2 5 #obs_p
   -- Iterate over @n@ HMM nodes
   let hmmLoop i x_prev | i < n = do
                             -- transition to next latent state
@@ -113,16 +119,16 @@ hmmNode transition_p observation_p x_prev = do
   return x_i
 
 -- | Chain of HMM nodes
-hmm :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
+hmm :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double, LastMember (Lift Sampler) es)
   -- | number of HMM nodes
   => Int
   -- | initial latent state
   -> Int
   -- | final latent state
-  -> Model env ts Int
+  -> Model env es Int
 hmm n x = do
-  trans_p <- uniform 0 1 #trans_p
-  obs_p   <- uniform 0 1 #obs_p
+  trans_p <- beta 2 2 #trans_p
+  obs_p   <- beta 2 2 #obs_p
   foldr (>=>) return (replicate n (hmmNode trans_p obs_p)) x
 
 -- | Simulate from a HMM
@@ -197,7 +203,8 @@ hmmNodeW transition_p observation_p x_prev = do
 
 hmmW :: ( Observable env "y" Int
         , Observables env '["obs_p", "trans_p"] Double
-        , Member (Writer [Int]) es)
+        , Member (Writer [Int]) es
+        , LastMember (Lift Sampler) es)
   -- | number of HMM nodes
   => Int
   -- | initial latent state
@@ -205,8 +212,8 @@ hmmW :: ( Observable env "y" Int
   -- | final latent state
   -> Model env es Int
 hmmW n x = do
-  trans_p <- uniform 0 1 #trans_p
-  obs_p   <- uniform 0 1 #obs_p
+  trans_p <- beta 2 2 #trans_p
+  obs_p   <- beta 2 2 #obs_p
   foldl (>=>) pure  (replicate n (hmmNodeW trans_p obs_p)) x
 
 -- | Simulate from a HMM
@@ -230,8 +237,8 @@ lwHMMw
   :: Int
   -- | number of HMM nodes
   -> Int
-  -- | [(transition parameter, likelihood-weighting)]
-  -> Sampler ([Double], [Double])
+  -- | [(transition parameter, observation parameter, likelihood-weighting)]
+  -> Sampler ([Double], [Double], [Double])
 lwHMMw lw_samples hmm_length = do
   -- Simulate a trace of observations from the HMM
   ys <- map snd <$> simHMMw hmm_length
@@ -241,7 +248,8 @@ lwHMMw lw_samples hmm_length = do
   (env_outs, ws) <- unzip <$> LW.lw lw_samples (handleWriterM @[Int] $ hmmW hmm_length 0) env_in
   -- Get the trace of sampled transition and observation parameters
   let trans_ps    = concatMap (get #trans_p) env_outs
-  pure (trans_ps, ws)
+      obs_ps      = concatMap (get #obs_p) env_outs
+  pure (trans_ps, obs_ps, ws)
 
 -- | Metropolis-Hastings inference over a HMM
 mhHMMw
@@ -341,6 +349,25 @@ smc2HMMw n_outer_particles n_mhsteps n_inner_particles  hmm_length = do
   let trans_ps    = concatMap (get #trans_p) env_outs
       obs_ps      = concatMap (get #obs_p) env_outs
   pure (trans_ps, obs_ps)
+
+-- | BBVI inference over a HMM
+bbviHMMw
+  -- | number of optimisation steps
+  :: Int
+  -- | number of samples to estimate gradients over
+  -> Int
+  -- | number of HMM nodes
+  -> Int
+  -- | (transition beta parameters, observation beta parameters)
+  -> Sampler ([Double], [Double])
+bbviHMMw t_steps l_samples hmm_length = do
+  ys <- map snd <$> simHMMw hmm_length
+  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
+
+  traceQ <- BBVI.bbvi t_steps l_samples (hmm hmm_length 0) env_in
+  let trans_dist = toList . fromJust $ dlookup (Key ("trans_p", 0) :: DKey Beta) traceQ
+      obs_dist   = toList . fromJust $ dlookup (Key ("obs_p", 0)   :: DKey Beta) traceQ
+  pure (trans_dist, obs_dist)
 
 {- | Interfacing the HMM on top of Monad Bayes.
 

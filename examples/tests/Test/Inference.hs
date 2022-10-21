@@ -56,6 +56,11 @@ testSmc2LinRegr = TestCase $ do
   output <- sampleIOFixed (smc2LinRegr 20 20 20 30)
   assertEqual "Testing (smc2LinRegr 20 20 20 30)"  smc2LinRegrExpected output
 
+testBbviLinRegr :: Test
+testBbviLinRegr = TestCase $ do
+  output <- sampleIOFixed (bbviLinRegr 200 40 8)
+  assertEqual "Testing (bbviLinRegr 200 40 8)"  bbviLinRegrExpected output
+
 testSimLogRegrOnce :: Test
 testSimLogRegrOnce = TestCase $ do
   output <- sampleIOFixed (simLogRegrOnce 50)
@@ -103,8 +108,8 @@ testMhHMMw = TestCase $ do
 
 testSmcHMMw :: Test
 testSmcHMMw = TestCase $ do
-  output <- sampleIOFixed (smcHMMw 80 30)
-  assertEqual "Testing (smcHMMw 80 30)"  smcHMMwExpected output
+  output <- sampleIOFixed (smcHMMw 200 30)
+  assertEqual "Testing (smcHMMw 200 30)"  smcHMMwExpected output
 
 testRmsmcHMMw :: Test
 testRmsmcHMMw = TestCase $ do
@@ -113,13 +118,18 @@ testRmsmcHMMw = TestCase $ do
 
 testPmmhHMMw :: Test
 testPmmhHMMw = TestCase $ do
-  output <- sampleIOFixed (pmmhHMMw 400 20 30)
-  assertEqual "Testing (pmmhHMMw 400 20 30)"  pmmhHMMwExpected output
+  output <- sampleIOFixed (pmmhHMMw 1000 10 30)
+  assertEqual "Testing (pmmhHMMw 1000 10 30)"  pmmhHMMwExpected output
 
 testSmc2HMMw :: Test
 testSmc2HMMw = TestCase $ do
   output <- sampleIOFixed (smc2HMMw 20 20 20 30)
   assertEqual "Testing (smc2HMMw 20 20 20 300)"  smc2HMMwExpected output
+
+testBbviHMMw :: Test
+testBbviHMMw = TestCase $ do
+  output <- sampleIOFixed (bbviHMMw 1000 50 20)
+  assertEqual "Testing (bbviHMMw 1000 50 20)"  bbviHMMwExpected output
 
 testSimSIR :: Test
 testSimSIR = TestCase $ do
@@ -159,7 +169,12 @@ testPmmhPredLDA = TestCase $ do
 testSmc2PredLDA :: Test
 testSmc2PredLDA = TestCase $ do
   output <- sampleIOFixed (smc2PredLDA 20 20 20 50)
-  assertEqual "Testing smc2PredLDA 20 20 20 50)"  smc2PredLDAExpected output
+  assertEqual "Testing (smc2PredLDA 20 20 20 50)"  smc2PredLDAExpected output
+
+testBbviLDA :: Test
+testBbviLDA = TestCase $ do
+  output <- sampleIOFixed (bbviLDA 200 20 50)
+  assertEqual "Testing (bbviLDA 200 20 50)"  bbviLDAExpected output
 
 testSimRadon :: Test
 testSimRadon = TestCase $ do
@@ -204,6 +219,7 @@ testInference = TestList
  , testRmsmcLinRegr
  , testPmmhLinRegr
  , testSmc2LinRegr
+ , testBbviLinRegr
  , testSimLogRegrOnce
  , testLwLogRegrOnce
  , testMhLogRegrOnce
@@ -217,6 +233,7 @@ testInference = TestList
  , testRmsmcHMMw
  , testPmmhHMMw
  , testSmc2HMMw
+ , testBbviHMMw
  , testSimSIR
  , testMhSIR
  , testSimLDA
@@ -225,6 +242,7 @@ testInference = TestList
  , testRmsmcPredLDA
  , testPmmhPredLDA
  , testSmc2PredLDA
+ , testBbviLDA
  , testSimRadon
  , testMhRadon
  , testMhPredRadon

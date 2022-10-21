@@ -13,10 +13,12 @@
 module LDA where
 
 import Model ( Model, dirichlet, discrete, categorical' )
-import Sampler ( Sampler, sampleUniformD )
+import Sampler ( Sampler, sampleUniformD, liftIO )
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
+import Trace
+import PrimDist
 import Inference.SIM as SIM ( simulate )
 import Inference.LW as LW ( lw )
 import Inference.MH as MH ( mh )
@@ -24,6 +26,8 @@ import Inference.SMC as SMC ( smc )
 import Inference.RMSMC as RMSMC ( rmsmc )
 import Inference.PMMH as PMMH ( pmmh )
 import Inference.SMC2 as SMC2 ( smc2 )
+import Inference.BBVI as BBVI
+import Data.Maybe
 {-
 import Numeric.Log ( Log )
 import Inference.MB as MB ( handleMBayes )
@@ -217,6 +221,20 @@ smc2PredLDA n_outer_particles n_mhsteps n_inner_particles n_words = do
       θs         = get #θ env_pred
       φs         = get #φ env_pred
   return (θs, φs)
+
+-- | BBVI inference on topic model
+bbviLDA :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double])
+bbviLDA t_steps l_samples n_words = do
+
+  let n_topics  = 2
+      env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+
+  traceQ <- BBVI.bbvi t_steps l_samples (topicModel vocab n_topics n_words) env_in
+  -- Draw the most recent sampled parameters
+  let θ_dist     = toList . fromJust $ dlookup (Key ("θ", 0) :: DKey Dirichlet) traceQ
+      φ0_dist    = toList . fromJust $ dlookup (Key ("φ", 0) :: DKey Dirichlet) traceQ
+      φ1_dist    = toList . fromJust $ dlookup (Key ("φ", 1) :: DKey Dirichlet) traceQ
+  return (θ_dist, φ0_dist, φ1_dist)
 
 {- | Executing the topic model using monad-bayes.
 
