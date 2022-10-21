@@ -5,6 +5,8 @@ from matplotlib.ticker import AutoMinorLocator
 import ast
 from sklearn import linear_model
 from scipy.special import expit
+from scipy.stats import beta
+from scipy.stats import norm
 import numpy as np
 from scipy.interpolate import make_interp_spline
 
@@ -31,7 +33,6 @@ def main():
     plt.xlabel('x data points')
     plt.ylabel('y data points')
     plt.title('Linear regression')
-
   if arg in ["lwLinRegrOnce", "lwLinRegr"]:
     mus = [d[0] for d in data]
     ps  = [d[1] for d in data]
@@ -54,6 +55,23 @@ def main():
     axs1.set_ylabel("frequency")
     axs1.hist(cs, bins=25)
     axs1.set_title('Linear regression - Metropolis Hastings')
+  if arg in ["bbviLinRegr"]:
+    mu_mean = data[0][0]
+    mu_std  = data[0][1]
+    c_mean  = data[1][0]
+    c_std   = data[1][1]
+
+    x_mu = np.linspace(mu_mean - 3*mu_std, mu_mean + 3*mu_std, 100)
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.plot(x_mu, norm.pdf(x_mu, mu_mean, mu_std))
+    axs1.set_title('Linear regression BBVI - Mu distribution')
+
+    x_c = np.linspace(c_mean - 3*c_std, c_mean + 3*c_std, 100)
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.plot(x_c, norm.pdf(x_c, c_mean, c_std))
+    axs2.set_title('Linear regression BBVI - C distribution')
+
+    plt.show()
 
   if arg in ["simSIR", "simSIRS"]:
     # y axis
@@ -86,7 +104,6 @@ def main():
     plt.xlim([0,100])
     plt.ylim([0,800])
     plt.legend()
-
   if arg == "simSIRSV":
     # y axis
     sirv_values   = np.array(data[0])
@@ -122,7 +139,6 @@ def main():
     plt.xlim([0,100])
     plt.ylim([0,800])
     plt.legend()
-
   if arg == "mhSIR":
     rhos_unique   = data[0]
     betas_unique  = data[1]
@@ -153,7 +169,6 @@ def main():
     plt.xlabel('x - axis')
     plt.ylabel('y - axis')
     plt.title('Logistic regression simulation')
-
   if arg in ["lwLogRegrOnce", "lwLogRegr"]:
     mus = [d[0][0] for d in data]
     bs  = [d[0][1] for d in data]
@@ -167,7 +182,6 @@ def main():
     axs2.set_ylabel('probability')
     axs2.scatter(bs, ps)
     axs2.set_title('Logistic regression - Likelihood Weighting')
-
   if arg in ["mhLogRegrOnce", "mhLogRegr"]:
     mu_samples = data[0]
     b_samples  = data[1]
@@ -222,6 +236,24 @@ def main():
     axs2.hist(obs_ps_unique, bins=50)
     axs2.set_title('HMM - Metropolis Hastings Posterior (Obs Idx)')
     plt.show()
+  if arg in ["bbviHMM"]:
+    trans_alpha = data[0][0]
+    trans_beta  = data[0][1]
+    obs_alpha   = data[1][0]
+    obs_beta    = data[1][1]
+    x_trans = np.linspace(beta.ppf(0.01, trans_alpha, trans_beta), beta.ppf(0.99, trans_alpha, trans_beta), 100)
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.plot(x_trans, beta.pdf(x_trans, trans_alpha, trans_beta), 'r-')
+    plt.title('BBVI - Transition Beta Distribution')
+    plt.xlabel('Values of Random Variable X (0, 1)')
+    plt.ylabel('Probability')
+    x_obs = np.linspace(beta.ppf(0.01, obs_alpha, obs_beta), beta.ppf(0.99, obs_alpha, obs_beta), 100)
+    fig2, axs2 = plt.subplots(nrows=1)
+    axs2.plot(x_obs, beta.pdf(x_obs, obs_alpha, obs_beta), 'r-')
+    plt.title('BBVI - Observation Beta Distribution')
+    plt.xlabel('Values of Random Variable X (0, 1)')
+    plt.ylabel('Probability')
+    plt.show()
 
   if arg == "simLDA":
     words = list(np.array(data).ravel())
@@ -243,6 +275,20 @@ def main():
     _, ax1 = plt.subplots(nrows=1)
     ax1.bar(ws, topic_1s, 0.8)
     plt.title('Topic-Word Distribution 1')
+  if arg in ["bbviLDA"]:
+    ws       = ['DNA', 'evolution', 'parsing', 'phonology']
+    topic_ps = data[0]
+    topic_0s = data[1]
+    topic_1s = data[2]
+    _, ax = plt.subplots(nrows=1)
+    ax.bar(['Topic 0', 'Topic 1'], topic_ps, 0.8)
+    plt.title('Document-Topic Dirichlet Concentrations')
+    _, ax0 = plt.subplots(nrows=1)
+    ax0.bar(ws, topic_0s, 0.8)
+    plt.title('Topic-Word Dirichlet Concentrations 0')
+    _, ax1 = plt.subplots(nrows=1)
+    ax1.bar(ws, topic_1s, 0.8)
+    plt.title('Topic-Word Dirichlet Concentrations 1')
 
   if arg == "simRadon":
     basement_ys   = data[0]

@@ -27,6 +27,8 @@ import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
 import Effects.Lift
+import PrimDist
+import Data.Maybe
 {-
 import Numeric.Log ( Log )
 import Inference.MB as MB ( handleMBayes )
@@ -152,13 +154,14 @@ smc2LinRegr n_outer_particles n_mhsteps n_inner_particles  n_datapoints = do
   pure (mus, cs)
 
 -- | BBVI over linear regression
-bbviLinRegr :: Int -> Int -> Sampler DTrace
-bbviLinRegr t_steps l_samples = do
-  let xs            = [1 .. 5]
-      env_in        = (#y := [-2*x + 2| x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+bbviLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+bbviLinRegr t_steps l_samples n_datapoints = do
+  let xs            = [1 .. fromIntegral n_datapoints]
+      env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- BBVI.bbvi t_steps l_samples (linRegr xs) env_in
-  liftIO . print $ "Final proposals after T = " ++ show t_steps ++ " iterations"
-  pure traceQ
+  let m_dist = toList . fromJust $ dlookup (Key ("m", 0) :: DKey Normal) traceQ
+      c_dist = toList . fromJust $ dlookup (Key ("c", 0) :: DKey Normal) traceQ
+  pure (m_dist, c_dist)
 
 
 {- | Linear regression model on individual data points at a time.

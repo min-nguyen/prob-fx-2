@@ -72,11 +72,11 @@ bbviStep l_samples bbvi_prog traceQ = do
   let δelbos  = estELBOs l_samples logWs traceGs
   -- | Update the parameters of the proposal distributions Q
       traceQ' = optimizeParams 1.0 traceQ δelbos
- {- liftPutStrLn $ "Proposal Distributions Q:\n" ++ show traceQ ++ "\n"
-    liftPutStrLn $ "Gradient Log-Pdfs G_l for {1:L}:\n" ++ show traceGs ++ "\n"
-    liftPutStrLn $ "Log Importance Weights logW_l for {1:L}:\n" ++ show logWs ++ "\n"
-    liftPutStrLn $ "ELBO Grad Estimate g:\n" ++ show elbos ++ "\n"
-    liftPutStrLn $ "Updated Proposal Distributions Q':\n" ++ show traceQ' ++ "\n" -}
+  -- liftPutStrLn $ "Proposal Distributions Q:\n" ++ show traceQ ++ "\n"
+  -- liftPutStrLn $ "Gradient Log-Pdfs G_l for {1:L}:\n" ++ show traceGs ++ "\n"
+  -- liftPutStrLn $ "Log Importance Weights logW_l for {1:L}:\n" ++ show logWs ++ "\n"
+  -- liftPutStrLn $ "ELBO Grad Estimate g:\n" ++ show δelbos ++ "\n"
+  -- liftPutStrLn $ "Updated Proposal Distributions Q':\n" ++ show traceQ' ++ "\n"
   pure (zip as logWs, traceQ')
 
 {- | One iteration of model execution under BBVI.

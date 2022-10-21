@@ -30,6 +30,7 @@ parseArgs cmd = case cmd of
   "rmsmcLinRegr"  -> sampleIOFixed (rmsmcLinRegr 20 200 20) >>= printThenWrite
   "pmmhLinRegr"  -> sampleIOFixed (pmmhLinRegr 1000 20 30) >>= printThenWrite
   "smc2LinRegr"  -> sampleIOFixed (smc2LinRegr 20 20 20 30) >>= printThenWrite
+  "bbviLinRegr"   -> sampleIOFixed (bbviLinRegr 200 40 8) >>= printThenWrite
 
   "simLogRegrOnce"  -> sampleIOFixed (simLogRegrOnce 50) >>= printThenWrite
   "lwLogRegrOnce"   -> sampleIOFixed (lwLogRegrOnce 10 10) >>= printThenWrite
@@ -42,22 +43,24 @@ parseArgs cmd = case cmd of
   "simHMM"      -> sampleIOFixed (simHMMw 20) >>= printThenWrite
   "lwHMM"       -> sampleIOFixed (lwHMMw 200 20) >>= printThenWrite
   "mhHMM"       -> sampleIOFixed (mhHMMw 5000 20) >>= printThenWrite
-  "smcHMM"      -> sampleIOFixed (smcHMMw 100 30) >>= printThenWrite
+  "smcHMM"      -> sampleIOFixed (smcHMMw 200 30) >>= printThenWrite
   "rmsmcHMM"    -> sampleIOFixed (rmsmcHMMw 20 50 30) >>= printThenWrite
   "pmmhHMM"     -> sampleIOFixed (pmmhHMMw 1000 10 30) >>= printThenWrite
-  "smc2HMM"  -> sampleIOFixed (smc2HMMw 20 20 20 30) >>= printThenWrite
+  "smc2HMM"     -> sampleIOFixed (smc2HMMw 20 20 20 30) >>= printThenWrite
+  "bbviHMM"     -> sampleIOFixed (bbviHMMw 1000 50 20) >>= printThenWrite
 
   "simSIR"      -> sampleIOFixed (simSIR 100) >>= printThenWrite
   "simSIRS"     -> sampleIOFixed (simSIRS 100) >>= printThenWrite
   "simSIRSV"    -> sampleIOFixed (simSIRSV 100) >>= printThenWrite
   "mhSIR"       -> sampleIOFixed (mhSIR 1000 100) >>= printThenWrite
 
-  "simLDA"      -> sampleIOFixed (simLDA 100) >>= printThenWrite
-  "mhPredLDA"   -> sampleIOFixed (mhPredLDA 500 100) >>= printThenWrite
-  "smcPredLDA"  -> sampleIOFixed (smcPredLDA 100 100) >>= printThenWrite
-  "rmsmcPredLDA"  -> sampleIOFixed (rmsmcPredLDA 10 30 100) >>= printThenWrite
+  "simLDA"       -> sampleIOFixed (simLDA 100) >>= printThenWrite
+  "mhPredLDA"    -> sampleIOFixed (mhPredLDA 500 100) >>= printThenWrite
+  "smcPredLDA"   -> sampleIOFixed (smcPredLDA 100 100) >>= printThenWrite
+  "rmsmcPredLDA" -> sampleIOFixed (rmsmcPredLDA 10 30 100) >>= printThenWrite
   "pmmhPredLDA"  -> sampleIOFixed (pmmhPredLDA 100 20 100) >>= printThenWrite
   "smc2PredLDA"  -> sampleIOFixed (smc2PredLDA 20 20 20 50) >>= printThenWrite
+  "bbviLDA"      -> sampleIOFixed (bbviLDA 200 20 50) >>= printThenWrite
 
   "simRadon"    -> sampleIOFixed simRadon >>= printThenWrite
   "mhRadon"     -> sampleIOFixed (mhRadon 1000) >>= printThenWrite
