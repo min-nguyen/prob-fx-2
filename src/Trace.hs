@@ -57,6 +57,7 @@ import PrimDist
 import Effects.State ( State, modify, handleState )
 import Util
 import TyCompare
+import Prog (Member(..))
 
 {- | The type of generic traces, mapping addresses of probabilistic operations
      to some data.
