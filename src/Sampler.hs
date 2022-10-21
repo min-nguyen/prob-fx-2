@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 {- | An IO-based sampling monad.
 -}
@@ -63,7 +64,6 @@ import Statistics.Distribution.Beta ( betaDistr )
 import Statistics.Distribution.Gamma ( gammaDistr )
 import Statistics.Distribution.CauchyLorentz ( cauchyDistribution )
 import System.Random.MWC ( initialize )
-import Util
 
 -- | Sampler type, for running IO computations alongside a random number generator
 newtype Sampler a = Sampler {runSampler :: ReaderT MWC.GenIO IO a}

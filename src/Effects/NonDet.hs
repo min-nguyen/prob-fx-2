@@ -14,7 +14,6 @@ module Effects.NonDet (
   , branch
   , branchWeaken
   , weakenNonDet
-  , foldVals
   , handleNonDet
   ) where
 
@@ -55,17 +54,6 @@ branchWeaken n (Op op k) = asum $ replicate n (Op (weaken op) (weaken' . k))
 -- | Install the non-determinism effect to a program
 weakenNonDet :: Prog es a -> Prog (NonDet : es) a
 weakenNonDet = branchWeaken 1
-
-{- | Check whether a list of programs have all terminated.
-     If at least one program is unfinished, return all programs.
-     If all programs have finished, return a single program that returns all results.
--}
-foldVals :: [Prog es' a] -> Either [Prog es' a] (Prog es [a])
-foldVals (Val v : progs) = do
-  vs <- foldVals progs
-  pure ((v:) <$> vs)
-foldVals [] = pure (Val [])
-foldVals progs = Left progs
 
 -- | Handle the @NonDet@ effect by running all computation branches
 handleNonDet :: Prog (NonDet ': es) a -> Prog es [a]

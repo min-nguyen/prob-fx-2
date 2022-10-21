@@ -25,6 +25,8 @@ import           Data.Proxy
 import qualified Data.Vector as Vector
 import           OpenSum (OpenSum)
 import qualified OpenSum
+import qualified Data.Vector as Vector
+import           Data.Vector (Vector)
 import           Numeric.MathFunctions.Constants
   ( m_eulerMascheroni, m_neg_inf, m_sqrt_2_pi, m_sqrt_2, m_pos_inf )
 import           Numeric.SpecFunctions
