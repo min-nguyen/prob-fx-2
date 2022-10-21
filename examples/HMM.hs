@@ -226,7 +226,7 @@ simHMMw hmm_length = do
   -- Specify model environment
   let env_in = #trans_p := [0.9] <:> #obs_p := [0.2] <:> #y := [] <:> enil
   -- Handle the Writer effect to produce the stream of latent states @xs@, and then simulate
-  ((_, xs), env_out) <- SIM.simulate (handleWriterM $ hmmW hmm_length 0) env_in
+  ((_, xs), env_out) <- SIM.simulate (handleWriterM $ hmm hmm_length 0) env_in
   -- Get the observations
   let ys :: [Int] = get #y env_out
   pure $ zip xs ys
