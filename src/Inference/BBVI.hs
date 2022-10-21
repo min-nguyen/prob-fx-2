@@ -95,7 +95,7 @@ installScore = loop dempty where
     Just (Sample d α) ->
       case isDifferentiable d of
         Nothing      -> Op (weaken op) (loop traceQ . k)
-        Just Witness -> do let traceQ' = dinsert α d traceQ
+        Just Witness -> do let traceQ' = dinsert (DKey α) d traceQ
                            x <- call (Score d d α)
                            (loop traceQ' . k) x
     Nothing -> Op (weaken op) (loop traceQ . k)
@@ -108,7 +108,7 @@ updateScore traceQ = loop where
   loop (Val x)   = pure x
   loop (Op op k) = case prj op of
     Just (Score d _ α) -> do
-      let q = dlookupDefault α traceQ d
+      let q = dlookupDefault (DKey α) traceQ d
       x <- call (Score d q α)
       (loop . k) x
     Nothing -> Op op (loop . k)
@@ -137,7 +137,7 @@ traceGrads = loop dempty where
   loop traceG (Op op k) = do
     case prj op of
       Just (Score _ q α)
-        -> Op op (\x -> let traceG' = dinsert α (gradLogProb q x) traceG
+        -> Op op (\x -> let traceG' = dinsert (DKey α) (gradLogProb q x) traceG
                         in  (loop traceG' . k) x)
       _ -> Op op (loop traceG . k)
 
@@ -157,7 +157,7 @@ estELBOs :: Int -> [LogP] -> [GTrace] -> GTrace
 estELBOs l_samples logWs traceGs = foldr f dempty vars where
   {- | Store the ELBO gradient estimate E[δelbo(v)] for a given variable v. -}
   f :: Some DKey -> GTrace -> GTrace
-  f (Some kx) = dinsert (unKey kx) (estELBO kx traceGs traceFs)
+  f (Some kx) = dinsert kx (estELBO kx traceGs traceFs)
   {- | Store the ELBO gradient estimate E[δelbo(v)] for a given variable v. -}
   vars :: [Some DKey]
   vars = (dkeys . head) traceGs
