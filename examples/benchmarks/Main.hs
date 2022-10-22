@@ -114,18 +114,18 @@ bench_LDA :: [Int] -> IO ()
 bench_LDA args = do
     let row_header = ("Dataset size", args)
     writeRow fixed_output_file row_header
-    benchRow ("LDA-[ ]-SIM-" ++ show fixed_simulations
-              , simLDA) row_header
+    -- benchRow ("LDA-[ ]-SIM-" ++ show fixed_simulations
+    --           , simLDA) row_header
     benchRow ("LDA-[ ]-LW-" ++ show fixed_lw_steps
               , lwLDA fixed_lw_steps) row_header
     benchRow ("LDA-[ ]-MH-" ++ show fixed_mh_steps
-              , mhPredLDA fixed_mh_steps) row_header
+              , mhLDA fixed_mh_steps) row_header
     benchRow ("LDA-[ ]-SMC-" ++ show fixed_mh_steps
-              , smcPredLDA fixed_smc_particles) row_header
+              , smcLDA fixed_smc_particles) row_header
     benchRow ("LDA-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
-              , rmsmcPredLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
+              , rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
     benchRow ("LDA-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
-              , pmmhPredLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
+              , pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
     benchRow ("LDA-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
               , bbviLDA fixed_bbvi_steps fixed_bbvi_samples) row_header
 
@@ -136,7 +136,7 @@ fixed_lr_datasize_inf = 50
 fixed_hmm_datasize_inf :: Int
 fixed_hmm_datasize_inf = 50
 fixed_lda_datasize_inf :: Int
-fixed_lda_datasize_inf = 100
+fixed_lda_datasize_inf = 50
 fixed_rmsmc_particles_inf :: Int
 fixed_rmsmc_particles_inf = 10
 fixed_pmmh_mhsteps_inf :: Int
@@ -148,10 +148,10 @@ bench_SIM :: [Int] -> IO ()
 bench_SIM args = do
     let row_header = ("Number of simulations", args)
     writeRow fixed_output_file row_header
-    benchRow ("SIM-[ ]-LR-" ++ show fixed_lr_datasize_inf
-              , flip replicateM (simLinRegr fixed_lr_datasize_inf)) row_header
-    benchRow ("SIM-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
-              , flip replicateM (simHMM fixed_hmm_datasize_inf)) row_header
+    -- benchRow ("SIM-[ ]-LR-" ++ show fixed_lr_datasize_inf
+    --           , flip replicateM (simLinRegr fixed_lr_datasize_inf)) row_header
+    -- benchRow ("SIM-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
+    --           , flip replicateM (simHMM fixed_hmm_datasize_inf)) row_header
     benchRow ("SIM-[ ]-LDA-" ++ show fixed_lda_datasize_inf
               , flip replicateM (simLDA fixed_lda_datasize_inf)) row_header
 
@@ -159,10 +159,10 @@ bench_LW :: [Int] -> IO ()
 bench_LW args = do
     let row_header = ("Number of LW iterations", args)
     writeRow fixed_output_file row_header
-    benchRow ("LW-[ ]-LR-" ++ show fixed_lr_datasize_inf
-              , flip lwLinRegr fixed_lr_datasize_inf) row_header
-    benchRow ("LW-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
-              , flip lwHMM fixed_hmm_datasize_inf) row_header
+    -- benchRow ("LW-[ ]-LR-" ++ show fixed_lr_datasize_inf
+    --           , flip lwLinRegr fixed_lr_datasize_inf) row_header
+    -- benchRow ("LW-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
+    --           , flip lwHMM fixed_hmm_datasize_inf) row_header
     benchRow ("LW-[ ]-LDA-" ++ show fixed_lda_datasize_inf
               , flip lwLDA fixed_lda_datasize_inf) row_header
 
@@ -170,21 +170,21 @@ bench_MH :: [Int] -> IO ()
 bench_MH args = do
     let row_header = ("Number of MH steps", args)
     writeRow fixed_output_file row_header
-    benchRow ("MH-[ ]-LR-" ++ show fixed_lr_datasize_inf
-              , flip mhLinRegr fixed_lr_datasize_inf) row_header
-    benchRow ("MH-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
-              , flip mhHMM fixed_hmm_datasize_inf) row_header
+    -- benchRow ("MH-[ ]-LR-" ++ show fixed_lr_datasize_inf
+    --           , flip mhLinRegr fixed_lr_datasize_inf) row_header
+    -- benchRow ("MH-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
+    --           , flip mhHMM fixed_hmm_datasize_inf) row_header
     benchRow ("MH-[ ]-LDA-" ++ show fixed_lda_datasize_inf
-              , flip mhPredLDA fixed_lda_datasize_inf) row_header
+              , flip mhLDA fixed_lda_datasize_inf) row_header
 
 bench_SMC :: [Int] -> IO ()
 bench_SMC args = do
     let row_header = ("Number of SMC particles", args)
     writeRow fixed_output_file row_header
-    benchRow ("SMC-[ ]-LR-" ++ show fixed_lr_datasize_inf
-              , flip smcLinRegr fixed_lr_datasize_inf) row_header
-    benchRow ("SMC-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
-              , flip smcHMM fixed_hmm_datasize_inf) row_header
+    -- benchRow ("SMC-[ ]-LR-" ++ show fixed_lr_datasize_inf
+    --           , flip smcLinRegr fixed_lr_datasize_inf) row_header
+    -- benchRow ("SMC-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
+    --           , flip smcHMM fixed_hmm_datasize_inf) row_header
     benchRow ("SMC-[ ]-LDA-" ++ show fixed_lda_datasize_inf
               , flip smcLinRegr fixed_lda_datasize_inf) row_header
 
@@ -192,32 +192,32 @@ bench_RMSMC :: [Int] -> IO ()
 bench_RMSMC args = do
     let row_header = ("Number of RMSMC rejuvenation steps", args)
     writeRow fixed_output_file row_header
-    benchRow ("RMSMC-" ++ show fixed_rmsmc_particles_inf ++ "-[ ]-LR-" ++ show fixed_lr_datasize_inf
-              , flip (rmsmcLinRegr fixed_rmsmc_particles_inf) fixed_lr_datasize_inf) row_header
-    benchRow ("RMSMC-" ++ show fixed_rmsmc_particles_inf ++ "-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
-              , flip (rmsmcHMM fixed_rmsmc_particles_inf) fixed_hmm_datasize_inf) row_header
+    -- benchRow ("RMSMC-" ++ show fixed_rmsmc_particles_inf ++ "-[ ]-LR-" ++ show fixed_lr_datasize_inf
+    --           , flip (rmsmcLinRegr fixed_rmsmc_particles_inf) fixed_lr_datasize_inf) row_header
+    -- benchRow ("RMSMC-" ++ show fixed_rmsmc_particles_inf ++ "-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
+    --           , flip (rmsmcHMM fixed_rmsmc_particles_inf) fixed_hmm_datasize_inf) row_header
     benchRow ("RMSMC-" ++ show fixed_rmsmc_particles_inf ++ "-[ ]-LDA-" ++ show fixed_lda_datasize_inf
-              , flip (rmsmcPredLDA fixed_rmsmc_particles_inf) fixed_lda_datasize_inf) row_header
+              , flip (rmsmcLDA fixed_rmsmc_particles_inf) fixed_lda_datasize_inf) row_header
 
 bench_PMMH :: [Int] -> IO ()
 bench_PMMH args = do
     let row_header = ("Number of PMMH particles", args)
     writeRow fixed_output_file row_header
-    benchRow ("PMMH-" ++ show fixed_pmmh_mhsteps_inf ++ "-[ ]-LR-" ++ show fixed_lr_datasize_inf
-              , flip (pmmhLinRegr fixed_pmmh_mhsteps_inf) fixed_lr_datasize_inf) row_header
-    benchRow ("PMMH-" ++ show fixed_pmmh_mhsteps_inf ++ "-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
-              , flip (pmmhHMM fixed_pmmh_mhsteps_inf) fixed_hmm_datasize_inf) row_header
+    -- benchRow ("PMMH-" ++ show fixed_pmmh_mhsteps_inf ++ "-[ ]-LR-" ++ show fixed_lr_datasize_inf
+    --           , flip (pmmhLinRegr fixed_pmmh_mhsteps_inf) fixed_lr_datasize_inf) row_header
+    -- benchRow ("PMMH-" ++ show fixed_pmmh_mhsteps_inf ++ "-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
+    --           , flip (pmmhHMM fixed_pmmh_mhsteps_inf) fixed_hmm_datasize_inf) row_header
     benchRow ("PMMH-" ++ show fixed_pmmh_mhsteps_inf ++ "-[ ]-LDA-" ++ show fixed_lda_datasize_inf
-              , flip (pmmhPredLDA fixed_pmmh_mhsteps_inf) fixed_lda_datasize_inf) row_header
+              , flip (pmmhLDA fixed_pmmh_mhsteps_inf) fixed_lda_datasize_inf) row_header
 
 bench_BBVI :: [Int] -> IO ()
 bench_BBVI args = do
     let row_header = ("Number of BBVI steps", args)
     writeRow fixed_output_file row_header
-    benchRow ("BBVI-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LR-" ++ show fixed_lr_datasize_inf
-              , flip (bbviLinRegr fixed_bbvi_samples_inf) fixed_lr_datasize_inf) row_header
-    benchRow ("BBVI-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-HMM-" ++ show fixed_hmm_datasize_inf
-              , flip (bbviHMM fixed_bbvi_samples_inf) fixed_hmm_datasize_inf) row_header
+    -- benchRow ("BBVI-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LR-" ++ show fixed_lr_datasize_inf
+    --           , flip (bbviLinRegr fixed_bbvi_samples_inf) fixed_lr_datasize_inf) row_header
+    -- benchRow ("BBVI-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-HMM-" ++ show fixed_hmm_datasize_inf
+    --           , flip (bbviHMM fixed_bbvi_samples_inf) fixed_hmm_datasize_inf) row_header
     benchRow ("BBVI-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LDA-" ++ show fixed_hmm_datasize_inf
               , flip (bbviLDA fixed_bbvi_samples_inf) fixed_lda_datasize_inf) row_header
 
@@ -233,10 +233,10 @@ runBenchmarks = do
   -- | Run benchmark programs on their corresponding parameters
   case args of
         [lr, hmm, lda, sim, lw, mh, smc, rmsmc, pmmh, bbvi] -> do
-          bench_LR lr
-          bench_HMM hmm
+          -- bench_LR lr
+          -- bench_HMM hmm
           bench_LDA lda
-          bench_SIM sim
+          -- bench_SIM sim
           bench_LW lw
           bench_MH mh
           bench_SMC smc

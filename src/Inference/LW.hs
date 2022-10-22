@@ -22,7 +22,7 @@ import Effects.Lift ( handleLift, Lift )
 import Effects.ObsRW ( ObsRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env )
-import LogP ( LogP(unLogP) )
+import LogP ( LogP, expLogP )
 import Inference.SIM as SIM (handleSamp)
 import Model ( handleCore, Model )
 import PrimDist ( logProb )
@@ -42,7 +42,7 @@ lw
 lw n model env_in = do
   let prog = handleCore env_in model
   lwTrace <- lwInternal n prog
-  pure (map (bimap snd (exp . unLogP)) lwTrace)
+  pure (map (bimap snd expLogP) lwTrace)
 
 -- | Run LW n times
 lwInternal

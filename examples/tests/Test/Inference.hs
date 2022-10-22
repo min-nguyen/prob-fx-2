@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use camelCase" #-}
 module Test.Inference where
 
 import Examples
@@ -91,8 +93,8 @@ testMhLogRegr = TestCase $ do
   output <- sampleIOFixed (mhLogRegr 1000 10)
   assertEqual "Testing (mhLogRegr 1000 10)"  mhLogRegrExpected output
 
-testSimHMMw :: Test
-testSimHMMw = TestCase $ do
+testSimHMM_WR :: Test
+testSimHMM_WR = TestCase $ do
   output <- sampleIOFixed (simHMM_WR 20)
   assertEqual "Testing (simHMM_WR 20)"  simHMM_WRExpected output
 
@@ -146,30 +148,30 @@ testSimLDA = TestCase $ do
   output <- sampleIOFixed (simLDA 100)
   assertEqual "Testing (simLDA 100)"  simLDAExpected output
 
-testMhPredLDA :: Test
-testMhPredLDA = TestCase $ do
-  output <- sampleIOFixed (mhPredLDA 500 100)
-  assertEqual "Testing (mhPredLDA 500 100)"  mhPredLDAExpected output
+testMhLDA :: Test
+testMhLDA = TestCase $ do
+  output <- sampleIOFixed (mhLDA 500 100)
+  assertEqual "Testing (mhLDA 500 100)"  mhLDAExpected output
 
-testSmcPredLDA :: Test
-testSmcPredLDA = TestCase $ do
-  output <- sampleIOFixed (smcPredLDA 100 100)
-  assertEqual "Testing (smcPredLDA 100 100)"  smcPredLDAExpected output
+testSmcLDA :: Test
+testSmcLDA = TestCase $ do
+  output <- sampleIOFixed (smcLDA 100 100)
+  assertEqual "Testing (smcLDA 100 100)"  smcLDAExpected output
 
-testRmsmcPredLDA :: Test
-testRmsmcPredLDA = TestCase $ do
-  output <- sampleIOFixed (rmsmcPredLDA 10 30 100)
-  assertEqual "Testing (rmsmcPredLDA 10 30 100)"  rmsmcPredLDAExpected output
+testRmsmcLDA :: Test
+testRmsmcLDA = TestCase $ do
+  output <- sampleIOFixed (rmsmcLDA 10 30 100)
+  assertEqual "Testing (rmsmcLDA 10 30 100)"  rmsmcLDAExpected output
 
-testPmmhPredLDA :: Test
-testPmmhPredLDA = TestCase $ do
-  output <- sampleIOFixed (pmmhPredLDA 100 20 100)
-  assertEqual "Testing (pmmhPredLDA 100 20 100)"  pmmhPredLDAExpected output
+testPmmhLDA :: Test
+testPmmhLDA = TestCase $ do
+  output <- sampleIOFixed (pmmhLDA 100 20 100)
+  assertEqual "Testing (pmmhLDA 100 20 100)"  pmmhLDAExpected output
 
-testSmc2PredLDA :: Test
-testSmc2PredLDA = TestCase $ do
-  output <- sampleIOFixed (smc2PredLDA 20 20 20 50)
-  assertEqual "Testing (smc2PredLDA 20 20 20 50)"  smc2PredLDAExpected output
+testSmc2LDA :: Test
+testSmc2LDA = TestCase $ do
+  output <- sampleIOFixed (smc2LDA 20 20 20 50)
+  assertEqual "Testing (smc2LDA 20 20 20 50)"  smc2LDAExpected output
 
 testBbviLDA :: Test
 testBbviLDA = TestCase $ do
@@ -226,22 +228,22 @@ testInference = TestList
 --  , testSimLogRegr
 --  , testLwLogRegr
 --  , testMhLogRegr
-  testSimHMMw
- , testLwHMM
- , testMhHMM
- , testSmcHMM
- , testRmsmcHMM
- , testPmmhHMM
- , testSmc2HMM
- , testBbviHMM
+--  , testSimHMM_WR
+--  , testLwHMM
+--  , testMhHMM
+--  , testSmcHMM
+--  , testRmsmcHMM
+--  , testPmmhHMM
+--  , testSmc2HMM
+--  , testBbviHMM
 --  , testSimSIR
 --  , testMhSIR
---  , testSimLDA
---  , testMhPredLDA
---  , testSmcPredLDA
---  , testRmsmcPredLDA
---  , testPmmhPredLDA
---  , testSmc2PredLDA
+  testSimLDA
+ , testMhLDA
+ , testSmcLDA
+ , testRmsmcLDA
+ , testPmmhLDA
+ , testSmc2LDA
 --  , testBbviLDA
 --  , testSimRadon
 --  , testMhRadon

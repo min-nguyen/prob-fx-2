@@ -113,25 +113,25 @@ mhSIRExpected = ([0.26773052053208024,0.27700887450894357,0.26761554900607293,0.
 simLDAExpected :: [[Char]]
 simLDAExpected = ["phonology","phonology","phonology","parsing","parsing","parsing","phonology","phonology","DNA","parsing","phonology","phonology","parsing","phonology","parsing","evolution","phonology","DNA","phonology","DNA","phonology","phonology","parsing","evolution","phonology","phonology","phonology","phonology","phonology","phonology","phonology","DNA","evolution","phonology","phonology","parsing","phonology","DNA","parsing","parsing","DNA","DNA","phonology","phonology","phonology","phonology","parsing","phonology","phonology","parsing","parsing","phonology","phonology","phonology","parsing","phonology","parsing","phonology","phonology","phonology","DNA","phonology","phonology","phonology","phonology","parsing","DNA","DNA","parsing","phonology","DNA","phonology","DNA","phonology","phonology","phonology","DNA","phonology","parsing","phonology","parsing","parsing","phonology","phonology","DNA","phonology","parsing","phonology","phonology","phonology","phonology","phonology","phonology","phonology","DNA","phonology","parsing","parsing","phonology","parsing"]
 
--- | sampleIOFixed (mhPredLDA 500 100)
-mhPredLDAExpected :: ([[Double]], [[Double]])
-mhPredLDAExpected = ([[0.9979224576092,2.0775423908000246e-3]],[[0.29022978655669585,0.3834620585998568,0.1502942652792875,0.17601388956415984],[0.5059387801858699,0.36861972780468694,4.920326396565261e-2,7.623822804379041e-2]])
+-- | sampleIOFixed (mhLDA 500 100)
+mhLDAExpected :: ([[Double]], [[Double]])
+mhLDAExpected = ([[0.9979224576092,2.0775423908000246e-3]],[[0.29022978655669585,0.3834620585998568,0.1502942652792875,0.17601388956415984],[0.5059387801858699,0.36861972780468694,4.920326396565261e-2,7.623822804379041e-2]])
 
--- | sampleIOFixed (smcPredLDA 100 100)
-smcPredLDAExpected :: ([[Double]], [[Double]])
-smcPredLDAExpected = ([[0.8635510151704425,0.1364489848295575]],[[0.4678373702238572,0.4301175024881093,8.539416218848211e-2,1.6650965099551284e-2],[0.36919447603502176,9.175670341855505e-2,2.0821280383092906e-2,0.5182275401633303]])
+-- | sampleIOFixed (smcLDA 100 100)
+smcLDAExpected :: ([[Double]], [[Double]])
+smcLDAExpected = ([[0.8635510151704425,0.1364489848295575]],[[0.4678373702238572,0.4301175024881093,8.539416218848211e-2,1.6650965099551284e-2],[0.36919447603502176,9.175670341855505e-2,2.0821280383092906e-2,0.5182275401633303]])
 
--- | sampleIOFixed (rmsmcPredLDA 10 30 100)
-rmsmcPredLDAExpected :: ([[Double]], [[Double]])
-rmsmcPredLDAExpected = ([[6.335571034269876e-3,0.9936644289657302]],[[0.1500714300424009,7.737047834115449e-2,0.5399465361470958,0.23261155546934884],[0.39475210964961116,0.30735170920324434,0.17098718242586103,0.12690899872128342]])
+-- | sampleIOFixed (rmsmcLDA 10 30 100)
+rmsmcLDAExpected :: ([[Double]], [[Double]])
+rmsmcLDAExpected = ([[6.335571034269876e-3,0.9936644289657302]],[[0.1500714300424009,7.737047834115449e-2,0.5399465361470958,0.23261155546934884],[0.39475210964961116,0.30735170920324434,0.17098718242586103,0.12690899872128342]])
 
--- | sampleIOFixed (pmmhPredLDA 100 20 100)
-pmmhPredLDAExpected :: ([[Double]], [[Double]])
-pmmhPredLDAExpected = ([[5.954054346900695e-2,0.940459456530993]],[[0.327524384630209,0.14711303421669134,0.5200140551213227,5.348526031776825e-3],[0.3814152724844196,0.38834206668130195,0.1319062801034499,9.833638073082848e-2]])
+-- | sampleIOFixed (pmmhLDA 100 20 100)
+pmmhLDAExpected :: ([[Double]], [[Double]])
+pmmhLDAExpected = ([[5.954054346900695e-2,0.940459456530993]],[[0.327524384630209,0.14711303421669134,0.5200140551213227,5.348526031776825e-3],[0.3814152724844196,0.38834206668130195,0.1319062801034499,9.833638073082848e-2]])
 
--- | sampleIOFixed (smc2PredLDA 20 20 20 50)
-smc2PredLDAExpected :: ([[Double]], [[Double]])
-smc2PredLDAExpected = ([[0.19677857287478298,0.803221427125217]],[[0.4356717752839189,0.41892595855570475,0.10601966507553827,3.938260108483794e-2],[0.35834704302735476,0.3910161020312058,4.5625137091465706e-2,0.2050117178499738]])
+-- | sampleIOFixed (smc2LDA 20 20 20 50)
+smc2LDAExpected :: ([[Double]], [[Double]])
+smc2LDAExpected = ([[0.19677857287478298,0.803221427125217]],[[0.4356717752839189,0.41892595855570475,0.10601966507553827,3.938260108483794e-2],[0.35834704302735476,0.3910161020312058,4.5625137091465706e-2,0.2050117178499738]])
 
 -- | sampleIOFixed (bbviLDA 200 20 50)
 bbviLDAExpected :: ([Double], [Double], [Double])

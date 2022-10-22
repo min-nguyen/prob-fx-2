@@ -23,7 +23,7 @@ import qualified Data.Set as Set
 import Data.Maybe ( fromJust )
 import Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg, weaken )
 import Trace ( STrace, LPTrace, filterTrace )
-import LogP ( LogP(unLogP) )
+import LogP ( LogP, expLogP )
 import PrimDist
 import Model ( Model, handleCore, ProbSig )
 import Effects.ObsRW ( ObsRW )
@@ -116,7 +116,7 @@ handleAccept tags n_proposals = loop
                   logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
                                     0 (Map.keysSet lptrace' \\ sampled')
               u <- lift $ sample (Uniform 0 1)
-              (loop . k) ((exp . unLogP) (dom_logα + logα' - logα) > u)
+              (loop . k) (expLogP (dom_logα + logα' - logα) > u)
     Left op' -> Op op' (loop . k)
 
 {- Propose new random values for multiple sites.

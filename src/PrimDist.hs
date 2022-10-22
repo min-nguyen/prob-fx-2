@@ -85,17 +85,34 @@ class Distribution d => DiffDistribution d where
 
   safeAddGrad :: d -> d -> d
 
-  zeroGrad :: d
+  liftUnOp :: (Double -> Double) -> d -> d
 
-  toList   :: d -> [Double]
+  liftBinOp :: (Double -> Double -> Double) -> d -> d -> d
+
+  zero :: d
+
+  toList :: d -> [Double]
 
   fromList :: [Double] -> d
 
-  liftUnOp :: (Double -> Double) -> d -> d
-  liftUnOp op = fromList . map op . toList
+  (|+|) :: d -> d -> d
+  (|+|) = liftBinOp (+)
 
-  liftBinOp :: (Double -> Double -> Double) -> d -> d -> d
-  liftBinOp op d1 d2 = fromList $ zipWith op (toList d1) (toList d2)
+  (|-|) :: d -> d -> d
+  (|-|) = liftBinOp (-)
+
+  (|*|) :: d -> d -> d
+  (|*|) = liftBinOp (*)
+
+  (|/|) :: d -> d -> d
+  (|/|) = liftBinOp (/)
+
+  (*|) :: Double -> d -> d
+  (*|) x = liftUnOp (* x)
+
+  (/|) :: d -> Double -> d
+  (/|) d x = liftUnOp (/ x) d
+
 
   covarGrad    -- Assuming our distribution has D parameters
     :: [d]     -- ^ (f^{1:D})^{1:L}, an L-sized list of distributions      [(D α^1 β^1), (D α^2 β^2), .. (D α^L β^L)]
@@ -157,8 +174,14 @@ instance DiffDistribution Beta where
     where α' = let α_new = α + dα in if α_new <= 0 then α else α_new
           β' = let β_new = β + dβ in if β_new <= 0 then β else β_new
 
-  zeroGrad :: Beta
-  zeroGrad = Beta 0 0
+  liftUnOp :: (Double -> Double) -> Beta -> Beta
+  liftUnOp f (Beta α β) = Beta (f α) (f β)
+
+  liftBinOp :: (Double -> Double -> Double) -> Beta -> Beta -> Beta
+  liftBinOp f (Beta α β) (Beta dα dβ) = Beta (f α dα) (f β dβ)
+
+  zero :: Beta
+  zero = Beta 0 0
 
   toList :: Beta -> [Double]
   toList (Beta dα dβ) = [dα, dβ]
@@ -208,12 +231,19 @@ instance DiffDistribution Cauchy where
     where loc'   = loc + dloc
           scale' = let new_scale = scale + dscale in if new_scale <= 0 then scale else new_scale
 
-  zeroGrad :: Cauchy
-  zeroGrad = Cauchy 0 0
+  liftUnOp :: (Double -> Double) -> Cauchy -> Cauchy
+  liftUnOp f (Cauchy loc scale) = Cauchy (f loc) (f scale)
+
+  liftBinOp :: (Double -> Double -> Double) -> Cauchy -> Cauchy -> Cauchy
+  liftBinOp f (Cauchy loc scale) (Cauchy dloc dscale) = Cauchy (f loc dloc) (f scale dscale)
+
+  zero :: Cauchy
+  zero = Cauchy 0 0
 
   toList :: Cauchy -> [Double]
   toList (Cauchy loc scale) = [loc, scale]
 
+  fromList :: [Double] -> Cauchy
   fromList [loc, scale] = (Cauchy loc scale)
 
 -- | HalfCauchy(scale)
@@ -248,12 +278,19 @@ instance DiffDistribution HalfCauchy where
   safeAddGrad (HalfCauchy scale) (HalfCauchy dscale) = HalfCauchy scale'
     where scale' = let new_scale = scale + dscale in if new_scale <= 0 then scale else new_scale
 
-  zeroGrad :: HalfCauchy
-  zeroGrad = HalfCauchy 0
+  liftUnOp :: (Double -> Double) -> HalfCauchy -> HalfCauchy
+  liftUnOp f (HalfCauchy scale) = HalfCauchy (f scale)
+
+  liftBinOp :: (Double -> Double -> Double) -> HalfCauchy -> HalfCauchy -> HalfCauchy
+  liftBinOp f (HalfCauchy scale) (HalfCauchy dscale) = HalfCauchy (f scale dscale)
+
+  zero :: HalfCauchy
+  zero = HalfCauchy 0
 
   toList :: HalfCauchy -> [Double]
   toList (HalfCauchy scale) = [scale]
 
+  fromList :: [Double] -> HalfCauchy
   fromList [scale] = (HalfCauchy scale)
 
 -- | Dirichlet(αs)
@@ -300,12 +337,19 @@ instance DiffDistribution Dirichlet where
   safeAddGrad (Dirichlet αs) (Dirichlet dαs) = Dirichlet (zipWith add_dα αs dαs)
     where add_dα α dα = let α_new = α + dα in if α_new <= 0 then α else α_new
 
-  zeroGrad :: Dirichlet
-  zeroGrad = Dirichlet (repeat 0)
+  liftUnOp :: (Double -> Double) -> Dirichlet -> Dirichlet
+  liftUnOp f (Dirichlet αs) = Dirichlet (map f αs)
+
+  liftBinOp :: (Double -> Double -> Double) -> Dirichlet -> Dirichlet -> Dirichlet
+  liftBinOp f (Dirichlet αs) (Dirichlet dαs) = Dirichlet (zipWith f αs dαs)
+
+  zero :: Dirichlet
+  zero = Dirichlet (repeat 0)
 
   toList :: Dirichlet -> [Double]
   toList (Dirichlet dαs) = dαs
 
+  fromList :: [Double] -> Dirichlet
   fromList dαs = Dirichlet dαs
 
 -- | Gamma(k, θ)
@@ -350,12 +394,19 @@ instance DiffDistribution Gamma where
     where k' = let k_new = k + dk in if k_new <= 0 then k else k_new
           θ' = let θ_new = θ + dθ in if θ_new <= 0 then θ else θ_new
 
-  zeroGrad :: Gamma
-  zeroGrad = Gamma 0 0
+  liftUnOp :: (Double -> Double) -> Gamma -> Gamma
+  liftUnOp f (Gamma k θ) = Gamma (f k) (f θ)
+
+  liftBinOp :: (Double -> Double -> Double) -> Gamma -> Gamma -> Gamma
+  liftBinOp f (Gamma k θ) (Gamma dk dθ) = Gamma (f k dk) (f θ dθ)
+
+  zero :: Gamma
+  zero = Gamma 0 0
 
   toList :: Gamma -> [Double]
   toList (Gamma dk dθ) = [dk, dθ]
 
+  fromList :: [Double] -> Gamma
   fromList [dk, dθ] = Gamma dk dθ
 
 -- | Normal(μ, σ)
@@ -401,12 +452,19 @@ instance DiffDistribution Normal where
     where μ' = μ + dμ
           σ' = let σ_new = σ + dσ in if σ_new <= 0 then σ else σ_new
 
-  zeroGrad :: Normal
-  zeroGrad = Normal 0 0
+  liftUnOp :: (Double -> Double) -> Normal -> Normal
+  liftUnOp f (Normal μ σ) = Normal (f μ) (f σ)
+
+  liftBinOp :: (Double -> Double -> Double) -> Normal -> Normal -> Normal
+  liftBinOp f (Normal μ σ) (Normal dμ dσ) = Normal (f μ dμ) (f σ dσ)
+
+  zero :: Normal
+  zero = Normal 0 0
 
   toList :: Normal -> [Double]
   toList (Normal dμ dσ) = [dμ, dσ]
 
+  fromList :: [Double] -> Normal
   fromList [dμ, dσ] = Normal dμ dσ
 
 -- | HalfNormal(σ)
@@ -442,12 +500,19 @@ instance DiffDistribution HalfNormal where
   safeAddGrad (HalfNormal σ) (HalfNormal dσ) = HalfNormal σ'
     where σ' = let σ_new = σ + dσ in if σ_new <= 0 then σ else σ_new
 
-  zeroGrad :: HalfNormal
-  zeroGrad = HalfNormal 0
+  liftUnOp :: (Double -> Double) -> HalfNormal -> HalfNormal
+  liftUnOp f (HalfNormal σ) = HalfNormal (f σ)
+
+  liftBinOp :: (Double -> Double -> Double) -> HalfNormal -> HalfNormal -> HalfNormal
+  liftBinOp f (HalfNormal σ) (HalfNormal dσ) = HalfNormal (f σ dσ)
+
+  zero :: HalfNormal
+  zero = HalfNormal 0
 
   toList :: HalfNormal -> [Double]
   toList (HalfNormal σ) = [σ]
 
+  fromList :: [Double] -> HalfNormal
   fromList [σ] = HalfNormal σ
 
 {-# INLINE invCMF #-}
