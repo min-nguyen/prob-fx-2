@@ -211,45 +211,45 @@ testMhGMM = TestCase $ do
 testInference :: Test
 testInference = TestList
  [
---    testSimLinRegrOnce
---  , testLwLinRegrOnce
---  , testMhLinRegrOnce
---  , testSimLinRegr
---  , testLwLinRegr
---  , testMhLinRegr
---  , testSmcLinRegr
---  , testRmsmcLinRegr
---  , testPmmhLinRegr
---  , testSmc2LinRegr
---  , testBbviLinRegr
---  , testSimLogRegrOnce
---  , testLwLogRegrOnce
---  , testMhLogRegrOnce
---  , testSimLogRegr
---  , testLwLogRegr
---  , testMhLogRegr
---  , testSimHMM_WR
---  , testLwHMM
---  , testMhHMM
---  , testSmcHMM
---  , testRmsmcHMM
---  , testPmmhHMM
---  , testSmc2HMM
---  , testBbviHMM
---  , testSimSIR
---  , testMhSIR
-  testSimLDA
+   testSimLinRegrOnce
+ , testLwLinRegrOnce
+ , testMhLinRegrOnce
+ , testSimLinRegr
+ , testLwLinRegr
+ , testMhLinRegr
+ , testSmcLinRegr
+ , testRmsmcLinRegr
+ , testPmmhLinRegr
+ , testSmc2LinRegr
+ , testBbviLinRegr
+ , testSimLogRegrOnce
+ , testLwLogRegrOnce
+ , testMhLogRegrOnce
+ , testSimLogRegr
+ , testLwLogRegr
+ , testMhLogRegr
+ , testSimHMM_WR
+ , testLwHMM
+ , testMhHMM
+ , testSmcHMM
+ , testRmsmcHMM
+ , testPmmhHMM
+ , testSmc2HMM
+ , testBbviHMM
+ , testSimSIR
+ , testMhSIR
+ , testSimLDA
  , testMhLDA
  , testSmcLDA
  , testRmsmcLDA
  , testPmmhLDA
  , testSmc2LDA
---  , testBbviLDA
---  , testSimRadon
---  , testMhRadon
---  , testMhPredRadon
---  , testMhSchool
---  , testSimGMM
---  , testMhGMM
+ , testBbviLDA
+ , testSimRadon
+ , testMhRadon
+ , testMhPredRadon
+ , testMhSchool
+ , testSimGMM
+ , testMhGMM
  ]
 
