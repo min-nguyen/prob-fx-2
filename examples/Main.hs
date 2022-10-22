@@ -40,14 +40,14 @@ parseArgs cmd = case cmd of
   "lwLogRegr"   -> sampleIOFixed (lwLogRegr 100 10) >>= printThenWrite
   "mhLogRegr"   -> sampleIOFixed (mhLogRegr 1000 10) >>= printThenWrite
 
-  "simHMM"      -> sampleIOFixed (simHMMw 20) >>= printThenWrite
-  "lwHMM"       -> sampleIOFixed (lwHMMw 200 20) >>= printThenWrite
-  "mhHMM"       -> sampleIOFixed (mhHMMw 5000 20) >>= printThenWrite
-  "smcHMM"      -> sampleIOFixed (smcHMMw 200 30) >>= printThenWrite
-  "rmsmcHMM"    -> sampleIOFixed (rmsmcHMMw 20 50 30) >>= printThenWrite
-  "pmmhHMM"     -> sampleIOFixed (pmmhHMMw 1000 10 30) >>= printThenWrite
-  "smc2HMM"     -> sampleIOFixed (smc2HMMw 20 20 20 30) >>= printThenWrite
-  "bbviHMM"     -> sampleIOFixed (bbviHMMw 1000 50 20) >>= printThenWrite
+  "simHMM"      -> sampleIOFixed (simHMM_WR 20) >>= printThenWrite
+  "lwHMM"       -> sampleIOFixed (lwHMM 200 20) >>= printThenWrite
+  "mhHMM"       -> sampleIOFixed (mhHMM 5000 20) >>= printThenWrite
+  "smcHMM"      -> sampleIOFixed (smcHMM 200 30) >>= printThenWrite
+  "rmsmcHMM"    -> sampleIOFixed (rmsmcHMM 20 50 30) >>= printThenWrite
+  "pmmhHMM"     -> sampleIOFixed (pmmhHMM 1000 10 30) >>= printThenWrite
+  "smc2HMM"     -> sampleIOFixed (smc2HMM 20 20 20 30) >>= printThenWrite
+  "bbviHMM"     -> sampleIOFixed (bbviHMM 1000 50 20) >>= printThenWrite
 
   "simSIR"      -> sampleIOFixed (simSIR 100) >>= printThenWrite
   "simSIRS"     -> sampleIOFixed (simSIRS 100) >>= printThenWrite
