@@ -14,7 +14,10 @@
     along with their corresponding sampling and density functions.
 -}
 
-module PrimDist where
+module PrimDist
+  (Distribution(..), DiffDistribution(..), PrimDist, Witness(..),
+   Beta, mkBeta, Bernoulli, mkBernoulli, Binomial, mkBinomial, Categorical, mkCategorical, Cauchy, mkCauchy, HalfCauchy, mkHalfCauchy,
+   Deterministic, mkDeterministic, Discrete, mkDiscrete, Dirichlet, mkDirichlet, Gamma, mkGamma, Normal, mkNormal, HalfNormal, mkHalfNormal, Poisson, mkPoisson, Uniform, mkUniform, UniformD, mkUniformD) where
 
 import           Debug.Trace ( trace )
 import           Data.Kind ( Constraint )
@@ -113,7 +116,6 @@ class Distribution d => DiffDistribution d where
   (/|) :: d -> Double -> d
   (/|) d x = liftUnOp (/ x) d
 
-
   covarGrad    -- Assuming our distribution has D parameters
     :: [d]     -- ^ (f^{1:D})^{1:L}, an L-sized list of distributions      [(D α^1 β^1), (D α^2 β^2), .. (D α^L β^L)]
     -> [d]     -- ^ (g^{1:D})^{1:L}, an L-sized list of distributions
@@ -133,10 +135,14 @@ class Distribution d => DiffDistribution d where
     where gs'       = map toList gs   -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
           params_gs = transpose gs'   -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
 
-
 -- | Beta(α, β)
 data Beta = Beta Double Double
   deriving Show
+
+mkBeta :: Double -> Double -> Beta
+mkBeta α β
+  | α > 0 && β > 0 = Beta α β
+  | otherwise      = error "Beta: α > 0 or β > 0 not met"
 
 instance Distribution Beta where
   type Support Beta = Double
@@ -151,7 +157,6 @@ instance Distribution Beta where
 
   logProbRaw :: Beta -> Double -> Double
   logProbRaw (Beta α β) x
-    | α <= 0 || β <= 0 = error "betaLogPdfRaw: α <= 0 || β <= 0 "
     | x <= 0 || x >= 1 = m_neg_inf
     | otherwise = (α-1)*log x + (β-1)*log1p (-x) - logBeta α β
 
@@ -161,7 +166,6 @@ instance Distribution Beta where
 instance DiffDistribution Beta where
   gradLogProb :: Beta -> Double -> Beta
   gradLogProb (Beta α β) x
-    | α <= 0 || β <= 0 = error "betaGradLogPdfRaw: a <= 0 || β <= 0"
     | x <= 0 || x >= 1 = error "betaGradLogPdfRaw: x <= 0 || x >= 1"
     | otherwise = Beta da db
     where digamma_ab = digamma (α + β)
@@ -193,6 +197,11 @@ instance DiffDistribution Beta where
 data Cauchy = Cauchy Double Double
   deriving Show
 
+mkCauchy ::  Double -> Double -> Cauchy
+mkCauchy loc scale
+  | scale > 0 = Cauchy loc scale
+  | otherwise = error "Cauchy: scale > 0 not met"
+
 instance Distribution Cauchy where
   type Support Cauchy = Double
 
@@ -206,9 +215,7 @@ instance Distribution Cauchy where
   sample (Cauchy loc scale) = sampleCauchy loc scale
 
   logProbRaw :: Cauchy -> Double -> Double
-  logProbRaw (Cauchy loc scale) x
-    | scale <= 0 = error "cauchyLogPdfRaw: scale <= 0"
-    | otherwise     = -(log pi) + log scale - log (xloc**2 + scale**2)
+  logProbRaw (Cauchy loc scale) x = -(log pi) + log scale - log (xloc**2 + scale**2)
     where xloc = x - loc
 
   isDifferentiable :: Cauchy -> Maybe (Witness DiffDistribution Cauchy)
@@ -250,6 +257,11 @@ instance DiffDistribution Cauchy where
 newtype HalfCauchy = HalfCauchy Double
   deriving Show
 
+mkHalfCauchy :: Double -> HalfCauchy
+mkHalfCauchy scale
+  | scale > 0 = HalfCauchy scale
+  | otherwise = error "HalfCauchy: scale > 0 not met"
+
 instance Distribution HalfCauchy where
   type Support HalfCauchy = Double
 
@@ -270,7 +282,6 @@ instance Distribution HalfCauchy where
 instance DiffDistribution HalfCauchy where
   gradLogProb :: HalfCauchy -> Double -> HalfCauchy
   gradLogProb (HalfCauchy scale) x
-    | scale <= 0 = error "cauchyGradLogPdfRaw: scale <= 0"
     | x < 0      = error "cauchyGradLogPdfRaw: x < 0"
     | otherwise  = let (Cauchy _ dscale) = gradLogProb (Cauchy 0 scale) x in HalfCauchy dscale
 
@@ -298,6 +309,12 @@ instance DiffDistribution HalfCauchy where
 newtype Dirichlet = Dirichlet [Double]
   deriving Show
 
+mkDirichlet :: [Double] -> Dirichlet
+mkDirichlet αs
+  | any (<= 0) αs = error "Dirichlet: αs > 0 not met"
+  | length αs < 2 = error "Dirichlet: length αs >= 2 not met"
+  | otherwise     = Dirichlet αs
+
 instance Distribution Dirichlet where
   type Support Dirichlet = [Double]
 
@@ -314,7 +331,6 @@ instance Distribution Dirichlet where
   logProbRaw (Dirichlet αs) xs
     | length xs /= length αs     = trace "dirichletLogPdfRaw: length xs /= length αs" m_neg_inf
     | abs (sum xs - 1.0) > 1e-14 = trace "dirichletLogPdfRaw: data should sum to 1" m_neg_inf
-    | any (<= 0) αs              = trace "dirichletLogPdfRaw: weights should be positive" m_neg_inf
     | any (<  0) xs              = trace "dirichletLogPdfRaw: data should be non-negative" m_neg_inf
     | otherwise = c + sum (zipWith (\a x -> (a - 1) * log x) αs xs)
     where c = - sum (map logGamma αs) + logGamma (sum αs)
@@ -327,7 +343,6 @@ instance DiffDistribution Dirichlet where
   gradLogProb (Dirichlet αs) xs
     | length xs /= length αs     = error "dirichletGradLogPdfRaw: length xs /= length αs"
     | abs (sum xs - 1.0) > 1e-14 = error "dirichletGradLogPdfRaw: data should sum to 1"
-    | any (<= 0) αs              = error "dirichletGradLogPdfRaw: weights should be positive"
     | any (<  0) xs              = error "dirichletGradLogPdfRaw: data should be non-negative"
     | otherwise = Dirichlet (zipWith derivA αs xs)
     where derivA a x  = -(digamma a) + digamma (sum αs) + log x
@@ -357,6 +372,11 @@ instance DiffDistribution Dirichlet where
 data Gamma = Gamma Double Double
   deriving Show
 
+mkGamma :: Double -> Double -> Gamma
+mkGamma k θ
+  | k > 0 && θ > 0 = Gamma k θ
+  | otherwise      = error "Gamma: k > 0 && θ > 0 not met"
+
 instance Distribution Gamma where
   type Support Gamma = Double
 
@@ -372,8 +392,7 @@ instance Distribution Gamma where
 
   logProbRaw :: Gamma -> Double -> Double
   logProbRaw (Gamma k θ) x
-    | x <= 0           = m_neg_inf
-    | k <= 0 || θ <= 0 = error "gammaLogPdfRaw: k <= 0 || θ <= 0"
+    | x <= 0    = m_neg_inf
     | otherwise = (k - 1) * log x - (x/θ) - logGamma k - (k * log θ)
 
   isDifferentiable :: Gamma -> Maybe (Witness DiffDistribution Gamma)
@@ -382,7 +401,6 @@ instance Distribution Gamma where
 instance DiffDistribution Gamma where
   gradLogProb :: Gamma -> Double -> Gamma
   gradLogProb (Gamma k θ) x
-    | k <= 0 || θ <= 0 = error "gammaGradLogPdfRaw: k <= 0 || t <= 0"
     | x <= 0           = error "gammaGradLogPdfRaw: x <= 0"
     | otherwise = Gamma dk dθ
     where dk = log x - digamma k - log θ
@@ -414,6 +432,11 @@ instance DiffDistribution Gamma where
 data Normal = Normal Double Double
   deriving Show
 
+mkNormal :: Double -> Double -> Normal
+mkNormal μ σ
+  | σ > 0 = Normal μ σ
+  | otherwise = error "Normal: σ > 0 not met"
+
 instance Distribution Normal where
   type Support Normal = Double
 
@@ -429,9 +452,7 @@ instance Distribution Normal where
   sample (Normal μ σ) = sampleNormal μ σ
 
   logProbRaw :: Normal -> Double -> Double
-  logProbRaw (Normal μ σ) x
-    | σ <= 0     = error "normalLogPdfRaw: σ <= 0"
-    | otherwise  = -(xμ * xμ / (2 * (σ ** 2))) - log m_sqrt_2_pi - log σ
+  logProbRaw (Normal μ σ) x = -(xμ * xμ / (2 * (σ ** 2))) - log m_sqrt_2_pi - log σ
     where xμ = x - μ
 
   isDifferentiable :: Normal -> Maybe (Witness DiffDistribution Normal)
@@ -439,9 +460,7 @@ instance Distribution Normal where
 
 instance DiffDistribution Normal where
   gradLogProb :: Normal -> Double -> Normal
-  gradLogProb (Normal μ σ) x
-    | σ <= 0      = error "normalGradLogPdfRaw: σ <= 0"
-    | otherwise   = Normal dμ dσ
+  gradLogProb (Normal μ σ) x = Normal dμ dσ
     where xμ = x - μ
           dμ = xμ/(σ ** 2)
           dσ = -1/σ + (xμ**2)/(σ ** 3)
@@ -472,6 +491,11 @@ instance DiffDistribution Normal where
 newtype HalfNormal = HalfNormal Double
   deriving Show
 
+mkHalfNormal :: Double -> HalfNormal
+mkHalfNormal σ
+  | σ > 0     = HalfNormal σ
+  | otherwise = error "HalfNormal: σ > 0 not met"
+
 instance Distribution HalfNormal where
   type Support HalfNormal = Double
 
@@ -493,7 +517,6 @@ instance DiffDistribution HalfNormal where
   gradLogProb :: HalfNormal -> Double -> HalfNormal
   gradLogProb (HalfNormal σ) x
     | x < 0         = error "halfNormalGradLogPdfRaw: No gradient at x < 0"
-    | σ <= 0        = error "halfNormalGradLogPdfRaw: σ <= 0"
     | otherwise     = let Normal _ dσ = gradLogProb (Normal 0 σ) x in HalfNormal dσ
 
   safeAddGrad :: HalfNormal -> HalfNormal -> HalfNormal
@@ -533,6 +556,11 @@ invCMF pmf r = f 0 r
 newtype Bernoulli = Bernoulli Double
   deriving Show
 
+mkBernoulli :: Double -> Bernoulli
+mkBernoulli p
+  | p >= 0 && p <= 1 = Bernoulli p
+  | otherwise        = error "Bernoulli: p >= 0 && p <= 1 not met"
+
 instance Distribution Bernoulli where
   type Support Bernoulli = Bool
 
@@ -562,6 +590,12 @@ bernoulliAddGrad (Bernoulli p) (Bernoulli dp) = Bernoulli dp
 data Binomial = Binomial Int Double
   deriving Show
 
+mkBinomial :: Int -> Double -> Binomial
+mkBinomial n p
+  | p < 0 || p > 1 = error "Binomial: p >= 0 && p <= 1 not met"
+  | n < 0          = error "Binomial: n >= 0 not met"
+  | otherwise      = Binomial n p
+
 instance Distribution Binomial where
   type Support Binomial = Int
 
@@ -574,7 +608,6 @@ instance Distribution Binomial where
   logProbRaw :: Binomial -> Int -> Double
   logProbRaw (Binomial n p) y
     | y < 0 || y > n          = m_neg_inf
-    | n < 0                   = error "binomialLogPdfRaw: n < 0"
     | otherwise               = logChoose n y + log p * y' + log1p (-p) * ny'
     where
       y'  = fromIntegral   y
@@ -585,7 +618,6 @@ instance Distribution Binomial where
 binomialGradLogPdfRaw :: Int -> Double -> Int -> (Int, Double, Int)
 binomialGradLogPdfRaw n p y
   | y < 0 || y > n          = error "binomialGradLogPdfRaw: y < 0 || y > n"
-  | n < 0                   = error "binomialGradLogPdfRaw: n < 0"
   | otherwise               = (dn, dp, dy)
   where dn = 0
         dp = fromIntegral n/p - fromIntegral (n - y)/(1 - p)
@@ -595,6 +627,12 @@ binomialGradLogPdfRaw n p y
 --   @ps@ probabilities of each category
 newtype Categorical = Categorical [Double]
   deriving Show
+
+mkCategorical :: [Double] -> Categorical
+mkCategorical ps
+  | any (< 0) ps = error "Categorical: ps >= 0 not met"
+  | null ps      = error "Categorical: ps must be non-empty"
+  | otherwise    = Categorical ps
 
 instance Distribution Categorical where
   type Support Categorical = Int            -- ^ an index from @0@ to @n - 1@
@@ -618,6 +656,9 @@ data Deterministic a where
     :: (Show a, Typeable a, Eq a)
     => a                                  -- ^ value of probability @1@
     -> Deterministic a
+
+mkDeterministic :: (Show a, Typeable a, Eq a) => a -> Deterministic a
+mkDeterministic x = Deterministic x
 
 instance Show a => Show (Deterministic a) where
   show (Deterministic x) = "Deterministic " ++ show x
@@ -646,8 +687,14 @@ data Discrete a where
     => [(a, Double)]
     -> Discrete a
 
+mkDiscrete :: (Show a, Typeable a, Eq a) => [(a, Double)] -> Discrete a
+mkDiscrete xps
+  | null xps = error "Discrete: xps must be non-empty"
+  | any ((< 0) . snd) xps = error "Discrete: probabilities must be >= 0"
+  | otherwise = Discrete xps
+
 instance Show a => Show (Discrete a) where
-  show (Discrete xps) = "Deterministic " ++ show xps
+  show (Discrete xps) = "Discrete " ++ show xps
 
 instance (Show a, Typeable a) => Distribution (Discrete a) where
   type Support (Discrete a) = a
@@ -672,6 +719,11 @@ instance (Show a, Typeable a) => Distribution (Discrete a) where
 newtype Poisson = Poisson Double
   deriving Show
 
+mkPoisson :: Double -> Poisson
+mkPoisson λ
+  | λ < 0     = error "Poisson:  λ >= 0 not met"
+  | otherwise = Poisson λ
+
 instance Distribution Poisson where
   type Support Poisson = Int
 
@@ -683,7 +735,6 @@ instance Distribution Poisson where
 
   logProbRaw :: Poisson -> Int -> Double
   logProbRaw (Poisson λ) y
-    | λ < 0     = error "poissonLogPdfRaw:  λ < 0 "
     | y < 0     = trace "poissonLogPdfRaw:  y < 0 " m_neg_inf
     | otherwise = log λ * fromIntegral y - logFactorial y - λ
 
@@ -691,7 +742,6 @@ instance Distribution Poisson where
 
 poissonGradLogPdfRaw :: Double -> Int -> Double
 poissonGradLogPdfRaw λ y
-  | λ < 0     = error "poissonGradLogPdfRaw:  λ < 0 "
   | y < 0     = error "poissonGradLogPdfRaw:  y < 0 "
   | otherwise = (fromIntegral y/λ) - 1
 
@@ -699,6 +749,11 @@ poissonGradLogPdfRaw λ y
 --   @min@ lower-bound, @max@ upper-bound
 data Uniform = Uniform Double Double
   deriving Show
+
+mkUniform :: Double -> Double -> Uniform
+mkUniform min max
+  | min > max = error "Uniform: min <= max not met"
+  | otherwise = Uniform min max
 
 instance Distribution Uniform where
   type Support Uniform = Double
@@ -713,7 +768,6 @@ instance Distribution Uniform where
 
   logProbRaw :: Uniform -> Double -> Double
   logProbRaw (Uniform min max) x
-    | max <  min         = error "uniformLogPdfRaw: max < min"
     | x < min || x > max = m_neg_inf
     | otherwise          = -log(max - min)
 
@@ -723,6 +777,11 @@ instance Distribution Uniform where
 --   @min@ lower-bound, @max@ upper-bound
 data UniformD = UniformD Int Int
   deriving Show
+
+mkUniformD :: Int -> Int -> UniformD
+mkUniformD min max
+  | min > max = error "UniformD: min <= max not met"
+  | otherwise = UniformD min max
 
 instance Distribution UniformD where
   type Support UniformD = Int
@@ -739,7 +798,6 @@ instance Distribution UniformD where
 
   logProbRaw :: UniformD -> Int -> Double
   logProbRaw (UniformD min max) idx
-    | max <  min              = error "uniformDLogPdfRaw: max < min"
     | idx < min || idx > max  = m_neg_inf
     | otherwise               = - log (fromIntegral $ max - min + 1)
 

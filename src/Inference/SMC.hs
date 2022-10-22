@@ -22,7 +22,7 @@ import Env ( Env )
 import LogP ( LogP(..), logMeanExp, expLogP )
 import Model ( Model(runModel), ProbSig )
 import OpenSum (OpenSum)
-import PrimDist ( Categorical(..), sample, logProb )
+import PrimDist ( mkCategorical, sample, logProb )
 import Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge )
 import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
@@ -91,7 +91,7 @@ handleResampleMul (Op op k) = case discharge op of
     -- | Get the weights for each particle
     let ws = map (expLogP . particleLogProb) ctxs
     -- | Select particles to continue with
-    idxs <- replicateM (length ws) $ lift (sample (Categorical ws))
+    idxs <- replicateM (length ws) $ lift (sample (mkCategorical ws))
     let resampled_prts = map (prts !! ) idxs
         resampled_ctxs = map (ctxs !! ) idxs
     (handleResampleMul . k) ((resampled_prts, resampled_ctxs), idxs)

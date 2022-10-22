@@ -115,7 +115,7 @@ handleAccept tags n_proposals = loop
                                     0 (Map.keysSet lptrace \\ sampled)
                   logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
                                     0 (Map.keysSet lptrace' \\ sampled')
-              u <- lift $ sample (Uniform 0 1)
+              u <- lift $ sample (mkUniform 0 1)
               (loop . k) (expLogP (dom_logα + logα' - logα) > u)
     Left op' -> Op op' (loop . k)
 
@@ -130,7 +130,7 @@ propose tags n_proposals strace = do
   -- | Get possible addresses to propose new samples for
   let α_range = Map.keys (if Prelude.null tags then strace else filterTrace tags strace)
   -- | Draw proposal sample addresses
-  αs <- replicateM n_proposals (sample (UniformD 0 (length α_range - 1)) <&> (α_range !!))
+  αs <- replicateM n_proposals (sample (mkUniformD 0 (length α_range - 1)) <&> (α_range !!))
   -- | Draw new random values
   rs <- replicateM n_proposals sampleRandom
   let strace' = Map.union (Map.fromList (zip αs rs)) strace

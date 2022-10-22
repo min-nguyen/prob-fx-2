@@ -93,6 +93,6 @@ handleAccept tags n_proposals = loop where
       ->  lift (MH.propose tags n_proposals strace) >>= (loop . k)
     Right (Accept α log_p log_p')
       ->  do  let acceptance_ratio = expLogP (log_p' - log_p)
-              u <- lift $ sample (Uniform 0 1)
+              u <- lift $ sample (mkUniform 0 1)
               (loop . k) (u < acceptance_ratio)
     Left op' -> Op op' (loop . k)

@@ -413,3 +413,4 @@ BBVI-[ ]-10-LDA-50,0.5987262243958753,1.4848666465416425,2.644995561333417,4.058
 -------------------------------
 Updates:
  - Added arithmetic operations for DiffDistributions which operate on distributions directly rather than using `toList` and `fromList`.
+ - Added smart constructors for each Distribution type

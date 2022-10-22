@@ -13,7 +13,7 @@ module CoinFlip where
 import Prog ( call )
 import Effects.ObsRW ( ObsRW(OAsk) )
 import Model ( Model(Model), bernoulli, uniform )
-import PrimDist ( Bernoulli(Bernoulli), Uniform(Uniform) )
+import PrimDist ( mkBernoulli, mkUniform )
 import Effects.Dist ( Dist(Dist) )
 import Data.Kind (Constraint)
 import Env ( Observables )
@@ -38,7 +38,7 @@ coinFlip'
   => Model env es Bool
 coinFlip' = Model $ do
   maybe_p  <- call (OAsk @env #p)
-  p        <- call (Dist (Uniform 0 1) maybe_p (Just "p"))
+  p        <- call (Dist (mkUniform 0 1) maybe_p (Just "p"))
   maybe_y  <- call (OAsk @env #y)
-  y        <- call (Dist (Bernoulli p) maybe_y (Just "p") )
+  y        <- call (Dist (mkBernoulli p) maybe_y (Just "p") )
   return y
