@@ -45,31 +45,25 @@ import           Util ( linCongGen, boolToInt, mean, covariance, variance )
 -}
 class (Show d, Typeable d) => Distribution d where
   type family Support d :: *
-  {- | Given a random double @r@ in (0, 1], this is passed to a distribution's inverse
-       cumulative density function to draw a sampled value.
-  -}
+  {- | Given a random double @r@ in (0, 1), this is passed to a distribution's inverse
+       cumulative density function to draw a sampled value. -}
   sampleInv   :: d -> Double -> Support d
 
-  {- | Draw a value from a primitive distribution in the @Sampler@ monad.
-  -}
+  {- | Draw a value from a primitive distribution in the @Sampler@ monad. -}
   sample      :: d -> Sampler (Support d)
 
-  {- | Compute the log density of a primitive distribution generating an observed value.
-  -}
+  {- | Compute the log density of a primitive distribution generating an observed value. -}
   logProbRaw  :: d -> Support d -> Double
 
-  {- | Compute the log density as the @LogP@ type
-  -}
+  {- | Compute the log density as the @LogP@ type. -}
   logProb     :: d -> Support d -> LogP
   logProb d   = LogP . logProbRaw d
 
-  {- | Compute the probability density
-  -}
+  {- | Compute the probability density. -}
   prob        :: d -> Support d -> Double
   prob d      = exp . logProbRaw d
 
-  {- | Provide proof that @d@ is differentiable.
-  -}
+  {- | Provide proof that @d@ is differentiable. -}
   isDifferentiable :: d -> Maybe (Witness DiffDistribution d)
 
 -- | Shorthand for specifying a distribution @d@ and its type of support @a@
@@ -82,11 +76,8 @@ data Witness c a where
 {- Distributions that can be differentiated with respect to their parameters
 -}
 class Distribution d => DiffDistribution d where
-  {- | Compute the gradient log-probability.
-  -}
+  {- | Compute the gradient log-probability. -}
   gradLogProb :: d -> Support d -> d
-
-  safeAddGrad :: d -> d -> d
 
   liftUnOp :: (Double -> Double) -> d -> d
 
@@ -97,6 +88,8 @@ class Distribution d => DiffDistribution d where
   toList :: d -> [Double]
 
   fromList :: [Double] -> d
+
+  safeAddGrad :: d -> d -> d
 
   (|+|) :: d -> d -> d
   (|+|) = liftBinOp (+)
@@ -148,9 +141,7 @@ instance Distribution Beta where
   type Support Beta = Double
 
   sampleInv :: Beta -> Double -> Double
-  sampleInv (Beta α β) r
-    | r >= 0 && r <= 1 = invIncompleteBeta α β r
-    | otherwise        = error $ "Beta: r must be in [0,1] range. Got: " ++ show r
+  sampleInv (Beta α β) = invIncompleteBeta α β
 
   sample :: Beta -> Sampler Double
   sample (Beta α β) = sampleBeta α β
@@ -206,10 +197,7 @@ instance Distribution Cauchy where
   type Support Cauchy = Double
 
   sampleInv :: Cauchy -> Double -> Double
-  sampleInv (Cauchy loc scale) r
-      | 0 < r && r < 0.5 = loc - scale / tan( pi * r )
-      | 0.5 < r && r < 1 = loc + scale / tan( pi * (1 - r) )
-      | otherwise = error  $ "Cauchy: r must be in [0,1] range. Got: " ++ show r
+  sampleInv (Cauchy loc scale) r = loc + scale * tan( pi * (r - 0.5) )
 
   sample :: Cauchy -> Sampler Double
   sample (Cauchy loc scale) = sampleCauchy loc scale
@@ -282,7 +270,7 @@ instance Distribution HalfCauchy where
 instance DiffDistribution HalfCauchy where
   gradLogProb :: HalfCauchy -> Double -> HalfCauchy
   gradLogProb (HalfCauchy scale) x
-    | x < 0      = error "cauchyGradLogPdfRaw: x < 0"
+    | x < 0      = error "cauchyGradLogProb: x < 0"
     | otherwise  = let (Cauchy _ dscale) = gradLogProb (Cauchy 0 scale) x in HalfCauchy dscale
 
   safeAddGrad :: HalfCauchy -> HalfCauchy -> HalfCauchy
@@ -381,11 +369,7 @@ instance Distribution Gamma where
   type Support Gamma = Double
 
   sampleInv :: Gamma -> Double -> Double
-  sampleInv (Gamma k θ) r
-      | r == 0         = 0
-      | r == 1         = m_pos_inf
-      | r > 0 && r < 1 = θ * invIncompleteGamma k r
-      | otherwise      = error $ "Gamma: r must be in [0,1] range. Got: " ++ show r
+  sampleInv (Gamma k θ) r = θ * invIncompleteGamma k r
 
   sample :: Gamma -> Sampler Double
   sample (Gamma k θ) = sampleGamma k θ
@@ -441,12 +425,7 @@ instance Distribution Normal where
   type Support Normal = Double
 
   sampleInv :: Normal -> Double -> Double
-  sampleInv (Normal μ σ) r
-    | r == 0         = m_neg_inf
-    | r == 1         = m_pos_inf
-    | r == 0.5       = μ
-    | r > 0 && r < 1 = (- invErfc (2 * r)) * (m_sqrt_2 * σ) + μ
-    | otherwise      = error $ "Normal: r must be in [0,1] range. Got: " ++ show r
+  sampleInv (Normal μ σ) r = (- invErfc (2 * r)) * (m_sqrt_2 * σ) + μ
 
   sample :: Normal -> Sampler Double
   sample (Normal μ σ) = sampleNormal μ σ
@@ -759,9 +738,7 @@ instance Distribution Uniform where
   type Support Uniform = Double
 
   sampleInv :: Uniform -> Double -> Double
-  sampleInv (Uniform min max) r
-    | r >= 0 && r <= 1 = min + (max - min) * r
-    | otherwise        = error $ "Uniform: r must be in [0,1] range. Got: " ++ show r
+  sampleInv (Uniform min max) r = min + (max - min) * r
 
   sample :: Uniform -> Sampler Double
   sample (Uniform min max) = sampleUniform min max
@@ -787,9 +764,7 @@ instance Distribution UniformD where
   type Support UniformD = Int
 
   sampleInv :: UniformD -> Double -> Int
-  sampleInv (UniformD min max) r
-     | r >= 0 && r <= 1 = floor (min' + (max' - min') * r)
-     | otherwise        = error $ "UniformD: r must be in [0,1] range. Got: " ++ show r
+  sampleInv (UniformD min max) r = floor (min' + (max' - min') * r)
      where min' = fromIntegral min
            max' = fromIntegral max + 1
 
