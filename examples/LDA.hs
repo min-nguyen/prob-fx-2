@@ -138,14 +138,14 @@ simLDA n_words = do
 
 -- | Example document of words to perform inference over
 document :: [String]
-document = ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA"]
+document = concat $ repeat ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA"]
 
 -- | LW inference on topic model
 lwLDA :: Int -> Int -> Sampler ([[Double]], [Double])
 lwLDA n_lwsteps n_words = do
   -- Do MH inference over the topic model using the above data
   let n_topics  = 2
-      env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+      env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document <:> enil
   (env_outs, ws) <- unzip <$> LW.lw n_lwsteps (topicModel vocab n_topics n_words) env_in
   -- Draw the most recent sampled parameters
   let env_pred   = head env_outs
@@ -153,11 +153,11 @@ lwLDA n_lwsteps n_words = do
   return (θs, ws)
 
 -- | MH inference on topic model (predictive)
-mhPredLDA :: Int -> Int -> Sampler ([[Double]], [[Double]])
-mhPredLDA n_mhsteps n_words = do
+mhLDA :: Int -> Int -> Sampler ([[Double]], [[Double]])
+mhLDA n_mhsteps n_words = do
   -- Do MH inference over the topic model using the above data
   let n_topics  = 2
-      env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+      env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document <:> enil
   env_outs <- MH.mh n_mhsteps (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
   -- Draw the most recent sampled parameters
   let env_pred   = head env_outs
@@ -166,10 +166,10 @@ mhPredLDA n_mhsteps n_words = do
   return (θs, φs)
 
 -- | SMC inference on topic model (predictive)
-smcPredLDA :: Int -> Int -> Sampler ([[Double]], [[Double]])
-smcPredLDA n_particles n_words = do
+smcLDA :: Int -> Int -> Sampler ([[Double]], [[Double]])
+smcLDA n_particles n_words = do
   let n_topics  = 2
-      env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+      env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document <:> enil
 
   env_outs <- SMC.smc n_particles (topicModel vocab n_topics n_words) env_in
   -- Draw a random particle's environment
@@ -180,11 +180,11 @@ smcPredLDA n_particles n_words = do
   return (θs, φs)
 
 -- | RMSMC inference on topic model (predictive)
-rmsmcPredLDA :: Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
-rmsmcPredLDA n_particles n_mhsteps n_words = do
+rmsmcLDA :: Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
+rmsmcLDA n_particles n_mhsteps n_words = do
 
   let n_topics  = 2
-      env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+      env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document <:> enil
 
   env_outs     <- RMSMC.rmsmc n_particles n_mhsteps (topicModel vocab n_topics n_words) env_in vnil
   -- Draw a random particle's environment
@@ -195,11 +195,11 @@ rmsmcPredLDA n_particles n_mhsteps n_words = do
   return (θs, φs)
 
 -- | PMMH inference on topic model (predictive)
-pmmhPredLDA :: Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
-pmmhPredLDA n_mhsteps n_particles n_words = do
+pmmhLDA :: Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
+pmmhLDA n_mhsteps n_particles n_words = do
 
   let n_topics  = 2
-      env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+      env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document <:> enil
 
   env_outs     <- PMMH.pmmh n_mhsteps n_particles  (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
   -- Draw the most recent sampled parameters
@@ -209,11 +209,11 @@ pmmhPredLDA n_mhsteps n_particles n_words = do
   return (θs, φs)
 
 -- | SMC2 inference on topic model (predictive)
-smc2PredLDA :: Int ->  Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
-smc2PredLDA n_outer_particles n_mhsteps n_inner_particles n_words = do
+smc2LDA :: Int ->  Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
+smc2LDA n_outer_particles n_mhsteps n_inner_particles n_words = do
 
   let n_topics  = 2
-      env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+      env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document <:> enil
 
   env_outs     <- SMC2.smc2 n_outer_particles n_mhsteps n_inner_particles (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
   -- Draw the most recent sampled parameters
@@ -227,7 +227,7 @@ bbviLDA :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double])
 bbviLDA t_steps l_samples n_words = do
 
   let n_topics  = 2
-      env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
+      env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document <:> enil
 
   traceQ <- BBVI.bbvi t_steps l_samples (topicModel vocab n_topics n_words) env_in
   -- Draw the most recent sampled parameters

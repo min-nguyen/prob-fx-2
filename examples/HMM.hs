@@ -8,6 +8,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant return" #-}
+{-# HLINT ignore "Use camelCase" #-}
 
 {- | A variety of possible implementations of a [Hidden Markov Model (HMM)](https://en.wikipedia.org/wiki/Hidden_Markov_model).
 -}
@@ -75,7 +76,6 @@ hmmFor n x = do
                        | otherwise = return x_prev
   hmmLoop 0 x
 
-
 {- | A more modular HMM implementation.
 -}
 
@@ -135,31 +135,35 @@ hmm n x = do
 simHMM
   -- | number of HMM nodes
   :: Int
-  -> Sampler Int
+  -> Sampler [Int]
 simHMM hmm_length = do
   -- Specify model input
   let x_0 = 0
   -- Specify model environment
       env_in = #trans_p := [0.9] <:> #obs_p := [0.2] <:> #y := [] <:> enil
   (y, env_out) <- SIM.simulate (hmm hmm_length 0) env_in
-  pure y
+  let ys :: [Int] = get #y env_out
+  pure ys
 
--- | Perform likelihood-weighting inference over HMM
+-- | Likelihood Weighting over a HMM
 lwHMM
-  -- | number of LW iterations
+  -- | number of MH iterations
   :: Int
   -- | number of HMM nodes
   -> Int
-  -> Sampler ([Double], [Double])
+  -- | [(transition parameter, observation parameter, likelihood-weighting)]
+  -> Sampler ([Double], [Double], [Double])
 lwHMM lw_samples hmm_length = do
-  -- Specify model input
-  ys <- map snd <$> simHMMw hmm_length
-  let x_0 = 0
-  -- Specify model environment
-      env_in = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
-  (env_outs, ws) <- unzip <$> LW.lw lw_samples (hmm hmm_length x_0) env_in
+  -- Simulate a trace of observations from the HMM
+  ys <- simHMM hmm_length
+  -- Specify a model environment containing those observations
+  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
+  -- Handle the Writer effect and then run MH inference
+  (env_outs, ws) <- unzip <$> LW.lw lw_samples (hmm hmm_length 0) env_in
+  -- Get the trace of sampled transition and observation parameters
   let trans_ps    = concatMap (get #trans_p) env_outs
-  pure (trans_ps, ws)
+      obs_ps      = concatMap (get #obs_p) env_outs
+  pure (trans_ps, obs_ps, ws)
 
 -- | Metropolis-Hastings inference over a HMM
 mhHMM
@@ -171,7 +175,7 @@ mhHMM
   -> Sampler ([Double], [Double])
 mhHMM mh_samples hmm_length = do
   -- Simulate a trace of observations from the HMM
-  ys <- map snd <$> simHMMw hmm_length
+  ys <- simHMM hmm_length
   -- Specify a model environment containing those observations
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
   -- Handle the Writer effect and then run MH inference
@@ -181,107 +185,17 @@ mhHMM mh_samples hmm_length = do
       obs_ps      = concatMap (get #obs_p) env_outs
   pure (trans_ps, obs_ps)
 
-{- | Extending the modular HMM with a user-specific effect.
-     This example uses the @Writer@ effect for recording the intermediate latent states.
--}
-
-hmmNodeW :: (Observable env "y" Int
-           , Member (Writer [Int]) es)
-  -- | transition parameter
-  => Double
-  -- | observation parameter
-  -> Double
-  -- | previous latent state
-  -> Int
-  -- | next latent state
-  -> Model env es Int
-hmmNodeW transition_p observation_p x_prev = do
-  x_n <- transModel transition_p x_prev
-  tellM [x_n] -- write each latent state to a stream [Int]
-  y_n <- obsModel observation_p x_n
-  pure x_n
-
-hmmW :: ( Observable env "y" Int
-        , Observables env '["obs_p", "trans_p"] Double
-        , Member (Writer [Int]) es
-        , LastMember (Lift Sampler) es)
-  -- | number of HMM nodes
-  => Int
-  -- | initial latent state
-  -> Int
-  -- | final latent state
-  -> Model env es Int
-hmmW n x = do
-  trans_p <- beta 2 2 #trans_p
-  obs_p   <- beta 2 2 #obs_p
-  foldl (>=>) pure  (replicate n (hmmNodeW trans_p obs_p)) x
-
--- | Simulate from a HMM
-simHMMw
-  -- | number of HMM nodes
-  :: Int
-  -- | [(latent state, observation)]
-  -> Sampler [(Int, Int)]
-simHMMw hmm_length = do
-  -- Specify model environment
-  let env_in = #trans_p := [0.9] <:> #obs_p := [0.2] <:> #y := [] <:> enil
-  -- Handle the Writer effect to produce the stream of latent states @xs@, and then simulate
-  ((_, xs), env_out) <- SIM.simulate (handleWriterM $ hmmW hmm_length 0) env_in
-  -- Get the observations
-  let ys :: [Int] = get #y env_out
-  pure $ zip xs ys
-
--- | Likelihood Weighting over a HMM
-lwHMMw
-  -- | number of MH iterations
-  :: Int
-  -- | number of HMM nodes
-  -> Int
-  -- | [(transition parameter, observation parameter, likelihood-weighting)]
-  -> Sampler ([Double], [Double], [Double])
-lwHMMw lw_samples hmm_length = do
-  -- Simulate a trace of observations from the HMM
-  ys <- map snd <$> simHMMw hmm_length
-  -- Specify a model environment containing those observations
-  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
-  -- Handle the Writer effect and then run MH inference
-  (env_outs, ws) <- unzip <$> LW.lw lw_samples (handleWriterM @[Int] $ hmmW hmm_length 0) env_in
-  -- Get the trace of sampled transition and observation parameters
-  let trans_ps    = concatMap (get #trans_p) env_outs
-      obs_ps      = concatMap (get #obs_p) env_outs
-  pure (trans_ps, obs_ps, ws)
-
--- | Metropolis-Hastings inference over a HMM
-mhHMMw
-  -- | number of MH iterations
-  :: Int
-  -- | number of HMM nodes
-  -> Int
-  -- | [(transition parameter, observation parameter)]
-  -> Sampler ([Double], [Double])
-mhHMMw mh_samples hmm_length = do
-  -- Simulate a trace of observations from the HMM
-  ys <- map snd <$> simHMMw hmm_length
-  -- Specify a model environment containing those observations
-  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
-  -- Handle the Writer effect and then run MH inference
-  env_outs <- MH.mh mh_samples (handleWriterM @[Int] $ hmmW hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
-  -- Get the trace of sampled transition and observation parameters
-  let trans_ps    = concatMap (get #trans_p) env_outs
-      obs_ps      = concatMap (get #obs_p) env_outs
-  pure (trans_ps, obs_ps)
-
 -- | SMC inference over a HMM
-smcHMMw
+smcHMM
   -- | number of particles
   :: Int
   -- | number of HMM nodes
   -> Int
   -- | [(transition parameter, observation parameter)]
   -> Sampler ([Double], [Double])
-smcHMMw n_particles hmm_length = do
+smcHMM n_particles hmm_length = do
   -- Simulate a trace of observations from the HMM
-  ys <- map snd <$> simHMMw hmm_length
+  ys <- simHMM hmm_length
   -- Specify a model environment containing those observations
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
   -- Handle the Writer effect and then run SMC inference
@@ -292,7 +206,7 @@ smcHMMw n_particles hmm_length = do
   pure (trans_ps, obs_ps)
 
 -- | RMSMC inference over a HMM
-rmsmcHMMw
+rmsmcHMM
   -- | number of particles
   :: Int
   -- | number of MH steps
@@ -301,8 +215,8 @@ rmsmcHMMw
   -> Int
   -- | [(transition parameter, observation parameter)]
   -> Sampler ([Double], [Double])
-rmsmcHMMw n_particles n_mhsteps hmm_length = do
-  ys <- map snd <$> simHMMw hmm_length
+rmsmcHMM n_particles n_mhsteps hmm_length = do
+  ys <- simHMM hmm_length
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
   env_outs <- RMSMC.rmsmc n_particles n_mhsteps (hmm hmm_length 0) env_in vnil
@@ -311,7 +225,7 @@ rmsmcHMMw n_particles n_mhsteps hmm_length = do
   pure (trans_ps, obs_ps)
 
 -- | PMMH inference over a HMM
-pmmhHMMw
+pmmhHMM
   -- | number of MH steps
   :: Int
   -- | number of particles
@@ -320,8 +234,8 @@ pmmhHMMw
   -> Int
   -- | [(transition parameter, observation parameter)]
   -> Sampler ([Double], [Double])
-pmmhHMMw n_mhsteps n_particles  hmm_length = do
-  ys <- map snd <$> simHMMw hmm_length
+pmmhHMM n_mhsteps n_particles  hmm_length = do
+  ys <- simHMM hmm_length
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
   env_outs <- PMMH.pmmh n_mhsteps n_particles (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
@@ -330,7 +244,7 @@ pmmhHMMw n_mhsteps n_particles  hmm_length = do
   pure (trans_ps, obs_ps)
 
 -- | SMC2 inference over a HMM
-smc2HMMw
+smc2HMM
   -- | number of outer particles
   :: Int
   -- | number of MH steps
@@ -341,8 +255,8 @@ smc2HMMw
   -> Int
   -- | [(transition parameter, observation parameter)]
   -> Sampler ([Double], [Double])
-smc2HMMw n_outer_particles n_mhsteps n_inner_particles  hmm_length = do
-  ys <- map snd <$> simHMMw hmm_length
+smc2HMM n_outer_particles n_mhsteps n_inner_particles  hmm_length = do
+  ys <- simHMM hmm_length
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
   env_outs <- SMC2.smc2 n_outer_particles n_mhsteps n_inner_particles (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
@@ -351,7 +265,7 @@ smc2HMMw n_outer_particles n_mhsteps n_inner_particles  hmm_length = do
   pure (trans_ps, obs_ps)
 
 -- | BBVI inference over a HMM
-bbviHMMw
+bbviHMM
   -- | number of optimisation steps
   :: Int
   -- | number of samples to estimate gradients over
@@ -360,14 +274,64 @@ bbviHMMw
   -> Int
   -- | (transition beta parameters, observation beta parameters)
   -> Sampler ([Double], [Double])
-bbviHMMw t_steps l_samples hmm_length = do
-  ys <- map snd <$> simHMMw hmm_length
+bbviHMM t_steps l_samples hmm_length = do
+  ys <- simHMM hmm_length
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
   traceQ <- BBVI.bbvi t_steps l_samples (hmm hmm_length 0) env_in
   let trans_dist = toList . fromJust $ dlookup (DKey ("trans_p", 0) :: DKey Beta) traceQ
       obs_dist   = toList . fromJust $ dlookup (DKey ("obs_p", 0)   :: DKey Beta) traceQ
   pure (trans_dist, obs_dist)
+
+{- | Extending the modular HMM with a user-specific effect.
+     This example uses the @Writer@ effect for recording the intermediate latent states.
+-}
+
+hmmNode_WR :: (Observable env "y" Int
+           , Member (Writer [Int]) es)
+  -- | transition parameter
+  => Double
+  -- | observation parameter
+  -> Double
+  -- | previous latent state
+  -> Int
+  -- | next latent state
+  -> Model env es Int
+hmmNode_WR transition_p observation_p x_prev = do
+  x_n <- transModel transition_p x_prev
+  tellM [x_n] -- write each latent state to a stream [Int]
+  y_n <- obsModel observation_p x_n
+  pure x_n
+
+hmm_WR :: ( Observable env "y" Int
+        , Observables env '["obs_p", "trans_p"] Double
+        , Member (Writer [Int]) es
+        , LastMember (Lift Sampler) es)
+  -- | number of HMM nodes
+  => Int
+  -- | initial latent state
+  -> Int
+  -- | final latent state
+  -> Model env es Int
+hmm_WR n x = do
+  trans_p <- beta 2 2 #trans_p
+  obs_p   <- beta 2 2 #obs_p
+  foldl (>=>) pure  (replicate n (hmmNode_WR trans_p obs_p)) x
+
+-- | Simulate from a HMM
+simHMM_WR
+  -- | number of HMM nodes
+  :: Int
+  -- | [(latent state, observation)]
+  -> Sampler [(Int, Int)]
+simHMM_WR hmm_length = do
+  -- Specify model environment
+  let env_in = #trans_p := [0.9] <:> #obs_p := [0.2] <:> #y := [] <:> enil
+  -- Handle the Writer effect to produce the stream of latent states @xs@, and then simulate
+  ((_, xs), env_out) <- SIM.simulate (handleWriterM $ hmm_WR hmm_length 0) env_in
+  -- Get the observations
+  let ys :: [Int] = get #y env_out
+  pure $ zip xs ys
 
 {- | Interfacing the HMM on top of Monad Bayes.
 

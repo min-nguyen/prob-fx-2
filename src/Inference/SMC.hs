@@ -18,10 +18,10 @@ import Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe (..), Samp
 import Effects.Lift ( Lift, lift, liftPrint, handleLift)
 import Effects.ObsRW ( ObsRW, handleObsRW )
 import Env ( Env )
-import LogP ( LogP(..), logMeanExp )
+import LogP ( LogP(..), logMeanExp, expLogP )
 import Model ( Model(runModel), ProbSig )
 import OpenSum (OpenSum)
-import PrimDist ( Categorical(..), sample, logProb )
+import PrimDist ( mkCategorical, sample, logProb )
 import Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge )
 import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
@@ -88,12 +88,11 @@ handleResampleMul (Val x) = Val x
 handleResampleMul (Op op k) = case discharge op of
   Right (Resample (prts, ctxs) _) -> do
     -- | Get the weights for each particle
-    let ws = map (exp . unLogP . particleLogProb) ctxs
+    let ws = map (expLogP . particleLogProb) ctxs
     -- | Select particles to continue with
-    idxs <- replicateM (length ws) $ lift (sample (Categorical ws))
+    idxs <- replicateM (length ws) $ lift (sample (mkCategorical ws))
     let resampled_prts = map (prts !! ) idxs
         resampled_ctxs = map (ctxs !! ) idxs
-    liftPrint ("Weights: " ++ show ws)
     (handleResampleMul . k) ((resampled_prts, resampled_ctxs), idxs)
   Left op' -> Op op' (handleResampleMul . k)
 
@@ -104,7 +103,7 @@ handleResampleSys (Val x) = Val x
 handleResampleSys (Op op k) = case discharge op of
   Right (Resample (prts, ctxs) _) -> do
     -- | Get the weights for each particle
-    let ws = map (exp . unLogP . particleLogProb) ctxs
+    let ws = map (expLogP . particleLogProb) ctxs
     -- | Select particles to continue with
     u <- lift sampleRandom
     let prob i = ws !! i

@@ -17,7 +17,7 @@ import qualified Data.Set as Set
 import Data.Maybe ( fromJust )
 import Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg )
 import Trace ( STrace, LPTrace, filterTrace )
-import LogP ( LogP(unLogP) )
+import LogP ( LogP )
 import PrimDist
 import Model ( Model, handleCore, ProbSig )
 import Effects.ObsRW ( ObsRW )

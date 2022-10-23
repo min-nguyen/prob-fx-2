@@ -138,57 +138,57 @@ callDist' d = Model $ call (Dist d Nothing Nothing)
 deterministic :: (Typeable a, Eq a, Show a, Observable env x a) => a
   -> Var x
   -> Model env es a
-deterministic x = callDist (Deterministic x)
+deterministic x = callDist (mkDeterministic x)
 
 deterministic' :: (Typeable a, Eq a, Show a) =>
   -- | value to be deterministically generated
      a
   -> Model env es a
-deterministic' x = callDist' (Deterministic x)
+deterministic' x = callDist' (mkDeterministic x)
 
 dirichlet ::Observable env x [Double] =>
      [Double]
   -> Var x
   -> Model env es [Double]
-dirichlet xs = callDist (Dirichlet xs)
+dirichlet xs = callDist (mkDirichlet xs)
 
 dirichlet' ::
   -- | concentration parameters
      [Double]
   -> Model env es [Double]
-dirichlet' xs = callDist' (Dirichlet xs)
+dirichlet' xs = callDist' (mkDirichlet xs)
 
 discrete :: (Typeable a, Eq a, Show a, Observable env x a) =>
      [(a, Double)]
   -> Var x
   -> Model env es a
-discrete ps = callDist (Discrete ps)
+discrete ps = callDist (mkDiscrete ps)
 
 discrete' :: (Typeable a, Eq a, Show a) =>
   -- | primitive values and their probabilities
      [(a, Double)]
   -> Model env es a
-discrete' ps = callDist' (Discrete ps)
+discrete' ps = callDist' (mkDiscrete ps)
 
 categorical :: Observable env x Int =>
      [Double]
   -> Var x
   -> Model env es Int
-categorical xs = callDist (Categorical xs)
+categorical xs = callDist (mkCategorical xs)
 
 categorical'
   -- | list of @n@ probabilities
   :: [Double]
   -- | integer index from @0@ to @n - 1@
   -> Model env es Int
-categorical' xs = callDist' (Categorical xs)
+categorical' xs = callDist' (mkCategorical xs)
 
 normal :: Observable env x Double =>
      Double
   -> Double
   -> Var x
   -> Model env es Double
-normal mu sigma = callDist (Normal mu sigma)
+normal mu sigma = callDist (mkNormal mu sigma)
 
 normal'
   -- | mean
@@ -196,27 +196,26 @@ normal'
   -- | standard deviation
   -> Double
   -> Model env es Double
-normal' mu sigma = callDist' (Normal mu sigma)
+normal' mu sigma = callDist' (mkNormal mu sigma)
 
 halfNormal :: Observable env x Double
   => Double
   -> Var x
   -> Model env es Double
-halfNormal sigma = callDist (HalfNormal sigma)
+halfNormal sigma = callDist (mkHalfNormal sigma)
 
 halfNormal'
   -- | standard deviation
   :: Double
   -> Model env es Double
-halfNormal' sigma = Model $ do
-  call (Dist (HalfNormal sigma) Nothing Nothing)
+halfNormal' sigma = callDist' (mkHalfNormal sigma)
 
 cauchy :: Observable env x Double =>
      Double
   -> Double
   -> Var x
   -> Model env es Double
-cauchy mu sigma = callDist (Cauchy mu sigma)
+cauchy mu sigma = callDist (mkCauchy mu sigma)
 
 cauchy'
   -- | location
@@ -224,39 +223,38 @@ cauchy'
   -- | scale
   -> Double
   -> Model env es Double
-cauchy' mu sigma = callDist' (Cauchy mu sigma)
+cauchy' mu sigma = callDist' (mkCauchy mu sigma)
 
 halfCauchy :: Observable env x Double =>
      Double
   -> Var x
   -> Model env es Double
-halfCauchy sigma = callDist (HalfCauchy sigma)
+halfCauchy sigma = callDist (mkHalfCauchy sigma)
 
 halfCauchy' ::
   -- | scale
      Double
   -> Model env es Double
-halfCauchy' sigma = Model $ do
-  call (Dist (HalfCauchy sigma) Nothing Nothing)
+halfCauchy' sigma = callDist' (mkHalfCauchy sigma)
 
 bernoulli :: Observable env x Bool =>
      Double
   -> Var x
   -> Model env es Bool
-bernoulli p = callDist (Bernoulli p)
+bernoulli p = callDist (mkBernoulli p)
 
 bernoulli' ::
   -- | probability of @True@
      Double
   -> Model env es Bool
-bernoulli' p = callDist' (Bernoulli p)
+bernoulli' p = callDist' (mkBernoulli p)
 
 beta :: Observable env x Double =>
      Double
   -> Double
   -> Var x
   -> Model env es Double
-beta α β = callDist (Beta α β)
+beta α β = callDist (mkBeta α β)
 
 beta' ::
   -- | shape 1 (α)
@@ -264,14 +262,14 @@ beta' ::
   -- | shape 2 (β)
   -> Double
   -> Model env es Double
-beta' α β = callDist' (Beta α β)
+beta' α β = callDist' (mkBeta α β)
 
 binomial :: Observable env x Int =>
      Int
   -> Double
   -> Var x
   -> Model env es Int
-binomial n p = callDist (Binomial n p)
+binomial n p = callDist (mkBinomial n p)
 
 binomial' ::
   -- | number of trials
@@ -280,14 +278,14 @@ binomial' ::
   -> Double
   -- | number of successful trials
   -> Model env es Int
-binomial' n p = callDist' (Binomial n p)
+binomial' n p = callDist' (mkBinomial n p)
 
 gamma :: forall env es x. Observable env x Double =>
      Double
   -> Double
   -> Var x
   -> Model env es Double
-gamma k θ = callDist (Gamma k θ)
+gamma k θ = callDist (mkGamma k θ)
 
 gamma' ::
   -- | shape (k)
@@ -295,14 +293,14 @@ gamma' ::
   -- | scale (θ)
   -> Double
   -> Model env es Double
-gamma' k θ = callDist' (Gamma k θ)
+gamma' k θ = callDist' (mkGamma k θ)
 
 uniform :: Observable env x Double =>
      Double
   -> Double
   -> Var x
   -> Model env es Double
-uniform min max = callDist (Uniform min max)
+uniform min max = callDist (mkUniform min max)
 
 uniform' ::
   -- | lower-bound
@@ -310,18 +308,18 @@ uniform' ::
   -- | upper-bound
   -> Double
   -> Model env es Double
-uniform' min max = callDist' (Uniform min max)
+uniform' min max = callDist' (mkUniform min max)
 
 poisson :: Observable env x Int =>
      Double
   -> Var x
   -> Model env es Int
-poisson λ = callDist (Poisson λ)
+poisson λ = callDist (mkPoisson λ)
 
 poisson' ::
   -- | rate (λ)
      Double
   -- | number of events
   -> Model env es Int
-poisson' λ = callDist' (Poisson λ)
+poisson' λ = callDist' (mkPoisson λ)
 

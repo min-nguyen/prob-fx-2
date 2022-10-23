@@ -35,7 +35,7 @@ testNormalLogPdf = do
   std  <- choose (0.1, 5.0)
   x    <- choose (-10, 10)
   let logp  = logDensity (normalDistr mu std) x
-      logp' = logProbRaw (Normal mu std) x
+      logp' = logProbRaw (mkNormal mu std) x
   pure (abs (logp - logp') < c_error_margin)
 
 testHalfNormalLogPdf :: Gen Bool
@@ -43,7 +43,7 @@ testHalfNormalLogPdf = do
   std  <- choose (0.1, 5.0)
   x    <- choose (0.001, 10)
   let logp  = log 2 + logDensity (normalDistr 0 std) x
-      logp' = logProbRaw (HalfNormal std) x
+      logp' = logProbRaw (mkHalfNormal std) x
 
   pure (abs (logp - logp') < c_error_margin)
 
@@ -53,7 +53,7 @@ testCauchyLogPdf = do
   scale  <- choose (0.1, 5.0)
   x      <- choose (-10, 10)
   let logp  = logDensity (cauchyDistribution loc scale) x
-      logp' = logProbRaw (Cauchy loc scale) x
+      logp' = logProbRaw (mkCauchy loc scale) x
 
   pure (abs (logp - logp') < c_error_margin)
 
@@ -62,7 +62,7 @@ testHalfCauchyLogPdf = do
   scale  <- choose (0.1, 5.0)
   x      <- choose (0.001, 10)
   let logp  = log 2 + logDensity (cauchyDistribution 0 scale) x
-      logp' = logProbRaw (HalfCauchy scale) x
+      logp' = logProbRaw (mkHalfCauchy scale) x
 
   pure (abs (logp - logp') < c_error_margin)
 
@@ -72,7 +72,7 @@ testGammaLogPdf = do
   t  <- choose (0.001, 10)
   x  <- choose (0.001, 10)
   let logp  = logDensity (gammaDistr k t) x
-      logp' = logProbRaw (Gamma k t) x
+      logp' = logProbRaw (mkGamma k t) x
 
   pure (abs (logp - logp') < c_error_margin)
 
@@ -82,7 +82,7 @@ testBetaLogPdf = do
   b  <- choose (0.001, 10)
   x  <- choose (0.001, 0.999)
   let logp  = logDensity (betaDistr a b) x
-      logp' = logProbRaw (Beta a b) x
+      logp' = logProbRaw (mkBeta a b) x
 
   pure (abs (logp - logp') < c_error_margin)
 
@@ -96,7 +96,7 @@ testDirichletLogPdf = do
   case dirichletDistribution (UV.fromList alphas')
       of Left e  -> error $ "Dirichlet error: " ++ e
          Right d -> let logp  = ln $ dirichletDensity d (UV.fromList xs')
-                        logp' = logProbRaw (Dirichlet alphas') xs'
+                        logp' = logProbRaw (mkDirichlet alphas') xs'
                     in  pure (abs (logp - logp') < c_error_margin)
 
 testUniformLogPdf :: Gen Bool
@@ -105,7 +105,7 @@ testUniformLogPdf = do
   max  <- choose (-10, 10) `suchThat` (> min)
   x    <- choose (-10, 10)
   let logp  = logDensity (uniformDistr min max) x
-      logp' = logProbRaw (Uniform min max) x
+      logp' = logProbRaw (mkUniform min max) x
 
   pure (abs (logp - logp') < c_error_margin || (logp == logp'))
 
@@ -116,7 +116,7 @@ testBernoulliLogPdf = do
   p  <- choose (0, 1)
   b  <- chooseInt (0, 1) >>= (\i -> pure $ [False, True] !! i)
   let logp  = logProbability (binomial 1 p) (boolToInt b)
-      logp' = logProbRaw (Bernoulli p) b
+      logp' = logProbRaw (mkBernoulli p) b
 
   pure (abs (logp - logp') < c_error_margin || (logp == logp'))
   where boolToInt True  = 1
@@ -128,7 +128,7 @@ testBinomialLogPdf = do
   p  <- choose    (0, 1)
   y  <- chooseInt (1, 30)
   let logp  = logProbability (binomial n p) y
-      logp' = logProbRaw (Binomial n p) y
+      logp' = logProbRaw (mkBinomial n p) y
 
   pure (abs (logp - logp') < c_error_margin || (logp == logp'))
 
@@ -137,7 +137,7 @@ testPoissonLogPdf = do
   lambda  <- choose    (0, 100)
   y       <- chooseInt (0, 100)
   let logp  = logProbability (poisson lambda) y
-      logp' = logProbRaw (Poisson lambda) y
+      logp' = logProbRaw (mkPoisson lambda) y
 
   pure (abs (logp - logp') < c_error_margin || (logp == logp'))
 
@@ -147,7 +147,7 @@ testUniformDLogPdf = do
   max  <- chooseInt (-10, 10) `suchThat` (>= min)
   x    <- chooseInt (-10, 10) `suchThat` (\x -> x >= min && x  <= max)
   let logp  = logProbability (discreteUniformAB min max) x
-      logp' = logProbRaw (UniformD min max) x
+      logp' = logProbRaw (mkUniformD min max) x
 
   pure (abs (logp - logp') < c_error_margin || (logp == logp'))
 
