@@ -17,7 +17,7 @@ import Model ( Model, dirichlet, discrete, categorical' )
 import Sampler ( Sampler, sampleUniformD, liftIO )
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
-import GHC.TypeNats
+import Data.Type.Nat
 import Data.Proxy
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>), Vars (VCons) )
 import Trace
@@ -33,6 +33,7 @@ import Inference.PMMH as PMMH ( pmmh )
 import Inference.SMC2 as SMC2 ( smc2 )
 import Inference.BBVI as BBVI
 import Data.Maybe
+import Data.Typeable
 {-
 import Numeric.Log ( Log )
 import Inference.MB as MB ( handleMBayes )
@@ -61,24 +62,24 @@ type TopicEnv =
    ]
 
 -- | Prior distribution for topics in a document
-docTopicPrior :: (KnownNat n, Observable env "θ" (Vec n Double))
+docTopicPrior :: (SNatI n, Typeable n, Observable env "θ" (Vec n Double))
   -- | number of topics
-  => Proxy n
+  => SNat n
   -- | probability of each topic
   -> Model env ts (Vec n Double)
-docTopicPrior n_topics = dirichlet (Vec.replicateNat n_topics 1) #θ
+docTopicPrior n_topics = dirichlet (Vec.replicate n_topics 1) #θ
 
 -- | Prior distribution for words in a topic
-topicWordPrior :: forall m env ts. (KnownNat m, Observable env "φ" (Vec m Double))
+topicWordPrior :: forall m env ts. (SNatI m,  Typeable m, Observable env "φ" (Vec m Double))
   -- | vocabulary
   => Vec m String
   -- | probability of each word
   -> Model env ts (Vec m Double)
 topicWordPrior vocab
-  = dirichlet (Vec.replicateNat (Proxy @m) 1) #φ
+  = dirichlet (Vec.replicate snat 1) #φ
 
 -- | A distribution generating words according to their probabilities
-wordDist :: (KnownNat m, Observable env "w" String)
+wordDist :: (SNatI m, Observable env "w" String)
   -- | vocabulary
   => Vec m String
   -- | probability of each word
@@ -89,21 +90,21 @@ wordDist vocab ps =
   discrete (zip (Vec.toList vocab) ps) #w
 
 -- | Distribution over the topics in a document, over the distribution of words in a topic
-topicModel :: (KnownNat m, KnownNat n,
+topicModel :: (SNatI m, SNatI n,  Typeable m,  Typeable n,
                Observable env "φ" (Vec m Double),
                Observable env "θ" (Vec n Double),
                Observable env "w" String)
   -- | vocabulary
   => Vec m String
   -- | number of topics
-  -> Proxy n
+  -> SNat n
   -- | number of words
   -> Int
   -- | generated words
   -> Model env ts [String]
 topicModel vocab n_topics n_words = do
   -- Generate distribution over words for each topic
-  topic_word_ps <- Vec.replicateMNat n_topics $ topicWordPrior vocab
+  topic_word_ps <- Vec.replicateM n_topics $ topicWordPrior vocab
   let topic_word_ps' = map Vec.toList $ Vec.toList topic_word_ps
   -- Generate distribution over topics for a given document
   doc_topic_ps  <- docTopicPrior n_topics
@@ -112,14 +113,14 @@ topicModel vocab n_topics n_words = do
                           wordDist vocab word_ps)
 
 -- | Topic distribution over many topics
-topicModels :: (KnownNat m, KnownNat n,
+topicModels :: (SNatI m, SNatI n,  Typeable m,  Typeable n,
                 Observable env "φ" (Vec m Double),
                 Observable env "θ" (Vec n Double),
                 Observable env "w" String)
   -- | vocabulary
   => Vec m String
   -- | number of topics
-  -> Proxy n
+  -> SNat n
   -- | number of words for each document
   -> [Int]
   -- | generated words for each document
@@ -128,18 +129,19 @@ topicModels vocab n_topics doc_words = do
   mapM (topicModel vocab n_topics) doc_words
 
 -- | Example possible vocabulary
-vocab :: Vec 4 String
-vocab = fromJust $ Vec.fromList ["DNA", "evolution", "parsing", "phonology"]
+vocab :: Vec (FromGHC 4) String
+vocab = Vec.unsafeFromList ["DNA", "evolution", "parsing", "phonology"]
 
 -- | Simulating from topic model
 simLDA :: Int -> Sampler [String]
 simLDA n_words = do
   -- Specify model inputs
-  let n_topics = Proxy @2
+  let n_topics = snat @(FromGHC 2)
+
   -- Specify model environment
-      env_in = #θ := [Vec.fromList' [0.5, 0.5]] <:>
-               #φ := [Vec.fromList' [0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],
-                      Vec.fromList' [1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]] <:>
+      env_in = #θ := [Vec.unsafeFromList [0.5, 0.5]] <:>
+               #φ := [Vec.unsafeFromList [0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],
+                      Vec.unsafeFromList [1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]] <:>
                #w := [] <:> enil
   -- Simulate from topic model
   (words, env_out) <- SIM.simulate (topicModel vocab n_topics n_words) env_in
@@ -153,7 +155,7 @@ document = concat $ repeat ["DNA","evolution","DNA","evolution","DNA","evolution
 lwLDA :: Int -> Int -> Sampler ([[Double]], [Double])
 lwLDA n_lwsteps n_words = do
   -- Do MH inference over the topic model using the above data
-  let n_topics  = Proxy @2
+  let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
   (env_outs, ws) <- unzip <$> LW.lw n_lwsteps (topicModel vocab n_topics n_words) env_in
   -- Draw the most recent sampled parameters
@@ -165,7 +167,7 @@ lwLDA n_lwsteps n_words = do
 mhLDA :: Int -> Int -> Sampler ([[Double]], [[Double]])
 mhLDA n_mhsteps n_words = do
   -- Do MH inference over the topic model using the above data
-  let n_topics  = Proxy @2
+  let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document <:> enil
   env_outs <- MH.mh n_mhsteps (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
   -- Draw the most recent sampled parameters
@@ -177,7 +179,7 @@ mhLDA n_mhsteps n_words = do
 -- | SMC inference on topic model (predictive)
 smcLDA :: Int -> Int -> Sampler ([[Double]], [[Double]])
 smcLDA n_particles n_words = do
-  let n_topics  = Proxy @2
+  let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
   env_outs <- SMC.smc n_particles (topicModel vocab n_topics n_words) env_in
   -- Draw a random particle's environment
@@ -191,7 +193,7 @@ smcLDA n_particles n_words = do
 rmsmcLDA :: Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
 rmsmcLDA n_particles n_mhsteps n_words = do
 
-  let n_topics  = Proxy @2
+  let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
 
   env_outs     <- RMSMC.rmsmc n_particles n_mhsteps (topicModel vocab n_topics n_words) env_in vnil
@@ -206,7 +208,7 @@ rmsmcLDA n_particles n_mhsteps n_words = do
 pmmhLDA :: Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
 pmmhLDA n_mhsteps n_particles n_words = do
 
-  let n_topics  = Proxy @2
+  let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
 
   env_outs     <- PMMH.pmmh n_mhsteps n_particles  (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
@@ -220,7 +222,7 @@ pmmhLDA n_mhsteps n_particles n_words = do
 smc2LDA :: Int ->  Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
 smc2LDA n_outer_particles n_mhsteps n_inner_particles n_words = do
 
-  let n_topics  = Proxy @2
+  let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
 
   env_outs     <- SMC2.smc2 n_outer_particles n_mhsteps n_inner_particles (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
@@ -234,14 +236,14 @@ smc2LDA n_outer_particles n_mhsteps n_inner_particles n_words = do
 bbviLDA :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double])
 bbviLDA t_steps l_samples n_words = do
 
-  let n_topics  = Proxy @2
+  let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
 
   traceQ <- BBVI.bbvi t_steps l_samples (topicModel vocab n_topics n_words) env_in
   -- Draw the most recent sampled parameters
-  let θ_dist     = toList . fromJust $ dlookup (DKey ("θ", 0) :: DKey (Dirichlet 2)) traceQ
-      φ0_dist    = toList . fromJust $ dlookup (DKey ("φ", 0) :: DKey (Dirichlet 4)) traceQ
-      φ1_dist    = toList . fromJust $ dlookup (DKey ("φ", 1) :: DKey (Dirichlet 4)) traceQ
+  let θ_dist     = toList . fromJust $ dlookup (DKey ("θ", 0) :: DKey (Dirichlet (FromGHC 2))) traceQ
+      φ0_dist    = toList . fromJust $ dlookup (DKey ("φ", 0) :: DKey (Dirichlet (FromGHC 4))) traceQ
+      φ1_dist    = toList . fromJust $ dlookup (DKey ("φ", 1) :: DKey (Dirichlet (FromGHC 4))) traceQ
   return (θ_dist, φ0_dist, φ1_dist)
 
 {- | Executing the topic model using monad-bayes.

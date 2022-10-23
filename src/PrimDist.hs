@@ -28,7 +28,7 @@ import           Data.Functor ( (<&>) )
 import           Data.Proxy
 import           Data.Maybe
 import           Data.Typeable ( Typeable )
-import           GHC.TypeNats
+import           Data.Type.Nat
 import           Numeric.MathFunctions.Constants
   ( m_eulerMascheroni, m_neg_inf, m_sqrt_2_pi, m_sqrt_2, m_pos_inf )
 import           Numeric.SpecFunctions
@@ -307,7 +307,7 @@ mkDirichlet αs
   | length αs < 2 = error "Dirichlet: length αs >= 2 not met"
   | otherwise     = Dirichlet αs
 
-instance (KnownNat n) => Distribution (Dirichlet n) where
+instance (SNatI n, Typeable n) => Distribution (Dirichlet n) where
   type Support (Dirichlet n) = Vec n Double
 
   sampleInv :: Dirichlet n -> Double -> Vec n Double
@@ -330,7 +330,7 @@ instance (KnownNat n) => Distribution (Dirichlet n) where
   isDifferentiable :: Dirichlet n -> Maybe (Witness DiffDistribution (Dirichlet n))
   isDifferentiable _ = Just Witness
 
-instance (KnownNat n) => DiffDistribution (Dirichlet n) where
+instance (SNatI n, Typeable n) => DiffDistribution (Dirichlet n) where
   gradLogProb :: Dirichlet n -> Vec n Double -> Dirichlet n
   gradLogProb (Dirichlet αs) xs
     | length xs /= length αs     = error "dirichletGradLogPdfRaw: length xs /= length αs"
@@ -351,7 +351,7 @@ instance (KnownNat n) => DiffDistribution (Dirichlet n) where
   liftBinOp f (Dirichlet αs) (Dirichlet dαs) = Dirichlet (Vec.zipWith f αs dαs)
 
   zero :: Dirichlet n
-  zero = Dirichlet (Vec.replicateNat (Proxy @n) 0)
+  zero = Dirichlet (Vec.replicate (snat @n) 0)
 
   toList :: Dirichlet n -> [Double]
   toList (Dirichlet dαs) = Vec.toList dαs
@@ -557,6 +557,7 @@ instance Distribution Bernoulli where
     | y         = log p
     | otherwise = log (1 - p)
 
+  isDifferentiable :: Bernoulli -> Maybe (Witness DiffDistribution Bernoulli)
   isDifferentiable _ = Nothing
 
 bernoulliGradLogPdfRaw :: Bernoulli -> Bool -> Bernoulli
@@ -591,6 +592,7 @@ instance Distribution Binomial where
       y'  = fromIntegral   y
       ny' = fromIntegral $ n - y
 
+  isDifferentiable :: Binomial -> Maybe (Witness DiffDistribution Binomial)
   isDifferentiable _ = Nothing
 
 binomialGradLogPdfRaw :: Binomial -> Int -> Binomial
@@ -627,6 +629,7 @@ instance Distribution Categorical where
     | idx < 0 || idx >= length ps = trace "CategoricalLogPdf: idx < 0 || idx >= length ps" m_neg_inf
     | otherwise                   = log (ps !! idx)
 
+  isDifferentiable :: Categorical -> Maybe (Witness DiffDistribution Categorical)
   isDifferentiable _ = Nothing
 
 -- | Deterministic(x)
@@ -656,6 +659,7 @@ instance (Show a, Typeable a) => Distribution (Deterministic a) where
     | x == y    = 0
     | otherwise = m_neg_inf
 
+  isDifferentiable :: Deterministic a -> Maybe (Witness DiffDistribution (Deterministic a))
   isDifferentiable _ = Nothing
 
 -- | Discrete(xps)
@@ -692,6 +696,7 @@ instance (Show a, Typeable a) => Distribution (Discrete a) where
       Nothing -> trace ("Couldn't find " ++ show y ++ " in Discrete dist") m_neg_inf
       Just p  -> log p
 
+  isDifferentiable :: Discrete a -> Maybe (Witness DiffDistribution (Discrete a))
   isDifferentiable _ = Nothing
 
 -- | Poisson(λ)
@@ -718,6 +723,7 @@ instance Distribution Poisson where
     | y < 0     = trace "poissonLogPdfRaw:  y < 0 " m_neg_inf
     | otherwise = log λ * fromIntegral y - logFactorial y - λ
 
+  isDifferentiable :: Poisson -> Maybe (Witness DiffDistribution Poisson)
   isDifferentiable _ = Nothing
 
 poissonGradLogPdfRaw :: Poisson -> Int -> Poisson
@@ -749,6 +755,7 @@ instance Distribution Uniform where
     | x < min || x > max = m_neg_inf
     | otherwise          = -log(max - min)
 
+  isDifferentiable :: Uniform -> Maybe (Witness DiffDistribution Uniform)
   isDifferentiable _ = Nothing
 
 -- | DiscreteUniform(min, max)
@@ -777,6 +784,7 @@ instance Distribution UniformD where
     | idx < min || idx > max  = m_neg_inf
     | otherwise               = - log (fromIntegral $ max - min + 1)
 
+  isDifferentiable :: UniformD -> Maybe (Witness DiffDistribution UniformD)
   isDifferentiable _ = Nothing
 
 {- | Draw a value from a primitive distribution using the @MonadSample@ type class from Monad-Bayes

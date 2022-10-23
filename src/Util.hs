@@ -20,12 +20,12 @@ module Util (
   , variance
   , covariance) where
 
-import GHC.TypeNats
+import Data.Type.Nat
 import Data.Bifunctor
 import qualified Data.Map as Map
 import Data.Foldable
-import qualified Vec as Vec
-import Data.Proxy
+import  Data.Proxy
+import qualified Vec
 import Vec (Vec(UnsafeMkVec))
 import qualified Data.Vector as Vector
 
@@ -73,11 +73,11 @@ mapT3 f (x, y, z) = (f x, f y, f z)
 decShift :: Double -> Int
 decShift r = floor $ r * 1e16
 
-linCongGen :: KnownNat n => Double -> Proxy n -> Vec n Double
+linCongGen :: SNatI n => Double -> Proxy n -> Vec n Double
 linCongGen r n =
   let ns = iterate (\n -> ((6364136223846793005*n) + 1442695040888963407) `mod` 2147483647) (decShift r)
       rs = drop 1 $ map ((/2147483647) . fromIntegral) ns
-  in  UnsafeMkVec (Vector.fromList $ take (fromIntegral $ natVal n) rs)
+  in  UnsafeMkVec (Vector.fromList $ take (reflectToNum n) rs)
 
 {- Map utility functions.
 -}

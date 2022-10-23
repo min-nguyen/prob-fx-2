@@ -51,7 +51,7 @@ module Model (
 
 import Control.Monad ( ap )
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
-import GHC.TypeNats
+import Data.Type.Nat
 import Effects.Dist ( handleDist, Dist(..), Observe, Sample )
 import Effects.ObsRW
 import Env
@@ -148,13 +148,13 @@ deterministic' :: (Typeable a, Eq a, Show a) =>
   -> Model env es a
 deterministic' x = callDist' (mkDeterministic x)
 
-dirichlet :: (Observable env x (Vec n Double), KnownNat n) =>
+dirichlet :: (Observable env x (Vec n Double), Typeable n, SNatI n) =>
      Vec n Double
   -> Var x
   -> Model env es (Vec n Double)
 dirichlet xs = callDist (mkDirichlet xs)
 
-dirichlet' :: (Typeable n, KnownNat n) =>
+dirichlet' :: (Typeable n, SNatI n) =>
   -- | concentration parameters
      Vec n Double
   -> Model env es (Vec n Double)

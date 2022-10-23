@@ -7,41 +7,46 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Vec (module Vec, module GHC.TypeNats, module Data.Vector) where
+module Vec (module Vec, module Data.Vector) where
 
-import Data.Maybe
+import           Data.Maybe
 import           Data.Proxy
-import           GHC.TypeNats
+import           Data.Type.Nat
+import           Data.Typeable
 import qualified Data.Vector as Vector
 import           Data.Vector (Vector)
 
+class (SNatI n, Typeable n) => TyNat n
+
+instance (SNatI n, Typeable n) => TyNat n
 
 newtype Vec (n :: Nat) a = UnsafeMkVec { getVector :: Vector a }
     deriving (Show, Foldable)
 
-mkVec :: forall n a. KnownNat n => Vector a -> Maybe (Vec n a)
-mkVec v | length v == l = Just (UnsafeMkVec v)
-        | otherwise     = Nothing
+fromVector :: forall n a. TyNat n => Vector a -> Maybe (Vec n a)
+fromVector v | length v == l = Just (UnsafeMkVec v)
+             | otherwise     = Nothing
   where
-    l = fromIntegral (natVal (Proxy @n))
+    l = reflectToNum (Proxy @n)
 
+unsafeFromVector :: forall n a. TyNat n => Vector a -> Vec n a
+unsafeFromVector = fromJust . fromVector
 
-fromList :: forall n a. KnownNat n => [a] -> Maybe (Vec n a)
-fromList = mkVec . Vector.fromList
+fromList :: TyNat n => [a] -> Maybe (Vec n a)
+fromList = fromVector . Vector.fromList
 
-fromList' :: forall n a. KnownNat n => [a] -> Vec n a
-fromList' = fromJust . fromList
+unsafeFromList :: TyNat n => [a] -> Vec n a
+unsafeFromList = fromJust . fromList
 
-toList :: forall n a. Vec n a -> [a]
+toList :: Vec n a -> [a]
 toList (UnsafeMkVec xs) = Vector.toList xs
 
-toList2d :: forall n m a. (KnownNat n, KnownNat m) => Vec m (Vec n a) -> [[a]]
+toList2d :: (TyNat n, TyNat m) => Vec m (Vec n a) -> [[a]]
 toList2d (UnsafeMkVec xs) = Vector.toList $ Vector.map toList xs
 
 zipWith :: (a -> b -> c) -> Vec n a -> Vec n b -> Vec n c
@@ -50,14 +55,8 @@ zipWith f (UnsafeMkVec xs) (UnsafeMkVec ys) = UnsafeMkVec (Vector.zipWith f xs y
 map :: (a -> b) -> Vec n a -> Vec n b
 map f (UnsafeMkVec xs) = UnsafeMkVec (Vector.map f xs)
 
-replicate :: KnownNat n => Int -> a -> Maybe (Vec n a)
-replicate n a = mkVec (Vector.replicate n a)
+replicate :: forall n a. TyNat n => SNat n -> a -> Vec n a
+replicate n a = UnsafeMkVec (Vector.replicate (reflectToNum (Proxy @n)) a)
 
-replicateNat :: forall n a . KnownNat n => Proxy n -> a -> Vec n a
-replicateNat n a = UnsafeMkVec (Vector.replicate (fromIntegral $ natVal (Proxy @n)) a)
-
-replicateM :: forall m n a. Monad m => Int -> m a -> m (Vec n a)
-replicateM n a = fmap UnsafeMkVec (Vector.replicateM n a)
-
-replicateMNat :: forall m n a . Monad m => KnownNat n => Proxy n -> m a -> m (Vec n a)
-replicateMNat n a = fmap UnsafeMkVec (Vector.replicateM (fromIntegral $ natVal (Proxy @n)) a)
+replicateM :: forall m n a . Monad m => TyNat n => SNat n -> m a -> m (Vec n a)
+replicateM n a = fmap UnsafeMkVec (Vector.replicateM (reflectToNum (Proxy @n)) a)
