@@ -41,7 +41,7 @@ import           Sampler
 import           LogP ( LogP(..) )
 import           Util ( linCongGen, boolToInt, mean, covariance, variance )
 import qualified Vec
-import           Vec (Vec)
+import           Vec (Vec, getVector, TyNat)
 
 {- import qualified Control.Monad.Bayes.Class as MB
    import           Numeric.Log ( Log(..) )
@@ -605,31 +605,31 @@ binomialGradLogPdfRaw (Binomial n p) y
 
 -- | Categorical(ps)
 --   @ps@ probabilities of each category
-newtype Categorical = Categorical [Double]
+newtype Categorical (n :: Nat) = Categorical (Vec n Double)
   deriving Show
 
-mkCategorical :: [Double] -> Categorical
+mkCategorical :: Vec n Double -> Categorical n
 mkCategorical ps
   | null ps       = error "Categorical: ps must be non-empty"
   | any (< 0) ps  = error "Categorical: ps >= 0 not met"
-  | any (> 0) ps  = Categorical (map (/ sum ps) ps)
-  | otherwise     = Categorical (map (const $ 1/fromIntegral (length ps)) ps)
+  | any (> 0) ps  = Categorical (Vec.map (/ sum ps) ps)
+  | otherwise     = Categorical (Vec.map (const $ 1/fromIntegral (length ps)) ps)
 
-instance Distribution Categorical where
-  type Support Categorical = Int            -- ^ an index from @0@ to @n - 1@
+instance TyNat n => Distribution (Categorical n) where
+  type Support (Categorical n) = Int            -- ^ an index from @0@ to @n - 1@
 
-  sampleInv :: Categorical -> Double -> Int
-  sampleInv (Categorical ps) = invCMF (ps !!)
+  sampleInv :: Categorical n -> Double -> Int
+  sampleInv (Categorical ps) = invCMF (ps Vec.!!)
 
-  sample :: Categorical -> Sampler Int
-  sample (Categorical ps) = Sampler.sampleCategorical (Vector.fromList ps)
+  sample :: Categorical n -> Sampler Int
+  sample (Categorical ps) = Sampler.sampleCategorical (getVector ps)
 
-  logProbRaw :: Categorical -> Int -> Double
+  logProbRaw :: Categorical n -> Int -> Double
   logProbRaw (Categorical ps) idx
     | idx < 0 || idx >= length ps = trace "CategoricalLogPdf: idx < 0 || idx >= length ps" m_neg_inf
-    | otherwise                   = log (ps !! idx)
+    | otherwise                   = log (ps Vec.!! idx)
 
-  isDifferentiable :: Categorical -> Maybe (Witness DiffDistribution Categorical)
+  isDifferentiable :: Categorical n -> Maybe (Witness DiffDistribution (Categorical n))
   isDifferentiable _ = Nothing
 
 -- | Deterministic(x)

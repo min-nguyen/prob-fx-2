@@ -22,7 +22,7 @@ import Data.Proxy
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>), Vars (VCons) )
 import Trace
 import PrimDist
-import Vec (Vec)
+import Vec (Vec, TyNat)
 import qualified Vec
 import Inference.SIM as SIM ( simulate )
 import Inference.LW as LW ( lw )
@@ -62,7 +62,7 @@ type TopicEnv =
    ]
 
 -- | Prior distribution for topics in a document
-docTopicPrior :: (SNatI n, Typeable n, Observable env "θ" (Vec n Double))
+docTopicPrior :: (TyNat n, Observable env "θ" (Vec n Double))
   -- | number of topics
   => SNat n
   -- | probability of each topic
@@ -70,7 +70,7 @@ docTopicPrior :: (SNatI n, Typeable n, Observable env "θ" (Vec n Double))
 docTopicPrior n_topics = dirichlet (Vec.replicate n_topics 1) #θ
 
 -- | Prior distribution for words in a topic
-topicWordPrior :: forall m env ts. (SNatI m,  Typeable m, Observable env "φ" (Vec m Double))
+topicWordPrior :: (TyNat m, Observable env "φ" (Vec m Double))
   -- | vocabulary
   => Vec m String
   -- | probability of each word
@@ -90,7 +90,7 @@ wordDist vocab ps =
   discrete (zip (Vec.toList vocab) ps) #w
 
 -- | Distribution over the topics in a document, over the distribution of words in a topic
-topicModel :: (SNatI m, SNatI n,  Typeable m,  Typeable n,
+topicModel :: (TyNat m, TyNat n,
                Observable env "φ" (Vec m Double),
                Observable env "θ" (Vec n Double),
                Observable env "w" String)
@@ -108,12 +108,12 @@ topicModel vocab n_topics n_words = do
   let topic_word_ps' = map Vec.toList $ Vec.toList topic_word_ps
   -- Generate distribution over topics for a given document
   doc_topic_ps  <- docTopicPrior n_topics
-  replicateM n_words (do  z <- categorical' (Vec.toList doc_topic_ps)
+  replicateM n_words (do  z <- categorical' doc_topic_ps
                           let word_ps = topic_word_ps' !! z
                           wordDist vocab word_ps)
 
 -- | Topic distribution over many topics
-topicModels :: (SNatI m, SNatI n,  Typeable m,  Typeable n,
+topicModels :: (TyNat n, TyNat m,
                 Observable env "φ" (Vec m Double),
                 Observable env "θ" (Vec n Double),
                 Observable env "w" String)

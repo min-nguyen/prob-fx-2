@@ -148,13 +148,13 @@ deterministic' :: (Typeable a, Eq a, Show a) =>
   -> Model env es a
 deterministic' x = callDist' (mkDeterministic x)
 
-dirichlet :: (Observable env x (Vec n Double), Typeable n, SNatI n) =>
+dirichlet :: (Observable env x (Vec n Double), TyNat n) =>
      Vec n Double
   -> Var x
   -> Model env es (Vec n Double)
 dirichlet xs = callDist (mkDirichlet xs)
 
-dirichlet' :: (Typeable n, SNatI n) =>
+dirichlet' :: (TyNat n) =>
   -- | concentration parameters
      Vec n Double
   -> Model env es (Vec n Double)
@@ -172,15 +172,15 @@ discrete' :: (Typeable a, Eq a, Show a) =>
   -> Model env es a
 discrete' ps = callDist' (mkDiscrete ps)
 
-categorical :: Observable env x Int =>
-     [Double]
+categorical :: (Observable env x Int, TyNat n)
+  => Vec n Double
   -> Var x
   -> Model env es Int
 categorical xs = callDist (mkCategorical xs)
 
-categorical'
+categorical' ::  TyNat n
   -- | list of @n@ probabilities
-  :: [Double]
+  => Vec n Double
   -- | integer index from @0@ to @n - 1@
   -> Model env es Int
 categorical' xs = callDist' (mkCategorical xs)

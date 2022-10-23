@@ -19,7 +19,7 @@ import           Data.Proxy
 import           Data.Type.Nat
 import           Data.Typeable
 import qualified Data.Vector as Vector
-import           Data.Vector (Vector)
+import           Data.Vector (Vector, (!))
 
 class (SNatI n, Typeable n) => TyNat n
 
@@ -28,9 +28,12 @@ instance (SNatI n, Typeable n) => TyNat n
 newtype Vec (n :: Nat) a = UnsafeMkVec { getVector :: Vector a }
     deriving (Show, Foldable)
 
+(!!) :: Vec n a -> Int ->  a
+(!!) (UnsafeMkVec xs) n = xs ! n
+
 fromVector :: forall n a. TyNat n => Vector a -> Maybe (Vec n a)
 fromVector v | length v == l = Just (UnsafeMkVec v)
-             | otherwise     = Nothing
+             | otherwise     = error ("Vec.hs: length is actually " ++ show (length v) ++ " and not " ++ show l) Nothing
   where
     l = reflectToNum (Proxy @n)
 

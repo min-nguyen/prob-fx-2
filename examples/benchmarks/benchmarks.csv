@@ -464,3 +464,4 @@ BBVI-[ ]-10-LDA-50,0.7215000787498033,1.7834504975000225,3.0200803031246246,4.63
 -------------------------------
 Updates:
  - Dirichlet now uses length indexed vectors rather than lists
+ - Categorical now uses length indexed vectors rather than lists
