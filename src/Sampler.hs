@@ -27,21 +27,6 @@ module Sampler (
   , sampleDiscrete
   , samplePoisson
   , sampleDirichlet
-  {-
-  -- ** Inverse CDF sampling
-  -- $Inverse-sampling
-  , sampleCauchyInv
-  , sampleNormalInv
-  , sampleUniformInv
-  , sampleUniformDInv
-  , sampleGammaInv
-  , sampleBetaInv
-  , sampleBernoulliInv
-  , sampleBinomialInv
-  , sampleCategoricalInv
-  , sampleDiscreteInv
-  , samplePoissonInv
-  , sampleDirichletInv -}
   ) where
 
 import Control.Monad ( replicateM, when, (>=>) )
