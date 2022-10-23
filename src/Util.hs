@@ -9,12 +9,13 @@ module Util (
   , safeTail
   , findIndexes
   , roundUp16
+  , roundPrecision
   , uncurry3
   , fst3
-  , bimap'
+  , mapT2
+  , mapT3
   , filterByKey
   , linCongGen
-  , linCongGenVec
   , mean
   , variance
   , covariance) where
@@ -54,6 +55,11 @@ findIndexes xs a = reverse $ go xs 0 []
 roundUp16 :: Int -> Int
 roundUp16 n = n + (16 - (n `mod` 16))
 
+-- Round @x@ to @n@ decimal places
+roundPrecision :: Int -> Double -> Double
+roundPrecision n x  = fromIntegral (floor (x * t)) / t
+    where t = 10^n
+
 {- | Tuple utility functions.
 -}
 uncurry3 :: (a -> b -> c -> d) -> ((a, b, c) -> d)
@@ -62,21 +68,19 @@ uncurry3 f (a, b, c) = f a b c
 fst3 :: (a, b, c) -> a
 fst3 (x,_, _) = x
 
-bimap' :: Bifunctor p => (c -> d) -> p c c -> p d d
-bimap' f = bimap f f
+mapT2 :: (a -> b) -> (a, a) -> (b, b)
+mapT2 f (x, y) = (f x, f y)
+
+mapT3 :: (a -> b) -> (a, a, a) -> (b, b, b)
+mapT3 f (x, y, z) = (f x, f y, f z)
 
 {- | A linear congruential generator for representing a list of doubles from a single double.
 -}
 decShift :: Double -> Int
 decShift r = floor $ r * 1e16
 
-linCongGen :: Double -> Int -> [Double]
+linCongGen :: KnownNat n => Double -> Proxy n -> Vec n Double
 linCongGen r n =
-  let ns = iterate (\n -> ((6364136223846793005*n) + 1442695040888963407) `mod` 2147483647) (decShift r)
-  in  take n $ drop 1 $ map ((/2147483647) . fromIntegral) ns
-
-linCongGenVec :: KnownNat n => Double -> Proxy n -> Vec n Double
-linCongGenVec r n =
   let ns = iterate (\n -> ((6364136223846793005*n) + 1442695040888963407) `mod` 2147483647) (decShift r)
       rs = drop 1 $ map ((/2147483647) . fromIntegral) ns
   in  UnsafeMkVec (Vector.fromList $ take (fromIntegral $ natVal n) rs)

@@ -38,7 +38,7 @@ import           Sampler
 import           LogP ( LogP(..) )
 import           Control.Monad ((>=>), replicateM)
 import           Data.Typeable ( Typeable )
-import           Util ( linCongGen, boolToInt, mean, covariance, variance, linCongGenVec )
+import           Util ( linCongGen, boolToInt, mean, covariance, variance )
 import GHC.TypeNats
 import qualified Vec as Vec
 import Vec (Vec)
@@ -314,7 +314,7 @@ instance (KnownNat n) => Distribution (Dirichlet n) where
 
   sampleInv :: Dirichlet n -> Double -> Vec n Double
   sampleInv (Dirichlet αs) r =
-    let rs = linCongGenVec r (Proxy @n)
+    let rs = linCongGen r (Proxy @n)
         xs = Vec.zipWith (\α r -> sampleInv (Gamma α 1) r) αs rs
     in  Vec.map (/sum xs) xs
 
@@ -391,7 +391,7 @@ instance Distribution Gamma where
 instance DiffDistribution Gamma where
   gradLogProb :: Gamma -> Double -> Gamma
   gradLogProb (Gamma k θ) x
-    | x <= 0           = error "gammaGradLogPdfRaw: x <= 0"
+    | x <= 0   = error "gammaGradLogPdfRaw: x <= 0"
     | otherwise = Gamma dk dθ
     where dk = log x - digamma k - log θ
           dθ = x/(θ**2) - k/θ
@@ -643,7 +643,7 @@ data Deterministic a where
     -> Deterministic a
 
 mkDeterministic :: (Show a, Typeable a, Eq a) => a -> Deterministic a
-mkDeterministic x = Deterministic x
+mkDeterministic = Deterministic
 
 instance Show a => Show (Deterministic a) where
   show (Deterministic x) = "Deterministic " ++ show x
