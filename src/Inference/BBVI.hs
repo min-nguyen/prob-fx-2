@@ -21,7 +21,7 @@ import Effects.Lift
 import Effects.ObsRW ( ObsRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env )
-import LogP ( LogP(unLogP), normaliseLogPs )
+import LogP ( LogP(..), normaliseLogPs, expLogP )
 import Model
 import PrimDist
 import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )
@@ -166,7 +166,7 @@ estELBOs l_samples logWs traceGs = foldr f dempty vars where
        where the normalised importance weight is defined via:
           log(W_norm^l) = log(W^l) + max(log(W^{1:L})) -}
   traceFs :: [GTrace]
-  traceFs = zipWith (\logW -> dmap (liftUnOp (* (exp . unLogP) logW))) (normaliseLogPs logWs) traceGs
+  traceFs = zipWith (\logW -> dmap (expLogP logW *|)) (normaliseLogPs logWs) traceGs
   {- | Compute the ELBO gradient estimate for a random variable v's associated parameters:
           E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
        where the baseline is:
@@ -179,9 +179,9 @@ estELBOs l_samples logWs traceGs = foldr f dempty vars where
   estELBO v traceGs traceFs =
     let traceGs_v  = map (fromJust . dlookup v) traceGs                                 -- G_v^{1:L}
         traceFs_v  = map (fromJust . dlookup v) traceFs                                 -- F_v^{1:L}
-        baseline_v = liftBinOp (/) (covarGrad traceFs_v traceGs_v) (varGrad traceGs_v)  -- b_v
-        δelbos_v   = zipWith (\g_l f_l -> liftBinOp (-) f_l (liftBinOp (*) baseline_v g_l)) traceGs_v traceFs_v
-    in  (liftUnOp (/fromIntegral l_samples) . foldr (liftBinOp (+)) zeroGrad) δelbos_v
+        baseline_v = covarGrad traceFs_v traceGs_v |/| varGrad traceGs_v  -- b_v
+        δelbos_v   = zipWith (\g_l f_l -> f_l |-| (baseline_v |*| g_l)) traceGs_v traceFs_v
+    in  ((*|) (1/fromIntegral l_samples) . foldr (|+|) zero) δelbos_v
 
 {- | Update each variable v's parameters λ using their estimated ELBO gradients E[δelbo(v)].
         λ_{t+1} = λ_t + η_t * E[δelbo(v)]

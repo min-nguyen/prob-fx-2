@@ -23,7 +23,7 @@ import qualified Data.Set as Set
 import Data.Maybe ( fromJust )
 import Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg, weaken )
 import Trace ( STrace, LPTrace, filterTrace )
-import LogP ( LogP(unLogP) )
+import LogP ( LogP, expLogP )
 import PrimDist
 import Model ( Model, handleCore, ProbSig )
 import Effects.ObsRW ( ObsRW )
@@ -115,8 +115,8 @@ handleAccept tags n_proposals = loop
                                     0 (Map.keysSet lptrace \\ sampled)
                   logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
                                     0 (Map.keysSet lptrace' \\ sampled')
-              u <- lift $ sample (Uniform 0 1)
-              (loop . k) ((exp . unLogP) (dom_logα + logα' - logα) > u)
+              u <- lift $ sample (mkUniform 0 1)
+              (loop . k) (expLogP (dom_logα + logα' - logα) > u)
     Left op' -> Op op' (loop . k)
 
 {- Propose new random values for multiple sites.
@@ -130,7 +130,7 @@ propose tags n_proposals strace = do
   -- | Get possible addresses to propose new samples for
   let α_range = Map.keys (if Prelude.null tags then strace else filterTrace tags strace)
   -- | Draw proposal sample addresses
-  αs <- replicateM n_proposals (sample (UniformD 0 (length α_range - 1)) <&> (α_range !!))
+  αs <- replicateM n_proposals (sample (mkUniformD 0 (length α_range - 1)) <&> (α_range !!))
   -- | Draw new random values
   rs <- replicateM n_proposals sampleRandom
   let strace' = Map.union (Map.fromList (zip αs rs)) strace

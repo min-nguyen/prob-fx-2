@@ -14,13 +14,19 @@ module Util (
   , bimap'
   , filterByKey
   , linCongGen
+  , linCongGenVec
   , mean
   , variance
   , covariance) where
 
+import GHC.TypeNats
 import Data.Bifunctor
 import qualified Data.Map as Map
 import Data.Foldable
+import qualified Vec as Vec
+import Data.Proxy
+import Vec (Vec(UnsafeMkVec))
+import qualified Data.Vector as Vector
 
 -- | Return @True@ for @1@ and otherwise @False@
 boolToInt :: Bool -> Int
@@ -64,10 +70,16 @@ bimap' f = bimap f f
 decShift :: Double -> Int
 decShift r = floor $ r * 1e16
 
-linCongGen :: Double -> [Double]
-linCongGen r =
+linCongGen :: Double -> Int -> [Double]
+linCongGen r n =
   let ns = iterate (\n -> ((6364136223846793005*n) + 1442695040888963407) `mod` 2147483647) (decShift r)
-  in  drop 1 $ map ((/2147483647) . fromIntegral) ns
+  in  take n $ drop 1 $ map ((/2147483647) . fromIntegral) ns
+
+linCongGenVec :: KnownNat n => Double -> Proxy n -> Vec n Double
+linCongGenVec r n =
+  let ns = iterate (\n -> ((6364136223846793005*n) + 1442695040888963407) `mod` 2147483647) (decShift r)
+      rs = drop 1 $ map ((/2147483647) . fromIntegral) ns
+  in  UnsafeMkVec (Vector.fromList $ take (fromIntegral $ natVal n) rs)
 
 {- Map utility functions.
 -}
