@@ -106,9 +106,6 @@ class Distribution d => DiffDistribution d where
   (*|) :: Double -> d -> d
   (*|) x = liftUnOp (* x)
 
-  (/|) :: d -> Double -> d
-  (/|) d x = liftUnOp (/ x) d
-
   covarGrad    -- Assuming our distribution has D parameters
     :: [d]     -- ^ (f^{1:D})^{1:L}, an L-sized list of distributions      [(D α^1 β^1), (D α^2 β^2), .. (D α^L β^L)]
     -> [d]     -- ^ (g^{1:D})^{1:L}, an L-sized list of distributions
@@ -144,7 +141,7 @@ instance Distribution Beta where
   sampleInv (Beta α β) = invIncompleteBeta α β
 
   sample :: Beta -> Sampler Double
-  sample (Beta α β) = sampleBeta α β
+  sample (Beta α β) = Sampler.sampleBeta α β
 
   logProbRaw :: Beta -> Double -> Double
   logProbRaw (Beta α β) x
@@ -200,7 +197,7 @@ instance Distribution Cauchy where
   sampleInv (Cauchy loc scale) r = loc + scale * tan( pi * (r - 0.5) )
 
   sample :: Cauchy -> Sampler Double
-  sample (Cauchy loc scale) = sampleCauchy loc scale
+  sample (Cauchy loc scale) = Sampler.sampleCauchy loc scale
 
   logProbRaw :: Cauchy -> Double -> Double
   logProbRaw (Cauchy loc scale) x = -(log pi) + log scale - log (xloc**2 + scale**2)
@@ -257,7 +254,7 @@ instance Distribution HalfCauchy where
   sampleInv (HalfCauchy scale) r = abs $ sampleInv (Cauchy 0 scale) r
 
   sample :: HalfCauchy -> Sampler Double
-  sample (HalfCauchy scale)  = sample (Cauchy 0 scale) <&> abs
+  sample (HalfCauchy scale) = abs <$> sample (Cauchy 0 scale)
 
   logProbRaw :: HalfCauchy -> Double -> Double
   logProbRaw (HalfCauchy scale) x
@@ -313,7 +310,7 @@ instance Distribution Dirichlet where
     in  map (/sum xs) xs
 
   sample :: Dirichlet -> Sampler [Double]
-  sample (Dirichlet αs)    = sampleDirichlet αs
+  sample (Dirichlet αs) = Sampler.sampleDirichlet αs
 
   logProbRaw :: Dirichlet -> [Double] -> Double
   logProbRaw (Dirichlet αs) xs
@@ -372,7 +369,7 @@ instance Distribution Gamma where
   sampleInv (Gamma k θ) r = θ * invIncompleteGamma k r
 
   sample :: Gamma -> Sampler Double
-  sample (Gamma k θ) = sampleGamma k θ
+  sample (Gamma k θ) = Sampler.sampleGamma k θ
 
   logProbRaw :: Gamma -> Double -> Double
   logProbRaw (Gamma k θ) x
@@ -428,7 +425,7 @@ instance Distribution Normal where
   sampleInv (Normal μ σ) r = (- invErfc (2 * r)) * (m_sqrt_2 * σ) + μ
 
   sample :: Normal -> Sampler Double
-  sample (Normal μ σ) = sampleNormal μ σ
+  sample (Normal μ σ) = Sampler.sampleNormal μ σ
 
   logProbRaw :: Normal -> Double -> Double
   logProbRaw (Normal μ σ) x = -(xμ * xμ / (2 * (σ ** 2))) - log m_sqrt_2_pi - log σ
@@ -522,13 +519,12 @@ invCMF
   :: (Int -> Double)  -- ^ probability mass function
   -> Double           -- ^ r
   -> Int
-invCMF pmf r = f 0 r
-  where
-    f :: Int -> Double -> Int
-    f i r = do
-      let q  = pmf i
-          r' = r - q
-      if r' < 0 then i else f (i + 1) r'
+invCMF pmf r = f 0 r where
+  f :: Int -> Double -> Int
+  f i r = do
+    let q  = pmf i
+        r' = r - q
+    if r' < 0 then i else f (i + 1) r'
 
 -- | Bernoulli(p)
 --   @p@ probability of success
@@ -547,7 +543,7 @@ instance Distribution Bernoulli where
   sampleInv (Bernoulli p) r = r < p
 
   sample :: Bernoulli -> Sampler Bool
-  sample (Bernoulli p) = sampleBernoulli p
+  sample (Bernoulli p) = Sampler.sampleBernoulli p
 
   logProbRaw :: Bernoulli -> Bool -> Double
   logProbRaw (Bernoulli p) y
@@ -582,7 +578,7 @@ instance Distribution Binomial where
   sampleInv (Binomial n p) = invCMF (prob (Binomial n p))
 
   sample :: Binomial -> Sampler Int
-  sample (Binomial n p) = sampleBinomial n p
+  sample (Binomial n p) = Sampler.sampleBinomial n p
 
   logProbRaw :: Binomial -> Int -> Double
   logProbRaw (Binomial n p) y
@@ -609,9 +605,10 @@ newtype Categorical = Categorical [Double]
 
 mkCategorical :: [Double] -> Categorical
 mkCategorical ps
-  | any (< 0) ps = error "Categorical: ps >= 0 not met"
-  | null ps      = error "Categorical: ps must be non-empty"
-  | otherwise    = Categorical ps
+  | null ps       = error "Categorical: ps must be non-empty"
+  | any (< 0) ps  = error "Categorical: ps >= 0 not met"
+  | any (> 0) ps  = Categorical (map (/ sum ps) ps)
+  | otherwise     = Categorical (map (const $ 1/fromIntegral (length ps)) ps)
 
 instance Distribution Categorical where
   type Support Categorical = Int            -- ^ an index from @0@ to @n - 1@
@@ -620,7 +617,7 @@ instance Distribution Categorical where
   sampleInv (Categorical ps) = invCMF (ps !!)
 
   sample :: Categorical -> Sampler Int
-  sample (Categorical ps) = sampleCategorical (Vector.fromList ps)
+  sample (Categorical ps) = Sampler.sampleCategorical (Vector.fromList ps)
 
   logProbRaw :: Categorical -> Int -> Double
   logProbRaw (Categorical ps) idx
@@ -668,9 +665,11 @@ data Discrete a where
 
 mkDiscrete :: (Show a, Typeable a, Eq a) => [(a, Double)] -> Discrete a
 mkDiscrete xps
-  | null xps = error "Discrete: xps must be non-empty"
-  | any ((< 0) . snd) xps = error "Discrete: probabilities must be >= 0"
-  | otherwise = Discrete xps
+  | null xps     = error "Discrete: xps must be non-empty"
+  | any (< 0) ps = error "Discrete: probabilities must be >= 0"
+  | any (> 0) ps = Discrete (zip xs (map (/ sum ps) ps))
+  | otherwise    = Discrete (zip xs (map (const $ 1/fromIntegral (length ps)) ps))
+  where (xs, ps) = unzip xps
 
 instance Show a => Show (Discrete a) where
   show (Discrete xps) = "Discrete " ++ show xps
@@ -683,11 +682,10 @@ instance (Show a, Typeable a) => Distribution (Discrete a) where
     where (xs, ps) = unzip xps
 
   sample :: Discrete a -> Sampler a
-  sample (Discrete xps) = sampleDiscrete xps
+  sample (Discrete xps) = Sampler.sampleDiscrete xps
 
   logProbRaw :: Discrete a -> a -> Double
-  logProbRaw (Discrete xps) y =
-    case lookup y xps of
+  logProbRaw (Discrete xps) y = case lookup y xps of
       Nothing -> trace ("Couldn't find " ++ show y ++ " in Discrete dist") m_neg_inf
       Just p  -> log p
 
@@ -710,7 +708,7 @@ instance Distribution Poisson where
   sampleInv (Poisson λ) = invCMF (prob (Poisson λ))
 
   sample :: Poisson -> Sampler Int
-  sample (Poisson λ) = samplePoisson λ
+  sample (Poisson λ) = Sampler.samplePoisson λ
 
   logProbRaw :: Poisson -> Int -> Double
   logProbRaw (Poisson λ) y
@@ -741,7 +739,7 @@ instance Distribution Uniform where
   sampleInv (Uniform min max) r = min + (max - min) * r
 
   sample :: Uniform -> Sampler Double
-  sample (Uniform min max) = sampleUniform min max
+  sample (Uniform min max) = Sampler.sampleUniform min max
 
   logProbRaw :: Uniform -> Double -> Double
   logProbRaw (Uniform min max) x
@@ -769,7 +767,7 @@ instance Distribution UniformD where
            max' = fromIntegral max + 1
 
   sample :: UniformD -> Sampler Int
-  sample (UniformD min max)    = sampleUniformD min max
+  sample (UniformD min max) = Sampler.sampleUniformD min max
 
   logProbRaw :: UniformD -> Int -> Double
   logProbRaw (UniformD min max) idx
