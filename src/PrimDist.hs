@@ -18,31 +18,30 @@
 module PrimDist
   (Distribution(..), DiffDistribution(..), PrimDist, Witness(..),
    Beta, mkBeta, Bernoulli, mkBernoulli, Binomial, mkBinomial, Categorical, mkCategorical, Cauchy, mkCauchy, HalfCauchy, mkHalfCauchy,
-   Deterministic, mkDeterministic, Discrete, mkDiscrete, Dirichlet, mkDirichlet, Gamma, mkGamma, Normal, mkNormal, HalfNormal, mkHalfNormal, Poisson, mkPoisson, Uniform, mkUniform, UniformD, mkUniformD) where
+   Deterministic, mkDeterministic, Discrete, mkDiscrete, Dirichlet, mkDirichlet, Gamma, mkGamma, Normal, mkNormal, HalfNormal, mkHalfNormal,
+   Poisson, mkPoisson, Uniform, mkUniform, UniformD, mkUniformD) where
 
 import           Debug.Trace ( trace )
 import           Data.Kind ( Constraint )
 import           Data.List ( transpose )
 import           Data.Functor ( (<&>) )
 import           Data.Proxy
-import qualified Data.Vector as Vector
-import           OpenSum (OpenSum)
-import qualified OpenSum
-import qualified Data.Vector as Vector
-import           Data.Vector (Vector)
+import           Data.Maybe
+import           Data.Typeable ( Typeable )
+import           GHC.TypeNats
 import           Numeric.MathFunctions.Constants
   ( m_eulerMascheroni, m_neg_inf, m_sqrt_2_pi, m_sqrt_2, m_pos_inf )
 import           Numeric.SpecFunctions
   ( incompleteBeta, invIncompleteBeta, logBeta, logGamma, digamma, log1p, logChoose, logFactorial, invErfc, invIncompleteGamma)
+import           OpenSum (OpenSum)
+import qualified OpenSum
+import qualified Data.Vector as Vector
+import           Data.Vector (Vector)
 import           Sampler
 import           LogP ( LogP(..) )
-import           Control.Monad ((>=>), replicateM)
-import           Data.Typeable ( Typeable )
 import           Util ( linCongGen, boolToInt, mean, covariance, variance )
-import GHC.TypeNats
-import qualified Vec as Vec
-import Vec (Vec)
-import Data.Maybe
+import qualified Vec
+import           Vec (Vec)
 
 {- import qualified Control.Monad.Bayes.Class as MB
    import           Numeric.Log ( Log(..) )
@@ -84,11 +83,10 @@ data Witness c a where
 -}
 class Distribution d => DiffDistribution d where
   -- type family Arity d :: Nat
-  {- | Compute the gradient log-probability.
-  -}
+  {- | Compute the gradient log-probability. -}
   gradLogProb :: d -> Support d -> d
 
-  liftUnOp :: (Double -> Double) -> d -> d
+  liftUnOp  :: (Double -> Double) -> d -> d
 
   liftBinOp :: (Double -> Double -> Double) -> d -> d -> d
 
@@ -565,10 +563,6 @@ bernoulliGradLogPdfRaw :: Bernoulli -> Bool -> Bernoulli
 bernoulliGradLogPdfRaw (Bernoulli p) y = Bernoulli dp
   where dp = 1/p - fromIntegral (boolToInt y)/(1 - p)
 
-bernoulliAddGrad :: Bernoulli -> Bernoulli -> Bernoulli
-bernoulliAddGrad (Bernoulli p) (Bernoulli dp) = Bernoulli dp
-  where p' = max (min (p + dp) 1) 0
-
 -- | Binomial(n, p)
 -- | @n@ number of trials, @p@ probability of success
 data Binomial = Binomial Int Double
@@ -599,10 +593,10 @@ instance Distribution Binomial where
 
   isDifferentiable _ = Nothing
 
-binomialGradLogPdfRaw :: Int -> Double -> Int -> (Int, Double, Int)
-binomialGradLogPdfRaw n p y
+binomialGradLogPdfRaw :: Binomial -> Int -> Binomial
+binomialGradLogPdfRaw (Binomial n p) y
   | y < 0 || y > n          = error "binomialGradLogPdfRaw: y < 0 || y > n"
-  | otherwise               = (dn, dp, dy)
+  | otherwise               = Binomial dn dp
   where dn = 0
         dp = fromIntegral n/p - fromIntegral (n - y)/(1 - p)
         dy = 0
@@ -726,10 +720,10 @@ instance Distribution Poisson where
 
   isDifferentiable _ = Nothing
 
-poissonGradLogPdfRaw :: Double -> Int -> Double
-poissonGradLogPdfRaw λ y
+poissonGradLogPdfRaw :: Poisson -> Int -> Poisson
+poissonGradLogPdfRaw (Poisson λ) y
   | y < 0     = error "poissonGradLogPdfRaw:  y < 0 "
-  | otherwise = (fromIntegral y/λ) - 1
+  | otherwise = Poisson ((fromIntegral y/λ) - 1)
 
 -- | ContinuousUniform(min, max)
 --   @min@ lower-bound, @max@ upper-bound
@@ -784,52 +778,6 @@ instance Distribution UniformD where
     | otherwise               = - log (fromIntegral $ max - min + 1)
 
   isDifferentiable _ = Nothing
-
--- -- | Given fixed parameters and observed value, compute the gradients of a distribution's log-pdf w.r.t its parameters
--- gradLogProb ::
---      PrimDist a
---   -> a
---   -> PrimDist a
--- gradLogProb (Normal μ σ) x =
---   let (dμ, dσ, _) = normalGradLogPdfRaw μ σ x
---   in  Normal dμ dσ
--- gradLogProb (HalfNormal σ) x =
---   let (dσ, _) = halfNormalGradLogPdfRaw σ x
---   in  HalfNormal dσ
--- gradLogProb (Cauchy loc scale) x =
---   let (dloc, dscale, _) = cauchyGradLogPdfRaw loc scale x
---   in  Cauchy dloc dscale
--- gradLogProb (HalfCauchy scale) x =
---   let (dscale, _) = halfCauchyGradLogPdfRaw scale x
---   in  HalfNormal dscale
--- gradLogProb (Gamma k θ) x =
---   let (dk, dθ, _) = gammaGradLogPdfRaw k θ x
---   in  Gamma dk dθ
--- gradLogProb (Beta α β) x =
---   let (dα, dβ, _) = betaGradLogPdfRaw α β x
---   in Beta dα dβ
--- gradLogProb (Uniform min max) y =
---   Uniform 0 0
--- gradLogProb (Dirichlet as) ys =
---   let (das, _) = dirichletGradLogPdfRaw as ys
---   in  Dirichlet das
--- gradLogProb (Bernoulli p) x =
---   let (dp, _) = bernoulliGradLogPdfRaw p x
---   in  Bernoulli dp
--- gradLogProb (Binomial n p) y =
---   let (_, dp, _) = binomialGradLogPdfRaw n p y
---   in  Binomial 0 dp
--- gradLogProb (Poisson λ) y =
---   let dλ = poissonGradLogPdfRaw λ y
---   in  Poisson  dλ
--- gradLogProb (Categorical ps) idx =
---   Categorical (map (const 0) ps)
--- gradLogProb (Discrete ps) y =
---   Discrete (map (second (const 0)) ps)
--- gradLogProb (UniformD min max) y =
---   UniformD 0 0
--- gradLogProb (Deterministic x) y =
---   error "gradLogProb for Deterministic is undefined"
 
 {- | Draw a value from a primitive distribution using the @MonadSample@ type class from Monad-Bayes
 sampleBayes :: MB.MonadSample m => PrimDist a -> m a

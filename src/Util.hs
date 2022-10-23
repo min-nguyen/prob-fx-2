@@ -29,11 +29,8 @@ import Data.Proxy
 import Vec (Vec(UnsafeMkVec))
 import qualified Data.Vector as Vector
 
--- | Return @True@ for @1@ and otherwise @False@
-boolToInt :: Bool -> Int
-boolToInt True  = 1
-boolToInt False = 0
-
+{- | List utility functions.
+-}
 -- | Safely attempt to return the head of a list
 safeHead :: [a] -> Maybe a
 safeHead []     = Nothing
@@ -52,13 +49,10 @@ findIndexes xs a = reverse $ go xs 0 []
                      else go xs (i + 1) inds
   go [] i inds = inds
 
-roundUp16 :: Int -> Int
-roundUp16 n = n + (16 - (n `mod` 16))
-
--- Round @x@ to @n@ decimal places
-roundPrecision :: Int -> Double -> Double
-roundPrecision n x  = fromIntegral (floor (x * t)) / t
-    where t = 10^n
+-- | Return True -> 1, False -> 0
+boolToInt :: Bool -> Int
+boolToInt True  = 1
+boolToInt False = 0
 
 {- | Tuple utility functions.
 -}
@@ -87,9 +81,19 @@ linCongGen r n =
 
 {- Map utility functions.
 -}
-
 filterByKey ::  Ord k => (k -> Bool) -> Map.Map k a -> Map.Map k a
 filterByKey f = Map.filterWithKey (\k _ -> f k)
+
+{- | Numeric utility functions.
+-}
+-- | Round @n@ up to multiple of 16
+roundUp16 :: Int -> Int
+roundUp16 n = n + (16 - (n `mod` 16))
+
+-- | Round @x@ to @n@ decimal places
+roundPrecision :: Int -> Double -> Double
+roundPrecision n x  = fromIntegral (floor (x * t)) / t
+    where t = 10^n
 
 {- | Statistical utility functions.
 -}
