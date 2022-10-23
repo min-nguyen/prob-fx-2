@@ -192,4 +192,4 @@ optimizeParams
   -> DTrace  -- ^ optimisable distributions Q(λ_t)
   -> GTrace  -- ^ elbo gradient estimates   E[δelbo]
   -> DTrace  -- ^ updated distributions     Q(λ_{t+1})
-optimizeParams η = dintersectLeftWith (\q δλ -> safeAddGrad q (liftUnOp (*η) δλ))
+optimizeParams η = dintersectLeftWith (\q δλ ->  q `safeAddGrad` (η *| δλ))
