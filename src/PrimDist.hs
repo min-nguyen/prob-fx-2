@@ -22,7 +22,7 @@ module PrimDist
    Poisson, mkPoisson, Uniform, mkUniform, UniformD, mkUniformD) where
 
 import           Debug.Trace ( trace )
-import           Data.Kind ( Constraint )
+import           Data.Kind ( Constraint, Type )
 import           Data.List ( transpose )
 import           Data.Functor ( (<&>) )
 import           Data.Proxy
@@ -50,7 +50,7 @@ import           Vec (Vec, getVector, TyNat)
 {- Distributions that can be sampled from and conditioned against.
 -}
 class (Show d, Typeable d) => Distribution d where
-  type family Support d :: *
+  type family Support d :: Type
   {- | Given a random double @r@ in (0, 1), this is passed to a distribution's inverse
        cumulative density function to draw a sampled value. -}
   sampleInv   :: d -> Double -> Support d
@@ -76,7 +76,7 @@ class (Show d, Typeable d) => Distribution d where
 type PrimDist d a = (Distribution d, Support d ~ a)
 
 -- | Dictionary proof
-data Witness c a where
+data Witness (c :: Type -> Constraint) a where
   Witness :: c a => Witness c a
 
 {- Distributions that can be differentiated with respect to their parameters
