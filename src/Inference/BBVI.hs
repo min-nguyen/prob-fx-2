@@ -4,6 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
 
 {- | Likelihood-Weighting inference.
 -}
@@ -28,6 +29,7 @@ import Trace
 import Debug.Trace
 import qualified Inference.SIM as SIM
 import qualified Inference.LW as LW
+import Vec (Vec)
 
 {- | Top-level wrapper for BBVI inference.
 -}
@@ -106,7 +108,7 @@ updateScore traceQ = loop where
   loop (Val x)   = pure x
   loop (Op op k) = case prj op of
     Just (Score d _ α) -> do
-      let q = dlookupDefault (Key α) traceQ d
+      let q = fromMaybe d (dlookup (Key α) traceQ)
       x <- call (Score d q α)
       (loop . k) x
     Nothing -> Op op (loop . k)
@@ -134,8 +136,8 @@ traceGrads = loop dempty where
   loop traceG (Val x) = pure (x, traceG)
   loop traceG (Op op k) = do
     case prj op of
-      Just (Score _ q α)
-        -> Op op (\x -> let traceG' = dinsert (Key α) (gradLogProb q x) traceG
+      Just (Score _ (q :: d) α)
+        -> Op op (\x -> let traceG' = ginsert @d (Key α) (gradLogProb q x) traceG
                         in  (loop traceG' . k) x)
       _ -> Op op (loop traceG . k)
 
@@ -154,17 +156,17 @@ handleScore (Op op k) = case discharge op of
 estELBOs :: Int -> [LogP] -> [GTrace] -> GTrace
 estELBOs l_samples logWs traceGs = foldr f dempty vars where
   {- | Store the ELBO gradient estimate E[δelbo(v)] for a given variable v. -}
-  f :: Some Key -> GTrace -> GTrace
-  f (Some kx) = dinsert kx (estELBO kx traceGs traceFs)
+  f :: Some DiffDistribution Key -> GTrace -> GTrace
+  f (Some kx) = ginsert kx (estELBO kx traceGs traceFs)
   {- | Store the ELBO gradient estimate E[δelbo(v)] for a given variable v. -}
-  vars :: [Some Key]
-  vars = (dkeys . head) traceGs
+  vars :: [Some DiffDistribution Key]
+  vars = (gkeys . head) traceGs
   {- | Uniformly scale each iteration's gradient trace G^l by its corresponding (normalised) importance weight W_norm^l.
           F^{1:L} = W_norm^{1:L} * G^{1:L}
        where the normalised importance weight is defined via:
           log(W_norm^l) = log(W^l) + max(log(W^{1:L})) -}
   traceFs :: [GTrace]
-  traceFs = zipWith (\logW -> dmap (expLogP logW *|)) (normaliseLogPs logWs) traceGs
+  traceFs = zipWith (\logW -> gmap (expLogP logW *|)) (normaliseLogPs logWs) traceGs
   {- | Compute the ELBO gradient estimate for a random variable v's associated parameters:
           E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
        where the baseline is:
@@ -173,10 +175,10 @@ estELBOs l_samples logWs traceGs = foldr f dempty vars where
     => Key d    -- ^   v
     -> [GTrace]  -- ^   G^{1:L}
     -> [GTrace]  -- ^   F^{1:L}
-    -> d         -- ^   E[δelbo(v)]
+    -> Vec (Arity d) Double         -- ^   E[δelbo(v)]
   estELBO v traceGs traceFs =
-    let traceGs_v  = map (fromJust . dlookup v) traceGs                                 -- G_v^{1:L}
-        traceFs_v  = map (fromJust . dlookup v) traceFs                                 -- F_v^{1:L}
+    let traceGs_v  = map (fromJust . glookup v) traceGs                                 -- G_v^{1:L}
+        traceFs_v  = map (fromJust . glookup v) traceFs                                 -- F_v^{1:L}
         baseline_v = covarGrad traceFs_v traceGs_v |/| varGrad traceGs_v  -- b_v
         δelbos_v   = zipWith (\g_l f_l -> f_l |-| (baseline_v |*| g_l)) traceGs_v traceFs_v
     in  ((*|) (1/fromIntegral l_samples) . foldr (|+|) zero) δelbos_v

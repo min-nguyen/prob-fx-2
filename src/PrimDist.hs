@@ -16,7 +16,7 @@
 -}
 
 module PrimDist
-  (Distribution(..), DiffDistribution(..), PrimDist, Witness(..),
+  (Distribution(..), DiffDistribution(..), PrimDist, Witness(..), (|+|), (|-|), (|/|), (|*|), (*|), covarGrad, varGrad,
    Beta, mkBeta, Bernoulli, mkBernoulli, Binomial, mkBinomial, Categorical, mkCategorical, Cauchy, mkCauchy, HalfCauchy, mkHalfCauchy,
    Deterministic, mkDeterministic, Discrete, mkDiscrete, Dirichlet, mkDirichlet, Gamma, mkGamma, Normal, mkNormal, HalfNormal, mkHalfNormal,
    Poisson, mkPoisson, Uniform, mkUniform, UniformD, mkUniformD) where
@@ -96,41 +96,42 @@ class Distribution d => DiffDistribution d where
 
   fromList :: [Double] -> d
 
-  safeAddGrad :: d -> d -> d
+  safeAddGrad :: d -> Vec (Arity d) Double -> d
 
-  (|+|) :: d -> d -> d
-  (|+|) = liftBinOp (+)
+covarGrad    -- Assuming our distribution has D parameters
+  :: [Vec n Double]     -- ^ (f^{1:D})^{1:L}, an L-sized list of distributions      [(D α^1 β^1), (D α^2 β^2), .. (D α^L β^L)]
+  -> [Vec n Double]     -- ^ (g^{1:D})^{1:L}, an L-sized list of distributions
+  -> Vec n Double       -- ^ covar((f^{1:D})^{1:L}, (g^{1:D})^{1:L})
+covarGrad fs gs =
+  fromList $ zipWith Util.covariance params_fs params_gs
+  where fs' = map toList fs       -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
+        params_fs = transpose fs' -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
+        gs' = map toList gs       -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
+        params_gs = transpose gs' -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
 
-  (|-|) :: d -> d -> d
-  (|-|) = liftBinOp (-)
+varGrad     -- Assuming our distribution has D parameters
+  :: [d]    -- ^ (g^{1:D})^{1:L}, an L-sized list of parameter sets
+  -> d      -- ^ var((g^{1:D})^{1:L})
+varGrad gs =
+  fromList $ map Util.variance params_gs
+  where gs'       = map toList gs   -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
+        params_gs = transpose gs'   -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
 
-  (|*|) :: d -> d -> d
-  (|*|) = liftBinOp (*)
+(|+|) :: Vec n Double -> Vec n Double -> Vec n Double
+(|+|) = Vec.zipWith (+)
 
-  (|/|) :: d -> d -> d
-  (|/|) = liftBinOp (/)
+(|-|) :: Vec n Double -> Vec n Double -> Vec n Double
+(|-|) = Vec.zipWith (-)
 
-  (*|) :: Double -> d -> d
-  (*|) x = liftUnOp (* x)
+(|*|) :: Vec n Double -> Vec n Double -> Vec n Double
+(|*|) = Vec.zipWith (*)
 
-  covarGrad    -- Assuming our distribution has D parameters
-    :: [d]     -- ^ (f^{1:D})^{1:L}, an L-sized list of distributions      [(D α^1 β^1), (D α^2 β^2), .. (D α^L β^L)]
-    -> [d]     -- ^ (g^{1:D})^{1:L}, an L-sized list of distributions
-    -> d       -- ^ covar((f^{1:D})^{1:L}, (g^{1:D})^{1:L})
-  covarGrad fs gs =
-    fromList $ zipWith Util.covariance params_fs params_gs
-    where fs' = map toList fs       -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
-          params_fs = transpose fs' -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
-          gs' = map toList gs       -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
-          params_gs = transpose gs' -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
+(|/|) :: Vec n Double -> Vec n Double -> Vec n Double
+(|/|) = Vec.zipWith (/)
 
-  varGrad     -- Assuming our distribution has D parameters
-    :: [d]    -- ^ (g^{1:D})^{1:L}, an L-sized list of parameter sets
-    -> d      -- ^ var((g^{1:D})^{1:L})
-  varGrad gs =
-    fromList $ map Util.variance params_gs
-    where gs'       = map toList gs   -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
-          params_gs = transpose gs'   -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
+(*|) :: Double -> Vec n Double -> Vec n Double
+(*|) x = Vec.map (* x)
+
 
 -- | Beta(α, β)
 data Beta = Beta Double Double
@@ -170,8 +171,7 @@ instance DiffDistribution Beta where
           db = log (1 - x) - digamma β + digamma_ab
           dx = (α - 1)/x + (β - 1)/(1 - x)
 
-  safeAddGrad :: Beta -> Beta -> Beta
-  safeAddGrad (Beta α β) (Beta dα dβ) = Beta α' β'
+  safeAddGrad (Beta α β) (dα ::: dβ ::: VNil) = Beta α' β'
     where α' = let α_new = α + dα in if α_new <= 0 then α else α_new
           β' = let β_new = β + dβ in if β_new <= 0 then β else β_new
 
@@ -229,8 +229,7 @@ instance DiffDistribution Cauchy where
           dscale = 1/scale - (2 * scale)/(xlocSqrd + scaleSqrd)
           dx = -dloc
 
-  safeAddGrad :: Cauchy -> Cauchy -> Cauchy
-  safeAddGrad (Cauchy loc scale) (Cauchy dloc dscale) = Cauchy loc' scale'
+  safeAddGrad (Cauchy loc scale) (dloc ::: dscale ::: VNil) = Cauchy loc' scale'
     where loc'   = loc + dloc
           scale' = let new_scale = scale + dscale in if new_scale <= 0 then scale else new_scale
 
@@ -284,8 +283,7 @@ instance DiffDistribution HalfCauchy where
     | otherwise  = let (_ ::: dscale ::: VNil) = gradLogProb (Cauchy 0 scale) x
                    in Vec.singleton dscale
 
-  safeAddGrad :: HalfCauchy -> HalfCauchy -> HalfCauchy
-  safeAddGrad (HalfCauchy scale) (HalfCauchy dscale) = HalfCauchy scale'
+  safeAddGrad (HalfCauchy scale) (dscale ::: VNil) = HalfCauchy scale'
     where scale' = let new_scale = scale + dscale in if new_scale <= 0 then scale else new_scale
 
   liftUnOp :: (Double -> Double) -> HalfCauchy -> HalfCauchy
@@ -349,8 +347,7 @@ instance (TyNat n) => DiffDistribution (Dirichlet n) where
     where derivA a x  = -(digamma a) + digamma (sum αs) + log x
           derivX a x = (a - 1) / x
 
-  safeAddGrad :: Dirichlet n -> Dirichlet n -> Dirichlet n
-  safeAddGrad (Dirichlet αs) (Dirichlet dαs) = Dirichlet (Vec.zipWith add_dα αs dαs)
+  safeAddGrad (Dirichlet αs) dαs = Dirichlet (Vec.zipWith add_dα αs dαs)
     where add_dα α dα = let α_new = α + dα in if α_new <= 0 then α else α_new
 
   liftUnOp :: (Double -> Double) -> Dirichlet n -> Dirichlet n
@@ -406,8 +403,8 @@ instance DiffDistribution Gamma where
           dθ = x/(θ**2) - k/θ
           dx = (k - 1)/x - 1/θ
 
-  safeAddGrad :: Gamma -> Gamma -> Gamma
-  safeAddGrad (Gamma k θ) (Gamma dk dθ) = Gamma k' θ'
+  -- safeAddGrad :: Gamma -> Gamma -> Gamma
+  safeAddGrad (Gamma k θ) (dk ::: dθ ::: VNil) = Gamma k' θ'
     where k' = let k_new = k + dk in if k_new <= 0 then k else k_new
           θ' = let θ_new = θ + dθ in if θ_new <= 0 then θ else θ_new
 
@@ -462,8 +459,7 @@ instance DiffDistribution Normal where
           dσ = -1/σ + (xμ**2)/(σ ** 3)
           dx = -dμ
 
-  safeAddGrad :: Normal -> Normal -> Normal
-  safeAddGrad (Normal μ σ) (Normal dμ dσ) = Normal μ' σ'
+  safeAddGrad (Normal μ σ) (dμ ::: dσ ::: VNil) = Normal μ' σ'
     where μ' = μ + dμ
           σ' = let σ_new = σ + dσ in if σ_new <= 0 then σ else σ_new
 
@@ -518,8 +514,7 @@ instance DiffDistribution HalfNormal where
     | otherwise     = let _ ::: dσ ::: VNil = gradLogProb (Normal 0 σ) x
                       in Vec.singleton dσ
 
-  safeAddGrad :: HalfNormal -> HalfNormal -> HalfNormal
-  safeAddGrad (HalfNormal σ) (HalfNormal dσ) = HalfNormal σ'
+  safeAddGrad (HalfNormal σ) (dσ ::: VNil) = HalfNormal σ'
     where σ' = let σ_new = σ + dσ in if σ_new <= 0 then σ else σ_new
 
   liftUnOp :: (Double -> Double) -> HalfNormal -> HalfNormal

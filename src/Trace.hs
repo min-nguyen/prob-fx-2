@@ -36,8 +36,11 @@ module Trace (
   , dkeys
   , dinsert
   , dlookup
-  , dlookupDefault
-  , dlookupOrInsert
+  , gkeys
+  , ginsert
+  , glookup
+  , gmap
+  -- , dlookupOrInsert
   , dintersectLeftWith
   -- , dmap
   ) where
@@ -91,7 +94,7 @@ type LPTrace = Trace LogP
 
 data CTrace c where
   Leaf :: CTrace c
-  Node  :: (c a b, Typeable a, Typeable b)
+  Node  :: (c a b, Typeable a)
         => Key a         -- key
         -> b            -- distribution
         -> CTrace c        -- left
@@ -105,30 +108,12 @@ instance (DiffDistribution d, d ~ d') => DiffDistR d d' where
 {- | The type of differentiable distribution traces. -}
 type DTrace = CTrace DiffDistR
 
--- data DTrace where
---   Leaf :: DTrace
---   Node :: (DiffDistribution d)
---        => Key d         -- key
---        -> d              -- distribution
---        -> DTrace         -- left
---        -> DTrace         -- right
---        -> DTrace
+class (DiffDistribution d, v ~ Vec (Arity d) Double) => GradR d v where
 
-class (DiffDistribution d, Typeable v, v ~ Vec (Arity d) Double) => GradR d v where
-
-instance (DiffDistribution d,  Typeable v, v ~ Vec (Arity d) Double) => GradR d v where
+instance (DiffDistribution d, v ~ Vec (Arity d) Double) => GradR d v where
 
 {- | The type of gradient traces. -}
 type GTrace = CTrace GradR
-
--- data GTrace where
---   Leaf :: CTrace c t
---   Node  :: (c d, a ~ t d)
---         => Key d         -- key
---         -> a            -- distribution
---         -> CTrace c t       -- left
---         -> CTrace c t       -- right
---         -> CTrace c t
 
 type family Id a where
   Id a = a
@@ -190,29 +175,41 @@ dkeys = go
     go Leaf = []
     go (Node ky y l r) = Some ky : go l ++ go r
 
+-- | Fetch the keys
+gkeys :: GTrace -> [Some DiffDistribution Key]
+gkeys = go
+  where
+    go :: GTrace -> [Some DiffDistribution Key]
+    go Leaf = []
+    go (Node ky y l r) = Some ky : go l ++ go r
+
 -- | Construct an empty trace
-dempty :: DTrace
+dempty :: CTrace c
 dempty = Leaf
 
 -- | Construct a single node
-dsingleton :: (Typeable a, Typeable b, c a b) => Key a -> b -> CTrace c
+dsingleton :: (Typeable a, c a b) => Key a -> b -> CTrace c
 dsingleton k x = Node k x Leaf Leaf
 
 -- | Lookup an entry
-dlookup :: forall c a b. c a b => (Typeable a, Typeable b) => Key a -> CTrace c -> Maybe b
+dlookup :: Typeable a => Key a -> DTrace -> Maybe a
 dlookup kx = go where
   go Leaf = Nothing
-  go (Node ky y l r) = case (trueCompare kx ky, tyEq (Proxy @b) (asProxy y))
-      of (TrueEQ HRefl, Just HRefl) -> Just y
-         (TrueEQ HRefl, Nothing)    -> error "Trace.dlookup: Should not happen if 'a implies b' in the constraint 'c a b' "
+  go (Node ky y l r) = case (trueCompare kx ky, ())
+      of (TrueEQ HRefl, _) -> Just y
          (TrueLT, _)       -> go l
          (TrueGT, _)       -> go r
 
-dlookupDefault :: (c a b, Typeable a, Typeable b) => Key a -> CTrace c -> b -> b
-dlookupDefault kx dmap def = fromMaybe def (dlookup kx dmap)
+glookup :: Typeable a => Key a -> GTrace -> Maybe (Vec (Arity a) Double)
+glookup kx = go where
+  go Leaf = Nothing
+  go (Node ky y l r) = case (trueCompare kx ky, ())
+      of (TrueEQ HRefl, _) -> Just y
+         (TrueLT, _)       -> go l
+         (TrueGT, _)       -> go r
 
 -- | Insert a new entry
-dinsert :: forall c a b. (Typeable a, Typeable b) => c a b => Key a -> b -> CTrace c -> CTrace c
+dinsert :: DiffDistribution a => Key a -> a -> DTrace -> DTrace
 dinsert kx d = go where
   go Leaf = dsingleton kx d
   go (Node ky y l r) = case trueCompare kx ky
@@ -220,39 +217,48 @@ dinsert kx d = go where
           TrueLT       -> Node ky y (go l) r
           TrueGT       -> Node ky y l (go r)
 
--- | Apply a function to an entry if it exists
-dupdate :: forall c a b. (c a b, Typeable a, Typeable b) => Key a -> (b -> b) -> CTrace c -> CTrace c
-dupdate kx f = go where
-  go Leaf = Leaf
-  go (Node ky y l r) = case (trueCompare kx ky, tyEq (Proxy @b) (asProxy y))
-      of (TrueEQ HRefl, Just HRefl) -> Node kx (f y) l r
-         (TrueEQ HRefl, Nothing)    -> error "Trace.dupdate: Should not happen if 'a implies b' in the constraint 'c a b' "
-         (TrueLT, _)       -> Node ky y (go l) r
-         (TrueGT, _)       -> Node ky y l (go r)
+-- | Insert a new entry
+ginsert :: (Typeable a, DiffDistribution a) => Key a -> Vec (Arity a) Double -> GTrace -> GTrace
+ginsert kx d = go where
+  go Leaf = Node kx d Leaf Leaf
+  go (Node ky y l r) = case trueCompare kx ky
+      of  TrueEQ HRefl -> Node kx d l r
+          TrueLT       -> Node ky y (go l) r
+          TrueGT       -> Node ky y l (go r)
 
--- | Return the entry if it exists, otherwise insert a new entry
-dlookupOrInsert :: forall c a b. (c a b, Typeable a, Typeable b) => Key a -> b -> CTrace c  -> (b, CTrace c )
-dlookupOrInsert kx dx = go where
-  go :: CTrace c  -> (b, CTrace c )
-  go Leaf             = (dx, dsingleton kx dx)
-  go (Node ky dy l r) =
-    case (trueCompare kx ky, tyEq (Proxy @b) (asProxy dy)) of
-      (TrueEQ HRefl, Just HRefl) -> (dy, Node ky dy l r)
-      (TrueEQ HRefl, Nothing)    -> error "Trace.dlookupOrInsert: Should not happen if 'a implies b' in the constraint 'c a b' "
-      (TrueLT, _)    -> let (d, l') = go l in (d, Node ky dy l' r)
-      (TrueGT, _)       -> let (d, r') = go r in (d, Node ky dy l r')
+-- -- | Apply a function to an entry if it exists
+-- dupdate :: forall c a b. (c a b, Typeable a, Typeable b) => Key a -> (b -> b) -> CTrace c -> CTrace c
+-- dupdate kx f = go where
+--   go Leaf = Leaf
+--   go (Node ky y l r) = case (trueCompare kx ky, tyEq (Proxy @b) (asProxy y))
+--       of (TrueEQ HRefl, Just HRefl) -> Node kx (f y) l r
+--          (TrueEQ HRefl, Nothing)    -> error "Trace.dupdate: Should not happen if 'a implies b' in the constraint 'c a b' "
+--          (TrueLT, _)       -> Node ky y (go l) r
+--          (TrueGT, _)       -> Node ky y l (go r)
 
--- | Fold over a tree
-dfoldr :: (forall a b r. c a b => Key a -> b -> r -> r) -> r -> CTrace c -> r
-dfoldr f = go where
-  go z Leaf             = z
-  go z (Node  kx x l r) = go (f kx x (go z r)) l
+-- -- | Return the entry if it exists, otherwise insert a new entry
+-- dlookupOrInsert :: forall c a b. (c a b, Typeable a, Typeable b) => Key a -> b -> CTrace c  -> (b, CTrace c )
+-- dlookupOrInsert kx dx = go where
+--   go :: CTrace c  -> (b, CTrace c )
+--   go Leaf             = (dx, dsingleton kx dx)
+--   go (Node ky dy l r) =
+--     case (trueCompare kx ky, tyEq (Proxy @b) (asProxy dy)) of
+--       (TrueEQ HRefl, Just HRefl) -> (dy, Node ky dy l r)
+--       (TrueEQ HRefl, Nothing)    -> error "Trace.dlookupOrInsert: Should not happen if 'a implies b' in the constraint 'c a b' "
+--       (TrueLT, _)    -> let (d, l') = go l in (d, Node ky dy l' r)
+--       (TrueGT, _)       -> let (d, r') = go r in (d, Node ky dy l r')
 
--- -- | Map over a tree
--- dmap :: (forall a. (c a b, Typeable b) => b -> b) -> CTrace c -> CTrace c
--- dmap f = go where
---   go Leaf            = Leaf
---   go (Node kx x l r) = Node kx (f x) (go l) (go r)
+-- -- | Fold over a tree
+-- dfoldr :: (forall a b r. c a b => Key a -> b -> r -> r) -> r -> CTrace c -> r
+-- dfoldr f = go where
+--   go z Leaf             = z
+--   go z (Node  kx x l r) = go (f kx x (go z r)) l
+
+-- | Map over a tree
+gmap :: (forall n. Vec n Double -> Vec n Double) -> GTrace -> GTrace
+gmap f = go where
+  go Leaf            = Leaf
+  go (Node kx x l r) = Node kx (f x) (go l) (go r)
 
 -- | Combine the entries of two traces with an operation when their keys match,
 --   returning elements of the left trace that do not exist in the second trace.
