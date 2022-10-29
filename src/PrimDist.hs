@@ -82,7 +82,7 @@ data Witness (c :: Type -> Constraint) a where
 {- Distributions that can be differentiated with respect to their parameters
 -}
 class Distribution d => DiffDistribution d where
-  -- type family Arity d :: Nat
+  type family Arity d :: Nat
   {- | Compute the gradient log-probability. -}
   gradLogProb :: d -> Support d -> d
 
@@ -159,6 +159,8 @@ instance Distribution Beta where
   isDifferentiable _ = Just Witness
 
 instance DiffDistribution Beta where
+  type Arity Beta = FromGHC 2
+
   gradLogProb :: Beta -> Double -> Beta
   gradLogProb (Beta α β) x
     | x <= 0 || x >= 1 = error "betaGradLogPdfRaw: x <= 0 || x >= 1"
@@ -214,6 +216,8 @@ instance Distribution Cauchy where
   isDifferentiable _ = Just Witness
 
 instance DiffDistribution Cauchy where
+  type Arity Cauchy = FromGHC 2
+
   gradLogProb :: Cauchy -> Double -> Cauchy
   gradLogProb (Cauchy loc scale) x
     | scale <= 0 = error "cauchyGradLogPdfRaw: scale <= 0"
@@ -272,6 +276,8 @@ instance Distribution HalfCauchy where
   isDifferentiable _ = Just Witness
 
 instance DiffDistribution HalfCauchy where
+  type Arity HalfCauchy = FromGHC 1
+
   gradLogProb :: HalfCauchy -> Double -> HalfCauchy
   gradLogProb (HalfCauchy scale) x
     | x < 0      = error "cauchyGradLogProb: x < 0"
@@ -331,6 +337,8 @@ instance (SNatI n, Typeable n) => Distribution (Dirichlet n) where
   isDifferentiable _ = Just Witness
 
 instance (SNatI n, Typeable n) => DiffDistribution (Dirichlet n) where
+  type Arity (Dirichlet n) = n
+
   gradLogProb :: Dirichlet n -> Vec n Double -> Dirichlet n
   gradLogProb (Dirichlet αs) xs
     | length xs /= length αs     = error "dirichletGradLogPdfRaw: length xs /= length αs"
@@ -387,6 +395,8 @@ instance Distribution Gamma where
   isDifferentiable _ = Just Witness
 
 instance DiffDistribution Gamma where
+  type Arity Gamma = FromGHC 2
+
   gradLogProb :: Gamma -> Double -> Gamma
   gradLogProb (Gamma k θ) x
     | x <= 0   = error "gammaGradLogPdfRaw: x <= 0"
@@ -442,6 +452,8 @@ instance Distribution Normal where
   isDifferentiable _ = Just Witness
 
 instance DiffDistribution Normal where
+  type Arity Normal = FromGHC 2
+
   gradLogProb :: Normal -> Double -> Normal
   gradLogProb (Normal μ σ) x = Normal dμ dσ
     where xμ = x - μ
@@ -497,6 +509,8 @@ instance Distribution HalfNormal where
   isDifferentiable _ = Just Witness
 
 instance DiffDistribution HalfNormal where
+  type Arity HalfNormal = FromGHC 1
+
   gradLogProb :: HalfNormal -> Double -> HalfNormal
   gradLogProb (HalfNormal σ) x
     | x < 0         = error "halfNormalGradLogPdfRaw: No gradient at x < 0"
