@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RankNTypes #-}
@@ -13,6 +14,7 @@ module Inference.BBVI
   where
 
 import Data.Maybe
+import Data.Proxy
 import Data.Bifunctor ( Bifunctor(first) )
 import Control.Monad ( replicateM, (>=>) )
 import Effects.Dist
@@ -29,6 +31,7 @@ import Trace
 import Debug.Trace
 import qualified Inference.SIM as SIM
 import qualified Inference.LW as LW
+import qualified Vec
 import Vec (Vec)
 
 {- | Top-level wrapper for BBVI inference.
@@ -171,7 +174,7 @@ estELBOs l_samples logWs traceGs = foldr f dempty vars where
           E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
        where the baseline is:
           b_v    = covar(F_v^{1:L}, G_v^{1:L}) / var(G_v^{1:L}) -}
-  estELBO :: DiffDistribution d
+  estELBO :: forall d. ( DiffDistribution d)
     => Key d    -- ^   v
     -> [GTrace]  -- ^   G^{1:L}
     -> [GTrace]  -- ^   F^{1:L}
@@ -181,7 +184,7 @@ estELBOs l_samples logWs traceGs = foldr f dempty vars where
         traceFs_v  = map (fromJust . glookup v) traceFs                                 -- F_v^{1:L}
         baseline_v = covarGrad traceFs_v traceGs_v |/| varGrad traceGs_v  -- b_v
         δelbos_v   = zipWith (\g_l f_l -> f_l |-| (baseline_v |*| g_l)) traceGs_v traceFs_v
-    in  ((*|) (1/fromIntegral l_samples) . foldr (|+|) zero) δelbos_v
+    in  ((*|) (1/fromIntegral l_samples) . foldr (|+|) (zero (Proxy @d)) ) δelbos_v
 
 {- | Update each variable v's parameters λ using their estimated ELBO gradients E[δelbo(v)].
         λ_{t+1} = λ_t + η_t * E[δelbo(v)]

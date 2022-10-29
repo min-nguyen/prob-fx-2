@@ -10,6 +10,7 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ConstrainedClassMethods #-}
 
 {- | A GADT encoding of (a selection of) primitive distributions
     along with their corresponding sampling and density functions.
@@ -22,6 +23,7 @@ module PrimDist
    Poisson, mkPoisson, Uniform, mkUniform, UniformD, mkUniformD) where
 
 import           Debug.Trace ( trace )
+import Data.Proxy
 import           Data.Kind ( Constraint, Type )
 import           Data.List ( transpose )
 import           Data.Functor ( (<&>) )
@@ -90,7 +92,7 @@ class Distribution d => DiffDistribution d where
 
   liftBinOp :: (Double -> Double -> Double) -> d -> d -> d
 
-  zero :: d
+  zero      :: Proxy d -> Vec (Arity d) Double
 
   toList :: d -> [Double]
 
@@ -103,19 +105,16 @@ covarGrad    -- Assuming our distribution has D parameters
   -> [Vec n Double]     -- ^ (g^{1:D})^{1:L}, an L-sized list of distributions
   -> Vec n Double       -- ^ covar((f^{1:D})^{1:L}, (g^{1:D})^{1:L})
 covarGrad fs gs =
-  fromList $ zipWith Util.covariance params_fs params_gs
-  where fs' = map toList fs       -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
-        params_fs = transpose fs' -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
-        gs' = map toList gs       -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
-        params_gs = transpose gs' -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
+  Vec.zipWith Util.covariance params_fs params_gs
+  where params_fs = Vec.transpose fs -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
+        params_gs = Vec.transpose gs -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
 
 varGrad     -- Assuming our distribution has D parameters
-  :: [d]    -- ^ (g^{1:D})^{1:L}, an L-sized list of parameter sets
-  -> d      -- ^ var((g^{1:D})^{1:L})
+  :: [Vec n Double]    -- ^ (g^{1:D})^{1:L}, an L-sized list of parameter sets  [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
+  -> Vec n Double      -- ^ var((g^{1:D})^{1:L})
 varGrad gs =
-  fromList $ map Util.variance params_gs
-  where gs'       = map toList gs   -- list of L parameter-sets of size D    [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
-        params_gs = transpose gs'   -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
+  Vec.map Util.variance params_gs
+  where params_gs = Vec.transpose gs   -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
 
 (|+|) :: Vec n Double -> Vec n Double -> Vec n Double
 (|+|) = Vec.zipWith (+)
@@ -181,8 +180,7 @@ instance DiffDistribution Beta where
   liftBinOp :: (Double -> Double -> Double) -> Beta -> Beta -> Beta
   liftBinOp f (Beta α β) (Beta dα dβ) = Beta (f α dα) (f β dβ)
 
-  zero :: Beta
-  zero = Beta 0 0
+  zero _ = 0 ::: 0 ::: VNil
 
   toList :: Beta -> [Double]
   toList (Beta dα dβ) = [dα, dβ]
@@ -239,8 +237,7 @@ instance DiffDistribution Cauchy where
   liftBinOp :: (Double -> Double -> Double) -> Cauchy -> Cauchy -> Cauchy
   liftBinOp f (Cauchy loc scale) (Cauchy dloc dscale) = Cauchy (f loc dloc) (f scale dscale)
 
-  zero :: Cauchy
-  zero = Cauchy 0 0
+  zero _ = 0 ::: 0 ::: VNil
 
   toList :: Cauchy -> [Double]
   toList (Cauchy loc scale) = [loc, scale]
@@ -292,8 +289,8 @@ instance DiffDistribution HalfCauchy where
   liftBinOp :: (Double -> Double -> Double) -> HalfCauchy -> HalfCauchy -> HalfCauchy
   liftBinOp f (HalfCauchy scale) (HalfCauchy dscale) = HalfCauchy (f scale dscale)
 
-  zero :: HalfCauchy
-  zero = HalfCauchy 0
+  zero  _ = 0 ::: VNil
+
 
   toList :: HalfCauchy -> [Double]
   toList (HalfCauchy scale) = [scale]
@@ -356,8 +353,7 @@ instance (TyNat n) => DiffDistribution (Dirichlet n) where
   liftBinOp :: (Double -> Double -> Double) -> Dirichlet n -> Dirichlet n -> Dirichlet n
   liftBinOp f (Dirichlet αs) (Dirichlet dαs) = Dirichlet (Vec.zipWith f αs dαs)
 
-  zero :: Dirichlet n
-  zero = Dirichlet (Vec.replicate (snat @n) 0)
+  zero _ = (Vec.replicate (snat @n) 0)
 
   toList :: Dirichlet n -> [Double]
   toList (Dirichlet dαs) = Vec.toList dαs
@@ -414,8 +410,8 @@ instance DiffDistribution Gamma where
   liftBinOp :: (Double -> Double -> Double) -> Gamma -> Gamma -> Gamma
   liftBinOp f (Gamma k θ) (Gamma dk dθ) = Gamma (f k dk) (f θ dθ)
 
-  zero :: Gamma
-  zero = Gamma 0 0
+  zero  _ = 0 ::: 0 ::: VNil
+
 
   toList :: Gamma -> [Double]
   toList (Gamma dk dθ) = [dk, dθ]
@@ -469,8 +465,8 @@ instance DiffDistribution Normal where
   liftBinOp :: (Double -> Double -> Double) -> Normal -> Normal -> Normal
   liftBinOp f (Normal μ σ) (Normal dμ dσ) = Normal (f μ dμ) (f σ dσ)
 
-  zero :: Normal
-  zero = Normal 0 0
+  zero  _ = 0 ::: 0 ::: VNil
+
 
   toList :: Normal -> [Double]
   toList (Normal dμ dσ) = [dμ, dσ]
@@ -523,8 +519,8 @@ instance DiffDistribution HalfNormal where
   liftBinOp :: (Double -> Double -> Double) -> HalfNormal -> HalfNormal -> HalfNormal
   liftBinOp f (HalfNormal σ) (HalfNormal dσ) = HalfNormal (f σ dσ)
 
-  zero :: HalfNormal
-  zero = HalfNormal 0
+  zero  _ = 0 ::: VNil
+
 
   toList :: HalfNormal -> [Double]
   toList (HalfNormal σ) = [σ]
