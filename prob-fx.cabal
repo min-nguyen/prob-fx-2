@@ -119,7 +119,7 @@ executable prob-fx
                       log-domain,
                       fin,
                       -- the below row of dependencies are only necessary if 'src' is included as a hs-source-dir
-                      statistics, mwc-probability, mwc-random, vector, transformers, mtl, math-functions,
+                      statistics, mwc-probability, mwc-random, vector, transformers, mtl, math-functions, vec,
                       -- monad-bayes,
                       lens
   default-language:   Haskell2010

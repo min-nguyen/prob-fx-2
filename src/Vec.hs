@@ -27,11 +27,14 @@ replicate :: SNat n -> a -> Vec n a
 replicate SZ x = VNil
 replicate SS x = x ::: Vec.replicate snat x
 
+replicateM :: Monad m => SNat n -> m a -> m (Vec n a)
+replicateM n x = sequence $ Vec.replicate n x
+
 iterate :: SNat n -> (t -> t) -> t -> Vec n t
 iterate SZ f a = VNil
 iterate SS f a = a ::: Vec.iterate snat f (f a)
 
 transpose :: [Vec n a] -> Vec n [a]
-transpose (VNil : vs) = VNil
-transpose vss@((a ::: _) : vs)    = Prelude.map Data.Vec.Lazy.head vss ::: Vec.transpose (Prelude.map Data.Vec.Lazy.tail vss)
+transpose (VNil : _) = VNil
+transpose vss@((_ ::: _) : _) = Prelude.map Data.Vec.Lazy.head vss ::: Vec.transpose (Prelude.map Data.Vec.Lazy.tail vss)
 transpose [] = undefined

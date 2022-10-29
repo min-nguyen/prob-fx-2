@@ -22,7 +22,7 @@ import Data.Proxy
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>), Vars (VCons) )
 import Trace
 import PrimDist
-import Vec (Vec, TyNat)
+import Vec (Vec(..), TyNat)
 import qualified Vec
 import Inference.SIM as SIM ( simulate )
 import Inference.LW as LW ( lw )
@@ -108,7 +108,7 @@ topicModel vocab n_topics n_words = do
   let topic_word_ps' = map Vec.toList $ Vec.toList topic_word_ps
   -- Generate distribution over topics for a given document
   doc_topic_ps  <- docTopicPrior n_topics
-  replicateM n_words (do  z <- categorical' doc_topic_ps
+  replicateM n_words (do  z <- categorical' (Vec.toList doc_topic_ps)
                           let word_ps = topic_word_ps' !! z
                           wordDist vocab word_ps)
 
@@ -130,7 +130,7 @@ topicModels vocab n_topics doc_words = do
 
 -- | Example possible vocabulary
 vocab :: Vec (FromGHC 4) String
-vocab = Vec.unsafeFromList ["DNA", "evolution", "parsing", "phonology"]
+vocab = "DNA" ::: "evolution" ::: "parsing"::: "phonology"::: VNil
 
 -- | Simulating from topic model
 simLDA :: Int -> Sampler [String]
@@ -139,9 +139,9 @@ simLDA n_words = do
   let n_topics = snat @(FromGHC 2)
 
   -- Specify model environment
-      env_in = #θ := [Vec.unsafeFromList [0.5, 0.5]] <:>
-               #φ := [Vec.unsafeFromList [0.12491280814569208,1.9941599739151505e-2,0.5385152817942926,0.3166303103208638],
-                      Vec.unsafeFromList [1.72605174564027e-2,2.9475900240868515e-2,9.906011619752661e-2,0.8542034661052021]] <:>
+      env_in = #θ := [0.5 ::: 0.5 ::: VNil] <:>
+               #φ := [0.12491280814569208:::1.9941599739151505e-2:::0.5385152817942926:::0.3166303103208638:::VNil,
+                      1.72605174564027e-2:::2.9475900240868515e-2:::9.906011619752661e-2:::0.8542034661052021:::VNil] <:>
                #w := [] <:> enil
   -- Simulate from topic model
   (words, env_out) <- SIM.simulate (topicModel vocab n_topics n_words) env_in
@@ -241,9 +241,9 @@ bbviLDA t_steps l_samples n_words = do
 
   traceQ <- BBVI.bbvi t_steps l_samples (topicModel vocab n_topics n_words) env_in
   -- Draw the most recent sampled parameters
-  let θ_dist     = toList . fromJust $ dlookup (DKey ("θ", 0) :: DKey (Dirichlet (FromGHC 2))) traceQ
-      φ0_dist    = toList . fromJust $ dlookup (DKey ("φ", 0) :: DKey (Dirichlet (FromGHC 4))) traceQ
-      φ1_dist    = toList . fromJust $ dlookup (DKey ("φ", 1) :: DKey (Dirichlet (FromGHC 4))) traceQ
+  let θ_dist     = toList . fromJust $ dlookup (Key ("θ", 0) :: Key (Dirichlet (FromGHC 2))) traceQ
+      φ0_dist    = toList . fromJust $ dlookup (Key ("φ", 0) :: Key (Dirichlet (FromGHC 4))) traceQ
+      φ1_dist    = toList . fromJust $ dlookup (Key ("φ", 1) :: Key (Dirichlet (FromGHC 4))) traceQ
   return (θ_dist, φ0_dist, φ1_dist)
 
 {- | Executing the topic model using monad-bayes.

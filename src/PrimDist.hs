@@ -100,21 +100,19 @@ class Distribution d => DiffDistribution d where
 
   safeAddGrad :: d -> Vec (Arity d) Double -> d
 
-covarGrad    -- Assuming our distribution has D parameters
-  :: [Vec n Double]     -- ^ (f^{1:D})^{1:L}, an L-sized list of distributions      [(D α^1 β^1), (D α^2 β^2), .. (D α^L β^L)]
-  -> [Vec n Double]     -- ^ (g^{1:D})^{1:L}, an L-sized list of distributions
+covarGrad ::            -- Assuming our distribution has D parameters
+     [Vec n Double]     -- ^ (f^{1:D})^{1:L}, an L-sized list of D-arity parameter sets  [(D α^1 β^1), (D α^2 β^2), .. (D α^L β^L)]
+  -> [Vec n Double]     -- ^ (g^{1:D})^{1:L}, an L-sized list of D-arity parameter sets
   -> Vec n Double       -- ^ covar((f^{1:D})^{1:L}, (g^{1:D})^{1:L})
-covarGrad fs gs =
-  Vec.zipWith Util.covariance params_fs params_gs
-  where params_fs = Vec.transpose fs -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
-        params_gs = Vec.transpose gs -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
+covarGrad fs gs = Vec.zipWith Util.covariance params_fs params_gs
+  where params_fs = Vec.transpose fs -- D-sized vector of L-sized lists    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
+        params_gs = Vec.transpose gs -- D-sized vector of L-sized lists    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
 
-varGrad     -- Assuming our distribution has D parameters
-  :: [Vec n Double]    -- ^ (g^{1:D})^{1:L}, an L-sized list of parameter sets  [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
-  -> Vec n Double      -- ^ var((g^{1:D})^{1:L})
-varGrad gs =
-  Vec.map Util.variance params_gs
-  where params_gs = Vec.transpose gs   -- set of D parameter-lists of size L    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
+varGrad ::            -- Assuming our distribution has D parameters
+    [Vec n Double]    -- ^ (g^{1:D})^{1:L}, an L-sized list of D-arity parameter sets  [[α^1, β^1], [α^2, β^2], .. [α^L, β^L]]
+  -> Vec n Double     -- ^ var((g^{1:D})^{1:L})
+varGrad gs = Vec.map Util.variance params_gs
+  where params_gs = Vec.transpose gs -- D-sized vector of L-sized lists    [[α^1, α^2, .. α^L], [β^1, β^2, .. β^L]]
 
 (|+|) :: Vec n Double -> Vec n Double -> Vec n Double
 (|+|) = Vec.zipWith (+)

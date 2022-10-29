@@ -92,18 +92,24 @@ type STrace = Trace Double
 -}
 type LPTrace = Trace LogP
 
+
+
+
+
+
+
 data CTrace c where
   Leaf :: CTrace c
   Node  :: (c a b, Typeable a)
-        => Key a         -- key
+        => Key a        -- key
         -> b            -- distribution
-        -> CTrace c        -- left
-        -> CTrace c        -- right
+        -> CTrace c     -- left
+        -> CTrace c     -- right
         -> CTrace c
 
 class (DiffDistribution d, d ~ d') => DiffDistR d d' where
 
-instance (DiffDistribution d, d ~ d') => DiffDistR d d' where
+instance (DiffDistribution d) => DiffDistR d d where
 
 {- | The type of differentiable distribution traces. -}
 type DTrace = CTrace DiffDistR
@@ -226,6 +232,33 @@ ginsert kx d = go where
           TrueLT       -> Node ky y (go l) r
           TrueGT       -> Node ky y l (go r)
 
+-- | Map over a tree
+gmap :: (forall n. Vec n Double -> Vec n Double) -> GTrace -> GTrace
+gmap f = go where
+  go Leaf            = Leaf
+  go (Node kx x l r) = Node kx (f x) (go l) (go r)
+
+-- | Combine the entries of two traces with an operation when their keys match,
+--   returning elements of the left trace that do not exist in the second trace.
+dintersectLeftWith :: (forall d. DiffDistribution d => d -> Vec (Arity d) Double -> d) -> DTrace -> GTrace -> DTrace
+dintersectLeftWith _ t1 Leaf  = t1
+dintersectLeftWith _ Leaf t2  = Leaf
+dintersectLeftWith f (Node k1 x1 l1 r1) t2 =
+  case maybe_x2 of
+      Nothing -> Node k1 x1 l1 r1
+      Just x2 -> Node k1 (f x1 x2) l1l2 r1r2
+    where (l2, maybe_x2, r2) = dsplitLookup k1 t2
+          !l1l2 = dintersectLeftWith f l1 l2
+          !r1r2 = dintersectLeftWith f r1 r2
+          -- | Split-lookup without rebalancing tree
+          dsplitLookup :: Typeable d => Key d -> GTrace -> (GTrace, Maybe (Vec (Arity d) Double), GTrace)
+          dsplitLookup k = go where
+            go Leaf            = (Leaf, Nothing, Leaf)
+            go (Node kx x l r) = case trueCompare k kx of
+              TrueLT       -> let (lt, z, gt) = go l in (lt, z, Node kx x gt r) -- As we know that `keys of gt` < `keys of r`
+              TrueGT       -> let (lt, z, gt) = go r in (Node kx x l lt, z, gt)
+              TrueEQ HRefl -> (l, Just x, r)
+
 -- -- | Apply a function to an entry if it exists
 -- dupdate :: forall c a b. (c a b, Typeable a, Typeable b) => Key a -> (b -> b) -> CTrace c -> CTrace c
 -- dupdate kx f = go where
@@ -253,31 +286,3 @@ ginsert kx d = go where
 -- dfoldr f = go where
 --   go z Leaf             = z
 --   go z (Node  kx x l r) = go (f kx x (go z r)) l
-
--- | Map over a tree
-gmap :: (forall n. Vec n Double -> Vec n Double) -> GTrace -> GTrace
-gmap f = go where
-  go Leaf            = Leaf
-  go (Node kx x l r) = Node kx (f x) (go l) (go r)
-
--- | Combine the entries of two traces with an operation when their keys match,
---   returning elements of the left trace that do not exist in the second trace.
-dintersectLeftWith :: (forall d. DiffDistribution d => d -> Vec (Arity d) Double -> d) -> DTrace -> GTrace -> DTrace
-dintersectLeftWith _ t1 Leaf  = t1
-dintersectLeftWith _ Leaf t2  = Leaf
-dintersectLeftWith f (Node k1 x1 l1 r1) t2 =
-  case maybe_x2 of
-      Nothing -> Node k1 x1 l1 r1
-      Just x2 -> Node k1 (f x1 x2) l1l2 r1r2
-    where (l2, maybe_x2, r2) =  dsplitLookup k1 t2
-          !l1l2 = dintersectLeftWith f l1 l2
-          !r1r2 = dintersectLeftWith f r1 r2
-
--- | Split-lookup without rebalancing tree
-dsplitLookup :: Typeable d => Key d -> GTrace -> (GTrace, Maybe (Vec (Arity d) Double), GTrace)
-dsplitLookup k = go where
-  go Leaf            = (Leaf, Nothing, Leaf)
-  go (Node kx x l r) = case trueCompare k kx of
-    TrueLT       -> let (lt, z, gt) = go l in (lt, z, Node kx x gt r) -- As we know that `keys of gt` < `keys of r`
-    TrueGT       -> let (lt, z, gt) = go r in (Node kx x l lt, z, gt)
-    TrueEQ HRefl -> (l, Just x, r)
