@@ -93,7 +93,7 @@ installScore = loop dempty where
     Just (Sample d α) ->
       case isDifferentiable d of
         Nothing      -> Op (weaken op) (loop traceQ . k)
-        Just Witness -> do let traceQ' = dinsert (DKey α) d traceQ
+        Just Witness -> do let traceQ' = dinsert (Key α) d traceQ
                            x <- call (Score d d α)
                            (loop traceQ' . k) x
     Nothing -> Op (weaken op) (loop traceQ . k)
@@ -106,7 +106,7 @@ updateScore traceQ = loop where
   loop (Val x)   = pure x
   loop (Op op k) = case prj op of
     Just (Score d _ α) -> do
-      let q = dlookupDefault (DKey α) traceQ d
+      let q = dlookupDefault (Key α) traceQ d
       x <- call (Score d q α)
       (loop . k) x
     Nothing -> Op op (loop . k)
@@ -135,7 +135,7 @@ traceGrads = loop dempty where
   loop traceG (Op op k) = do
     case prj op of
       Just (Score _ q α)
-        -> Op op (\x -> let traceG' = dinsert (DKey α) (gradLogProb q x) traceG
+        -> Op op (\x -> let traceG' = dinsert (Key α) (gradLogProb q x) traceG
                         in  (loop traceG' . k) x)
       _ -> Op op (loop traceG . k)
 
@@ -154,10 +154,10 @@ handleScore (Op op k) = case discharge op of
 estELBOs :: Int -> [LogP] -> [GTrace] -> GTrace
 estELBOs l_samples logWs traceGs = foldr f dempty vars where
   {- | Store the ELBO gradient estimate E[δelbo(v)] for a given variable v. -}
-  f :: Some DKey -> GTrace -> GTrace
+  f :: Some Key -> GTrace -> GTrace
   f (Some kx) = dinsert kx (estELBO kx traceGs traceFs)
   {- | Store the ELBO gradient estimate E[δelbo(v)] for a given variable v. -}
-  vars :: [Some DKey]
+  vars :: [Some Key]
   vars = (dkeys . head) traceGs
   {- | Uniformly scale each iteration's gradient trace G^l by its corresponding (normalised) importance weight W_norm^l.
           F^{1:L} = W_norm^{1:L} * G^{1:L}
@@ -170,7 +170,7 @@ estELBOs l_samples logWs traceGs = foldr f dempty vars where
        where the baseline is:
           b_v    = covar(F_v^{1:L}, G_v^{1:L}) / var(G_v^{1:L}) -}
   estELBO :: DiffDistribution d
-    => DKey d    -- ^   v
+    => Key d    -- ^   v
     -> [GTrace]  -- ^   G^{1:L}
     -> [GTrace]  -- ^   F^{1:L}
     -> d         -- ^   E[δelbo(v)]
