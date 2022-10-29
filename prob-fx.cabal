@@ -54,7 +54,8 @@ library
                       Trace,
                       TyCompare,
                       Util,
-                      Vec
+                      Vec,
+                      Vect
 
   -- Modules included in this library but not exported.
   -- other-modules:

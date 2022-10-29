@@ -12,54 +12,20 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Vec (module Vec, module Data.Vector) where
+module Vec (module Vec, module Data.Vec.Lazy) where
 
-import           Data.Maybe
-import           Data.Proxy
 import           Data.Type.Nat
 import           Data.Typeable
-import qualified Data.Vector as Vector
-import           Data.Vector (Vector, (!))
+import           Data.Vec.Lazy
 
 class (SNatI n, Typeable n) => TyNat n
 
 instance (SNatI n, Typeable n) => TyNat n
 
-newtype Vec (n :: Nat) a = UnsafeMkVec { getVector :: Vector a }
-    deriving (Show, Foldable)
+replicate :: SNat n -> a -> Vec n a
+replicate SZ x = VNil
+replicate SS x = x ::: Vec.replicate snat x
 
-(!!) :: Vec n a -> Int ->  a
-(!!) (UnsafeMkVec xs) n = xs ! n
-
-fromVector :: forall n a. TyNat n => Vector a -> Maybe (Vec n a)
-fromVector v | length v == l = Just (UnsafeMkVec v)
-             | otherwise     = error ("Vec.hs: length is actually " ++ show (length v) ++ " and not " ++ show l) Nothing
-  where
-    l = reflectToNum (Proxy @n)
-
-unsafeFromVector :: forall n a. TyNat n => Vector a -> Vec n a
-unsafeFromVector = fromJust . fromVector
-
-fromList :: TyNat n => [a] -> Maybe (Vec n a)
-fromList = fromVector . Vector.fromList
-
-unsafeFromList :: TyNat n => [a] -> Vec n a
-unsafeFromList = fromJust . fromList
-
-toList :: Vec n a -> [a]
-toList (UnsafeMkVec xs) = Vector.toList xs
-
-toList2d :: (TyNat n, TyNat m) => Vec m (Vec n a) -> [[a]]
-toList2d (UnsafeMkVec xs) = Vector.toList $ Vector.map toList xs
-
-zipWith :: (a -> b -> c) -> Vec n a -> Vec n b -> Vec n c
-zipWith f (UnsafeMkVec xs) (UnsafeMkVec ys) = UnsafeMkVec (Vector.zipWith f xs ys)
-
-map :: (a -> b) -> Vec n a -> Vec n b
-map f (UnsafeMkVec xs) = UnsafeMkVec (Vector.map f xs)
-
-replicate :: forall n a. TyNat n => SNat n -> a -> Vec n a
-replicate n a = UnsafeMkVec (Vector.replicate (reflectToNum (Proxy @n)) a)
-
-replicateM :: forall m n a . Monad m => TyNat n => SNat n -> m a -> m (Vec n a)
-replicateM n a = fmap UnsafeMkVec (Vector.replicateM (reflectToNum (Proxy @n)) a)
+iterate :: SNat n -> (t -> t) -> t -> Vec n t
+iterate SZ f a = VNil
+iterate SS f a = a ::: Vec.iterate snat f (f a)

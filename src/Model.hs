@@ -172,15 +172,15 @@ discrete' :: (Typeable a, Eq a, Show a) =>
   -> Model env es a
 discrete' ps = callDist' (mkDiscrete ps)
 
-categorical :: (Observable env x Int, TyNat n)
-  => Vec n Double
+categorical :: (Observable env x Int)
+  => [Double]
   -> Var x
   -> Model env es Int
 categorical xs = callDist (mkCategorical xs)
 
-categorical' ::  TyNat n
+categorical' ::
   -- | list of @n@ probabilities
-  => Vec n Double
+     [Double]
   -- | integer index from @0@ to @n - 1@
   -> Model env es Int
 categorical' xs = callDist' (mkCategorical xs)

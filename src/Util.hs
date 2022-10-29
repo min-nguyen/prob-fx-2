@@ -1,7 +1,9 @@
 {- | Some small utility functions.
 -}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Util (
     boolToInt
@@ -26,8 +28,8 @@ import qualified Data.Map as Map
 import Data.Foldable
 import  Data.Proxy
 import qualified Vec
-import Vec (Vec(UnsafeMkVec))
-import qualified Data.Vector as Vector
+import           Vec (Vec)
+
 
 {- | List utility functions.
 -}
@@ -73,11 +75,10 @@ mapT3 f (x, y, z) = (f x, f y, f z)
 decShift :: Double -> Int
 decShift r = floor $ r * 1e16
 
-linCongGen :: SNatI n => Double -> Proxy n -> Vec n Double
+linCongGen :: forall n. SNatI n => Double -> SNat n -> Vec n Double
 linCongGen r n =
-  let ns = iterate (\n -> ((6364136223846793005*n) + 1442695040888963407) `mod` 2147483647) (decShift r)
-      rs = drop 1 $ map ((/2147483647) . fromIntegral) ns
-  in  UnsafeMkVec (Vector.fromList $ take (reflectToNum n) rs)
+  let ns = Vec.iterate (SS @n) (\n -> ((6364136223846793005*n) + 1442695040888963407) `mod` 2147483647) (decShift r)
+  in  Vec.tail $ Vec.map ((/2147483647) . fromIntegral) ns
 
 {- Map utility functions.
 -}

@@ -25,10 +25,10 @@ import           Debug.Trace ( trace )
 import           Data.Kind ( Constraint, Type )
 import           Data.List ( transpose )
 import           Data.Functor ( (<&>) )
-import           Data.Proxy
 import           Data.Maybe
 import           Data.Typeable ( Typeable )
 import           Data.Type.Nat
+import           Data.Fin
 import           Numeric.MathFunctions.Constants
   ( m_eulerMascheroni, m_neg_inf, m_sqrt_2_pi, m_sqrt_2, m_pos_inf )
 import           Numeric.SpecFunctions
@@ -41,7 +41,7 @@ import           Sampler
 import           LogP ( LogP(..) )
 import           Util ( linCongGen, boolToInt, mean, covariance, variance )
 import qualified Vec
-import           Vec (Vec, getVector, TyNat)
+import           Vec (Vec(..), TyNat)
 
 {- import qualified Control.Monad.Bayes.Class as MB
    import           Numeric.Log ( Log(..) )
@@ -84,7 +84,7 @@ data Witness (c :: Type -> Constraint) a where
 class Distribution d => DiffDistribution d where
   type family Arity d :: Nat
   {- | Compute the gradient log-probability. -}
-  gradLogProb :: d -> Support d -> d
+  gradLogProb :: d -> Support d -> Vec (Arity d) Double
 
   liftUnOp  :: (Double -> Double) -> d -> d
 
@@ -159,12 +159,12 @@ instance Distribution Beta where
   isDifferentiable _ = Just Witness
 
 instance DiffDistribution Beta where
-  type Arity Beta = FromGHC 2
+  type Arity Beta = Nat2
 
-  gradLogProb :: Beta -> Double -> Beta
+  gradLogProb :: Beta -> Double -> Vec Nat2 Double
   gradLogProb (Beta α β) x
     | x <= 0 || x >= 1 = error "betaGradLogPdfRaw: x <= 0 || x >= 1"
-    | otherwise = Beta da db
+    | otherwise = da ::: db ::: VNil
     where digamma_ab = digamma (α + β)
           da = log x       - digamma α + digamma_ab
           db = log (1 - x) - digamma β + digamma_ab
@@ -216,12 +216,12 @@ instance Distribution Cauchy where
   isDifferentiable _ = Just Witness
 
 instance DiffDistribution Cauchy where
-  type Arity Cauchy = FromGHC 2
+  type Arity Cauchy = Nat2
 
-  gradLogProb :: Cauchy -> Double -> Cauchy
+  gradLogProb :: Cauchy -> Double -> Vec Nat2 Double
   gradLogProb (Cauchy loc scale) x
     | scale <= 0 = error "cauchyGradLogPdfRaw: scale <= 0"
-    | otherwise     = Cauchy dloc dscale
+    | otherwise     = dloc ::: dscale ::: VNil
     where xloc      = x - loc
           xlocSqrd  = xloc**2
           scaleSqrd = scale**2
@@ -276,12 +276,13 @@ instance Distribution HalfCauchy where
   isDifferentiable _ = Just Witness
 
 instance DiffDistribution HalfCauchy where
-  type Arity HalfCauchy = FromGHC 1
+  type Arity HalfCauchy = Nat1
 
-  gradLogProb :: HalfCauchy -> Double -> HalfCauchy
+  gradLogProb :: HalfCauchy -> Double -> Vec Nat1 Double
   gradLogProb (HalfCauchy scale) x
     | x < 0      = error "cauchyGradLogProb: x < 0"
-    | otherwise  = let (Cauchy _ dscale) = gradLogProb (Cauchy 0 scale) x in HalfCauchy dscale
+    | otherwise  = let (_ ::: dscale ::: VNil) = gradLogProb (Cauchy 0 scale) x
+                   in Vec.singleton dscale
 
   safeAddGrad :: HalfCauchy -> HalfCauchy -> HalfCauchy
   safeAddGrad (HalfCauchy scale) (HalfCauchy dscale) = HalfCauchy scale'
@@ -313,12 +314,12 @@ mkDirichlet αs
   | length αs < 2 = error "Dirichlet: length αs >= 2 not met"
   | otherwise     = Dirichlet αs
 
-instance (SNatI n, Typeable n) => Distribution (Dirichlet n) where
+instance (TyNat n) => Distribution (Dirichlet n) where
   type Support (Dirichlet n) = Vec n Double
 
   sampleInv :: Dirichlet n -> Double -> Vec n Double
   sampleInv (Dirichlet αs) r =
-    let rs = linCongGen r (Proxy @n)
+    let rs = linCongGen r snat
         xs = Vec.zipWith (\α r -> sampleInv (Gamma α 1) r) αs rs
     in  Vec.map (/sum xs) xs
 
@@ -336,15 +337,15 @@ instance (SNatI n, Typeable n) => Distribution (Dirichlet n) where
   isDifferentiable :: Dirichlet n -> Maybe (Witness DiffDistribution (Dirichlet n))
   isDifferentiable _ = Just Witness
 
-instance (SNatI n, Typeable n) => DiffDistribution (Dirichlet n) where
+instance (TyNat n) => DiffDistribution (Dirichlet n) where
   type Arity (Dirichlet n) = n
 
-  gradLogProb :: Dirichlet n -> Vec n Double -> Dirichlet n
+  gradLogProb :: Dirichlet n -> Vec n Double -> Vec n Double
   gradLogProb (Dirichlet αs) xs
     | length xs /= length αs     = error "dirichletGradLogPdfRaw: length xs /= length αs"
     | abs (sum xs - 1.0) > 1e-14 = error "dirichletGradLogPdfRaw: data should sum to 1"
     | any (<  0) xs              = error "dirichletGradLogPdfRaw: data should be non-negative"
-    | otherwise = Dirichlet (Vec.zipWith derivA αs xs)
+    | otherwise = Vec.zipWith derivA αs xs
     where derivA a x  = -(digamma a) + digamma (sum αs) + log x
           derivX a x = (a - 1) / x
 
@@ -395,12 +396,12 @@ instance Distribution Gamma where
   isDifferentiable _ = Just Witness
 
 instance DiffDistribution Gamma where
-  type Arity Gamma = FromGHC 2
+  type Arity Gamma = Nat2
 
-  gradLogProb :: Gamma -> Double -> Gamma
+  gradLogProb :: Gamma -> Double -> Vec Nat2 Double
   gradLogProb (Gamma k θ) x
     | x <= 0   = error "gammaGradLogPdfRaw: x <= 0"
-    | otherwise = Gamma dk dθ
+    | otherwise = dk ::: dθ ::: VNil
     where dk = log x - digamma k - log θ
           dθ = x/(θ**2) - k/θ
           dx = (k - 1)/x - 1/θ
@@ -452,10 +453,10 @@ instance Distribution Normal where
   isDifferentiable _ = Just Witness
 
 instance DiffDistribution Normal where
-  type Arity Normal = FromGHC 2
+  type Arity Normal = Nat2
 
-  gradLogProb :: Normal -> Double -> Normal
-  gradLogProb (Normal μ σ) x = Normal dμ dσ
+  gradLogProb :: Normal -> Double -> Vec Nat2 Double
+  gradLogProb (Normal μ σ) x = dμ ::: dσ ::: VNil
     where xμ = x - μ
           dμ = xμ/(σ ** 2)
           dσ = -1/σ + (xμ**2)/(σ ** 3)
@@ -509,12 +510,13 @@ instance Distribution HalfNormal where
   isDifferentiable _ = Just Witness
 
 instance DiffDistribution HalfNormal where
-  type Arity HalfNormal = FromGHC 1
+  type Arity HalfNormal = Nat1
 
-  gradLogProb :: HalfNormal -> Double -> HalfNormal
+  gradLogProb :: HalfNormal -> Double -> Vec Nat1 Double
   gradLogProb (HalfNormal σ) x
     | x < 0         = error "halfNormalGradLogPdfRaw: No gradient at x < 0"
-    | otherwise     = let Normal _ dσ = gradLogProb (Normal 0 σ) x in HalfNormal dσ
+    | otherwise     = let _ ::: dσ ::: VNil = gradLogProb (Normal 0 σ) x
+                      in Vec.singleton dσ
 
   safeAddGrad :: HalfNormal -> HalfNormal -> HalfNormal
   safeAddGrad (HalfNormal σ) (HalfNormal dσ) = HalfNormal σ'
@@ -542,6 +544,17 @@ invCMF
   -> Int
 invCMF pmf r = f 0 r where
   f :: Int -> Double -> Int
+  f i r = do
+    let q  = pmf i
+        r' = r - q
+    if r' < 0 then i else f (i + 1) r'
+
+invCMFNat :: forall n. SNatI n
+  => (Fin (S n) -> Double)  -- ^ probability mass function
+  -> Double                 -- ^ r
+  -> Fin (S n)
+invCMFNat pmf r = f FZ r where
+  f :: Fin (S n) -> Double -> Fin (S n)
   f i r = do
     let q  = pmf i
         r' = r - q
@@ -619,31 +632,31 @@ binomialGradLogPdfRaw (Binomial n p) y
 
 -- | Categorical(ps)
 --   @ps@ probabilities of each category
-newtype Categorical (n :: Nat) = Categorical (Vec n Double)
+newtype Categorical = Categorical [Double]
   deriving Show
 
-mkCategorical :: Vec n Double -> Categorical n
+mkCategorical :: [Double] -> Categorical
 mkCategorical ps
   | null ps       = error "Categorical: ps must be non-empty"
   | any (< 0) ps  = error "Categorical: ps >= 0 not met"
-  | any (> 0) ps  = Categorical (Vec.map (/ sum ps) ps)
-  | otherwise     = Categorical (Vec.map (const $ 1/fromIntegral (length ps)) ps)
+  | any (> 0) ps  = Categorical (map (/ sum ps) ps)
+  | otherwise     = Categorical (map (const $ 1/fromIntegral (length ps)) ps)
 
-instance TyNat n => Distribution (Categorical n) where
-  type Support (Categorical n) = Int            -- ^ an index from @0@ to @n - 1@
+instance Distribution Categorical where
+  type Support Categorical = Int            -- ^ an index from @0@ to @n - 1@
 
-  sampleInv :: Categorical n -> Double -> Int
-  sampleInv (Categorical ps) = invCMF (ps Vec.!!)
+  sampleInv :: Categorical  -> Double -> Int
+  sampleInv (Categorical ps) = invCMF (ps !!)
 
-  sample :: Categorical n -> Sampler Int
-  sample (Categorical ps) = Sampler.sampleCategorical (getVector ps)
+  sample :: Categorical  -> Sampler Int
+  sample (Categorical ps) = Sampler.sampleCategorical (Vector.fromList ps)
 
-  logProbRaw :: Categorical n -> Int -> Double
+  logProbRaw :: Categorical  -> Int -> Double
   logProbRaw (Categorical ps) idx
     | idx < 0 || idx >= length ps = trace "CategoricalLogPdf: idx < 0 || idx >= length ps" m_neg_inf
-    | otherwise                   = log (ps Vec.!! idx)
+    | otherwise                   = log (ps !! idx)
 
-  isDifferentiable :: Categorical n -> Maybe (Witness DiffDistribution (Categorical n))
+  isDifferentiable :: Categorical  -> Maybe (Witness DiffDistribution (Categorical))
   isDifferentiable _ = Nothing
 
 -- | Deterministic(x)
