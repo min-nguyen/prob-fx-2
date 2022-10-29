@@ -18,11 +18,13 @@ module TyCompare (
   , TyEq(..)
   , HeteroOrd(..)
   , TrueOrdering(..)
-  , TrueOrd(..)) where
+  , TrueOrd(..)
+  , asProxy) where
 
 import Type.Reflection
     ( Typeable, type (:~~:)(HRefl), eqTypeRep, typeRep )
 import GHC.TypeLits ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
+import Data.Proxy ( Proxy(..) )
 
 {- | Proof that @x@ is an element of the type-level list @xs@
 -}
@@ -67,3 +69,7 @@ class HeteroOrd (k :: k' -> *) where
 
 class (HeteroOrd k, Typeable a, Typeable b) => TrueOrd k a b where
   trueCompare :: k a -> k b -> TrueOrdering a b
+
+asProxy :: forall a. a -> Proxy a
+asProxy _ = Proxy @a
+
