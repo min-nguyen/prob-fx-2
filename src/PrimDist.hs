@@ -73,6 +73,7 @@ class (Show d, Typeable d) => Distribution d where
 
   {- | Provide proof that @d@ is differentiable. -}
   isDifferentiable :: d -> Maybe (Witness DiffDistribution d)
+  isDifferentiable _ = Nothing
 
 -- | Shorthand for specifying a distribution @d@ and its type of support @a@
 type PrimDist d a = (Distribution d, Support d ~ a)
@@ -405,7 +406,6 @@ instance DiffDistribution Normal where
 
   zero  _ = 0 ::: 0 ::: VNil
 
-
   toList :: Normal -> [Double]
   toList (Normal dμ dσ) = [dμ, dσ]
 
@@ -500,9 +500,6 @@ instance Distribution Bernoulli where
     | y         = log p
     | otherwise = log (1 - p)
 
-  isDifferentiable :: Bernoulli -> Maybe (Witness DiffDistribution Bernoulli)
-  isDifferentiable _ = Nothing
-
 bernoulliGradLogPdfRaw :: Bernoulli -> Bool -> Bernoulli
 bernoulliGradLogPdfRaw (Bernoulli p) y = Bernoulli dp
   where dp = 1/p - fromIntegral (boolToInt y)/(1 - p)
@@ -534,9 +531,6 @@ instance Distribution Binomial where
     where
       y'  = fromIntegral   y
       ny' = fromIntegral $ n - y
-
-  isDifferentiable :: Binomial -> Maybe (Witness DiffDistribution Binomial)
-  isDifferentiable _ = Nothing
 
 binomialGradLogPdfRaw :: Binomial -> Int -> Binomial
 binomialGradLogPdfRaw (Binomial n p) y
@@ -572,9 +566,6 @@ instance Distribution Categorical where
     | idx < 0 || idx >= length ps = trace "CategoricalLogPdf: idx < 0 || idx >= length ps" m_neg_inf
     | otherwise                   = log (ps !! idx)
 
-  isDifferentiable :: Categorical  -> Maybe (Witness DiffDistribution (Categorical))
-  isDifferentiable _ = Nothing
-
 -- | Deterministic(x)
 data Deterministic a where
   Deterministic
@@ -601,9 +592,6 @@ instance (Show a, Typeable a) => Distribution (Deterministic a) where
   logProbRaw (Deterministic x) y
     | x == y    = 0
     | otherwise = m_neg_inf
-
-  isDifferentiable :: Deterministic a -> Maybe (Witness DiffDistribution (Deterministic a))
-  isDifferentiable _ = Nothing
 
 -- | Discrete(xps)
 --   @xps@ values `x` and associated probabilities `p`
@@ -639,9 +627,6 @@ instance (Show a, Typeable a) => Distribution (Discrete a) where
       Nothing -> trace ("Couldn't find " ++ show y ++ " in Discrete dist") m_neg_inf
       Just p  -> log p
 
-  isDifferentiable :: Discrete a -> Maybe (Witness DiffDistribution (Discrete a))
-  isDifferentiable _ = Nothing
-
 -- | Poisson(λ)
 --   @λ@ rate
 newtype Poisson = Poisson Double
@@ -665,9 +650,6 @@ instance Distribution Poisson where
   logProbRaw (Poisson λ) y
     | y < 0     = trace "poissonLogPdfRaw:  y < 0 " m_neg_inf
     | otherwise = log λ * fromIntegral y - logFactorial y - λ
-
-  isDifferentiable :: Poisson -> Maybe (Witness DiffDistribution Poisson)
-  isDifferentiable _ = Nothing
 
 poissonGradLogPdfRaw :: Poisson -> Int -> Poisson
 poissonGradLogPdfRaw (Poisson λ) y
@@ -698,9 +680,6 @@ instance Distribution Uniform where
     | x < min || x > max = m_neg_inf
     | otherwise          = -log(max - min)
 
-  isDifferentiable :: Uniform -> Maybe (Witness DiffDistribution Uniform)
-  isDifferentiable _ = Nothing
-
 -- | DiscreteUniform(min, max)
 --   @min@ lower-bound, @max@ upper-bound
 data UniformD = UniformD Int Int
@@ -726,9 +705,6 @@ instance Distribution UniformD where
   logProbRaw (UniformD min max) idx
     | idx < min || idx > max  = m_neg_inf
     | otherwise               = - log (fromIntegral $ max - min + 1)
-
-  isDifferentiable :: UniformD -> Maybe (Witness DiffDistribution UniformD)
-  isDifferentiable _ = Nothing
 
 {- | Draw a value from a primitive distribution using the @MonadSample@ type class from Monad-Bayes
 sampleBayes :: MB.MonadSample m => PrimDist a -> m a

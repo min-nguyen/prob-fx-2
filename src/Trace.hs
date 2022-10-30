@@ -92,12 +92,7 @@ type STrace = Trace Double
 -}
 type LPTrace = Trace LogP
 
-
-
-
-
-
-
+{- | Dependent map. -}
 data CTrace c where
   Leaf :: CTrace c
   Node  :: (c a b, Typeable a)
@@ -107,22 +102,20 @@ data CTrace c where
         -> CTrace c     -- right
         -> CTrace c
 
+{- | The type of differentiable distribution traces. -}
+type DTrace = CTrace DiffDistR
+
 class (DiffDistribution d, d ~ d') => DiffDistR d d' where
 
 instance (DiffDistribution d) => DiffDistR d d where
 
-{- | The type of differentiable distribution traces. -}
-type DTrace = CTrace DiffDistR
-
-class (DiffDistribution d, v ~ Vec (Arity d) Double) => GradR d v where
-
-instance (DiffDistribution d, v ~ Vec (Arity d) Double) => GradR d v where
 
 {- | The type of gradient traces. -}
 type GTrace = CTrace GradR
 
-type family Id a where
-  Id a = a
+class (DiffDistribution d, v ~ Vec (Arity d) Double) => GradR d v where
+
+instance (DiffDistribution d, v ~ Vec (Arity d) Double) => GradR d v where
 
 instance {-# OVERLAPPING #-} Show [DTrace] where
   show (x:xs) = show x ++ "\n" ++ show xs
@@ -137,8 +130,7 @@ instance Show DTrace where
     where showNewline Leaf  = ""
           showNewline node  = "\n" ++ show node
 
-{-
--}
+{- Keys -}
 data Key a where
   Key :: forall a. (Typeable a) => Addr -> Key a
   deriving (Typeable)
@@ -206,6 +198,7 @@ dlookup kx = go where
          (TrueLT, _)       -> go l
          (TrueGT, _)       -> go r
 
+-- | Lookup an entry
 glookup :: Typeable a => Key a -> GTrace -> Maybe (Vec (Arity a) Double)
 glookup kx = go where
   go Leaf = Nothing
