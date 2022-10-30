@@ -45,8 +45,7 @@ module Trace (
   -- , dmap
   ) where
 
-import Type.Reflection
-    ( Typeable, type (:~~:)(HRefl), eqTypeRep, typeRep )
+import Data.Typeable
 import Data.Map (Map)
 import Data.Maybe ( fromJust, fromMaybe )
 import Data.Proxy ( Proxy(..) )
@@ -151,13 +150,13 @@ instance HeteroOrd Key where
   hCompare :: Key a -> Key b -> Ordering
   hCompare (Key s1) (Key s2) = compare s1 s2
 
-instance (HeteroOrd k, Typeable a, Typeable b) => TrueOrd k a b where
+instance (HeteroOrd k, Typeable a, Typeable b) => TrueOrd k (a :: *) b where
   trueCompare :: k a -> k b -> TrueOrdering a b
-  trueCompare ka kb = case (hCompare ka kb, compare (show (typeRep @a)) (show (typeRep @a))) of
+  trueCompare ka kb = case (hCompare ka kb, compare (show (typeRep (Proxy @a))) (show (typeRep  (Proxy @b)))) of
     (LT, _)  -> TrueLT
     (GT, _)  -> TrueGT
-    (EQ, EQ) -> case eqTypeRep (typeRep @a) (typeRep @b) of
-                  Just HRefl -> TrueEQ HRefl
+    (EQ, EQ) -> case eqT @a @b of
+                  Just Refl -> TrueEQ HRefl
                   Nothing    -> error "Should not happen."
     (EQ, LT) -> TrueLT
     (EQ, GT) -> TrueGT

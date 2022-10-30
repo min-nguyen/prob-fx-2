@@ -15,14 +15,12 @@
 module TyCompare (
     FindElem(..)
   , Idx(..)
-  , TyEq(..)
   , HeteroOrd(..)
   , TrueOrdering(..)
   , TrueOrd(..)
   , asProxy) where
 
-import Type.Reflection
-    ( Typeable, type (:~~:)(HRefl), eqTypeRep, typeRep )
+import Data.Typeable
 import GHC.TypeLits ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
 import Data.Proxy ( Proxy(..) )
 
@@ -45,19 +43,6 @@ instance TypeError ('Text "Cannot unify effect types." ':$$:
                     'Text "Perhaps check the type of effectful computation and the sequence of handlers for concordance?")
   => FindElem x '[] where
   findElem = error "unreachable"
-
-{- | TyEq: Test equality between two different types 'a' and 'b'.
--}
-class (Typeable c, Typeable b) => TyEq c b where
-  tyEq :: c -> b -> Maybe (c :~~: b)
-  eq   :: Eq c => c -> b -> Bool
-  eq x y = case eqTypeRep (typeRep @c) (typeRep @b) of
-            Just HRefl -> x == y
-            Nothing -> False
-
-instance (Typeable a, Typeable b) => TyEq a b where
-  tyEq :: (Typeable a, Typeable b) => a -> b -> Maybe (a :~~: b)
-  tyEq x y = eqTypeRep (typeRep @a) (typeRep @b)
 
 {- TrueOrd:  Compare two different types 'a' and 'b' for equality (using TyEq), then
              compare two different values 'x : a' and 'y : a' for ordering
