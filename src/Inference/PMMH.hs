@@ -60,7 +60,7 @@ pmmhInternal :: (ProbSig es)
   -> Prog es a                                    -- ^ probabilistic program
   -> Prog es [((a, LogP), STrace)]
 pmmhInternal mh_steps n_particles tags strace_0 =
-  arLoop mh_steps strace_0 (handleModel n_particles tags) (handleAccept tags 1)
+  handleAccept tags 1 . arLoop mh_steps strace_0 (handleModel n_particles tags)
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}

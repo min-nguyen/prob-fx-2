@@ -65,7 +65,7 @@ mhInternal :: ProbSig es
   -> Prog es a                             -- ^ probabilistic program
   -> Prog es [((a, LPTrace), STrace)]
 mhInternal n tags strace_0 =
-  arLoop n strace_0 handleModel (handleAccept tags 1)
+  handleAccept tags 1 . arLoop n strace_0 handleModel
 
 {- | Handler for one iteration of MH.
 -}

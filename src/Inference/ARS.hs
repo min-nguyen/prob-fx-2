@@ -53,10 +53,10 @@ arLoop :: ProbSig es
    => Int                                                                             -- ^ number of iterations
    -> STrace                                                                          -- ^ initial sample trace
    -> (forall es a. ProbSig es => STrace -> Prog es a -> Prog es ((a, ctx), STrace))  -- ^ model handler
-   -> (forall es a. ProbSig es => Prog (Accept ctx : es) a -> Prog es a)              -- ^ accept handler
+
    -> Prog es a                                                                       -- ^ probabilistic program
-   -> Prog es [((a, ctx), STrace)]                                                    -- ^ trace of ((accepted outputs, contexts), samples)
-arLoop n strace hdlModel hdlAccept prog_0 = hdlAccept $ do
+   -> Prog (Accept ctx : es) [((a, ctx), STrace)]                                                    -- ^ trace of ((accepted outputs, contexts), samples)
+arLoop n strace hdlModel prog_0 = do
   let ar_prog_0 = weakenProg prog_0
   -- | Perform initial run of mh
   ar_ctx_0 <- hdlModel strace ar_prog_0
@@ -72,12 +72,12 @@ arStep :: ProbSig es
   -> Prog (Accept ctx : es) [((a, ctx), STrace)]                                     -- ^ updated trace
 arStep hdlModel prog_0 trace = do
   -- | Get previous MH output
-  let ar_ctx@((_, ctx), strace) = head trace
+  let ((r, ctx), strace) = head trace
   -- | Propose a new random value for a sample site
   (prp_αs, prp_strace)         <- call (Propose strace ctx)
   -- | Run MH with proposed value
-  ar_ctx'@((_, ctx'), strace') <- hdlModel prp_strace prog_0
+  ((r', ctx'), strace') <- hdlModel prp_strace prog_0
   -- | Compute acceptance ratio to see if we use the proposal
   b                            <- call (Accept prp_αs ctx ctx')
-  if b then pure (ar_ctx':trace)
+  if b then pure (((r', ctx'), strace'):trace)
        else pure trace

@@ -7,6 +7,7 @@ module Util (
     boolToInt
   , safeHead
   , safeTail
+  , accumulate
   , findIndexes
   , roundUp16
   , uncurry3
@@ -36,6 +37,11 @@ safeHead (x:xs) = Just x
 safeTail :: [a] -> [a]
 safeTail [] = []
 safeTail (x:xs) = xs
+
+accumulate :: Monad m => (a -> m a) -> ([a] -> m [a])
+accumulate f as = do
+  a' <- f (head as)
+  pure (a':as)
 
 -- | Return all the positions that a value occurs within a list
 findIndexes :: Eq a => [a] -> a -> [Int]
