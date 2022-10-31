@@ -65,7 +65,7 @@ smcInternal :: ProbSig es
   -> Prog es a                 -- ^ probabilistic program
   -> Prog es [(a, Particle)]   -- ^ final particle results and contexts
 smcInternal n_particles =
-  SIS.sis n_particles handleParticle handleResampleMul
+  handleResampleMul . SIS.sis n_particles handleParticle
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation

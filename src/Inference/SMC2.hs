@@ -66,7 +66,7 @@ smc2Internal :: ProbSig es
   -> Prog es a                                    -- ^ probabilistic program
   -> Prog es [(a, TracedParticle)]                -- ^ final particle results and contexts
 smc2Internal n_outer_particles mh_steps n_inner_particles tags =
-  SIS.sis n_outer_particles RMSMC.handleParticle (handleResample mh_steps n_inner_particles tags)
+  handleResample mh_steps n_inner_particles tags . SIS.sis n_outer_particles RMSMC.handleParticle
 
 {- | A handler for resampling particles according to their normalized log-likelihoods,
      and then pertrubing their sample traces using PMMH.

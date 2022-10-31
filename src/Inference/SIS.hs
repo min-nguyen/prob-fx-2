@@ -65,14 +65,13 @@ type ResampleHandler es ctx
 sis :: (ParticleCtx ctx, ProbSig es)
   => Int                                                                       -- ^ number of particles
   -> (forall a es. ProbSig es => Prog es a -> Prog es (Prog es a, ctx))        -- ^ handler for running particles
-  -> (forall a es. ProbSig es => Prog (Resample es ctx : es) a -> Prog es a)   -- ^ handler for resampling particles
   -> Prog es a                                                                 -- ^ initial probabilistic program
-  -> Prog es [(a, ctx)]                                                        -- ^ (final particle output, final particle context)
-sis n_particles hdlParticle hdlResample prog_0 = do
+  -> Prog (Resample es ctx : es) [(a, ctx)]                                                        -- ^ (final particle output, final particle context)
+sis n_particles hdlParticle  prog_0 = do
   -- | Create an initial population of particles and contexts
   let population = unzip $ replicate n_particles (weakenProg prog_0, pempty)
   -- | Execute the population until termination
-  hdlResample (loopSIS hdlParticle prog_0 population)
+  loopSIS hdlParticle prog_0 population
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}

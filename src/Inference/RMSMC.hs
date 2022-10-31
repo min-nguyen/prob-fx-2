@@ -88,7 +88,7 @@ rmsmcInternal :: (ProbSig es)
   -> Prog es a                                    -- ^ probabilistic program
   -> Prog es [(a, TracedParticle)]                -- ^ final particle results and contexts
 rmsmcInternal n_particles mh_steps tags =
-  SIS.sis n_particles handleParticle (handleResample mh_steps tags)
+  handleResample mh_steps tags . SIS.sis n_particles handleParticle
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint
      at the first @Observe@ operation, by returning:

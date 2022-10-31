@@ -47,6 +47,8 @@ data Accept ctx a where
     -- | whether the proposal is accepted or not
     -> Accept ctx Bool
 
+type ModelHandler ctx = forall es a. STrace -> Prog es a -> Prog es ((a, ctx), STrace)
+
 {- | Template for Accept-Reject inference on a probabilistic program.
 -}
 arLoop :: ProbSig es
