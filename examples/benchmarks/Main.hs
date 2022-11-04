@@ -78,16 +78,16 @@ bench_LR args = do
     writeRow fixed_output_file row_header
     -- benchRow ("LR-[ ]-SIM-" ++ show fixed_simulations
     --           , simLinRegr) row_header
-    benchRow ("LR-[ ]-LW-" ++ show fixed_lw_steps
-              , lwLinRegr fixed_lw_steps) row_header
-    benchRow ("LR-[ ]-MH-" ++ show fixed_mh_steps
-              , mhLinRegr fixed_mh_steps) row_header
-    benchRow ("LR-[ ]-SMC-" ++ show fixed_smc_particles
-              , smcLinRegr fixed_smc_particles) row_header
-    benchRow ("LR-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
-              , rmsmcLinRegr fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
-    benchRow ("LR-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
-              , pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
+    -- benchRow ("LR-[ ]-LW-" ++ show fixed_lw_steps
+    --           , lwLinRegr fixed_lw_steps) row_header
+    -- benchRow ("LR-[ ]-MH-" ++ show fixed_mh_steps
+    --           , mhLinRegr fixed_mh_steps) row_header
+    -- benchRow ("LR-[ ]-SMC-" ++ show fixed_smc_particles
+    --           , smcLinRegr fixed_smc_particles) row_header
+    -- benchRow ("LR-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
+    --           , rmsmcLinRegr fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
+    -- benchRow ("LR-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
+    --           , pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
     benchRow ("LR-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
               , bbviLinRegr fixed_bbvi_steps fixed_bbvi_samples) row_header
 
@@ -97,16 +97,16 @@ bench_HMM args = do
     writeRow fixed_output_file row_header
     -- benchRow ("HMM-[ ]-SIM-" ++ show fixed_simulations
     --           , simHMM) row_header
-    benchRow ("HMM-[ ]-LW-" ++ show fixed_lw_steps
-              , lwHMM fixed_lw_steps) row_header
-    benchRow ("HMM-[ ]-MH-" ++ show fixed_mh_steps
-              , mhHMM fixed_mh_steps) row_header
-    benchRow ("HMM-[ ]-SMC-" ++ show fixed_mh_steps
-              , smcHMM fixed_smc_particles) row_header
-    benchRow ("HMM-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
-              , rmsmcHMM fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
-    benchRow ("HMM-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
-              , pmmhHMM fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
+    -- benchRow ("HMM-[ ]-LW-" ++ show fixed_lw_steps
+    --           , lwHMM fixed_lw_steps) row_header
+    -- benchRow ("HMM-[ ]-MH-" ++ show fixed_mh_steps
+    --           , mhHMM fixed_mh_steps) row_header
+    -- benchRow ("HMM-[ ]-SMC-" ++ show fixed_mh_steps
+    --           , smcHMM fixed_smc_particles) row_header
+    -- benchRow ("HMM-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
+    --           , rmsmcHMM fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
+    -- benchRow ("HMM-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
+    --           , pmmhHMM fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
     benchRow ("HMM-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
               , bbviHMM fixed_bbvi_steps fixed_bbvi_samples) row_header
 
@@ -124,8 +124,8 @@ bench_LDA args = do
     --           , smcLDA fixed_smc_particles) row_header
     -- benchRow ("LDA-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
     --           , rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
-    benchRow ("LDA-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
-              , pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
+    -- benchRow ("LDA-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
+    --           , pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
     benchRow ("LDA-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
               , bbviLDA fixed_bbvi_steps fixed_bbvi_samples) row_header
 
@@ -233,15 +233,15 @@ runBenchmarks = do
   -- | Run benchmark programs on their corresponding parameters
   case args of
         [lr, hmm, lda, sim, lw, mh, smc, rmsmc, pmmh, bbvi] -> do
-          -- bench_LR lr
-          -- bench_HMM hmm
+          bench_LR lr
+          bench_HMM hmm
           bench_LDA lda
           -- bench_SIM sim
-          bench_LW lw
-          bench_MH mh
-          bench_SMC smc
-          bench_RMSMC rmsmc
-          bench_PMMH pmmh
+          -- bench_LW lw
+          -- bench_MH mh
+          -- bench_SMC smc
+          -- bench_RMSMC rmsmc
+          -- bench_PMMH pmmh
           bench_BBVI bbvi
         _   -> error "bad input file"
 
