@@ -77,6 +77,8 @@ handleModel n_particles tags strace prog = do
             . MH.handleSamp params
             . SMC.smcInternal n_particles) prog
   let logZ  = logMeanExp (map SMC.particleLogProb prts)
+  liftPutStrLn $ "PMMH.handleModel: Particle logPs are " ++ show (map SMC.particleLogProb prts)
+  liftPutStrLn $ "PMMH.handleModel: Log-mean-exp is " ++ show logZ
   pure ((a, logZ), strace')
 
 {- | An acceptance mechanism for PMMH.

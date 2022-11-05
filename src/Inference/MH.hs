@@ -29,7 +29,7 @@ import Model ( Model, handleCore, ProbSig )
 import Effects.ObsRW ( ObsRW )
 import Env ( ContainsVars(..), Vars, Env )
 import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr, pattern SampPrj, pattern ObsPrj )
-import Effects.Lift ( Lift, lift, handleLift )
+import Effects.Lift ( Lift, lift, handleLift, liftPutStrLn )
 import Effects.State
 import qualified Inference.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
@@ -87,8 +87,10 @@ handleSamp strace (Op op k) = case prj op of
       case Map.lookup α strace of
           Nothing -> do r <- lift sampleRandom
                         let y = sampleInv d r
+                        liftPutStrLn $ "MH.handleSamp: New value " ++ show r ++ " at " ++ show α
                         k' (Map.insert α r strace) y
           Just r  -> do let y = sampleInv d r
+                        liftPutStrLn $ "MH.handleSamp: Reusing " ++ show r ++ " at " ++ show α
                         k' strace  y
     Nothing -> Op op (k' strace)
 

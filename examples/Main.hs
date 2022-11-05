@@ -19,6 +19,9 @@ printThenWrite a = print a >> writeFile "model-output.txt" (show a)
 
 parseArgs :: String -> IO ()
 parseArgs cmd = case cmd of
+
+  "pmmh_bug"     -> sampleIOFixed (pmmhHMM 10 10 10) >>= printThenWrite
+
   "simLinRegrOnce"  -> sampleIOFixed (simLinRegrOnce 50) >>= printThenWrite
   "lwLinRegrOnce"   -> sampleIOFixed (lwLinRegrOnce 50 30) >>= printThenWrite
   "mhLinRegrOnce"   -> sampleIOFixed (mhLinRegrOnce 50 10) >>= printThenWrite
