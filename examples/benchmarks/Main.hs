@@ -238,10 +238,10 @@ runBenchmarks = do
           bench_LDA lda
           -- bench_SIM sim
           -- bench_LW lw
-          -- bench_MH mh
-          -- bench_SMC smc
-          -- bench_RMSMC rmsmc
-          -- bench_PMMH pmmh
+          bench_MH mh
+          bench_SMC smc
+          bench_RMSMC rmsmc
+          bench_PMMH pmmh
           bench_BBVI bbvi
         _   -> error "bad input file"
 
