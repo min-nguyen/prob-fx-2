@@ -46,8 +46,6 @@ library
                       Env,
                       LogP,
                       Model,
-                      Node,
-                      OpenSum,
                       PrimDist,
                       Prog,
                       Sampler,

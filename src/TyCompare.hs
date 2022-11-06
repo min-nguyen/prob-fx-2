@@ -7,7 +7,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE InstanceSigs #-}
 
 {- | Auxiliary definitions for finding a type in a type-level list.
 -}
@@ -20,9 +19,9 @@ module TyCompare (
   , TrueOrd(..)
   , asProxy) where
 
-import Data.Typeable
-import GHC.TypeLits ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
-import Data.Proxy ( Proxy(..) )
+import           Data.Typeable ( Typeable, Proxy(..), type (:~~:) )
+import           GHC.TypeLits ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
+import           Data.Proxy ( Proxy(..) )
 
 {- | Proof that @x@ is an element of the type-level list @xs@
 -}

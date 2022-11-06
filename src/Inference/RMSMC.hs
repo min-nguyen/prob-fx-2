@@ -18,31 +18,30 @@
 module Inference.RMSMC where
 
 import qualified Data.Map as Map
-import Data.Map (Map)
-import Env
-import Prog
-import Model
-import Sampler
-import Trace
-import LogP
-import Control.Monad
-import Control.Applicative
-import Effects.Dist
-import Effects.ObsRW
-import Effects.NonDet
+import           Data.Map (Map)
+import           Env
+import           Prog
+import           Model
+import           Sampler
+import           Trace
+import           LogP
+import           Control.Monad
+import           Control.Applicative
+import           Effects.Dist
+import           Effects.ObsRW
+import           Effects.NonDet
 import qualified Inference.MH as MH
 import qualified Inference.SMC as SMC
 import qualified Inference.SIM as SIM
 import qualified Inference.ARS as ARS
 import qualified Inference.SIS as SIS hiding  (particleLogProb)
-import Inference.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
-import OpenSum (OpenSum)
-import Inference.SMC (Particle, pattern Particle)
-import Effects.Lift
-import PrimDist
-import Data.Bifunctor
-import Unsafe.Coerce
-import Util
+import           Inference.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
+import           Inference.SMC (Particle, pattern Particle)
+import           Effects.Lift
+import           PrimDist
+import           Data.Bifunctor
+import           Unsafe.Coerce
+import           Util
 
 {- | The particle context for an MCMC trace.
 -}

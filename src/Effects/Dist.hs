@@ -31,13 +31,11 @@ module Effects.Dist (
   , pattern ObsDis
   ) where
 
-import Type.Reflection
-import Data.Maybe ( fromMaybe )
+import           Data.Maybe ( fromMaybe )
 import qualified Data.Map as Map
-import PrimDist
-import Prog ( call, discharge, weaken, Member(..), Prog(..), EffectSum )
-import qualified OpenSum
-import Util
+import           PrimDist
+import           Prog ( call, discharge, weaken, Member(..), Prog(..), EffectSum )
+import           Util
 
 {- $Address
    Identifiers for probabilistic operations.

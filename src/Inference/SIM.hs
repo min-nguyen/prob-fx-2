@@ -19,16 +19,15 @@ module Inference.SIM
   )
   where
 
-import Effects.Dist ( Sample(..), Observe(..), Dist )
-import Effects.Lift ( handleLift, Lift, lift )
-import Effects.ObsRW ( ObsRW )
-import Env ( Env )
-import Model ( handleCore, Model )
-import OpenSum (OpenSum)
-import PrimDist ( sample )
-import Prog ( discharge, Prog(..), LastMember, discharge1 )
-import Sampler ( Sampler, liftIO )
-import Unsafe.Coerce (unsafeCoerce)
+import           Effects.Dist ( Sample(..), Observe(..), Dist )
+import           Effects.Lift ( handleLift, Lift, lift )
+import           Effects.ObsRW ( ObsRW )
+import           Env ( Env )
+import           Model ( handleCore, Model )
+import           PrimDist ( sample )
+import           Prog ( discharge, Prog(..), LastMember, discharge1 )
+import           Sampler ( Sampler, liftIO )
+import           Unsafe.Coerce (unsafeCoerce)
 
 -- | Simulate from a model under a given model environment
 simulate

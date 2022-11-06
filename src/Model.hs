@@ -56,11 +56,9 @@ import Data.Type.Nat
 import Effects.Dist ( handleDist, Dist(..), Observe, Sample )
 import Effects.ObsRW
 import Env
-import OpenSum ( OpenSum )
 import PrimDist
 import Prog ( call, Member, Prog, Members, LastMember )
 import Vec
-import qualified OpenSum
 import Debug.Trace
 import Sampler
 import Effects.Lift

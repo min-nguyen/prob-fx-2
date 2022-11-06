@@ -29,25 +29,25 @@ module Sampler (
   , sampleDirichlet
   ) where
 
-import Control.Monad ( replicateM, when, (>=>) )
-import Control.Monad.Trans (MonadIO, MonadTrans, lift)
-import Control.Monad.Trans.Reader (ReaderT (..), ask, mapReaderT, runReaderT)
-import Data.Map (Map)
-import Data.Functor
-import GHC.Word ( Word32 )
+import           Control.Monad ( replicateM, when, (>=>) )
+import           Control.Monad.Trans (MonadIO, MonadTrans, lift)
+import           Control.Monad.Trans.Reader (ReaderT (..), ask, mapReaderT, runReaderT)
+import           Data.Map (Map)
+import           Data.Functor ( (<&>) )
 import qualified Data.Vector as V
+import           GHC.Word ( Word32 )
 import qualified System.Random.MWC as MWC
 import qualified System.Random.MWC.Distributions as MWC.Dist
 import qualified System.Random.MWC.Probability as MWC.Probability
-import Statistics.Distribution ( ContDistr(quantile), ContGen(genContVar), DiscreteDistr(..) )
-import Statistics.Distribution.Normal ( normalDistr )
-import Statistics.Distribution.Uniform ( uniformDistr )
-import Statistics.Distribution.Binomial ( binomial )
-import Statistics.Distribution.Poisson ( poisson )
-import Statistics.Distribution.Beta ( betaDistr )
-import Statistics.Distribution.Gamma ( gammaDistr )
-import Statistics.Distribution.CauchyLorentz ( cauchyDistribution )
-import System.Random.MWC ( initialize )
+import           Statistics.Distribution ( ContDistr(quantile), ContGen(genContVar), DiscreteDistr(..) )
+import           Statistics.Distribution.Normal ( normalDistr )
+import           Statistics.Distribution.Uniform ( uniformDistr )
+import           Statistics.Distribution.Binomial ( binomial )
+import           Statistics.Distribution.Poisson ( poisson )
+import           Statistics.Distribution.Beta ( betaDistr )
+import           Statistics.Distribution.Gamma ( gammaDistr )
+import           Statistics.Distribution.CauchyLorentz ( cauchyDistribution )
+import           System.Random.MWC ( initialize )
 
 -- | Sampler type, for running IO computations alongside a random number generator
 newtype Sampler a = Sampler {runSampler :: ReaderT MWC.GenIO IO a}

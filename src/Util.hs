@@ -23,8 +23,7 @@ module Util (
   , covariance) where
 
 import qualified Data.Map as Map
-import Data.Foldable
-import Data.Proxy
+import           Data.Foldable
 
 {- | List utility functions.
 -}

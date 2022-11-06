@@ -33,11 +33,10 @@ module Prog (
   , weakenProg
   , install) where
 
-import Control.Monad ( (>=>) )
-import Data.Kind (Constraint)
-import TyCompare ( Idx(unIdx), FindElem(..) )
-import GHC.TypeLits ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
-import Unsafe.Coerce ( unsafeCoerce )
+import           Control.Monad ( (>=>) )
+import           Data.Kind (Constraint)
+import           TyCompare ( Idx(unIdx), FindElem(..) )
+import           Unsafe.Coerce ( unsafeCoerce )
 
 {- | A program that returns a value of type @a@ and can call operations that belong to some effect
      @e@ in signature @es@; this represents a syntax tree whose nodes are operations and leaves are pure values.

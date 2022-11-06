@@ -14,23 +14,21 @@
 
 module Inference.SMC where
 
-import Control.Monad ( replicateM )
-import Data.Type.Nat
+import           Control.Monad ( replicateM )
 import qualified Data.Vector as Vector
-import Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe (..), Sample )
-import Effects.Lift ( Lift, lift, liftPrint, handleLift)
-import Effects.ObsRW ( ObsRW, handleObsRW )
-import Env ( Env )
-import LogP ( LogP(..), logMeanExp, expLogP )
-import Model ( Model(runModel), ProbProg )
-import OpenSum (OpenSum)
-import PrimDist ( mkCategorical, sample, logProb )
-import Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge, prj )
+import           Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe (..), Sample )
+import           Effects.Lift ( Lift, lift, liftPrint, handleLift)
+import           Effects.ObsRW ( ObsRW, handleObsRW )
+import           Env ( Env )
+import           LogP ( LogP(..), logMeanExp, expLogP )
+import           Model ( Model(runModel), ProbProg )
+import           PrimDist ( mkCategorical, sample, logProb )
+import           Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge, prj )
 import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
-import Inference.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
-import Sampler ( Sampler, sampleRandom, sampleCategorical)
+import           Inference.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
+import           Sampler ( Sampler, sampleRandom, sampleCategorical)
 
 {- | The context of a particle for SMC.
 -}

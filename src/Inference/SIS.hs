@@ -11,17 +11,17 @@
 
 module Inference.SIS where
 
-import Data.Map (Map)
+import           Data.Map (Map)
 import qualified Data.Map as Map
-import Effects.Dist ( Addr, Observe (Observe), Sample, pattern ObsPrj )
-import Effects.Lift ( Lift, handleLift, lift )
-import LogP ( LogP, logMeanExp )
-import Prog ( Prog (..), weakenProg, Member, discharge, call, weaken, LastMember, Members )
-import Sampler
-import Util ( uncurry3 )
-import Model
-import Inference.SIM as SIM
-import Data.Bifunctor
+import           Effects.Dist ( Addr, Observe (Observe), Sample, pattern ObsPrj )
+import           Effects.Lift ( Lift, handleLift, lift )
+import           LogP ( LogP, logMeanExp )
+import           Prog ( Prog (..), weakenProg, Member, discharge, call, weaken, LastMember, Members )
+import           Sampler
+import           Util ( uncurry3 )
+import           Model
+import           Inference.SIM as SIM
+import           Data.Bifunctor
 
 {- | A @ParticleCtx@ contains data about the execution of a particular particle.
 -}

@@ -11,13 +11,13 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 
-module Vec (module Vec, Vec.zipWith, Vec.map, Vec.singleton, Vec.fromList, Vec.toList, module Data.Type.Nat) where
+module Vec (module Vec, Vec.zipWith, Vec.map, Vec.singleton, Vec.fromList, Vec.toList) where
 
 import           Data.Type.Nat
 import           Data.Typeable ( Typeable )
 import           Data.Vec.Lazy (Vec(..))
 import qualified Data.Vec.Lazy as Vec
-import Util ( covariance, variance )
+import           Util ( covariance, variance )
 
 -- | Typeable naturals
 class (SNatI n, Typeable n) => TypeableSNatI n

@@ -23,7 +23,7 @@ module PrimDist
    Poisson, mkPoisson, Uniform, mkUniform, UniformD, mkUniformD) where
 
 import           Debug.Trace ( trace )
-import Data.Proxy
+import           Data.Proxy
 import           Data.Kind ( Constraint, Type )
 import           Data.List ( transpose )
 import           Data.Functor ( (<&>) )
@@ -35,8 +35,6 @@ import           Numeric.MathFunctions.Constants
   ( m_eulerMascheroni, m_neg_inf, m_sqrt_2_pi, m_sqrt_2, m_pos_inf )
 import           Numeric.SpecFunctions
   ( incompleteBeta, invIncompleteBeta, logBeta, logGamma, digamma, log1p, logChoose, logFactorial, invErfc, invIncompleteGamma)
-import           OpenSum (OpenSum)
-import qualified OpenSum
 import qualified Data.Vector as Vector
 import           Data.Vector (Vector)
 import           Sampler

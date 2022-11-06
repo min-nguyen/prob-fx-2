@@ -8,7 +8,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ConstraintKinds #-}
@@ -45,26 +44,19 @@ module Trace (
   -- , dmap
   ) where
 
-import Data.Typeable
-import Data.Map (Map)
-import Data.Maybe ( fromJust, fromMaybe )
-import Data.Proxy ( Proxy(..) )
-import Effects.Dist ( Tag, Addr, Observe, Sample(..), Score(..), pattern ObsPrj, pattern SampPrj )
-import Env ( enil, varToStr, UniqueVar, Var(..), Env(ECons), Assign((:=)) )
-import GHC.TypeLits ( KnownSymbol )
-import OpenSum (OpenSum)
-import LogP ( LogP )
-import qualified Data.Map as Map
-import qualified OpenSum
-import Prog ( Member, Prog(..), weaken, install )
-import PrimDist
-import Effects.State ( State, modify, handleState )
-import Util
-import TyCompare
-import Prog (Member(..))
-import Vec (Vec)
-import Data.Coerce (coerce)
-import Data.Type.Coercion (coerceWith)
+import           Data.Map (Map)
+import           Data.Maybe ( fromJust, fromMaybe )
+import           Data.Proxy ( Proxy(..) )
+import           Effects.Dist ( Tag, Addr, Observe, Sample(..), Score(..), pattern ObsPrj, pattern SampPrj )
+import           Env ( enil, varToStr, UniqueVar, Var(..), Env(ECons), Assign((:=)) )
+import           GHC.TypeLits ( KnownSymbol )
+import           LogP ( LogP )
+import           Prog ( Member, Prog(..), weaken, install )
+import           PrimDist
+import           Util
+import           TyCompare
+import           Vec (Vec)
+import           Data.Typeable
 
 {- | The type of generic traces, mapping addresses of probabilistic operations
      to some data.
