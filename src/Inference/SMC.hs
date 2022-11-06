@@ -7,6 +7,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE TypeApplications #-}
 
 {- Sequential Monte Carlo inference.
 -}
@@ -14,6 +15,8 @@
 module Inference.SMC where
 
 import Control.Monad ( replicateM )
+import Data.Type.Nat
+import qualified Data.Vector as Vector
 import Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe (..), Sample )
 import Effects.Lift ( Lift, lift, liftPrint, handleLift)
 import Effects.NonDet ( asum, handleNonDet, NonDet )
@@ -23,14 +26,13 @@ import LogP ( LogP(..), logMeanExp, expLogP )
 import Model ( Model(runModel), ProbSig )
 import OpenSum (OpenSum)
 import PrimDist ( mkCategorical, sample, logProb )
-import Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge )
+import Prog ( LastMember, Prog(..), Members, Member, prj, call, weakenProg, discharge )
 import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
 import Inference.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
-import Sampler ( Sampler, sampleRandom)
-import Prog (prj)
-
+import Sampler ( Sampler, sampleRandom, sampleCategorical)
+import qualified Vec
 {- | The context of a particle for SMC.
 -}
 newtype Particle = Particle {
@@ -91,7 +93,7 @@ handleResampleMul (Op op k) = case discharge op of
     -- | Get the weights for each particle
     let ws = map (expLogP . particleLogProb) ctxs
     -- | Select particles to continue with
-    idxs <- replicateM (length ws) $ lift (sample (mkCategorical ws))
+    idxs <- replicateM (length ws) $ lift (Sampler.sampleCategorical (Vector.fromList ws))
     let resampled_prts = map (prts !! ) idxs
         resampled_ctxs = map (ctxs !! ) idxs
     (handleResampleMul . k) ((resampled_prts, resampled_ctxs), idxs)

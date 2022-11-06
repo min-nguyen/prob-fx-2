@@ -7,6 +7,7 @@ import Test.InferenceExpected
 import Test.HUnit
 import Sampler
 import System.Exit
+import Util
 
 testSimLinRegrOnce :: Test
 testSimLinRegrOnce = TestCase $ do
@@ -151,7 +152,9 @@ testSimLDA = TestCase $ do
 testMhLDA :: Test
 testMhLDA = TestCase $ do
   output <- sampleIOFixed (mhLDA 500 100)
-  assertEqual "Testing (mhLDA 500 100)"  mhLDAExpected output
+  let mhLDAExpected' = mapT2 (map (map (roundPrecision 8))) mhLDAExpected
+      output'        = mapT2 (map (map (roundPrecision 8))) output
+  assertEqual "Testing (mhLDA 500 100)"  mhLDAExpected' output'
 
 testSmcLDA :: Test
 testSmcLDA = TestCase $ do
@@ -161,12 +164,16 @@ testSmcLDA = TestCase $ do
 testRmsmcLDA :: Test
 testRmsmcLDA = TestCase $ do
   output <- sampleIOFixed (rmsmcLDA 10 30 100)
-  assertEqual "Testing (rmsmcLDA 10 30 100)"  rmsmcLDAExpected output
+  let rmsmcLDAExpected' = mapT2 (map (map (roundPrecision 8))) rmsmcLDAExpected
+      output'           = mapT2 (map (map (roundPrecision 8))) output
+  assertEqual "Testing (rmsmcLDA 10 30 100)"  rmsmcLDAExpected' output'
 
 testPmmhLDA :: Test
 testPmmhLDA = TestCase $ do
   output <- sampleIOFixed (pmmhLDA 100 20 100)
-  assertEqual "Testing (pmmhLDA 100 20 100)"  pmmhLDAExpected output
+  let pmmhLDAExpected' = mapT2 (map (map (roundPrecision 8))) pmmhLDAExpected
+      output'           = mapT2 (map (map (roundPrecision 8))) output
+  assertEqual "Testing (pmmhLDA 100 20 100)" pmmhLDAExpected' output'
 
 testSmc2LDA :: Test
 testSmc2LDA = TestCase $ do
@@ -176,7 +183,9 @@ testSmc2LDA = TestCase $ do
 testBbviLDA :: Test
 testBbviLDA = TestCase $ do
   output <- sampleIOFixed (bbviLDA 200 20 50)
-  assertEqual "Testing (bbviLDA 200 20 50)"  bbviLDAExpected output
+  let bbviLDAExpected' = mapT3 (map (roundPrecision 8)) bbviLDAExpected
+      output'          = mapT3 (map (roundPrecision 8)) output
+  assertEqual "Testing (bbviLDA 200 20 50)"  bbviLDAExpected' output'
 
 testSimRadon :: Test
 testSimRadon = TestCase $ do

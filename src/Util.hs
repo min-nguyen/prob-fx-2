@@ -1,7 +1,9 @@
 {- | Some small utility functions.
 -}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Util (
     boolToInt
@@ -9,24 +11,22 @@ module Util (
   , safeTail
   , findIndexes
   , roundUp16
+  , roundPrecision
   , uncurry3
   , fst3
-  , bimap'
+  , mapT2
+  , mapT3
   , filterByKey
-  , linCongGen
   , mean
   , variance
   , covariance) where
 
-import Data.Bifunctor
 import qualified Data.Map as Map
 import Data.Foldable
+import Data.Proxy
 
--- | Return @True@ for @1@ and otherwise @False@
-boolToInt :: Bool -> Int
-boolToInt True  = 1
-boolToInt False = 0
-
+{- | List utility functions.
+-}
 -- | Safely attempt to return the head of a list
 safeHead :: [a] -> Maybe a
 safeHead []     = Nothing
@@ -45,8 +45,10 @@ findIndexes xs a = reverse $ go xs 0 []
                      else go xs (i + 1) inds
   go [] i inds = inds
 
-roundUp16 :: Int -> Int
-roundUp16 n = n + (16 - (n `mod` 16))
+-- | Return True -> 1, False -> 0
+boolToInt :: Bool -> Int
+boolToInt True  = 1
+boolToInt False = 0
 
 {- | Tuple utility functions.
 -}
@@ -56,24 +58,27 @@ uncurry3 f (a, b, c) = f a b c
 fst3 :: (a, b, c) -> a
 fst3 (x,_, _) = x
 
-bimap' :: Bifunctor p => (c -> d) -> p c c -> p d d
-bimap' f = bimap f f
+mapT2 :: (a -> b) -> (a, a) -> (b, b)
+mapT2 f (x, y) = (f x, f y)
 
-{- | A linear congruential generator for representing a list of doubles from a single double.
--}
-decShift :: Double -> Int
-decShift r = floor $ r * 1e16
-
-linCongGen :: Double -> [Double]
-linCongGen r =
-  let ns = iterate (\n -> ((6364136223846793005*n) + 1442695040888963407) `mod` 2147483647) (decShift r)
-  in  drop 1 $ map ((/2147483647) . fromIntegral) ns
+mapT3 :: (a -> b) -> (a, a, a) -> (b, b, b)
+mapT3 f (x, y, z) = (f x, f y, f z)
 
 {- Map utility functions.
 -}
-
 filterByKey ::  Ord k => (k -> Bool) -> Map.Map k a -> Map.Map k a
 filterByKey f = Map.filterWithKey (\k _ -> f k)
+
+{- | Numeric utility functions.
+-}
+-- | Round @n@ up to multiple of 16
+roundUp16 :: Int -> Int
+roundUp16 n = n + (16 - (n `mod` 16))
+
+-- | Round @x@ to @n@ decimal places
+roundPrecision :: Int -> Double -> Double
+roundPrecision n x  = fromIntegral (floor (x * t)) / t
+    where t = 10^n
 
 {- | Statistical utility functions.
 -}

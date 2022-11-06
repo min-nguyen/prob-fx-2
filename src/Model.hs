@@ -51,12 +51,14 @@ module Model (
 
 import Control.Monad ( ap )
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
+import Data.Type.Nat
 import Effects.Dist ( handleDist, Dist(..), Observe, Sample )
 import Effects.ObsRW
 import Env
 import OpenSum ( OpenSum )
 import PrimDist
 import Prog ( call, Member, Prog, Members, LastMember )
+import Vec
 import qualified OpenSum
 import Debug.Trace
 import Sampler
@@ -146,16 +148,16 @@ deterministic' :: (Typeable a, Eq a, Show a) =>
   -> Model env es a
 deterministic' x = callDist' (mkDeterministic x)
 
-dirichlet ::Observable env x [Double] =>
-     [Double]
+dirichlet :: (Observable env x (Vec n Double), TypeableSNatI n) =>
+     Vec n Double
   -> Var x
-  -> Model env es [Double]
+  -> Model env es (Vec n Double)
 dirichlet xs = callDist (mkDirichlet xs)
 
-dirichlet' ::
+dirichlet' :: (TypeableSNatI n) =>
   -- | concentration parameters
-     [Double]
-  -> Model env es [Double]
+     Vec n Double
+  -> Model env es (Vec n Double)
 dirichlet' xs = callDist' (mkDirichlet xs)
 
 discrete :: (Typeable a, Eq a, Show a, Observable env x a) =>
@@ -170,15 +172,15 @@ discrete' :: (Typeable a, Eq a, Show a) =>
   -> Model env es a
 discrete' ps = callDist' (mkDiscrete ps)
 
-categorical :: Observable env x Int =>
-     [Double]
+categorical :: (Observable env x Int)
+  => [Double]
   -> Var x
   -> Model env es Int
 categorical xs = callDist (mkCategorical xs)
 
-categorical'
+categorical' ::
   -- | list of @n@ probabilities
-  :: [Double]
+     [Double]
   -- | integer index from @0@ to @n - 1@
   -> Model env es Int
 categorical' xs = callDist' (mkCategorical xs)

@@ -55,9 +55,9 @@ data TracedParticle = TracedParticle {
 instance ParticleCtx TracedParticle where
   pempty            = TracedParticle 0 ("", 0) Map.empty
   paccum ctxs ctxs' =
-    let log_ps   = uncurry paccum              (bimap' (particleLogProb <$>)  (ctxs, ctxs'))
+    let log_ps   = uncurry paccum              (mapT2 (particleLogProb <$>)  (ctxs, ctxs'))
         α_obs    = particleObsAddr <$> ctxs'
-        straces  = uncurry (zipWith Map.union) (bimap' (particleSTrace <$>)   (ctxs', ctxs))
+        straces  = uncurry (zipWith Map.union) (mapT2 (particleSTrace <$>)   (ctxs', ctxs))
     in  zipWith3 TracedParticle log_ps α_obs straces
 
 {- | Call RMSMC on a model.
