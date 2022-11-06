@@ -26,14 +26,14 @@ import Env ( Env )
 import Model ( handleCore, Model )
 import OpenSum (OpenSum)
 import PrimDist ( sample )
-import Prog ( discharge, Prog(..), LastMember )
+import Prog ( discharge, Prog(..), LastMember, discharge1 )
 import Sampler ( Sampler, liftIO )
 import Unsafe.Coerce (unsafeCoerce)
 
 -- | Simulate from a model under a given model environment
 simulate
   -- | model
-  :: Model env [ObsRW env, Dist, Lift Sampler] a
+  :: Model env [ObsRW env, Dist] a
   -- | input model environment
   -> Env env
   -- | (model output, output environment)
@@ -44,11 +44,11 @@ simulate model env_in = do
 
 -- | Handler for simulating once from a probabilistic program
 runSimulate
-  :: Prog [Observe, Sample, Lift Sampler] a
+  :: Prog [Observe, Sample] a
   -- | (model output, sample trace)
   -> Sampler a
 runSimulate
-  = handleLift . handleSamp . handleObs
+  = handleSamp . handleObs
 
 -- | Handle @Observe@ operations by simply passing forward their observed value, performing no side-effects
 handleObs
@@ -61,13 +61,8 @@ handleObs (Op op k) = case discharge op of
 
 -- | Handle @Sample@ operations by using the @Sampler@ monad to draw from primitive distributions
 handleSamp
-  :: LastMember (Lift Sampler) es
-  => Prog (Sample : es) a
-  -> Prog es a
-handleSamp (Val x) = return x
-handleSamp (Op op k) = case discharge op of
-  Right (Sample d α) ->
-    do  x <- lift $ sample d
-        handleSamp (k x)
-  Left op' -> do
-     Op op' (handleSamp  . k)
+  :: Prog '[Sample] a
+  -> Sampler a
+handleSamp (Val x)   = return x
+handleSamp (Op op k) = case discharge1 op of
+  (Sample d α) -> sample d >>= handleSamp . k

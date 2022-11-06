@@ -34,7 +34,7 @@ lw
   -- | number of LW iterations
   :: Int
   -- | model
-  -> Model env [ObsRW env, Dist, Lift Sampler] a
+  -> Model env [ObsRW env, Dist] a
   -- | input model environment
   -> Env env
   -- | [(output model environment, likelihood-weighting)]
@@ -48,17 +48,17 @@ lw n model env_in = do
 lwInternal
   -- | number of LW iterations
   :: Int
-  -> Prog [Observe, Sample, Lift Sampler] a
+  -> Prog [Observe, Sample] a
   -- | list of weighted model outputs and sample traces
   -> Sampler [(a, LogP)]
 lwInternal n prog = replicateM n (runLW prog)
 
 -- | Handler for one iteration of LW
 runLW
-  :: Prog [Observe, Sample, Lift Sampler] a
+  :: Prog [Observe, Sample] a
   -- | ((model output, sample trace), likelihood-weighting)
   -> Sampler (a, LogP)
-runLW = handleLift . SIM.handleSamp . handleObs
+runLW = SIM.handleSamp . handleObs
 
 -- | Handle each @Observe@ operation by computing and accumulating a log probability
 handleObs

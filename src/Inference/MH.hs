@@ -25,7 +25,7 @@ import Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weake
 import Trace ( STrace, LPTrace, filterTrace )
 import LogP ( LogP, expLogP )
 import PrimDist
-import Model ( Model, handleCore, ProbSig )
+import Model ( Model, handleCore, ProbProg )
 import Effects.ObsRW ( ObsRW )
 import Env ( ContainsVars(..), Vars, Env )
 import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr, pattern SampPrj, pattern ObsPrj )
@@ -39,70 +39,75 @@ import Util
 {- | Top-level wrapper for MH inference.
 -}
 mh :: forall env a xs. (env `ContainsVars` xs)
-  => Int                                          -- ^ number of MH iterations
-  -> Model env [ObsRW env, Dist, Lift Sampler] a  -- ^ model
-  -> Env env                                      -- ^ input environment
-  -> Vars xs                                      -- ^ optional observable variable names of interest
+  => Int                            -- ^ number of MH iterations
+  -> Model env [ObsRW env, Dist] a  -- ^ model
+  -> Env env                        -- ^ input environment
+  -> Vars xs                        -- ^ optional observable variable names of interest
     {- These allow one to specify sample sites of interest; for example, for interest in sampling @#mu@
      , provide @#mu <#> vnil@ to cause other variables to not be resampled unless necessary. -}
-  -> Sampler [Env env]                            -- ^ output model environments
+  -> Sampler [Env env]              -- ^ output model environments
 mh n model env_in obs_vars  = do
   -- | Handle model to probabilistic program
   let prog_0   = handleCore env_in model
       strace_0 = Map.empty
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
-  mh_trace <- (handleLift . SIM.handleSamp . SIM.handleObs)
-              (mhInternal n tags strace_0 prog_0)
+  mh_trace <- handleLift (mhInternal n tags strace_0 prog_0)
   pure (map (snd . fst . fst) mh_trace)
 
 {- | MH inference on a probabilistic program.
 -}
-mhInternal :: ProbSig es
+mhInternal :: (LastMember (Lift Sampler) fs)
   => Int                                   -- ^ number of MH iterations
   -> [Tag]                                 -- ^ tags indicating variables of interest
   -> STrace                                -- ^ initial sample trace
-  -> Prog es a                             -- ^ probabilistic program
-  -> Prog es [((a, LPTrace), STrace)]
+  -> ProbProg a                             -- ^ probabilistic program
+  -> Prog fs [((a, LPTrace), STrace)]
 mhInternal n tags strace_0 =
   handleAccept tags 1 . arLoop n strace_0 handleModel
 
 {- | Handler for one iteration of MH.
 -}
-handleModel :: ProbSig es
-  => STrace                                 -- ^ sample trace of previous MH iteration
-  -> Prog es a                              -- ^ probabilistic program
-  -> Prog es ((a, LPTrace), STrace)         -- ^ ((model output, sample trace), log-probability trace)
-handleModel strace  = handleSamp strace . traceLogProbs
+handleModel ::
+     STrace                                 -- ^ sample trace of previous MH iteration
+  -> ProbProg a                             -- ^ probabilistic program
+  -> Sampler ((a, LPTrace), STrace)         -- ^ ((model output, sample trace), log-probability trace)
+handleModel strace =
+  handleSamp strace . SIM.handleObs . traceLogProbs
+
+{- | Insert stateful operations for recording the log-probabilities at each @Sample@ or @Observe@ operation.
+-}
+traceLogProbs :: ProbProg a -> ProbProg (a, LPTrace)
+traceLogProbs = loop Map.empty where
+  loop :: LPTrace -> ProbProg a -> ProbProg (a, LPTrace)
+  loop lptrace (Val x)   = pure (x, lptrace)
+  loop lptrace (Op op k) = case op of
+      ObsPrj d y α   -> Op op (\x -> loop (Map.insert α (logProb d x) lptrace) $ k x)
+      SampPrj d  α   -> Op op (\x -> loop (Map.insert α (logProb d x) lptrace) $ k x)
+      _              -> Op op (loop lptrace . k)
 
 {- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.
 -}
-handleSamp :: (Member Sample es, LastMember (Lift Sampler) es)
-  => STrace
-  -> Prog es a
-  -> Prog es (a, STrace)
-handleSamp strace (Val x)   = pure (x, strace)
-handleSamp strace (Op op k) = case prj op of
-    Just (Sample d α) ->
-      case Map.lookup α strace of
-          Nothing -> do r <- lift sampleRandom
-                        let y = sampleInv d r
-                        liftPutStrLn $ "MH.handleSamp: New value " ++ show r ++ " at " ++ show α
-                        k' (Map.insert α r strace) y
-          Just r  -> do let y = sampleInv d r
-                        liftPutStrLn $ "MH.handleSamp: Reusing " ++ show r ++ " at " ++ show α
-                        k' strace  y
-    Nothing -> Op op (k' strace)
-
-  where k' strace' = handleSamp strace' . k
+handleSamp :: forall a. STrace -> Prog '[Sample] a -> Sampler (a, STrace)
+handleSamp = loop where
+  loop :: STrace -> Prog '[Sample] a -> Sampler (a, STrace)
+  loop strace (Val x) = pure (x, strace)
+  loop strace (Op op k) = case discharge op of
+    Right (Sample d α) ->  case Map.lookup α strace of
+      Nothing -> do r <- sampleRandom
+                    let y = sampleInv d r
+                    loop (Map.insert α r strace) (k y)
+      Just r  -> do let y = sampleInv d r
+                    loop strace  (k y)
+    Left op'  -> error "MH.handleSamp: Left should not happen"
 
 {- | Handler for @Accept@ for MH.
 -}
-handleAccept :: LastMember (Lift Sampler) es
+handleAccept :: LastMember (Lift Sampler) fs
   => [Tag]                                 -- ^ observable variable names of interest
   -> Int                                   -- ^ number of proposal sites
-  -> Prog (Accept LPTrace : es) a
-  -> Prog es a
+  -> Prog (Accept LPTrace : fs) a
+  -> Prog fs a
 handleAccept tags n_proposals = loop
  where
   loop (Val x)   = pure x
@@ -137,15 +142,3 @@ propose tags n_proposals strace = do
   rs <- replicateM n_proposals sampleRandom
   let strace' = Map.union (Map.fromList (zip αs rs)) strace
   return (αs, strace')
-
-{- | Insert stateful operations for recording the log-probabilities at each @Sample@ or @Observe@ operation.
--}
-traceLogProbs :: (Member Sample es, Member Observe es) => Prog es a -> Prog es (a, LPTrace)
-traceLogProbs = handleState Map.empty . storeLPs
-  where storeLPs :: (Member Sample es, Member Observe es) => Prog es a -> Prog (State LPTrace: es) a
-        storeLPs (Val x) = pure x
-        storeLPs (Op op k) = do
-          case op of
-            SampPrj d α  -> Op (weaken op) (\x -> modify (Map.insert α (logProb d x)) >> storeLPs (k x))
-            ObsPrj d y α -> Op (weaken op) (\x -> modify (Map.insert α (logProb d x)) >> storeLPs (k x))
-            _ -> Op (weaken op) (storeLPs . k)

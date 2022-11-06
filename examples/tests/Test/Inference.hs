@@ -105,8 +105,8 @@ testLwHMM = TestCase $ do
 
 testMhHMM :: Test
 testMhHMM = TestCase $ do
-  output <- sampleIOFixed (mhHMM 5000 20)
-  assertEqual "Testing (mhHMM 5000 20)"  mhHMMExpected output
+  output <- sampleIOFixed (mhHMM 1000 20)
+  assertEqual "Testing (mhHMM 1000 20)"  mhHMMExpected output
 
 testSmcHMM :: Test
 testSmcHMM = TestCase $ do
@@ -115,18 +115,18 @@ testSmcHMM = TestCase $ do
 
 testRmsmcHMM :: Test
 testRmsmcHMM = TestCase $ do
-  output <- sampleIOFixed (rmsmcHMM 20 50 30)
-  assertEqual "Testing (rmsmcHMM 20 50 30)"  rmsmcHMMExpected output
+  output <- sampleIOFixed (rmsmcHMM 50 50 30)
+  assertEqual "Testing (rmsmcHMM 50 50 30)"  rmsmcHMMExpected output
 
 testPmmhHMM :: Test
 testPmmhHMM = TestCase $ do
-  output <- sampleIOFixed (pmmhHMM 1000 10 30)
-  assertEqual "Testing (pmmhHMM 1000 10 30)"  pmmhHMMExpected output
+  output <- sampleIOFixed (pmmhHMM 1000 5 20)
+  assertEqual "Testing (pmmhHMM 1000 5 20)"  pmmhHMMExpected output
 
 testSmc2HMM :: Test
 testSmc2HMM = TestCase $ do
-  output <- sampleIOFixed (smc2HMM 20 20 20 30)
-  assertEqual "Testing (smc2HMM 20 20 20 300)"  smc2HMMExpected output
+  output <- sampleIOFixed (smc2HMM 100 50 4 20)
+  assertEqual "Testing (smc2HMM 100 50 4 20)"  smc2HMMExpected output
 
 testBbviHMM :: Test
 testBbviHMM = TestCase $ do

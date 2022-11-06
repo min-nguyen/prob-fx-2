@@ -28,6 +28,7 @@ module Prog (
   , run
   , call
   , discharge
+  , discharge1
   , weaken
   , weakenProg
   , install) where
@@ -116,7 +117,7 @@ instance LastMember e (e ': '[])
 -- | Run a pure computation
 run :: Prog '[] a -> a
 run (Val x) = x
-run _ = error "'run' isn't defined for non-pure computations"
+run _ = error "Prog.run isn't defined for non-pure computations"
 
 -- | Call an operation in a computation
 call :: Member e es => e x -> Prog es x
@@ -126,6 +127,11 @@ call e = Op (inj e) Val
 discharge :: EffectSum (e ': es) x -> Either (EffectSum es x) (e x)
 discharge (EffectSum 0 tv) = Right $ unsafeCoerce tv
 discharge (EffectSum n rv) = Left  $ EffectSum (n-1) rv
+
+-- | Discharge the only effect from an effect sum
+discharge1 :: EffectSum '[e] x -> e x
+discharge1 (EffectSum 0 tv) = unsafeCoerce tv
+discharge1 _ = error "Prog.discharge1: impossible"
 
 -- | Prepend an effect to the front of an effect sum
 weaken :: EffectSum es a -> EffectSum (e ': es) a

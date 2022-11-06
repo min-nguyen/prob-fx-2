@@ -261,7 +261,7 @@ def main():
     ws = list(set(words))
     freqs = [ words.count(w)  for w in ws]
     ax.bar(ws, freqs)
-  if arg in ["mhLDA", "smcLDA", "rmsmcLDA", "pmmhLDA"]:
+  if arg in ["mhLDA", "smcLDA", "rmsmcLDA", "pmmhLDA", "smc2LDA"]:
     ws       = ['DNA', 'evolution', 'parsing', 'phonology']
     topic_ps = data[0][0]
     topic_0s = data[1][0]

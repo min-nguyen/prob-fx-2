@@ -33,24 +33,24 @@ import qualified Inference.LW as LW
 
 {- | Top-level wrapper for BBVI inference.
 -}
-bbvi :: Int -> Int -> Model env [ObsRW env, Dist, Lift Sampler] a -> Env env -> Sampler DTrace
+bbvi :: Int -> Int -> Model env [ObsRW env, Dist] a -> Env env -> Sampler DTrace
 bbvi t_steps l_samples model env_in = do
   let prog_0 = handleCore env_in model
-  (handleLift . SIM.handleSamp . SIM.handleObs . handleScore) (bbviInternal t_steps l_samples prog_0)
+  handleLift (bbviInternal t_steps l_samples prog_0)
 
 {- | BBVI on a probabilistic program.
 -}
-bbviInternal :: forall es a. ProbSig es
+bbviInternal :: forall fs a. (LastMember (Lift Sampler) fs)
   => Int                        -- ^ number of optimisation steps (T)
   -> Int                        -- ^ number of samples to estimate the gradient over (L)
-  -> Prog es a
-  -> Prog (Score : es) DTrace
+  -> Prog [Observe, Sample] a
+  -> Prog fs DTrace
 bbviInternal t_steps l_samples prog = do
-  -- | Initial proposal distributions from priors
-  traceQ0 <- snd <$> installScore prog
   -- | Transform probabilistic program to use @Score@ operations
-  let bbvi_prog :: Prog (Score : es) a
-      bbvi_prog = fst <$> installScore prog
+  let bbvi_prog :: Prog [Score, Observe, Sample] (a, DTrace)
+      bbvi_prog = installScore prog
+  -- | Collect initial proposal distributions
+  (_, traceQ0) <- (lift . SIM.handleSamp . SIM.handleObs . handleScore) bbvi_prog
   -- | Run BBVI for T optimisation steps
   foldr (>=>) pure (replicate t_steps ((snd <$>) . bbviStep l_samples bbvi_prog)) traceQ0
 
@@ -60,14 +60,14 @@ bbviInternal t_steps l_samples prog = do
      2. Compute an estimate of the ELBO gradient: E[δelbo]
      3. Update the proposal distributions: Q
 -}
-bbviStep :: (ProbSig es, Member Score es)
+bbviStep :: (ProbSig es, LastMember (Lift Sampler) fs)
   => Int                            -- ^ number of samples to estimate the gradient over (L)
-  -> Prog es a                      -- ^ initial bbvi probabilistic program
+  -> Prog (Score : es) a                      -- ^ initial bbvi probabilistic program
   -> DTrace                         -- ^ proposal distributions (Q)
-  -> Prog es ([(a, LogP)], DTrace)  -- ^ weighted outputs + next proposal distributions (Q')
+  -> Prog fs ([(a, LogP)], DTrace)  -- ^ weighted outputs + next proposal distributions (Q')
 bbviStep l_samples bbvi_prog traceQ = do
   -- | Execute a model for L iterations, collecting gradient traces G_l and importance weights logW_l:
-  ((as, traceGs), logWs) <- first unzip . unzip <$> replicateM l_samples (runBBVI traceQ bbvi_prog)
+  ((as, traceGs), logWs) <- lift $ first unzip . unzip <$> replicateM l_samples (runBBVI traceQ bbvi_prog)
   -- | Compute the ELBO gradient estimates
   let δelbos  = estELBOs l_samples logWs traceGs
   -- | Update the parameters of the proposal distributions Q
@@ -81,8 +81,9 @@ bbviStep l_samples bbvi_prog traceQ = do
 
 {- | One iteration of model execution under BBVI.
 -}
-runBBVI :: Members [Score, Observe, Sample] es => DTrace -> Prog es a -> Prog es ((a, GTrace), LogP)
-runBBVI proposals = traceLogProbs . traceGrads . updateScore proposals
+runBBVI :: [Score, Observe, Sample] ~ es => DTrace -> Prog es a -> Sampler ((a, GTrace), LogP)
+runBBVI proposals =
+  SIM.handleSamp . SIM.handleObs . handleScore . traceLogProbs . traceGrads . updateScore proposals
 
 {- | Replace all differentiable @Sample@ operations with @Score@ operations, initialising
      the proposals distributions Q as priors P.
@@ -113,6 +114,15 @@ updateScore traceQ = loop where
       (loop . k) x
     Nothing -> Op op (loop . k)
 
+{- | Trivially handle each @Score@ operation by sampling from its proposal distribution:
+        X ~ Q
+-}
+handleScore :: Member Sample es => Prog (Score : es) a -> Prog es a
+handleScore (Val x)   = pure x
+handleScore (Op op k) = case discharge op of
+  Right (Score _ q α) -> call (Sample q α) >>= handleScore . k
+  Left op'            -> Op op' (handleScore  . k)
+
 {- | Compute the total importance weight:
         log(P(X, Y) / Q(X; λ))
 -}
@@ -133,22 +143,12 @@ traceLogProbs = loop 0 where
 traceGrads :: forall es a. Member Score es => Prog es a -> Prog es (a, GTrace)
 traceGrads = loop dempty where
   loop :: GTrace -> Prog es a -> Prog es (a, GTrace)
-  loop traceG (Val x) = pure (x, traceG)
-  loop traceG (Op op k) = do
-    case prj op of
-      Just (Score _ q α)
-        -> Op op (\x -> let traceG' = dinsert (DKey α) (gradLogProb q x) traceG
-                        in  (loop traceG' . k) x)
-      _ -> Op op (loop traceG . k)
-
-{- | Trivially handle each @Score@ operation by sampling from its proposal distribution:
-        X ~ Q
--}
-handleScore :: LastMember (Lift Sampler) es => Prog (Score : es) a -> Prog es a
-handleScore (Val x)   = pure x
-handleScore (Op op k) = case discharge op of
-  Right (Score _ q α) -> lift (sample q) >>= handleScore . k
-  Left op'            -> Op op' (handleScore  . k)
+  loop traceG (Val x)   = pure (x, traceG)
+  loop traceG (Op op k) = case prj op of
+    Just (Score _ q α)
+      -> Op op (\x -> let traceG' = dinsert (DKey α) (gradLogProb q x) traceG
+                      in  (loop traceG' . k) x)
+    _ -> Op op (loop traceG . k)
 
 {- | Compute the ELBO gradient estimates for each variable v over L samples.
         E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L

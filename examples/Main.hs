@@ -19,9 +19,6 @@ printThenWrite a = print a >> writeFile "model-output.txt" (show a)
 
 parseArgs :: String -> IO ()
 parseArgs cmd = case cmd of
-
-  "pmmh_bug"     -> sampleIOFixed (pmmhHMM 10 10 10) >>= printThenWrite
-
   "simLinRegrOnce"  -> sampleIOFixed (simLinRegrOnce 50) >>= printThenWrite
   "lwLinRegrOnce"   -> sampleIOFixed (lwLinRegrOnce 50 30) >>= printThenWrite
   "mhLinRegrOnce"   -> sampleIOFixed (mhLinRegrOnce 50 10) >>= printThenWrite
@@ -45,11 +42,11 @@ parseArgs cmd = case cmd of
 
   "simHMM"      -> sampleIOFixed (simHMM_WR 20) >>= printThenWrite
   "lwHMM"       -> sampleIOFixed (lwHMM 200 20) >>= printThenWrite
-  "mhHMM"       -> sampleIOFixed (mhHMM 5000 20) >>= printThenWrite
+  "mhHMM"       -> sampleIOFixed (mhHMM 1000 20) >>= printThenWrite
   "smcHMM"      -> sampleIOFixed (smcHMM 200 30) >>= printThenWrite
-  "rmsmcHMM"    -> sampleIOFixed (rmsmcHMM 20 50 30) >>= printThenWrite
-  "pmmhHMM"     -> sampleIOFixed (pmmhHMM 1000 10 30) >>= printThenWrite
-  "smc2HMM"     -> sampleIOFixed (smc2HMM 20 20 20 30) >>= printThenWrite
+  "rmsmcHMM"    -> sampleIOFixed (rmsmcHMM 50 50 30) >>= printThenWrite
+  "pmmhHMM"     -> sampleIOFixed (pmmhHMM 1000 5 20) >>= printThenWrite
+  "smc2HMM"     -> sampleIOFixed (smc2HMM 100 50 4 20) >>= printThenWrite
   "bbviHMM"     -> sampleIOFixed (bbviHMM 1000 50 20) >>= printThenWrite
 
   "simSIR"      -> sampleIOFixed (simSIR 100) >>= printThenWrite

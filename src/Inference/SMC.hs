@@ -7,6 +7,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE TypeOperators #-}
 
 {- Sequential Monte Carlo inference.
 -}
@@ -19,16 +20,15 @@ import Effects.Lift ( Lift, lift, liftPrint, handleLift)
 import Effects.ObsRW ( ObsRW, handleObsRW )
 import Env ( Env )
 import LogP ( LogP(..), logMeanExp, expLogP )
-import Model ( Model(runModel), ProbSig )
+import Model ( Model(runModel), ProbProg )
 import OpenSum (OpenSum)
 import PrimDist ( mkCategorical, sample, logProb )
-import Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge )
+import Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge, prj )
 import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
 import Inference.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
 import Sampler ( Sampler, sampleRandom)
-import Prog (prj)
 
 {- | The context of a particle for SMC.
 -}
@@ -47,23 +47,22 @@ instance ParticleCtx LogP where
 {- | Call SMC on a model.
 -}
 smc
-  :: Int                                              -- ^ number of particles
-  -> Model env [ObsRW env, Dist, Lift Sampler] a      -- ^ model
-  -> Env env                                          -- ^ input model environment
-  -> Sampler [Env env]                                -- ^ output model environments of each particle
+  :: Int                                -- ^ number of particles
+  -> Model env [ObsRW env, Dist] a      -- ^ model
+  -> Env env                            -- ^ input model environment
+  -> Sampler [Env env]                  -- ^ output model environments of each particle
 smc n_particles model env_in = do
   -- | Handle model to probabilistic program
   let prog_0 = (handleDist . handleObsRW env_in) (runModel model)
-  smc_trace <- (handleLift . SIM.handleSamp . SIM.handleObs)
-               (smcInternal n_particles prog_0)
+  smc_trace <- handleLift (smcInternal n_particles prog_0)
   pure (map (snd . fst) smc_trace)
 
 {- | Call SMC on a probabilistic program.
 -}
-smcInternal :: ProbSig es
+smcInternal :: (LastMember (Lift Sampler) fs)
   => Int                       -- ^ number of particles
-  -> Prog es a                 -- ^ probabilistic program
-  -> Prog es [(a, Particle)]   -- ^ final particle results and contexts
+  -> ProbProg a                 -- ^ probabilistic program
+  -> Prog fs [(a, Particle)]   -- ^ final particle results and contexts
 smcInternal n_particles =
   handleResampleMul . SIS.sis n_particles handleParticle
 
@@ -71,19 +70,18 @@ smcInternal n_particles =
        1. the rest of the computation
        2. the log probability of the @Observe operation
 -}
-handleParticle :: Member Observe es
-  -- | a particle
-  => Prog es a
-  -- | (a particle suspended at the next step, corresponding context)
-  -> Prog es (Prog es a, Particle)
-handleParticle (Val x)   = pure (Val x,  Particle 0)
-handleParticle (Op op k) = case prj op of
-  Just (Observe d y α) -> Val (k y,  Particle (logProb d y))
-  Nothing              -> Op op (handleParticle . k)
+handleParticle :: ProbProg a -> Sampler (ProbProg a, Particle)
+handleParticle = SIM.handleSamp . handleObs
+
+handleObs :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, Particle)
+handleObs (Val x)   = Val (Val x,  Particle 0)
+handleObs (Op op k) = case discharge op of
+  Right (Observe d y α) -> Val (k y,  Particle (logProb d y))
+  Left op'              -> Op op' (handleObs . k)
 
 {- | A handler for multinomial resampling of particles.
 -}
-handleResampleMul :: LastMember (Lift Sampler) es => ResampleHandler es Particle
+handleResampleMul :: LastMember (Lift Sampler) fs => ResampleHandler fs Particle
 handleResampleMul (Val x) = Val x
 handleResampleMul (Op op k) = case discharge op of
   Right (Resample (prts, ctxs) _) -> do
@@ -98,7 +96,7 @@ handleResampleMul (Op op k) = case discharge op of
 
 {- | A handler for systematic resampling of particles.
 -}
-handleResampleSys :: LastMember (Lift Sampler) es => ResampleHandler es Particle
+handleResampleSys :: LastMember (Lift Sampler) fs => ResampleHandler fs Particle
 handleResampleSys (Val x) = Val x
 handleResampleSys (Op op k) = case discharge op of
   Right (Resample (prts, ctxs) _) -> do

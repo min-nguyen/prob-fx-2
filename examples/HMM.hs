@@ -53,8 +53,7 @@ type HMMEnv =
 
 {- | HMM as a loop.
 -}
-hmmFor :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double
-          , LastMember (Lift Sampler) es)
+hmmFor :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
   -- | number of HMM nodes
   => Int
   -- | initial HMM latent state
@@ -119,7 +118,7 @@ hmmNode transition_p observation_p x_prev = do
   return x_i
 
 -- | Chain of HMM nodes
-hmm :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double, LastMember (Lift Sampler) es)
+hmm :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
   -- | number of HMM nodes
   => Int
   -- | initial latent state
@@ -140,7 +139,7 @@ simHMM hmm_length = do
   -- Specify model input
   let x_0 = 0
   -- Specify model environment
-      env_in = #trans_p := [0.9] <:> #obs_p := [0.2] <:> #y := [] <:> enil
+      env_in = #trans_p := [0.2] <:> #obs_p := [0.9] <:> #y := [] <:> enil
   (y, env_out) <- SIM.simulate (hmm hmm_length 0) env_in
   let ys :: [Int] = get #y env_out
   pure ys
@@ -305,8 +304,7 @@ hmmNode_WR transition_p observation_p x_prev = do
 
 hmm_WR :: ( Observable env "y" Int
         , Observables env '["obs_p", "trans_p"] Double
-        , Member (Writer [Int]) es
-        , LastMember (Lift Sampler) es)
+        , Member (Writer [Int]) es)
   -- | number of HMM nodes
   => Int
   -- | initial latent state
@@ -326,7 +324,7 @@ simHMM_WR
   -> Sampler [(Int, Int)]
 simHMM_WR hmm_length = do
   -- Specify model environment
-  let env_in = #trans_p := [0.9] <:> #obs_p := [0.2] <:> #y := [] <:> enil
+  let env_in = #trans_p := [0.2] <:> #obs_p := [0.9] <:> #y := [] <:> enil
   -- Handle the Writer effect to produce the stream of latent states @xs@, and then simulate
   ((_, xs), env_out) <- SIM.simulate (handleWriterM $ hmm_WR hmm_length 0) env_in
   -- Get the observations

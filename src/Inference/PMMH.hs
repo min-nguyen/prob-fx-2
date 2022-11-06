@@ -36,7 +36,7 @@ import Inference.SMC (Particle(particleLogProb, Particle))
 pmmh :: forall env es a xs. (env `ContainsVars` xs)
   => Int                                            -- ^ number of MH steps
   -> Int                                            -- ^ number of particles
-  -> Model env [ObsRW env, Dist, Lift Sampler] a    -- ^ model
+  -> Model env [ObsRW env, Dist] a                  -- ^ model
   -> Env env                                        -- ^ input environment
   -> Vars xs                                        -- ^ variable names of model parameters
   -> Sampler [Env env]                              -- ^ output environments
@@ -46,48 +46,45 @@ pmmh mh_steps n_particles model env_in obs_vars = do
       strace_0 = Map.empty
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
-  pmmh_trace <- (handleLift . SIM.handleSamp . SIM.handleObs)
-                (pmmhInternal mh_steps n_particles tags strace_0 prog_0)
+  pmmh_trace <- handleLift (pmmhInternal mh_steps n_particles tags strace_0 prog_0)
   pure (map (snd . fst . fst) pmmh_trace)
 
 {- | PMMH inference on a probabilistic program.
 -}
-pmmhInternal :: (ProbSig es)
+pmmhInternal :: (LastMember (Lift Sampler) fs)
   => Int                                          -- ^ number of MH steps
   -> Int                                          -- ^ number of particles
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> STrace                                       -- ^ initial sample trace
-  -> Prog es a                                    -- ^ probabilistic program
-  -> Prog es [((a, LogP), STrace)]
+  -> ProbProg a                                    -- ^ probabilistic program
+  -> Prog fs [((a, LogP), STrace)]
 pmmhInternal mh_steps n_particles tags strace_0 =
   handleAccept tags 1 . arLoop mh_steps strace_0 (handleModel n_particles tags)
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}
-handleModel :: ProbSig es
-  => Int                                          -- ^ number of particles
+handleModel ::
+     Int                                          -- ^ number of particles
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> STrace                                       -- ^ sample trace
-  -> Prog es a                                    -- ^ probabilistic program
-  -> Prog es ((a, LogP), STrace)
+  -> ProbProg a                                   -- ^ probabilistic program
+  -> Sampler ((a, LogP), STrace)
 handleModel n_particles tags strace prog = do
   ((a, _), strace') <- MH.handleModel strace prog
   let params = filterTrace tags strace'
-  prts   <- ( (map snd . fst <$>)
-            . MH.handleSamp params
-            . SMC.smcInternal n_particles) prog
-  let logZ  = logMeanExp (map SMC.particleLogProb prts)
-  liftPutStrLn $ "PMMH.handleModel: Particle logPs are " ++ show (map SMC.particleLogProb prts)
-  liftPutStrLn $ "PMMH.handleModel: Log-mean-exp is " ++ show logZ
+  prts   <- ( handleLift
+            . SMC.handleResampleMul
+            . SIS.sis n_particles (((fst <$>) . MH.handleSamp params) . SMC.handleObs)) prog
+  let logZ = logMeanExp (map (SMC.particleLogProb . snd) prts)
   pure ((a, logZ), strace')
 
 {- | An acceptance mechanism for PMMH.
 -}
-handleAccept :: LastMember (Lift Sampler) es
+handleAccept :: LastMember (Lift Sampler) fs
   => [Tag]                                      -- ^ tags indicating variables of interest
   -> Int                                        -- ^ number of proposal sites
-  -> Prog (Accept LogP : es) a
-  -> Prog es a
+  -> Prog (Accept LogP : fs) a
+  -> Prog fs a
 handleAccept tags n_proposals = loop where
   loop (Val x)   = pure x
   loop (Op op k) = case discharge op of
