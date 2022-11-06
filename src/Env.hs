@@ -74,7 +74,6 @@ infixr 5 <#>
 (<#>) :: Var x -> Vars xs -> Vars (x : xs)
 x <#> xs = VCons xs
 
-
 -- * Model environment
 
 {- | A model environment assigning traces (lists) of observed values to observable

@@ -78,8 +78,8 @@ bench_LR args = do
     writeRow fixed_output_file row_header
     -- benchRow ("LR-[ ]-SIM-" ++ show fixed_simulations
     --           , simLinRegr) row_header
-    benchRow ("LR-[ ]-LW-" ++ show fixed_lw_steps
-              , lwLinRegr fixed_lw_steps) row_header
+    -- benchRow ("LR-[ ]-LW-" ++ show fixed_lw_steps
+    --           , lwLinRegr fixed_lw_steps) row_header
     benchRow ("LR-[ ]-MH-" ++ show fixed_mh_steps
               , mhLinRegr fixed_mh_steps) row_header
     benchRow ("LR-[ ]-SMC-" ++ show fixed_smc_particles
@@ -97,8 +97,8 @@ bench_HMM args = do
     writeRow fixed_output_file row_header
     -- benchRow ("HMM-[ ]-SIM-" ++ show fixed_simulations
     --           , simHMM) row_header
-    benchRow ("HMM-[ ]-LW-" ++ show fixed_lw_steps
-              , lwHMM fixed_lw_steps) row_header
+    -- benchRow ("HMM-[ ]-LW-" ++ show fixed_lw_steps
+    --           , lwHMM fixed_lw_steps) row_header
     benchRow ("HMM-[ ]-MH-" ++ show fixed_mh_steps
               , mhHMM fixed_mh_steps) row_header
     benchRow ("HMM-[ ]-SMC-" ++ show fixed_mh_steps
@@ -118,12 +118,12 @@ bench_LDA args = do
     --           , simLDA) row_header
     -- benchRow ("LDA-[ ]-LW-" ++ show fixed_lw_steps
     --           , lwLDA fixed_lw_steps) row_header
-    -- benchRow ("LDA-[ ]-MH-" ++ show fixed_mh_steps
-    --           , mhLDA fixed_mh_steps) row_header
-    -- benchRow ("LDA-[ ]-SMC-" ++ show fixed_mh_steps
-    --           , smcLDA fixed_smc_particles) row_header
-    -- benchRow ("LDA-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
-    --           , rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
+    benchRow ("LDA-[ ]-MH-" ++ show fixed_mh_steps
+              , mhLDA fixed_mh_steps) row_header
+    benchRow ("LDA-[ ]-SMC-" ++ show fixed_mh_steps
+              , smcLDA fixed_smc_particles) row_header
+    benchRow ("LDA-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
+              , rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
     benchRow ("LDA-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
               , pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
     benchRow ("LDA-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
@@ -233,15 +233,15 @@ runBenchmarks = do
   -- | Run benchmark programs on their corresponding parameters
   case args of
         [lr, hmm, lda, sim, lw, mh, smc, rmsmc, pmmh, bbvi] -> do
-          -- bench_LR lr
-          -- bench_HMM hmm
+          bench_LR lr
+          bench_HMM hmm
           bench_LDA lda
           -- bench_SIM sim
-          bench_LW lw
-          bench_MH mh
-          bench_SMC smc
-          bench_RMSMC rmsmc
-          bench_PMMH pmmh
+          -- bench_LW lw
+          -- bench_MH mh
+          -- bench_SMC smc
+          -- bench_RMSMC rmsmc
+          -- bench_PMMH pmmh
           bench_BBVI bbvi
         _   -> error "bad input file"
 

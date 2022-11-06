@@ -15,6 +15,8 @@
 module Inference.SMC where
 
 import Control.Monad ( replicateM )
+import Data.Type.Nat
+import qualified Data.Vector as Vector
 import Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe (..), Sample )
 import Effects.Lift ( Lift, lift, liftPrint, handleLift)
 import Effects.ObsRW ( ObsRW, handleObsRW )
@@ -28,7 +30,7 @@ import qualified Data.Map as Map
 import qualified Inference.SIM as SIM
 import qualified Inference.SIS as SIS
 import Inference.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
-import Sampler ( Sampler, sampleRandom)
+import Sampler ( Sampler, sampleRandom, sampleCategorical)
 
 {- | The context of a particle for SMC.
 -}
@@ -88,7 +90,7 @@ handleResampleMul (Op op k) = case discharge op of
     -- | Get the weights for each particle
     let ws = map (expLogP . particleLogProb) ctxs
     -- | Select particles to continue with
-    idxs <- replicateM (length ws) $ lift (sample (mkCategorical ws))
+    idxs <- replicateM (length ws) $ lift (Sampler.sampleCategorical (Vector.fromList ws))
     let resampled_prts = map (prts !! ) idxs
         resampled_ctxs = map (ctxs !! ) idxs
     (handleResampleMul . k) ((resampled_prts, resampled_ctxs), idxs)
@@ -103,7 +105,7 @@ handleResampleSys (Op op k) = case discharge op of
     -- | Get the weights for each particle
     let ws = map (expLogP . particleLogProb) ctxs
     -- | Select particles to continue with
-    u <- lift sampleRandom
+    u <- lift Sampler.sampleRandom
     let prob i = ws !! i
         n      = length ws
         inc = 1 / fromIntegral n

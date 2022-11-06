@@ -69,7 +69,7 @@ parseArgs cmd = case cmd of
   "mhSchool"    -> sampleIOFixed (mhSchool 1000) >>= printThenWrite
 
   "simGMM"      -> sampleIOFixed (simGMM 20) >>= printThenWrite
-  "mhGMM"       -> sampleIOFixed (mhGMM 4000 20) >>= printThenWrite
+  "mhGMM"       -> sampleIOFixed (mhGMM 2000 20) >>= printThenWrite
 
 
   _             -> putStrLn $ "unrecognised argument: " ++ cmd ++ "\n"

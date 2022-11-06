@@ -14,6 +14,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE TypeFamilies #-}
 
 {- | For recording samples and log-probabilities during model execution.
 -}
@@ -29,19 +30,22 @@ module Trace (
   , GTrace
   -- * Dist trace
   , DTrace
-  , DKey(..)
+  , Key(..)
   , Some(..)
   , dempty
   , dkeys
   , dinsert
   , dlookup
-  , dlookupDefault
-  , dlookupOrInsert
+  , gkeys
+  , ginsert
+  , glookup
+  , gmap
+  -- , dlookupOrInsert
   , dintersectLeftWith
-  , dmap) where
+  -- , dmap
+  ) where
 
-import Type.Reflection
-    ( Typeable, type (:~~:)(HRefl), eqTypeRep, typeRep )
+import Data.Typeable
 import Data.Map (Map)
 import Data.Maybe ( fromJust, fromMaybe )
 import Data.Proxy ( Proxy(..) )
@@ -58,6 +62,9 @@ import Effects.State ( State, modify, handleState )
 import Util
 import TyCompare
 import Prog (Member(..))
+import Vec (Vec)
+import Data.Coerce (coerce)
+import Data.Type.Coercion (coerceWith)
 
 {- | The type of generic traces, mapping addresses of probabilistic operations
      to some data.
@@ -84,20 +91,30 @@ type STrace = Trace Double
 -}
 type LPTrace = Trace LogP
 
-{- | The type of gradient traces.
--}
-type GTrace = DTrace
+{- | Dependent map. -}
+data CTrace c where
+  Leaf :: CTrace c
+  Node  :: (c a b, Typeable a)
+        => Key a        -- key
+        -> b            -- distribution
+        -> CTrace c     -- left
+        -> CTrace c     -- right
+        -> CTrace c
 
-{- | The type of differentiable primitive distribution traces.
--}
-data DTrace where
-  Leaf :: DTrace
-  Node :: (DiffDistribution d)
-       => DKey d         -- key
-       -> d              -- distribution
-       -> DTrace         -- left
-       -> DTrace         -- right
-       -> DTrace
+{- | The type of differentiable distribution traces. -}
+type DTrace = CTrace DiffDistR
+
+class (DiffDistribution d, d ~ d') => DiffDistR d d' where
+
+instance (DiffDistribution d) => DiffDistR d d where
+
+
+{- | The type of gradient traces. -}
+type GTrace = CTrace GradR
+
+class (DiffDistribution d, v ~ Vec (Arity d) Double) => GradR d v where
+
+instance (DiffDistribution d, v ~ Vec (Arity d) Double) => GradR d v where
 
 instance {-# OVERLAPPING #-} Show [DTrace] where
   show (x:xs) = show x ++ "\n" ++ show xs
@@ -106,136 +123,158 @@ instance {-# OVERLAPPING #-} Show [DTrace] where
 instance Show DTrace where
   show :: DTrace -> String
   show Leaf = ""
-  show (Node (DKey var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ") "
+  show (Node (Key var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ") "
                                  ++ show l
                                  ++ show r
     where showNewline Leaf  = ""
           showNewline node  = "\n" ++ show node
 
-{-
--}
-data DKey a where
-  DKey :: forall a. (Typeable a) => Addr -> DKey a
+{- Keys -}
+data Key a where
+  Key :: forall a. (Typeable a) => Addr -> Key a
   deriving (Typeable)
 
-instance Show (DKey a) where
-  show :: DKey a -> String
-  show (DKey s) = show s
+instance Show (Key a) where
+  show :: Key a -> String
+  show (Key s) = show s
 
-instance Eq (DKey  a) where
-  (==) :: DKey a -> DKey a -> Bool
-  DKey a == DKey b = a == b
+instance Eq (Key  a) where
+  (==) :: Key a -> Key a -> Bool
+  Key a == Key b = a == b
 
-instance Ord (DKey a) where
-  compare :: DKey a -> DKey a -> Ordering
-  compare (DKey s1) (DKey s2) = compare s1 s2
+instance Ord (Key a) where
+  compare :: Key a -> Key a -> Ordering
+  compare (Key s1) (Key s2) = compare s1 s2
 
-instance HeteroOrd DKey where
-  hCompare :: DKey a -> DKey b -> Ordering
-  hCompare (DKey s1) (DKey s2) = compare s1 s2
+instance HeteroOrd Key where
+  hCompare :: Key a -> Key b -> Ordering
+  hCompare (Key s1) (Key s2) = compare s1 s2
 
-instance (HeteroOrd k, Typeable a, Typeable b) => TrueOrd k a b where
+instance (HeteroOrd k, Typeable a, Typeable b) => TrueOrd k (a :: *) b where
   trueCompare :: k a -> k b -> TrueOrdering a b
-  trueCompare ka kb = case (hCompare ka kb, compare (show (typeRep @a)) (show (typeRep @a))) of
+  trueCompare ka kb = case (hCompare ka kb, compare (show (typeRep (Proxy @a))) (show (typeRep  (Proxy @b)))) of
     (LT, _)  -> TrueLT
     (GT, _)  -> TrueGT
-    (EQ, EQ) -> case eqTypeRep (typeRep @a) (typeRep @b) of
-                  Just HRefl -> TrueEQ HRefl
+    (EQ, EQ) -> case eqT @a @b of
+                  Just Refl -> TrueEQ HRefl
                   Nothing    -> error "Should not happen."
     (EQ, LT) -> TrueLT
     (EQ, GT) -> TrueGT
 
-data Some k where
-  Some :: DiffDistribution d => k d -> Some k
+data Some c k where
+  Some :: c d => k d -> Some c k
 
 -- | Fetch the keys
-dkeys :: DTrace -> [Some DKey]
+dkeys :: DTrace -> [Some DiffDistribution Key]
 dkeys = go
   where
+    go :: DTrace -> [Some DiffDistribution Key]
+    go Leaf = []
+    go (Node ky y l r) = Some ky : go l ++ go r
+
+-- | Fetch the keys
+gkeys :: GTrace -> [Some DiffDistribution Key]
+gkeys = go
+  where
+    go :: GTrace -> [Some DiffDistribution Key]
     go Leaf = []
     go (Node ky y l r) = Some ky : go l ++ go r
 
 -- | Construct an empty trace
-dempty :: DTrace
+dempty :: CTrace c
 dempty = Leaf
 
 -- | Construct a single node
-dsingleton :: DiffDistribution d => DKey d -> d -> DTrace
+dsingleton :: (Typeable a, c a b) => Key a -> b -> CTrace c
 dsingleton k x = Node k x Leaf Leaf
 
 -- | Lookup an entry
-dlookup :: Typeable d => DKey d -> DTrace -> Maybe d
+dlookup :: Typeable a => Key a -> DTrace -> Maybe a
 dlookup kx = go where
   go Leaf = Nothing
-  go (Node ky y l r) = case trueCompare kx ky
-      of TrueEQ HRefl -> Just y
-         TrueLT       -> go l
-         TrueGT       -> go r
+  go (Node ky y l r) = case (trueCompare kx ky, ())
+      of (TrueEQ HRefl, _) -> Just y
+         (TrueLT, _)       -> go l
+         (TrueGT, _)       -> go r
+
+-- | Lookup an entry
+glookup :: Typeable a => Key a -> GTrace -> Maybe (Vec (Arity a) Double)
+glookup kx = go where
+  go Leaf = Nothing
+  go (Node ky y l r) = case (trueCompare kx ky, ())
+      of (TrueEQ HRefl, _) -> Just y
+         (TrueLT, _)       -> go l
+         (TrueGT, _)       -> go r
 
 -- | Insert a new entry
-dinsert :: forall d. DiffDistribution d => DKey d -> d -> DTrace  -> DTrace
+dinsert :: DiffDistribution a => Key a -> a -> DTrace -> DTrace
 dinsert kx d = go where
-  go :: DTrace -> DTrace
   go Leaf = dsingleton kx d
   go (Node ky y l r) = case trueCompare kx ky
       of  TrueEQ HRefl -> Node kx d l r
           TrueLT       -> Node ky y (go l) r
           TrueGT       -> Node ky y l (go r)
 
--- | Apply a function to an entry if it exists
-dupdate :: DiffDistribution d => DKey d -> (d -> d) -> DTrace -> DTrace
-dupdate kx f = go where
-  go :: DTrace -> DTrace
-  go Leaf = Leaf
+-- | Insert a new entry
+ginsert :: (Typeable a, DiffDistribution a) => Key a -> Vec (Arity a) Double -> GTrace -> GTrace
+ginsert kx d = go where
+  go Leaf = Node kx d Leaf Leaf
   go (Node ky y l r) = case trueCompare kx ky
-      of TrueEQ HRefl -> Node kx (f y) l r
-         TrueLT       -> Node ky y (go l) r
-         TrueGT       -> Node ky y l (go r)
+      of  TrueEQ HRefl -> Node kx d l r
+          TrueLT       -> Node ky y (go l) r
+          TrueGT       -> Node ky y l (go r)
 
-dlookupDefault :: Typeable d => DKey d -> DTrace -> d -> d
-dlookupDefault kx dmap def = fromMaybe def (dlookup kx dmap)
-
--- | Return the entry if it exists, otherwise insert a new entry
-dlookupOrInsert :: forall d a. DiffDistribution d => DKey d -> d -> DTrace -> (d, DTrace)
-dlookupOrInsert kx dx = go where
-  go :: DTrace -> (d, DTrace)
-  go Leaf             = (dx, dsingleton kx dx)
-  go (Node ky dy l r) =
-    case trueCompare kx ky of
-      TrueEQ HRefl -> (dy, Node ky dy l r)
-      TrueLT       -> let (d, l') = go l in (d, Node ky dy l' r)
-      TrueGT       -> let (d, r') = go r in (d, Node ky dy l r')
+-- | Map over a tree
+gmap :: (forall n. Vec n Double -> Vec n Double) -> GTrace -> GTrace
+gmap f = go where
+  go Leaf            = Leaf
+  go (Node kx x l r) = Node kx (f x) (go l) (go r)
 
 -- | Combine the entries of two traces with an operation when their keys match,
 --   returning elements of the left trace that do not exist in the second trace.
-dintersectLeftWith :: (forall d. DiffDistribution d  => d -> d -> d) -> DTrace -> GTrace -> DTrace
+dintersectLeftWith :: (forall d. DiffDistribution d => d -> Vec (Arity d) Double -> d) -> DTrace -> GTrace -> DTrace
 dintersectLeftWith _ t1 Leaf  = t1
 dintersectLeftWith _ Leaf t2  = Leaf
 dintersectLeftWith f (Node k1 x1 l1 r1) t2 =
   case maybe_x2 of
       Nothing -> Node k1 x1 l1 r1
       Just x2 -> Node k1 (f x1 x2) l1l2 r1r2
-    where (l2, maybe_x2, r2) =  dsplitLookup k1 t2
+    where (l2, maybe_x2, r2) = dsplitLookup k1 t2
           !l1l2 = dintersectLeftWith f l1 l2
           !r1r2 = dintersectLeftWith f r1 r2
+          -- | Split-lookup without rebalancing tree
+          dsplitLookup :: Typeable d => Key d -> GTrace -> (GTrace, Maybe (Vec (Arity d) Double), GTrace)
+          dsplitLookup k = go where
+            go Leaf            = (Leaf, Nothing, Leaf)
+            go (Node kx x l r) = case trueCompare k kx of
+              TrueLT       -> let (lt, z, gt) = go l in (lt, z, Node kx x gt r) -- As we know that `keys of gt` < `keys of r`
+              TrueGT       -> let (lt, z, gt) = go r in (Node kx x l lt, z, gt)
+              TrueEQ HRefl -> (l, Just x, r)
 
--- | Split-lookup without rebalancing tree
-dsplitLookup :: PrimDist d a => DKey d -> DTrace -> (DTrace, Maybe d, DTrace)
-dsplitLookup k = go where
-  go Leaf            = (Leaf, Nothing, Leaf)
-  go (Node kx x l r) = case trueCompare k kx of
-    TrueLT -> let (lt, z, gt) = go l in (lt, z, Node kx x gt r) -- As we know that `keys of gt` < `keys of r`
-    TrueGT -> let (lt, z, gt) = go r in (Node kx x l lt, z, gt)
-    TrueEQ HRefl -> (l, Just x, r)
+-- -- | Apply a function to an entry if it exists
+-- dupdate :: forall c a b. (c a b, Typeable a, Typeable b) => Key a -> (b -> b) -> CTrace c -> CTrace c
+-- dupdate kx f = go where
+--   go Leaf = Leaf
+--   go (Node ky y l r) = case (trueCompare kx ky, tyEq (Proxy @b) (asProxy y))
+--       of (TrueEQ HRefl, Just HRefl) -> Node kx (f y) l r
+--          (TrueEQ HRefl, Nothing)    -> error "Trace.dupdate: Should not happen if 'a implies b' in the constraint 'c a b' "
+--          (TrueLT, _)       -> Node ky y (go l) r
+--          (TrueGT, _)       -> Node ky y l (go r)
 
--- | Fold over a tree
-dfoldr :: (forall d a. PrimDist d a => DKey d -> d -> b -> b) -> b -> DTrace -> b
-dfoldr f = go where
-  go z Leaf             = z
-  go z (Node  kx x l r) = go (f kx x (go z r)) l
+-- -- | Return the entry if it exists, otherwise insert a new entry
+-- dlookupOrInsert :: forall c a b. (c a b, Typeable a, Typeable b) => Key a -> b -> CTrace c  -> (b, CTrace c )
+-- dlookupOrInsert kx dx = go where
+--   go :: CTrace c  -> (b, CTrace c )
+--   go Leaf             = (dx, dsingleton kx dx)
+--   go (Node ky dy l r) =
+--     case (trueCompare kx ky, tyEq (Proxy @b) (asProxy dy)) of
+--       (TrueEQ HRefl, Just HRefl) -> (dy, Node ky dy l r)
+--       (TrueEQ HRefl, Nothing)    -> error "Trace.dlookupOrInsert: Should not happen if 'a implies b' in the constraint 'c a b' "
+--       (TrueLT, _)    -> let (d, l') = go l in (d, Node ky dy l' r)
+--       (TrueGT, _)       -> let (d, r') = go r in (d, Node ky dy l r')
 
--- | Fold over a tree
-dmap :: (forall d a. DiffDistribution d => d -> d) -> DTrace -> DTrace
-dmap f = go where
-  go Leaf             = Leaf
-  go (Node  kx x l r) = Node kx (f x) (go l) (go r)
+-- -- | Fold over a tree
+-- dfoldr :: (forall a b r. c a b => Key a -> b -> r -> r) -> r -> CTrace c -> r
+-- dfoldr f = go where
+--   go z Leaf             = z
+--   go z (Node  kx x l r) = go (f kx x (go z r)) l

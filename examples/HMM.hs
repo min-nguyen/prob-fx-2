@@ -278,8 +278,8 @@ bbviHMM t_steps l_samples hmm_length = do
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
   traceQ <- BBVI.bbvi t_steps l_samples (hmm hmm_length 0) env_in
-  let trans_dist = toList . fromJust $ dlookup (DKey ("trans_p", 0) :: DKey Beta) traceQ
-      obs_dist   = toList . fromJust $ dlookup (DKey ("obs_p", 0)   :: DKey Beta) traceQ
+  let trans_dist = toList . fromJust $ dlookup (Key ("trans_p", 0) :: Key Beta) traceQ
+      obs_dist   = toList . fromJust $ dlookup (Key ("obs_p", 0)   :: Key Beta) traceQ
   pure (trans_dist, obs_dist)
 
 {- | Extending the modular HMM with a user-specific effect.
