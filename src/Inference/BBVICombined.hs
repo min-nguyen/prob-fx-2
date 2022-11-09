@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 {- | BBVI inference that takes a model and generates a model and guide as a combined program.
-     Note: this naturally has different results than Inference.BBVI due ignoring the log-weights of *non-differentiable* @Sample@ operations (in definition for the `traceLogProbs` handler).
+     Note: this naturally has different results than Inference.BBVI due ignoring the log-weights of *non-differentiable* @Sample@ operations (see definition of the `traceLogProbs` handler).
 -}
 
 module Inference.BBVICombined

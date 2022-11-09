@@ -36,12 +36,12 @@ import Util
 
 {- | Top-level wrapper for BBVI inference that takes a separate model and guide.
 -}
-bbvi :: forall env a. (Show (Env env))
+bbvi :: forall env a b. (Show (Env env))
   => Int                                -- ^ number of optimisation steps (T)
   -> Int                                -- ^ number of samples to estimate the gradient over (L)
   -> Model env [ObsRW env, Dist] a      -- ^ model P
   -> Env env                            -- ^ model environment (containing only observed data Y)
-  -> Model env [ObsRW env, Dist] a      -- ^ guide Q
+  -> Model env [ObsRW env, Dist] b      -- ^ guide Q
   -> Sampler DTrace                     -- ^ final proposal distributions Q(λ_T)
 bbvi num_timesteps num_samples model model_env guide_model = do
   {- | Prepare guide by:
@@ -51,7 +51,7 @@ bbvi num_timesteps num_samples model model_env guide_model = do
             - In the inproper case that the guide refers to model variables to be conditioned against, then handling the guide under the model environment and then handling these variables as @Observe@ operations will ignore any of their (importance weighting) side-effects; in constrast, handling the guide under the *empty environment* would incorrectly produce some @Sample@ operations that should not be present. Also note that the original observed values will later be reproduced in the guide's output environment.
         3) Replacing any differentiable @Sample@ operations with @Learn@.
   -}
-  let guide :: Prog '[Learn, Sample] ((a, Env env), DTrace)
+  let guide :: Prog '[Learn, Sample] ((b, Env env), DTrace)
       guide = (installLearn . SIM.handleObs . handleCore model_env) guide_model
   -- | Collect initial proposal distributions
   ((_, proposals_0), _) <- (SIM.handleSamp . handleLearn) guide
@@ -64,7 +64,7 @@ bbviInternal :: (LastMember (Lift Sampler) fs, Show (Env env))
   -> Int                                    -- ^ number of samples to estimate the gradient over (L)
   -> Model env [ObsRW env, Dist] a          -- ^ model P
   -> Env env                                -- ^ model environment (containing only observed data Y)
-  -> Prog [Learn, Sample] (a, Env env)      -- ^ guide Q
+  -> Prog [Learn, Sample] (b, Env env)      -- ^ guide Q
   -> DTrace                                 -- ^ guide initial proposals Q(λ_0)
   -> Prog fs DTrace                         -- ^ final proposal distributions Q(λ_T)
 bbviInternal num_timesteps num_samples model model_env guide proposals_0 = do
@@ -81,14 +81,14 @@ bbviStep :: (LastMember (Lift Sampler) fs, Show (Env env))
   -> Int                                   -- ^ number of samples to estimate the gradient over (L)
   -> Model env [ObsRW env, Dist] a         -- ^ model P
   -> Env env                               -- ^ model environment (containing only observed data Y)
-  -> Prog [Learn, Sample] (a, Env env)     -- ^ guide Q
+  -> Prog [Learn, Sample] (b, Env env)     -- ^ guide Q
   -> DTrace                                -- ^ guide proposal distributions Q(λ_t)
-  -> Prog fs DTrace                        -- ^ next proposal distribution Q(λ_{t+1})
+  -> Prog fs DTrace                        -- ^ next proposal distributions Q(λ_{t+1})
 bbviStep timestep num_samples model model_env guide proposals = do
-  -- | Execute the guide for L iterations
+  -- | Execute the guide for (L) iterations
   (((_, guide_envs), guide_logWs), grads)
       <- Util.unzip4 <$> replicateM num_samples ((lift . handleGuide guide) proposals)
-  -- | Execute the model under the union of the model and guide environment,
+  -- | Execute the model under the union of the model and guide environment
   (_               , model_logWs)
       <- Util.unzip3 <$> mapM ((lift . handleModel model) . Env.union model_env) guide_envs
   -- | Compute total log-importance-weight: logW = log(P(X, Y)) - log(Q(X; λ))

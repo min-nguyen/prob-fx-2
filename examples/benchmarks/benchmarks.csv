@@ -522,7 +522,7 @@ BBVI-[ ]-10-LDA-50,0.6037125734997062,1.2599993052082634,1.9393608636249458,2.62
 
 -------------------------------
 Updates:
-  - BBVI reworked to handle the model and guide as separate programs rather than as a combined program
+  - BBVI reworked to automatically transform a single model into a model and a guide as separate programs to be handled, rather than as a combined program
   - Previous BBVI implementation renamed to "BBVICombined"
 
 Dataset size,100,200,300,400,500
@@ -542,3 +542,7 @@ Number of BBVI steps,200,400,600,800,1000
 BBVICombined-[ ]-10-LR-50,0.23170430488074897,0.4978062592086114,0.7780820481251567,1.0513251756664204,1.3230631050207649
 BBVICombined-[ ]-10-HMM-50,0.23979899856369433,0.5484711341251796,0.7635774623959151,1.0954727635205852,1.284717850854122
 BBVICombined-[ ]-10-LDA-50,0.6622737072501271,1.4078172265206301,2.1164826958332696,2.906483572791899,3.521091968916911
+
+-------------------------------
+Updates:
+ - BBVI updated to allow model and guide to be provided by the user as separate models

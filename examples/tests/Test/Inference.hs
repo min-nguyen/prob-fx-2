@@ -59,10 +59,10 @@ testSmc2LinRegr = TestCase $ do
   output <- sampleIOFixed (smc2LinRegr 20 20 20 30)
   assertEqual "Testing (smc2LinRegr 20 20 20 30)"  smc2LinRegrExpected output
 
-testBbviLinRegr :: Test
-testBbviLinRegr = TestCase $ do
-  output <- sampleIOFixed (bbviLinRegr 200 40 8)
-  assertEqual "Testing (bbviLinRegr 200 40 8)"  bbviLinRegrExpected output
+testBbviDefaultLinRegr :: Test
+testBbviDefaultLinRegr = TestCase $ do
+  output <- sampleIOFixed (bbviDefaultLinRegr 200 40 8)
+  assertEqual "Testing (bbviDefaultLinRegr 200 40 8)"  bbviDefaultLinRegrExpected output
 
 testSimLogRegrOnce :: Test
 testSimLogRegrOnce = TestCase $ do
@@ -129,10 +129,10 @@ testSmc2HMM = TestCase $ do
   output <- sampleIOFixed (smc2HMM 100 50 4 20)
   assertEqual "Testing (smc2HMM 100 50 4 20)"  smc2HMMExpected output
 
-testBbviHMM :: Test
-testBbviHMM = TestCase $ do
-  output <- sampleIOFixed (bbviHMM 1000 50 20)
-  assertEqual "Testing (bbviHMM 1000 50 20)"  bbviHMMExpected output
+testBbviDefaultHMM :: Test
+testBbviDefaultHMM = TestCase $ do
+  output <- sampleIOFixed (bbviDefaultHMM 1000 50 20)
+  assertEqual "Testing (bbviDefaultHMM 1000 50 20)"  bbviDefaultHMMExpected output
 
 testSimSIR :: Test
 testSimSIR = TestCase $ do
@@ -182,10 +182,10 @@ testSmc2LDA = TestCase $ do
 
 testBbviLDA :: Test
 testBbviLDA = TestCase $ do
-  output <- sampleIOFixed (bbviLDA 200 20 50)
-  let bbviLDAExpected' = mapT3 (map (roundPrecision 8)) bbviLDAExpected
-      output'          = mapT3 (map (roundPrecision 8)) output
-  assertEqual "Testing (bbviLDA 200 20 50)"  bbviLDAExpected' output'
+  output <- sampleIOFixed (bbviDefaultLDA 200 20 50)
+  let bbviDefaultLDAExpected' = mapT3 (map (roundPrecision 8)) bbviDefaultLDAExpected
+      output'                 = mapT3 (map (roundPrecision 8)) output
+  assertEqual "Testing (bbviDefaultLDA 200 20 50)"  bbviDefaultLDAExpected' output'
 
 testSimRadon :: Test
 testSimRadon = TestCase $ do
@@ -220,45 +220,45 @@ testMhGMM = TestCase $ do
 testInference :: Test
 testInference = TestList
  [
---    testSimLinRegrOnce
---  , testLwLinRegrOnce
---  , testMhLinRegrOnce
---  , testSimLinRegr
---  , testLwLinRegr
---  , testMhLinRegr
---  , testSmcLinRegr
---  , testRmsmcLinRegr
---  , testPmmhLinRegr
---  , testSmc2LinRegr
-  testBbviLinRegr
---  , testSimLogRegrOnce
---  , testLwLogRegrOnce
---  , testMhLogRegrOnce
---  , testSimLogRegr
---  , testLwLogRegr
---  , testMhLogRegr
---  , testSimHMM_WR
---  , testLwHMM
---  , testMhHMM
---  , testSmcHMM
---  , testRmsmcHMM
---  , testPmmhHMM
---  , testSmc2HMM
- , testBbviHMM
---  , testSimSIR
---  , testMhSIR
---  , testSimLDA
---  , testMhLDA
---  , testSmcLDA
---  , testRmsmcLDA
---  , testPmmhLDA
---  , testSmc2LDA
+   testSimLinRegrOnce
+ , testLwLinRegrOnce
+ , testMhLinRegrOnce
+ , testSimLinRegr
+ , testLwLinRegr
+ , testMhLinRegr
+ , testSmcLinRegr
+ , testRmsmcLinRegr
+ , testPmmhLinRegr
+ , testSmc2LinRegr
+ , testBbviDefaultLinRegr
+ , testSimLogRegrOnce
+ , testLwLogRegrOnce
+ , testMhLogRegrOnce
+ , testSimLogRegr
+ , testLwLogRegr
+ , testMhLogRegr
+ , testSimHMM_WR
+ , testLwHMM
+ , testMhHMM
+ , testSmcHMM
+ , testRmsmcHMM
+ , testPmmhHMM
+ , testSmc2HMM
+ , testBbviDefaultHMM
+ , testSimSIR
+ , testMhSIR
+ , testSimLDA
+ , testMhLDA
+ , testSmcLDA
+ , testRmsmcLDA
+ , testPmmhLDA
+ , testSmc2LDA
  , testBbviLDA
---  , testSimRadon
---  , testMhRadon
---  , testMhPredRadon
---  , testMhSchool
---  , testSimGMM
---  , testMhGMM
+ , testSimRadon
+ , testMhRadon
+ , testMhPredRadon
+ , testMhSchool
+ , testSimGMM
+ , testMhGMM
  ]
 

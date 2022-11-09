@@ -6,7 +6,7 @@ function exists_in_list() {
     [[ "$LIST" =~ ($DELIMITER|^)$VALUE($DELIMITER|$) ]]
 }
 
-possible_arguments="simLinRegrOnce, lwLinRegrOnce, mhLinRegrOnce, simLinRegr, lwLinRegr, mhLinRegr, smcLinRegr, rmsmcLinRegr, pmmhLinRegr, smc2LinRegr, bbviLinRegr, simSIR, simSIRS, simSIRSV, mhSIR, simLogRegrOnce, lwLogRegrOnce, mhLogRegrOnce, simLogRegr, lwLogRegr, mhLogRegr, simHMM, lwHMM, mhHMM, smcHMM, rmsmcHMM, pmmhHMM, smc2HMM, bbviHMM, simLDA, mhLDA, smcLDA, rmsmcLDA, pmmhLDA, smc2LDA, bbviLDA, simRadon, mhRadon, mhPredRadon, mhSchool, simGMM, mhGMM"
+possible_arguments="simLinRegrOnce, lwLinRegrOnce, mhLinRegrOnce, simLinRegr, lwLinRegr, mhLinRegr, smcLinRegr, rmsmcLinRegr, pmmhLinRegr, smc2LinRegr, bbviDefaultLinRegr, simSIR, simSIRS, simSIRSV, mhSIR, simLogRegrOnce, lwLogRegrOnce, mhLogRegrOnce, simLogRegr, lwLogRegr, mhLogRegr, simHMM, lwHMM, mhHMM, smcHMM, rmsmcHMM, pmmhHMM, smc2HMM, bbviDefaultHMM, simLDA, mhLDA, smcLDA, rmsmcLDA, pmmhLDA, smc2LDA, bbviDefaultLDA, simRadon, mhRadon, mhPredRadon, mhSchool, simGMM, mhGMM"
 
 if [[ $# -eq 0 ]] || [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
   echo "Usage: ./`basename $0` <arg>"

@@ -61,6 +61,14 @@ linRegr xs = do
   -- Generate outputs ys
   mapM (\x -> normal (m * x + c) σ #y) xs
 
+linRegrGuide :: Observables env '["m", "c", "σ"] Double => Model env rs ()
+linRegrGuide = do
+  -- Draw model parameters from prior
+  m <- normal 0 3 #m
+  c <- normal 0 5 #c
+  σ <- uniform 1 3 #σ
+  pure ()
+
 -- | Simulate from linear regression
 simLinRegr :: Int -> Sampler [(Double, Double)]
 simLinRegr n_datapoints = do
@@ -154,9 +162,9 @@ smc2LinRegr n_outer_particles n_mhsteps n_inner_particles  n_datapoints = do
       cs  = concatMap (get #c) env_outs
   pure (mus, cs)
 
--- | BBVI over linear regression
-bbviLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
-bbviLinRegr t_steps l_samples n_datapoints = do
+-- | BBVI over linear regression, using the model to generate a default guide
+bbviDefaultLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+bbviDefaultLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- BBVI.bbvi t_steps l_samples (linRegr xs) env_in (linRegr xs)
@@ -164,9 +172,9 @@ bbviLinRegr t_steps l_samples n_datapoints = do
       c_dist = toList . fromJust $ dlookup (Key ("c", 0) :: Key Normal) traceQ
   pure (m_dist, c_dist)
 
--- | BBVI over linear regression
-bbviCombinedLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
-bbviCombinedLinRegr t_steps l_samples n_datapoints = do
+-- | BBVI over linear regression, using the model to generate a default guide
+bbviDefaultCombinedLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+bbviDefaultCombinedLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- BBVICombined.bbvi t_steps l_samples (linRegr xs) env_in

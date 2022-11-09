@@ -264,8 +264,8 @@ smc2HMM n_outer_particles n_mhsteps n_inner_particles  hmm_length = do
       obs_ps      = concatMap (get #obs_p) env_outs
   pure (trans_ps, obs_ps)
 
--- | BBVI inference over a HMM
-bbviHMM
+-- | BBVI inference over a HMM, using the model to generate a default guide
+bbviDefaultHMM
   -- | number of optimisation steps
   :: Int
   -- | number of samples to estimate gradients over
@@ -274,7 +274,7 @@ bbviHMM
   -> Int
   -- | (transition beta parameters, observation beta parameters)
   -> Sampler ([Double], [Double])
-bbviHMM t_steps l_samples hmm_length = do
+bbviDefaultHMM t_steps l_samples hmm_length = do
   ys <- simHMM hmm_length
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
@@ -283,8 +283,8 @@ bbviHMM t_steps l_samples hmm_length = do
       obs_dist   = toList . fromJust $ dlookup (Key ("obs_p", 0)   :: Key Beta) traceQ
   pure (trans_dist, obs_dist)
 
--- | BBVI inference over a HMM
-bbviCombinedHMM
+-- | BBVI inference over a HMM, using the model to generate a default guide
+bbviDefaultCombinedHMM
   -- | number of optimisation steps
   :: Int
   -- | number of samples to estimate gradients over
@@ -293,7 +293,7 @@ bbviCombinedHMM
   -> Int
   -- | (transition beta parameters, observation beta parameters)
   -> Sampler ([Double], [Double])
-bbviCombinedHMM t_steps l_samples hmm_length = do
+bbviDefaultCombinedHMM t_steps l_samples hmm_length = do
   ys <- simHMM hmm_length
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 

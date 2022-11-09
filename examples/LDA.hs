@@ -233,9 +233,9 @@ smc2LDA n_outer_particles n_mhsteps n_inner_particles n_words = do
       φs         = get #φ env_pred
   return (map Vec.toList θs, map Vec.toList φs)
 
--- | BBVI inference on topic model
-bbviLDA :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double])
-bbviLDA t_steps l_samples n_words = do
+-- | BBVI inference on topic model, using the model to generate a default guide
+bbviDefaultLDA :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double])
+bbviDefaultLDA t_steps l_samples n_words = do
 
   let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
@@ -247,9 +247,9 @@ bbviLDA t_steps l_samples n_words = do
       φ1_dist    = toList . fromJust $ dlookup (Key ("φ", 1) :: Key (Dirichlet (FromGHC 4))) traceQ
   return (θ_dist, φ0_dist, φ1_dist)
 
--- | BBVI inference on topic model
-bbviCombinedLDA :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double])
-bbviCombinedLDA t_steps l_samples n_words = do
+-- | BBVI inference on topic model, using the model to generate a default guide
+bbviDefaultCombinedLDA :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double])
+bbviDefaultCombinedLDA t_steps l_samples n_words = do
 
   let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil

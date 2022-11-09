@@ -55,7 +55,7 @@ def main():
     axs1.set_ylabel("frequency")
     axs1.hist(cs, bins=25)
     axs1.set_title('Linear regression - Metropolis Hastings')
-  if arg in ["bbviLinRegr"]:
+  if arg in ["bbviDefaultLinRegr"]:
     mu_mean = data[0][0]
     mu_std  = data[0][1]
     c_mean  = data[1][0]
@@ -236,7 +236,7 @@ def main():
     axs2.hist(obs_ps_unique, bins=50)
     axs2.set_title('HMM - Metropolis Hastings Posterior (Obs Idx)')
     plt.show()
-  if arg in ["bbviHMM"]:
+  if arg in ["bbviDefaultHMM"]:
     trans_alpha = data[0][0]
     trans_beta  = data[0][1]
     obs_alpha   = data[1][0]
@@ -275,7 +275,7 @@ def main():
     _, ax1 = plt.subplots(nrows=1)
     ax1.bar(ws, topic_1s, 0.8)
     plt.title('Topic-Word Distribution 1')
-  if arg in ["bbviLDA"]:
+  if arg in ["bbviDefaultLDA"]:
     ws       = ['DNA', 'evolution', 'parsing', 'phonology']
     topic_ps = data[0]
     topic_0s = data[1]
