@@ -80,17 +80,18 @@ bench_LR args = do
     --           , simLinRegr) row_header
     -- benchRow ("LR-[ ]-LW-" ++ show fixed_lw_steps
     --           , lwLinRegr fixed_lw_steps) row_header
-    benchRow ("LR-[ ]-MH-" ++ show fixed_mh_steps
-              , mhLinRegr fixed_mh_steps) row_header
-    benchRow ("LR-[ ]-SMC-" ++ show fixed_smc_particles
-              , smcLinRegr fixed_smc_particles) row_header
-    benchRow ("LR-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
-              , rmsmcLinRegr fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
-    benchRow ("LR-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
-              , pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
-    benchRow ("LR-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
-              , bbviLinRegr fixed_bbvi_steps fixed_bbvi_samples) row_header
-
+    -- benchRow ("LR-[ ]-MH-" ++ show fixed_mh_steps
+    --           , mhLinRegr fixed_mh_steps) row_header
+    -- benchRow ("LR-[ ]-SMC-" ++ show fixed_smc_particles
+    --           , smcLinRegr fixed_smc_particles) row_header
+    -- benchRow ("LR-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
+    --           , rmsmcLinRegr fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
+    -- benchRow ("LR-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
+    --           , pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
+    -- benchRow ("LR-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
+    --           , bbviLinRegr fixed_bbvi_steps fixed_bbvi_samples) row_header
+    benchRow ("LR-[ ]-BBVICombined-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
+              , bbviCombinedLinRegr fixed_bbvi_steps fixed_bbvi_samples) row_header
 bench_HMM :: [Int] -> IO ()
 bench_HMM args = do
     let row_header = ("Dataset size", args)
@@ -99,16 +100,18 @@ bench_HMM args = do
     --           , simHMM) row_header
     -- benchRow ("HMM-[ ]-LW-" ++ show fixed_lw_steps
     --           , lwHMM fixed_lw_steps) row_header
-    benchRow ("HMM-[ ]-MH-" ++ show fixed_mh_steps
-              , mhHMM fixed_mh_steps) row_header
-    benchRow ("HMM-[ ]-SMC-" ++ show fixed_mh_steps
-              , smcHMM fixed_smc_particles) row_header
-    benchRow ("HMM-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
-              , rmsmcHMM fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
-    benchRow ("HMM-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
-              , pmmhHMM fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
-    benchRow ("HMM-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
-              , bbviHMM fixed_bbvi_steps fixed_bbvi_samples) row_header
+    -- benchRow ("HMM-[ ]-MH-" ++ show fixed_mh_steps
+    --           , mhHMM fixed_mh_steps) row_header
+    -- benchRow ("HMM-[ ]-SMC-" ++ show fixed_mh_steps
+    --           , smcHMM fixed_smc_particles) row_header
+    -- benchRow ("HMM-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
+    --           , rmsmcHMM fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
+    -- benchRow ("HMM-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
+    --           , pmmhHMM fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
+    -- benchRow ("HMM-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
+    --           , bbviHMM fixed_bbvi_steps fixed_bbvi_samples) row_header
+    benchRow ("HMM-[ ]-BBVICombined-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
+              , bbviCombinedHMM fixed_bbvi_steps fixed_bbvi_samples) row_header
 
 bench_LDA :: [Int] -> IO ()
 bench_LDA args = do
@@ -118,16 +121,18 @@ bench_LDA args = do
     --           , simLDA) row_header
     -- benchRow ("LDA-[ ]-LW-" ++ show fixed_lw_steps
     --           , lwLDA fixed_lw_steps) row_header
-    benchRow ("LDA-[ ]-MH-" ++ show fixed_mh_steps
-              , mhLDA fixed_mh_steps) row_header
-    benchRow ("LDA-[ ]-SMC-" ++ show fixed_mh_steps
-              , smcLDA fixed_smc_particles) row_header
-    benchRow ("LDA-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
-              , rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
-    benchRow ("LDA-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
-              , pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
-    benchRow ("LDA-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
-              , bbviLDA fixed_bbvi_steps fixed_bbvi_samples) row_header
+    -- benchRow ("LDA-[ ]-MH-" ++ show fixed_mh_steps
+    --           , mhLDA fixed_mh_steps) row_header
+    -- benchRow ("LDA-[ ]-SMC-" ++ show fixed_mh_steps
+    --           , smcLDA fixed_smc_particles) row_header
+    -- benchRow ("LDA-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
+    --           , rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
+    -- benchRow ("LDA-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
+    --           , pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
+    -- benchRow ("LDA-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
+    --           , bbviLDA fixed_bbvi_steps fixed_bbvi_samples) row_header
+    benchRow ("LDA-[ ]-BBVICombined-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
+              , bbviCombinedLDA fixed_bbvi_steps fixed_bbvi_samples) row_header
 
 {- | Varying over inference parameters
 -}
@@ -221,6 +226,17 @@ bench_BBVI args = do
     benchRow ("BBVI-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LDA-" ++ show fixed_hmm_datasize_inf
               , flip (bbviLDA fixed_bbvi_samples_inf) fixed_lda_datasize_inf) row_header
 
+bench_BBVICombined :: [Int] -> IO ()
+bench_BBVICombined args = do
+    let row_header = ("Number of BBVI steps", args)
+    writeRow fixed_output_file row_header
+    benchRow ("BBVICombined-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LR-" ++ show fixed_lr_datasize_inf
+              , flip (bbviCombinedLinRegr fixed_bbvi_samples_inf) fixed_lr_datasize_inf) row_header
+    benchRow ("BBVICombined-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-HMM-" ++ show fixed_hmm_datasize_inf
+              , flip (bbviCombinedHMM fixed_bbvi_samples_inf) fixed_hmm_datasize_inf) row_header
+    benchRow ("BBVICombined-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LDA-" ++ show fixed_hmm_datasize_inf
+              , flip (bbviCombinedLDA fixed_bbvi_samples_inf) fixed_lda_datasize_inf) row_header
+
 runBenchmarks :: IO ()
 runBenchmarks = do
   -- | Read input benchmark parameters
@@ -238,11 +254,12 @@ runBenchmarks = do
           bench_LDA lda
           -- bench_SIM sim
           -- bench_LW lw
-          bench_MH mh
-          bench_SMC smc
-          bench_RMSMC rmsmc
-          bench_PMMH pmmh
-          bench_BBVI bbvi
+          -- bench_MH mh
+          -- bench_SMC smc
+          -- bench_RMSMC rmsmc
+          -- bench_PMMH pmmh
+          -- bench_BBVI bbvi
+          bench_BBVICombined bbvi
         _   -> error "bad input file"
 
 main :: IO ()

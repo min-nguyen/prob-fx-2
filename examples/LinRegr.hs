@@ -21,6 +21,7 @@ import Inference.RMSMC as RMSMC ( rmsmc )
 import Inference.PMMH as PMMH ( pmmh )
 import Inference.SMC2 as SMC2 ( smc2 )
 import Inference.BBVI as BBVI
+import Inference.BBVICombined as BBVICombined
 import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
 import Trace
 import Control.Monad ( replicateM )
@@ -163,6 +164,15 @@ bbviLinRegr t_steps l_samples n_datapoints = do
       c_dist = toList . fromJust $ dlookup (Key ("c", 0) :: Key Normal) traceQ
   pure (m_dist, c_dist)
 
+-- | BBVI over linear regression
+bbviCombinedLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+bbviCombinedLinRegr t_steps l_samples n_datapoints = do
+  let xs            = [1 .. fromIntegral n_datapoints]
+      env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+  traceQ <- BBVICombined.bbvi t_steps l_samples (linRegr xs) env_in
+  let m_dist = toList . fromJust $ dlookup (Key ("m", 0) :: Key Normal) traceQ
+      c_dist = toList . fromJust $ dlookup (Key ("c", 0) :: Key Normal) traceQ
+  pure (m_dist, c_dist)
 
 {- | Linear regression model on individual data points at a time.
 -}

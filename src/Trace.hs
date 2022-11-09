@@ -47,7 +47,7 @@ module Trace (
 import           Data.Map (Map)
 import           Data.Maybe ( fromJust, fromMaybe )
 import           Data.Proxy ( Proxy(..) )
-import           Effects.Dist ( Tag, Addr, Observe, Sample(..), Score(..), pattern ObsPrj, pattern SampPrj )
+import           Effects.Dist ( Tag, Addr, Observe, Sample(..), pattern ObsPrj, pattern SampPrj )
 import           Env ( enil, varToStr, UniqueVar, Var(..), Env(ECons), Assign((:=)) )
 import           GHC.TypeLits ( KnownSymbol )
 import           LogP ( LogP )
@@ -100,6 +100,18 @@ class (DiffDistribution d, d ~ d') => DiffDistR d d' where
 
 instance (DiffDistribution d) => DiffDistR d d where
 
+instance {-# OVERLAPPING #-} Show [DTrace] where
+  show (x:xs) = show x ++ "\n" ++ show xs
+  show []     = ""
+
+instance Show DTrace where
+  show :: DTrace -> String
+  show Leaf = ""
+  show (Node (Key var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ") "
+                                 ++ show l
+                                 ++ show r
+    where showNewline Leaf  = ""
+          showNewline node  = "\n" ++ show node
 
 {- | The type of gradient traces. -}
 type GTrace = CTrace GradR
@@ -108,12 +120,8 @@ class (DiffDistribution d, v ~ Vec (Arity d) Double) => GradR d v where
 
 instance (DiffDistribution d, v ~ Vec (Arity d) Double) => GradR d v where
 
-instance {-# OVERLAPPING #-} Show [DTrace] where
-  show (x:xs) = show x ++ "\n" ++ show xs
-  show []     = ""
-
-instance Show DTrace where
-  show :: DTrace -> String
+instance Show GTrace where
+  show :: GTrace -> String
   show Leaf = ""
   show (Node (Key var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ") "
                                  ++ show l

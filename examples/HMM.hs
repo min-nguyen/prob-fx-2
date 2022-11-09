@@ -27,6 +27,7 @@ import Inference.RMSMC as RMSMC ( rmsmc )
 import Inference.PMMH as PMMH ( pmmh )
 import Inference.SMC2 as SMC2 ( smc2 )
 import Inference.BBVI as BBVI
+import Inference.BBVICombined as BBVICombined
 import Model ( Model (..), bernoulli', binomial, uniform, beta )
 import Prog ( Member, LastMember )
 import Sampler ( Sampler, liftIO )
@@ -278,6 +279,25 @@ bbviHMM t_steps l_samples hmm_length = do
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
   traceQ <- BBVI.bbvi t_steps l_samples (hmm hmm_length 0) env_in
+  let trans_dist = toList . fromJust $ dlookup (Key ("trans_p", 0) :: Key Beta) traceQ
+      obs_dist   = toList . fromJust $ dlookup (Key ("obs_p", 0)   :: Key Beta) traceQ
+  pure (trans_dist, obs_dist)
+
+-- | BBVI inference over a HMM
+bbviCombinedHMM
+  -- | number of optimisation steps
+  :: Int
+  -- | number of samples to estimate gradients over
+  -> Int
+  -- | number of HMM nodes
+  -> Int
+  -- | (transition beta parameters, observation beta parameters)
+  -> Sampler ([Double], [Double])
+bbviCombinedHMM t_steps l_samples hmm_length = do
+  ys <- simHMM hmm_length
+  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
+
+  traceQ <- BBVICombined.bbvi t_steps l_samples (hmm hmm_length 0) env_in
   let trans_dist = toList . fromJust $ dlookup (Key ("trans_p", 0) :: Key Beta) traceQ
       obs_dist   = toList . fromJust $ dlookup (Key ("obs_p", 0)   :: Key Beta) traceQ
   pure (trans_dist, obs_dist)

@@ -15,6 +15,8 @@ module Util (
   , roundPrecision
   , uncurry3
   , fst3
+  , Util.unzip3
+  , unzip4
   , mapT2
   , mapT3
   , filterByKey
@@ -24,6 +26,7 @@ module Util (
 
 import qualified Data.Map as Map
 import           Data.Foldable
+import           Data.Bifunctor (Bifunctor(first))
 
 {- | List utility functions.
 -}
@@ -69,6 +72,12 @@ mapT2 f (x, y) = (f x, f y)
 mapT3 :: (a -> b) -> (a, a, a) -> (b, b, b)
 mapT3 f (x, y, z) = (f x, f y, f z)
 
+unzip3 :: [((a, b), c)] -> (([a], [b]), [c])
+unzip3 = first unzip . unzip
+
+unzip4 :: [(((a, b), c), d)] -> ((([a], [b]), [c]), [d])
+unzip4 = first (first unzip . unzip) . unzip
+
 {- Map utility functions.
 -}
 filterByKey ::  Ord k => (k -> Bool) -> Map.Map k a -> Map.Map k a
@@ -93,7 +102,9 @@ mean x = fst $ foldl' addElement (0,0) x
       addElement (!m,!n) x = (m + (x-m)/(n+1), n+1)
 
 covariance :: [Double] -> [Double] -> Double
-covariance xs ys = sum (zipWith (*) (map f1 xs) (map f2 ys)) / (n-1)
+covariance xs ys
+  | n <= 1    = error "Util.covariance: List length must be > 1 "
+  | otherwise = sum (zipWith (*) (map f1 xs) (map f2 ys)) / (n-1)
   where
     n = fromIntegral $ length xs
     m1 = mean xs
@@ -102,10 +113,13 @@ covariance xs ys = sum (zipWith (*) (map f1 xs) (map f2 ys)) / (n-1)
     f2 x = x - m2
 
 variance :: [Double] -> Double
-variance xs = var' 0 0 0 xs / fromIntegral (length xs - 1)
+variance xs
+  | n <= 1    = error "Util.variance: List length must be > 1 "
+  | otherwise = var' 0 0 0 xs / (n - 1)
   where
+    n = fromIntegral $ length xs
     var' _ _ s [] = s
     var' m n s (x:xs) = var' nm (n + 1) (s + delta * (x - nm)) xs
       where
         delta = x - m
-        nm = m + delta/fromIntegral (n + 1)
+        nm = m + delta/(n + 1)

@@ -8,6 +8,7 @@
 module LogP (
     LogP(..)
   , expLogP
+  , fromLogP
   , logMeanExp
   , normaliseLogPs
   ) where

@@ -54,13 +54,13 @@ parseArgs cmd = case cmd of
   "simSIRSV"    -> sampleIOFixed (simSIRSV 100) >>= printThenWrite
   "mhSIR"       -> sampleIOFixed (mhSIR 1000 100) >>= printThenWrite
 
-  "simLDA"       -> sampleIOFixed (simLDA 100) >>= printThenWrite
-  "mhLDA"    -> sampleIOFixed (mhLDA 500 100) >>= printThenWrite
-  "smcLDA"   -> sampleIOFixed (smcLDA 100 100) >>= printThenWrite
-  "rmsmcLDA" -> sampleIOFixed (rmsmcLDA 10 30 100) >>= printThenWrite
-  "pmmhLDA"  -> sampleIOFixed (pmmhLDA 100 20 100) >>= printThenWrite
-  "smc2LDA"  -> sampleIOFixed (smc2LDA 20 20 20 50) >>= printThenWrite
-  "bbviLDA"      -> sampleIOFixed (bbviLDA 200 20 50) >>= printThenWrite
+  "simLDA"      -> sampleIOFixed (simLDA 100) >>= printThenWrite
+  "mhLDA"       -> sampleIOFixed (mhLDA 500 100) >>= printThenWrite
+  "smcLDA"      -> sampleIOFixed (smcLDA 100 100) >>= printThenWrite
+  "rmsmcLDA"    -> sampleIOFixed (rmsmcLDA 10 30 100) >>= printThenWrite
+  "pmmhLDA"     -> sampleIOFixed (pmmhLDA 100 20 100) >>= printThenWrite
+  "smc2LDA"     -> sampleIOFixed (smc2LDA 20 20 20 50) >>= printThenWrite
+  "bbviLDA"     -> sampleIOFixed (bbviLDA 200 20 50) >>= printThenWrite
 
   "simRadon"    -> sampleIOFixed simRadon >>= printThenWrite
   "mhRadon"     -> sampleIOFixed (mhRadon 1000) >>= printThenWrite

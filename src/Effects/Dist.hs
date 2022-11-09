@@ -22,13 +22,16 @@ module Effects.Dist (
   , Sample(..)
   , pattern SampPrj
   , pattern SampDis
-  -- ** Score effect
-  , Score(..)
-  , pattern ScorePrj
   -- ** Observe effect
   , Observe(..)
   , pattern ObsPrj
   , pattern ObsDis
+  -- ** Learn effect
+  , Learn(..)
+  , pattern LearnPrj
+  -- ** Learn effect
+  , Score(..)
+  , pattern ScorePrj
   ) where
 
 import           Data.Maybe ( fromMaybe )
@@ -74,18 +77,6 @@ pattern SampPrj d α <- (prj -> Just (Sample d α))
 pattern SampDis :: (Show x) =>  (Distribution d, x ~ Support d) => d -> Addr -> EffectSum (Sample : es) x
 pattern SampDis d α <- (discharge -> Right (Sample d α))
 
--- | The effect @Score@ for distributions with support for gradient log-pdfs
-data Score a where
-  Score  :: (DiffDistribution d, a ~ Support d)
-         => d              -- ^ original distribution
-         -> d              -- ^ proposal distribution
-         -> Addr           -- ^ address of operation
-         -> Score a        -- ^ observed point
-
--- | For projecting and then successfully pattern matching against @Score@
-pattern ScorePrj :: (Member Score es) => (DiffDistribution d, x ~ Support d) => d -> d -> Addr -> EffectSum es x
-pattern ScorePrj d q α <- (prj -> Just (Score d q α))
-
 -- | The effect @Observe@ for conditioning against observed values
 data Observe a where
   Observe :: (Distribution d, a ~ Support d)
@@ -101,6 +92,29 @@ pattern ObsPrj d y α <- (prj -> Just (Observe d y α))
 -- | For discharging and then successfully pattern matching against @Observe@
 pattern ObsDis :: () => (Distribution d, x ~ Support d) => d -> x -> Addr -> EffectSum (Observe : es) x
 pattern ObsDis d y α <- (discharge -> Right (Observe d y α))
+
+-- | The effect @Learn@ for distributions with support for gradient log-pdfs
+data Learn a where
+  Learn  :: (DiffDistribution d, a ~ Support d)
+         => d              -- ^ proposal distribution
+         -> Addr           -- ^ address of operation
+         -> Learn a        -- ^ observed point
+
+-- | For projecting and then successfully pattern matching against @Learn@
+pattern LearnPrj :: (Member Learn es) => (DiffDistribution d, x ~ Support d) => d -> Addr -> EffectSum es x
+pattern LearnPrj q α <- (prj -> Just (Learn q α))
+
+-- | The effect @Score@ is like @Learn@ but retains the original distribution to be optimised
+data Score a where
+  Score  :: (DiffDistribution d, a ~ Support d)
+         => d              -- ^ original distribution
+         -> d              -- ^ proposal distribution
+         -> Addr           -- ^ address of operation
+         -> Score a        -- ^ observed point
+
+-- | For projecting and then successfully pattern matching against @Score@
+pattern ScorePrj :: (Member Score es) => (DiffDistribution d, x ~ Support d) => d -> d -> Addr -> EffectSum es x
+pattern ScorePrj d q α <- (prj -> Just (Score d q α))
 
 -- | Handle the @Dist@ effect to a @Sample@ or @Observe@ effect and assign an address
 handleDist :: Prog (Dist : es) a -> Prog (Observe : Sample : es) a
