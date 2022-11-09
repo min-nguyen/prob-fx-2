@@ -31,8 +31,9 @@ module Env
   , Env(..)
   , enil
   , (<:>)
-  , emptyEnv
-  , reverseEnv
+  , empty
+  , Env.reverse
+  , union
   , Observable(..)
   , Observables(..)
   , UniqueVar
@@ -86,11 +87,6 @@ data Env (env :: [Assign Symbol *]) where
         -> Env env
         -> Env (x := a : env)
 
-instance Semigroup (Env env) where
-  (ECons [] env) <> (ECons xs' env') = ECons (xs') (env' <> env')
-  (ECons xs env) <> (ECons xs' env') = ECons (xs) (env' <> env')
-  ENil <> ENil = ENil
-
 -- | Assign or associate a variable @x@ with a value of type @a@
 data Assign x a = x := a
 
@@ -99,14 +95,20 @@ enil :: Env '[]
 enil = ENil
 
 -- | Construct the empty version of a given environment
-emptyEnv :: forall env. Env env -> Env env
-emptyEnv (ECons _ env) = ECons [] (emptyEnv env)
-emptyEnv ENil = ENil
+empty :: forall env. Env env -> Env env
+empty (ECons _ env) = ECons [] (empty env)
+empty ENil = ENil
 
 -- | Reverse the traces
-reverseEnv :: Env env -> Env env
-reverseEnv (ECons xs env) = ECons (reverse xs) (reverseEnv env)
-reverseEnv ENil = ENil
+reverse :: Env env -> Env env
+reverse (ECons xs env) = ECons (Prelude.reverse xs) (Env.reverse env)
+reverse ENil = ENil
+
+-- | Union two environments, preferring traces in the left that are non-empty
+union :: Env env -> Env env -> Env env
+union (ECons [] env) (ECons xs' env') = ECons xs' (env `union` env')
+union (ECons xs env) (ECons xs' env') = ECons xs  (env `union` env')
+union ENil ENil = ENil
 
 infixr 5 <:>
 -- | Prepend a variable assignment to a model environment

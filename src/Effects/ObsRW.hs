@@ -16,7 +16,7 @@ module Effects.ObsRW (
   , handleObsRW) where
 
 import Prog ( call, discharge, Member, Prog(..) )
-import Env ( Env, Var, Observable(..), emptyEnv, reverseEnv )
+import Env ( Env, Var, Observable(..), empty, reverse )
 import Util ( safeHead, safeTail )
 
 -- | The 'observable read-write' effect for reading from and writing to an environment @env@
@@ -52,9 +52,9 @@ handleObsRW ::
   -> Prog (ObsRW env ': es) a
   -- | (final result, output model environment)
   -> Prog es (a, Env env)
-handleObsRW env_in = loop env_in (emptyEnv env_in) where
+handleObsRW env_in = loop env_in (Env.empty env_in) where
   loop :: Env env -> Env env -> Prog (ObsRW env ': es) a -> Prog es (a, Env env)
-  loop env_in env_out (Val x) = return (x, reverseEnv env_out)
+  loop env_in env_out (Val x) = return (x, Env.reverse env_out)
   loop env_in env_out (Op op k) = case discharge op of
     Right (OAsk x) ->
       let vs       = get x env_in
