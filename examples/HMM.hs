@@ -278,7 +278,7 @@ bbviHMM t_steps l_samples hmm_length = do
   ys <- simHMM hmm_length
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
-  traceQ <- BBVI.bbvi t_steps l_samples (hmm hmm_length 0) env_in
+  traceQ <- BBVI.bbvi t_steps l_samples (hmm hmm_length 0) env_in (hmm hmm_length 0)
   let trans_dist = toList . fromJust $ dlookup (Key ("trans_p", 0) :: Key Beta) traceQ
       obs_dist   = toList . fromJust $ dlookup (Key ("obs_p", 0)   :: Key Beta) traceQ
   pure (trans_dist, obs_dist)

@@ -240,7 +240,7 @@ bbviLDA t_steps l_samples n_words = do
   let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
 
-  traceQ <- BBVI.bbvi t_steps l_samples (topicModel vocab n_topics n_words) env_in
+  traceQ <- BBVI.bbvi t_steps l_samples (topicModel vocab n_topics n_words) env_in (topicModel vocab n_topics n_words)
   -- Draw the most recent sampled parameters
   let θ_dist     = toList . fromJust $ dlookup (Key ("θ", 0) :: Key (Dirichlet (FromGHC 2))) traceQ
       φ0_dist    = toList . fromJust $ dlookup (Key ("φ", 0) :: Key (Dirichlet (FromGHC 4))) traceQ

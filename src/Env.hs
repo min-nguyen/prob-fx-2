@@ -11,7 +11,7 @@
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+-- {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 {- | This implements the model environments that users must provide upon running a model;
      such environments assign traces of values to the "observable variables" (random
@@ -86,6 +86,11 @@ data Env (env :: [Assign Symbol *]) where
         -> Env env
         -> Env (x := a : env)
 
+instance Semigroup (Env env) where
+  (ECons [] env) <> (ECons xs' env') = ECons (xs') (env' <> env')
+  (ECons xs env) <> (ECons xs' env') = ECons (xs) (env' <> env')
+  ENil <> ENil = ENil
+
 -- | Assign or associate a variable @x@ with a value of type @a@
 data Assign x a = x := a
 
@@ -94,7 +99,7 @@ enil :: Env '[]
 enil = ENil
 
 -- | Construct the empty version of a given environment
-emptyEnv :: Env env -> Env env
+emptyEnv :: forall env. Env env -> Env env
 emptyEnv (ECons _ env) = ECons [] (emptyEnv env)
 emptyEnv ENil = ENil
 

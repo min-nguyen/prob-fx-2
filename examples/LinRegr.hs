@@ -159,7 +159,7 @@ bbviLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
 bbviLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  traceQ <- BBVI.bbvi t_steps l_samples (linRegr xs) env_in
+  traceQ <- BBVI.bbvi t_steps l_samples (linRegr xs) env_in (linRegr xs)
   let m_dist = toList . fromJust $ dlookup (Key ("m", 0) :: Key Normal) traceQ
       c_dist = toList . fromJust $ dlookup (Key ("c", 0) :: Key Normal) traceQ
   pure (m_dist, c_dist)
