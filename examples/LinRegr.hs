@@ -23,7 +23,8 @@ import Inference.SMC2 as SMC2 ( smc2 )
 import Inference.BBVI as BBVI
 import Inference.BBVICombined as BBVICombined
 import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
-import Trace
+import qualified Trace
+import           Trace (Key(..))
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
@@ -168,8 +169,8 @@ bbviDefaultLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- BBVI.bbvi t_steps l_samples (linRegr xs) env_in (linRegr xs)
-  let m_dist = toList . fromJust $ dlookup (Key ("m", 0) :: Key Normal) traceQ
-      c_dist = toList . fromJust $ dlookup (Key ("c", 0) :: Key Normal) traceQ
+  let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
+      c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
   pure (m_dist, c_dist)
 
 -- | BBVI over linear regression, using the model to generate a default guide
@@ -178,8 +179,8 @@ bbviDefaultCombinedLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- BBVICombined.bbvi t_steps l_samples (linRegr xs) env_in
-  let m_dist = toList . fromJust $ dlookup (Key ("m", 0) :: Key Normal) traceQ
-      c_dist = toList . fromJust $ dlookup (Key ("c", 0) :: Key Normal) traceQ
+  let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
+      c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
   pure (m_dist, c_dist)
 
 {- | Linear regression model on individual data points at a time.
@@ -234,6 +235,7 @@ mhLinRegrOnce n_mhsteps n_datapoints = do
   let mus = concatMap (get #m) mhTrace
       cs  = concatMap (get #c) mhTrace
   pure (mus, cs)
+
 
 {- | Executing linear regression model using monad-bayes.
 mbayesLinRegr :: (Bayes.MonadInfer m, Observables env '["y", "m", "c", "σ"] Double) =>

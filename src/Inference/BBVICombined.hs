@@ -28,7 +28,8 @@ import Model
 import PrimDist
 import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )
 import Sampler
-import Trace
+import           Trace (GTrace, DTrace, Key(..), Some(..))
+import qualified Trace
 import Debug.Trace
 import qualified Inference.SIM as SIM
 import qualified Vec
@@ -93,13 +94,13 @@ runBBVI proposals =
      the proposals distributions Q as priors P.
 -}
 installScore :: forall es a. Member Sample es => Prog es a -> Prog (Score : es) (a, DTrace)
-installScore = loop dempty where
+installScore = loop Trace.empty where
   loop :: DTrace -> Prog es a -> Prog (Score : es) (a, DTrace)
   loop proposals  (Val x)   = pure (x, proposals)
   loop proposals  (Op op k) = case prj op of
     Just (Sample d α) -> case isDifferentiable d of
       Nothing      -> Op (weaken op) (loop proposals . k)
-      Just Witness -> do let proposals' = dinsert (Key α) d proposals
+      Just Witness -> do let proposals' = Trace.insert (Key α) d proposals
                          x <- call (Score d d α)
                          (loop proposals' . k) x
     Nothing -> Op (weaken op) (loop proposals . k)
@@ -112,7 +113,7 @@ updateScore proposals = loop where
   loop (Val x)   = pure x
   loop (Op op k) = case prj op of
     Just (Score d _ α) -> do
-      let q = fromMaybe d (dlookup (Key α) proposals)
+      let q = fromMaybe d (Trace.lookup (Key α) proposals)
       x <- call (Score d q α)
       (loop . k) x
     Nothing -> Op op (loop . k)
@@ -123,13 +124,13 @@ updateScore proposals = loop where
         δlog(Q(X; λ))
 -}
 handleScore :: forall es a. Member Sample es => Prog (Score : es) a -> Prog es (a, GTrace)
-handleScore = loop dempty where
+handleScore = loop Trace.empty where
   loop :: GTrace -> Prog (Score : es) a -> Prog es (a, GTrace)
   loop grads (Val x)   = pure (x, grads)
   loop grads (Op op k) = case discharge op of
     Right (Score _ (q :: d) α) -> do
          x <- call (Sample q α)
-         let grads' = ginsert @d (Key α) (gradLogProb q x) grads
+         let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
          (loop grads' . k) x
     Left op' -> Op op' (loop grads . k)
 
@@ -152,19 +153,19 @@ traceLogProbs = loop 0 where
         E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
 -}
 estELBOs :: Int -> [LogP] -> [GTrace] -> GTrace
-estELBOs l_samples logWs traceGs = foldr f dempty vars where
+estELBOs l_samples logWs traceGs = foldr f Trace.empty vars where
   {- | Store the ELBO gradient estimate E[δelbo(v)] for a given variable v. -}
   f :: Some DiffDistribution Key -> GTrace -> GTrace
-  f (Some kx) = ginsert kx (estELBO kx traceGs traceFs)
+  f (Some kx) = Trace.insert kx (estELBO kx traceGs traceFs)
   {- | Store the ELBO gradient estimate E[δelbo(v)] for a given variable v. -}
   vars :: [Some DiffDistribution Key]
-  vars = (gkeys . head) traceGs
+  vars = (Trace.keys . head) traceGs
   {- | Uniformly scale each iteration's gradient trace G^l by its corresponding (normalised) importance weight W_norm^l.
           F^{1:L} = W_norm^{1:L} * G^{1:L}
        where the normalised importance weight is defined via:
           log(W_norm^l) = log(W^l) + max(log(W^{1:L})) -}
   traceFs :: [GTrace]
-  traceFs = zipWith (\logW -> gmap (expLogP logW *|)) (normaliseLogPs logWs) traceGs
+  traceFs = zipWith (\logW -> Trace.map (\_ δ -> expLogP logW *| δ)) (normaliseLogPs logWs) traceGs
   {- | Compute the ELBO gradient estimate for a random variable v's associated parameters:
           E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
        where the baseline is:
@@ -175,8 +176,8 @@ estELBOs l_samples logWs traceGs = foldr f dempty vars where
     -> [GTrace]  -- ^   F^{1:L}
     -> Vec (Arity d) Double         -- ^   E[δelbo(v)]
   estELBO v traceGs traceFs =
-    let traceGs_v  = map (fromJust . glookup v) traceGs                                 -- G_v^{1:L}
-        traceFs_v  = map (fromJust . glookup v) traceFs                                 -- F_v^{1:L}
+    let traceGs_v  = map (fromJust . Trace.lookup v) traceGs                                 -- G_v^{1:L}
+        traceFs_v  = map (fromJust . Trace.lookup v) traceFs                                 -- F_v^{1:L}
         baseline_v = Vec.covar traceFs_v traceGs_v |/| Vec.var traceGs_v  -- b_v
         δelbos_v   = zipWith (\g_l f_l -> f_l |-| (baseline_v |*| g_l)) traceGs_v traceFs_v
     in  ((*|) (1/fromIntegral l_samples) . foldr (|+|) (Vec.zero (Proxy @(Arity d))) ) δelbos_v
@@ -190,4 +191,4 @@ optimizeParams
   -> DTrace  -- ^ optimisable distributions Q(λ_t)
   -> GTrace  -- ^ elbo gradient estimates   E[δelbo]
   -> DTrace  -- ^ updated distributions     Q(λ_{t+1})
-optimizeParams η = dintersectLeftWith (\q δλ ->  q `safeAddGrad` (η *| δλ))
+optimizeParams η = Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (η *| δλ))

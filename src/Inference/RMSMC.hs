@@ -23,7 +23,7 @@ import           Env
 import           Prog
 import           Model
 import           Sampler
-import           Trace
+import           Trace  (STrace, filterTrace)
 import           LogP
 import           Control.Monad
 import           Control.Applicative

@@ -33,7 +33,8 @@ import Prog ( Member, LastMember )
 import Sampler ( Sampler, liftIO )
 import Util (boolToInt)
 import Effects.Lift
-import Trace
+import qualified Trace
+import           Trace (Key(..))
 import PrimDist
 import Data.Maybe
 {-
@@ -279,8 +280,8 @@ bbviDefaultHMM t_steps l_samples hmm_length = do
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
   traceQ <- BBVI.bbvi t_steps l_samples (hmm hmm_length 0) env_in (hmm hmm_length 0)
-  let trans_dist = toList . fromJust $ dlookup (Key ("trans_p", 0) :: Key Beta) traceQ
-      obs_dist   = toList . fromJust $ dlookup (Key ("obs_p", 0)   :: Key Beta) traceQ
+  let trans_dist = toList . fromJust $ Trace.lookup (Key ("trans_p", 0) :: Key Beta) traceQ
+      obs_dist   = toList . fromJust $ Trace.lookup (Key ("obs_p", 0)   :: Key Beta) traceQ
   pure (trans_dist, obs_dist)
 
 -- | BBVI inference over a HMM, using the model to generate a default guide
@@ -298,8 +299,8 @@ bbviDefaultCombinedHMM t_steps l_samples hmm_length = do
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
   traceQ <- BBVICombined.bbvi t_steps l_samples (hmm hmm_length 0) env_in
-  let trans_dist = toList . fromJust $ dlookup (Key ("trans_p", 0) :: Key Beta) traceQ
-      obs_dist   = toList . fromJust $ dlookup (Key ("obs_p", 0)   :: Key Beta) traceQ
+  let trans_dist = toList . fromJust $ Trace.lookup (Key ("trans_p", 0) :: Key Beta) traceQ
+      obs_dist   = toList . fromJust $ Trace.lookup (Key ("obs_p", 0)   :: Key Beta) traceQ
   pure (trans_dist, obs_dist)
 
 {- | Extending the modular HMM with a user-specific effect.

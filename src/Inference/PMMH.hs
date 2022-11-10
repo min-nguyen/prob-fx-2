@@ -15,7 +15,7 @@ import Control.Monad
 import Prog
 import Sampler
 import LogP
-import Trace
+import Trace (STrace, filterTrace)
 import Effects.Dist
 import PrimDist
 import Model
