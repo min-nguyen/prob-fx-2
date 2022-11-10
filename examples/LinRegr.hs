@@ -53,7 +53,7 @@ type LinRegrEnv =
 -}
 linRegr :: Observables env '["y", "m", "c", "σ"] Double
   => [Double]               -- ^ x datapoints
-  -> Model env rs [Double]  -- ^ y datapoints
+  -> Model env es [Double]  -- ^ y datapoints
 linRegr xs = do
   -- Draw model parameters from prior
   m <- normal 0 3 #m
@@ -62,9 +62,8 @@ linRegr xs = do
   -- Generate outputs ys
   mapM (\x -> normal (m * x + c) σ #y) xs
 
-linRegrGuide :: Observables env '["m", "c", "σ"] Double => Model env rs ()
+linRegrGuide :: Observables env '["m", "c", "σ"] Double => Model env es ()
 linRegrGuide = do
-  -- Draw model parameters from prior
   m <- normal 0 3 #m
   c <- normal 0 5 #c
   σ <- uniform 1 3 #σ
@@ -162,6 +161,16 @@ smc2LinRegr n_outer_particles n_mhsteps n_inner_particles  n_datapoints = do
   let mus = concatMap (get #m) env_outs
       cs  = concatMap (get #c) env_outs
   pure (mus, cs)
+
+-- | BBVI over linear regression, using a custom guide
+bbviLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+bbviLinRegr t_steps l_samples n_datapoints = do
+  let xs            = [1 .. fromIntegral n_datapoints]
+      env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+  traceQ <- BBVI.bbvi t_steps l_samples (linRegr xs) env_in linRegrGuide
+  let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
+      c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
+  pure (m_dist, c_dist)
 
 -- | BBVI over linear regression, using the model to generate a default guide
 bbviDefaultLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])

@@ -55,7 +55,7 @@ def main():
     axs1.set_ylabel("frequency")
     axs1.hist(cs, bins=25)
     axs1.set_title('Linear regression - Metropolis Hastings')
-  if arg in ["bbviDefaultLinRegr"]:
+  if arg in ["bbviLinRegr", "bbviDefaultLinRegr"]:
     mu_mean = data[0][0]
     mu_std  = data[0][1]
     c_mean  = data[1][0]
@@ -160,11 +160,6 @@ def main():
     model = linear_model.LogisticRegression(C=1e5, solver='lbfgs')
     model.fit(xs.reshape(-1,1), ys)
     x_test = np.linspace(-2.0,2.0,num=100)
-    y_test = x_test * model.coef_ + model.intercept_
-    sigmoid = expit(y_test)
-    plt.yticks([1.0, 0.0], ["True",
-                            "False"])
-    plt.scatter(xs, ys)
     plt.plot(x_test, sigmoid.ravel(),c="green", label = "logistic fit")
     plt.xlabel('x - axis')
     plt.ylabel('y - axis')
@@ -236,7 +231,7 @@ def main():
     axs2.hist(obs_ps_unique, bins=50)
     axs2.set_title('HMM - Metropolis Hastings Posterior (Obs Idx)')
     plt.show()
-  if arg in ["bbviDefaultHMM"]:
+  if arg in ["bbviHMM", "bbviDefaultHMM"]:
     trans_alpha = data[0][0]
     trans_beta  = data[0][1]
     obs_alpha   = data[1][0]
@@ -275,7 +270,7 @@ def main():
     _, ax1 = plt.subplots(nrows=1)
     ax1.bar(ws, topic_1s, 0.8)
     plt.title('Topic-Word Distribution 1')
-  if arg in ["bbviDefaultLDA"]:
+  if arg in ["bbviLDA", "bbviDefaultLDA"]:
     ws       = ['DNA', 'evolution', 'parsing', 'phonology']
     topic_ps = data[0]
     topic_0s = data[1]

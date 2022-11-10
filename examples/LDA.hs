@@ -15,7 +15,7 @@ module LDA where
 
 import Model ( Model, dirichlet, discrete, categorical' )
 import Sampler ( Sampler, sampleUniformD, liftIO )
-import Control.Monad ( replicateM )
+import Control.Monad ( replicateM, replicateM_ )
 import Data.Kind (Constraint)
 import Data.Type.Nat
 import Data.Proxy
@@ -106,13 +106,22 @@ topicModel :: (TypeableSNatI m, TypeableSNatI n,
   -> Model env ts [String]
 topicModel vocab n_topics n_words = do
   -- Generate distribution over words for each topic
-  topic_word_ps <- Vec.replicateM n_topics $ topicWordPrior vocab
-  let topic_word_ps' = map Vec.toList $ Vec.toList topic_word_ps
+  topic_word_ps <- (Vec.replicateM n_topics . topicWordPrior) vocab
+  let topic_word_ps' = (map Vec.toList . Vec.toList) topic_word_ps
   -- Generate distribution over topics for a given document
   doc_topic_ps  <- docTopicPrior n_topics
   replicateM n_words (do  z <- categorical' (Vec.toList doc_topic_ps)
                           let word_ps = topic_word_ps' !! z
                           wordDist vocab word_ps)
+
+topicGuide :: (TypeableSNatI m, TypeableSNatI n,
+               Observable env "φ" (Vec m Double),
+               Observable env "θ" (Vec n Double))
+  => Vec m String -> SNat n -> Int -> Model env es ()
+topicGuide vocab n_topics n_words = do
+  topic_word_ps <- (Vec.replicateM n_topics . topicWordPrior) vocab
+  doc_topic_ps  <- docTopicPrior n_topics
+  replicateM_ n_words (categorical' (Vec.toList doc_topic_ps))
 
 -- | Topic distribution over many topics
 topicModels :: (TypeableSNatI n, TypeableSNatI m,
@@ -233,6 +242,20 @@ smc2LDA n_outer_particles n_mhsteps n_inner_particles n_words = do
       θs         = get #θ env_pred
       φs         = get #φ env_pred
   return (map Vec.toList θs, map Vec.toList φs)
+
+-- | BBVI inference on topic model, using a custom guide
+bbviLDA :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double])
+bbviLDA t_steps l_samples n_words = do
+
+  let n_topics  = snat @(FromGHC 2)
+      env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
+
+  traceQ <- BBVI.bbvi t_steps l_samples (topicModel vocab n_topics n_words) env_in (topicGuide vocab n_topics n_words)
+  -- Draw the most recent sampled parameters
+  let θ_dist     = toList . fromJust $ Trace.lookup (Key ("θ", 0) :: Key (Dirichlet (FromGHC 2))) traceQ
+      φ0_dist    = toList . fromJust $ Trace.lookup (Key ("φ", 0) :: Key (Dirichlet (FromGHC 4))) traceQ
+      φ1_dist    = toList . fromJust $ Trace.lookup (Key ("φ", 1) :: Key (Dirichlet (FromGHC 4))) traceQ
+  return (θ_dist, φ0_dist, φ1_dist)
 
 -- | BBVI inference on topic model, using the model to generate a default guide
 bbviDefaultLDA :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double])

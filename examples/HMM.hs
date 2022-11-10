@@ -132,6 +132,14 @@ hmm n x = do
   obs_p   <- beta 2 2 #obs_p
   foldr (>=>) return (replicate n (hmmNode trans_p obs_p)) x
 
+hmmGuide :: (Observables env '["obs_p", "trans_p"] Double)
+  => Int -> Int -> Model env es ()
+hmmGuide n x = do
+  trans_p <- beta 2 2 #trans_p
+  obs_p   <- beta 2 2 #obs_p
+  foldr (>=>) return (replicate n (transModel trans_p)) x
+  pure ()
+
 -- | Simulate from a HMM
 simHMM
   -- | number of HMM nodes
@@ -264,6 +272,25 @@ smc2HMM n_outer_particles n_mhsteps n_inner_particles  hmm_length = do
   let trans_ps    = concatMap (get #trans_p) env_outs
       obs_ps      = concatMap (get #obs_p) env_outs
   pure (trans_ps, obs_ps)
+
+-- | BBVI inference over a HMM, using a custom guide
+bbviHMM
+  -- | number of optimisation steps
+  :: Int
+  -- | number of samples to estimate gradients over
+  -> Int
+  -- | number of HMM nodes
+  -> Int
+  -- | (transition beta parameters, observation beta parameters)
+  -> Sampler ([Double], [Double])
+bbviHMM t_steps l_samples hmm_length = do
+  ys <- simHMM hmm_length
+  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
+
+  traceQ <- BBVI.bbvi t_steps l_samples (hmm hmm_length 0) env_in (hmmGuide hmm_length 0)
+  let trans_dist = toList . fromJust $ Trace.lookup (Key ("trans_p", 0) :: Key Beta) traceQ
+      obs_dist   = toList . fromJust $ Trace.lookup (Key ("obs_p", 0)   :: Key Beta) traceQ
+  pure (trans_dist, obs_dist)
 
 -- | BBVI inference over a HMM, using the model to generate a default guide
 bbviDefaultHMM

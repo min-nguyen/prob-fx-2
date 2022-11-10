@@ -59,6 +59,11 @@ testSmc2LinRegr = TestCase $ do
   output <- sampleIOFixed (smc2LinRegr 20 20 20 30)
   assertEqual "Testing (smc2LinRegr 20 20 20 30)"  smc2LinRegrExpected output
 
+testBbviLinRegr :: Test
+testBbviLinRegr = TestCase $ do
+  output <- sampleIOFixed (bbviLinRegr 200 40 8)
+  assertEqual "Testing (bbviLinRegr 200 40 8)"  bbviLinRegrExpected output
+
 testBbviDefaultLinRegr :: Test
 testBbviDefaultLinRegr = TestCase $ do
   output <- sampleIOFixed (bbviDefaultLinRegr 200 40 8)
@@ -129,6 +134,11 @@ testSmc2HMM = TestCase $ do
   output <- sampleIOFixed (smc2HMM 100 50 4 20)
   assertEqual "Testing (smc2HMM 100 50 4 20)"  smc2HMMExpected output
 
+testBbviHMM :: Test
+testBbviHMM = TestCase $ do
+  output <- sampleIOFixed (bbviHMM 1000 50 20)
+  assertEqual "Testing (bbviHMM 1000 50 20)"  bbviHMMExpected output
+
 testBbviDefaultHMM :: Test
 testBbviDefaultHMM = TestCase $ do
   output <- sampleIOFixed (bbviDefaultHMM 1000 50 20)
@@ -182,6 +192,13 @@ testSmc2LDA = TestCase $ do
 
 testBbviLDA :: Test
 testBbviLDA = TestCase $ do
+  output <- sampleIOFixed (bbviLDA 200 20 50)
+  let bbviLDAExpected' = mapT3 (map (roundPrecision 8)) bbviLDAExpected
+      output'          = mapT3 (map (roundPrecision 8)) output
+  assertEqual "Testing (bbviLDA 200 20 50)"  bbviLDAExpected' output'
+
+testBbviDefaultLDA :: Test
+testBbviDefaultLDA = TestCase $ do
   output <- sampleIOFixed (bbviDefaultLDA 200 20 50)
   let bbviDefaultLDAExpected' = mapT3 (map (roundPrecision 8)) bbviDefaultLDAExpected
       output'                 = mapT3 (map (roundPrecision 8)) output
@@ -230,6 +247,7 @@ testInference = TestList
  , testRmsmcLinRegr
  , testPmmhLinRegr
  , testSmc2LinRegr
+ , testBbviLinRegr
  , testBbviDefaultLinRegr
  , testSimLogRegrOnce
  , testLwLogRegrOnce
@@ -244,6 +262,7 @@ testInference = TestList
  , testRmsmcHMM
  , testPmmhHMM
  , testSmc2HMM
+ , testBbviHMM
  , testBbviDefaultHMM
  , testSimSIR
  , testMhSIR
@@ -254,6 +273,7 @@ testInference = TestList
  , testPmmhLDA
  , testSmc2LDA
  , testBbviLDA
+ , testBbviDefaultLDA
  , testSimRadon
  , testMhRadon
  , testMhPredRadon

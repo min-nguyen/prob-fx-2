@@ -522,7 +522,7 @@ BBVI-[ ]-10-LDA-50,0.6037125734997062,1.2599993052082634,1.9393608636249458,2.62
 
 -------------------------------
 Updates:
-  - BBVI reworked to automatically transform a single model into a model and a guide as separate programs to be handled, rather than as a combined program
+  - BBVI reworked to automatically transform a single model into a model and a default guide as separate programs to be handled, rather than as a combined program
   - Previous BBVI implementation renamed to "BBVICombined"
 
 Dataset size,100,200,300,400,500
