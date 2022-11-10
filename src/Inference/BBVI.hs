@@ -52,12 +52,12 @@ bbvi num_timesteps num_samples model model_env guide_model = do
             - In the inproper case that the guide refers to model variables to be conditioned against, then handling the guide under the model environment and then handling these variables as @Observe@ operations will ignore any of their (importance weighting) side-effects; in constrast, handling the guide under the *empty environment* would incorrectly produce some @Sample@ operations that should not be present. Also note that the original observed values will later be reproduced in the guide's output environment.
         3) Replacing any differentiable @Sample@ operations with @Learn@.
   -}
-  let guide :: Prog '[Learn, Sample] ((b, Env env), DTrace)
+  let guide :: Prog '[Learn, Sample] (b, Env env)
       guide = (installLearn . SIM.handleObs . handleCore model_env) guide_model
   -- | Collect initial proposal distributions
-  ((_, proposals_0), _) <- (SIM.handleSamp . handleLearn) guide
+  proposals_0 <- collectProposals guide
   -- | Run BBVI for T optimisation steps
-  handleLift (bbviInternal num_timesteps num_samples model model_env (fst <$> guide) proposals_0)
+  handleLift (bbviInternal num_timesteps num_samples model model_env guide proposals_0)
 
 {- | BBVI on a guide and model. -}
 bbviInternal :: (LastMember (Lift Sampler) fs, Show (Env env))
@@ -121,20 +121,28 @@ handleModel :: Model env [ObsRW env, Dist] a -> Env env -> Sampler ((a, Env env)
 handleModel model env =
   (SIM.handleSamp . SIM.handleObs . weighModel . handleCore env) model
 
+{- | Collect all learnable distributions as the initial set of proposals.
+-}
+collectProposals :: Prog '[Learn, Sample] a -> Sampler DTrace
+collectProposals = SIM.handleSamp . ((fst <$>) . handleLearn) . loop Trace.empty where
+  loop :: DTrace -> Prog '[Learn, Sample] a -> Prog '[Learn, Sample] DTrace
+  loop proposals (Val _)   = pure proposals
+  loop proposals (Op op k) = case prj op of
+    Just (Learn d α) -> do let proposals' = Trace.insert (Key α) d proposals
+                           Op op (loop proposals' . k)
+    Nothing -> Op op (loop proposals . k)
+
 {- | Replace all differentiable @Sample@ operations with @Learn@ operations, initialising
      the proposal distributions Q(λ).
 -}
-installLearn :: forall es a. Member Sample es => Prog es a -> Prog (Learn : es) (a, DTrace)
-installLearn = loop Trace.empty where
-  loop :: DTrace -> Prog es a -> Prog (Learn : es) (a, DTrace)
-  loop proposals  (Val x)   = pure (x, proposals)
-  loop proposals  (Op op k) = case prj op of
-    Just (Sample d α) -> case isDifferentiable d of
-        Nothing      -> Op (weaken op) (loop proposals . k)
-        Just Witness -> do let proposals' = Trace.insert (Key α) d proposals
-                           x <- call (Learn d α)
-                           (loop proposals' . k) x
-    Nothing -> Op (weaken op) (loop proposals . k)
+installLearn :: Member Sample es => Prog es a -> Prog (Learn : es) a
+installLearn (Val x)   = pure x
+installLearn (Op op k) = case prj op of
+  Just (Sample d α) -> case isDifferentiable d of
+      Nothing      -> Op (weaken op) (installLearn  . k)
+      Just Witness -> do x <- call (Learn d α)
+                         (installLearn  . k) x
+  Nothing -> Op (weaken op) (installLearn . k)
 
 {- | Set the proposal distributions Q(λ) of @Learn@ operations.
 -}
