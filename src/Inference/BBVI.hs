@@ -127,19 +127,19 @@ collectProposals = SIM.handleSamp . SIM.handleObs . ((fst <$>) . handleLearn) . 
   loop :: DTrace -> Prog '[Learn, Observe, Sample] a -> Prog '[Learn, Observe, Sample] DTrace
   loop proposals (Val _)   = pure proposals
   loop proposals (Op op k) = case prj op of
-    Just (Learn d α) -> do let proposals' = Trace.insert (Key α) d proposals
+    Just (Learn q α) -> do let proposals' = Trace.insert (Key α) q proposals
                            Op op (loop proposals' . k)
     Nothing -> Op op (loop proposals . k)
 
-{- | Replace all differentiable @Sample@ operations with @Learn@ operations, initialising
-     the proposal distributions Q(λ).
+{- | Replace all differentiable @Sample@ operations, representing the proposal distributions Q(λ),
+     with @Learn@ operations.
 -}
 installLearn :: Member Sample es => Prog es a -> Prog (Learn : es) a
 installLearn (Val x)   = pure x
 installLearn (Op op k) = case prj op of
-  Just (Sample d α) -> case isDifferentiable d of
+  Just (Sample q α) -> case isDifferentiable q of
       Nothing      -> Op (weaken op) (installLearn  . k)
-      Just Witness -> do x <- call (Learn d α)
+      Just Witness -> do x <- call (Learn q α)
                          (installLearn  . k) x
   Nothing -> Op (weaken op) (installLearn . k)
 
@@ -183,7 +183,7 @@ weighGuide = loop 0 where
       -- | Compute: log(Q(X; λ)) for proposal distributions
       LearnPrj q α    -> Op op (\x -> loop (logW + logProb q x) $ k x)
       -- | Compute: log(Q(X; λ)) for non-differentiable distributions
-      SampPrj d α     -> Op op (\x -> loop (logW + logProb d x) $ k x)
+      SampPrj q α     -> Op op (\x -> loop (logW + logProb q x) $ k x)
       _               -> Op op (loop logW . k)
 
 {- | Compute the log probability over the model:

@@ -47,24 +47,26 @@ handleGuide guide_model env = do
    Given an output model environment containing both latent variables X and observations Y, applying
    the handler `handleCore` to the guide_model will produce a guide program:
     `guide :: Prog [Observe, Sample] a` where:
-      1. Observe d x α; the distributions d may or may not be a proposal distribution q that we can optimise.
-                        the observed value x ~ d must always represents a latent variable X from the posterior P(X | Y)
-      2. Sample d α   ; the distributions d are those we are not interested in optimising, but their generated
-                        values x ~ d must also represent latent variables X from P(X | Y)
+      1. Observe q x α; the distribution q may or may not be a distribution that we can optimise,
+                        depending on the distribution specified in the guide
+                        the observed value x ~ q must always represents a latent variable X from the posterior P(X | Y)
+      2. Sample q α   ; the distributions q are those we are not interested in optimising, but their generated
+                        values x ~ q must correspond to latent variables X from P(X | Y)
 -}
 
-{- For each latent variable X ~ P(X | Y) represented by Observe d x:
-    - I
+{- For each latent variable X = x ~ P(X | Y) and Observe q x:
+    - If q is a fixed non-learnable distribution, then we retain Observe q x representing Q(X = x; λ)
+    - If q is a learnable distribution, then we assume we already have a proposal q' from a previous iteration (unless this is the very first iteration).
 -}
 installLearn :: Member Observe es => DTrace -> Prog es a -> Prog (Learn : es) a
 installLearn proposals = loop where
-  loop (Val a)  = pure a
+  loop (Val a)   = pure a
   loop (Op op k) = case op of
-    ObsPrj d x α -> case isDifferentiable d of
+    ObsPrj q x α -> case isDifferentiable q of
         Nothing      -> Op (weaken op) (installLearn proposals . k)
-        Just Witness -> do let q = fromMaybe d (Trace.lookup (Key α) proposals)
-                           _ <- call (Observe q x α)
-                           _ <- call (Learn q α)
+        Just Witness -> do let q' = fromMaybe q (Trace.lookup (Key α) proposals)
+                           _ <- call (Observe q' x α)
+                           _ <- call (Learn q' α)
                            (loop . k) x
     _ -> Op (weaken op) (loop . k)
 
