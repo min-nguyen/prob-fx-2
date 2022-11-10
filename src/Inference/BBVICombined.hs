@@ -179,7 +179,7 @@ estELBOs l_samples logWs traceGs = foldr f dempty vars where
         traceFs_v  = map (fromJust . glookup v) traceFs                                 -- F_v^{1:L}
         baseline_v = Vec.covar traceFs_v traceGs_v |/| Vec.var traceGs_v  -- b_v
         δelbos_v   = zipWith (\g_l f_l -> f_l |-| (baseline_v |*| g_l)) traceGs_v traceFs_v
-    in  ((*|) (1/fromIntegral l_samples) . foldr (|+|) (zero (Proxy @d)) ) δelbos_v
+    in  ((*|) (1/fromIntegral l_samples) . foldr (|+|) (Vec.zero (Proxy @(Arity d))) ) δelbos_v
 
 {- | Update each variable v's parameters λ using their estimated ELBO gradients E[δelbo(v)].
         λ_{t+1} = λ_t + η_t * E[δelbo(v)]

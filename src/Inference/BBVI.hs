@@ -225,7 +225,7 @@ estELBOs l_samples logWs traceGs = foldr f dempty vars where
         δelbos_v   = zipWith (\g_l f_l -> f_l |-| (baseline_v |*| g_l)) traceGs_v traceFs_v
 
     in  --trace ("traceGs_v: " ++ show traceGs_v ++ "\n traceFs_v" ++ show traceFs_v ++ "\n baseline: " ++ show baseline_v ++ "\n Elbos : " ++ show δelbos_v )
-        ((*|) (1/fromIntegral l_samples) . foldr (|+|) (zero (Proxy @d)) ) δelbos_v
+        ((*|) (1/fromIntegral l_samples) . foldr (|+|) (Vec.zero (Proxy @(Arity d))) ) δelbos_v
 
 {- | Update each variable v's parameters λ using their estimated ELBO gradients E[δelbo(v)].
         λ_{t+1} = λ_t + η_t * E[δelbo(v)]

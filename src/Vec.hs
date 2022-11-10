@@ -14,7 +14,7 @@
 module Vec (module Vec, Vec.zipWith, Vec.map, Vec.singleton, Vec.fromList, Vec.toList) where
 
 import           Data.Type.Nat
-import           Data.Typeable ( Typeable )
+import           Data.Typeable ( Typeable, Proxy )
 import           Data.Vec.Lazy (Vec(..))
 import qualified Data.Vec.Lazy as Vec
 import           Util ( covariance, variance )
@@ -55,6 +55,9 @@ var gs = Vec.map Util.variance params_gs
 
 (*|) :: Double -> Vec n Double -> Vec n Double
 (*|) x = Vec.map (* x)
+
+zero :: forall n d. (SNatI n) => Proxy n -> Vec n Double
+zero _ = Vec.replicate (snat @n) 0
 
 -- | Vec utility functions
 replicate :: SNat n -> a -> Vec n a
