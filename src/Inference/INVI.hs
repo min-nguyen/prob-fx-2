@@ -29,12 +29,74 @@ import Sampler
 import           Trace (GTrace, DTrace, Key(..), Some(..))
 import qualified Trace
 import Debug.Trace
+import Inference.BBVI (estELBOs, optimizeParams)
 import qualified Inference.SIM as SIM
 import qualified Vec
 import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
+import qualified Inference.BBVI as BBVI
 
 
+{- | Top-level wrapper for BBVI inference that takes a separate model and guide.
+-}
+invi :: forall env a b. (Show (Env env))
+  => Int                                -- ^ number of optimisation steps (T)
+  -> Int                                -- ^ number of samples to estimate the gradient over (L)
+  -> Model env [ObsRW env, Dist] a      -- ^ model P
+  -> Env env                            -- ^ model environment (containing only observed data Y)
+  -> Model env [ObsRW env, Dist] b      -- ^ guide Q
+  -> Sampler DTrace                     -- ^ final proposal distributions Q(λ_T)
+invi num_timesteps num_samples model model_env guide_model = do
+  let model' :: Prog '[Observe, Sample] (a, Env env)
+      model' = handleCore model_env model
+  -- | Collect initial proposal distributions
+  proposals_0 <- collectProposals guide_model model'
+  -- | Run BBVI for T optimisation steps
+  handleLift (inviInternal num_timesteps num_samples model' guide_model proposals_0)
+
+
+inviInternal :: (LastMember (Lift Sampler) fs, Show (Env env))
+  => Int                                    -- ^ number of optimisation steps (T)
+  -> Int                                    -- ^ number of samples to estimate the gradient over (L)
+  -> Prog [Observe, Sample] (a, Env env)    -- ^ model P
+  -> Model env [ObsRW env, Dist] b          -- ^ guide Q
+  -> DTrace                                 -- ^ guide initial proposals Q(λ_0)
+  -> Prog fs DTrace                         -- ^ final proposal distributions Q(λ_T)
+inviInternal num_timesteps num_samples model guide proposals_0 = do
+  foldr (>=>) pure [inviStep t num_samples model guide | t <- [1 .. num_timesteps]] proposals_0
+
+{- | 1. For L iterations:
+         a) Generate posterior samples X from the model P, accumulating:
+              - the log model weight: log(P(X, Y))
+         b) Execute the guide Q using samples X ~ P, accumulating:
+              - the total guide log-weight:  log(Q(X; λ))
+              - the gradient log-pdfs of the guide: δlog(Q(X; λ))
+     2. Execute the guide under the environment X
+     3. Update the proposal distributions Q(λ) of the guide
+-}
+
+inviStep :: (LastMember (Lift Sampler) fs, Show (Env env))
+  => Int                                          -- ^ time step index (t)
+  -> Int                                          -- ^ number of samples to estimate the gradient over (L)
+  -> Prog [Observe, Sample] (a, Env env)          -- ^ model P
+  -> Model env [ObsRW env, Dist] b                -- ^ guide Q
+  -> DTrace                                       -- ^ guide proposal distributions Q(λ_t)
+  -> Prog fs DTrace                               -- ^ next proposal distributions Q(λ_{t+1})
+inviStep timestep num_samples model guide proposals = do
+  -- | Execute the model for (L) iterations
+  ((_, model_envs), model_logWs)
+      <- Util.unzip3 <$> replicateM num_samples ((lift . handleModel) model)
+  -- | Execute the guide under the output model environment
+  (((_, _), guide_logWs), grads)
+      <- Util.unzip4 <$> mapM (lift . flip (handleGuide guide) proposals) model_envs
+  -- | Compute total log-importance-weight: logW = log(Q(X; λ)) - log(P(X, Y))
+  let logWs      = zipWith (-) guide_logWs model_logWs
+  -- | Compute the ELBO gradient estimates
+  let δelbos     = estELBOs num_samples logWs grads
+  -- | Update the parameters of the proposal distributions Q
+  let proposals' = optimizeParams 1 proposals δelbos
+
+  pure proposals'
 {-
    We assume a guide model that *only* references latent variables X:
     `guide_model :: Model env [ObsReader env, Dist] a`
@@ -54,6 +116,23 @@ handleGuide guide_model env proposals =
 
   in  (SIM.handleSamp . SIM.handleObs . handleLearn . weighGuide) guide_prog
 
+{- | Collect all learnable distributions as the initial set of proposals.
+-}
+collectProposals :: Model env '[ObsRW env, Dist] b -> ProbProg (a, Env env) -> Sampler DTrace
+collectProposals guide model = do
+  ((_, env), _) <- handleModel model
+  (BBVI.collectProposals . installLearn Trace.empty . handleCore env) guide
+
+  -- SIM.handleSamp . SIM.handleObs . ((fst <$>) . handleLearn) . loop Trace.empty where
+  -- loop :: DTrace -> Prog '[Learn, Observe, Sample] a -> Prog '[Learn, Observe, Sample] DTrace
+  -- loop proposals (Val _)   = pure proposals
+  -- loop proposals (Op op k) = case prj op of
+  --   Just (LearnS q α)   -> do let proposals' = Trace.insert (Key α) q proposals
+  --                             Op op (loop proposals' . k)
+  --   Just (LearnO q x α) -> do let proposals' = Trace.insert (Key α) q proposals
+  --                             Op op (loop proposals' . k)
+  --   Nothing -> Op op (loop proposals . k)
+
 {- For each latent variable X = x ~ P(X | Y) and Observe q x:
     - If q is a fixed non-learnable distribution, then we retain:
          Observe q x representing Q(X = x; λ)
@@ -67,8 +146,8 @@ installLearn proposals = loop where
     ObsPrj q x α -> case isDifferentiable q of
         Nothing      -> Op (weaken op) (installLearn proposals . k)
         Just Witness -> do let q' = fromMaybe q (Trace.lookup (Key α) proposals)
-                           _ <- call (LearnO q' x α)
-                           (loop . k) x
+                           x' <- call (LearnO q' x α)
+                           (loop . k) x'
     _ -> Op (weaken op) (loop . k)
 
 handleLearn :: forall es a. Member Observe es => Prog (Learn : es) a -> Prog es (a, GTrace)
