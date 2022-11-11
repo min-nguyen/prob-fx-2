@@ -97,9 +97,9 @@ bbviStep timestep num_samples model model_env guide proposals = do
   -- | Compute total log-importance-weight: logW = log(P(X, Y)) - log(Q(X; λ))
   let logWs      = zipWith (-) model_logWs guide_logWs
   -- | Compute the ELBO gradient estimates
-  let δelbos     = estELBOs num_samples logWs grads
+  let δelbos     = likelihoodRatioEstimator num_samples logWs grads
   -- | Update the parameters of the proposal distributions Q
-  let proposals' = optimizeParams 1 proposals δelbos
+  let proposals' = updateParams 1 proposals δelbos
 
   pure proposals'
 
@@ -216,45 +216,42 @@ weighModel = loop 0 where
 {- | Compute the ELBO gradient estimates for each variable v over L samples.
         E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
 -}
-estELBOs :: Int -> [LogP] -> [GTrace] -> GTrace
-estELBOs l_samples logWs traceGs = foldr f Trace.empty vars where
-  {- | Store the ELBO gradient estimate E[δelbo(v)] for a given variable v. -}
-  f :: Some DiffDistribution Key -> GTrace -> GTrace
-  f (Some kx) = Trace.insert kx (estELBO kx traceGs traceFs)
-  {- | Store the ELBO gradient estimate E[δelbo(v)] for a given variable v. -}
-  vars :: [Some DiffDistribution Key]
-  vars = (Trace.keys . head) traceGs
-  {- | Uniformly scale each iteration's gradient trace G^l by its corresponding (normalised) importance weight W_norm^l.
-          F^{1:L} = W_norm^{1:L} * G^{1:L}
-       where the normalised importance weight is defined via:
-          log(W_norm^l) = log(W^l) + max(log(W^{1:L})) -}
-  traceFs :: [GTrace]
-  traceFs = zipWith (\logW -> Trace.map (\_ δ -> expLogP logW *| δ)) (normaliseLogPs logWs) traceGs
-  {- | Compute the ELBO gradient estimate for a random variable v's associated parameters:
-          E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
-       where the baseline is:
-          b_v    = covar(F_v^{1:L}, G_v^{1:L}) / var(G_v^{1:L}) -}
-  estELBO :: forall d. ( DiffDistribution d)
-    => Key d    -- ^   v
-    -> [GTrace]  -- ^   G^{1:L}
-    -> [GTrace]  -- ^   F^{1:L}
-    -> Vec (Arity d) Double         -- ^   E[δelbo(v)]
-  estELBO v traceGs traceFs =
-    let traceGs_v  = map (fromJust . Trace.lookup v) traceGs                                 -- G_v^{1:L}
-        traceFs_v  = map (fromJust . Trace.lookup v) traceFs                                 -- F_v^{1:L}
-        baseline_v = Vec.covar traceFs_v traceGs_v |/| Vec.var traceGs_v  -- b_v
-        δelbos_v   = zipWith (\g_l f_l -> f_l |-| (baseline_v |*| g_l)) traceGs_v traceFs_v
+likelihoodRatioEstimator :: Int -> [LogP] -> [GTrace] -> GTrace
+likelihoodRatioEstimator l_samples logWs δGs = foldr (\(Some v) -> Trace.insert v (estδELBO v)) Trace.empty vars
+  where
+    vars :: [Some DiffDistribution Key]
+    vars = (Trace.keys . head) δGs
+    {- | Uniformly scale each iteration's gradient trace G^l by its corresponding (normalised) importance weight W_norm^l.
+            F^{1:L} = W_norm^{1:L} * G^{1:L}
+        where the normalised importance weight is defined via:
+            log(W_norm^l) = log(W^l) + max(log(W^{1:L})) -}
+    δFs :: [GTrace]
+    δFs = zipWith (\logW -> Trace.map (\_ δ -> expLogP logW *| δ)) (normaliseLogPs logWs) δGs
+    {- | Compute the ELBO gradient estimate for a random variable v's associated parameters:
+            E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
+        where the baseline is:
+            b_v    = covar(F_v^{1:L}, G_v^{1:L}) / var(G_v^{1:L}) -}
+    estδELBO :: forall d. (DiffDistribution d)
+      => Key d                -- ^   v
+      -> Vec (Arity d) Double -- ^   E[δelbo(v)]
+    estδELBO v  =
+      let δGv  = map (fromJust . Trace.lookup v) δGs      -- G_v^{1:L}
+          δFv  = map (fromJust . Trace.lookup v) δFs      -- F_v^{1:L}
+          baseline_v = Vec.covar δFv δGv |/| Vec.var δGv  -- b_v
+          δELBOv = let δelbos_v = zipWith (\δg δf -> δf |-| (baseline_v |*| δg)) δGv δFv
+                   in  ((*|) (1/fromIntegral l_samples) . foldr (|+|) (Vec.zero (Proxy @(Arity d))) ) δelbos_v
+      in  δELBOv
 
-    in  --trace ("traceGs_v: " ++ show traceGs_v ++ "\n traceFs_v" ++ show traceFs_v ++ "\n baseline: " ++ show baseline_v ++ "\n Elbos : " ++ show δelbos_v )
-        ((*|) (1/fromIntegral l_samples) . foldr (|+|) (Vec.zero (Proxy @(Arity d))) ) δelbos_v
+      --trace ("traceGs_v: " ++ show traceGs_v ++ "\n traceFs_v" ++ show traceFs_v ++ "\n baseline: " ++ show baseline_v ++ "\n Elbos : " ++ show δelbos_v )
+
 
 {- | Update each variable v's parameters λ using their estimated ELBO gradients E[δelbo(v)].
         λ_{t+1} = λ_t + η_t * E[δelbo(v)]
      where the gradient δelbo(v) is implicitly w.r.t λ
 -}
-optimizeParams
+updateParams
   :: Double  -- ^ learning rate             η
   -> DTrace  -- ^ optimisable distributions Q(λ_t)
   -> GTrace  -- ^ elbo gradient estimates   E[δelbo]
   -> DTrace  -- ^ updated distributions     Q(λ_{t+1})
-optimizeParams η = Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (η *| δλ))
+updateParams η = Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (η *| δλ))

@@ -43,6 +43,7 @@ library
                       Inference.ARS,
                       Inference.BBVI,
                       Inference.BBVICombined,
+                      Inference.ISVI,
                       -- Inference.MB,
                       Env,
                       LogP,
