@@ -114,7 +114,8 @@ handleGuide guide proposals =
   (SIM.handleSamp . SIM.handleObs . handleLearn . weighGuide . updateLearn proposals) guide
 
 {- | Execute the model P under an environment of samples X from the guide and observed values Y, producing:
-       - The total log-weight of all @Sample@ and @Observe@ operations: log(P(X, Y))
+       1. An output environment which we discard
+       2. The total log-weight of all @Sample@ and @Observe@ operations: log(P(X, Y))
 -}
 handleModel :: Model env [ObsRW env, Dist] a -> Env env -> Sampler ((a, Env env), LogP)
 handleModel model env =
@@ -127,8 +128,10 @@ collectProposals = SIM.handleSamp . SIM.handleObs . ((fst <$>) . handleLearn) . 
   loop :: DTrace -> Prog '[Learn, Observe, Sample] a -> Prog '[Learn, Observe, Sample] DTrace
   loop proposals (Val _)   = pure proposals
   loop proposals (Op op k) = case prj op of
-    Just (Learn q α) -> do let proposals' = Trace.insert (Key α) q proposals
-                           Op op (loop proposals' . k)
+    Just (LearnS q α)   -> do let proposals' = Trace.insert (Key α) q proposals
+                              Op op (loop proposals' . k)
+    Just (LearnO q x α) -> do let proposals' = Trace.insert (Key α) q proposals
+                              Op op (loop proposals' . k)
     Nothing -> Op op (loop proposals . k)
 
 {- | Replace all differentiable @Sample@ operations, representing the proposal distributions Q(λ),
@@ -139,7 +142,7 @@ installLearn (Val x)   = pure x
 installLearn (Op op k) = case prj op of
   Just (Sample q α) -> case isDifferentiable q of
       Nothing      -> Op (weaken op) (installLearn  . k)
-      Just Witness -> do x <- call (Learn q α)
+      Just Witness -> do x <- call (LearnS q α)
                          (installLearn  . k) x
   Nothing -> Op (weaken op) (installLearn . k)
 
@@ -148,11 +151,15 @@ installLearn (Op op k) = case prj op of
 updateLearn :: forall es a. Member Learn es => DTrace -> Prog es a -> Prog es a
 updateLearn proposals = loop where
   loop :: Prog es a -> Prog es a
-  loop (Val x)   = pure x
+  loop (Val a)   = pure a
   loop (Op op k) = case prj op of
-    Just (Learn q α) -> do
+    Just (LearnS q α) -> do
       let q' = fromMaybe q (Trace.lookup (Key α) proposals)
-      x <- call (Learn q' α)
+      x <- call (LearnS q' α)
+      (loop . k) x
+    Just (LearnO q x α) -> do   -- Should not happen
+      let q' = fromMaybe q (Trace.lookup (Key α) proposals)
+      x <- call (LearnO q' x α)
       (loop . k) x
     Nothing -> Op op (loop . k)
 
@@ -164,10 +171,13 @@ updateLearn proposals = loop where
 handleLearn :: forall es a. Member Sample es => Prog (Learn : es) a -> Prog es (a, GTrace)
 handleLearn = loop Trace.empty where
   loop :: GTrace -> Prog (Learn : es) a -> Prog es (a, GTrace)
-  loop grads (Val x)   = pure (x, grads)
+  loop grads (Val a)   = pure (a, grads)
   loop grads (Op op k) = case discharge op of
-    Right (Learn (q :: d) α) -> do
+    Right (LearnS (q :: d) α) -> do
          x <- call (Sample q α)
+         let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
+         (loop grads' . k) x
+    Right (LearnO (q :: d) x α) -> do -- Should not happen
          let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
          (loop grads' . k) x
     Left op' -> Op op' (loop grads . k)
@@ -181,7 +191,7 @@ weighGuide = loop 0 where
   loop logW (Val x)   = pure (x, logW)
   loop logW (Op op k) = case  op of
       -- | Compute: log(Q(X; λ)) for proposal distributions
-      LearnPrj q α    -> Op op (\x -> loop (logW + logProb q x) $ k x)
+      LearnSPrj q α   -> Op op (\x -> loop (logW + logProb q x) $ k x)
       -- | Compute: log(Q(X; λ)) for non-differentiable distributions
       SampPrj q α     -> Op op (\x -> loop (logW + logProb q x) $ k x)
       _               -> Op op (loop logW . k)
