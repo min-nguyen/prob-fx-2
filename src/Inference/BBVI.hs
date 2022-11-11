@@ -160,10 +160,7 @@ updateLearn proposals = loop where
       let q' = fromMaybe q (Trace.lookup (Key α) proposals)
       x <- call (LearnS q' α)
       (loop . k) x
-    Just (LearnO q x α) -> do   -- Should not happen
-      let q' = fromMaybe q (Trace.lookup (Key α) proposals)
-      x <- call (LearnO q' x α)
-      (loop . k) x
+    Just (LearnO q x α) -> error "BBVI.update: Should not happen"
     Nothing -> Op op (loop . k)
 
 {- | Handle each @Learn@ operation by sampling from its proposal distribution:
@@ -180,9 +177,7 @@ handleLearn = loop Trace.empty where
          x <- call (Sample q α)
          let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
          (loop grads' . k) x
-    Right (LearnO (q :: d) x α) -> do -- Should not happen
-         let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
-         (loop grads' . k) x
+    Right (LearnO (q :: d) x α) -> error "BBVI.handleLearn: Should not happen"
     Left op' -> Op op' (loop grads . k)
 
 {- | Compute the log probability over the guide:
@@ -191,7 +186,7 @@ handleLearn = loop Trace.empty where
 weighGuide :: forall es a. (Members [Learn, Sample] es) => Prog es a -> Prog es (a, LogP)
 weighGuide = loop 0 where
   loop :: LogP -> Prog es a -> Prog es (a, LogP)
-  loop logW (Val x)   = pure (x, logW)
+  loop logW (Val a)   = pure (a, logW)
   loop logW (Op op k) = case  op of
       -- | Compute: log(Q(X; λ)) for proposal distributions
       LearnSPrj q α   -> Op op (\x -> loop (logW + logProb q x) $ k x)
@@ -205,7 +200,7 @@ weighGuide = loop 0 where
 weighModel :: forall es a. (Members [Sample, Observe] es) => Prog es a -> Prog es (a, LogP)
 weighModel = loop 0 where
   loop :: LogP -> Prog es a -> Prog es (a, LogP)
-  loop logW (Val x)   = pure (x, logW)
+  loop logW (Val a)   = pure (a, logW)
   loop logW (Op op k) = case op of
       -- | Compute: log(P(Y))
       ObsPrj d y α -> Op op (\x -> loop (logW + logProb d x) $ k x)
@@ -239,7 +234,7 @@ likelihoodRatioEstimator l_samples logWs δGs = foldr (\(Some v) -> Trace.insert
           δFv  = map (fromJust . Trace.lookup v) δFs      -- F_v^{1:L}
           baseline_v = Vec.covar δFv δGv |/| Vec.var δGv  -- b_v
           δELBOv = let δelbos_v = zipWith (\δg δf -> δf |-| (baseline_v |*| δg)) δGv δFv
-                   in  ((*|) (1/fromIntegral l_samples) . foldr (|+|) (Vec.zero (Proxy @(Arity d))) ) δelbos_v
+                   in  ((*|) (1/fromIntegral l_samples) . foldr (|+|) (Vec.zeros (Proxy @(Arity d))) ) δelbos_v
       in  δELBOv
 
       --trace ("traceGs_v: " ++ show traceGs_v ++ "\n traceFs_v" ++ show traceFs_v ++ "\n baseline: " ++ show baseline_v ++ "\n Elbos : " ++ show δelbos_v )

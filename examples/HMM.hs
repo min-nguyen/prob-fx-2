@@ -27,7 +27,7 @@ import Inference.RMSMC as RMSMC ( rmsmc )
 import Inference.PMMH as PMMH ( pmmh )
 import Inference.SMC2 as SMC2 ( smc2 )
 import Inference.BBVI as BBVI
-import Inference.ISVI as ISVI
+import Inference.MLE as MLE
 import Inference.BBVICombined as BBVICombined
 import Model ( Model (..), bernoulli', binomial, uniform, beta )
 import Prog ( Member, LastMember )
@@ -332,7 +332,7 @@ bbviDefaultCombinedHMM t_steps l_samples hmm_length = do
   pure (trans_dist, obs_dist)
 
 -- | BBVI inference over a HMM, using a custom guide
-isviHMM
+mleHMM
   -- | number of optimisation steps
   :: Int
   -- | number of samples to estimate gradients over
@@ -341,11 +341,11 @@ isviHMM
   -> Int
   -- | (transition beta parameters, observation beta parameters)
   -> Sampler ([Double], [Double])
-isviHMM t_steps l_samples hmm_length = do
+mleHMM t_steps l_samples hmm_length = do
   ys <- simHMM hmm_length
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
-  traceQ <- ISVI.isvi t_steps l_samples (hmm hmm_length 0) env_in (hmmGuide hmm_length 0)
+  traceQ <- MLE.mle t_steps l_samples (hmm hmm_length 0) env_in (hmmGuide hmm_length 0)
   let trans_dist = toList . fromJust $ Trace.lookup (Key ("trans_p", 0) :: Key Beta) traceQ
       obs_dist   = toList . fromJust $ Trace.lookup (Key ("obs_p", 0)   :: Key Beta) traceQ
   pure (trans_dist, obs_dist)

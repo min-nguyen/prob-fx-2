@@ -111,7 +111,7 @@ installScore = loop Trace.empty where
 updateScore :: forall es a. Member Score es => DTrace -> Prog es a -> Prog es a
 updateScore proposals = loop where
   loop :: Prog es a -> Prog es a
-  loop (Val x)   = pure x
+  loop (Val a)   = pure a
   loop (Op op k) = case prj op of
     Just (Score d _ α) -> do
       let q = fromMaybe d (Trace.lookup (Key α) proposals)
@@ -127,7 +127,7 @@ updateScore proposals = loop where
 handleScore :: forall es a. Member Sample es => Prog (Score : es) a -> Prog es (a, GTrace)
 handleScore = loop Trace.empty where
   loop :: GTrace -> Prog (Score : es) a -> Prog es (a, GTrace)
-  loop grads (Val x)   = pure (x, grads)
+  loop grads (Val a)   = pure (a, grads)
   loop grads (Op op k) = case discharge op of
     Right (Score _ (q :: d) α) -> do
          x <- call (Sample q α)
@@ -141,7 +141,7 @@ handleScore = loop Trace.empty where
 traceLogProbs :: forall es a. (Members [Score, Observe] es) => Prog es a -> Prog es (a, LogP)
 traceLogProbs = loop 0 where
   loop :: LogP -> Prog es a -> Prog es (a, LogP)
-  loop logW (Val x)   = pure (x, logW)
+  loop logW (Val a)   = pure (a, logW)
   loop logW (Op op k) = case op of
       -- | Compute: log(P(Y))
       ObsPrj d y α   -> Op op (\x -> loop (logW + logProb d x) $ k x)

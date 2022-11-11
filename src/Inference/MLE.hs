@@ -7,10 +7,10 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
 
-{- | Importance Sampling Variational Inference.
+{- | Maximum likelihood estimation.
 -}
 
-module Inference.ISVI where
+module Inference.MLE where
 
 import Data.Maybe
 import Data.Proxy
@@ -39,31 +39,31 @@ import qualified Inference.BBVI as BBVI
 
 {- | Top-level wrapper that takes a separate model and guide.
 -}
-isvi :: forall env a b. (Show (Env env))
+mle :: forall env a b. (Show (Env env))
   => Int                                -- ^ number of optimisation steps (T)
   -> Int                                -- ^ number of samples to estimate the gradient over (L)
   -> Model env [ObsRW env, Dist] a      -- ^ model P
   -> Env env                            -- ^ model environment (containing only observed data Y)
   -> Model env [ObsRW env, Dist] b      -- ^ guide Q
   -> Sampler DTrace                     -- ^ final proposal distributions Q(λ_T)
-isvi num_timesteps num_samples model model_env guide_model = do
+mle num_timesteps num_samples model model_env guide_model = do
   let model' :: Prog '[Observe, Sample] (a, Env env)
       model' = handleCore model_env model
   -- | Collect initial proposal distributions
   proposals_0 <- collectProposals guide_model model'
   -- | Run BBVI for T optimisation steps
-  handleLift (isviInternal num_timesteps num_samples model' guide_model proposals_0)
+  handleLift (mleInternal num_timesteps num_samples model' guide_model proposals_0)
 
 
-isviInternal :: (LastMember (Lift Sampler) fs, Show (Env env))
+mleInternal :: (LastMember (Lift Sampler) fs, Show (Env env))
   => Int                                    -- ^ number of optimisation steps (T)
   -> Int                                    -- ^ number of samples to estimate the gradient over (L)
   -> Prog [Observe, Sample] (a, Env env)    -- ^ model P
   -> Model env [ObsRW env, Dist] b          -- ^ guide Q
   -> DTrace                                 -- ^ guide initial proposals Q(λ_0)
   -> Prog fs DTrace                         -- ^ final proposal distributions Q(λ_T)
-isviInternal num_timesteps num_samples model guide proposals_0 = do
-  foldr (>=>) pure [isviStep t num_samples model guide | t <- [1 .. num_timesteps]] proposals_0
+mleInternal num_timesteps num_samples model guide proposals_0 = do
+  foldr (>=>) pure [mleStep t num_samples model guide | t <- [1 .. num_timesteps]] proposals_0
 
 {- | 1. For L iterations:
          a) Generate posterior samples X from the model P, accumulating:
@@ -75,14 +75,14 @@ isviInternal num_timesteps num_samples model guide proposals_0 = do
      3. Update the proposal distributions Q(λ) of the guide
 -}
 
-isviStep :: (LastMember (Lift Sampler) fs, Show (Env env))
+mleStep :: (LastMember (Lift Sampler) fs, Show (Env env))
   => Int                                          -- ^ time step index (t)
   -> Int                                          -- ^ number of samples to estimate the gradient over (L)
   -> Prog [Observe, Sample] (a, Env env)          -- ^ model P
   -> Model env [ObsRW env, Dist] b                -- ^ guide Q
   -> DTrace                                       -- ^ guide proposal distributions Q(λ_t)
   -> Prog fs DTrace                               -- ^ next proposal distributions Q(λ_{t+1})
-isviStep timestep num_samples model guide proposals = do
+mleStep timestep num_samples model guide proposals = do
   -- liftPutStrLn $ "Proposals : " ++ show proposals ++ "\n"
   -- | Execute the model for (L) iterations
   ((_, model_envs), model_logWs)
@@ -149,7 +149,7 @@ handleLearn = loop Trace.empty where
   loop :: GTrace -> Prog (Learn : es) a -> Prog es (a, GTrace)
   loop grads (Val a)   = pure (a, grads)
   loop grads (Op op k) = case discharge op of
-    Right (LearnS (q :: d) α)   -> error "INVI.handleLearn: Should not happen"
+    Right (LearnS (q :: d) α)   -> error "MLE.handleLearn: Should not happen"
     Right (LearnO (q :: d) x α) -> do
          let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
          (loop grads' . k) x
@@ -170,7 +170,7 @@ weighGuide = loop 0 where
       -- | Compute: log(Q(X; λ)) for non-differentiable distributions
       ObsPrj q x α    ->
                         --  trace ("weighGuide: Obs " ++ show q )
-                         (Op op (\x -> loop (logW + logProb q x) $ k x))
+                         Op op (\x -> loop (logW + logProb q x) $ k x)
       SampPrj q α     ->
                         --  trace ("weighGuide: Samp " ++ show q )
                          Op op (\x -> loop (logW + logProb q x) $ k x)
@@ -189,7 +189,7 @@ handleModel = SIM.handleSamp . SIM.handleObs . weighModel
 weighModel :: forall es a. (Members [Sample, Observe] es) => Prog es a -> Prog es (a, LogP)
 weighModel = loop 0 where
   loop :: LogP -> Prog es a -> Prog es (a, LogP)
-  loop logW (Val x)   = pure (x, logW)
+  loop logW (Val a)   = pure (a, logW)
   loop logW (Op op k) = case op of
       -- | Compute: log(P(Y))
       ObsPrj d y α -> Op op (\x -> loop (logW + logProb d x) $ k x)
@@ -211,4 +211,4 @@ normalisingEstimator l_samples logWs traceGs = foldr f Trace.empty vars where
   estimateGrad :: forall d. ( DiffDistribution d) => Key d -> [GTrace] -> Vec (Arity d) Double
   estimateGrad v traceFs =
     let traceFs_v  = map (fromJust . Trace.lookup v) traceFs
-    in  ((*|) (1/fromIntegral l_samples) . foldr (|+|) (Vec.zero (Proxy @(Arity d))) ) traceFs_v
+    in  ((*|) (1/fromIntegral l_samples) . foldr (|+|) (Vec.zeros (Proxy @(Arity d))) ) traceFs_v
