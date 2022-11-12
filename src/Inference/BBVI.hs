@@ -230,12 +230,12 @@ likelihoodRatioEstimator l_samples logWs δGs = foldr (\(Some v) -> Trace.insert
       => Key d                -- ^   v
       -> Vec (Arity d) Double -- ^   E[δelbo(v)]
     estδELBO v  =
-      let δGv  = map (fromJust . Trace.lookup v) δGs      -- G_v^{1:L}
-          δFv  = map (fromJust . Trace.lookup v) δFs      -- F_v^{1:L}
+      let δGv        = map (fromJust . Trace.lookup v) δGs      -- G_v^{1:L}
+          δFv        = map (fromJust . Trace.lookup v) δFs      -- F_v^{1:L}
           baseline_v = Vec.covar δFv δGv |/| Vec.var δGv  -- b_v
-          δELBOv = let δelbos_v = zipWith (\δg δf -> δf |-| (baseline_v |*| δg)) δGv δFv
-                   in  ((*|) (1/fromIntegral l_samples) . foldr (|+|) (Vec.zeros (Proxy @(Arity d))) ) δelbos_v
-      in  δELBOv
+          δELBOv     = zipWith (\δgv δfv -> δfv |-| (baseline_v |*| δgv)) δGv δFv
+          δestELBOv  = ((*|) (1/fromIntegral l_samples) . foldr (|+|) (Vec.zeros (Proxy @(Arity d)))) δELBOv
+      in  δestELBOv
 
       --trace ("traceGs_v: " ++ show traceGs_v ++ "\n traceFs_v" ++ show traceFs_v ++ "\n baseline: " ++ show baseline_v ++ "\n Elbos : " ++ show δelbos_v )
 

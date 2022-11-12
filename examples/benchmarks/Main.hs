@@ -88,10 +88,11 @@ bench_LR args = do
     --           , rmsmcLinRegr fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
     -- benchRow ("LR-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
     --           , pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
-    -- benchRow ("LR-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
+    -- benchRow ("LR-[ ]-BBVIDefault-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
     --           , bbviDefaultLinRegr fixed_bbvi_steps fixed_bbvi_samples) row_header
-    benchRow ("LR-[ ]-BBVICombined-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
+    benchRow ("LR-[ ]-BBVIDefaultCombined-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
               , bbviDefaultCombinedLinRegr fixed_bbvi_steps fixed_bbvi_samples) row_header
+
 bench_HMM :: [Int] -> IO ()
 bench_HMM args = do
     let row_header = ("Dataset size", args)
@@ -108,9 +109,9 @@ bench_HMM args = do
     --           , rmsmcHMM fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
     -- benchRow ("HMM-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
     --           , pmmhHMM fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
-    -- benchRow ("HMM-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
+    -- benchRow ("HMM-[ ]-BBVIDefault-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
     --           , bbviDefaultHMM fixed_bbvi_steps fixed_bbvi_samples) row_header
-    benchRow ("HMM-[ ]-BBVICombined-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
+    benchRow ("HMM-[ ]-BBVIDefaultCombined-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
               , bbviDefaultCombinedHMM fixed_bbvi_steps fixed_bbvi_samples) row_header
 
 bench_LDA :: [Int] -> IO ()
@@ -129,9 +130,9 @@ bench_LDA args = do
     --           , rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
     -- benchRow ("LDA-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
     --           , pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
-    -- benchRow ("LDA-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
+    -- benchRow ("LDA-[ ]-BBVIDefault-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
     --           , bbviDefaultLDA fixed_bbvi_steps fixed_bbvi_samples) row_header
-    benchRow ("LDA-[ ]-BBVICombined-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
+    benchRow ("LDA-[ ]-BBVIDefaultCombined-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
               , bbviDefaultCombinedLDA fixed_bbvi_steps fixed_bbvi_samples) row_header
 
 {- | Varying over inference parameters
@@ -219,22 +220,22 @@ bench_BBVI :: [Int] -> IO ()
 bench_BBVI args = do
     let row_header = ("Number of BBVI steps", args)
     writeRow fixed_output_file row_header
-    benchRow ("BBVI-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LR-" ++ show fixed_lr_datasize_inf
+    benchRow ("BBVIDefault-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LR-" ++ show fixed_lr_datasize_inf
               , flip (bbviDefaultLinRegr fixed_bbvi_samples_inf) fixed_lr_datasize_inf) row_header
-    benchRow ("BBVI-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-HMM-" ++ show fixed_hmm_datasize_inf
+    benchRow ("BBVIDefault-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-HMM-" ++ show fixed_hmm_datasize_inf
               , flip (bbviDefaultHMM fixed_bbvi_samples_inf) fixed_hmm_datasize_inf) row_header
-    benchRow ("BBVI-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LDA-" ++ show fixed_hmm_datasize_inf
+    benchRow ("BBVIDefault-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LDA-" ++ show fixed_hmm_datasize_inf
               , flip (bbviDefaultLDA fixed_bbvi_samples_inf) fixed_lda_datasize_inf) row_header
 
 bench_BBVICombined :: [Int] -> IO ()
 bench_BBVICombined args = do
     let row_header = ("Number of BBVI steps", args)
     writeRow fixed_output_file row_header
-    benchRow ("BBVICombined-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LR-" ++ show fixed_lr_datasize_inf
+    benchRow ("BBVIDefaultCombined-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LR-" ++ show fixed_lr_datasize_inf
               , flip (bbviDefaultCombinedLinRegr fixed_bbvi_samples_inf) fixed_lr_datasize_inf) row_header
-    benchRow ("BBVICombined-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-HMM-" ++ show fixed_hmm_datasize_inf
+    benchRow ("BBVIDefaultCombined-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-HMM-" ++ show fixed_hmm_datasize_inf
               , flip (bbviDefaultCombinedHMM fixed_bbvi_samples_inf) fixed_hmm_datasize_inf) row_header
-    benchRow ("BBVICombined-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LDA-" ++ show fixed_hmm_datasize_inf
+    benchRow ("BBVIDefaultCombined-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LDA-" ++ show fixed_hmm_datasize_inf
               , flip (bbviDefaultCombinedLDA fixed_bbvi_samples_inf) fixed_lda_datasize_inf) row_header
 
 runBenchmarks :: IO ()
