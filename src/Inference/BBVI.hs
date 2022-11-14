@@ -174,10 +174,12 @@ handleLearn = loop Trace.empty where
   loop grads (Val a)   = pure (a, grads)
   loop grads (Op op k) = case discharge op of
     Right (LearnS (q :: d) α) -> do
-         x <- call (Sample q α)
-         let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
-         (loop grads' . k) x
-    Right (LearnO (q :: d) x α) -> error "BBVI.handleLearn: Should not happen"
+      x <- call (Sample q α)
+      let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
+      (loop grads' . k) x
+    Right (LearnO (q :: d) x α) ->
+      trace "BBVI.handleLearn: Should not happen unless using collectProposals in MLE"
+      loop grads (k x)
     Left op' -> Op op' (loop grads . k)
 
 {- | Compute the log probability over the guide:

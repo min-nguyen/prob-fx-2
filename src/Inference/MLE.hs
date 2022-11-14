@@ -54,7 +54,6 @@ mle num_timesteps num_samples model model_env guide_model = do
   -- | Run BBVI for T optimisation steps
   handleLift (mleInternal num_timesteps num_samples model' guide_model proposals_0)
 
-
 mleInternal :: (LastMember (Lift Sampler) fs, Show (Env env))
   => Int                                    -- ^ number of optimisation steps (T)
   -> Int                                    -- ^ number of samples to estimate the gradient over (L)
@@ -198,17 +197,20 @@ weighModel = loop 0 where
       _            -> Op op (loop logW . k)
 
 normalisingEstimator :: Int -> [LogP] -> [GTrace] -> GTrace
-normalisingEstimator l_samples logWs traceGs = foldr f Trace.empty vars where
+normalisingEstimator l_samples logWs traceGs = trace (show norm_c) foldr f Trace.empty vars where
   vars :: [Some DiffDistribution Key]
   vars = (Trace.keys . head) traceGs
   {- | Store the gradient estimate for a given variable v. -}
   f :: Some DiffDistribution Key -> GTrace -> GTrace
   f (Some kx) = Trace.insert kx (estimateGrad kx traceFs)
-  {- | Uniformly scale each iteration's gradient trace G^l by its corresponding (normalised) importance weight W_norm^l -}
+  {- | Uniformly scale each iteration's gradient trace G^l by its corresponding unnormalised importance weight W_norm^l -}
   traceFs :: [GTrace]
-  traceFs = zipWith (\logW -> Trace.map (\_ δ -> expLogP logW *| δ)) (normaliseLogPs logWs) traceGs
+  traceFs = zipWith (\logW -> Trace.map (\_ δ -> expLogP logW *| δ)) logWs traceGs
+  {- | Normalising constant -}
+  norm_c :: Double
+  norm_c = 1 / (fromIntegral l_samples * sum (map expLogP logWs))
   {- | Compute the mean gradient estimate for a random variable v's associated parameters -}
   estimateGrad :: forall d. ( DiffDistribution d) => Key d -> [GTrace] -> Vec (Arity d) Double
   estimateGrad v traceFs =
     let traceFs_v  = map (fromJust . Trace.lookup v) traceFs
-    in  ((*|) (1/fromIntegral l_samples) . foldr (|+|) (Vec.zeros (Proxy @(Arity d))) ) traceFs_v
+    in  ((*|) norm_c . foldr (|+|) (Vec.zeros (Proxy @(Arity d))) ) traceFs_v
