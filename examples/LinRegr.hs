@@ -22,7 +22,7 @@ import Inference.PMMH as PMMH ( pmmh )
 import Inference.SMC2 as SMC2 ( smc2 )
 import Inference.BBVI as BBVI
 import Inference.BBVICombined as BBVICombined
-import Inference.MLE as MLE
+import Inference.INVI as INVI
 import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
 import qualified Trace
 import           Trace (Key(..))
@@ -194,11 +194,11 @@ bbviDefaultCombinedLinRegr t_steps l_samples n_datapoints = do
   pure (m_dist, c_dist)
 
 -- | INVI over linear regression, using a custom guide
-mleLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
-mleLinRegr t_steps l_samples n_datapoints = do
+inviLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+inviLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  traceQ <- MLE.mle t_steps l_samples (linRegr xs) env_in linRegrGuide
+  traceQ <- INVI.invi t_steps l_samples (linRegr xs) env_in linRegrGuide
   let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
       c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
   pure (m_dist, c_dist)
