@@ -23,6 +23,7 @@ import Inference.SMC2 as SMC2 ( smc2 )
 import Inference.BBVI as BBVI
 import Inference.BBVICombined as BBVICombined
 import Inference.INVI as INVI
+-- import Inference.MLE as MLE
 import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
 import qualified Trace
 import           Trace (Key(..))
@@ -168,7 +169,7 @@ bbviLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
 bbviLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  traceQ <- BBVI.bbvi t_steps l_samples (linRegr xs) env_in linRegrGuide
+  traceQ <- BBVI.bbvi t_steps l_samples linRegrGuide (linRegr xs) env_in
   let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
       c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
   pure (m_dist, c_dist)
@@ -178,7 +179,7 @@ bbviDefaultLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
 bbviDefaultLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  traceQ <- BBVI.bbvi t_steps l_samples (linRegr xs) env_in (linRegr xs)
+  traceQ <- BBVI.bbvi t_steps l_samples (linRegr xs) (linRegr xs) env_in
   let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
       c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
   pure (m_dist, c_dist)
@@ -202,6 +203,15 @@ inviLinRegr t_steps l_samples n_datapoints = do
   let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
       c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
   pure (m_dist, c_dist)
+
+-- mleLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+-- mleLinRegr t_steps l_samples n_datapoints = do
+--   let xs            = [1 .. fromIntegral n_datapoints]
+--       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+--   traceQ <- MLE.mle t_steps l_samples (linRegr xs) env_in (linRegr xs)
+--   let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
+--       c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
+--   pure (m_dist, c_dist)
 
 {- | Linear regression model on individual data points at a time.
 -}

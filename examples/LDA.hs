@@ -251,7 +251,7 @@ bbviLDA t_steps l_samples n_words = do
   let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
 
-  traceQ <- BBVI.bbvi t_steps l_samples (topicModel vocab n_topics n_words) env_in (topicGuide vocab n_topics n_words)
+  traceQ <- BBVI.bbvi t_steps l_samples (topicGuide vocab n_topics n_words) (topicModel vocab n_topics n_words) env_in
   -- Draw the most recent sampled parameters
   let θ_dist     = toList . fromJust $ Trace.lookup (Key ("θ", 0) :: Key (Dirichlet (FromGHC 2))) traceQ
       φ0_dist    = toList . fromJust $ Trace.lookup (Key ("φ", 0) :: Key (Dirichlet (FromGHC 4))) traceQ
@@ -265,7 +265,7 @@ bbviDefaultLDA t_steps l_samples n_words = do
   let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
 
-  traceQ <- BBVI.bbvi t_steps l_samples (topicModel vocab n_topics n_words) env_in (topicModel vocab n_topics n_words)
+  traceQ <- BBVI.bbvi t_steps l_samples (topicModel vocab n_topics n_words) (topicModel vocab n_topics n_words) env_in
   -- Draw the most recent sampled parameters
   let θ_dist     = toList . fromJust $ Trace.lookup (Key ("θ", 0) :: Key (Dirichlet (FromGHC 2))) traceQ
       φ0_dist    = toList . fromJust $ Trace.lookup (Key ("φ", 0) :: Key (Dirichlet (FromGHC 4))) traceQ

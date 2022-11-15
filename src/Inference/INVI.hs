@@ -42,27 +42,27 @@ import qualified Inference.BBVI as BBVI
 invi :: forall env a b. (Show (Env env))
   => Int                                -- ^ number of optimisation steps (T)
   -> Int                                -- ^ number of samples to estimate the gradient over (L)
-  -> Model env [ObsRW env, Dist] a      -- ^ model P
+  -> Model env [ObsRW env, Dist] a      -- ^ model P(X, Y)
   -> Env env                            -- ^ model environment (containing only observed data Y)
-  -> Model env [ObsRW env, Dist] b      -- ^ guide Q
+  -> Model env [ObsRW env, Dist] b      -- ^ guide Q(X; λ)
   -> Sampler DTrace                     -- ^ final proposal distributions Q(λ_T)
 invi num_timesteps num_samples model model_env guide_model = do
   let model' :: Prog '[Observe, Sample] (a, Env env)
       model' = handleCore model_env model
   -- | Collect initial proposal distributions
-  proposals_0 <- collectProposals guide_model model'
+  params_0 <- collectParams guide_model model'
   -- | Run BBVI for T optimisation steps
-  handleLift (inviInternal num_timesteps num_samples model' guide_model proposals_0)
+  handleLift (inviInternal num_timesteps num_samples model' guide_model params_0)
 
 inviInternal :: (LastMember (Lift Sampler) fs, Show (Env env))
   => Int                                    -- ^ number of optimisation steps (T)
   -> Int                                    -- ^ number of samples to estimate the gradient over (L)
-  -> Prog [Observe, Sample] (a, Env env)    -- ^ model P
-  -> Model env [ObsRW env, Dist] b          -- ^ guide Q
-  -> DTrace                                 -- ^ guide initial proposals Q(λ_0)
-  -> Prog fs DTrace                         -- ^ final proposal distributions Q(λ_T)
-inviInternal num_timesteps num_samples model guide proposals_0 = do
-  foldr (>=>) pure [inviStep t num_samples model guide | t <- [1 .. num_timesteps]] proposals_0
+  -> Prog [Observe, Sample] (a, Env env)    -- ^ model P(X, Y)
+  -> Model env [ObsRW env, Dist] b          -- ^ guide Q(X; λ)
+  -> DTrace                                 -- ^ initial guide parameters λ_0
+  -> Prog fs DTrace                         -- ^ final guide parameters λ_T
+inviInternal num_timesteps num_samples model guide params_0 = do
+  foldr (>=>) pure [inviStep t num_samples model guide | t <- [1 .. num_timesteps]] params_0
 
 {- | 1. For L iterations:
          a) Generate posterior samples X from the model P, accumulating:
@@ -77,25 +77,26 @@ inviInternal num_timesteps num_samples model guide proposals_0 = do
 inviStep :: (LastMember (Lift Sampler) fs, Show (Env env))
   => Int                                          -- ^ time step index (t)
   -> Int                                          -- ^ number of samples to estimate the gradient over (L)
-  -> Prog [Observe, Sample] (a, Env env)          -- ^ model P
-  -> Model env [ObsRW env, Dist] b                -- ^ guide Q
-  -> DTrace                                       -- ^ guide proposal distributions Q(λ_t)
-  -> Prog fs DTrace                               -- ^ next proposal distributions Q(λ_{t+1})
-inviStep timestep num_samples model guide proposals = do
+  -> Prog [Observe, Sample] (a, Env env)          -- ^ model P(X, Y)
+  -> Model env [ObsRW env, Dist] b                -- ^ guide Q(X; λ)
+  -> DTrace                                       -- ^ guide parameters λ_t
+  -> Prog fs DTrace                               -- ^ next guide parameters λ_{t+1}
+inviStep timestep num_samples model guide params = do
   -- | Execute the model for (L) iterations
   ((_, model_envs), model_logWs)
       <- Util.unzip3 <$> replicateM num_samples ((lift . handleModel) model)
   -- | Execute the guide under each output model environment
   (((_, _)        , guide_logWs), grads)
-      <- Util.unzip4 <$> mapM (lift . flip (handleGuide guide) proposals) model_envs
+      <- Util.unzip4 <$> mapM (lift . flip (handleGuide guide) params) model_envs
   -- | Compute unnormalised log-importance-weights: logW = log(P(X, Y)) - log(Q(X; λ))
   let logWs      = zipWith (-) model_logWs guide_logWs
   -- | Compute the ELBO gradient estimates
   let δelbos     = normalisingEstimator num_samples logWs grads
   -- | Update the parameters of the proposal distributions Q
-  let proposals' = updateParams 1 proposals δelbos
+  let params' = updateParams 1 params δelbos
 
-  pure proposals'
+  pure params'
+
 {-
    We assume a guide model that *only* references latent variables X:
     `guide_model :: Model env [ObsReader env, Dist] a`
@@ -109,9 +110,9 @@ inviStep timestep num_samples model guide proposals = do
                         values x ~ q must correspond to latent variables X from P(X | Y)
 -}
 handleGuide :: forall env a. Model env [ObsRW env, Dist] a -> Env env -> DTrace -> Sampler (((a, Env env), LogP), GTrace)
-handleGuide guide_model env proposals =
+handleGuide guide_model env params =
   let guide_prog :: Prog '[Learn, Observe, Sample] (a, Env env)
-      guide_prog = (installLearn proposals . handleCore env) guide_model
+      guide_prog = (installLearn params . handleCore env) guide_model
 
   in  (SIM.handleSamp . SIM.handleObs . handleLearn . weighGuide) guide_prog
 
@@ -124,10 +125,10 @@ handleModel = SIM.handleSamp . SIM.handleObs . weighModel
 
 {- | Collect all learnable distributions as the initial set of proposals.
 -}
-collectProposals :: Model env '[ObsRW env, Dist] b -> ProbProg (a, Env env) -> Sampler DTrace
-collectProposals guide model = do
+collectParams :: Model env '[ObsRW env, Dist] b -> ProbProg (a, Env env) -> Sampler DTrace
+collectParams guide model = do
   ((_, env), _) <- handleModel model
-  (BBVI.collectProposals . installLearn Trace.empty . handleCore env) guide
+  (BBVI.collectParams . installLearn Trace.empty . handleCore env) guide
 
 {- For each latent variable X = x ~ P(X | Y) and Observe q x:
     - If q is a fixed non-learnable distribution, then we retain:
@@ -136,12 +137,12 @@ collectProposals guide model = do
          LearnO q' x  where representing Q(X = x; λ)
 -}
 installLearn :: Member Observe es => DTrace -> Prog es a -> Prog (Learn : es) a
-installLearn proposals = loop where
+installLearn params = loop where
   loop (Val a)   = pure a
   loop (Op op k) = case op of
     ObsPrj q x α -> case isDifferentiable q of
-        Nothing      -> Op (weaken op) (installLearn proposals . k)
-        Just Witness -> do let q' = fromMaybe q (Trace.lookup (Key α) proposals)
+        Nothing      -> Op (weaken op) (installLearn params . k)
+        Just Witness -> do let q' = fromMaybe q (Trace.lookup (Key α) params)
                            x' <- call (LearnO q' x α)
                            (loop . k) x'
     _ -> Op (weaken op) (loop . k)
