@@ -7,8 +7,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
 
-{- | Inclusive KL Divergence Variational Inference.
--}
+{- | Inclusive KL Divergence Variational Inference -}
 
 module Inference.INVIReverse where
 
@@ -90,7 +89,7 @@ inviStep timestep num_samples model guide params = do
       <- Util.unzip4 <$> mapM (lift . flip (handleGuide guide) params) model_envs
   -- | Compute unnormalised log-importance-weights: logW = log(P(X, Y)) - log(Q(X; λ))
   let logWs      = zipWith (-) model_logWs guide_logWs
-  -- | Compute the ELBO gradient estimates
+  -- | Compute the self-normalised ELBO gradient estimate
   let δelbos     = normalisingEstimator num_samples logWs grads
   -- | Update the parameters of the proposal distributions Q
   let params' = updateParams 1 params δelbos

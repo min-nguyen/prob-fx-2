@@ -30,6 +30,7 @@ import           Trace (GTrace, DTrace, Key(..), Some(..))
 import qualified Trace
 import Debug.Trace
 import qualified Inference.SIM as SIM
+import qualified Inference.SMC as SMC
 import qualified Vec
 import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
@@ -43,9 +44,9 @@ mle :: forall env a b. (Show (Env env))
   -> Env env                            -- ^ model environment (containing only observed data Y)
   -> Model env [ObsRW env, Dist] b      -- ^ model P
   -> Sampler DTrace                     -- ^ final distributions P(λ_T)
-mle num_timesteps num_samples model model_env model_p = do
+mle num_timesteps num_samples model_q model_env model_p = do
   let model_q' :: Prog '[Observe, Sample] (a, Env env)
-      model_q' = (second (Env.union model_env)) <$> handleCore model_env model_q
+      model_q' = second (Env.union model_env) <$> handleCore model_env model_q
   -- | Collect initial proposal distributions
   proposals_0 <- collectParams model_p model_q'
   -- | Run BBVI for T optimisation steps
@@ -77,55 +78,36 @@ mleStep :: (LastMember (Lift Sampler) fs, Show (Env env))
   -> DTrace                                       -- ^ model parameters P(θ_t)
   -> Prog fs DTrace                               -- ^ next model parameters P(θ_{t+1})
 mleStep timestep num_samples model_q model_p params = do
-  -- | Sample the model Q(X) for (L) iterations
-  ((_, model_envs), model_logWs)
-      <- Util.unzip3 <$> replicateM num_samples ((lift . handleGuide) model_q)
+  -- | Sample the model P(X | Y) for (L) iterations
+  ((_, model_envs), posterior_logWs)
+      <- Util.unzip3 <$> SMC.smcInternal num_samples model_q
   -- | Execute the model P(X, Y; θ) under each posterior sample
-  (((_, _)        , guide_logWs), grads)
-      <- Util.unzip4 <$> mapM (lift . flip (handleModel model_p) params) model_envs
+  ((_, _)        , grads)
+      <- Util.unzip3 <$> mapM (lift . flip (handleModel model_p) params) model_envs
   -- | Compute unnormalised log-importance-weights: logW = log(P(X, Y)) - log(Q(X; λ))
-  let logWs      = guide_logWs -- zipWith (-)  model_logWs
+  let logWs      = map SMC.particleLogProb posterior_logWs
   -- | Compute the ELBO gradient estimates
   let δelbos     = INVI.normalisingEstimator num_samples logWs grads
   -- | Update the parameters of the proposal distributions Q
-  let params'    = BBVI.updateParams 1 params δelbos
-
+  let params'    = case δelbos of Just δelbos -> BBVI.updateParams 1 params δelbos
+                                  Nothing     -> params
   pure params'
-
-{- We assume a model Q from which we can generate importance-weighted posterior samples.
--}
-handleGuide :: ProbProg (a, Env env) -> Sampler ((a, Env env), LogP)
-handleGuide model_q = (SIM.handleSamp . SIM.handleObs . weighGuide) model_q
-
-{- | Compute the log probability over the model:
-        log(P(X, Y))
--}
-weighGuide :: forall es a. (Members [Sample, Observe] es) => Prog es a -> Prog es (a, LogP)
-weighGuide = loop 0 where
-  loop :: LogP -> Prog es a -> Prog es (a, LogP)
-  loop logW (Val a)   = pure (a, logW)
-  loop logW (Op op k) = case op of
-      -- | Compute: log(P(Y))
-      ObsPrj d y α -> Op op (\x -> loop (logW + logProb d x) $ k x)
-      -- | Compute: log(P(X))
-      SampPrj d α  -> Op op (\x -> loop (logW + logProb d x) $ k x)
-      _            -> Op op (loop logW . k)
 
 {- We have a model P(X, Y; θ) which we execute under an environment of latent variables X and observed values Y.
 -}
-handleModel :: forall env a. Model env [ObsRW env, Dist] a -> Env env -> DTrace -> Sampler (((a, Env env), LogP), GTrace)
+handleModel :: forall env a. Model env [ObsRW env, Dist] a -> Env env -> DTrace -> Sampler ((a, Env env), GTrace)
 handleModel model_p env params =
   let guide_prog :: Prog '[Learn, Observe, Sample] (a, Env env)
       guide_prog = (installLearn params . handleCore env) model_p
 
-  in  (SIM.handleSamp . SIM.handleObs . handleLearn . weighModel) guide_prog
+  in  (SIM.handleSamp . SIM.handleObs . handleLearn) guide_prog
 
 {- | Collect all learnable distributions as the initial set of proposals.
 -}
 collectParams :: Model env '[ObsRW env, Dist] b -> ProbProg (a, Env env) -> Sampler DTrace
 collectParams model_p model_q = do
-  ((_, env), _) <- handleGuide model_q
-  (BBVI.collectProposals . installLearn Trace.empty . handleCore env) model_p
+  (_, env) <- (SIM.handleSamp . SIM.handleObs) model_q
+  (BBVI.collectParams . installLearn Trace.empty . handleCore env) model_p
 
 {- For each observed value Y = y and latent variable X = x generated in the model environment,
    this gives rise to Observe p x:
