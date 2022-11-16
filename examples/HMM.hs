@@ -345,7 +345,7 @@ inviHMM t_steps l_samples hmm_length = do
   ys <- simHMM hmm_length
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
-  traceQ <- INVI.invi t_steps l_samples (hmm hmm_length 0) env_in (hmmGuide hmm_length 0)
+  traceQ <- INVI.invi t_steps l_samples (hmmGuide hmm_length 0) (hmm hmm_length 0) env_in
   let trans_dist = toList . fromJust $ Trace.lookup (Key ("trans_p", 0) :: Key Beta) traceQ
       obs_dist   = toList . fromJust $ Trace.lookup (Key ("obs_p", 0)   :: Key Beta) traceQ
   pure (trans_dist, obs_dist)
