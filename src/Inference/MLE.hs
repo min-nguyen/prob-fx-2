@@ -90,7 +90,7 @@ mleStep timestep model_q hdlPosterior model_p params = do
   -- | Compute the ELBO gradient estimates
   let δelbos     = normalisingEstimator logWs grads
   -- | Update the parameters of the proposal distributions Q
-  let params'    = case δelbos of Just δelbos -> BBVI.updateParams 1 params δelbos
+  let params'    = case δelbos of Just δelbos -> VI.updateParams 1 params δelbos
                                   Nothing     -> params
   pure params'
 

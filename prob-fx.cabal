@@ -44,7 +44,6 @@ library
                       Inference.BBVI,
                       Inference.BBVICombined,
                       Inference.INVI,
-                      Inference.INVIReverse,
                       Inference.MLE,
                       Inference.VI,
                       -- Inference.MB,

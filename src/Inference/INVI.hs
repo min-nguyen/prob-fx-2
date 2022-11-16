@@ -29,7 +29,6 @@ import Sampler
 import           Trace (GTrace, DTrace, Key(..), Some(..))
 import qualified Trace
 import Debug.Trace
-import Inference.BBVI (updateParams)
 import qualified Inference.SIM as SIM
 import qualified Vec
 import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
@@ -60,7 +59,7 @@ handleGradDescent (Val a) = pure a
 handleGradDescent (Op op k) = case discharge op of
   Right (GradDescent logWs δGs params) ->
     let δelbos  = normalisingEstimator logWs δGs
-        params' = case δelbos of Just δelbos' -> updateParams 1 params δelbos'
+        params' = case δelbos of Just δelbos' -> VI.updateParams 1 params δelbos'
                                  Nothing      -> params
     in  handleGradDescent (k params')
   Left op' -> Op op' (handleGradDescent . k)
