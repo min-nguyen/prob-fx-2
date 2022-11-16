@@ -87,7 +87,7 @@ mleStep timestep num_samples model_q model_p params = do
   -- | Compute unnormalised log-importance-weights: logW = log(P(X, Y)) - log(Q(X; λ))
   let logWs      = map SMC.particleLogProb posterior_logWs
   -- | Compute the ELBO gradient estimates
-  let δelbos     = INVI.normalisingEstimator num_samples logWs grads
+  let δelbos     = normalisingEstimator num_samples logWs grads
   -- | Update the parameters of the proposal distributions Q
   let params'    = case δelbos of Just δelbos -> BBVI.updateParams 1 params δelbos
                                   Nothing     -> params
@@ -153,3 +153,24 @@ weighModel = loop 0 where
       -- | Compute: log(P(X; θ)), where latent variable X is not provided in the model environment
       SampPrj p α     -> Op op (\x -> loop (logW + logProb p x) $ k x)
       _               -> Op op (loop logW . k)
+
+
+normalisingEstimator :: Int -> [LogP] -> [GTrace] -> Maybe GTrace
+normalisingEstimator l_samples logWs traceGs =
+  if isInfinite norm_c then Nothing else Just (foldr f Trace.empty vars) where
+    vars :: [Some DiffDistribution Key]
+    vars = (Trace.keys . head) traceGs
+    {- | Store the gradient estimate for a given variable v. -}
+    f :: Some DiffDistribution Key -> GTrace -> GTrace
+    f (Some kx) = Trace.insert kx (estimateGrad kx traceFs)
+    {- | Uniformly scale each iteration's gradient trace G^l by its corresponding unnormalised importance weight W_norm^l -}
+    traceFs :: [GTrace]
+    traceFs = zipWith (\logW -> Trace.map (\_ δ -> expLogP logW *| δ)) logWs traceGs
+    {- | Normalising constant -}
+    norm_c :: Double
+    norm_c = 1 / (fromIntegral l_samples * sum (map expLogP logWs))
+    {- | Compute the mean gradient estimate for a random variable v's associated parameters -}
+    estimateGrad :: forall d. ( DiffDistribution d) => Key d -> [GTrace] -> Vec (Arity d) Double
+    estimateGrad v traceFs =
+      let traceFs_v  = map (fromJust . Trace.lookup v) traceFs
+      in  ((*|) norm_c . foldr (|+|) (Vec.zeros (Proxy @(Arity d))) ) traceFs_v

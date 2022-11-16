@@ -38,7 +38,7 @@ import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
 
 data GradDescent a where
-  GradDescent :: [(LogP, GTrace)] -> DTrace -> GradDescent DTrace
+  GradDescent :: [LogP] -> [GTrace] -> DTrace -> GradDescent DTrace
 
 viLoop :: (LastMember (Lift Sampler) fs, Show (Env env))
   => Int                                          -- ^ number of optimisation steps (T)
@@ -63,7 +63,7 @@ viLoop num_timesteps num_samples guide model model_env params_0 = do
 viStep :: (LastMember (Lift Sampler) fs, Show (Env env))
   => Int                                          -- ^ time step index (t)
   -> Int                                          -- ^ number of samples to estimate the gradient over (L)
-  -> Prog [Learn,  Sample] (b, Env env)           -- ^ guide Q(X; λ)
+  -> Prog [Learn, Sample] (b, Env env)            -- ^ guide Q(X; λ)
   -> Model env [ObsRW env, Dist] a                -- ^ model P(X, Y)
   -> Env env                                      -- ^ model environment (containing only observed data Y)
   -> DTrace                                       -- ^ guide parameters λ_t
@@ -77,10 +77,8 @@ viStep timestep num_samples guide model model_env params = do
       <- Util.unzip3 <$> mapM ((lift . handleModel model) . Env.union model_env) guide_envs
   -- | Compute total log-importance-weight, log(P(X, Y)) - log(Q(X; λ))
   let logWs  = zipWith (-) model_logWs guide_logWs
-  -- | Compute the ELBO gradient estimates, E[δelbo]
-  let δelbos = likelihoodRatioEstimator num_samples logWs grads
   -- | Update the parameters λ of the proposal distributions Q
-  params'    <- call (GradDescent (zip logWs grads) params)
+  params'    <- call (GradDescent  logWs grads params)
 
   pure params'
 
@@ -107,9 +105,9 @@ handleModel model env =
 
 {- | Collect all learnable distributions as the initial set of proposals λ_0.
 -}
-collectParams :: Prog '[Learn, Observe, Sample] a -> Sampler DTrace
-collectParams = SIM.handleSamp . SIM.handleObs . ((fst <$>) . handleLearn) . loop Trace.empty where
-  loop :: DTrace -> Prog '[Learn, Observe, Sample] a -> Prog '[Learn, Observe, Sample] DTrace
+collectParams :: Member Sample es => Prog (Learn : es) a -> Prog es DTrace
+collectParams = ((fst <$>) . handleLearn) . loop Trace.empty where
+  loop :: DTrace -> Prog (Learn : es) a -> Prog (Learn : es) DTrace
   loop params (Val _)   = pure params
   loop params (Op op k) = case prj op of
     Just (LearnS q α)   -> do let params' = Trace.insert (Key α) q params
@@ -141,7 +139,7 @@ updateLearn proposals = loop where
       let q' = fromMaybe q (Trace.lookup (Key α) proposals)
       x <- call (LearnS q' α)
       (loop . k) x
-    Just (LearnO q x α) -> error "BBVI.update: Should not happen"
+    Just (LearnO q x α) -> error "VI.update: Should not happen"
     Nothing -> Op op (loop . k)
 
 {- | Handle each @Learn@ operation by sampling from its proposal distribution:
@@ -159,7 +157,7 @@ handleLearn = loop Trace.empty where
       let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
       (loop grads' . k) x
     Right (LearnO (q :: d) x α) ->
-      trace "BBVI.handleLearn: Should not happen unless using collectProposals in MLE"
+      trace "VI.handleLearn: Should not happen unless using collectProposals"
       loop grads (k x)
     Left op' -> Op op' (loop grads . k)
 
@@ -190,35 +188,6 @@ weighModel = loop 0 where
       -- | Compute: log(P(X))
       SampPrj d α  -> Op op (\x -> loop (logW + logProb d x) $ k x)
       _            -> Op op (loop logW . k)
-
-{- | Compute the ELBO gradient estimates for each variable v over L samples.
-        E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
--}
-likelihoodRatioEstimator :: Int -> [LogP] -> [GTrace] -> GTrace
-likelihoodRatioEstimator l_samples logWs δGs = foldr (\(Some v) -> Trace.insert v (estδELBO v)) Trace.empty vars
-  where
-    vars :: [Some DiffDistribution Key]
-    vars = (Trace.keys . head) δGs
-    {- | Uniformly scale each iteration's gradient trace G^l by its corresponding (normalised) importance weight W_norm^l.
-            F^{1:L} = W_norm^{1:L} * G^{1:L}
-        where the normalised importance weight is defined via:
-            log(W_norm^l) = log(W^l) + max(log(W^{1:L})) -}
-    δFs :: [GTrace]
-    δFs = zipWith (\logW -> Trace.map (\_ δ -> expLogP logW *| δ)) (normaliseLogPs logWs) δGs
-    {- | Compute the ELBO gradient estimate for a random variable v's associated parameters:
-            E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
-        where the baseline is:
-            b_v    = covar(F_v^{1:L}, G_v^{1:L}) / var(G_v^{1:L}) -}
-    estδELBO :: forall d. (DiffDistribution d)
-      => Key d                -- ^   v
-      -> Vec (Arity d) Double -- ^   E[δelbo(v)]
-    estδELBO v  =
-      let δGv        = map (fromJust . Trace.lookup v) δGs      -- G_v^{1:L}
-          δFv        = map (fromJust . Trace.lookup v) δFs      -- F_v^{1:L}
-          baseline_v = Vec.covar δFv δGv |/| Vec.var δGv  -- b_v
-          δELBOv     = zipWith (\δgv δfv -> δfv |-| (baseline_v |*| δgv)) δGv δFv
-          δestELBOv  = ((*|) (1/fromIntegral l_samples) . foldr (|+|) (Vec.zeros (Proxy @(Arity d)))) δELBOv
-      in  δestELBOv
 
 {- | Update each variable v's parameters λ using their estimated ELBO gradients E[δelbo(v)].
         λ_{t+1} = λ_t + η_t * E[δelbo(v)]

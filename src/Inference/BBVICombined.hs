@@ -75,7 +75,7 @@ bbviStep num_samples bbvi_prog proposals = do
   -- | Execute a model for L iterations, collecting gradient traces G_l and importance weights logW_l:
   ((as, logWs), grads) <- Util.unzip3 <$> replicateM num_samples (lift (runBBVI proposals bbvi_prog))
   -- | Compute the ELBO gradient estimates
-  let δelbos     = BBVI.likelihoodRatioEstimator num_samples logWs grads
+  let δelbos     = likelihoodRatioEstimator num_samples logWs grads
   -- | Update the parameters of the proposal distributions Q
       proposals' = BBVI.updateParams 1.0 proposals δelbos
   -- liftPutStrLn $ "Proposal Distributions Q:\n" ++ show traceQ ++ "\n"
@@ -148,3 +148,29 @@ traceLogProbs = loop 0 where
       -- | Compute: log(P(X)) - log(Q(X; λ))
       ScorePrj d q α -> Op op (\x -> loop (logW + logProb d x - logProb q x) $ k x)
       _              -> Op op (loop logW . k)
+
+likelihoodRatioEstimator :: Int -> [LogP] -> [GTrace] -> GTrace
+likelihoodRatioEstimator l_samples logWs δGs = foldr (\(Some v) -> Trace.insert v (estδELBO v)) Trace.empty vars
+  where
+    vars :: [Some DiffDistribution Key]
+    vars = (Trace.keys . head) δGs
+    {- | Uniformly scale each iteration's gradient trace G^l by its corresponding (normalised) importance weight W_norm^l.
+            F^{1:L} = W_norm^{1:L} * G^{1:L}
+        where the normalised importance weight is defined via:
+            log(W_norm^l) = log(W^l) + max(log(W^{1:L})) -}
+    δFs :: [GTrace]
+    δFs = zipWith (\logW -> Trace.map (\_ δ -> expLogP logW *| δ)) (normaliseLogPs logWs) δGs
+    {- | Compute the ELBO gradient estimate for a random variable v's associated parameters:
+            E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
+        where the baseline is:
+            b_v    = covar(F_v^{1:L}, G_v^{1:L}) / var(G_v^{1:L}) -}
+    estδELBO :: forall d. (DiffDistribution d)
+      => Key d                -- ^   v
+      -> Vec (Arity d) Double -- ^   E[δelbo(v)]
+    estδELBO v  =
+      let δGv        = map (fromJust . Trace.lookup v) δGs      -- G_v^{1:L}
+          δFv        = map (fromJust . Trace.lookup v) δFs      -- F_v^{1:L}
+          baseline_v = Vec.covar δFv δGv |/| Vec.var δGv  -- b_v
+          δELBOv     = zipWith (\δgv δfv -> δfv |-| (baseline_v |*| δgv)) δGv δFv
+          δestELBOv  = ((*|) (1/fromIntegral l_samples) . foldr (|+|) (Vec.zeros (Proxy @(Arity d)))) δELBOv
+      in  δestELBOv
