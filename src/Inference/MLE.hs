@@ -6,6 +6,8 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Eta reduce" #-}
 
 {- | Maximum likelihood estimation.
 -}
@@ -36,14 +38,15 @@ import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
 import qualified Inference.BBVI as BBVI
 import qualified Inference.INVI as INVI
+import qualified Inference.VI as VI
 
 mle :: forall env a b. (Show (Env env))
   => Int                                -- ^ number of optimisation steps (T)
   -> Int                                -- ^ number of samples to estimate the gradient over (L)
-  -> Model env [ObsRW env, Dist] a      -- ^ model P(X | Y ; θ)
+  -> Model env [ObsRW env, Dist] a      -- ^ model Q ≈ P(X | Y)
   -> Env env                            -- ^ model environment (containing only observed data Y)
-  -> Model env [ObsRW env, Dist] b      -- ^ model P
-  -> Sampler DTrace                     -- ^ final distributions P(λ_T)
+  -> Model env [ObsRW env, Dist] b      -- ^ model P(X, Y; θ)
+  -> Sampler DTrace                     -- ^ final distributions P(θ_T)
 mle num_timesteps num_samples model_q model_env model_p = do
   let model_q' :: Prog '[Observe, Sample] (a, Env env)
       model_q' = second (Env.union model_env) <$> handleCore model_env model_q
@@ -55,12 +58,13 @@ mle num_timesteps num_samples model_q model_env model_p = do
 mleInternal :: (LastMember (Lift Sampler) fs, Show (Env env))
   => Int                                    -- ^ number of optimisation steps (T)
   -> Int                                    -- ^ number of samples to estimate the gradient over (L)
-  -> Prog [Observe, Sample] (a, Env env)    -- ^ model Q
-  -> Model env [ObsRW env, Dist] b          -- ^ model P
+  -> Prog [Observe, Sample] (a, Env env)    -- ^ model Q ≈ P(X | Y)
+  -> Model env [ObsRW env, Dist] b          -- ^ model P(X, Y; θ)
   -> DTrace                                 -- ^ model initial parameters P(θ_0)
   -> Prog fs DTrace                         -- ^ final model parameters P(θ_T)
-mleInternal num_timesteps num_samples model_q model_p params_0 = do
-  foldr (>=>) pure [mleStep t num_samples model_q model_p | t <- [1 .. num_timesteps]] params_0
+mleInternal num_timesteps num_samples model_q model_p params_0 =
+  foldr (>=>) pure [mleStep t model_q smcHandler model_p | t <- [1 .. num_timesteps]] params_0
+  where smcHandler = (map (second SMC.particleLogProb) <$>) . handleLift . SMC.smcInternal num_samples
 
 {- | 1. For L iterations:
          a) Generate importance-weighted posterior samples X=x from the model Q(X),
@@ -71,23 +75,20 @@ mleInternal num_timesteps num_samples model_q model_p params_0 = do
      2. Update the model parameters P(θ)
 -}
 mleStep :: (LastMember (Lift Sampler) fs, Show (Env env))
-  => Int                                          -- ^ time step index (t)
-  -> Int                                          -- ^ number of samples to estimate the gradient over (L)
-  -> Prog [Observe, Sample] (a, Env env)          -- ^ model Q
-  -> Model env [ObsRW env, Dist] b                -- ^ model P
-  -> DTrace                                       -- ^ model parameters P(θ_t)
-  -> Prog fs DTrace                               -- ^ next model parameters P(θ_{t+1})
-mleStep timestep num_samples model_q model_p params = do
+  => Int                                                        -- ^ time step index (t)
+  -> ProbProg (a, Env env)                                      -- ^ model Q ≈ P(X | Y)
+  -> (ProbProg (a, Env env) -> Sampler [((a, Env env), LogP)])  -- ^ X ~ Q
+  -> Model env [ObsRW env, Dist] b                              -- ^ model P(X, Y; θ)
+  -> DTrace                                                     -- ^ model parameters P(θ_t)
+  -> Prog fs DTrace                                             -- ^ next model parameters P(θ_{t+1})
+mleStep timestep model_q hdlPosterior model_p params = do
   -- | Sample the model P(X | Y) for (L) iterations
-  ((_, model_envs), posterior_logWs)
-      <- Util.unzip3 <$> SMC.smcInternal num_samples model_q
+  ((_, model_envs), logWs) <- Util.unzip3 <$> lift (hdlPosterior model_q)
   -- | Execute the model P(X, Y; θ) under each posterior sample
-  ((_, _)        , grads)
-      <- Util.unzip3 <$> mapM (lift . flip (handleModel model_p) params) model_envs
-  -- | Compute unnormalised log-importance-weights: logW = log(P(X, Y)) - log(Q(X; λ))
-  let logWs      = map SMC.particleLogProb posterior_logWs
+  ((_, _) , grads)         <- Util.unzip3 <$> mapM (lift . flip (handleModel model_p) params) model_envs
+
   -- | Compute the ELBO gradient estimates
-  let δelbos     = normalisingEstimator num_samples logWs grads
+  let δelbos     = normalisingEstimator logWs grads
   -- | Update the parameters of the proposal distributions Q
   let params'    = case δelbos of Just δelbos -> BBVI.updateParams 1 params δelbos
                                   Nothing     -> params
@@ -107,7 +108,7 @@ handleModel model_p env params =
 collectParams :: Model env '[ObsRW env, Dist] b -> ProbProg (a, Env env) -> Sampler DTrace
 collectParams model_p model_q = do
   (_, env) <- (SIM.handleSamp . SIM.handleObs) model_q
-  (BBVI.collectParams . installLearn Trace.empty . handleCore env) model_p
+  (SIM.handleSamp . SIM.handleObs . VI.collectParams . installLearn Trace.empty . handleCore env) model_p
 
 {- For each observed value Y = y and latent variable X = x generated in the model environment,
    this gives rise to Observe p x:
@@ -155,8 +156,8 @@ weighModel = loop 0 where
       _               -> Op op (loop logW . k)
 
 
-normalisingEstimator :: Int -> [LogP] -> [GTrace] -> Maybe GTrace
-normalisingEstimator l_samples logWs traceGs =
+normalisingEstimator :: [LogP] -> [GTrace] -> Maybe GTrace
+normalisingEstimator  logWs traceGs =
   if isInfinite norm_c then Nothing else Just (foldr f Trace.empty vars) where
     vars :: [Some DiffDistribution Key]
     vars = (Trace.keys . head) traceGs
@@ -168,7 +169,7 @@ normalisingEstimator l_samples logWs traceGs =
     traceFs = zipWith (\logW -> Trace.map (\_ δ -> expLogP logW *| δ)) logWs traceGs
     {- | Normalising constant -}
     norm_c :: Double
-    norm_c = 1 / (fromIntegral l_samples * sum (map expLogP logWs))
+    norm_c = 1 / (fromIntegral (length logWs) * sum (map expLogP logWs))
     {- | Compute the mean gradient estimate for a random variable v's associated parameters -}
     estimateGrad :: forall d. ( DiffDistribution d) => Key d -> [GTrace] -> Vec (Arity d) Double
     estimateGrad v traceFs =

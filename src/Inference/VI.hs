@@ -73,12 +73,11 @@ viStep timestep num_samples guide model model_env params = do
   (((_, guide_envs), guide_logWs), grads)
       <- Util.unzip4 <$> replicateM num_samples ((lift . handleGuide guide) params)
   -- | Execute the model P(X, Y) under the union of the model environment Y and guide environment X
-  (_               , model_logWs)
-      <- Util.unzip3 <$> mapM ((lift . handleModel model) . Env.union model_env) guide_envs
+  (_, model_logWs) <- Util.unzip3 <$> mapM (lift . handleModel model . Env.union model_env) guide_envs
   -- | Compute total log-importance-weight, log(P(X, Y)) - log(Q(X; λ))
   let logWs  = zipWith (-) model_logWs guide_logWs
   -- | Update the parameters λ of the proposal distributions Q
-  params'    <- call (GradDescent  logWs grads params)
+  params'    <- call (GradDescent logWs grads params)
 
   pure params'
 

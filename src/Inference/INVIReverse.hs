@@ -34,7 +34,8 @@ import qualified Vec
 import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
 import qualified Inference.BBVI as BBVI
-
+import qualified Inference.VI as VI
+import           Inference.INVI as INVI
 
 {- | Top-level wrapper that takes a separate model and guide.
 -}
@@ -90,9 +91,9 @@ inviStep timestep num_samples model guide params = do
   -- | Compute unnormalised log-importance-weights: logW = log(P(X, Y)) - log(Q(X; λ))
   let logWs      = zipWith (-) model_logWs guide_logWs
   -- | Compute the self-normalised ELBO gradient estimate
-  let δelbos     = normalisingEstimator num_samples logWs grads
+  let δelbos     = fromJust (INVI.normalisingEstimator logWs grads)
   -- | Update the parameters of the proposal distributions Q
-  let params' = updateParams 1 params δelbos
+  let params'    = updateParams 1 params δelbos
 
   pure params'
 
@@ -127,7 +128,7 @@ handleModel = SIM.handleSamp . SIM.handleObs . weighModel
 collectParams :: Model env '[ObsRW env, Dist] b -> ProbProg (a, Env env) -> Sampler DTrace
 collectParams guide model = do
   ((_, env), _) <- handleModel model
-  (BBVI.collectParams . installLearn Trace.empty . handleCore env) guide
+  (SIM.handleSamp . SIM.handleObs . VI.collectParams . installLearn Trace.empty . handleCore env) guide
 
 {- For each latent variable X = x ~ P(X | Y) and Observe q x:
     - If q is a fixed non-learnable distribution, then we retain:
