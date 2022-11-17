@@ -9,7 +9,8 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
 
-{- | Maximum likelihood estimation.
+{- | Maximum likelihood estimation that directly samples X from the posterior P(X | Y; θ) using some form
+     of Bayesian inference (e.g. SMC) and assigns this as the sample's importance weight.
 -}
 
 module Inference.MLE where

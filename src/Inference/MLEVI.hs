@@ -10,7 +10,8 @@
 {-# HLINT ignore "Eta reduce" #-}
 {-# LANGUAGE TupleSections #-}
 
-{- | Maximum likelihood estimation.
+{- | Maximum likelihood estimation in terms of VI that samples from the prior P(X) and assigns each simulation an
+     importance weight P(Y | X; θ).
 -}
 
 module Inference.MLEVI where
@@ -44,32 +45,32 @@ import qualified Inference.VI as VI
 mle :: forall env xs a b. (Show (Env env), (env `ContainsVars` xs))
   => Int                                -- ^ number of optimisation steps (T)
   -> Int                                -- ^ number of samples to estimate the gradient over (L)
-  -> Model env [ObsRW env, Dist] b      -- ^ guide Q(X; λ)
-  -> Model env [ObsRW env, Dist] a      -- ^ model P(X, Y)
+  -> Model env [ObsRW env, Dist] a      -- ^ model P(X, Y; θ)
   -> Env env                            -- ^ model environment (containing only observed data Y)
-  -> Vars xs
-  -> Sampler DTrace           -- ^ final proposal distributions Q(λ_T)
-mle num_timesteps num_samples guide_model model model_env vars = do
-  let guide :: Prog '[Param, Sample] (b, Env env)
-      guide = ((second (const model_env) <$>) . BBVI.installGuideParams . handleCore model_env) guide_model
-  -- | Collect initial proposal distributions
+  -> Vars xs                            -- ^ parameter names θ
+  -> Sampler DTrace                     -- ^ final parameters θ_T
+mle num_timesteps num_samples  model model_env vars = do
+  -- | Set up a empty dummy guide Q to return the original input model environment
+  let guide :: Prog '[Param, Sample] ((), Env env)
+      guide = pure ((), model_env)
+      guideParams_0 :: DTrace
+      guideParams_0 = Trace.empty
+  -- | Collect initial model parameters θ
   let tags = Env.varsToStrs @env vars
-  guideParams_0 <- BBVI.collectGuideParams guide
   modelParams_0 <- collectModelParams tags (handleCore model_env model)
-  -- | Run BBVI for T optimisation steps
+  -- | Run MLE for T optimisation steps
   ((snd <$>) . handleLift . INVI.handleGradDescent) $
-    VI.viLoop num_timesteps num_samples guide handleGuide model (handleModel tags) (guideParams_0, modelParams_0)
+      VI.viLoop num_timesteps num_samples guide handleGuide model (handleModel tags) (guideParams_0, modelParams_0)
 
+-- | Handle the dummy guide by returning a log-importance-weight log(Q(X)) = 0
 handleGuide :: Prog [Param, Sample] a -> DTrace -> Sampler ((a, LogP), GTrace)
-handleGuide guide params =
+handleGuide guide _ =
   (SIM.handleSamp . BBVI.handleGuideParams ) ((, 0) <$> guide)
 
-handleModel :: forall env a. [Tag] -> Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((a, Env env), LogP), GTrace)
+-- | Handle the model P(X, Y; θ) by returning a log-importance-weight log(Q(X)) = 0
+handleModel :: [Tag] -> Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((a, Env env), LogP), GTrace)
 handleModel tags model params env  =
-  let prog :: Prog '[Param, Observe, Sample] (a, Env env)
-      prog = (installModelParams tags params . handleCore env) model
-
-  in  (SIM.handleSamp . SIM.handleObs . handleModelParams . weighModel) prog
+  (SIM.handleSamp . SIM.handleObs . handleModelParams . weighModel . installModelParams tags params . handleCore env) model
 
 collectModelParams :: [Tag] -> ProbProg b -> Sampler DTrace
 collectModelParams tags =

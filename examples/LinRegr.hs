@@ -218,7 +218,7 @@ mleviLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
 mleviLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  traceQ <- MLEVI.mle t_steps l_samples (linRegr xs) (linRegr xs ) env_in (#m <#> #c <#> vnil)
+  traceQ <- MLEVI.mle t_steps l_samples  (linRegr xs ) env_in (#m <#> #c <#> vnil)
   let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
       c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
   pure (m_dist, c_dist)

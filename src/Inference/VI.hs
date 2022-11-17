@@ -44,10 +44,10 @@ data GradDescent a where
 viLoop :: (LastMember (Lift Sampler) fs, Show (Env env))
   => Int                                          -- ^ number of optimisation steps (T)
   -> Int                                          -- ^ number of samples to estimate the gradient over (L)
-  -> Prog [Param, Sample] (b, Env env)            -- ^ guide Q(X; λ)
-  -> (forall b. Prog [Param, Sample] b -> DTrace -> Sampler ((b, LogP), GTrace))
-  -> Model env [ObsRW env, Dist] a                -- ^ model P(X, Y)
-  -> (forall a. Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((a, Env env), LogP), GTrace))
+  -> Prog [Param, Sample] (a, Env env)            -- ^ guide Q(X; λ)
+  -> (forall c. Prog [Param, Sample] c -> DTrace -> Sampler ((c, LogP), GTrace))
+  -> Model env [ObsRW env, Dist] b                -- ^ model P(X, Y)
+  -> (forall d env. Model env [ObsRW env, Dist] d -> DTrace -> Env env -> Sampler (((d, Env env), LogP), GTrace))
   -> (DTrace, DTrace)                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Prog (GradDescent : fs) (DTrace, DTrace)      -- ^ final guide parameters λ_T
 viLoop num_timesteps num_samples guide hdlGuide model hdlModel  (guideParams_0, modelParams_0) = do
@@ -67,9 +67,9 @@ viStep :: (LastMember (Lift Sampler) fs, Show (Env env))
   => Int                                          -- ^ time step index (t)
   -> Int                                          -- ^ number of samples to estimate the gradient over (L)
   -> Prog [Param, Sample] (b, Env env)            -- ^ guide Q(X; λ)
-  -> (forall b. Prog [Param, Sample] b        -> DTrace -> Sampler ((b, LogP), GTrace))
+  -> (forall b env. Prog [Param, Sample] (b, Env env)       -> DTrace -> Sampler (((b, Env env), LogP), GTrace))
   -> Model env [ObsRW env, Dist] a                -- ^ model P(X, Y)
-  -> (forall a. Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((a, Env env), LogP), GTrace))
+  -> (forall env a. Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((a, Env env), LogP), GTrace))
   -> (DTrace, DTrace)                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Prog (GradDescent : fs) (DTrace, DTrace)    -- ^ next guide parameters λ_{t+1}
 viStep timestep num_samples guide hdlGuide model hdlModel (guideParams, modelParams) = do
