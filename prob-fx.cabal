@@ -46,6 +46,7 @@ library
                       Inference.INVI,
                       Inference.MLE,
                       Inference.VI,
+                      Inference.MLEVI,
                       -- Inference.MB,
                       Env,
                       LogP,
