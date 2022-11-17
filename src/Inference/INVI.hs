@@ -51,10 +51,10 @@ invi num_timesteps num_samples guide_model model model_env  = do
   let guide :: Prog '[Param, Sample] (b, Env env)
       guide = (BBVI.installGuideParams . handleCore model_env) guide_model
   -- | Collect initial proposal distributions
-  params_0 <- SIM.handleSamp $ BBVI.collectGuideParams guide
+  guideParams_0 <- SIM.handleSamp $ BBVI.collectGuideParams guide
   -- | Run BBVI for T optimisation steps
   ((fst <$>) . handleLift . handleGradDescent) $
-    VI.viLoop num_timesteps num_samples guide BBVI.handleGuide model BBVI.handleModel model_env (params_0, Trace.empty)
+    VI.viLoop num_timesteps num_samples guide BBVI.handleGuide model BBVI.handleModel model_env (guideParams_0, Trace.empty)
 
 handleGradDescent :: Prog (GradDescent : fs) a -> Prog fs a
 handleGradDescent (Val a) = pure a

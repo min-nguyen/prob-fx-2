@@ -79,15 +79,15 @@ viStep timestep num_samples guide hdlGuide model hdlModel (guideParams, modelPar
   (((_, guide_envs), guide_logWs), guide_grads)
       <- Util.unzip4 <$> replicateM num_samples (lift (hdlGuide guide guideParams))
   -- | Execute the model P(X, Y) under the union of the model environment Y and guide environment X
-  ((_, model_logWs), model_grads)
+  ((_              , model_logWs), model_grads)
       <- Util.unzip3 <$> mapM (lift . hdlModel model modelParams) guide_envs
   -- | Compute total log-importance-weight, log(P(X, Y)) - log(Q(X; λ))
   let logWs  = zipWith (-) model_logWs guide_logWs
   -- | Update the parameters λ of the proposal distributions Q
   guideParams'    <- call (GradDescent logWs guide_grads guideParams)
-  -- modelParams'    <- call (GradDescent logWs model_grads modelParams)
-
-  pure (guideParams', modelParams)
+  modelParams'    <- call (GradDescent logWs model_grads modelParams)
+  liftPutStrLn (show modelParams')
+  pure (guideParams', modelParams')
 
 {- | Update each variable v's parameters λ using their estimated ELBO gradients E[δelbo(v)].
         λ_{t+1} = λ_t + η_t * E[δelbo(v)]
