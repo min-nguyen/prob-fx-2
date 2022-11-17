@@ -76,7 +76,7 @@ bbviStep num_samples bbvi_prog proposals = do
   -- | Compute the ELBO gradient estimates
   let δelbos     = BBVI.likelihoodRatioEstimator logWs grads
   -- | Update the parameters of the proposal distributions Q
-      proposals' = VI.updateParams 1.0 proposals δelbos
+      proposals' = VI.gradStep 1.0 proposals δelbos
   -- liftPutStrLn $ "Proposal Distributions Q:\n" ++ show traceQ ++ "\n"
   -- liftPutStrLn $ "Gradient Log-Pdfs G_l for {1:L}:\n" ++ show traceGs ++ "\n"
   -- liftPutStrLn $ "Log Importance Weights logW_l for {1:L}:\n" ++ show logWs ++ "\n"

@@ -26,12 +26,12 @@ module Effects.Dist (
   , Observe(..)
   , pattern ObsPrj
   , pattern ObsDis
-  -- ** Learn effect
-  , Learn(..)
-  , pattern LearnSPrj
-  , pattern LearnOPrj
-  , setLearnDist
-  -- ** Learn effect
+  -- ** Param effect
+  , Param(..)
+  , pattern ParamSPrj
+  , pattern ParamOPrj
+  , setParamDist
+  -- ** Param effect
   , Score(..)
   , pattern ScorePrj
   ) where
@@ -95,30 +95,30 @@ pattern ObsPrj d y α <- (prj -> Just (Observe d y α))
 pattern ObsDis :: () => (Distribution d, x ~ Support d) => d -> x -> Addr -> EffectSum (Observe : es) x
 pattern ObsDis d y α <- (discharge -> Right (Observe d y α))
 
--- | The effect @Learn@ for distributions with support for gradient log-pdfs
-data Learn a where
-  LearnS :: (DiffDistribution d, a ~ Support d)
+-- | The effect @Param@ for distributions with support for gradient log-pdfs
+data Param a where
+  ParamS :: (DiffDistribution d, a ~ Support d)
          => d              -- ^ proposal distribution
          -> Addr           -- ^ address of operation
-         -> Learn a        -- ^ observed point
-  LearnO :: (DiffDistribution d, a ~ Support d)
+         -> Param a        -- ^ observed point
+  ParamO :: (DiffDistribution d, a ~ Support d)
          => d              -- ^ proposal distribution
          -> a              -- ^ an observed point
          -> Addr           -- ^ address of operation
-         -> Learn a        -- ^ observed point
+         -> Param a        -- ^ observed point
 
-setLearnDist :: (DiffDistribution d, a ~ Support d) => Learn a -> d -> Learn a
-setLearnDist (LearnS q α) q' = LearnS q' α
-setLearnDist (LearnO q x α) q' = LearnO q' x α
+setParamDist :: (DiffDistribution d, a ~ Support d) => Param a -> d -> Param a
+setParamDist (ParamS q α) q' = ParamS q' α
+setParamDist (ParamO q x α) q' = ParamO q' x α
 
--- | For projecting and then successfully pattern matching against @Learn@
-pattern LearnSPrj :: (Member Learn es) => (DiffDistribution d, x ~ Support d) => d -> Addr -> EffectSum es x
-pattern LearnSPrj q α <- (prj -> Just (LearnS q α))
+-- | For projecting and then successfully pattern matching against @Param@
+pattern ParamSPrj :: (Member Param es) => (DiffDistribution d, x ~ Support d) => d -> Addr -> EffectSum es x
+pattern ParamSPrj q α <- (prj -> Just (ParamS q α))
 
-pattern LearnOPrj :: (Member Learn es) => (DiffDistribution d, x ~ Support d) => d -> a -> Addr -> EffectSum es x
-pattern LearnOPrj q x α <- (prj -> Just (LearnO q x α))
+pattern ParamOPrj :: (Member Param es) => (DiffDistribution d, x ~ Support d) => d -> a -> Addr -> EffectSum es x
+pattern ParamOPrj q x α <- (prj -> Just (ParamO q x α))
 
--- | The effect @Score@ is like @Learn@ but retains the original distribution to be optimised
+-- | The effect @Score@ is like @Param@ but retains the original distribution to be optimised
 data Score a where
   Score  :: (DiffDistribution d, a ~ Support d)
          => d              -- ^ original distribution
