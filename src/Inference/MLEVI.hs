@@ -52,12 +52,11 @@ mle num_timesteps num_samples guide_model model model_env  = do
   let guide :: Prog '[Param, Sample] (b, Env env)
       guide = ((second Env.empty <$>) . BBVI.installGuideParams . handleCore model_env) guide_model
   -- | Collect initial proposal distributions
-  guideParams_0 <- SIM.handleSamp $ BBVI.collectGuideParams guide
+  guideParams_0 <- BBVI.collectGuideParams guide
   modelParams_0 <- collectModelParams (handleCore model_env model)
   -- | Run BBVI for T optimisation steps
   ((fst <$>) . handleLift . INVI.handleGradDescent) $
-    VI.viLoop num_timesteps num_samples guide BBVI.handleGuide model BBVI.handleModel model_env (guideParams_0, Trace.empty)
-
+    VI.viLoop num_timesteps num_samples guide BBVI.handleGuide model BBVI.handleModel (guideParams_0, Trace.empty)
 
 handleGuide :: Prog [Param, Sample] a -> DTrace -> Sampler ((a, LogP), GTrace)
 handleGuide guide params =
@@ -70,12 +69,10 @@ handleModel model env params =
 
   in  (SIM.handleSamp . SIM.handleObs . handleModelParams . weighModel) prog
 
--- collectModelParams :: Model env '[ObsRW env, Dist] b -> Env env -> Sampler DTrace
--- collectModelParams model env = do
---   (SIM.handleSamp . SIM.handleObs . collectModelParams . installModelParams Trace.empty . handleCore env) model
-
 collectModelParams ::  ProbProg b -> Sampler DTrace
-collectModelParams = (SIM.handleSamp . SIM.handleObs . (fst <$>) . handleModelParams) . loop Trace.empty . installModelParams Trace.empty  where
+collectModelParams =
+  SIM.handleSamp . SIM.handleObs . (fst <$>) . handleModelParams . loop Trace.empty . installModelParams Trace.empty
+  where
   loop :: DTrace -> Prog (Param : es) a -> Prog (Param : es) DTrace
   loop params (Val _)   = pure params
   loop params (Op op k) = case prj op of

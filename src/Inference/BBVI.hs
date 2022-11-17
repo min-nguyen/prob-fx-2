@@ -16,7 +16,7 @@ module Inference.BBVI
 
 import Data.Maybe
 import Data.Proxy
-import Data.Bifunctor ( Bifunctor(first) )
+import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>) )
 import Effects.Dist
 import Effects.Lift
@@ -55,12 +55,12 @@ bbvi num_timesteps num_samples guide_model model model_env  = do
       2) Replacing any differentiable @Sample@ operations with @Param@.
 -}
   let guide :: Prog '[Param, Sample] (b, Env env)
-      guide = (installGuideParams . handleCore model_env) guide_model
+      guide = ((second (Env.union model_env) <$>) . installGuideParams . handleCore model_env) guide_model
   -- | Collect initial proposal distributions
-  guideParams_0 <- (SIM.handleSamp . collectGuideParams) guide
+  guideParams_0 <- collectGuideParams guide
   -- | Run BBVI for T optimisation steps
   ((fst <$>) . handleLift . handleGradDescent)
-    $ VI.viLoop num_timesteps num_samples guide handleGuide model handleModel model_env (guideParams_0, Trace.empty)
+    $ VI.viLoop num_timesteps num_samples guide handleGuide model handleModel (guideParams_0, Trace.empty)
 
 {- | Ignore the side-effects of all @Observe@ operations, and replace all differentiable @Sample@ operations (representing the proposal distributions Q(λ)) with @Param@ operations.
 -}
@@ -77,8 +77,9 @@ installGuideParams = loop . SIM.handleObs where
 
 {- | Collect all learnable distributions as the initial set of proposals λ_0.
 -}
-collectGuideParams :: Member Sample es => Prog (Param : es) a -> Prog es DTrace
-collectGuideParams = ((fst <$>) . handleGuideParams) . loop Trace.empty where
+collectGuideParams :: Prog [Param, Sample] a -> Sampler DTrace
+collectGuideParams = SIM.handleSamp . (fst <$>) . handleGuideParams . loop Trace.empty
+  where
   loop :: DTrace -> Prog (Param : es) a -> Prog (Param : es) DTrace
   loop params (Val _)   = pure params
   loop params (Op op k) = case prj op of

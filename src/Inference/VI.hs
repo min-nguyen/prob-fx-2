@@ -48,13 +48,11 @@ viLoop :: (LastMember (Lift Sampler) fs, Show (Env env))
   -> (forall b. Prog [Param, Sample] b -> DTrace -> Sampler ((b, LogP), GTrace))
   -> Model env [ObsRW env, Dist] a                -- ^ model P(X, Y)
   -> (forall a. Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((a, Env env), LogP), GTrace))
-  -> Env env                                      -- ^ model environment (containing only observed data Y)
   -> (DTrace, DTrace)                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Prog (GradDescent : fs) (DTrace, DTrace)      -- ^ final guide parameters λ_T
-viLoop num_timesteps num_samples guide hdlGuide model hdlModel model_env (guideParams_0, modelParams_0) = do
-  foldr (>=>) pure [viStep t num_samples guide' hdlGuide model hdlModel  | t <- [1 .. num_timesteps]]
+viLoop num_timesteps num_samples guide hdlGuide model hdlModel  (guideParams_0, modelParams_0) = do
+  foldr (>=>) pure [viStep t num_samples guide hdlGuide model hdlModel  | t <- [1 .. num_timesteps]]
     (guideParams_0, modelParams_0)
-  where guide' = second (Env.union model_env) <$> guide
 
 {- | 1. For L iterations,
         a) Generate values x from the guide Q(X; λ), accumulating:
