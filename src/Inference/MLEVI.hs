@@ -62,12 +62,12 @@ mle num_timesteps num_samples  model model_env vars = do
   ((snd <$>) . handleLift . INVI.handleGradDescent) $
       VI.viLoop num_timesteps num_samples guide handleGuide model (handleModel tags) (guideParams_0, modelParams_0)
 
--- | Handle the dummy guide by returning a log-importance-weight log(Q(X)) = 0
+-- | Handle the dummy guide Q by returning the original model environment Y and log-importance-weight log(Q(X)) = 0
 handleGuide :: Prog [Param, Sample] a -> DTrace -> Sampler ((a, LogP), GTrace)
 handleGuide guide _ =
   (SIM.handleSamp . BBVI.handleGuideParams ) ((, 0) <$> guide)
 
--- | Handle the model P(X, Y; θ) by returning a log-importance-weight log(Q(X)) = 0
+-- | Handle the model P(X, Y; θ) by returning log-importance-weight P(Y | X; θ)
 handleModel :: [Tag] -> Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((a, Env env), LogP), GTrace)
 handleModel tags model params env  =
   (SIM.handleSamp . SIM.handleObs . handleModelParams . weighModel . installModelParams tags params . handleCore env) model

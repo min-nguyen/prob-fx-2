@@ -62,8 +62,7 @@ bbvi num_timesteps num_samples guide_model model model_env  = do
   ((fst <$>) . handleLift . handleGradDescent)
     $ VI.viLoop num_timesteps num_samples guide handleGuide model handleModel (guideParams_0, Trace.empty)
 
-{- | Ignore the side-effects of all @Observe@ operations, and replace all differentiable @Sample@ operations (representing the proposal distributions Q(λ)) with @Param@ operations.
--}
+-- | Ignore the side-effects of all @Observe@ operations, and replace all differentiable @Sample@ operations (representing the proposal distributions Q(λ)) with @Param@ operations.
 installGuideParams :: Prog [Observe, Sample] a -> Prog [Param, Sample] a
 installGuideParams = loop . SIM.handleObs where
   loop :: Prog '[Sample] a -> Prog [Param, Sample] a
@@ -75,8 +74,7 @@ installGuideParams = loop . SIM.handleObs where
                            (loop  . k) x
     Nothing -> Op (weaken op) (loop . k)
 
-{- | Collect all learnable distributions as the initial set of proposals λ_0.
--}
+-- | Collect the parameters λ_0 of the guide's initial proposal distributions.
 collectGuideParams :: Prog [Param, Sample] a -> Sampler DTrace
 collectGuideParams = SIM.handleSamp . (fst <$>) . handleGuideParams . loop Trace.empty
   where
@@ -101,9 +99,7 @@ handleGuide :: Prog [Param, Sample] a -> DTrace -> Sampler ((a, LogP), GTrace)
 handleGuide guide params =
   (SIM.handleSamp . handleGuideParams . weighGuide . updateGuideParams params) guide
 
-{- | Compute the log probability over the guide:
-        log(Q(X; λ))
--}
+-- | Compute log(Q(X; λ)) over the guide.
 weighGuide :: forall es a. (Members [Param, Sample] es) => Prog es a -> Prog es (a, LogP)
 weighGuide = loop 0 where
   loop :: LogP -> Prog es a -> Prog es (a, LogP)
@@ -115,8 +111,7 @@ weighGuide = loop 0 where
       SampPrj q α     -> Op op (\x -> loop (logW + logProb q x) $ k x)
       _               -> Op op (loop logW . k)
 
-{- | Set the proposal distributions Q(λ) of @Param@ operations.
--}
+-- | Set the @Param@eters of the guide Q(X; λ).
 updateGuideParams :: forall es a. Member Param es => DTrace -> Prog es a -> Prog es a
 updateGuideParams proposals = loop where
   loop :: Prog es a -> Prog es a
@@ -129,11 +124,7 @@ updateGuideParams proposals = loop where
     Just (ParamO q x α) -> error "VI.updateGuideParams: Should not happen"
     Nothing -> Op op (loop . k)
 
-{- | Handle each @Param@ operation by sampling from its proposal distribution:
-        x ~ Q(X; λ)
-     And record the gradient log-pdf at sample x w.r.t parameters λ:
-        δlog(Q(X = x; λ))
--}
+-- | Sample from each @Param@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
 handleGuideParams :: forall es a. Member Sample es => Prog (Param : es) a -> Prog es (a, GTrace)
 handleGuideParams = loop Trace.empty where
   loop :: GTrace -> Prog (Param : es) a -> Prog es (a, GTrace)
@@ -156,9 +147,7 @@ handleModel :: Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((
 handleModel model _ env  =
   (((, Trace.empty) <$>) . SIM.handleSamp . SIM.handleObs . weighModel . handleCore env) model
 
-{- | Compute the log probability over the model:
-        log(P(X, Y))
--}
+-- | Compute log(P(X, Y)) over the model.
 weighModel :: forall es a. (Members [Sample, Observe] es) => Prog es a -> Prog es (a, LogP)
 weighModel = loop 0 where
   loop :: LogP -> Prog es a -> Prog es (a, LogP)
@@ -170,9 +159,7 @@ weighModel = loop 0 where
       SampPrj d α  -> Op op (\x -> loop (logW + logProb d x) $ k x)
       _            -> Op op (loop logW . k)
 
-{- | Compute the ELBO gradient estimates for each variable v over L samples.
-        E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
--}
+-- | Update the guide parameters using a likelihood-ratio-estimate of the ELBO gradient
 handleGradDescent :: Prog (GradDescent : fs) a -> Prog fs a
 handleGradDescent (Val a) = pure a
 handleGradDescent (Op op k) = case discharge op of
@@ -182,6 +169,7 @@ handleGradDescent (Op op k) = case discharge op of
     in  handleGradDescent (k params')
   Left op' -> Op op' (handleGradDescent . k)
 
+-- | Compute a likelihood-ratio-estimate E[δelbo] of the ELBO gradient
 likelihoodRatioEstimator :: [LogP] -> [GTrace] -> GTrace
 likelihoodRatioEstimator logWs δGs = foldr (\(Some v) -> Trace.insert v (estδELBO v)) Trace.empty vars
   where
