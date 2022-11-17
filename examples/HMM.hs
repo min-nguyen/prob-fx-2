@@ -27,6 +27,7 @@ import Inference.RMSMC as RMSMC ( rmsmc )
 import Inference.PMMH as PMMH ( pmmh )
 import Inference.SMC2 as SMC2 ( smc2 )
 import Inference.BBVI as BBVI
+import Inference.INVI as INVI
 import Inference.BBVICombined as BBVICombined
 import Model ( Model (..), bernoulli', binomial, uniform, beta )
 import Prog ( Member, LastMember )
@@ -287,7 +288,7 @@ bbviHMM t_steps l_samples hmm_length = do
   ys <- simHMM hmm_length
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
-  traceQ <- BBVI.bbvi t_steps l_samples (hmm hmm_length 0) env_in (hmmGuide hmm_length 0)
+  traceQ <- BBVI.bbvi t_steps l_samples (hmmGuide hmm_length 0) (hmm hmm_length 0) env_in
   let trans_dist = toList . fromJust $ Trace.lookup (Key ("trans_p", 0) :: Key Beta) traceQ
       obs_dist   = toList . fromJust $ Trace.lookup (Key ("obs_p", 0)   :: Key Beta) traceQ
   pure (trans_dist, obs_dist)
@@ -306,7 +307,7 @@ bbviDefaultHMM t_steps l_samples hmm_length = do
   ys <- simHMM hmm_length
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
-  traceQ <- BBVI.bbvi t_steps l_samples (hmm hmm_length 0) env_in (hmm hmm_length 0)
+  traceQ <- BBVI.bbvi t_steps l_samples (hmm hmm_length 0) (hmm hmm_length 0) env_in
   let trans_dist = toList . fromJust $ Trace.lookup (Key ("trans_p", 0) :: Key Beta) traceQ
       obs_dist   = toList . fromJust $ Trace.lookup (Key ("obs_p", 0)   :: Key Beta) traceQ
   pure (trans_dist, obs_dist)
@@ -326,6 +327,25 @@ bbviDefaultCombinedHMM t_steps l_samples hmm_length = do
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
   traceQ <- BBVICombined.bbvi t_steps l_samples (hmm hmm_length 0) env_in
+  let trans_dist = toList . fromJust $ Trace.lookup (Key ("trans_p", 0) :: Key Beta) traceQ
+      obs_dist   = toList . fromJust $ Trace.lookup (Key ("obs_p", 0)   :: Key Beta) traceQ
+  pure (trans_dist, obs_dist)
+
+-- | BBVI inference over a HMM, using a custom guide
+inviHMM
+  -- | number of optimisation steps
+  :: Int
+  -- | number of samples to estimate gradients over
+  -> Int
+  -- | number of HMM nodes
+  -> Int
+  -- | (transition beta parameters, observation beta parameters)
+  -> Sampler ([Double], [Double])
+inviHMM t_steps l_samples hmm_length = do
+  ys <- simHMM hmm_length
+  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
+
+  traceQ <- INVI.invi t_steps l_samples (hmmGuide hmm_length 0) (hmm hmm_length 0) env_in
   let trans_dist = toList . fromJust $ Trace.lookup (Key ("trans_p", 0) :: Key Beta) traceQ
       obs_dist   = toList . fromJust $ Trace.lookup (Key ("obs_p", 0)   :: Key Beta) traceQ
   pure (trans_dist, obs_dist)

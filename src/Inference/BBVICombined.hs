@@ -15,7 +15,6 @@ module Inference.BBVICombined
   where
 
 import Data.Maybe
-import Data.Proxy
 import Data.Bifunctor ( Bifunctor(first) )
 import Control.Monad ( replicateM, (>=>) )
 import Effects.Dist
@@ -30,11 +29,12 @@ import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Member
 import Sampler
 import           Trace (GTrace, DTrace, Key(..), Some(..))
 import qualified Trace
-import Debug.Trace
-import qualified Inference.SIM as SIM
 import qualified Vec
 import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import qualified Util
+import qualified Inference.SIM as SIM
+import qualified Inference.VI as VI
+import qualified Inference.BBVI as BBVI
 
 {- | Top-level wrapper for BBVI inference.
 -}
@@ -74,9 +74,9 @@ bbviStep num_samples bbvi_prog proposals = do
   -- | Execute a model for L iterations, collecting gradient traces G_l and importance weights logW_l:
   ((as, logWs), grads) <- Util.unzip3 <$> replicateM num_samples (lift (runBBVI proposals bbvi_prog))
   -- | Compute the ELBO gradient estimates
-  let δelbos     = estELBOs num_samples logWs grads
+  let δelbos     = BBVI.likelihoodRatioEstimator logWs grads
   -- | Update the parameters of the proposal distributions Q
-      proposals' = optimizeParams 1.0 proposals δelbos
+      proposals' = VI.updateParams 1.0 proposals δelbos
   -- liftPutStrLn $ "Proposal Distributions Q:\n" ++ show traceQ ++ "\n"
   -- liftPutStrLn $ "Gradient Log-Pdfs G_l for {1:L}:\n" ++ show traceGs ++ "\n"
   -- liftPutStrLn $ "Log Importance Weights logW_l for {1:L}:\n" ++ show logWs ++ "\n"
@@ -110,7 +110,7 @@ installScore = loop Trace.empty where
 updateScore :: forall es a. Member Score es => DTrace -> Prog es a -> Prog es a
 updateScore proposals = loop where
   loop :: Prog es a -> Prog es a
-  loop (Val x)   = pure x
+  loop (Val a)   = pure a
   loop (Op op k) = case prj op of
     Just (Score d _ α) -> do
       let q = fromMaybe d (Trace.lookup (Key α) proposals)
@@ -126,7 +126,7 @@ updateScore proposals = loop where
 handleScore :: forall es a. Member Sample es => Prog (Score : es) a -> Prog es (a, GTrace)
 handleScore = loop Trace.empty where
   loop :: GTrace -> Prog (Score : es) a -> Prog es (a, GTrace)
-  loop grads (Val x)   = pure (x, grads)
+  loop grads (Val a)   = pure (a, grads)
   loop grads (Op op k) = case discharge op of
     Right (Score _ (q :: d) α) -> do
          x <- call (Sample q α)
@@ -140,55 +140,10 @@ handleScore = loop Trace.empty where
 traceLogProbs :: forall es a. (Members [Score, Observe] es) => Prog es a -> Prog es (a, LogP)
 traceLogProbs = loop 0 where
   loop :: LogP -> Prog es a -> Prog es (a, LogP)
-  loop logW (Val x)   = pure (x, logW)
+  loop logW (Val a)   = pure (a, logW)
   loop logW (Op op k) = case op of
       -- | Compute: log(P(Y))
       ObsPrj d y α   -> Op op (\x -> loop (logW + logProb d x) $ k x)
       -- | Compute: log(P(X)) - log(Q(X; λ))
       ScorePrj d q α -> Op op (\x -> loop (logW + logProb d x - logProb q x) $ k x)
       _              -> Op op (loop logW . k)
-
-
-{- | Compute the ELBO gradient estimates for each variable v over L samples.
-        E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
--}
-estELBOs :: Int -> [LogP] -> [GTrace] -> GTrace
-estELBOs l_samples logWs traceGs = foldr f Trace.empty vars where
-  {- | Store the ELBO gradient estimate E[δelbo(v)] for a given variable v. -}
-  f :: Some DiffDistribution Key -> GTrace -> GTrace
-  f (Some kx) = Trace.insert kx (estELBO kx traceGs traceFs)
-  {- | Store the ELBO gradient estimate E[δelbo(v)] for a given variable v. -}
-  vars :: [Some DiffDistribution Key]
-  vars = (Trace.keys . head) traceGs
-  {- | Uniformly scale each iteration's gradient trace G^l by its corresponding (normalised) importance weight W_norm^l.
-          F^{1:L} = W_norm^{1:L} * G^{1:L}
-       where the normalised importance weight is defined via:
-          log(W_norm^l) = log(W^l) + max(log(W^{1:L})) -}
-  traceFs :: [GTrace]
-  traceFs = zipWith (\logW -> Trace.map (\_ δ -> expLogP logW *| δ)) (normaliseLogPs logWs) traceGs
-  {- | Compute the ELBO gradient estimate for a random variable v's associated parameters:
-          E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
-       where the baseline is:
-          b_v    = covar(F_v^{1:L}, G_v^{1:L}) / var(G_v^{1:L}) -}
-  estELBO :: forall d. ( DiffDistribution d)
-    => Key d    -- ^   v
-    -> [GTrace]  -- ^   G^{1:L}
-    -> [GTrace]  -- ^   F^{1:L}
-    -> Vec (Arity d) Double         -- ^   E[δelbo(v)]
-  estELBO v traceGs traceFs =
-    let traceGs_v  = map (fromJust . Trace.lookup v) traceGs                                 -- G_v^{1:L}
-        traceFs_v  = map (fromJust . Trace.lookup v) traceFs                                 -- F_v^{1:L}
-        baseline_v = Vec.covar traceFs_v traceGs_v |/| Vec.var traceGs_v  -- b_v
-        δelbos_v   = zipWith (\g_l f_l -> f_l |-| (baseline_v |*| g_l)) traceGs_v traceFs_v
-    in  ((*|) (1/fromIntegral l_samples) . foldr (|+|) (Vec.zero (Proxy @(Arity d))) ) δelbos_v
-
-{- | Update each variable v's parameters λ using their estimated ELBO gradients E[δelbo(v)].
-        λ_{t+1} = λ_t + η_t * E[δelbo(v)]
-     where the gradient δelbo(v) is implicitly w.r.t λ
--}
-optimizeParams
-  :: Double  -- ^ learning rate             η
-  -> DTrace  -- ^ optimisable distributions Q(λ_t)
-  -> GTrace  -- ^ elbo gradient estimates   E[δelbo]
-  -> DTrace  -- ^ updated distributions     Q(λ_{t+1})
-optimizeParams η = Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (η *| δλ))

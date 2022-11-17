@@ -56,8 +56,8 @@ var gs = Vec.map Util.variance params_gs
 (*|) :: Double -> Vec n Double -> Vec n Double
 (*|) x = Vec.map (* x)
 
-zero :: forall n d. (SNatI n) => Proxy n -> Vec n Double
-zero _ = Vec.replicate (snat @n) 0
+zeros :: forall n d. (SNatI n) => Proxy n -> Vec n Double
+zeros _ = Vec.replicate (snat @n) 0
 
 -- | Vec utility functions
 replicate :: SNat n -> a -> Vec n a

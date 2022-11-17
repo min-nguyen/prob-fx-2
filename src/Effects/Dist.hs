@@ -28,7 +28,9 @@ module Effects.Dist (
   , pattern ObsDis
   -- ** Learn effect
   , Learn(..)
-  , pattern LearnPrj
+  , pattern LearnSPrj
+  , pattern LearnOPrj
+  , setLearnDist
   -- ** Learn effect
   , Score(..)
   , pattern ScorePrj
@@ -95,14 +97,26 @@ pattern ObsDis d y α <- (discharge -> Right (Observe d y α))
 
 -- | The effect @Learn@ for distributions with support for gradient log-pdfs
 data Learn a where
-  Learn  :: (DiffDistribution d, a ~ Support d)
+  LearnS :: (DiffDistribution d, a ~ Support d)
          => d              -- ^ proposal distribution
          -> Addr           -- ^ address of operation
          -> Learn a        -- ^ observed point
+  LearnO :: (DiffDistribution d, a ~ Support d)
+         => d              -- ^ proposal distribution
+         -> a              -- ^ an observed point
+         -> Addr           -- ^ address of operation
+         -> Learn a        -- ^ observed point
+
+setLearnDist :: (DiffDistribution d, a ~ Support d) => Learn a -> d -> Learn a
+setLearnDist (LearnS q α) q' = LearnS q' α
+setLearnDist (LearnO q x α) q' = LearnO q' x α
 
 -- | For projecting and then successfully pattern matching against @Learn@
-pattern LearnPrj :: (Member Learn es) => (DiffDistribution d, x ~ Support d) => d -> Addr -> EffectSum es x
-pattern LearnPrj q α <- (prj -> Just (Learn q α))
+pattern LearnSPrj :: (Member Learn es) => (DiffDistribution d, x ~ Support d) => d -> Addr -> EffectSum es x
+pattern LearnSPrj q α <- (prj -> Just (LearnS q α))
+
+pattern LearnOPrj :: (Member Learn es) => (DiffDistribution d, x ~ Support d) => d -> a -> Addr -> EffectSum es x
+pattern LearnOPrj q x α <- (prj -> Just (LearnO q x α))
 
 -- | The effect @Score@ is like @Learn@ but retains the original distribution to be optimised
 data Score a where

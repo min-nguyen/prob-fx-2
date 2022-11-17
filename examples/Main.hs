@@ -32,6 +32,8 @@ parseArgs cmd = case cmd of
   "smc2LinRegr"         -> sampleIOFixed (smc2LinRegr 20 20 20 30) >>= printThenWrite
   "bbviLinRegr"         -> sampleIOFixed (bbviLinRegr 200 40 8) >>= printThenWrite
   "bbviDefaultLinRegr"  -> sampleIOFixed (bbviDefaultLinRegr 200 40 8) >>= printThenWrite
+  "inviLinRegr"         -> sampleIOFixed (inviLinRegr 400 40 8) >>= printThenWrite
+  "mleLinRegr"          -> sampleIOFixed (mleLinRegr 3000 50 8) >>= printThenWrite
 
   "simLogRegrOnce"      -> sampleIOFixed (simLogRegrOnce 50) >>= printThenWrite
   "lwLogRegrOnce"       -> sampleIOFixed (lwLogRegrOnce 10 10) >>= printThenWrite
@@ -50,6 +52,7 @@ parseArgs cmd = case cmd of
   "smc2HMM"             -> sampleIOFixed (smc2HMM 100 50 4 20) >>= printThenWrite
   "bbviHMM"             -> sampleIOFixed (bbviHMM 1000 50 20) >>= printThenWrite
   "bbviDefaultHMM"      -> sampleIOFixed (bbviDefaultHMM 1000 50 20) >>= printThenWrite
+  "inviHMM"             -> sampleIOFixed (inviHMM 1000 100 20) >>= printThenWrite
 
   "simSIR"              -> sampleIOFixed (simSIR 100) >>= printThenWrite
   "simSIRS"             -> sampleIOFixed (simSIRS 100) >>= printThenWrite
@@ -64,6 +67,7 @@ parseArgs cmd = case cmd of
   "smc2LDA"             -> sampleIOFixed (smc2LDA 20 20 20 50) >>= printThenWrite
   "bbviLDA"             -> sampleIOFixed (bbviLDA 200 20 50) >>= printThenWrite
   "bbviDefaultLDA"      -> sampleIOFixed (bbviDefaultLDA 200 20 50) >>= printThenWrite
+  "inviLDA"             -> sampleIOFixed (inviLDA 200 20 50) >>= printThenWrite
 
   "simRadon"            -> sampleIOFixed simRadon >>= printThenWrite
   "mhRadon"             -> sampleIOFixed (mhRadon 1000) >>= printThenWrite
