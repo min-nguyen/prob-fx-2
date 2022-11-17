@@ -66,10 +66,10 @@ viLoop num_timesteps num_samples guide hdlGuide model hdlModel  (guideParams_0, 
 viStep :: (LastMember (Lift Sampler) fs, Show (Env env))
   => Int                                          -- ^ time step index (t)
   -> Int                                          -- ^ number of samples to estimate the gradient over (L)
-  -> Prog [Param, Sample] (b, Env env)            -- ^ guide Q(X; λ)
-  -> (forall b env. Prog [Param, Sample] (b, Env env)       -> DTrace -> Sampler (((b, Env env), LogP), GTrace))
-  -> Model env [ObsRW env, Dist] a                -- ^ model P(X, Y)
-  -> (forall env a. Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((a, Env env), LogP), GTrace))
+  -> Prog [Param, Sample] (a, Env env)            -- ^ guide Q(X; λ)
+  -> (forall c. Prog [Param, Sample] c -> DTrace -> Sampler ((c, LogP), GTrace))
+  -> Model env [ObsRW env, Dist] b                -- ^ model P(X, Y)
+  -> (forall d env. Model env [ObsRW env, Dist] d -> DTrace -> Env env -> Sampler (((d, Env env), LogP), GTrace))
   -> (DTrace, DTrace)                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Prog (GradDescent : fs) (DTrace, DTrace)    -- ^ next guide parameters λ_{t+1}
 viStep timestep num_samples guide hdlGuide model hdlModel (guideParams, modelParams) = do
@@ -84,7 +84,7 @@ viStep timestep num_samples guide hdlGuide model hdlModel (guideParams, modelPar
   -- | Update the parameters λ of the proposal distributions Q
   guideParams'    <- call (GradDescent logWs guide_grads guideParams)
   modelParams'    <- call (GradDescent logWs model_grads modelParams)
-  liftPutStrLn (show modelParams')
+  -- liftPutStrLn (show modelParams')
   pure (guideParams', modelParams')
 
 {- | Update each variable v's parameters λ using their estimated ELBO gradients E[δelbo(v)].
