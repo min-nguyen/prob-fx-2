@@ -45,14 +45,15 @@ invi :: forall env a b. (Show (Env env))
   -> Model env [ObsRW env, Dist] b      -- ^ guide Q(X; λ)
   -> Model env [ObsRW env, Dist] a      -- ^ model P(X, Y)
   -> Env env                            -- ^ model environment (containing only observed data Y)
-  -> Sampler DTrace                     -- ^ final proposal distributions Q(λ_T)
+  -> Sampler DTrace           -- ^ final proposal distributions Q(λ_T)
 invi num_timesteps num_samples guide_model model model_env  = do
   let guide :: Prog '[Learn, Sample] (b, Env env)
       guide = (VI.installLearn . SIM.handleObs . handleCore model_env) guide_model
   -- | Collect initial proposal distributions
   params_0 <- SIM.handleSamp $ VI.collectParams guide
   -- | Run BBVI for T optimisation steps
-  (handleLift . handleGradDescent) (VI.viLoop num_timesteps num_samples guide model model_env params_0)
+  ((fst <$>) . handleLift . handleGradDescent) $
+    VI.viLoop num_timesteps num_samples guide VI.handleGuide model VI.handleModel model_env (params_0, Trace.empty)
 
 handleGradDescent :: Prog (GradDescent : fs) a -> Prog fs a
 handleGradDescent (Val a) = pure a

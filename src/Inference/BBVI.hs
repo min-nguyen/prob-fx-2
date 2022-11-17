@@ -58,7 +58,8 @@ bbvi num_timesteps num_samples guide_model model model_env  = do
   -- | Collect initial proposal distributions
   params_0 <- SIM.handleSamp (VI.collectParams guide)
   -- | Run BBVI for T optimisation steps
-  (handleLift . handleGradDescent) $ VI.viLoop num_timesteps num_samples guide model model_env params_0
+  ((fst <$>) . handleLift . handleGradDescent)
+    $ VI.viLoop num_timesteps num_samples guide VI.handleGuide model VI.handleModel model_env (params_0, Trace.empty)
 
 {- | Compute the ELBO gradient estimates for each variable v over L samples.
         E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
