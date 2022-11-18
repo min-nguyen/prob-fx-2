@@ -16,8 +16,7 @@
 
 module Inference.MLEVI where
 
-import Data.Maybe
-import Data.Proxy
+import Data.Maybe ( fromMaybe )
 import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>) )
 import Effects.Dist
@@ -29,15 +28,10 @@ import LogP ( LogP(..), normaliseLogPs, expLogP )
 import Model
 import PrimDist
 import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )
-import Sampler
+import           Sampler ( Sampler )
 import           Trace (GTrace, DTrace, Key(..), Some(..))
 import qualified Trace
-import Debug.Trace
 import qualified Inference.SIM as SIM
-import qualified Inference.SMC as SMC
-import qualified Vec
-import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
-import Util
 import qualified Inference.BBVI as BBVI
 import qualified Inference.INVI as INVI
 import qualified Inference.VI as VI
@@ -49,7 +43,7 @@ mle :: forall env xs a b. (Show (Env env), (env `ContainsVars` xs))
   -> Env env                            -- ^ model environment (containing only observed data Y)
   -> Vars xs                            -- ^ parameter names θ
   -> Sampler DTrace                     -- ^ final parameters θ_T
-mle num_timesteps num_samples  model model_env vars = do
+mle num_timesteps num_samples model model_env vars = do
   -- | Set up a empty dummy guide Q to return the original input model environment
   let guide :: Prog '[Param, Sample] ((), Env env)
       guide = pure ((), model_env)
