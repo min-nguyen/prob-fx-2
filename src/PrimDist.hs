@@ -82,16 +82,14 @@ data Witness (c :: Type -> Constraint) a where
 
 {- Distributions that can be differentiated with respect to their parameters
 -}
-class Distribution d => DiffDistribution d where
+class (SNatI (Arity d), Distribution d) => DiffDistribution d where
   type family Arity d :: Nat
   {- | Compute the gradient log-probability. -}
   gradLogProb :: d -> Support d -> Vec (Arity d) Double
 
-  zero      :: Proxy d -> Vec (Arity d) Double
+  safeAddGrad :: d -> Vec (Arity d) Double -> d
 
   toList :: d -> [Double]
-
-  safeAddGrad :: d -> Vec (Arity d) Double -> d
 
 -- | Beta(α, β)
 data Beta = Beta Double Double
@@ -134,8 +132,6 @@ instance DiffDistribution Beta where
   safeAddGrad (Beta α β) (dα ::: dβ ::: VNil) = Beta α' β'
     where α' = let α_new = α + dα in if α_new <= 0 then α else α_new
           β' = let β_new = β + dβ in if β_new <= 0 then β else β_new
-
-  zero _ = 0 ::: 0 ::: VNil
 
   toList :: Beta -> [Double]
   toList (Beta dα dβ) = [dα, dβ]
@@ -183,8 +179,6 @@ instance DiffDistribution Cauchy where
     where loc'   = loc + dloc
           scale' = let new_scale = scale + dscale in if new_scale <= 0 then scale else new_scale
 
-  zero _ = 0 ::: 0 ::: VNil
-
   toList :: Cauchy -> [Double]
   toList (Cauchy loc scale) = [loc, scale]
 
@@ -225,8 +219,6 @@ instance DiffDistribution HalfCauchy where
 
   safeAddGrad (HalfCauchy scale) (dscale ::: VNil) = HalfCauchy scale'
     where scale' = let new_scale = scale + dscale in if new_scale <= 0 then scale else new_scale
-
-  zero  _ = 0 ::: VNil
 
   toList :: HalfCauchy -> [Double]
   toList (HalfCauchy scale) = [scale]
@@ -280,8 +272,6 @@ instance (TypeableSNatI n) => DiffDistribution (Dirichlet n) where
   safeAddGrad (Dirichlet αs) dαs = Dirichlet (Vec.zipWith add_dα αs dαs)
     where add_dα α dα = let α_new = α + dα in if α_new <= 0 then α else α_new
 
-  zero _ = (Vec.replicate (snat @n) 0)
-
   toList :: Dirichlet n -> [Double]
   toList (Dirichlet dαs) = Vec.toList dαs
 
@@ -328,8 +318,6 @@ instance DiffDistribution Gamma where
     where k' = let k_new = k + dk in if k_new <= 0 then k else k_new
           θ' = let θ_new = θ + dθ in if θ_new <= 0 then θ else θ_new
 
-  zero  _ = 0 ::: 0 ::: VNil
-
   toList :: Gamma -> [Double]
   toList (Gamma dk dθ) = [dk, dθ]
 
@@ -373,8 +361,6 @@ instance DiffDistribution Normal where
     where μ' = μ + dμ
           σ' = let σ_new = σ + dσ in if σ_new <= 0 then σ else σ_new
 
-  zero  _ = 0 ::: 0 ::: VNil
-
   toList :: Normal -> [Double]
   toList (Normal dμ dσ) = [dμ, dσ]
 
@@ -416,8 +402,6 @@ instance DiffDistribution HalfNormal where
 
   safeAddGrad (HalfNormal σ) (dσ ::: VNil) = HalfNormal σ'
     where σ' = let σ_new = σ + dσ in if σ_new <= 0 then σ else σ_new
-
-  zero  _ = 0 ::: VNil
 
   toList :: HalfNormal -> [Double]
   toList (HalfNormal σ) = [σ]

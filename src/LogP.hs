@@ -27,7 +27,7 @@ expLogP (LogP logP) = exp logP
 
 instance Show LogP where
   show :: LogP -> String
-  show (LogP p) = "LogP {" ++ show (p, exp p) ++ "}"
+  show (LogP p) = "LogP " ++ show p
 
 -- | Take the log-mean-exp of a list of log-probabilities
 logMeanExp :: [LogP] -> LogP

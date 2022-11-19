@@ -13,21 +13,25 @@
 module LinRegr where
 
 import Model ( Model, normal, uniform, handleCore )
-import Inference.SIM as SIM ( simulate )
-import Inference.LW as LW ( lw )
-import Inference.MH as MH ( mh )
-import Inference.SMC as SMC ( smc )
-import Inference.RMSMC as RMSMC ( rmsmc )
-import Inference.PMMH as PMMH ( pmmh )
-import Inference.SMC2 as SMC2 ( smc2 )
-import Inference.BBVI as BBVI
-import Inference.BBVICombined as BBVICombined
+import Inference.MC.SIM as SIM ( simulate )
+import Inference.MC.LW as LW ( lw )
+import Inference.MC.MH as MH ( mh )
+import Inference.MC.SMC as SMC ( smc )
+import Inference.MC.RMSMC as RMSMC ( rmsmc )
+import Inference.MC.PMMH as PMMH ( pmmh )
+import Inference.MC.SMC2 as SMC2 ( smc2 )
+import qualified Inference.VI.BBVI as BBVI
+import qualified Inference.VI.BBVI_Combined as BBVI_Combined
+import qualified Inference.VI.INVI as INVI
+import qualified Inference.VI.MLE as MLE
+import qualified Inference.VI.MAP as MAP
+import qualified Inference.VI.MLE_MCMC as MLE_MCMC
 import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
-import Trace
+import qualified Trace
+import           Trace (Key(..))
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
-import Effects.Lift
 import PrimDist
 import Data.Maybe
 {-
@@ -52,7 +56,7 @@ type LinRegrEnv =
 -}
 linRegr :: Observables env '["y", "m", "c", "σ"] Double
   => [Double]               -- ^ x datapoints
-  -> Model env rs [Double]  -- ^ y datapoints
+  -> Model env es [Double]  -- ^ y datapoints
 linRegr xs = do
   -- Draw model parameters from prior
   m <- normal 0 3 #m
@@ -61,9 +65,8 @@ linRegr xs = do
   -- Generate outputs ys
   mapM (\x -> normal (m * x + c) σ #y) xs
 
-linRegrGuide :: Observables env '["m", "c", "σ"] Double => Model env rs ()
+linRegrGuide :: Observables env '["m", "c", "σ"] Double => Model env es ()
 linRegrGuide = do
-  -- Draw model parameters from prior
   m <- normal 0 3 #m
   c <- normal 0 5 #c
   σ <- uniform 1 3 #σ
@@ -162,14 +165,24 @@ smc2LinRegr n_outer_particles n_mhsteps n_inner_particles  n_datapoints = do
       cs  = concatMap (get #c) env_outs
   pure (mus, cs)
 
+-- | BBVI over linear regression, using a custom guide
+bbviLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+bbviLinRegr t_steps l_samples n_datapoints = do
+  let xs            = [1 .. fromIntegral n_datapoints]
+      env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+  traceQ <- BBVI.bbvi t_steps l_samples linRegrGuide (linRegr xs) env_in
+  let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
+      c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
+  pure (m_dist, c_dist)
+
 -- | BBVI over linear regression, using the model to generate a default guide
 bbviDefaultLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
 bbviDefaultLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  traceQ <- BBVI.bbvi t_steps l_samples (linRegr xs) env_in (linRegr xs)
-  let m_dist = toList . fromJust $ dlookup (Key ("m", 0) :: Key Normal) traceQ
-      c_dist = toList . fromJust $ dlookup (Key ("c", 0) :: Key Normal) traceQ
+  traceQ <- BBVI.bbvi t_steps l_samples (linRegr xs) (linRegr xs) env_in
+  let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
+      c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
   pure (m_dist, c_dist)
 
 -- | BBVI over linear regression, using the model to generate a default guide
@@ -177,9 +190,46 @@ bbviDefaultCombinedLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
 bbviDefaultCombinedLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  traceQ <- BBVICombined.bbvi t_steps l_samples (linRegr xs) env_in
-  let m_dist = toList . fromJust $ dlookup (Key ("m", 0) :: Key Normal) traceQ
-      c_dist = toList . fromJust $ dlookup (Key ("c", 0) :: Key Normal) traceQ
+  traceQ <- BBVI_Combined.bbvi t_steps l_samples (linRegr xs) env_in
+  let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
+      c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
+  pure (m_dist, c_dist)
+
+-- | INVI over linear regression, using a custom guide
+inviLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+inviLinRegr t_steps l_samples n_datapoints = do
+  let xs            = [1 .. fromIntegral n_datapoints]
+      env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+  traceQ <- INVI.invi t_steps l_samples linRegrGuide (linRegr xs) env_in
+  let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
+      c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
+  pure (m_dist, c_dist)
+
+mleMcmcLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+mleMcmcLinRegr t_steps l_samples n_datapoints = do
+  let xs            = [1 .. fromIntegral n_datapoints]
+      env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+  traceQ <- MLE_MCMC.mle t_steps l_samples (linRegr xs ) env_in (linRegr xs)
+  let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
+      c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
+  pure (m_dist, c_dist)
+
+mleLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+mleLinRegr t_steps l_samples n_datapoints = do
+  let xs            = [1 .. fromIntegral n_datapoints]
+      env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+  traceQ <- MLE.mle t_steps l_samples  (linRegr xs ) env_in (#m <#> #c <#> vnil)
+  let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
+      c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
+  pure (m_dist, c_dist)
+
+mapLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+mapLinRegr t_steps l_samples n_datapoints = do
+  let xs            = [1 .. fromIntegral n_datapoints]
+      env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+  traceQ <- MAP.map t_steps l_samples  (linRegr xs ) env_in (#m <#> #c <#> vnil)
+  let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
+      c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
   pure (m_dist, c_dist)
 
 {- | Linear regression model on individual data points at a time.
@@ -234,6 +284,7 @@ mhLinRegrOnce n_mhsteps n_datapoints = do
   let mus = concatMap (get #m) mhTrace
       cs  = concatMap (get #c) mhTrace
   pure (mus, cs)
+
 
 {- | Executing linear regression model using monad-bayes.
 mbayesLinRegr :: (Bayes.MonadInfer m, Observables env '["y", "m", "c", "σ"] Double) =>

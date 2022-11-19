@@ -9,7 +9,7 @@
 {- An infrastructure for Sequential Importance (Re)Sampling.
 -}
 
-module Inference.SIS where
+module Inference.MC.SIS where
 
 import           Data.Map (Map)
 import qualified Data.Map as Map
@@ -20,7 +20,7 @@ import           Prog ( Prog (..), weakenProg, Member, discharge, call, weaken, 
 import           Sampler
 import           Util ( uncurry3 )
 import           Model
-import           Inference.SIM as SIM
+import           Inference.MC.SIM as SIM
 import           Data.Bifunctor
 
 {- | A @ParticleCtx@ contains data about the execution of a particular particle.

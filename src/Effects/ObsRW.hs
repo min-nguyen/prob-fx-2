@@ -46,7 +46,7 @@ oTell x v = call (OTell @env x v)
 
 {- Handle the @OAsk@ operations by reading from an input model environment,
    and handle the @OTell@ operations by writing to an output model environment  -}
-handleObsRW ::
+handleObsRW :: forall env es a.
   -- | input model environment
      Env env
   -> Prog (ObsRW env ': es) a

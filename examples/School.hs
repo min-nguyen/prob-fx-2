@@ -12,7 +12,7 @@
 module School where
 
 import Model ( Model, deterministic, normal, normal', halfNormal' )
-import Inference.MH as MH ( mh )
+import Inference.MC.MH as MH ( mh )
 import Sampler ( Sampler )
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)

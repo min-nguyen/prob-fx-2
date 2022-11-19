@@ -6,7 +6,7 @@
 {- | Likelihood-Weighting inference.
 -}
 
-module Inference.LW
+module Inference.MC.LW
   ( -- * Inference wrapper functions
     lw
   , lwInternal
@@ -23,7 +23,7 @@ import Effects.ObsRW ( ObsRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env )
 import LogP ( LogP, expLogP )
-import Inference.SIM as SIM (handleSamp)
+import Inference.MC.SIM as SIM (handleSamp)
 import Model ( handleCore, Model )
 import PrimDist ( logProb )
 import Prog ( discharge, Prog(..) )

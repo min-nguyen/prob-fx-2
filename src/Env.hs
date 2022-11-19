@@ -11,6 +11,7 @@
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE InstanceSigs #-}
 -- {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 {- | This implements the model environments that users must provide upon running a model;
@@ -39,8 +40,9 @@ module Env
   , UniqueVar
   , LookupType) where
 
+import Type.Reflection
 import Data.Kind ( Constraint, Type )
-import Data.Proxy ( Proxy(Proxy) )
+import Data.Proxy
 import Effects.Dist ( Tag )
 import TyCompare ( FindElem(..), Idx(..) )
 import GHC.OverloadedLabels ( IsLabel(..) )
@@ -186,3 +188,23 @@ instance ContainsVars env '[] where
 instance (FindElem x (GetVars env), KnownSymbol x, ContainsVars env xs) => ContainsVars env (x : xs)  where
   varsToStrs (VCons xs)  = varToStr (Var @x) : varsToStrs @env @xs xs
 
+{-
+type OnTail :: [k] -> Constraint
+type family OnTail env where
+  OnTail (_:env) = Monoid (Env env)
+  OnTail '[]     = ()
+
+instance Semigroup (Env env) where
+  (<>) :: Env env -> Env env -> Env env
+  ECons xs env <> ECons xs' env' = ECons (xs <> xs') (env <> env')
+  ENil <> ENil = ENil
+
+instance (Typeable env, OnTail env) => Monoid (Env env) where
+  mempty :: (Typeable env, OnTail env) => Env env
+  mempty
+    | Just HRefl              <- eqTypeRep (typeRep @env) (typeRep @('[] :: [Assign Symbol *])) = ENil
+    | (cons `App` ((assign `App` x) `App` a)) `App` env <- typeRep @env
+     , Just HRefl             <- eqTypeRep assign (typeRep @((:=) @Symbol @Type ))
+     , Just HRefl             <- eqTypeRep cons   (typeRep @((:) @(Assign Symbol *))) = ECons [] mempty
+    | otherwise = error "Env.mempty: Should not happen."
+-}
