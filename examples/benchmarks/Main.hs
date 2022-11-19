@@ -255,8 +255,8 @@ bench_BBVIDefault args = do
     benchRow ("BBVIDefault-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LDA-" ++ show fixed_hmm_datasize_inf
               , flip (bbviDefaultLDA fixed_bbvi_samples_inf) fixed_lda_datasize_inf) row_header
 
-bench_BBVICombined :: [Int] -> IO ()
-bench_BBVICombined args = do
+bench_BBVI_Combined :: [Int] -> IO ()
+bench_BBVI_Combined args = do
     let row_header = ("Number of BBVI steps", args)
     writeRow fixed_output_file row_header
     benchRow ("BBVIDefaultCombined-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LR-" ++ show fixed_lr_datasize_inf
@@ -300,7 +300,7 @@ runBenchmarks = do
           -- bench_PMMH pmmh
           bench_BBVI bbvi
           bench_BBVIDefault bbvi
-          bench_BBVICombined bbvi
+          bench_BBVI_Combined bbvi
           bench_INVI invi
         _   -> error "bad input file"
 

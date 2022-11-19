@@ -523,7 +523,7 @@ BBVI-[ ]-10-LDA-50,0.6037125734997062,1.2599993052082634,1.9393608636249458,2.62
 -------------------------------
 Updates:
   - BBVI reworked to automatically transform a single model into a model and a default guide as separate programs to be handled (using Learn) rather than as a combined program; examples using this have naming convention "BBVIDefault"
-  - Previous BBVI implementation that executes a model and guide as a single program (using Score), and examples using this implementation, have naming convention "BBVICombined".
+  - Previous BBVI implementation that executes a model and guide as a single program (using Score), and examples using this implementation, have naming convention "BBVI_Combined".
 
 Dataset size,100,200,300,400,500
 LR-[ ]-BBVIDefault-50-10,0.21097358183614637,0.6783847152502555,1.2463765247915337,2.025512310104091,2.95601842768743

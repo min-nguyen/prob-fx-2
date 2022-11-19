@@ -34,7 +34,7 @@ import Inference.MC.PMMH as PMMH ( pmmh )
 import Inference.MC.SMC2 as SMC2 ( smc2 )
 import Inference.VI.BBVI as BBVI
 import Inference.VI.INVI as INVI
-import Inference.VI.BBVICombined as BBVICombined
+import Inference.VI.BBVI_Combined as BBVI_Combined
 import Data.Maybe
 import Data.Typeable
 {-
@@ -279,7 +279,7 @@ bbviDefaultCombinedLDA t_steps l_samples n_words = do
   let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
 
-  traceQ <- BBVICombined.bbvi t_steps l_samples (topicModel vocab n_topics n_words) env_in
+  traceQ <- BBVI_Combined.bbvi t_steps l_samples (topicModel vocab n_topics n_words) env_in
   -- Draw the most recent sampled parameters
   let θ_dist     = toList . fromJust $ Trace.lookup (Key ("θ", 0) :: Key (Dirichlet (FromGHC 2))) traceQ
       φ0_dist    = toList . fromJust $ Trace.lookup (Key ("φ", 0) :: Key (Dirichlet (FromGHC 4))) traceQ

@@ -28,7 +28,7 @@ import Inference.MC.PMMH as PMMH ( pmmh )
 import Inference.MC.SMC2 as SMC2 ( smc2 )
 import Inference.VI.BBVI as BBVI
 import Inference.VI.INVI as INVI
-import Inference.VI.BBVICombined as BBVICombined
+import Inference.VI.BBVI_Combined as BBVI_Combined
 import Model ( Model (..), bernoulli', binomial, uniform, beta )
 import Prog ( Member, LastMember )
 import Sampler ( Sampler, liftIO )
@@ -326,7 +326,7 @@ bbviDefaultCombinedHMM t_steps l_samples hmm_length = do
   ys <- simHMM hmm_length
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
-  traceQ <- BBVICombined.bbvi t_steps l_samples (hmm hmm_length 0) env_in
+  traceQ <- BBVI_Combined.bbvi t_steps l_samples (hmm hmm_length 0) env_in
   let trans_dist = toList . fromJust $ Trace.lookup (Key ("trans_p", 0) :: Key Beta) traceQ
       obs_dist   = toList . fromJust $ Trace.lookup (Key ("obs_p", 0)   :: Key Beta) traceQ
   pure (trans_dist, obs_dist)

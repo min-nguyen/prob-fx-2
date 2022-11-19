@@ -11,7 +11,7 @@
      Note: this naturally has different results than Inference.VI.BBVI due ignoring the log-weights of *non-differentiable* @Sample@ operations (see definition of the `traceLogProbs` handler).
 -}
 
-module Inference.VI.BBVICombined
+module Inference.VI.BBVI_Combined
   where
 
 import Data.Maybe
