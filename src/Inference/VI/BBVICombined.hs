@@ -74,7 +74,7 @@ bbviStep num_samples bbvi_prog proposals = do
   -- | Execute a model for L iterations, collecting gradient traces G_l and importance weights logW_l:
   ((as, logWs), grads) <- Util.unzip3 <$> replicateM num_samples (lift (runBBVI proposals bbvi_prog))
   -- | Compute the ELBO gradient estimates
-  let δelbos     = BBVI.likelihoodRatioEstimator logWs grads
+  let δelbos     = VI.likelihoodRatioEstimator logWs grads
   -- | Update the parameters of the proposal distributions Q
       proposals' = VI.gradStep 1.0 proposals δelbos
   -- liftPutStrLn $ "Proposal Distributions Q:\n" ++ show traceQ ++ "\n"

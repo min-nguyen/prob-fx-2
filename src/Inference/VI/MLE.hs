@@ -8,151 +8,108 @@
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
+{-# LANGUAGE TupleSections #-}
 
-{- | Maximum likelihood estimation that directly samples X from the posterior P(X | Y; θ) using some form
-     of Bayesian inference (e.g. SMC) and assigns this as the sample's importance weight.
+{- | Maximum likelihood estimation in terms of VI that samples from the prior P(X) and assigns each simulation an
+     importance weight P(Y | X; θ).
 -}
 
 module Inference.VI.MLE where
 
-import Data.Maybe
-import Data.Proxy
+import Data.Maybe ( fromMaybe )
 import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>) )
 import Effects.Dist
 import Effects.Lift
 import Effects.ObsRW ( ObsRW )
 import Effects.State ( modify, handleState, State )
-import Env ( Env, union )
+import Env ( Env, Vars, ContainsVars, union, empty, varsToStrs )
 import LogP ( LogP(..), normaliseLogPs, expLogP )
 import Model
 import PrimDist
 import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )
-import Sampler
+import           Sampler ( Sampler )
 import           Trace (GTrace, DTrace, Key(..), Some(..))
 import qualified Trace
-import Debug.Trace
 import qualified Inference.MC.SIM as SIM
-import qualified Inference.MC.SMC as SMC
-import qualified Vec
-import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
-import Util
 import qualified Inference.VI.BBVI as BBVI
-import qualified Inference.VI.INVI as INVI
 import qualified Inference.VI.VI as VI
 
-mle :: forall env a b. (Show (Env env))
+mle :: forall env xs a b. (Show (Env env), (env `ContainsVars` xs))
   => Int                                -- ^ number of optimisation steps (T)
   -> Int                                -- ^ number of samples to estimate the gradient over (L)
-  -> Model env [ObsRW env, Dist] a      -- ^ model Q ≈ P(X | Y)
+  -> Model env [ObsRW env, Dist] a      -- ^ model P(X, Y; θ)
   -> Env env                            -- ^ model environment (containing only observed data Y)
-  -> Model env [ObsRW env, Dist] b      -- ^ model P(X, Y; θ)
-  -> Sampler DTrace                     -- ^ final distributions P(θ_T)
-mle num_timesteps num_samples model_q model_env model_p = do
-  let model_q' :: Prog '[Observe, Sample] (a, Env env)
-      model_q' = second (Env.union model_env) <$> handleCore model_env model_q
-  -- | Collect initial proposal distributions
-  proposals_0 <- collectParams model_p model_q'
-  -- | Run BBVI for T optimisation steps
-  handleLift (mleInternal num_timesteps num_samples model_q' model_p proposals_0)
+  -> Vars xs                            -- ^ parameter names θ
+  -> Sampler DTrace                     -- ^ final parameters θ_T
+mle num_timesteps num_samples model model_env vars = do
+  -- | Set up a empty dummy guide Q to return the original input model environment
+  let guide :: Prog '[Param, Sample] ((), Env env)
+      guide = pure ((), model_env)
+      guideParams_0 :: DTrace
+      guideParams_0 = Trace.empty
+  -- | Collect initial model parameters θ
+  let tags = Env.varsToStrs @env vars
+  modelParams_0 <- collectModelParams tags (handleCore model_env model)
+  -- | Run MLE for T optimisation steps
+  ((snd <$>) . handleLift . VI.handleNormGradDescent) $
+      VI.viLoop num_timesteps num_samples guide handleGuide model (handleModel tags) (guideParams_0, modelParams_0)
 
-mleInternal :: (LastMember (Lift Sampler) fs, Show (Env env))
-  => Int                                    -- ^ number of optimisation steps (T)
-  -> Int                                    -- ^ number of samples to estimate the gradient over (L)
-  -> Prog [Observe, Sample] (a, Env env)    -- ^ model Q ≈ P(X | Y)
-  -> Model env [ObsRW env, Dist] b          -- ^ model P(X, Y; θ)
-  -> DTrace                                 -- ^ model initial parameters P(θ_0)
-  -> Prog fs DTrace                         -- ^ final model parameters P(θ_T)
-mleInternal num_timesteps num_samples model_q model_p params_0 =
-  foldr (>=>) pure [mleStep t model_q smcHandler model_p | t <- [1 .. num_timesteps]] params_0
-  where smcHandler = (map (second SMC.particleLogProb) <$>) . handleLift . SMC.smcInternal num_samples
+-- | Handle the dummy guide Q by returning the original model environment Y and log-importance-weight log(Q(X)) = 0
+handleGuide :: Prog [Param, Sample] a -> DTrace -> Sampler ((a, LogP), GTrace)
+handleGuide guide _ =
+  (SIM.handleSamp . BBVI.handleGuideParams ) ((, 0) <$> guide)
 
-{- | 1. For L iterations:
-         a) Generate importance-weighted posterior samples X=x from the model Q(X),
-              - the unnormalised log-weight: log(Q(X=x))
-         b) Execute the model P(Y=y, X=x; θ) accumulating:
-              - the unnormalised log-weight: log(P(Y=y, X=x; θ))
-              - the gradient log-pdfs: δlog(P(Y=y, X=x; θ))
-     2. Update the model parameters P(θ)
--}
-mleStep :: (LastMember (Lift Sampler) fs, Show (Env env))
-  => Int                                                        -- ^ time step index (t)
-  -> ProbProg (a, Env env)                                      -- ^ model Q ≈ P(X | Y)
-  -> (ProbProg (a, Env env) -> Sampler [((a, Env env), LogP)])  -- ^ X ~ Q
-  -> Model env [ObsRW env, Dist] b                              -- ^ model P(X, Y; θ)
-  -> DTrace                                                     -- ^ model parameters P(θ_t)
-  -> Prog fs DTrace                                             -- ^ next model parameters P(θ_{t+1})
-mleStep timestep model_q hdlPosterior model_p params = do
-  -- | Sample the model P(X | Y) for (L) iterations
-  ((_, model_envs), logWs) <- Util.unzip3 <$> lift (hdlPosterior model_q)
-  -- | Execute the model P(X, Y; θ) under each posterior sample
-  ((_, _) , grads)         <- Util.unzip3 <$> mapM (lift . flip (handleModel model_p) params) model_envs
+-- | Handle the model P(X, Y; θ) by returning log-importance-weight P(Y | X; θ)
+handleModel :: [Tag] -> Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((a, Env env), LogP), GTrace)
+handleModel tags model params env  =
+  (SIM.handleSamp . SIM.handleObs . handleModelParams . weighModel . installModelParams tags params . handleCore env) model
 
-  -- | Compute the ELBO gradient estimates
-  let δelbos     = normalisingEstimator logWs grads
-  -- | Update the parameters of the proposal distributions Q
-  let params'    = case δelbos of Just δelbos -> VI.gradStep 1 params δelbos
-                                  Nothing     -> params
-  pure params'
-
-{- We have a model P(X, Y; θ) which we execute under an environment of latent variables X and observed values Y.
--}
-handleModel :: forall env a. Model env [ObsRW env, Dist] a -> Env env -> DTrace -> Sampler ((a, Env env), GTrace)
-handleModel model_p env params =
-  let prog :: Prog '[Param, Observe, Sample] (a, Env env)
-      prog = (installModelParams params . handleCore env) model_p
-
-  in  (SIM.handleSamp . SIM.handleObs . handleModelParams) prog
-
-{- | Collect all learnable distributions as the initial set of proposals.
--}
-collectParams :: Model env '[ObsRW env, Dist] b -> ProbProg (a, Env env) -> Sampler DTrace
-collectParams model_p model_q = do
-  (_, env) <- (SIM.handleSamp . SIM.handleObs) model_q
-  (SIM.handleSamp . SIM.handleObs . collectModelParams . installModelParams Trace.empty . handleCore env) model_p
-
-collectModelParams :: Member Sample es => Prog (Param : es) a -> Prog es DTrace
-collectModelParams = ((fst <$>) . handleModelParams) . loop Trace.empty where
+collectModelParams :: [Tag] -> ProbProg b -> Sampler DTrace
+collectModelParams tags =
+  SIM.handleSamp . SIM.handleObs . (fst <$>) . handleModelParams . loop Trace.empty . installModelParams tags Trace.empty
+  where
   loop :: DTrace -> Prog (Param : es) a -> Prog (Param : es) DTrace
   loop params (Val _)   = pure params
   loop params (Op op k) = case prj op of
-    Just (ParamS q α)   -> error "MLE.collectModelParams: Should not happen"
+    Just (ParamS q α)   -> do let params' = Trace.insert (Key α) q params
+                              Op op (loop params' . k)
     Just (ParamO q x α) -> do let params' = Trace.insert (Key α) q params
                               Op op (loop params' . k)
     Nothing -> Op op (loop params . k)
 
-{- For each observed value Y = y and latent variable X = x generated in the model environment,
-   this gives rise to Observe p x:
-    - If p is a fixed non-learnable distribution, then we retain:
-         Observe p x representing P(X = x; θ) or P(Y = y; θ)
-    - If p is a learnable distribution, then we assume we already have a proposal p' from a previous iteration (unless this is the very first iteration). We then replace with:
-         ParamO p' x representing P(X = x; θ) or P(Y = y; θ)
--}
-installModelParams :: Member Observe es => DTrace -> Prog es a -> Prog (Param : es) a
-installModelParams proposals = loop where
+installModelParams :: Members [Observe, Sample] es => [Tag] -> DTrace -> Prog es a -> Prog (Param : es) a
+installModelParams tags proposals = loop where
   loop (Val a)   = pure a
   loop (Op op k) = case op of
-    ObsPrj p xy α -> case isDifferentiable p of
-        Nothing      -> Op (weaken op) (installModelParams proposals . k)
-        Just Witness -> do let p' = fromMaybe p (Trace.lookup (Key α) proposals)
-                           x' <- call (ParamO p' xy α)
-                           (loop . k) x'
+    SampPrj p α -> case (isDifferentiable p, fst α `elem` tags) of
+        (Just Witness, True) -> do
+            let p' = fromMaybe p (Trace.lookup (Key α) proposals)
+            x' <- call (ParamS p' α)
+            (loop . k) x'
+        _  -> Op (weaken op) (loop . k)
+    ObsPrj p xy α -> case (isDifferentiable p, fst α `elem` tags)  of
+        (Just Witness, True) -> do
+            let p' = fromMaybe p (Trace.lookup (Key α) proposals)
+            x' <- call (ParamO p' xy α)
+            (loop . k) x'
+        _      -> Op (weaken op) (loop . k)
     _ -> Op (weaken op) (loop . k)
 
-handleModelParams :: forall es a. Prog (Param : es) a -> Prog es (a, GTrace)
+handleModelParams :: forall es a. Member Sample es => Prog (Param : es) a -> Prog es (a, GTrace)
 handleModelParams = loop Trace.empty where
   loop :: GTrace -> Prog (Param : es) a -> Prog es (a, GTrace)
   loop grads (Val a)   = pure (a, grads)
   loop grads (Op op k) = case discharge op of
-    Right (ParamS (q :: d) α)   -> error "MLE.handleModelParams: Should not happen"
+    Right (ParamS (q :: d) α)   -> do
+         x <- call (Sample q α)
+         let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
+         (loop grads' . k) x
     Right (ParamO (q :: d) x α) -> do
          let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
          (loop grads' . k) x
     Left op' -> Op op' (loop grads . k)
 
-{- | Compute the log probability over the model:
-        log(P(X, Y; θ))
--}
 weighModel :: forall es a. (Members [Param, Observe, Sample] es) => Prog es a -> Prog es (a, LogP)
 weighModel = loop 0 where
   loop :: LogP -> Prog es a -> Prog es (a, LogP)
@@ -162,27 +119,4 @@ weighModel = loop 0 where
       ParamOPrj p xy α -> Op op (\xy -> loop (logW + logProb p xy) $ k xy)
       -- | Compute: log(P(X; θ)) or log(P(Y; θ)) for non-differentiable dists, where X or Y is provided in the model environment
       ObsPrj p xy α    -> Op op (\xy -> loop (logW + logProb p xy) $ k xy)
-      -- | Compute: log(P(X; θ)), where latent variable X is not provided in the model environment
-      SampPrj p α     -> Op op (\x -> loop (logW + logProb p x) $ k x)
       _               -> Op op (loop logW . k)
-
-
-normalisingEstimator :: [LogP] -> [GTrace] -> Maybe GTrace
-normalisingEstimator  logWs traceGs =
-  if isInfinite norm_c then Nothing else Just (foldr f Trace.empty vars) where
-    vars :: [Some DiffDistribution Key]
-    vars = (Trace.keys . head) traceGs
-    {- | Store the gradient estimate for a given variable v. -}
-    f :: Some DiffDistribution Key -> GTrace -> GTrace
-    f (Some kx) = Trace.insert kx (estimateGrad kx traceFs)
-    {- | Uniformly scale each iteration's gradient trace G^l by its corresponding unnormalised importance weight W_norm^l -}
-    traceFs :: [GTrace]
-    traceFs = zipWith (\logW -> Trace.map (\_ δ -> expLogP logW *| δ)) logWs traceGs
-    {- | Normalising constant -}
-    norm_c :: Double
-    norm_c = 1 / (fromIntegral (length logWs) * sum (map expLogP logWs))
-    {- | Compute the mean gradient estimate for a random variable v's associated parameters -}
-    estimateGrad :: forall d. ( DiffDistribution d) => Key d -> [GTrace] -> Vec (Arity d) Double
-    estimateGrad v traceFs =
-      let traceFs_v  = map (fromJust . Trace.lookup v) traceFs
-      in  ((*|) norm_c . foldr (|+|) (Vec.zeros (Proxy @(Arity d))) ) traceFs_v

@@ -24,14 +24,13 @@ import Inference.VI.BBVI as BBVI
 import Inference.VI.BBVICombined as BBVICombined
 import Inference.VI.INVI as INVI
 import Inference.VI.MLE as MLE
-import Inference.VI.MLEVI as MLEVI
+import Inference.VI.MLE_MCMC as MLE_MCMC
 import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
 import qualified Trace
 import           Trace (Key(..))
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
-import Effects.Lift
 import PrimDist
 import Data.Maybe
 {-
@@ -205,20 +204,20 @@ inviLinRegr t_steps l_samples n_datapoints = do
       c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
   pure (m_dist, c_dist)
 
-mleLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
-mleLinRegr t_steps l_samples n_datapoints = do
+mleMcmcLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+mleMcmcLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  traceQ <- MLE.mle t_steps l_samples (linRegr xs ) env_in (linRegr xs)
+  traceQ <- MLE_MCMC.mle t_steps l_samples (linRegr xs ) env_in (linRegr xs)
   let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
       c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
   pure (m_dist, c_dist)
 
-mleviLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
-mleviLinRegr t_steps l_samples n_datapoints = do
+mleLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+mleLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  traceQ <- MLEVI.mle t_steps l_samples  (linRegr xs ) env_in (#m <#> #c <#> vnil)
+  traceQ <- MLE.mle t_steps l_samples  (linRegr xs ) env_in (#m <#> #c <#> vnil)
   let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
       c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
   pure (m_dist, c_dist)

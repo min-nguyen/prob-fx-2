@@ -60,31 +60,8 @@ handleGradDescent :: Prog (GradDescent : fs) a -> Prog fs a
 handleGradDescent (Val a) = pure a
 handleGradDescent (Op op k) = case discharge op of
   Right (GradDescent logWs δGs params) ->
-    let δelbos  = normalisingEstimator logWs δGs
+    let δelbos  = VI.normalisingEstimator logWs δGs
         params' = case δelbos of Just δelbos' -> VI.gradStep 1 params δelbos'
                                  Nothing      -> params
     in  handleGradDescent (k params')
   Left op' -> Op op' (handleGradDescent . k)
-
-normalisingEstimator :: [LogP] -> [GTrace] -> Maybe GTrace
-normalisingEstimator logWs δGs = δelbos
-  where
-    {- | Store the gradient estimates for each variable v. -}
-    δelbos :: Maybe GTrace
-    δelbos = if isInfinite norm_c
-              then Nothing
-              else Just (foldr (\(Some v) -> estimateGrad v) Trace.empty vars)
-    {- | Normalising constant -}
-    norm_c :: Double
-    norm_c = 1 / (fromIntegral (length logWs) * sum (map expLogP logWs))
-    {- | Optimisable variables -}
-    vars :: [Some DiffDistribution Key]
-    vars = (Trace.keys . head) δGs
-    {- | Uniformly scale each iteration's gradient trace G^l by its corresponding unnormalised importance weight W_norm^l -}
-    δFs :: [GTrace]
-    δFs = zipWith (\logW -> Trace.map (\_ δ -> expLogP logW *| δ)) logWs δGs
-    {- | Compute the mean gradient estimate for a random variable v's associated parameters -}
-    estimateGrad :: forall d. (DiffDistribution d) => Key d -> GTrace -> GTrace
-    estimateGrad v = let δFv      = map (fromJust . Trace.lookup v) δFs
-                         norm_δFv = ((*|) norm_c . foldr (|+|) (Vec.zeros (Proxy @(Arity d))) ) δFv
-                     in  Trace.insert v norm_δFv

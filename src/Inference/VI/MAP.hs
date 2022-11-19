@@ -11,7 +11,7 @@
      importance weight P(Y | X; θ).
 -}
 
-module Inference.VI.MAPVI where
+module Inference.VI.MAP where
 
 import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>) )
@@ -29,9 +29,14 @@ import           Trace (GTrace, DTrace, Key(..), Some(..))
 import qualified Trace
 import Debug.Trace
 import qualified Inference.MC.SIM as SIM
-import qualified Inference.VI.BBVI as BBVI
-import qualified Inference.VI.INVI as INVI
 import qualified Inference.VI.VI as VI
+import qualified Inference.VI.MLE as MLE
+
+
+-- | Handle the model P(X, Y; θ) by returning log-importance-weight P(Y, X; θ)
+handleModel :: [Tag] -> Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((a, Env env), LogP), GTrace)
+handleModel tags model params env  =
+  (SIM.handleSamp . SIM.handleObs . MLE.handleModelParams . weighModel . MLE.installModelParams tags params . handleCore env) model
 
 -- | Compute: log(P(X, Y; θ)) over the model
 weighModel :: forall es a. (Members [Param, Observe, Sample] es) => Prog es a -> Prog es (a, LogP)
