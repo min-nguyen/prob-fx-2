@@ -8,10 +8,10 @@
 {-# LANGUAGE TypeApplications #-}
 
 {- | BBVI inference that takes a model and generates a model and guide as a combined program.
-     Note: this naturally has different results than Inference.BBVI due ignoring the log-weights of *non-differentiable* @Sample@ operations (see definition of the `traceLogProbs` handler).
+     Note: this naturally has different results than Inference.VI.BBVI due ignoring the log-weights of *non-differentiable* @Sample@ operations (see definition of the `traceLogProbs` handler).
 -}
 
-module Inference.BBVICombined
+module Inference.VI.BBVICombined
   where
 
 import Data.Maybe
@@ -32,9 +32,9 @@ import qualified Trace
 import qualified Vec
 import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import qualified Util
-import qualified Inference.SIM as SIM
-import qualified Inference.VI as VI
-import qualified Inference.BBVI as BBVI
+import qualified Inference.MC.SIM as SIM
+import qualified Inference.VI.VI as VI
+import qualified Inference.VI.BBVI as BBVI
 
 {- | Top-level wrapper for BBVI inference.
 -}
@@ -74,7 +74,7 @@ bbviStep num_samples bbvi_prog proposals = do
   -- | Execute a model for L iterations, collecting gradient traces G_l and importance weights logW_l:
   ((as, logWs), grads) <- Util.unzip3 <$> replicateM num_samples (lift (runBBVI proposals bbvi_prog))
   -- | Compute the ELBO gradient estimates
-  let δelbos     = BBVI.likelihoodRatioEstimator logWs grads
+  let δelbos     = VI.likelihoodRatioEstimator logWs grads
   -- | Update the parameters of the proposal distributions Q
       proposals' = VI.gradStep 1.0 proposals δelbos
   -- liftPutStrLn $ "Proposal Distributions Q:\n" ++ show traceQ ++ "\n"

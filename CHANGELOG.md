@@ -25,7 +25,7 @@ Changed:
 Added:
 - `putM`, `getM`, and `handleStateM` for calling and handling `State` in the `Model` type
 
-**Inference.LW**
+**Inference.MC.LW**
 Changed:
 - Type signature for `lw`
 Added:

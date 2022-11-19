@@ -14,10 +14,9 @@
      importance weight P(Y | X; θ).
 -}
 
-module Inference.MLEVI where
+module Inference.VI.MLE where
 
-import Data.Maybe
-import Data.Proxy
+import Data.Maybe ( fromMaybe )
 import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>) )
 import Effects.Dist
@@ -29,18 +28,12 @@ import LogP ( LogP(..), normaliseLogPs, expLogP )
 import Model
 import PrimDist
 import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )
-import Sampler
+import           Sampler ( Sampler )
 import           Trace (GTrace, DTrace, Key(..), Some(..))
 import qualified Trace
-import Debug.Trace
-import qualified Inference.SIM as SIM
-import qualified Inference.SMC as SMC
-import qualified Vec
-import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
-import Util
-import qualified Inference.BBVI as BBVI
-import qualified Inference.INVI as INVI
-import qualified Inference.VI as VI
+import qualified Inference.MC.SIM as SIM
+import qualified Inference.VI.BBVI as BBVI
+import qualified Inference.VI.VI as VI
 
 mle :: forall env xs a b. (Show (Env env), (env `ContainsVars` xs))
   => Int                                -- ^ number of optimisation steps (T)
@@ -49,7 +42,7 @@ mle :: forall env xs a b. (Show (Env env), (env `ContainsVars` xs))
   -> Env env                            -- ^ model environment (containing only observed data Y)
   -> Vars xs                            -- ^ parameter names θ
   -> Sampler DTrace                     -- ^ final parameters θ_T
-mle num_timesteps num_samples  model model_env vars = do
+mle num_timesteps num_samples model model_env vars = do
   -- | Set up a empty dummy guide Q to return the original input model environment
   let guide :: Prog '[Param, Sample] ((), Env env)
       guide = pure ((), model_env)
@@ -59,7 +52,7 @@ mle num_timesteps num_samples  model model_env vars = do
   let tags = Env.varsToStrs @env vars
   modelParams_0 <- collectModelParams tags (handleCore model_env model)
   -- | Run MLE for T optimisation steps
-  ((snd <$>) . handleLift . INVI.handleGradDescent) $
+  ((snd <$>) . handleLift . VI.handleNormGradDescent) $
       VI.viLoop num_timesteps num_samples guide handleGuide model (handleModel tags) (guideParams_0, modelParams_0)
 
 -- | Handle the dummy guide Q by returning the original model environment Y and log-importance-weight log(Q(X)) = 0

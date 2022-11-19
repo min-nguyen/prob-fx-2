@@ -25,16 +25,16 @@ import           Trace (Key(..))
 import PrimDist
 import Vec (Vec(..), TypeableSNatI)
 import qualified Vec
-import Inference.SIM as SIM ( simulate )
-import Inference.LW as LW ( lw )
-import Inference.MH as MH ( mh )
-import Inference.SMC as SMC ( smc )
-import Inference.RMSMC as RMSMC ( rmsmc )
-import Inference.PMMH as PMMH ( pmmh )
-import Inference.SMC2 as SMC2 ( smc2 )
-import Inference.BBVI as BBVI
-import Inference.INVI as INVI
-import Inference.BBVICombined as BBVICombined
+import Inference.MC.SIM as SIM ( simulate )
+import Inference.MC.LW as LW ( lw )
+import Inference.MC.MH as MH ( mh )
+import Inference.MC.SMC as SMC ( smc )
+import Inference.MC.RMSMC as RMSMC ( rmsmc )
+import Inference.MC.PMMH as PMMH ( pmmh )
+import Inference.MC.SMC2 as SMC2 ( smc2 )
+import Inference.VI.BBVI as BBVI
+import Inference.VI.INVI as INVI
+import Inference.VI.BBVICombined as BBVICombined
 import Data.Maybe
 import Data.Typeable
 {-

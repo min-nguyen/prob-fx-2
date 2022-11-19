@@ -11,7 +11,7 @@
 {- | BBVI inference on a model and guide as separate programs.
 -}
 
-module Inference.BBVI
+module Inference.VI.BBVI
   where
 
 import Data.Maybe
@@ -31,9 +31,9 @@ import Sampler
 import           Trace (GTrace, DTrace, Key(..), Some(..))
 import qualified Trace
 import Debug.Trace
-import qualified Inference.SIM as SIM
-import qualified Inference.VI as VI
-import           Inference.VI as VI (GradDescent(..))
+import qualified Inference.MC.SIM as SIM
+import qualified Inference.VI.VI as VI
+import           Inference.VI.VI as VI (GradDescent(..))
 import qualified Vec
 import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
@@ -59,7 +59,7 @@ bbvi num_timesteps num_samples guide_model model model_env  = do
   -- | Collect initial proposal distributions
   guideParams_0 <- collectGuideParams guide
   -- | Run BBVI for T optimisation steps
-  ((fst <$>) . handleLift . handleGradDescent)
+  ((fst <$>) . handleLift . VI.handleLRatioGradDescent)
     $ VI.viLoop num_timesteps num_samples guide handleGuide model handleModel (guideParams_0, Trace.empty)
 
 -- | Ignore the side-effects of all @Observe@ operations, and replace all differentiable @Sample@ operations (representing the proposal distributions Q(λ)) with @Param@ operations.
@@ -158,43 +158,3 @@ weighModel = loop 0 where
       -- | Compute: log(P(X))
       SampPrj d α  -> Op op (\x -> loop (logW + logProb d x) $ k x)
       _            -> Op op (loop logW . k)
-
--- | Update the guide parameters using a likelihood-ratio-estimate of the ELBO gradient
-handleGradDescent :: Prog (GradDescent : fs) a -> Prog fs a
-handleGradDescent (Val a) = pure a
-handleGradDescent (Op op k) = case discharge op of
-  Right (GradDescent logWs δGs params) ->
-    let δelbos  = likelihoodRatioEstimator logWs δGs
-        params' = VI.gradStep 1 params δelbos
-    in  handleGradDescent (k params')
-  Left op' -> Op op' (handleGradDescent . k)
-
--- | Compute a likelihood-ratio-estimate E[δelbo] of the ELBO gradient
-likelihoodRatioEstimator :: [LogP] -> [GTrace] -> GTrace
-likelihoodRatioEstimator logWs δGs = foldr (\(Some v) -> Trace.insert v (estδELBO v)) Trace.empty vars
-  where
-    norm_c :: Double
-    norm_c = 1/fromIntegral (length logWs)
-
-    vars :: [Some DiffDistribution Key]
-    vars = (Trace.keys . head) δGs
-    {- | Uniformly scale each iteration's gradient trace G^l by its corresponding (normalised) importance weight W_norm^l.
-            F^{1:L} = W_norm^{1:L} * G^{1:L}
-        where the normalised importance weight is defined via:
-            log(W_norm^l) = log(W^l) + max(log(W^{1:L})) -}
-    δFs :: [GTrace]
-    δFs = zipWith (\logW -> Trace.map (\_ δ -> expLogP logW *| δ)) (normaliseLogPs logWs) δGs
-    {- | Compute the ELBO gradient estimate for a random variable v's associated parameters:
-            E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
-        where the baseline is:
-            b_v    = covar(F_v^{1:L}, G_v^{1:L}) / var(G_v^{1:L}) -}
-    estδELBO :: forall d. (DiffDistribution d)
-      => Key d                -- ^   v
-      -> Vec (Arity d) Double -- ^   E[δelbo(v)]
-    estδELBO v  =
-      let δGv        = map (fromJust . Trace.lookup v) δGs      -- G_v^{1:L}
-          δFv        = map (fromJust . Trace.lookup v) δFs      -- F_v^{1:L}
-          baseline_v = Vec.covar δFv δGv |/| Vec.var δGv  -- b_v
-          δELBOv     = zipWith (\δgv δfv -> δfv |-| (baseline_v |*| δgv)) δGv δFv
-          δestELBOv  = ((*|) norm_c . foldr (|+|) (Vec.zeros (Proxy @(Arity d)))) δELBOv
-      in  δestELBOv

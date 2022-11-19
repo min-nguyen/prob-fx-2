@@ -13,7 +13,7 @@
 {- | BBVI inference on a model and guide as separate programs.
 -}
 
-module Inference.VI
+module Inference.VI.VI
   where
 
 import Data.Maybe
@@ -33,7 +33,7 @@ import Sampler
 import           Trace (GTrace, DTrace, Key(..), Some(..))
 import qualified Trace
 import Debug.Trace
-import qualified Inference.SIM as SIM
+import qualified Inference.MC.SIM as SIM
 import qualified Vec
 import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
@@ -97,3 +97,76 @@ gradStep
   -> GTrace  -- ^ elbo gradient estimates   E[δelbo]
   -> DTrace  -- ^ updated distributions     Q(λ_{t+1})
 gradStep η = Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (η *| δλ))
+
+-- | Compute and update the guide parameters using a likelihood-ratio-estimate E[δelbo] of the ELBO gradient
+handleLRatioGradDescent :: Prog (GradDescent : fs) a -> Prog fs a
+handleLRatioGradDescent (Val a) = pure a
+handleLRatioGradDescent (Op op k) = case discharge op of
+  Right (GradDescent logWs δGs params) ->
+    let δelbos  = likelihoodRatioEstimator logWs δGs
+        params' = gradStep 1 params δelbos
+    in  handleLRatioGradDescent (k params')
+  Left op' -> Op op' (handleLRatioGradDescent . k)
+
+likelihoodRatioEstimator :: [LogP] -> [GTrace] -> GTrace
+likelihoodRatioEstimator logWs δGs = foldr (\(Some v) -> Trace.insert v (estδELBO v)) Trace.empty vars
+  where
+    norm_c :: Double
+    norm_c = 1/fromIntegral (length logWs)
+
+    vars :: [Some DiffDistribution Key]
+    vars = (Trace.keys . head) δGs
+    {- | Uniformly scale each iteration's gradient trace G^l by its corresponding (normalised) importance weight W_norm^l.
+            F^{1:L} = W_norm^{1:L} * G^{1:L}
+        where the normalised importance weight is defined via:
+            log(W_norm^l) = log(W^l) + max(log(W^{1:L})) -}
+    δFs :: [GTrace]
+    δFs = zipWith (\logW -> Trace.map (\_ δ -> expLogP logW *| δ)) (normaliseLogPs logWs) δGs
+    {- | Compute the ELBO gradient estimate for a random variable v's associated parameters:
+            E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
+        where the baseline is:
+            b_v    = covar(F_v^{1:L}, G_v^{1:L}) / var(G_v^{1:L}) -}
+    estδELBO :: forall d. (DiffDistribution d)
+      => Key d                -- ^   v
+      -> Vec (Arity d) Double -- ^   E[δelbo(v)]
+    estδELBO v  =
+      let δGv        = map (fromJust . Trace.lookup v) δGs      -- G_v^{1:L}
+          δFv        = map (fromJust . Trace.lookup v) δFs      -- F_v^{1:L}
+          baseline_v = Vec.covar δFv δGv |/| Vec.var δGv  -- b_v
+          δELBOv     = zipWith (\δgv δfv -> δfv |-| (baseline_v |*| δgv)) δGv δFv
+          δestELBOv  = ((*|) norm_c . foldr (|+|) (Vec.zeros (Proxy @(Arity d)))) δELBOv
+      in  δestELBOv
+
+-- | Compute and update the guide parameters using a self-normalised importance weighted gradient estimate
+handleNormGradDescent :: Prog (GradDescent : fs) a -> Prog fs a
+handleNormGradDescent (Val a) = pure a
+handleNormGradDescent (Op op k) = case discharge op of
+  Right (GradDescent logWs δGs params) ->
+    let δelbos  = normalisingEstimator logWs δGs
+        params' = case δelbos of Just δelbos' -> gradStep 1 params δelbos'
+                                 Nothing      -> params
+    in  handleNormGradDescent (k params')
+  Left op' -> Op op' (handleNormGradDescent . k)
+
+normalisingEstimator :: [LogP] -> [GTrace] -> Maybe GTrace
+normalisingEstimator logWs δGs = δelbos
+  where
+    {- | Store the gradient estimates for each variable v. -}
+    δelbos :: Maybe GTrace
+    δelbos = if isInfinite norm_c
+              then Nothing
+              else Just (foldr (\(Some v) -> estimateGrad v) Trace.empty vars)
+    {- | Normalising constant -}
+    norm_c :: Double
+    norm_c = 1 / (fromIntegral (length logWs) * sum (map expLogP logWs))
+    {- | Optimisable variables -}
+    vars :: [Some DiffDistribution Key]
+    vars = (Trace.keys . head) δGs
+    {- | Uniformly scale each iteration's gradient trace G^l by its corresponding unnormalised importance weight W_norm^l -}
+    δFs :: [GTrace]
+    δFs = zipWith (\logW -> Trace.map (\_ δ -> expLogP logW *| δ)) logWs δGs
+    {- | Compute the mean gradient estimate for a random variable v's associated parameters -}
+    estimateGrad :: forall d. (DiffDistribution d) => Key d -> GTrace -> GTrace
+    estimateGrad v = let δFv      = map (fromJust . Trace.lookup v) δFs
+                         norm_δFv = ((*|) norm_c . foldr (|+|) (Vec.zeros (Proxy @(Arity d))) ) δFv
+                     in  Trace.insert v norm_δFv

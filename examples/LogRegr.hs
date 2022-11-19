@@ -19,9 +19,9 @@ import Control.Monad ( foldM )
 import Model ( bernoulli, Model, gamma', normal, normal' )
 import Env ( Env(..), Observables, Observable, Assign ((:=)), (<:>), enil, (<#>), vnil, get)
 import Sampler ( Sampler )
-import Inference.SIM as SIM ( simulate )
-import Inference.MH as MH ( mh )
-import Inference.LW as LW ( lw )
+import Inference.MC.SIM as SIM ( simulate )
+import Inference.MC.MH as MH ( mh )
+import Inference.MC.LW as LW ( lw )
 
 {- | Logistic regression environment.
      This type definition is for readability purposes and is not used anywhere.

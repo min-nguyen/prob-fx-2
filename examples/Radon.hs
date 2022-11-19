@@ -19,8 +19,8 @@ import Model ( Model, halfCauchy', halfNormal, normal )
 import Env ( Env(..), Observables, Observable, Assign ((:=)), (<:>), enil, (<#>), vnil, get)
 import Sampler ( Sampler )
 import DataSets ( n_counties, logRadon, countyIdx, dataFloorValues )
-import Inference.SIM as SIM ( simulate )
-import Inference.MH as MH ( mh )
+import Inference.MC.SIM as SIM ( simulate )
+import Inference.MC.MH as MH ( mh )
 import Util ( findIndexes )
 
 -- | Radon model environment
