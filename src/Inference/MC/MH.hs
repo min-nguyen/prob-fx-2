@@ -33,7 +33,7 @@ import Effects.Lift ( Lift, lift, handleLift, liftPutStrLn )
 import Effects.State
 import qualified Inference.MC.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
-import Inference.MC.ARS
+import Inference.MC.RS
 import Util
 
 {- | Top-level wrapper for MH inference.
@@ -64,7 +64,7 @@ mhInternal :: (LastMember (Lift Sampler) fs)
   -> ProbProg a                             -- ^ probabilistic program
   -> Prog fs [((a, LPTrace), STrace)]
 mhInternal n tags strace_0 =
-  handleAccept tags 1 . arLoop n strace_0 handleModel
+  handleAccept tags 1 . rsLoop n strace_0 handleModel
 
 {- | Handler for one iteration of MH.
 -}

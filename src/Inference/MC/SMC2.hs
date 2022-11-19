@@ -31,7 +31,7 @@ import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
 import Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
 import Inference.MC.SMC (Particle, pattern Particle)
-import Inference.MC.ARS as ARS
+import Inference.MC.RS as RS
 import Effects.Lift
 import Data.Bifunctor
 
