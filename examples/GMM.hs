@@ -17,8 +17,8 @@ import Data.Type.Nat
 import Data.Typeable
 import Data.Proxy
 import Model ( Model, dirichlet', discrete, normal )
-import Inference.SIM as SIM ( simulate )
-import Inference.MH as MH ( mh )
+import Inference.MC.SIM as SIM ( simulate )
+import Inference.MC.MH as MH ( mh )
 import Sampler ( Sampler )
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)

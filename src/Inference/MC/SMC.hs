@@ -12,7 +12,7 @@
 {- Sequential Monte Carlo inference.
 -}
 
-module Inference.SMC where
+module Inference.MC.SMC where
 
 import           Control.Monad ( replicateM )
 import qualified Data.Vector as Vector
@@ -25,9 +25,9 @@ import           Model ( Model(runModel), ProbProg )
 import           PrimDist ( mkCategorical, sample, logProb )
 import           Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge, prj )
 import qualified Data.Map as Map
-import qualified Inference.SIM as SIM
-import qualified Inference.SIS as SIS
-import           Inference.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
+import qualified Inference.MC.SIM as SIM
+import qualified Inference.MC.SIS as SIS
+import           Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
 import           Sampler ( Sampler, sampleRandom, sampleCategorical)
 
 {- | The context of a particle for SMC.

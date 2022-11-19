@@ -14,7 +14,7 @@
      importance weight P(Y | X; θ).
 -}
 
-module Inference.MLEVI where
+module Inference.VI.MLEVI where
 
 import Data.Maybe ( fromMaybe )
 import Data.Bifunctor ( Bifunctor(..) )
@@ -31,10 +31,10 @@ import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Member
 import           Sampler ( Sampler )
 import           Trace (GTrace, DTrace, Key(..), Some(..))
 import qualified Trace
-import qualified Inference.SIM as SIM
-import qualified Inference.BBVI as BBVI
-import qualified Inference.INVI as INVI
-import qualified Inference.VI as VI
+import qualified Inference.MC.SIM as SIM
+import qualified Inference.VI.BBVI as BBVI
+import qualified Inference.VI.INVI as INVI
+import qualified Inference.VI.VI as VI
 
 mle :: forall env xs a b. (Show (Env env), (env `ContainsVars` xs))
   => Int                                -- ^ number of optimisation steps (T)

@@ -10,7 +10,7 @@
 {- | Inclusive KL Divergence Variational Inference.
 -}
 
-module Inference.INVI where
+module Inference.VI.INVI where
 
 import Data.Maybe
 import Data.Proxy
@@ -29,13 +29,13 @@ import Sampler
 import           Trace (GTrace, DTrace, Key(..), Some(..))
 import qualified Trace
 import Debug.Trace
-import qualified Inference.SIM as SIM
+import qualified Inference.MC.SIM as SIM
 import qualified Vec
 import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
-import qualified Inference.BBVI as BBVI
-import qualified Inference.VI as VI
-import           Inference.VI as VI (GradDescent(..))
+import qualified Inference.VI.BBVI as BBVI
+import qualified Inference.VI.VI as VI
+import           Inference.VI.VI as VI (GradDescent(..))
 
 
 {- | Top-level wrapper that takes a separate model and guide.

@@ -13,7 +13,7 @@
 {- | Metropolis-Hastings inference.
 -}
 
-module Inference.MH where
+module Inference.MC.MH where
 
 import Data.Functor ( (<&>) )
 import Control.Monad ( (>=>), replicateM )
@@ -31,9 +31,9 @@ import Env ( ContainsVars(..), Vars, Env )
 import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr, pattern SampPrj, pattern ObsPrj )
 import Effects.Lift ( Lift, lift, handleLift, liftPutStrLn )
 import Effects.State
-import qualified Inference.SIM as SIM
+import qualified Inference.MC.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
-import Inference.ARS
+import Inference.MC.ARS
 import Util
 
 {- | Top-level wrapper for MH inference.

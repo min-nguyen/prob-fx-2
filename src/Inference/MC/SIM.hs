@@ -9,7 +9,7 @@
 {- | Simulation.
 -}
 
-module Inference.SIM
+module Inference.MC.SIM
   (-- * Inference wrapper functions
     simulate
    -- * Inference handlers

@@ -33,8 +33,8 @@ import HMM ( ObsModel, TransModel, hmmGen )
 import GHC.TypeLits ( Symbol )
 import Data.Kind (Constraint)
 import Sampler ( Sampler )
-import Inference.SIM as SIM ( simulate )
-import Inference.MH as MH ( mh )
+import Inference.MC.SIM as SIM ( simulate )
+import Inference.MC.MH as MH ( mh )
 {-
 import Inference.MB as MB ( handleMBayes )
 import qualified Control.Monad.Bayes.Class as Bayes

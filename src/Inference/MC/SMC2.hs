@@ -11,7 +11,7 @@
 {- Sequential Monte Carlo^2 inference.
 -}
 
-module Inference.SMC2 where
+module Inference.MC.SMC2 where
 
 import qualified Data.Map as Map
 import Data.Map (Map)
@@ -22,16 +22,16 @@ import Sampler
 import Effects.Dist
 import Effects.ObsRW
 import Effects.NonDet
-import qualified Inference.MH as MH
-import qualified Inference.PMMH as PMMH
-import qualified Inference.RMSMC as RMSMC
-import Inference.RMSMC ( TracedParticle(..) )
-import qualified Inference.SMC as SMC
-import qualified Inference.SIM as SIM
-import qualified Inference.SIS as SIS hiding  (particleLogProb)
-import Inference.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
-import Inference.SMC (Particle, pattern Particle)
-import Inference.ARS as ARS
+import qualified Inference.MC.MH as MH
+import qualified Inference.MC.PMMH as PMMH
+import qualified Inference.MC.RMSMC as RMSMC
+import Inference.MC.RMSMC ( TracedParticle(..) )
+import qualified Inference.MC.SMC as SMC
+import qualified Inference.MC.SIM as SIM
+import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
+import Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
+import Inference.MC.SMC (Particle, pattern Particle)
+import Inference.MC.ARS as ARS
 import Effects.Lift
 import Data.Bifunctor
 

@@ -8,7 +8,7 @@
 {- | Particle Marginal Metropolis-Hastings inference.
 -}
 
-module Inference.PMMH where
+module Inference.MC.PMMH where
 
 import Data.Functor
 import Control.Monad
@@ -23,13 +23,13 @@ import Env
 import Effects.Lift
 import Effects.ObsRW
 import qualified Data.Map as Map
-import qualified Inference.SIM as SIM
-import qualified Inference.MH as MH
-import Inference.ARS as ARS
-import qualified Inference.SIS as SIS
-import qualified Inference.SMC as SMC
+import qualified Inference.MC.SIM as SIM
+import qualified Inference.MC.MH as MH
+import Inference.MC.ARS as ARS
+import qualified Inference.MC.SIS as SIS
+import qualified Inference.MC.SMC as SMC
 import Util
-import Inference.SMC (Particle(particleLogProb, Particle))
+import Inference.MC.SMC (Particle(particleLogProb, Particle))
 
 {- | Top-level wrapper for PMMH inference.
 -}

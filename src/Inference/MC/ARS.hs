@@ -8,7 +8,7 @@
 {- | Accept-Reject Sampling
 -}
 
-module Inference.ARS where
+module Inference.MC.ARS where
 
 import Control.Monad ( (>=>) )
 import qualified Data.Map as Map
@@ -24,7 +24,7 @@ import Effects.ObsRW ( ObsRW )
 import Env ( ContainsVars(..), Vars, Env )
 import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr )
 import Effects.Lift ( Lift, lift, handleLift )
-import qualified Inference.SIM as SIM
+import qualified Inference.MC.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
 
 {- | The @Accept@ effect for proposing samples and accepting/rejecting according a context.

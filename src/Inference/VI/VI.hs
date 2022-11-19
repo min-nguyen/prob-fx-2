@@ -13,7 +13,7 @@
 {- | BBVI inference on a model and guide as separate programs.
 -}
 
-module Inference.VI
+module Inference.VI.VI
   where
 
 import Data.Maybe
@@ -33,7 +33,7 @@ import Sampler
 import           Trace (GTrace, DTrace, Key(..), Some(..))
 import qualified Trace
 import Debug.Trace
-import qualified Inference.SIM as SIM
+import qualified Inference.MC.SIM as SIM
 import qualified Vec
 import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util

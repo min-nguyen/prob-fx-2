@@ -13,7 +13,7 @@
      of Bayesian inference (e.g. SMC) and assigns this as the sample's importance weight.
 -}
 
-module Inference.MLE where
+module Inference.VI.MLE where
 
 import Data.Maybe
 import Data.Proxy
@@ -32,14 +32,14 @@ import Sampler
 import           Trace (GTrace, DTrace, Key(..), Some(..))
 import qualified Trace
 import Debug.Trace
-import qualified Inference.SIM as SIM
-import qualified Inference.SMC as SMC
+import qualified Inference.MC.SIM as SIM
+import qualified Inference.MC.SMC as SMC
 import qualified Vec
 import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
-import qualified Inference.BBVI as BBVI
-import qualified Inference.INVI as INVI
-import qualified Inference.VI as VI
+import qualified Inference.VI.BBVI as BBVI
+import qualified Inference.VI.INVI as INVI
+import qualified Inference.VI.VI as VI
 
 mle :: forall env a b. (Show (Env env))
   => Int                                -- ^ number of optimisation steps (T)

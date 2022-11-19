@@ -15,7 +15,7 @@
 {- Rejuvenate-Move Sequential Monte Carlo inference.
 -}
 
-module Inference.RMSMC where
+module Inference.MC.RMSMC where
 
 import qualified Data.Map as Map
 import           Data.Map (Map)
@@ -30,13 +30,13 @@ import           Control.Applicative
 import           Effects.Dist
 import           Effects.ObsRW
 import           Effects.NonDet
-import qualified Inference.MH as MH
-import qualified Inference.SMC as SMC
-import qualified Inference.SIM as SIM
-import qualified Inference.ARS as ARS
-import qualified Inference.SIS as SIS hiding  (particleLogProb)
-import           Inference.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
-import           Inference.SMC (Particle, pattern Particle)
+import qualified Inference.MC.MH as MH
+import qualified Inference.MC.SMC as SMC
+import qualified Inference.MC.SIM as SIM
+import qualified Inference.MC.ARS as ARS
+import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
+import           Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
+import           Inference.MC.SMC (Particle, pattern Particle)
 import           Effects.Lift
 import           PrimDist
 import           Data.Bifunctor
