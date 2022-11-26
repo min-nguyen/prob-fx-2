@@ -13,7 +13,7 @@
      importance weight P(Y | X; θ).
 -}
 
-module Inference.VI.MAP where
+module Inference.VI.MAP (module MLE, module Inference.VI.MAP) where
 
 import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>) )
