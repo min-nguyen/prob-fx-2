@@ -21,11 +21,12 @@ import Inference.MC.RMSMC as RMSMC ( rmsmc )
 import Inference.MC.PMMH as PMMH ( pmmh )
 import Inference.MC.SMC2 as SMC2 ( smc2 )
 import qualified Inference.VI.BBVI as BBVI
-import qualified Inference.VI.BBVI_Combined as BBVI_Combined
 import qualified Inference.VI.INVI as INVI
 import qualified Inference.VI.MLE as MLE
 import qualified Inference.VI.MAP as MAP
-import qualified Inference.VI.MLE_MCMC as MLE_MCMC
+import qualified Inference.VI.INVI_MAP as INVI_MAP
+import qualified Inference.VI.Extra.BBVI_Combined as BBVI_Combined
+import qualified Inference.VI.Extra.MLE_MCMC as MLE_MCMC
 import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
 import qualified Trace
 import           Trace (Key(..))
@@ -231,6 +232,18 @@ mapLinRegr t_steps l_samples n_datapoints = do
   let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
       c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
   pure (m_dist, c_dist)
+
+invimapLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double], [Double])
+invimapLinRegr t_steps l_samples n_datapoints = do
+  let xs            = [1 .. fromIntegral n_datapoints]
+      env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+  (guideParams, modelParams) <- INVI_MAP.invimap t_steps l_samples linRegrGuide (linRegr xs ) env_in (#m <#> #c <#> vnil)
+  let m_distλ = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) guideParams
+      c_distλ = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) guideParams
+      m_distθ = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) modelParams
+      c_distθ = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) modelParams
+
+  pure (m_distλ, c_distλ, m_distθ, c_distθ)
 
 {- | Linear regression model on individual data points at a time.
 -}

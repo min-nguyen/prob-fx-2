@@ -28,7 +28,7 @@ import Inference.MC.PMMH as PMMH ( pmmh )
 import Inference.MC.SMC2 as SMC2 ( smc2 )
 import Inference.VI.BBVI as BBVI
 import Inference.VI.INVI as INVI
-import Inference.VI.BBVI_Combined as BBVI_Combined
+import Inference.VI.Extra.BBVI_Combined as BBVI_Combined
 import Model ( Model (..), bernoulli', binomial, uniform, beta )
 import Prog ( Member, LastMember )
 import Sampler ( Sampler, liftIO )

@@ -58,7 +58,7 @@ mle num_timesteps num_samples model model_env vars = do
 -- | Handle the dummy guide Q by returning the original model environment Y and log-importance-weight log(Q(X)) = 0
 handleGuide :: Prog [Param, Sample] a -> DTrace -> Sampler ((a, LogP), GTrace)
 handleGuide guide _ =
-  (SIM.handleSamp . BBVI.handleGuideParams ) ((, 0) <$> guide)
+  (SIM.handleSamp . VI.handleGuideParams ) ((, 0) <$> guide)
 
 -- | Handle the model P(X, Y; θ) by returning log-importance-weight P(Y | X; θ)
 handleModel :: [Tag] -> Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((a, Env env), LogP), GTrace)
@@ -115,8 +115,8 @@ weighModel = loop 0 where
   loop :: LogP -> Prog es a -> Prog es (a, LogP)
   loop logW (Val a)   = pure (a, logW)
   loop logW (Op op k) = case op of
-      -- | Compute: log(P(X; θ)) or log(P(Y; θ)) for optimisable dists, where X or Y is provided in the model environment
+      -- | Compute: log(P(Y; θ)) for optimisable dists, where Y is provided in the model environment
       ParamOPrj p xy α -> Op op (\xy -> loop (logW + logProb p xy) $ k xy)
-      -- | Compute: log(P(X; θ)) or log(P(Y; θ)) for non-differentiable dists, where X or Y is provided in the model environment
+      -- | Compute: log(P(Y; θ)) for non-differentiable dists, where Y is provided in the model environment
       ObsPrj p xy α    -> Op op (\xy -> loop (logW + logProb p xy) $ k xy)
       _               -> Op op (loop logW . k)
