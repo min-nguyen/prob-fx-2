@@ -8,7 +8,7 @@
 {- | Rejection Sampling
 -}
 
-module Inference.MC.RS where
+module Inference.MC.Metropolis where
 
 import Control.Monad ( (>=>) )
 import qualified Data.Map as Map
@@ -51,26 +51,26 @@ type ModelHandler ctx = forall a. STrace -> ProbProg a -> Sampler ((a, ctx), STr
 
 {- | Template for Rejection sample inference on a probabilistic program.
 -}
-rsLoop :: (LastMember (Lift Sampler) fs)
+metropolisLoop :: (LastMember (Lift Sampler) fs)
    => Int                                                            -- ^ number of iterations
    -> STrace                                                         -- ^ initial sample trace
    -> (forall a. STrace -> ProbProg a -> Sampler ((a, ctx), STrace))  -- ^ model handler
    -> ProbProg a                                                      -- ^ probabilistic program
    -> Prog (Accept ctx : fs) [((a, ctx), STrace)]                    -- ^ trace of ((accepted outputs, contexts), samples)
-rsLoop n strace hdlModel prog_0 = do
+metropolisLoop n strace hdlModel prog_0 = do
   -- | Perform initial run of mh
   ar_ctx_0 <- lift $ hdlModel strace prog_0
   -- | A function performing n mhSteps using initial mh_ctx. The most recent samples are at the front of the trace.
-  foldl (>=>) pure (replicate n (rsStep hdlModel prog_0)) [ar_ctx_0]
+  foldl (>=>) pure (replicate n (metropolisStep hdlModel prog_0)) [ar_ctx_0]
 
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
-rsStep :: (LastMember (Lift Sampler) fs)
+metropolisStep :: (LastMember (Lift Sampler) fs)
   => (forall a. STrace -> ProbProg a -> Sampler ((a, ctx), STrace))  -- ^ model handler
   -> ProbProg a                                                        -- ^ probabilistic program
   -> [((a, ctx), STrace)]                                                            -- ^ previous trace
   -> Prog (Accept ctx : fs) [((a, ctx), STrace)]                                     -- ^ updated trace
-rsStep hdlModel prog_0 trace = do
+metropolisStep hdlModel prog_0 trace = do
   -- | Get previous MH output
   let ((r, ctx), strace) = head trace
   -- | Propose a new random value for a sample site

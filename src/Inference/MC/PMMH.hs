@@ -25,7 +25,7 @@ import Effects.ObsRW
 import qualified Data.Map as Map
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.MH as MH
-import Inference.MC.RS as RS
+import Inference.MC.Metropolis as Metropolis
 import qualified Inference.MC.SIS as SIS
 import qualified Inference.MC.SMC as SMC
 import Util
@@ -59,7 +59,7 @@ pmmhInternal :: (LastMember (Lift Sampler) fs)
   -> ProbProg a                                    -- ^ probabilistic program
   -> Prog fs [((a, LogP), STrace)]
 pmmhInternal mh_steps n_particles tags strace_0 =
-  handleAccept tags 1 . rsLoop mh_steps strace_0 (handleModel n_particles tags)
+  handleAccept tags 1 . metropolisLoop mh_steps strace_0 (handleModel n_particles tags)
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}

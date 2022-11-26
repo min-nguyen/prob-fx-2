@@ -40,7 +40,7 @@ library
                       Inference.MC.SMC2,
                       Inference.MC.RMSMC,
                       Inference.MC.PMMH,
-                      Inference.MC.RS,
+                      Inference.MC.Metropolis,
                       Inference.VI.VI,
                       Inference.VI.BBVI,
                       Inference.VI.INVI,
