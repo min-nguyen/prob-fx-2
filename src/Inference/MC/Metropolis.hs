@@ -49,7 +49,7 @@ data Accept ctx a where
 
 type ModelHandler ctx = forall a. STrace -> ProbProg a -> Sampler ((a, ctx), STrace)
 
-{- | Template for Rejection sample inference on a probabilistic program.
+{- | A general framework for Metropolis inference.
 -}
 metropolisLoop :: (LastMember (Lift Sampler) fs)
    => Int                                                            -- ^ number of iterations
@@ -76,7 +76,7 @@ metropolisStep hdlModel prog_0 trace = do
   -- | Propose a new random value for a sample site
   (prp_αs, prp_strace)  <- call (Propose strace ctx)
   -- | Run MH with proposed value
-  ((r', ctx'), strace') <- lift $ hdlModel prp_strace prog_0
+  ((r', ctx'), strace') <- lift (hdlModel prp_strace prog_0)
   -- | Compute acceptance ratio to see if we use the proposal
   b                     <- call (Accept prp_αs ctx ctx')
   if b then pure (((r', ctx'), strace'):trace)

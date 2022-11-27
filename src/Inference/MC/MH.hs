@@ -42,7 +42,7 @@ mh :: forall env a xs. (env `ContainsVars` xs)
   => Int                            -- ^ number of MH iterations
   -> Model env [ObsRW env, Dist] a  -- ^ model
   -> Env env                        -- ^ input environment
-  -> Vars xs                        -- ^ optional observable variable names of interest
+  -> Vars xs                        -- ^ optional variable names of interest
     {- These allow one to specify sample sites of interest; for example, for interest in sampling @#mu@
      , provide @#mu <#> vnil@ to cause other variables to not be resampled unless necessary. -}
   -> Sampler [Env env]              -- ^ output model environments
