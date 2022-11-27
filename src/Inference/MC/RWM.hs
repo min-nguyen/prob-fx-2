@@ -29,11 +29,9 @@ import Effects.ObsRW ( ObsRW )
 import Env ( ContainsVars(..), Vars, Env )
 import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr, pattern SampPrj, pattern ObsPrj )
 import Effects.Lift ( Lift, lift, handleLift, liftPutStrLn )
-import Effects.State
 import qualified Inference.MC.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
-import Inference.MC.Metropolis
-import Util
+import Inference.MC.Metropolis as Metropolis
 
 {- | Top-level wrapper for Random-Walk Metropolis
 -}
@@ -56,7 +54,7 @@ handleModel ::
   -> ProbProg a                         -- ^ probabilistic program
   -> Sampler ((a, LogP), STrace)        -- ^ ((model output, sample trace), log-probability trace)
 handleModel strace =
-  reuseSamples strace . SIM.handleObs . weighJoint
+  Metropolis.reuseSamples strace . SIM.handleObs . weighJoint
 
 {- | Record the joint log-probability P(X, Y)
 -}
@@ -68,21 +66,6 @@ weighJoint = loop 0 where
       ObsPrj d y α   -> Op op (\x -> loop (logp + logProb d x) $ k x)
       SampPrj d  α   -> Op op (\x -> loop (logp + logProb d x) $ k x)
       _              -> Op op (loop logp . k)
-
-{- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.
--}
-reuseSamples :: forall a. STrace -> Prog '[Sample] a -> Sampler (a, STrace)
-reuseSamples = loop where
-  loop :: STrace -> Prog '[Sample] a -> Sampler (a, STrace)
-  loop strace (Val x) = pure (x, strace)
-  loop strace (Op op k) = case discharge op of
-    Right (Sample d α) ->  case Map.lookup α strace of
-      Nothing -> do r <- sampleRandom
-                    let y = sampleInv d r
-                    loop (Map.insert α r strace) (k y)
-      Just r  -> do let y = sampleInv d r
-                    loop strace  (k y)
-    Left op'  -> error "MH.handleSamp: Left should not happen"
 
 {- | Handler for @Accept@ for RWM.
      - Propose by drawing all components for latent variable X' ~ P(X)

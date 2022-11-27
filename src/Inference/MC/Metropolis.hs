@@ -81,3 +81,18 @@ metropolisStep hdlModel prog_0 trace = do
   b                     <- call (Accept prp_αs ctx ctx')
   if b then pure (((r', ctx'), strace'):trace)
        else pure trace
+
+{- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.
+-}
+reuseSamples :: forall a. STrace -> Prog '[Sample] a -> Sampler (a, STrace)
+reuseSamples = loop where
+  loop :: STrace -> Prog '[Sample] a -> Sampler (a, STrace)
+  loop strace (Val x) = pure (x, strace)
+  loop strace (Op op k) = case discharge op of
+    Right (Sample d α) ->  case Map.lookup α strace of
+      Nothing -> do r <- sampleRandom
+                    let y = sampleInv d r
+                    loop (Map.insert α r strace) (k y)
+      Just r  -> do let y = sampleInv d r
+                    loop strace  (k y)
+    Left op'  -> error "MH.handleSamp: Left should not happen"
