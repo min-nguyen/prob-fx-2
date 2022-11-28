@@ -14,23 +14,19 @@
 
 module Inference.MC.RWM where
 
-import Data.Functor ( (<&>) )
-import Control.Monad ( (>=>), replicateM )
+import Control.Monad ( replicateM )
 import qualified Data.Map as Map
-import Data.Set ((\\))
-import qualified Data.Set as Set
-import Data.Maybe ( fromJust )
-import Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg, weaken )
+import Prog ( Prog(..), discharge, LastMember )
 import Trace ( STrace, LPTrace, filterTrace )
 import LogP ( LogP, expLogP )
 import PrimDist
 import Model ( Model, handleCore, ProbProg )
 import Effects.ObsRW ( ObsRW )
-import Env ( ContainsVars(..), Vars, Env )
-import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr, pattern SampPrj, pattern ObsPrj )
+import Env ( Env )
+import Effects.Dist ( Dist, pattern SampPrj, pattern ObsPrj )
 import Effects.Lift ( Lift, lift, handleLift, liftPutStrLn )
-import qualified Inference.MC.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
+import qualified Inference.MC.SIM as SIM
 import Inference.MC.Metropolis as Metropolis
 
 {- | Top-level wrapper for Random-Walk Metropolis
@@ -56,7 +52,7 @@ handleModel ::
 handleModel strace =
   Metropolis.reuseSamples strace . SIM.handleObs . weighJoint
 
-{- | Record the joint log-probability P(X, Y)
+{- | Record the joint log-probability P(Y, X)
 -}
 weighJoint :: ProbProg a -> ProbProg (a, LogP)
 weighJoint = loop 0 where
@@ -79,7 +75,7 @@ handleAccept (Op op k) = case discharge op of
             rs <- replicateM (length αs) (lift sampleRandom)
             let strace' = Map.union (Map.fromList (zip αs rs)) strace
             (handleAccept . k) (αs, strace')
-  Right (Accept αs logp logp')
+  Right (Accept _ logp logp')
     ->  do  u <- lift $ sample (mkUniform 0 1)
             (handleAccept . k) (expLogP (logp' - logp) > u)
   Left op' -> Op op' (handleAccept . k)

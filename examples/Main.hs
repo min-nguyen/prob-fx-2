@@ -26,6 +26,7 @@ parseArgs cmd = case cmd of
   "simLinRegr"          -> sampleIOFixed (simLinRegr 100) >>= printThenWrite
   "lwLinRegr"           -> sampleIOFixed (lwLinRegr 1000 10)>>= printThenWrite
   "rwmLinRegr"          -> sampleIOFixed (rwmLinRegr 10000 50) >>= printThenWrite
+  "imLinRegr"           -> sampleIOFixed (imLinRegr 10000 50) >>= printThenWrite
   "mhLinRegr"           -> sampleIOFixed (mhLinRegr 10000 50) >>= printThenWrite
   "smcLinRegr"          -> sampleIOFixed (smcLinRegr 120 50) >>= printThenWrite
   "rmsmcLinRegr"        -> sampleIOFixed (rmsmcLinRegr 20 200 20) >>= printThenWrite

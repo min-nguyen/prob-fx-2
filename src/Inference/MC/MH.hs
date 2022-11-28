@@ -15,25 +15,24 @@
 
 module Inference.MC.MH where
 
-import Data.Functor ( (<&>) )
-import Control.Monad ( (>=>), replicateM )
+import           Data.Functor ( (<&>) )
+import           Control.Monad ( (>=>), replicateM )
 import qualified Data.Map as Map
-import Data.Set ((\\))
+import           Data.Set ((\\))
 import qualified Data.Set as Set
-import Data.Maybe ( fromJust )
-import Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg, weaken )
-import Trace ( STrace, LPTrace, filterTrace )
-import LogP ( LogP, expLogP )
-import PrimDist
-import Model ( Model, handleCore, ProbProg )
-import Effects.ObsRW ( ObsRW )
-import Env ( ContainsVars(..), Vars, Env )
-import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr, pattern SampPrj, pattern ObsPrj )
-import Effects.Lift ( Lift, lift, handleLift, liftPutStrLn )
-import Effects.State
+import           Data.Maybe ( fromJust )
+import           Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg, weaken )
+import           Env ( ContainsVars(..), Vars, Env )
+import           Trace ( STrace, LPTrace, filterTrace )
+import           LogP ( LogP, expLogP )
+import           PrimDist
+import           Model ( Model, handleCore, ProbProg )
+import           Effects.ObsRW ( ObsRW )
+import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr, pattern SampPrj, pattern ObsPrj )
+import           Effects.Lift ( Lift, lift, handleLift, liftPutStrLn )
 import qualified Inference.MC.SIM as SIM
-import Sampler ( Sampler, sampleRandom )
-import Inference.MC.Metropolis as Metropolis
+import           Inference.MC.Metropolis as Metropolis
+import           Sampler ( Sampler, sampleRandom )
 
 {- | Top-level wrapper for MH inference.
 -}

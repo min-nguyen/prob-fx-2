@@ -16,6 +16,7 @@ import Model ( Model, normal, uniform, handleCore )
 import Inference.MC.SIM as SIM ( simulate )
 import Inference.MC.LW as LW ( lw )
 import Inference.MC.RWM as RWM ( rwm )
+import Inference.MC.IM as IM ( im )
 import Inference.MC.MH as MH ( mh )
 import Inference.MC.SMC as SMC ( smc )
 import Inference.MC.RMSMC as RMSMC ( rmsmc )
@@ -106,6 +107,20 @@ rwmLinRegr n_mhsteps n_datapoints = do
       env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   -- Run MH
   env_outs <- RWM.rwm n_mhsteps (linRegr xs) env_in
+  -- Get the sampled values of mu and c
+  let mus = concatMap (get #m) env_outs
+  let cs = concatMap (get #c) env_outs
+  pure (mus, cs)
+
+-- | Random Walk Metropolis over linear regression
+imLinRegr ::  Int -> Int ->  Sampler ([Double], [Double])
+imLinRegr n_mhsteps n_datapoints = do
+  -- Specify model inputs
+  let xs            = [0 .. fromIntegral n_datapoints]
+  -- Specify model environment
+      env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+  -- Run MH
+  env_outs <- IM.im n_mhsteps (linRegr xs) env_in
   -- Get the sampled values of mu and c
   let mus = concatMap (get #m) env_outs
   let cs = concatMap (get #c) env_outs

@@ -10,8 +10,6 @@
 
 module Inference.MC.PMMH where
 
-import Data.Functor
-import Control.Monad
 import Prog
 import Sampler
 import LogP
@@ -28,7 +26,6 @@ import qualified Inference.MC.MH as MH
 import Inference.MC.Metropolis as Metropolis
 import qualified Inference.MC.SIS as SIS
 import qualified Inference.MC.SMC as SMC
-import Util
 import Inference.MC.SMC (Particle(particleLogProb, Particle))
 
 {- | Top-level wrapper for PMMH inference.

@@ -34,6 +34,7 @@ library
                       Effects.Writer,
                       Inference.MC.LW,
                       Inference.MC.RWM,
+                      Inference.MC.IM,
                       Inference.MC.MH,
                       Inference.MC.SIM,
                       Inference.MC.SIS,
