@@ -33,7 +33,7 @@ import           Effects.NonDet
 import qualified Inference.MC.MH as MH
 import qualified Inference.MC.SMC as SMC
 import qualified Inference.MC.SIM as SIM
-import qualified Inference.MC.RS as RS
+import qualified Inference.MC.Metropolis as Metropolis
 import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
 import           Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
 import           Inference.MC.SMC (Particle, pattern Particle)

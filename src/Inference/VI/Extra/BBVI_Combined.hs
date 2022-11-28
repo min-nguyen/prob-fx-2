@@ -11,26 +11,26 @@
      Note: this naturally has different results than Inference.VI.BBVI due ignoring the log-weights of *non-differentiable* @Sample@ operations (see definition of the `traceLogProbs` handler).
 -}
 
-module Inference.VI.BBVI_Combined
+module Inference.VI.Extra.BBVI_Combined
   where
 
-import Data.Maybe
-import Data.Bifunctor ( Bifunctor(first) )
-import Control.Monad ( replicateM, (>=>) )
-import Effects.Dist
-import Effects.Lift
-import Effects.ObsRW ( ObsRW )
-import Effects.State ( modify, handleState, State )
-import Env ( Env )
-import LogP ( LogP(..), normaliseLogPs, expLogP )
-import Model
-import PrimDist
-import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )
-import Sampler
+import           Data.Maybe ( fromMaybe )
+import           Data.Bifunctor ( Bifunctor(first) )
+import           Control.Monad ( replicateM, (>=>) )
+import           Effects.Dist
+import           Effects.Lift
+import           Effects.ObsRW ( ObsRW )
+import           Effects.State ( modify, handleState, State )
+import           Env ( Env )
+import           LogP ( LogP(..), normaliseLogPs, expLogP )
+import           Model
+import           PrimDist
+import           Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )
+import           Sampler
 import           Trace (GTrace, DTrace, Key(..), Some(..))
 import qualified Trace
 import qualified Vec
-import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
+import           Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import qualified Util
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.VI.VI as VI

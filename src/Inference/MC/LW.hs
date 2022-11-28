@@ -12,7 +12,7 @@ module Inference.MC.LW
   , lwInternal
     -- * Inference effect handlers
   , runLW
-  , handleObs
+  , weighLikelihood
   ) where
 
 import Data.Bifunctor ( Bifunctor(first), second, bimap )
@@ -58,14 +58,14 @@ runLW
   :: Prog [Observe, Sample] a
   -- | ((model output, sample trace), likelihood-weighting)
   -> Sampler (a, LogP)
-runLW = SIM.handleSamp . handleObs
+runLW = SIM.handleSamp . weighLikelihood
 
--- | Handle each @Observe@ operation by computing and accumulating a log probability
-handleObs
+-- | Handle each @Observe@ operation by accumulating the log-likelihood P(Y | X)
+weighLikelihood
   :: Prog (Observe : es) a
   -- | (model output, final likelihood weighting)
   -> Prog es (a, LogP)
-handleObs = loop 0 where
+weighLikelihood = loop 0 where
   loop :: LogP -> Prog (Observe : es) a -> Prog es (a, LogP)
   loop logp (Val x) = return (x, logp)
   loop logp (Op u k) = case discharge u of

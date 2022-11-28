@@ -13,7 +13,7 @@
      of Bayesian inference (e.g. SMC) and assigns this as the sample's importance weight.
 -}
 
-module Inference.VI.MLE_MCMC where
+module Inference.VI.Extra.MLE_MCMC where
 
 import Data.Maybe
 import Data.Proxy
