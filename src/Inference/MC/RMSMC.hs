@@ -52,7 +52,7 @@ data TracedParticle = TracedParticle {
   }
 
 instance ParticleCtx TracedParticle where
-  pempty            = TracedParticle 0 ("", 0) Map.empty
+  pempty            = TracedParticle 0 (Addr 0 "" 0) Map.empty
   paccum ctxs ctxs' =
     let log_ps   = uncurry paccum              (mapT2 (particleLogProb <$>)  (ctxs, ctxs'))
         α_obs    = particleObsAddr <$> ctxs'
@@ -106,7 +106,7 @@ handleSamp = loop Map.empty where
                        loop (Map.insert α r strace) (k y)
 
 handleObs :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, LogP, Addr)
-handleObs (Val x)   = pure (Val x, 0, ("", 0))
+handleObs (Val x)   = pure (Val x, 0, Addr 0 "" 0)
 handleObs (Op op k) = case discharge op of
   Right (Observe d y α) -> Val (k y, logProb d y, α)
   Left op'              -> Op op' (handleObs . k)

@@ -18,7 +18,7 @@ import Sampler ( Sampler, sampleUniformD, liftIO )
 import Control.Monad ( replicateM, replicateM_ )
 import Data.Kind (Constraint)
 import Data.Type.Nat
-import Data.Proxy
+import Effects.Dist (Addr(..))
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>), Vars (VCons) )
 import qualified Trace
 import           Trace (Key(..))
@@ -253,9 +253,9 @@ bbviLDA t_steps l_samples n_words = do
 
   traceQ <- BBVI.bbvi t_steps l_samples (topicGuide vocab n_topics n_words) (topicModel vocab n_topics n_words) env_in
   -- Draw the most recent sampled parameters
-  let θ_dist     = toList . fromJust $ Trace.lookup (Key ("θ", 0) :: Key (Dirichlet (FromGHC 2))) traceQ
-      φ0_dist    = toList . fromJust $ Trace.lookup (Key ("φ", 0) :: Key (Dirichlet (FromGHC 4))) traceQ
-      φ1_dist    = toList . fromJust $ Trace.lookup (Key ("φ", 1) :: Key (Dirichlet (FromGHC 4))) traceQ
+  let θ_dist     = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 2)) ((== "θ") . tag) traceQ
+      φ0_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr _ t i) -> (t, i) == ("φ", 0)) traceQ
+      φ1_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr _ t i) -> (t, i) == ("φ", 1)) traceQ
   return (θ_dist, φ0_dist, φ1_dist)
 
 -- | BBVI inference on topic model, using the model to generate a default guide
@@ -267,9 +267,9 @@ bbviDefaultLDA t_steps l_samples n_words = do
 
   traceQ <- BBVI.bbvi t_steps l_samples (topicModel vocab n_topics n_words) (topicModel vocab n_topics n_words) env_in
   -- Draw the most recent sampled parameters
-  let θ_dist     = toList . fromJust $ Trace.lookup (Key ("θ", 0) :: Key (Dirichlet (FromGHC 2))) traceQ
-      φ0_dist    = toList . fromJust $ Trace.lookup (Key ("φ", 0) :: Key (Dirichlet (FromGHC 4))) traceQ
-      φ1_dist    = toList . fromJust $ Trace.lookup (Key ("φ", 1) :: Key (Dirichlet (FromGHC 4))) traceQ
+  let θ_dist     = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 2))  ((== "θ") . tag) traceQ
+      φ0_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr _ t i) -> (t, i) == ("φ", 0)) traceQ
+      φ1_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr _ t i) -> (t, i) == ("φ", 1)) traceQ
   return (θ_dist, φ0_dist, φ1_dist)
 
 -- | BBVI inference on topic model, using the model to generate a default guide
@@ -281,9 +281,9 @@ bbviDefaultCombinedLDA t_steps l_samples n_words = do
 
   traceQ <- BBVI_Combined.bbvi t_steps l_samples (topicModel vocab n_topics n_words) env_in
   -- Draw the most recent sampled parameters
-  let θ_dist     = toList . fromJust $ Trace.lookup (Key ("θ", 0) :: Key (Dirichlet (FromGHC 2))) traceQ
-      φ0_dist    = toList . fromJust $ Trace.lookup (Key ("φ", 0) :: Key (Dirichlet (FromGHC 4))) traceQ
-      φ1_dist    = toList . fromJust $ Trace.lookup (Key ("φ", 1) :: Key (Dirichlet (FromGHC 4))) traceQ
+  let θ_dist     = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 2))  ((== "θ") . tag) traceQ
+      φ0_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr _ t i) -> (t, i) == ("φ", 0)) traceQ
+      φ1_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr _ t i) -> (t, i) == ("φ", 1)) traceQ
   return (θ_dist, φ0_dist, φ1_dist)
 
 -- | BBVI inference on topic model, using a custom guide
@@ -295,9 +295,9 @@ inviLDA t_steps l_samples n_words = do
 
   traceQ <- INVI.invi t_steps l_samples  (topicGuide vocab n_topics n_words) (topicModel vocab n_topics n_words) env_in
   -- Draw the most recent sampled parameters
-  let θ_dist     = toList . fromJust $ Trace.lookup (Key ("θ", 0) :: Key (Dirichlet (FromGHC 2))) traceQ
-      φ0_dist    = toList . fromJust $ Trace.lookup (Key ("φ", 0) :: Key (Dirichlet (FromGHC 4))) traceQ
-      φ1_dist    = toList . fromJust $ Trace.lookup (Key ("φ", 1) :: Key (Dirichlet (FromGHC 4))) traceQ
+  let θ_dist     = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 2))  ((== "θ") . tag) traceQ
+      φ0_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr _ t i) -> (t, i) == ("φ", 0)) traceQ
+      φ1_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr _ t i) -> (t, i) == ("φ", 1)) traceQ
   return (θ_dist, φ0_dist, φ1_dist)
 
 {- | Executing the topic model using monad-bayes.

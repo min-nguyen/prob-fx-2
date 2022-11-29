@@ -77,5 +77,6 @@ handleAccept (Op op k) = case discharge op of
             (handleAccept . k) (αs, strace')
   Right (Accept _ logp logp')
     ->  do  u <- lift $ sample (mkUniform 0 1)
+            liftPutStrLn $ show (logp, logp')
             (handleAccept . k) (expLogP (logp' - logp) > u)
   Left op' -> Op op' (handleAccept . k)

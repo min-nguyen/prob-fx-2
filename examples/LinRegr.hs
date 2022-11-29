@@ -6,6 +6,7 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeApplications #-}
 
 {- | A linear regression model, modelling a linear relationship between data points x and y.
 -}
@@ -35,6 +36,7 @@ import           Trace (Key(..))
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
+import Effects.Dist (Addr(..))
 import PrimDist
 import Data.Maybe
 {-
@@ -202,8 +204,8 @@ bbviLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- BBVI.bbvi t_steps l_samples linRegrGuide (linRegr xs) env_in
-  let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
-      c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
+  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
+      c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
   pure (m_dist, c_dist)
 
 -- | BBVI over linear regression, using the model to generate a default guide
@@ -212,8 +214,8 @@ bbviDefaultLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- BBVI.bbvi t_steps l_samples (linRegr xs) (linRegr xs) env_in
-  let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
-      c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
+  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
+      c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
   pure (m_dist, c_dist)
 
 -- | BBVI over linear regression, using the model to generate a default guide
@@ -222,8 +224,8 @@ bbviDefaultCombinedLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- BBVI_Combined.bbvi t_steps l_samples (linRegr xs) env_in
-  let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
-      c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
+  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
+      c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
   pure (m_dist, c_dist)
 
 -- | INVI over linear regression, using a custom guide
@@ -232,8 +234,8 @@ inviLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- INVI.invi t_steps l_samples linRegrGuide (linRegr xs) env_in
-  let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
-      c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
+  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
+      c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
   pure (m_dist, c_dist)
 
 mleMcmcLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
@@ -241,8 +243,8 @@ mleMcmcLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- MLE_MCMC.mle t_steps l_samples (linRegr xs ) env_in (linRegr xs)
-  let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
-      c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
+  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
+      c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
   pure (m_dist, c_dist)
 
 mleLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
@@ -250,8 +252,8 @@ mleLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- MLE.mle t_steps l_samples  (linRegr xs ) env_in (#m <#> #c <#> vnil)
-  let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
-      c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
+  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
+      c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
   pure (m_dist, c_dist)
 
 mapLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
@@ -259,8 +261,8 @@ mapLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- MAP.map t_steps l_samples  (linRegr xs ) env_in (#m <#> #c <#> vnil)
-  let m_dist = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) traceQ
-      c_dist = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) traceQ
+  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
+      c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
   pure (m_dist, c_dist)
 
 invimapLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double], [Double])
@@ -268,10 +270,10 @@ invimapLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   (guideParams, modelParams) <- INVI_MAP.invimap t_steps l_samples linRegrGuide (linRegr xs ) env_in (#m <#> #c <#> vnil)
-  let m_distλ = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) guideParams
-      c_distλ = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) guideParams
-      m_distθ = toList . fromJust $ Trace.lookup (Key ("m", 0) :: Key Normal) modelParams
-      c_distθ = toList . fromJust $ Trace.lookup (Key ("c", 0) :: Key Normal) modelParams
+  let m_distλ = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) guideParams
+      c_distλ = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) guideParams
+      m_distθ = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) modelParams
+      c_distθ = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) modelParams
 
   pure (m_distλ, c_distλ, m_distθ, c_distθ)
 

@@ -14,7 +14,7 @@ module Effects.Dist (
   -- ** Address
   -- $Address
     Tag
-  , Addr
+  , Addr(..)
   -- ** Dist effect
   , Dist(..)
   , handleDist
@@ -49,7 +49,8 @@ import           Util
 -- | An observable variable name assigned to a primitive distribution, representing a compile-time identifier
 type Tag  = String
 -- | An observable variable name and the index of its run-time occurrence, representing a run-time identifier
-type Addr = (Tag, Int)
+data Addr = Addr { global :: Int, tag :: Tag, local :: Int }
+  deriving (Eq, Ord, Show)
 
 instance {-# OVERLAPPING #-} Show (String, Int) where
   show :: (String, Int) -> String
@@ -143,9 +144,10 @@ handleDist = loop "" 0 Map.empty
   loop prevTag counter tagMap (Op u k) = case discharge u of
     Right (Dist d maybe_y maybe_tag) ->
          case maybe_y of
-              Just y  -> do call (Observe d y (tag, tagIdx)) >>= k'
-              Nothing -> do call (Sample d (tag, tagIdx))    >>= k'
-          where tag     = fromMaybe (show counter) maybe_tag
+              Just y  -> do call (Observe d y α) >>= k'
+              Nothing -> do call (Sample d α)    >>= k'
+          where α       = Addr counter tag tagIdx
+                tag     = fromMaybe "" maybe_tag
                 tagIdx  = case Map.lookup tag tagMap of
                             Just currentIdx -> if tag /= prevTag then roundUp16 currentIdx else currentIdx
                             Nothing         -> 0

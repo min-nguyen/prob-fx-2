@@ -36,6 +36,7 @@ module Trace (
   , empty
   , insert
   , lookup
+  , lookupBy
   , map
   -- , dlookupOrInsert
   , intersectLeftWith
@@ -45,7 +46,7 @@ module Trace (
 import           Data.Map (Map)
 import           Data.Maybe ( fromJust, fromMaybe )
 import           Data.Proxy ( Proxy(..) )
-import           Effects.Dist ( Tag, Addr, Observe, Sample(..), pattern ObsPrj, pattern SampPrj )
+import           Effects.Dist ( Tag, Addr(..), Observe, Sample(..), pattern ObsPrj, pattern SampPrj )
 import           Env ( enil, varToStr, UniqueVar, Var(..), Env(ECons), Assign((:=)) )
 import           GHC.TypeLits ( KnownSymbol )
 import           LogP ( LogP )
@@ -57,6 +58,7 @@ import           Vec (Vec)
 import           Type.Reflection
 import           Data.Kind (Constraint)
 import           Prelude hiding (lookup, map)
+import Control.Applicative ((<|>))
 
 {- | The type of generic traces, mapping addresses of probabilistic operations
      to some data.
@@ -71,7 +73,7 @@ filterTrace ::
   -> Map Addr a
   -- | filtered trace
   -> Map Addr a
-filterTrace tags = filterByKey (\(tag, idx)  -> tag `elem` tags)
+filterTrace tags = filterByKey (\(Addr _ tag _)  -> tag `elem` tags)
 
 {- | The type of inverse sample traces, mapping addresses of Sample operations
      to the random values between 0 and 1 passed to their inverse CDF functions.
@@ -183,10 +185,19 @@ singleton k x = Node k x Leaf Leaf
 lookup :: Typeable a => Key a -> DistTrace c -> Maybe (Assoc c a)
 lookup kx = go where
   go Leaf = Nothing
-  go (Node ky y l r) = case (trueCompare kx ky, ())
-      of (TrueEQ HRefl, _) -> Just y
-         (TrueLT, _)       -> go l
-         (TrueGT, _)       -> go r
+  go (Node ky y l r) = case trueCompare kx ky
+      of TrueEQ HRefl -> Just y
+         TrueLT       -> go l
+         TrueGT       -> go r
+
+-- | Lookup an entry
+lookupBy :: forall a c. Typeable a => (Addr -> Bool) -> DistTrace c -> Maybe (Assoc c a)
+lookupBy f = go where
+  go Leaf = Nothing
+  go (Node ((Key ky) :: Key b) y l r)
+    | Just HRefl <- eqTypeRep (typeRep @a) (typeRep @b),
+        True <- f ky = Just y
+    | otherwise = go l <|> go r
 
 -- | Insert a new entry
 insert :: DiffDistribution a => Key a -> Assoc c a -> DistTrace c -> DistTrace c
