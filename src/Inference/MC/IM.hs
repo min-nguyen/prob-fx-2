@@ -17,7 +17,7 @@ import Sampler ( Sampler, sampleRandom )
 import qualified Inference.MC.LW as LW
 import qualified Inference.MC.RWM as RWM
 import qualified Inference.MC.Metropolis as Metropolis
-import Util
+import Util ( assocR )
 
 {- | Top-level wrapper for Independence Metropolis
 -}
@@ -37,8 +37,8 @@ im n model env_in   = do
 {- | Handler for one iteration of IM.
 -}
 handleModel ::
-     (LogP, STrace)                     -- ^ sample trace of previous RWM iteration
+     (LogP, STrace)                     -- ^ proposed initial log-prob + sample trace
   -> ProbProg a                         -- ^ probabilistic program
-  -> Sampler (a, (LogP, STrace))        -- ^ ((model output, sample trace), log-probability trace)
-handleModel (_, strace) =
-  (assocR <$>) . Metropolis.reuseSamples strace . LW.weighLikelihood
+  -> Sampler (a, (LogP, STrace))        -- ^ proposed final log-prob + sample trace
+handleModel (logp, strace) =
+  (assocR <$>) . Metropolis.reuseSamples strace . LW.weighLikelihood logp

@@ -51,19 +51,17 @@ handleModel ::
      (LogP, STrace)                     -- ^ sample trace of previous RWM iteration
   -> ProbProg a                         -- ^ probabilistic program
   -> Sampler (a, (LogP, STrace))        -- ^ ((model output, sample trace), log-probability trace)
-handleModel (_, strace)  = do
-  (assocR <$>) . Metropolis.reuseSamples strace . SIM.handleObs . weighJoint
+handleModel (logp, strace)  = do
+  (assocR <$>) . Metropolis.reuseSamples strace . SIM.handleObs . weighJoint logp
 
 {- | Record the joint log-probability P(Y, X)
 -}
-weighJoint :: ProbProg a -> ProbProg (a, LogP)
-weighJoint = loop 0 where
-  loop :: LogP -> ProbProg a -> ProbProg (a, LogP)
-  loop logp (Val x)   = pure (x, logp)
-  loop logp (Op op k) = case op of
-      ObsPrj d y α   -> Op op (\x -> loop (logp + logProb d x) $ k x)
-      SampPrj d  α   -> Op op (\x -> loop (logp + logProb d x) $ k x)
-      _              -> Op op (loop logp . k)
+weighJoint :: LogP -> ProbProg a -> ProbProg (a, LogP)
+weighJoint logp (Val x)   = pure (x, logp)
+weighJoint logp (Op op k) = case op of
+  ObsPrj d y α   -> Op op (\x -> weighJoint (logp + logProb d x) $ k x)
+  SampPrj d  α   -> Op op (\x -> weighJoint (logp + logProb d x) $ k x)
+  _              -> Op op (weighJoint logp . k)
 
 {- | Handler for @Accept@ for RWM.
      - Propose by drawing all components for latent variable X' ~ P(X)
@@ -72,13 +70,13 @@ weighJoint = loop 0 where
 handleAccept :: LastMember (Lift Sampler) fs => Prog (Accept LogP : fs) a -> Prog fs a
 handleAccept (Val x)   = pure x
 handleAccept (Op op k) = case discharge op of
-  Right (Propose strace _)
+  Right (Propose (_, strace))
     ->  do  let αs = Map.keys strace
             rs <- replicateM (length αs) (lift sampleRandom)
-            let strace' = Map.union (Map.fromList (zip αs rs)) strace
-            (handleAccept . k) (LogP 0, strace')
+            let prp_strace = Map.union (Map.fromList (zip αs rs)) strace
+                prp_ctx    = LogP 0
+            (handleAccept . k) (prp_ctx, prp_strace)
   Right (Accept logp logp')
     ->  do  u <- lift $ sample (mkUniform 0 1)
-            liftPutStrLn $ show (logp, logp')
             (handleAccept . k) (expLogP (logp' - logp) > u)
   Left op' -> Op op' (handleAccept . k)
