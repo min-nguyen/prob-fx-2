@@ -13,6 +13,7 @@ module Util (
   , findIndexes
   , roundUp16
   , roundPrecision
+  , assocR
   , uncurry3
   , fst3
   , Util.unzip3
@@ -60,6 +61,9 @@ boolToInt False = 0
 
 {- | Tuple utility functions.
 -}
+assocR :: ((a, b), c) -> (a, (b, c))
+assocR ((x, y), z) = (x, (y, z))
+
 uncurry3 :: (a -> b -> c -> d) -> ((a, b, c) -> d)
 uncurry3 f (a, b, c) = f a b c
 

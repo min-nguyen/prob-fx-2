@@ -9,6 +9,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TupleSections #-}
 
 {- | Single-Site Metropolis-Hastings inference.
 -}
@@ -28,11 +29,13 @@ import           LogP ( LogP, expLogP )
 import           PrimDist
 import           Model ( Model, handleCore, ProbProg )
 import           Effects.ObsRW ( ObsRW )
-import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr, pattern SampPrj, pattern ObsPrj )
+import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), pattern SampPrj, pattern ObsPrj )
 import           Effects.Lift ( Lift, lift, handleLift, liftPutStrLn )
 import qualified Inference.MC.SIM as SIM
 import           Inference.MC.Metropolis as Metropolis
 import           Sampler ( Sampler, sampleRandom )
+import Data.Bifunctor (Bifunctor(..))
+import Util
 
 {- | Top-level wrapper for MH inference.
 -}
@@ -51,7 +54,7 @@ mh n model env_in obs_vars  = do
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
   mh_trace <- handleLift (mhInternal n tags strace_0 prog_0)
-  pure (map (snd . fst . fst) mh_trace)
+  pure (map (snd . fst) mh_trace)
 
 {- | MH inference on a probabilistic program.
 -}
@@ -60,18 +63,20 @@ mhInternal :: (LastMember (Lift Sampler) fs)
   -> [Tag]                                 -- ^ tags indicating variables of interest
   -> STrace                                -- ^ initial sample trace
   -> ProbProg a                             -- ^ probabilistic program
-  -> Prog fs [((a, LPTrace), STrace)]
+  -> Prog fs [(a, ((Addr, LPTrace), STrace))]
 mhInternal n tags strace_0 =
-  handleAccept tags . metropolisLoop n strace_0 handleModel
+  handleAccept tags . metropolisLoop n (ctx_0, strace_0) handleModel
+  where
+    ctx_0 = (Addr 0 "" 0, Map.empty)
 
 {- | Handler for one iteration of MH.
 -}
 handleModel ::
-     STrace                                 -- ^ sample trace of previous MH iteration
-  -> ProbProg a                             -- ^ probabilistic program
-  -> Sampler ((a, LPTrace), STrace)         -- ^ ((model output, sample trace), log-probability trace)
-handleModel strace =
-  Metropolis.reuseSamples strace . SIM.handleObs . traceLogProbs
+     ((Addr, LPTrace), STrace)               -- ^ sample trace to reuse
+  -> ProbProg a                              -- ^ probabilistic program
+  -> Sampler (a, ((Addr, LPTrace), STrace))  -- ^ ((model output, sample trace), log-probability trace)
+handleModel ((α, _), strace)  = do
+  (assocR . first (second (α,)) <$>) . (Metropolis.reuseSamples strace . SIM.handleObs . traceLogProbs)
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}
@@ -92,18 +97,19 @@ traceLogProbs = loop Map.empty where
 -}
 handleAccept :: LastMember (Lift Sampler) fs
   => [Tag]
-  -> Prog (Accept LPTrace : fs) a
+  -> Prog (Accept (Addr, LPTrace) : fs) a
   -> Prog fs a
 handleAccept tags = loop
  where
   loop (Val x)   = pure x
   loop (Op op k) = case discharge op of
-    Right (Propose strace lptrace)
-      ->  lift (propose tags strace) >>= (loop . k)
-    Right (Accept αs lptrace lptrace')
+    Right (Propose strace _)
+      ->  do (α, strace) <- lift (propose tags strace)
+             (loop . k) ((α, Map.empty), strace)
+    Right (Accept (_, lptrace) (α', lptrace'))
       ->  do  let dom_logα = log (fromIntegral $ Map.size lptrace) - log (fromIntegral $ Map.size lptrace')
-                  sampled  = Set.fromList αs `Set.union` (Map.keysSet lptrace \\ Map.keysSet lptrace')
-                  sampled' = Set.fromList αs `Set.union` (Map.keysSet lptrace' \\ Map.keysSet lptrace)
+                  sampled  = Set.singleton α' `Set.union` (Map.keysSet lptrace \\ Map.keysSet lptrace')
+                  sampled' = Set.singleton α' `Set.union` (Map.keysSet lptrace' \\ Map.keysSet lptrace)
                   logα     = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace))
                                     0 (Map.keysSet lptrace \\ sampled)
                   logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
@@ -117,7 +123,7 @@ handleAccept tags = loop
 propose
   :: [Tag]                          -- ^ observable variable names of interest
   -> STrace                         -- ^ original sample trace
-  -> Sampler ([Addr], STrace)       -- ^ (proposed addresses, proposed sample trace)
+  -> Sampler (Addr, STrace)       -- ^ (proposed addresses, proposed sample trace)
 propose tags strace = do
   -- | Get possible addresses to propose new samples for
   let α_range = Map.keys (if Prelude.null tags then strace else filterTrace tags strace)
@@ -126,4 +132,4 @@ propose tags strace = do
   -- | Draw new random value
   r <- sampleRandom
   let strace' = Map.insert α r strace
-  return ([α], strace')
+  return (α, strace')

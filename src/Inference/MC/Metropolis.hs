@@ -36,12 +36,10 @@ data Accept ctx a where
     -- | original context
     -> ctx
     -- | (proposed addresses, proposed sample trace)
-    -> Accept ctx ([Addr], STrace)
+    -> Accept ctx (ctx, STrace)
   Accept
     -- | address of proposal sites
-    :: [Addr]
-    -- | original context
-    -> ctx
+    :: ctx
     -- | context using proposed sample
     -> ctx
     -- | whether the proposal is accepted or not
@@ -53,33 +51,33 @@ type ModelHandler ctx = forall a. STrace -> ProbProg a -> Sampler ((a, ctx), STr
 -}
 metropolisLoop :: (LastMember (Lift Sampler) fs)
    => Int                                                            -- ^ number of iterations
-   -> STrace                                                         -- ^ initial sample trace
-   -> (forall a. STrace -> ProbProg a -> Sampler ((a, ctx), STrace))  -- ^ model handler
+   -> (ctx, STrace)                                                 -- ^ initial sample trace
+   -> (forall a. (ctx, STrace) -> ProbProg a -> Sampler (a, (ctx, STrace)))  -- ^ model handler
    -> ProbProg a                                                      -- ^ probabilistic program
-   -> Prog (Accept ctx : fs) [((a, ctx), STrace)]                    -- ^ trace of ((accepted outputs, contexts), samples)
-metropolisLoop n strace hdlModel prog_0 = do
+   -> Prog (Accept ctx : fs) [(a, (ctx, STrace))]                    -- ^ trace of ((accepted outputs, contexts), samples)
+metropolisLoop n (ctx, strace) hdlModel prog_0 = do
   -- | Perform initial run of mh
-  ar_ctx_0 <- lift $ hdlModel strace prog_0
+  ar_ctx_0 <- lift $ hdlModel (ctx, strace) prog_0
   -- | A function performing n mhSteps using initial mh_ctx. The most recent samples are at the front of the trace.
   foldl (>=>) pure (replicate n (metropolisStep hdlModel prog_0)) [ar_ctx_0]
 
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
 metropolisStep :: (LastMember (Lift Sampler) fs)
-  => (forall a. STrace -> ProbProg a -> Sampler ((a, ctx), STrace))  -- ^ model handler
+  => (forall a. (ctx, STrace) -> ProbProg a -> Sampler (a, (ctx, STrace)))  -- ^ model handler
   -> ProbProg a                                                        -- ^ probabilistic program
-  -> [((a, ctx), STrace)]                                                            -- ^ previous trace
-  -> Prog (Accept ctx : fs) [((a, ctx), STrace)]                                     -- ^ updated trace
+  -> [(a, (ctx, STrace))]                                                            -- ^ previous trace
+  -> Prog (Accept ctx : fs) [(a, (ctx, STrace))]                                     -- ^ updated trace
 metropolisStep hdlModel prog_0 trace = do
   -- | Get previous MH output
-  let ((r, ctx), strace) = head trace
+  let (r, (ctx, strace)) = head trace
   -- | Propose a new random value for a sample site
-  (prp_αs, prp_strace)  <- call (Propose strace ctx)
+  prp  <- call (Propose strace ctx)
   -- | Run MH with proposed value
-  ((r', ctx'), strace') <- lift (hdlModel prp_strace prog_0)
+  (r', (ctx', strace')) <- lift (hdlModel prp prog_0)
   -- | Compute acceptance ratio to see if we use the proposal
-  b                     <- call (Accept prp_αs ctx ctx')
-  if b then pure (((r', ctx'), strace'):trace)
+  b                     <- call (Accept ctx ctx')
+  if b then pure ((r', (ctx', strace')):trace)
        else pure trace
 
 {- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.

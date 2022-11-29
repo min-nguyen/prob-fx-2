@@ -35,6 +35,7 @@ library
                       Inference.MC.LW,
                       Inference.MC.RWM,
                       Inference.MC.IM,
+                      -- Inference.MC.Gibbs,
                       Inference.MC.MH,
                       Inference.MC.SIM,
                       Inference.MC.SIS,

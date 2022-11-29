@@ -44,7 +44,7 @@ pmmh mh_steps n_particles model env_in obs_vars = do
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
   pmmh_trace <- handleLift (pmmhInternal mh_steps n_particles tags strace_0 prog_0)
-  pure (map (snd . fst . fst) pmmh_trace)
+  pure (map (snd . fst) pmmh_trace)
 
 {- | PMMH inference on a probabilistic program.
 -}
@@ -54,26 +54,26 @@ pmmhInternal :: (LastMember (Lift Sampler) fs)
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> STrace                                       -- ^ initial sample trace
   -> ProbProg a                                    -- ^ probabilistic program
-  -> Prog fs [((a, LogP), STrace)]
+  -> Prog fs [(a, (LogP, STrace))]
 pmmhInternal mh_steps n_particles tags strace_0 =
-  handleAccept tags . metropolisLoop mh_steps strace_0 (handleModel n_particles tags)
+  handleAccept tags . metropolisLoop mh_steps (LogP 0, strace_0) (handleModel n_particles tags)
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}
 handleModel ::
      Int                                          -- ^ number of particles
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> STrace                                       -- ^ sample trace
+  -> (LogP, STrace)                               -- ^ sample trace
   -> ProbProg a                                   -- ^ probabilistic program
-  -> Sampler ((a, LogP), STrace)
-handleModel n_particles tags strace prog = do
-  ((a, _), strace') <- MH.handleModel strace prog
+  -> Sampler (a, (LogP, STrace))
+handleModel n_particles tags (_, strace) prog = do
+  (a, strace') <- (Metropolis.reuseSamples strace . SIM.handleObs) prog
   let params = filterTrace tags strace'
   prts   <- ( handleLift
             . SMC.handleResampleMul
             . SIS.sis n_particles (((fst <$>) . Metropolis.reuseSamples params) . SMC.handleObs)) prog
   let logZ = logMeanExp (map (SMC.particleLogProb . snd) prts)
-  pure ((a, logZ), strace')
+  pure (a, (logZ, strace'))
 
 {- | An acceptance mechanism for PMMH.
 -}
@@ -84,9 +84,10 @@ handleAccept :: LastMember (Lift Sampler) fs
 handleAccept tags = loop where
   loop (Val x)   = pure x
   loop (Op op k) = case discharge op of
-    Right (Propose strace lptrace)
-      ->  lift (MH.propose tags strace) >>= (loop . k)
-    Right (Accept α log_p log_p')
+    Right (Propose strace _)
+      ->  do (_, strace') <- lift (MH.propose tags strace)
+             (loop . k) (LogP 0, strace')
+    Right (Accept log_p log_p')
       ->  do  let acceptance_ratio = expLogP (log_p' - log_p)
               u <- lift $ sample (mkUniform 0 1)
               (loop . k) (u < acceptance_ratio)
