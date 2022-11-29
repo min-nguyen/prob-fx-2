@@ -9,21 +9,6 @@ import Sampler
 import System.Exit
 import Util
 
-testSimLinRegrOnce :: Test
-testSimLinRegrOnce = TestCase $ do
-  output <- sampleIOFixed (simLinRegrOnce 50)
-  assertEqual "Testing (simLinRegrOnce 50)"  simLinRegrOnceExpected output
-
-testLwLinRegrOnce :: Test
-testLwLinRegrOnce = TestCase $ do
-  output <- sampleIOFixed (lwLinRegrOnce 50 30)
-  assertEqual "Testing (lwLinRegrOnce 50 30)"  lwLinRegrOnceExpected output
-
-testMhLinRegrOnce :: Test
-testMhLinRegrOnce = TestCase $ do
-  output <- sampleIOFixed (mhLinRegrOnce 50 10)
-  assertEqual "Testing (mhLinRegrOnce 50 10)"  mhLinRegrOnceExpected output
-
 testSimLinRegr :: Test
 testSimLinRegr = TestCase $ do
   output <- sampleIOFixed (simLinRegr 100)
@@ -74,21 +59,6 @@ testBbviDefaultLinRegr = TestCase $ do
   output <- sampleIOFixed (bbviDefaultLinRegr 200 40 8)
   assertEqual "Testing (bbviDefaultLinRegr 200 40 8)"  bbviDefaultLinRegrExpected output
 
-testSimLogRegrOnce :: Test
-testSimLogRegrOnce = TestCase $ do
-  output <- sampleIOFixed (simLogRegrOnce 50)
-  assertEqual "Testing (simLogRegrOnce 50)"  simLogRegrOnceExpected output
-
-testLwLogRegrOnce :: Test
-testLwLogRegrOnce = TestCase $ do
-  output <- sampleIOFixed (lwLogRegrOnce 10 10)
-  assertEqual "Testing (lwLogRegrOnce 10 10)" lwLogRegrOnceExpected  output
-
-testMhLogRegrOnce :: Test
-testMhLogRegrOnce = TestCase $ do
-  output <- sampleIOFixed (mhLogRegrOnce 50 10)
-  assertEqual "Testing (mhLogRegrOnce 50 10)" mhLogRegrOnceExpected output
-
 testSimLogRegr :: Test
 testSimLogRegr = TestCase $ do
   output <- sampleIOFixed (simLogRegr 50)
@@ -101,8 +71,8 @@ testLwLogRegr = TestCase $ do
 
 testMhLogRegr :: Test
 testMhLogRegr = TestCase $ do
-  output <- sampleIOFixed (mhLogRegr 1000 10)
-  assertEqual "Testing (mhLogRegr 1000 10)"  mhLogRegrExpected output
+  output <- sampleIOFixed (mhLogRegr 500 10)
+  assertEqual "Testing (mhLogRegr 500 10)"  mhLogRegrExpected output
 
 testSimHMM_WR :: Test
 testSimHMM_WR = TestCase $ do
@@ -254,10 +224,7 @@ testMhGMM = TestCase $ do
 testInference :: Test
 testInference = TestList
  [
-   testSimLinRegrOnce
- , testLwLinRegrOnce
- , testMhLinRegrOnce
- , testSimLinRegr
+   testSimLinRegr
  , testLwLinRegr
  , testMhLinRegr
  , testSmcLinRegr
@@ -267,9 +234,6 @@ testInference = TestList
  , testBbviLinRegr
  , testBbviDefaultLinRegr
  , testInviLinRegr
- , testSimLogRegrOnce
- , testLwLogRegrOnce
- , testMhLogRegrOnce
  , testSimLogRegr
  , testLwLogRegr
  , testMhLogRegr
