@@ -82,13 +82,13 @@ installModelParams :: Members [Observe, Sample] es => [Tag] -> DTrace -> Prog es
 installModelParams tags proposals = loop where
   loop (Val a)   = pure a
   loop (Op op k) = case op of
-    SampPrj p α -> case (isDifferentiable p, fst α `elem` tags) of
+    SampPrj p α -> case (isDifferentiable p, tag α `elem` tags) of
         (Just Witness, True) -> do
             let p' = fromMaybe p (Trace.lookup (Key α) proposals)
             x' <- call (ParamS p' α)
             (loop . k) x'
         _  -> Op (weaken op) (loop . k)
-    ObsPrj p xy α -> case (isDifferentiable p, fst α `elem` tags)  of
+    ObsPrj p xy α -> case (isDifferentiable p, tag α `elem` tags)  of
         (Just Witness, True) -> do
             let p' = fromMaybe p (Trace.lookup (Key α) proposals)
             x' <- call (ParamO p' xy α)

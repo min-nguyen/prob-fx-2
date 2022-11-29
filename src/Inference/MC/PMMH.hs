@@ -10,8 +10,6 @@
 
 module Inference.MC.PMMH where
 
-import Data.Functor
-import Control.Monad
 import Prog
 import Sampler
 import LogP
@@ -25,10 +23,9 @@ import Effects.ObsRW
 import qualified Data.Map as Map
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.MH as MH
-import Inference.MC.RS as RS
+import Inference.MC.Metropolis as Metropolis
 import qualified Inference.MC.SIS as SIS
 import qualified Inference.MC.SMC as SMC
-import Util
 import Inference.MC.SMC (Particle(particleLogProb, Particle))
 
 {- | Top-level wrapper for PMMH inference.
@@ -59,7 +56,7 @@ pmmhInternal :: (LastMember (Lift Sampler) fs)
   -> ProbProg a                                    -- ^ probabilistic program
   -> Prog fs [((a, LogP), STrace)]
 pmmhInternal mh_steps n_particles tags strace_0 =
-  handleAccept tags 1 . rsLoop mh_steps strace_0 (handleModel n_particles tags)
+  handleAccept tags . metropolisLoop mh_steps strace_0 (handleModel n_particles tags)
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}
@@ -74,7 +71,7 @@ handleModel n_particles tags strace prog = do
   let params = filterTrace tags strace'
   prts   <- ( handleLift
             . SMC.handleResampleMul
-            . SIS.sis n_particles (((fst <$>) . MH.handleSamp params) . SMC.handleObs)) prog
+            . SIS.sis n_particles (((fst <$>) . Metropolis.reuseSamples params) . SMC.handleObs)) prog
   let logZ = logMeanExp (map (SMC.particleLogProb . snd) prts)
   pure ((a, logZ), strace')
 
@@ -82,14 +79,13 @@ handleModel n_particles tags strace prog = do
 -}
 handleAccept :: LastMember (Lift Sampler) fs
   => [Tag]                                      -- ^ tags indicating variables of interest
-  -> Int                                        -- ^ number of proposal sites
   -> Prog (Accept LogP : fs) a
   -> Prog fs a
-handleAccept tags n_proposals = loop where
+handleAccept tags = loop where
   loop (Val x)   = pure x
   loop (Op op k) = case discharge op of
     Right (Propose strace lptrace)
-      ->  lift (MH.propose tags n_proposals strace) >>= (loop . k)
+      ->  lift (MH.propose tags strace) >>= (loop . k)
     Right (Accept α log_p log_p')
       ->  do  let acceptance_ratio = expLogP (log_p' - log_p)
               u <- lift $ sample (mkUniform 0 1)

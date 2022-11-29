@@ -8,7 +8,7 @@
 {- | Rejection Sampling
 -}
 
-module Inference.MC.RS where
+module Inference.MC.Metropolis where
 
 import Control.Monad ( (>=>) )
 import qualified Data.Map as Map
@@ -49,35 +49,50 @@ data Accept ctx a where
 
 type ModelHandler ctx = forall a. STrace -> ProbProg a -> Sampler ((a, ctx), STrace)
 
-{- | Template for Rejection sample inference on a probabilistic program.
+{- | A general framework for Metropolis inference.
 -}
-rsLoop :: (LastMember (Lift Sampler) fs)
+metropolisLoop :: (LastMember (Lift Sampler) fs)
    => Int                                                            -- ^ number of iterations
    -> STrace                                                         -- ^ initial sample trace
    -> (forall a. STrace -> ProbProg a -> Sampler ((a, ctx), STrace))  -- ^ model handler
    -> ProbProg a                                                      -- ^ probabilistic program
    -> Prog (Accept ctx : fs) [((a, ctx), STrace)]                    -- ^ trace of ((accepted outputs, contexts), samples)
-rsLoop n strace hdlModel prog_0 = do
+metropolisLoop n strace hdlModel prog_0 = do
   -- | Perform initial run of mh
   ar_ctx_0 <- lift $ hdlModel strace prog_0
   -- | A function performing n mhSteps using initial mh_ctx. The most recent samples are at the front of the trace.
-  foldl (>=>) pure (replicate n (rsStep hdlModel prog_0)) [ar_ctx_0]
+  foldl (>=>) pure (replicate n (metropolisStep hdlModel prog_0)) [ar_ctx_0]
 
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
-rsStep :: (LastMember (Lift Sampler) fs)
+metropolisStep :: (LastMember (Lift Sampler) fs)
   => (forall a. STrace -> ProbProg a -> Sampler ((a, ctx), STrace))  -- ^ model handler
   -> ProbProg a                                                        -- ^ probabilistic program
   -> [((a, ctx), STrace)]                                                            -- ^ previous trace
   -> Prog (Accept ctx : fs) [((a, ctx), STrace)]                                     -- ^ updated trace
-rsStep hdlModel prog_0 trace = do
+metropolisStep hdlModel prog_0 trace = do
   -- | Get previous MH output
   let ((r, ctx), strace) = head trace
   -- | Propose a new random value for a sample site
   (prp_αs, prp_strace)  <- call (Propose strace ctx)
   -- | Run MH with proposed value
-  ((r', ctx'), strace') <- lift $ hdlModel prp_strace prog_0
+  ((r', ctx'), strace') <- lift (hdlModel prp_strace prog_0)
   -- | Compute acceptance ratio to see if we use the proposal
   b                     <- call (Accept prp_αs ctx ctx')
   if b then pure (((r', ctx'), strace'):trace)
        else pure trace
+
+{- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.
+-}
+reuseSamples :: forall a. STrace -> Prog '[Sample] a -> Sampler (a, STrace)
+reuseSamples = loop where
+  loop :: STrace -> Prog '[Sample] a -> Sampler (a, STrace)
+  loop strace (Val x) = pure (x, strace)
+  loop strace (Op op k) = case discharge op of
+    Right (Sample d α) ->  case Map.lookup α strace of
+      Nothing -> do r <- sampleRandom
+                    let y = sampleInv d r
+                    loop (Map.insert α r strace) (k y)
+      Just r  -> do let y = sampleInv d r
+                    loop strace  (k y)
+    Left op'  -> error "MH.handleSamp: Left should not happen"

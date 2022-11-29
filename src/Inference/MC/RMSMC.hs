@@ -33,7 +33,7 @@ import           Effects.NonDet
 import qualified Inference.MC.MH as MH
 import qualified Inference.MC.SMC as SMC
 import qualified Inference.MC.SIM as SIM
-import qualified Inference.MC.RS as RS
+import qualified Inference.MC.Metropolis as Metropolis
 import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
 import           Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
 import           Inference.MC.SMC (Particle, pattern Particle)
@@ -52,7 +52,7 @@ data TracedParticle = TracedParticle {
   }
 
 instance ParticleCtx TracedParticle where
-  pempty            = TracedParticle 0 ("", 0) Map.empty
+  pempty            = TracedParticle 0 (Addr 0 "" 0) Map.empty
   paccum ctxs ctxs' =
     let log_ps   = uncurry paccum              (mapT2 (particleLogProb <$>)  (ctxs, ctxs'))
         α_obs    = particleObsAddr <$> ctxs'
@@ -106,7 +106,7 @@ handleSamp = loop Map.empty where
                        loop (Map.insert α r strace) (k y)
 
 handleObs :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, LogP, Addr)
-handleObs (Val x)   = pure (Val x, 0, ("", 0))
+handleObs (Val x)   = pure (Val x, 0, Addr 0 "" 0)
 handleObs (Op op k) = case discharge op of
   Right (Observe d y α) -> Val (k y, logProb d y, α)
   Left op'              -> Op op' (handleObs . k)
