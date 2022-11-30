@@ -603,3 +603,15 @@ Number of INVI steps,200,400,600,800,1000
 INVI-[ ]-10-LR-50,0.20007735500568946,0.4378346973335283,0.6945283039164375,0.9271110226677592,1.1701346429147936
 INVI-[ ]-10-HMM-50,0.29857730567416485,0.6183512664147202,0.9690249792921956,1.2972045763748004,1.6440843112704897
 INVI-[ ]-10-LDA-50,0.6711361966032806,1.4096668559795944,2.1464595376883153,2.946187303874922,3.703327574020932
+
+-------------------------------
+Updates:
+  - Addr is a datatype rather than a tuple (tag, tag_idx)
+  - Metropolis template reworked:
+      - The operations of Accept have been reworked to have different argument and return types
+      - The type of model handlers is changed from:
+            STrace -> ProbProg a -> Sampler ((a, ctx), STrace)
+        to:
+            (ctx, STrace) -> ProbProg a -> Sampler (a, (ctx, STrace))
+        and so their implementations now require a lot of tuple reshaping at the end:
+            `assocR . first (second (α,)) <$>)`

@@ -53,6 +53,7 @@ handleModel ::
 handleModel ((idx, logp), strace)  =
   (assocR . first (second (idx,)) <$>) . (Metropolis.reuseSamples strace . SIM.handleObs . RWM.weighJoint logp)
 
+-- | For simplicity, the acceptance ratio is p(X', Y)/p(X, Y), but should be p(X' \ {x_i}, Y)/p(X \ {x_i}, Y)
 handleAccept :: LastMember (Lift Sampler) fs => Prog (Accept (Int, LogP) : fs) a -> Prog fs a
 handleAccept (Val x)    = pure x
 handleAccept (Op op k) = case discharge op of
@@ -63,6 +64,5 @@ handleAccept (Op op k) = case discharge op of
              (handleAccept . k) (prp_ctx, prp_strace)
     Right (Accept (_, logp) (_, logp'))
       ->  do u <- lift $ sample (mkUniform 0 1)
-
              (handleAccept . k) (expLogP (logp' - logp) > u)
     Left op' -> Op op' (handleAccept . k)
