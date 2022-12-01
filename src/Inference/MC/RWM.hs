@@ -9,7 +9,16 @@
 {-# HLINT ignore "Use <&>" #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-{- | Random Walk Metropolis inference, where the prior proposal distribution is symmetric.
+{- | Random Walk Metropolis inference, where the proposal distribution is symmetric.
+
+    Note: As this uses the prior distribution as the proposal by default, and the prior is by definition *independent* of the previous sample, the prior will in general *not be symmetric*. This is because an independent proposal that is also symmetric will imply:
+
+      q(x | x') = q(x)    ∧  q(x | x') = q(x' | x)  ⇒         q(x) = q(x')
+      q is independent         q is symmetric           q is independent + symmetric
+
+    which is not true for any two points x and x' unless q is a uniform distribution.
+
+    This hence requires some extra work to be done to allow for a custom proposal/transition kernel.
 -}
 
 module Inference.MC.RWM where
@@ -75,8 +84,10 @@ handleAccept (Op op k) = case discharge op of
             rs <- replicateM (length αs) (lift sampleRandom)
             let prp_strace = Map.union (Map.fromList (zip αs rs)) strace
                 prp_ctx    = LogP 0
+            -- liftPutStrLn (show $ rs)
             (handleAccept . k) (prp_ctx, prp_strace)
   Right (Accept logp logp')
     ->  do  u <- lift $ sample (mkUniform 0 1)
+            -- liftPutStrLn (show $ logp' - logp)
             (handleAccept . k) (expLogP (logp' - logp) > u)
   Left op' -> Op op' (handleAccept . k)
