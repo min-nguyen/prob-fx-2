@@ -9,6 +9,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TupleSections #-}
 
 {- | Single-Site Metropolis-Hastings inference.
 -}
@@ -28,19 +29,21 @@ import           LogP ( LogP, expLogP )
 import           PrimDist
 import           Model ( Model, handleCore, ProbProg )
 import           Effects.ObsRW ( ObsRW )
-import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr, pattern SampPrj, pattern ObsPrj )
+import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), pattern SampPrj, pattern ObsPrj )
 import           Effects.Lift ( Lift, lift, handleLift, liftPutStrLn )
 import qualified Inference.MC.SIM as SIM
 import           Inference.MC.Metropolis as Metropolis
 import           Sampler ( Sampler, sampleRandom )
+import           Data.Bifunctor (Bifunctor(..))
+import           Util ( assocR )
 
 {- | Top-level wrapper for MH inference.
 -}
-mh :: forall env a xs. (env `ContainsVars` xs)
+mh :: forall env vars a. (env `ContainsVars` vars)
   => Int                            -- ^ number of MH iterations
   -> Model env [ObsRW env, Dist] a  -- ^ model
   -> Env env                        -- ^ input environment
-  -> Vars xs                        -- ^ optional variable names of interest
+  -> Vars vars                      -- ^ optional variable names of interest
     {- These allow one to specify sample sites of interest; for example, for interest in sampling @#mu@
      , provide @#mu <#> vnil@ to cause other variables to not be resampled unless necessary. -}
   -> Sampler [Env env]              -- ^ output model environments
@@ -51,7 +54,7 @@ mh n model env_in obs_vars  = do
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
   mh_trace <- handleLift (mhInternal n tags strace_0 prog_0)
-  pure (map (snd . fst . fst) mh_trace)
+  pure (map (snd . fst) mh_trace)
 
 {- | MH inference on a probabilistic program.
 -}
@@ -59,51 +62,52 @@ mhInternal :: (LastMember (Lift Sampler) fs)
   => Int                                   -- ^ number of MH iterations
   -> [Tag]                                 -- ^ tags indicating variables of interest
   -> STrace                                -- ^ initial sample trace
-  -> ProbProg a                             -- ^ probabilistic program
-  -> Prog fs [((a, LPTrace), STrace)]
+  -> ProbProg a                            -- ^ probabilistic program
+  -> Prog fs [(a, ((Addr, LPTrace), STrace))]
 mhInternal n tags strace_0 =
-  handleAccept tags . metropolisLoop n strace_0 handleModel
+  handleAccept tags . metropolisLoop n (ctx_0, strace_0) handleModel
+  where
+    ctx_0 = (Addr 0 "" 0, Map.empty)
 
 {- | Handler for one iteration of MH.
 -}
 handleModel ::
-     STrace                                 -- ^ sample trace of previous MH iteration
-  -> ProbProg a                             -- ^ probabilistic program
-  -> Sampler ((a, LPTrace), STrace)         -- ^ ((model output, sample trace), log-probability trace)
-handleModel strace =
-  Metropolis.reuseSamples strace . SIM.handleObs . traceLogProbs
+     ((Addr, LPTrace), STrace)               -- ^ proposed address + initial log-probability trace + initial sample trace
+  -> ProbProg a                              -- ^ probabilistic program
+  -> Sampler (a, ((Addr, LPTrace), STrace))  -- ^ proposed address + final log-probability trace + final sample trace
+handleModel ((α, lptrace), strace)  = do
+  (assocR . first (second (α,)) <$>) . (Metropolis.reuseSamples strace . SIM.handleObs . traceLogProbs lptrace)
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}
-traceLogProbs :: ProbProg a -> ProbProg (a, LPTrace)
-traceLogProbs = loop Map.empty where
-  loop :: LPTrace -> ProbProg a -> ProbProg (a, LPTrace)
-  loop lptrace (Val x)   = pure (x, lptrace)
-  loop lptrace (Op op k) = case op of
-      ObsPrj d y α   -> Op op (\x -> loop (Map.insert α (logProb d x) lptrace) $ k x)
-      SampPrj d  α   -> Op op (\x -> loop (Map.insert α (logProb d x) lptrace) $ k x)
-      _              -> Op op (loop lptrace . k)
+traceLogProbs :: LPTrace -> ProbProg a -> ProbProg (a, LPTrace)
+traceLogProbs lptrace (Val x)   = pure (x, lptrace)
+traceLogProbs lptrace (Op op k) = case op of
+  ObsPrj d y α   -> Op op (\x -> traceLogProbs (Map.insert α (logProb d x) lptrace) $ k x)
+  SampPrj d  α   -> Op op (\x -> traceLogProbs (Map.insert α (logProb d x) lptrace) $ k x)
+  _              -> Op op (traceLogProbs lptrace . k)
 
 {- | Handler for @Accept@ for MH.
     - Propose by drawing a component x_i of latent variable X' ~ p(X)
     - Accept using the ratio:
        p(X', Y')q(X | X')/p(X, Y)q(X' | X)
-
 -}
 handleAccept :: LastMember (Lift Sampler) fs
   => [Tag]
-  -> Prog (Accept LPTrace : fs) a
+  -> Prog (Accept (Addr, LPTrace) : fs) a
   -> Prog fs a
 handleAccept tags = loop
  where
   loop (Val x)   = pure x
   loop (Op op k) = case discharge op of
-    Right (Propose strace lptrace)
-      ->  lift (propose tags strace) >>= (loop . k)
-    Right (Accept αs lptrace lptrace')
+    Right (Propose (_, strace))
+      ->  do (α, prp_strace) <- lift (propose tags strace)
+             let prp_ctx = (α, Map.empty)
+             (loop . k) (prp_ctx, prp_strace)
+    Right (Accept (_, lptrace) (α', lptrace'))
       ->  do  let dom_logα = log (fromIntegral $ Map.size lptrace) - log (fromIntegral $ Map.size lptrace')
-                  sampled  = Set.fromList αs `Set.union` (Map.keysSet lptrace \\ Map.keysSet lptrace')
-                  sampled' = Set.fromList αs `Set.union` (Map.keysSet lptrace' \\ Map.keysSet lptrace)
+                  sampled  = Set.singleton α' `Set.union` (Map.keysSet lptrace \\ Map.keysSet lptrace')
+                  sampled' = Set.singleton α' `Set.union` (Map.keysSet lptrace' \\ Map.keysSet lptrace)
                   logα     = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace))
                                     0 (Map.keysSet lptrace \\ sampled)
                   logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
@@ -115,9 +119,9 @@ handleAccept tags = loop
 {- Propose a new random value at a single component x_i of latent variable X = {x_0, ... x_N}.
 -}
 propose
-  :: [Tag]                          -- ^ observable variable names of interest
-  -> STrace                         -- ^ original sample trace
-  -> Sampler ([Addr], STrace)       -- ^ (proposed addresses, proposed sample trace)
+  :: [Tag]                        -- ^ observable variable names of interest
+  -> STrace                       -- ^ original sample trace
+  -> Sampler (Addr, STrace)       -- ^ (proposed addresses, proposed sample trace)
 propose tags strace = do
   -- | Get possible addresses to propose new samples for
   let α_range = Map.keys (if Prelude.null tags then strace else filterTrace tags strace)
@@ -126,4 +130,4 @@ propose tags strace = do
   -- | Draw new random value
   r <- sampleRandom
   let strace' = Map.insert α r strace
-  return ([α], strace')
+  return (α, strace')

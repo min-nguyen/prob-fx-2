@@ -19,6 +19,7 @@ import Inference.MC.LW as LW ( lw )
 import Inference.MC.RWM as RWM ( rwm )
 import Inference.MC.IM as IM ( im )
 import Inference.MC.MH as MH ( mh )
+import Inference.MC.Gibbs as Gibbs ( gibbs )
 import Inference.MC.SMC as SMC ( smc )
 import Inference.MC.RMSMC as RMSMC ( rmsmc )
 import Inference.MC.PMMH as PMMH ( pmmh )
@@ -137,6 +138,20 @@ mhLinRegr n_mhsteps n_datapoints = do
       env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   -- Run MH
   env_outs <- MH.mh n_mhsteps (linRegr xs) env_in (#m <#> #c <#> vnil)
+  -- Get the sampled values of mu and c
+  let mus = concatMap (get #m) env_outs
+  let cs = concatMap (get #c) env_outs
+  pure (mus, cs)
+
+-- | Metropolis-Hastings over linear regression
+gibbsLinRegr ::  Int -> Int ->  Sampler ([Double], [Double])
+gibbsLinRegr n_mhsteps n_datapoints = do
+  -- Specify model inputs
+  let xs            = [0 .. fromIntegral n_datapoints]
+  -- Specify model environment
+      env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+  -- Run MH
+  env_outs <- Gibbs.gibbs n_mhsteps (linRegr xs) env_in
   -- Get the sampled values of mu and c
   let mus = concatMap (get #m) env_outs
   let cs = concatMap (get #c) env_outs

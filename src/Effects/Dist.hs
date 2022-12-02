@@ -46,9 +46,9 @@ import           Util
    Identifiers for probabilistic operations.
 -}
 
--- | An observable variable name assigned to a primitive distribution, representing a compile-time identifier
+-- | A compile-time identifier: observable variable name assigned to a primitive distribution
 type Tag  = String
--- | An observable variable name and the index of its run-time occurrence, representing a run-time identifier
+-- | A run-time identifier: global run-time occurrence + observable variable name + occurrence with respect to that variable name
 data Addr = Addr { global :: Int, tag :: Tag, local :: Int }
   deriving (Eq, Ord, Show)
 
