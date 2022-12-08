@@ -57,11 +57,11 @@ rwm n model env_in   = do
 {- | Handler for one iteration of RWM.
 -}
 handleModel ::
-     (LogP, STrace)                     -- ^ sample trace of previous RWM iteration
-  -> ProbProg a                         -- ^ probabilistic program
+      ProbProg a                         -- ^ probabilistic program
+  -> (LogP, STrace)                     -- ^ sample trace of previous RWM iteration
   -> Sampler (a, (LogP, STrace))        -- ^ ((model output, sample trace), log-probability trace)
-handleModel (logp, strace)  = do
-  (assocR <$>) . Metropolis.reuseSamples strace . SIM.handleObs . weighJoint logp
+handleModel prog (logp, strace)  = do
+  ((assocR <$>) . Metropolis.reuseSamples strace . SIM.handleObs . weighJoint logp) prog
 
 {- | Record the joint log-probability P(Y, X)
 -}

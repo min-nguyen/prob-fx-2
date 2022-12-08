@@ -47,11 +47,11 @@ gibbs n model env_in   = do
 {- | Handler for one iteration of Gibbs.
 -}
 handleModel ::
-     ((Int, LogP), STrace)               -- ^ proposed index + initial log-prob + initial sample trace
-  -> ProbProg a                          -- ^ probabilistic program
+     ProbProg a                          -- ^ probabilistic program
+  -> ((Int, LogP), STrace)               -- ^ proposed index + initial log-prob + initial sample trace
   -> Sampler (a, ((Int, LogP), STrace))  -- ^ proposed index + final log-prob   + final sample trace
-handleModel ((idx, logp), strace)  =
-  (assocR . first (second (idx,)) <$>) . (Metropolis.reuseSamples strace . SIM.handleObs . RWM.weighJoint logp)
+handleModel prog ((idx, logp), strace)  =
+  ((assocR . first (second (idx,)) <$>) . (Metropolis.reuseSamples strace . SIM.handleObs . RWM.weighJoint logp)) prog
 
 -- | For simplicity, the acceptance ratio is p(X', Y)/p(X, Y), but should be p(X' \ {x_i}, Y)/p(X \ {x_i}, Y)
 handleAccept :: LastMember (Lift Sampler) fs => Prog (Accept (Int, LogP) : fs) a -> Prog fs a

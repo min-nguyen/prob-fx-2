@@ -65,10 +65,10 @@ pmmhInternal mh_steps n_particles tags strace_0 =
 handleModel ::
      Int                                          -- ^ number of particles
   -> [Tag]                                        -- ^ parameter names
-  -> (LogP, STrace)                               -- ^ proposed initial log-prob + sample trace
   -> ProbProg a                                   -- ^ probabilistic program
+  -> (LogP, STrace)                               -- ^ proposed initial log-prob + sample trace
   -> Sampler (a, (LogP, STrace))                  -- ^ proposed final log-prob + sample trace
-handleModel n_particles tags (_, strace) prog = do
+handleModel n_particles tags  prog (_, strace)  = do
   (a, strace') <- (Metropolis.reuseSamples strace . SIM.handleObs) prog
   let params = filterTrace tags strace'
   prts   <- ( handleLift

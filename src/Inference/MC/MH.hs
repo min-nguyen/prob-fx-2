@@ -72,11 +72,11 @@ mhInternal n tags strace_0 =
 {- | Handler for one iteration of MH.
 -}
 handleModel ::
-     ((Addr, LPTrace), STrace)               -- ^ proposed address + initial log-probability trace + initial sample trace
-  -> ProbProg a                              -- ^ probabilistic program
+     ProbProg a                              -- ^ probabilistic program
+  -> ((Addr, LPTrace), STrace)               -- ^ proposed address + initial log-probability trace + initial sample trace
   -> Sampler (a, ((Addr, LPTrace), STrace))  -- ^ proposed address + final log-probability trace + final sample trace
-handleModel ((α, lptrace), strace)  = do
-  (assocR . first (second (α,)) <$>) . (Metropolis.reuseSamples strace . SIM.handleObs . traceLogProbs lptrace)
+handleModel prog ((α, lptrace), strace)  = do
+  ((assocR . first (second (α,)) <$>) . (Metropolis.reuseSamples strace . SIM.handleObs . traceLogProbs lptrace)) prog
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}

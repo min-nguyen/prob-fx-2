@@ -37,8 +37,8 @@ im n model env_in   = do
 {- | Handler for one iteration of IM.
 -}
 handleModel ::
-     (LogP, STrace)                     -- ^ proposed initial log-prob + sample trace
-  -> ProbProg a                         -- ^ probabilistic program
+     ProbProg a                         -- ^ probabilistic program
+  -> (LogP, STrace)                     -- ^ proposed initial log-prob + sample trace
   -> Sampler (a, (LogP, STrace))        -- ^ proposed final log-prob + sample trace
-handleModel (logp, strace) =
-  (assocR <$>) . Metropolis.reuseSamples strace . LW.weighLikelihood logp
+handleModel prog (logp, strace) =
+  ((assocR <$>) . Metropolis.reuseSamples strace . LW.weighLikelihood logp) prog

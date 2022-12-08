@@ -43,26 +43,26 @@ data Accept ctx a where
     -- | whether the proposal is accepted or not
     -> Accept ctx Bool
 
-type ModelHandler ctx = forall a. STrace -> ProbProg a -> Sampler ((a, ctx), STrace)
+type ModelHandler ctx = forall a. ProbProg a -> (ctx, STrace) -> Sampler ((a, ctx), STrace)
 
 {- | A general framework for Metropolis inference.
 -}
 metropolisLoop :: (LastMember (Lift Sampler) fs)
    => Int                                                                    -- ^ number of iterations
    -> (ctx, STrace)                                                          -- ^ initial context + sample trace
-   -> (forall a. (ctx, STrace) -> ProbProg a -> Sampler (a, (ctx, STrace)))  -- ^ model handler
+   -> (forall a. ProbProg a -> (ctx, STrace) -> Sampler (a, (ctx, STrace)))  -- ^ model handler
    -> ProbProg a                                                             -- ^ probabilistic program
    -> Prog (Accept ctx : fs) [(a, (ctx, STrace))]                            -- ^ trace of accepted outputs
 metropolisLoop n (ctx_0, strace_0) hdlModel prog_0 = do
   -- | Perform initial run of mh
-  ar_ctx_0 <- (lift . hdlModel (ctx_0, strace_0)) prog_0
+  ar_ctx_0 <- lift (hdlModel prog_0 (ctx_0, strace_0))
   -- | A function performing n mhSteps using initial mh_ctx. The most recent samples are at the front of the trace.
   foldl (>=>) pure (replicate n (metropolisStep hdlModel prog_0)) [ar_ctx_0]
 
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
 metropolisStep :: (LastMember (Lift Sampler) fs)
-  => (forall a. (ctx, STrace) -> ProbProg a -> Sampler (a, (ctx, STrace)))  -- ^ model handler
+  => (forall a. ProbProg a -> (ctx, STrace) -> Sampler (a, (ctx, STrace)))  -- ^ model handler
   -> ProbProg a                                                             -- ^ probabilistic program
   -> [(a, (ctx, STrace))]                                                   -- ^ previous trace
   -> Prog (Accept ctx : fs) [(a, (ctx, STrace))]                            -- ^ updated trace
@@ -72,7 +72,7 @@ metropolisStep hdlModel prog_0 trace = do
   -- | Construct an *initial* proposal
   prp                   <- call (Propose (ctx, strace))
   -- | Execute the model under the initial proposal to return the *final* proposal
-  (r', (ctx', strace')) <- lift (hdlModel prp prog_0)
+  (r', (ctx', strace')) <- lift (hdlModel prog_0 prp )
   -- | Compute acceptance ratio
   b                     <- call (Accept ctx ctx')
   if b then pure ((r', (ctx', strace')):trace)

@@ -76,6 +76,7 @@ loopSIS hdlParticle prog_0 = loop where
   loop :: ([ProbProg a], [ctx]) -> Prog (Resample ctx : fs) [(a, ctx)]
   loop (particles, ctxs) = do
     -- | Run particles to next checkpoint and accumulate their contexts
+    -- particles' <- mapM (lift . hdlParticle) particles
     (particles',  ctxs') <- second (ctxs `paccum`) . unzip <$> mapM (lift . hdlParticle) particles
     -- | Check termination status of particles
     case foldVals particles' of
