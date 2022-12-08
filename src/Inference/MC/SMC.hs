@@ -32,9 +32,6 @@ import           Sampler ( Sampler, sampleRandom, sampleCategorical)
 
 {- | The context of a particle for SMC.
 -}
-newtype Particle = Particle {
-    particleLogProb  :: LogP      -- ^ associated log-probability
-  } deriving (Num, ParticleCtx)
 
 instance ParticleCtx LogP where
   pempty :: LogP
@@ -62,7 +59,7 @@ smc n_particles model env_in = do
 smcInternal :: (LastMember (Lift Sampler) fs)
   => Int                       -- ^ number of particles
   -> ProbProg a                 -- ^ probabilistic program
-  -> Prog fs [(a, Particle)]   -- ^ final particle results and contexts
+  -> Prog fs [(a, LogP)]   -- ^ final particle results and contexts
 smcInternal n_particles =
   handleResampleMul . SIS.sis n_particles handleParticle
 
@@ -70,44 +67,44 @@ smcInternal n_particles =
        1. the rest of the computation
        2. the log probability of the @Observe operation
 -}
-handleParticle :: ProbProg a -> Sampler (ProbProg a, Particle)
+handleParticle :: ProbProg a -> Sampler (ProbProg a, LogP)
 handleParticle = SIM.handleSamp . handleObs
 
-handleObs :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, Particle)
-handleObs (Val x)   = Val (Val x,  Particle 0)
+handleObs :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, LogP)
+handleObs (Val x)   = Val (Val x,  LogP 0)
 handleObs (Op op k) = case discharge op of
-  Right (Observe d y α) -> Val (k y,  Particle (logProb d y))
+  Right (Observe d y α) -> Val (k y, logProb d y)
   Left op'              -> Op op' (handleObs . k)
 
 {- | A handler for multinomial resampling of particles.
 -}
-handleResampleMul :: LastMember (Lift Sampler) fs => ResampleHandler fs Particle
+handleResampleMul :: LastMember (Lift Sampler) fs => ResampleHandler fs LogP
 handleResampleMul (Val x) = Val x
 handleResampleMul (Op op k) = case discharge op of
-  Right (Resample (prts, ctxs) _) -> do
-    -- | Get the weights for each particle
-    let ws = map particleLogProb ctxs
+  Right (Resample (prts, logws) _) -> do
     -- | Select particles to continue with
-    idxs <- lift (resampleMul ws)
-    let resampled_prts = map (prts !! ) idxs
-        resampled_ctxs = map (ctxs !! ) idxs
-    (handleResampleMul . k) (resampled_prts, resampled_ctxs)
+    idxs <- lift (resampleMul logws)
+    let resampled_prts  = map (prts !! ) idxs
+        resampled_logws = map (logws !! ) idxs
+    (handleResampleMul . k) (resampled_prts, resampled_logws)
+  -- Right (Accum ctxs ctxs') -> do
+
   Left op' -> Op op' (handleResampleMul . k)
 
 resampleMul :: [LogP] -> Sampler [Int]
-resampleMul ctxs = do
-  let ws = map expLogP ctxs
+resampleMul logws = do
+  let ws = map expLogP logws
   -- | Select particles to continue with
   replicateM (length ws) (Sampler.sampleCategorical (Vector.fromList ws))
 
 {- | A handler for systematic resampling of particles.
 -}
-handleResampleSys :: LastMember (Lift Sampler) fs => ResampleHandler fs Particle
+handleResampleSys :: LastMember (Lift Sampler) fs => ResampleHandler fs LogP
 handleResampleSys (Val x) = Val x
 handleResampleSys (Op op k) = case discharge op of
   Right (Resample (prts, ctxs) _) -> do
     -- | Get the weights for each particle
-    let ws = map (expLogP . particleLogProb) ctxs
+    let ws = map expLogP ctxs
     -- | Select particles to continue with
     u <- lift Sampler.sampleRandom
     let prob i = ws !! i

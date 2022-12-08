@@ -43,6 +43,13 @@ data Resample ctx a where
     -> ProbProg a
     -- | (resampled programs, resampled ctxs)
     -> Resample ctx ([ProbProg a], [ctx])
+  -- Accum
+  --   -- | (particles, contexts)
+  --   :: [ctx]
+  --   -- | initial probabilistic program
+  --   -> [ctx]
+  --   -- | (resampled programs, resampled ctxs)
+  --   -> Resample ctx [ctx]
 
 {- | A @ParticleHandler@  runs a particle to the next @Observe@ break point.
 -}

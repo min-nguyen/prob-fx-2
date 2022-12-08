@@ -26,7 +26,6 @@ import qualified Inference.MC.MH as MH
 import Inference.MC.Metropolis as Metropolis
 import qualified Inference.MC.SIS as SIS
 import qualified Inference.MC.SMC as SMC
-import Inference.MC.SMC (Particle(particleLogProb, Particle))
 
 {- | Top-level wrapper for PMMH inference.
 -}
@@ -74,7 +73,7 @@ handleModel n_particles tags  prog (_, strace)  = do
   prts   <- ( handleLift
             . SMC.handleResampleMul
             . SIS.sis n_particles (((fst <$>) . Metropolis.reuseSamples params) . SMC.handleObs)) prog
-  let logZ = logMeanExp (map (SMC.particleLogProb . snd) prts)
+  let logZ = logMeanExp (map snd prts)
   pure (a, (logZ, strace'))
 
 {- | An acceptance mechanism for PMMH.
