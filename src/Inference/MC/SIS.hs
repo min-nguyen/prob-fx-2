@@ -11,6 +11,7 @@
 
 module Inference.MC.SIS where
 
+import           Control.Monad ( mapAndUnzipM )
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Effects.Dist ( Addr, Observe (Observe), Sample, pattern ObsPrj )
@@ -23,15 +24,6 @@ import           Model
 import           Inference.MC.SIM as SIM
 import           Data.Bifunctor
 
-{- | A @ParticleCtx@ contains data about the execution of a particular particle.
--}
-class ParticleCtx ctx where
-  -- | Initialise a particle context
-  pempty :: ctx
-  -- | For each particle, accumulate its incremental context and its previous context
-  paccum  :: [ctx] -- ^ previously acccumulated context
-          -> [ctx] -- ^ incremental context
-          -> [ctx]
 
 {- | The @Resample@ effect for resampling according to collection of particle contexts.
 -}
@@ -43,13 +35,13 @@ data Resample ctx a where
     -> ProbProg a
     -- | (resampled programs, resampled ctxs)
     -> Resample ctx ([ProbProg a], [ctx])
-  -- Accum
-  --   -- | (particles, contexts)
-  --   :: [ctx]
-  --   -- | initial probabilistic program
-  --   -> [ctx]
-  --   -- | (resampled programs, resampled ctxs)
-  --   -> Resample ctx [ctx]
+  Accum
+    -- | (particles, contexts)
+    :: [ctx]
+    -- | initial probabilistic program
+    -> [ctx]
+    -- | (resampled programs, resampled ctxs)
+    -> Resample ctx [ctx]
 
 {- | A @ParticleHandler@  runs a particle to the next @Observe@ break point.
 -}
@@ -61,36 +53,38 @@ type ResampleHandler fs ctx = forall a. Prog (Resample ctx : fs) a -> Prog fs a
 
 {- | A top-level template for sequential importance sampling.
 -}
-sis :: (ParticleCtx ctx, LastMember (Lift Sampler) fs)
+sis :: (LastMember (Lift Sampler) fs)
   => Int                                                        -- ^ number of particles
   -> ParticleHandler ctx                                        -- ^ handler for running particles
+  -> ctx
   -> ProbProg a                                                 -- ^ initial probabilistic program
   -> Prog (Resample ctx : fs) [(a, ctx)]                        -- ^ (final particle output, final particle context)
-sis n_particles hdlParticle  prog_0 = do
+sis n_prts hdlParticle ctx_0 prog_0  = do
   -- | Create an initial population of particles and contexts
-  let population = unzip $ replicate n_particles (prog_0, pempty)
+  let population = unzip $ replicate n_prts (prog_0, ctx_0)
   -- | Execute the population until termination
   loopSIS hdlParticle prog_0 population
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
-loopSIS :: forall ctx fs a. (ParticleCtx ctx, LastMember (Lift Sampler) fs)
+loopSIS :: forall ctx fs a. (LastMember (Lift Sampler) fs)
   => ParticleHandler ctx                                 -- ^ handler for running particles
   -> ProbProg a                                          -- ^ initial probabilistic program
   -> ([ProbProg a], [ctx])                               -- ^ input particles and corresponding contexts
   -> Prog (Resample ctx  : fs) [(a, ctx)]                -- ^ final particle results and corresponding contexts
 loopSIS hdlParticle prog_0 = loop where
   loop :: ([ProbProg a], [ctx]) -> Prog (Resample ctx : fs) [(a, ctx)]
-  loop (particles, ctxs) = do
+  loop (prts, ctxs) = do
     -- | Run particles to next checkpoint and accumulate their contexts
     -- particles' <- mapM (lift . hdlParticle) particles
-    (particles',  ctxs') <- second (ctxs `paccum`) . unzip <$> mapM (lift . hdlParticle) particles
+    (prts', partial_ctxs) <- mapAndUnzipM (lift . hdlParticle) prts
+    ctxs' <- call (Accum ctxs partial_ctxs)
     -- | Check termination status of particles
-    case foldVals particles' of
+    case foldVals prts' of
       -- | If all particles have finished, return their results and contexts
       Right vals  -> (`zip` ctxs') <$> vals
       -- | Otherwise, pick the particles to continue with
-      Left  _     -> call (Resample (particles', ctxs') prog_0) >>= loop
+      Left  _     -> call (Resample (prts', ctxs') prog_0) >>= loop
 
 {- | Check whether a list of programs have all terminated.
      If at least one program is unfinished, return all programs.

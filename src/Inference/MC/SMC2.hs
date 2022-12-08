@@ -29,7 +29,7 @@ import Inference.MC.RMSMC ( TracedParticle(..) )
 import qualified Inference.MC.SMC as SMC
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
-import Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
+import Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler)
 import Inference.MC.Metropolis as Metropolis
 import Effects.Lift
 import Data.Bifunctor
@@ -44,13 +44,13 @@ smc2 :: forall env es a xs. (env `ContainsVars` xs)
   -> Env env                                        -- ^ input environment
   -> Vars xs                                        -- ^ optional observable variable names of interest
   -> Sampler [Env env]                              -- ^ output environments
-smc2 n_outer_particles mh_steps n_inner_particles model env obs_vars = do
+smc2 n_outer_prts mh_steps n_inner_prts model env obs_vars = do
   -- | Handle model to probabilistic program
   let prog_0 = (handleDist . handleObsRW env) (runModel model)
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
   -- | Run SMC2
-  smc2_trace <- handleLift (smc2Internal n_outer_particles mh_steps n_inner_particles tags prog_0)
+  smc2_trace <- handleLift (smc2Internal n_outer_prts mh_steps n_inner_prts tags prog_0)
   -- Return the accepted model environments
   pure (map (snd . fst) smc2_trace)
 
@@ -63,8 +63,8 @@ smc2Internal :: (LastMember (Lift Sampler) fs)
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> ProbProg a                                    -- ^ probabilistic program
   -> Prog fs [(a, TracedParticle)]                -- ^ final particle results and contexts
-smc2Internal n_outer_particles mh_steps n_inner_particles tags =
-  handleResample mh_steps n_inner_particles tags . SIS.sis n_outer_particles RMSMC.handleParticle
+smc2Internal n_outer_prts mh_steps n_inner_prts tags  =
+  handleResample mh_steps n_inner_prts tags . SIS.sis n_outer_prts RMSMC.handleParticle  (TracedParticle 0 (Addr 0 "" 0) Map.empty)
 
 {- | A handler for resampling particles according to their normalized log-likelihoods,
      and then pertrubing their sample traces using PMMH.
@@ -75,7 +75,7 @@ handleResample :: LastMember (Lift Sampler) fs
   -> [String]                                      -- ^ tags indicating variables of interest
   -> Prog (Resample TracedParticle : fs) a
   -> Prog fs a
-handleResample mh_steps n_inner_particles tags = loop where
+handleResample mh_steps n_inner_prts tags = loop where
   loop (Val x) = Val x
   loop (Op op k) = case discharge op of
     Right (Resample (prts, ctxs) prog_0) ->
@@ -90,7 +90,7 @@ handleResample mh_steps n_inner_particles tags = loop where
               partial_model     = RMSMC.breakObserve resampled_α prog_0
           -- | Perform PMMH using each resampled particle's sample trace and get the most recent PMMH iteration.
           pmmh_trace <- mapM ( fmap head
-                             . flip (PMMH.pmmhInternal mh_steps n_inner_particles tags) partial_model
+                             . flip (PMMH.pmmhInternal mh_steps n_inner_prts tags) partial_model
                              ) resampled_straces
           {- | Get:
               1) the continuations of each particle from the break point (augmented with the non-det effect)
@@ -101,4 +101,6 @@ handleResample mh_steps n_inner_particles tags = loop where
               rejuv_ctxs    = zipWith3 TracedParticle rejuv_lps (repeat resampled_α) rejuv_straces
 
           (loop . k) (rejuv_prts, rejuv_ctxs)
+    Right (Accum ctxs ctxs') ->
+      (loop . k) (RMSMC.normaliseParticles ctxs ctxs')
     Left op' -> Op op' (loop . k)

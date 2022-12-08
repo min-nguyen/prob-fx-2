@@ -27,19 +27,8 @@ import           Prog ( LastMember, Prog(..), Members, Member, call, weakenProg,
 import qualified Data.Map as Map
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS
-import           Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
+import           Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler)
 import           Sampler ( Sampler, sampleRandom, sampleCategorical)
-
-{- | The context of a particle for SMC.
--}
-
-instance ParticleCtx LogP where
-  pempty :: LogP
-  pempty = 0
-  -- | Compute normalised accumulated log weights
-  paccum :: [LogP] -> [LogP] -> [LogP]
-  paccum log_ps log_ps' = let logZ = logMeanExp log_ps
-                          in  map (+ logZ) log_ps'
 
 {- | Call SMC on a model.
 -}
@@ -48,10 +37,10 @@ smc
   -> Model env [ObsRW env, Dist] a      -- ^ model
   -> Env env                            -- ^ input model environment
   -> Sampler [Env env]                  -- ^ output model environments of each particle
-smc n_particles model env_in = do
+smc n_prts model env_in = do
   -- | Handle model to probabilistic program
   let prog_0 = (handleDist . handleObsRW env_in) (runModel model)
-  smc_trace <- handleLift (smcInternal n_particles prog_0)
+  smc_trace <- handleLift (smcInternal n_prts prog_0)
   pure (map (snd . fst) smc_trace)
 
 {- | Call SMC on a probabilistic program.
@@ -60,8 +49,8 @@ smcInternal :: (LastMember (Lift Sampler) fs)
   => Int                       -- ^ number of particles
   -> ProbProg a                 -- ^ probabilistic program
   -> Prog fs [(a, LogP)]   -- ^ final particle results and contexts
-smcInternal n_particles =
-  handleResampleMul . SIS.sis n_particles handleParticle
+smcInternal n_prts  =
+  handleResampleMul . SIS.sis n_prts handleParticle (LogP 0)
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation
@@ -87,9 +76,13 @@ handleResampleMul (Op op k) = case discharge op of
     let resampled_prts  = map (prts !! ) idxs
         resampled_logws = map (logws !! ) idxs
     (handleResampleMul . k) (resampled_prts, resampled_logws)
-  -- Right (Accum ctxs ctxs') -> do
-
+  Right (Accum ctxs ctxs') -> do
+    (handleResampleMul . k) (normaliseParticles ctxs ctxs')
   Left op' -> Op op' (handleResampleMul . k)
+
+normaliseParticles  :: [LogP] -> [LogP] -> [LogP]
+normaliseParticles log_ps log_ps' =
+  let logZ = logMeanExp log_ps in  map (+ logZ) log_ps'
 
 resampleMul :: [LogP] -> Sampler [Int]
 resampleMul logws = do
@@ -120,4 +113,6 @@ handleResampleSys (Op op k) = case discharge op of
         resampled_ctxs = map (ctxs !! ) idxs
 
     (handleResampleSys . k) (resampled_prts, resampled_ctxs)
+  Right (Accum ctxs ctxs') -> do
+    (handleResampleMul . k) (normaliseParticles ctxs ctxs')
   Left op' -> Op op' (handleResampleSys . k)

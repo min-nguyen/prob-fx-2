@@ -35,7 +35,7 @@ import qualified Inference.MC.SMC as SMC
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.Metropolis as Metropolis
 import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
-import           Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler, ParticleCtx (..))
+import           Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler)
 import           Effects.Lift
 import           PrimDist
 import           Data.Bifunctor
@@ -50,14 +50,6 @@ data TracedParticle = TracedParticle {
   , particleSTrace    :: STrace
   }
 
-instance ParticleCtx TracedParticle where
-  pempty            = TracedParticle 0 (Addr 0 "" 0) Map.empty
-  paccum ctxs ctxs' =
-    let log_ps   = uncurry paccum              (mapT2 (particleLogProb <$>)  (ctxs, ctxs'))
-        α_obs    = particleObsAddr <$> ctxs'
-        straces  = uncurry (zipWith Map.union) (mapT2 (particleSTrace <$>)   (ctxs', ctxs))
-    in  zipWith3 TracedParticle log_ps α_obs straces
-
 {- | Call RMSMC on a model.
 -}
 rmsmc :: forall env a xs. (env `ContainsVars` xs)
@@ -67,12 +59,12 @@ rmsmc :: forall env a xs. (env `ContainsVars` xs)
   -> Env env                                      -- ^ input model environment
   -> Vars xs                                      -- ^ optional observable variable names of interest
   -> Sampler [Env env]                            -- ^ output model environments of each particle
-rmsmc n_particles mh_steps model env_in obs_vars = do
+rmsmc n_prts mh_steps model env_in obs_vars = do
   -- | Handle model to probabilistic program
   let prog_0   = handleCore env_in model
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
-  rmsmc_trace <- handleLift (rmsmcInternal n_particles mh_steps tags prog_0)
+  rmsmc_trace <- handleLift (rmsmcInternal n_prts mh_steps tags prog_0)
   pure (map (snd . fst) rmsmc_trace)
 
 {- | Call RMSMC on a probabilistic program.
@@ -83,8 +75,8 @@ rmsmcInternal :: (LastMember (Lift Sampler) fs)
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> ProbProg a                                    -- ^ probabilistic program
   -> Prog fs [(a, TracedParticle)]                -- ^ final particle results and contexts
-rmsmcInternal n_particles mh_steps tags =
-  handleResample mh_steps tags . SIS.sis n_particles handleParticle
+rmsmcInternal n_prts mh_steps tags  =
+  handleResample mh_steps tags . SIS.sis n_prts handleParticle (TracedParticle 0 (Addr 0 "" 0) Map.empty)
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint
      at the first @Observe@ operation, by returning:
@@ -146,8 +138,16 @@ handleResample mh_steps tags = loop where
               rejuv_ctxs    = zipWith3 TracedParticle rejuv_lps (repeat resampled_α) rejuv_straces
 
           (loop . k) (rejuv_prts, rejuv_ctxs)
-
+    Right (Accum ctxs ctxs') ->
+      (loop . k) (normaliseParticles ctxs ctxs')
     Left op' -> Op op' (loop . k)
+
+normaliseParticles :: [TracedParticle] -> [TracedParticle] -> [TracedParticle]
+normaliseParticles ctxs ctxs' =
+    let log_ps   = uncurry SMC.normaliseParticles (mapT2 (particleLogProb <$>)  (ctxs, ctxs'))
+        α_obs    = particleObsAddr <$> ctxs'
+        straces  = uncurry (zipWith Map.union) (mapT2 (particleSTrace <$>)   (ctxs', ctxs))
+    in  zipWith3 TracedParticle log_ps α_obs straces
 
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
      It returns the rest of the computation.

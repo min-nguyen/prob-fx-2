@@ -43,14 +43,14 @@ data Accept ctx a where
     -- | whether the proposal is accepted or not
     -> Accept ctx Bool
 
-type ModelHandler ctx = forall a. ProbProg a -> (ctx, STrace) -> Sampler ((a, ctx), STrace)
+type ModelHandler ctx = forall a. ProbProg a -> (ctx, STrace) -> Sampler (a, (ctx, STrace))
 
 {- | A general framework for Metropolis inference.
 -}
 metropolisLoop :: (LastMember (Lift Sampler) fs)
    => Int                                                                    -- ^ number of iterations
    -> (ctx, STrace)                                                          -- ^ initial context + sample trace
-   -> (forall a. ProbProg a -> (ctx, STrace) -> Sampler (a, (ctx, STrace)))  -- ^ model handler
+   -> ModelHandler ctx                                                        -- ^ model handler
    -> ProbProg a                                                             -- ^ probabilistic program
    -> Prog (Accept ctx : fs) [(a, (ctx, STrace))]                            -- ^ trace of accepted outputs
 metropolisLoop n (ctx_0, strace_0) hdlModel prog_0 = do
@@ -62,7 +62,7 @@ metropolisLoop n (ctx_0, strace_0) hdlModel prog_0 = do
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
 metropolisStep :: (LastMember (Lift Sampler) fs)
-  => (forall a. ProbProg a -> (ctx, STrace) -> Sampler (a, (ctx, STrace)))  -- ^ model handler
+  => ModelHandler ctx                                                       -- ^ model handler
   -> ProbProg a                                                             -- ^ probabilistic program
   -> [(a, (ctx, STrace))]                                                   -- ^ previous trace
   -> Prog (Accept ctx : fs) [(a, (ctx, STrace))]                            -- ^ updated trace
