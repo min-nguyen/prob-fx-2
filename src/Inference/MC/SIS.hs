@@ -41,8 +41,8 @@ data Resample ctx a where
     :: ([ProbProg a], [ctx])
     -- | initial probabilistic program
     -> ProbProg a
-    -- | ((resampled programs, resampled ctxs), resampled idxs)
-    -> Resample ctx (([ProbProg a], [ctx]), [Int])
+    -- | (resampled programs, resampled ctxs)
+    -> Resample ctx ([ProbProg a], [ctx])
 
 {- | A @ParticleHandler@  runs a particle to the next @Observe@ break point.
 -}
@@ -82,7 +82,7 @@ loopSIS hdlParticle prog_0 = loop where
       -- | If all particles have finished, return their results and contexts
       Right vals  -> (`zip` ctxs') <$> vals
       -- | Otherwise, pick the particles to continue with
-      Left  _     -> call (Resample (particles', ctxs') prog_0) >>= loop . fst
+      Left  _     -> call (Resample (particles', ctxs') prog_0) >>= loop
 
 {- | Check whether a list of programs have all terminated.
      If at least one program is unfinished, return all programs.

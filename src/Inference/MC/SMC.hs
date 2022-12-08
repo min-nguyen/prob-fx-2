@@ -86,13 +86,19 @@ handleResampleMul (Val x) = Val x
 handleResampleMul (Op op k) = case discharge op of
   Right (Resample (prts, ctxs) _) -> do
     -- | Get the weights for each particle
-    let ws = map (expLogP . particleLogProb) ctxs
+    let ws = map particleLogProb ctxs
     -- | Select particles to continue with
-    idxs <- replicateM (length ws) $ lift (Sampler.sampleCategorical (Vector.fromList ws))
+    idxs <- lift (resampleMul ws)
     let resampled_prts = map (prts !! ) idxs
         resampled_ctxs = map (ctxs !! ) idxs
-    (handleResampleMul . k) ((resampled_prts, resampled_ctxs), idxs)
+    (handleResampleMul . k) (resampled_prts, resampled_ctxs)
   Left op' -> Op op' (handleResampleMul . k)
+
+resampleMul :: [LogP] -> Sampler [Int]
+resampleMul ctxs = do
+  let ws = map expLogP ctxs
+  -- | Select particles to continue with
+  replicateM (length ws) (Sampler.sampleCategorical (Vector.fromList ws))
 
 {- | A handler for systematic resampling of particles.
 -}
@@ -116,5 +122,5 @@ handleResampleSys (Op op k) = case discharge op of
         resampled_prts = map (prts !! ) idxs
         resampled_ctxs = map (ctxs !! ) idxs
 
-    (handleResampleSys . k) ((resampled_prts, resampled_ctxs), idxs)
+    (handleResampleSys . k) (resampled_prts, resampled_ctxs)
   Left op' -> Op op' (handleResampleSys . k)
