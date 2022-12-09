@@ -85,8 +85,8 @@ reuseSamples strace (Val x) = pure (x, strace)
 reuseSamples strace (Op op k) = case discharge op of
   Right (Sample d α) ->  case Map.lookup α strace of
     Nothing -> do r <- sampleRandom
-                  let y = sampleInv d r
+                  let y = draw d r
                   reuseSamples (Map.insert α r strace) (k y)
-    Just r  -> do let y = sampleInv d r
+    Just r  -> do let y = draw d r
                   reuseSamples strace  (k y)
   Left op'  -> error "MH.handleSamp: Left should not happen"

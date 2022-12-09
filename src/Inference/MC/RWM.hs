@@ -61,16 +61,16 @@ handleModel ::
   -> (LogP, STrace)                     -- ^ sample trace of previous RWM iteration
   -> Sampler (a, (LogP, STrace))        -- ^ ((model output, sample trace), log-probability trace)
 handleModel prog (logp, strace)  = do
-  ((assocR <$>) . Metropolis.reuseSamples strace . SIM.handleObs . weighJoint logp) prog
+  ((assocR <$>) . Metropolis.reuseSamples strace . SIM.handleObs . joint logp) prog
 
 {- | Record the joint log-probability P(Y, X)
 -}
-weighJoint :: LogP -> ProbProg a -> ProbProg (a, LogP)
-weighJoint logp (Val x)   = pure (x, logp)
-weighJoint logp (Op op k) = case op of
-  ObsPrj d y α   -> Op op (\x -> weighJoint (logp + logProb d x) $ k x)
-  SampPrj d  α   -> Op op (\x -> weighJoint (logp + logProb d x) $ k x)
-  _              -> Op op (weighJoint logp . k)
+joint :: LogP -> ProbProg a -> ProbProg (a, LogP)
+joint logp (Val x)   = pure (x, logp)
+joint logp (Op op k) = case op of
+  ObsPrj d y α   -> Op op (\x -> joint (logp + logProb d x) $ k x)
+  SampPrj d  α   -> Op op (\x -> joint (logp + logProb d x) $ k x)
+  _              -> Op op (joint logp . k)
 
 {- | Handler for @Accept@ for RWM.
      - Propose by drawing all components for latent variable X' ~ P(X)

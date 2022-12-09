@@ -93,7 +93,7 @@ handleSamp = loop Map.empty where
   loop strace (Val x)   = pure (x, strace)
   loop strace (Op op k) = case discharge1 op of
     (Sample d α) -> do r <- sampleRandom
-                       let y = sampleInv d r
+                       let y = draw d r
                        loop (Map.insert α r strace) (k y)
 
 handleObs :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, LogP, Addr)

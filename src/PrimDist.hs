@@ -53,7 +53,7 @@ class (Show d, Typeable d) => Distribution d where
   type family Base d :: Type
   {- | Given a random double @r@ in (0, 1), this is passed to a distribution's inverse
        cumulative density function to draw a sampled value. -}
-  sampleInv   :: d -> Double -> Base d
+  draw   :: d -> Double -> Base d
 
   {- | Draw a value from a primitive distribution in the @Sampler@ monad. -}
   sample      :: d -> Sampler (Base d)
@@ -103,8 +103,8 @@ mkBeta α β
 instance Distribution Beta where
   type Base Beta = Double
 
-  sampleInv :: Beta -> Double -> Double
-  sampleInv (Beta α β) = invIncompleteBeta α β
+  draw :: Beta -> Double -> Double
+  draw (Beta α β) = invIncompleteBeta α β
 
   sample :: Beta -> Sampler Double
   sample (Beta α β) = Sampler.sampleBeta α β
@@ -148,8 +148,8 @@ mkCauchy loc scale
 instance Distribution Cauchy where
   type Base Cauchy = Double
 
-  sampleInv :: Cauchy -> Double -> Double
-  sampleInv (Cauchy loc scale) r = loc + scale * tan( pi * (r - 0.5) )
+  draw :: Cauchy -> Double -> Double
+  draw (Cauchy loc scale) r = loc + scale * tan( pi * (r - 0.5) )
 
   sample :: Cauchy -> Sampler Double
   sample (Cauchy loc scale) = Sampler.sampleCauchy loc scale
@@ -194,8 +194,8 @@ mkHalfCauchy scale
 instance Distribution HalfCauchy where
   type Base HalfCauchy = Double
 
-  sampleInv :: HalfCauchy -> Double ->  Double
-  sampleInv (HalfCauchy scale) r = abs $ sampleInv (Cauchy 0 scale) r
+  draw :: HalfCauchy -> Double ->  Double
+  draw (HalfCauchy scale) r = abs $ draw (Cauchy 0 scale) r
 
   sample :: HalfCauchy -> Sampler Double
   sample (HalfCauchy scale) = abs <$> sample (Cauchy 0 scale)
@@ -237,10 +237,10 @@ mkDirichlet αs
 instance (TypeableSNatI n) => Distribution (Dirichlet n) where
   type Base (Dirichlet n) = Vec n Double
 
-  sampleInv :: Dirichlet n -> Double -> Vec n Double
-  sampleInv (Dirichlet αs) r =
+  draw :: Dirichlet n -> Double -> Vec n Double
+  draw (Dirichlet αs) r =
     let rs = Vec.linCongGen r snat
-        xs = Vec.zipWith (\α r -> sampleInv (Gamma α 1) r) αs rs
+        xs = Vec.zipWith (\α r -> draw (Gamma α 1) r) αs rs
     in  Vec.map (/sum xs) xs
 
   sample :: Dirichlet n -> Sampler (Vec n Double)
@@ -288,8 +288,8 @@ mkGamma k θ
 instance Distribution Gamma where
   type Base Gamma = Double
 
-  sampleInv :: Gamma -> Double -> Double
-  sampleInv (Gamma k θ) r = θ * invIncompleteGamma k r
+  draw :: Gamma -> Double -> Double
+  draw (Gamma k θ) r = θ * invIncompleteGamma k r
 
   sample :: Gamma -> Sampler Double
   sample (Gamma k θ) = Sampler.sampleGamma k θ
@@ -334,8 +334,8 @@ mkNormal μ σ
 instance Distribution Normal where
   type Base Normal = Double
 
-  sampleInv :: Normal -> Double -> Double
-  sampleInv (Normal μ σ) r = (- invErfc (2 * r)) * (m_sqrt_2 * σ) + μ
+  draw :: Normal -> Double -> Double
+  draw (Normal μ σ) r = (- invErfc (2 * r)) * (m_sqrt_2 * σ) + μ
 
   sample :: Normal -> Sampler Double
   sample (Normal μ σ) = Sampler.sampleNormal μ σ
@@ -377,8 +377,8 @@ mkHalfNormal σ
 instance Distribution HalfNormal where
   type Base HalfNormal = Double
 
-  sampleInv :: HalfNormal -> Double -> Double
-  sampleInv (HalfNormal σ) = abs . sampleInv (Normal 0 σ)
+  draw :: HalfNormal -> Double -> Double
+  draw (HalfNormal σ) = abs . draw (Normal 0 σ)
 
   sample :: HalfNormal -> Sampler Double
   sample (HalfNormal σ) = sample (Normal 0 σ) <&> abs
@@ -442,8 +442,8 @@ mkBernoulli p
 instance Distribution Bernoulli where
   type Base Bernoulli = Bool
 
-  sampleInv :: Bernoulli -> Double -> Bool
-  sampleInv (Bernoulli p) r = r < p
+  draw :: Bernoulli -> Double -> Bool
+  draw (Bernoulli p) r = r < p
 
   sample :: Bernoulli -> Sampler Bool
   sample (Bernoulli p) = Sampler.sampleBernoulli p
@@ -471,8 +471,8 @@ mkBinomial n p
 instance Distribution Binomial where
   type Base Binomial = Int
 
-  sampleInv :: Binomial -> Double -> Int
-  sampleInv (Binomial n p) = invCMF (prob (Binomial n p))
+  draw :: Binomial -> Double -> Int
+  draw (Binomial n p) = invCMF (prob (Binomial n p))
 
   sample :: Binomial -> Sampler Int
   sample (Binomial n p) = Sampler.sampleBinomial n p
@@ -508,8 +508,8 @@ mkCategorical ps
 instance Distribution Categorical where
   type Base Categorical = Int            -- ^ an index from @0@ to @n - 1@
 
-  sampleInv :: Categorical  -> Double -> Int
-  sampleInv (Categorical ps) = invCMF (ps !!)
+  draw :: Categorical  -> Double -> Int
+  draw (Categorical ps) = invCMF (ps !!)
 
   sample :: Categorical  -> Sampler Int
   sample (Categorical ps) = Sampler.sampleCategorical (Vector.fromList ps)
@@ -535,8 +535,8 @@ instance Show a => Show (Deterministic a) where
 instance (Show a, Typeable a) => Distribution (Deterministic a) where
   type Base (Deterministic a) = a
 
-  sampleInv :: Deterministic a -> Double -> a
-  sampleInv (Deterministic x) _ = x
+  draw :: Deterministic a -> Double -> a
+  draw (Deterministic x) _ = x
 
   sample :: Deterministic a -> Sampler a
   sample (Deterministic x) = pure x
@@ -568,8 +568,8 @@ instance Show a => Show (Discrete a) where
 instance (Show a, Typeable a) => Distribution (Discrete a) where
   type Base (Discrete a) = a
 
-  sampleInv :: Discrete a -> Double -> a
-  sampleInv (Discrete xps) r = xs !! invCMF (ps !!) r
+  draw :: Discrete a -> Double -> a
+  draw (Discrete xps) r = xs !! invCMF (ps !!) r
     where (xs, ps) = unzip xps
 
   sample :: Discrete a -> Sampler a
@@ -593,8 +593,8 @@ mkPoisson λ
 instance Distribution Poisson where
   type Base Poisson = Int
 
-  sampleInv :: Poisson -> Double -> Int
-  sampleInv (Poisson λ) = invCMF (prob (Poisson λ))
+  draw :: Poisson -> Double -> Int
+  draw (Poisson λ) = invCMF (prob (Poisson λ))
 
   sample :: Poisson -> Sampler Int
   sample (Poisson λ) = Sampler.samplePoisson λ
@@ -622,8 +622,8 @@ mkUniform min max
 instance Distribution Uniform where
   type Base Uniform = Double
 
-  sampleInv :: Uniform -> Double -> Double
-  sampleInv (Uniform min max) r = min + (max - min) * r
+  draw :: Uniform -> Double -> Double
+  draw (Uniform min max) r = min + (max - min) * r
 
   sample :: Uniform -> Sampler Double
   sample (Uniform min max) = Sampler.sampleUniform min max
@@ -646,8 +646,8 @@ mkUniformD min max
 instance Distribution UniformD where
   type Base UniformD = Int
 
-  sampleInv :: UniformD -> Double -> Int
-  sampleInv (UniformD min max) r = floor (min' + (max' - min') * r)
+  draw :: UniformD -> Double -> Int
+  draw (UniformD min max) r = floor (min' + (max' - min') * r)
      where min' = fromIntegral min
            max' = fromIntegral max + 1
 

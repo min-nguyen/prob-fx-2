@@ -238,7 +238,7 @@ PMMH-50-LR-50,8.38178145314081e-2,0.18703726595210055,0.3263399143332511,0.49720
 
 -------------------------------
 Updates:
-- Benchmarks after directly implementing sampleInv for PrimDist (rather than using MWC.Distributions)
+- Benchmarks after directly implementing draw for PrimDist (rather than using MWC.Distributions)
 
 Dataset size,100,200,300,400,500
 LR-SIM-1,2.454300435148454e-4,6.801680204381634e-4,1.2610610811632792e-3,1.983979878387912e-3,2.842499255904078e-3
