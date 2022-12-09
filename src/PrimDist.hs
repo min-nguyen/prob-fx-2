@@ -50,23 +50,23 @@ import           Vec (Vec(..), TypeableSNatI)
 {- Distributions that can be sampled from and conditioned against.
 -}
 class (Show d, Typeable d) => Distribution d where
-  type family Support d :: Type
+  type family Base d :: Type
   {- | Given a random double @r@ in (0, 1), this is passed to a distribution's inverse
        cumulative density function to draw a sampled value. -}
-  sampleInv   :: d -> Double -> Support d
+  sampleInv   :: d -> Double -> Base d
 
   {- | Draw a value from a primitive distribution in the @Sampler@ monad. -}
-  sample      :: d -> Sampler (Support d)
+  sample      :: d -> Sampler (Base d)
 
   {- | Compute the log density of a primitive distribution generating an observed value. -}
-  logProbRaw  :: d -> Support d -> Double
+  logProbRaw  :: d -> Base d -> Double
 
   {- | Compute the log density as the @LogP@ type. -}
-  logProb     :: d -> Support d -> LogP
+  logProb     :: d -> Base d -> LogP
   logProb d   = LogP . logProbRaw d
 
   {- | Compute the probability density. -}
-  prob        :: d -> Support d -> Double
+  prob        :: d -> Base d -> Double
   prob d      = exp . logProbRaw d
 
   {- | Provide proof that @d@ is differentiable. -}
@@ -74,7 +74,7 @@ class (Show d, Typeable d) => Distribution d where
   isDifferentiable _ = Nothing
 
 -- | Shorthand for specifying a distribution @d@ and its type of support @a@
-type PrimDist d a = (Distribution d, Support d ~ a)
+type PrimDist d a = (Distribution d, Base d ~ a)
 
 -- | Dictionary proof
 data Witness (c :: Type -> Constraint) a where
@@ -85,7 +85,7 @@ data Witness (c :: Type -> Constraint) a where
 class (SNatI (Arity d), Distribution d) => DiffDistribution d where
   type family Arity d :: Nat
   {- | Compute the gradient log-probability. -}
-  gradLogProb :: d -> Support d -> Vec (Arity d) Double
+  gradLogProb :: d -> Base d -> Vec (Arity d) Double
 
   safeAddGrad :: d -> Vec (Arity d) Double -> d
 
@@ -101,7 +101,7 @@ mkBeta α β
   | otherwise      = error "Beta: α > 0 or β > 0 not met"
 
 instance Distribution Beta where
-  type Support Beta = Double
+  type Base Beta = Double
 
   sampleInv :: Beta -> Double -> Double
   sampleInv (Beta α β) = invIncompleteBeta α β
@@ -146,7 +146,7 @@ mkCauchy loc scale
   | otherwise = error "Cauchy: scale > 0 not met"
 
 instance Distribution Cauchy where
-  type Support Cauchy = Double
+  type Base Cauchy = Double
 
   sampleInv :: Cauchy -> Double -> Double
   sampleInv (Cauchy loc scale) r = loc + scale * tan( pi * (r - 0.5) )
@@ -192,7 +192,7 @@ mkHalfCauchy scale
   | otherwise = error "HalfCauchy: scale > 0 not met"
 
 instance Distribution HalfCauchy where
-  type Support HalfCauchy = Double
+  type Base HalfCauchy = Double
 
   sampleInv :: HalfCauchy -> Double ->  Double
   sampleInv (HalfCauchy scale) r = abs $ sampleInv (Cauchy 0 scale) r
@@ -235,7 +235,7 @@ mkDirichlet αs
   | otherwise     = Dirichlet αs
 
 instance (TypeableSNatI n) => Distribution (Dirichlet n) where
-  type Support (Dirichlet n) = Vec n Double
+  type Base (Dirichlet n) = Vec n Double
 
   sampleInv :: Dirichlet n -> Double -> Vec n Double
   sampleInv (Dirichlet αs) r =
@@ -286,7 +286,7 @@ mkGamma k θ
   | otherwise      = error "Gamma: k > 0 && θ > 0 not met"
 
 instance Distribution Gamma where
-  type Support Gamma = Double
+  type Base Gamma = Double
 
   sampleInv :: Gamma -> Double -> Double
   sampleInv (Gamma k θ) r = θ * invIncompleteGamma k r
@@ -332,7 +332,7 @@ mkNormal μ σ
   | otherwise = error "Normal: σ > 0 not met"
 
 instance Distribution Normal where
-  type Support Normal = Double
+  type Base Normal = Double
 
   sampleInv :: Normal -> Double -> Double
   sampleInv (Normal μ σ) r = (- invErfc (2 * r)) * (m_sqrt_2 * σ) + μ
@@ -375,7 +375,7 @@ mkHalfNormal σ
   | otherwise = error "HalfNormal: σ > 0 not met"
 
 instance Distribution HalfNormal where
-  type Support HalfNormal = Double
+  type Base HalfNormal = Double
 
   sampleInv :: HalfNormal -> Double -> Double
   sampleInv (HalfNormal σ) = abs . sampleInv (Normal 0 σ)
@@ -440,7 +440,7 @@ mkBernoulli p
   | otherwise        = error "Bernoulli: p >= 0 && p <= 1 not met"
 
 instance Distribution Bernoulli where
-  type Support Bernoulli = Bool
+  type Base Bernoulli = Bool
 
   sampleInv :: Bernoulli -> Double -> Bool
   sampleInv (Bernoulli p) r = r < p
@@ -469,7 +469,7 @@ mkBinomial n p
   | otherwise      = Binomial n p
 
 instance Distribution Binomial where
-  type Support Binomial = Int
+  type Base Binomial = Int
 
   sampleInv :: Binomial -> Double -> Int
   sampleInv (Binomial n p) = invCMF (prob (Binomial n p))
@@ -506,7 +506,7 @@ mkCategorical ps
   | otherwise     = Categorical (map (const $ 1/fromIntegral (length ps)) ps)
 
 instance Distribution Categorical where
-  type Support Categorical = Int            -- ^ an index from @0@ to @n - 1@
+  type Base Categorical = Int            -- ^ an index from @0@ to @n - 1@
 
   sampleInv :: Categorical  -> Double -> Int
   sampleInv (Categorical ps) = invCMF (ps !!)
@@ -533,7 +533,7 @@ instance Show a => Show (Deterministic a) where
   show (Deterministic x) = "Deterministic " ++ show x
 
 instance (Show a, Typeable a) => Distribution (Deterministic a) where
-  type Support (Deterministic a) = a
+  type Base (Deterministic a) = a
 
   sampleInv :: Deterministic a -> Double -> a
   sampleInv (Deterministic x) _ = x
@@ -566,7 +566,7 @@ instance Show a => Show (Discrete a) where
   show (Discrete xps) = "Discrete " ++ show xps
 
 instance (Show a, Typeable a) => Distribution (Discrete a) where
-  type Support (Discrete a) = a
+  type Base (Discrete a) = a
 
   sampleInv :: Discrete a -> Double -> a
   sampleInv (Discrete xps) r = xs !! invCMF (ps !!) r
@@ -591,7 +591,7 @@ mkPoisson λ
   | otherwise = Poisson λ
 
 instance Distribution Poisson where
-  type Support Poisson = Int
+  type Base Poisson = Int
 
   sampleInv :: Poisson -> Double -> Int
   sampleInv (Poisson λ) = invCMF (prob (Poisson λ))
@@ -620,7 +620,7 @@ mkUniform min max
   | otherwise = Uniform min max
 
 instance Distribution Uniform where
-  type Support Uniform = Double
+  type Base Uniform = Double
 
   sampleInv :: Uniform -> Double -> Double
   sampleInv (Uniform min max) r = min + (max - min) * r
@@ -644,7 +644,7 @@ mkUniformD min max
   | otherwise = UniformD min max
 
 instance Distribution UniformD where
-  type Support UniformD = Int
+  type Base UniformD = Int
 
   sampleInv :: UniformD -> Double -> Int
   sampleInv (UniformD min max) r = floor (min' + (max' - min') * r)

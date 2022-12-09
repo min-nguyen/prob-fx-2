@@ -41,4 +41,4 @@ handleModel ::
   -> (LogP, STrace)                     -- ^ proposed initial log-prob + sample trace
   -> Sampler (a, (LogP, STrace))        -- ^ proposed final log-prob + sample trace
 handleModel prog (logp, strace) =
-  ((assocR <$>) . Metropolis.reuseSamples strace . LW.weighLikelihood logp) prog
+  ((assocR <$>) . Metropolis.reuseSamples strace . LW.likelihood logp) prog
