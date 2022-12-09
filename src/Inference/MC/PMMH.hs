@@ -47,7 +47,7 @@ pmmh mh_steps n_prts model env_in obs_vars = do
 
 {- | PMMH inference on a probabilistic program.
 -}
-pmmhInternal :: (LastMember (Lift Sampler) fs)
+pmmhInternal :: (HasSampler fs)
   => Int                                          -- ^ number of MH steps
   -> Int                                          -- ^ number of particles
   -> [Tag]                                        -- ^ parameter names
@@ -78,7 +78,7 @@ handleModel n_prts tags  prog (_, strace)  = do
 
 {- | An acceptance mechanism for PMMH.
 -}
-handleAccept :: LastMember (Lift Sampler) fs
+handleAccept :: HasSampler fs
   => [Tag]                                      -- ^ parameter names
   -> Prog (Accept LogP : fs) a -> Prog fs a
 handleAccept tags = loop where

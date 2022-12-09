@@ -17,7 +17,7 @@ module Inference.MC.SMC where
 import           Control.Monad ( replicateM )
 import qualified Data.Vector as Vector
 import           Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe (..), Sample )
-import           Effects.Lift ( Lift, lift, liftPrint, handleLift)
+import           Effects.Lift ( Lift, lift, liftPrint, handleLift, HasSampler)
 import           Effects.ObsRW ( ObsRW, handleObsRW )
 import           Env ( Env )
 import           LogP ( LogP(..), logMeanExp, expLogP )
@@ -45,7 +45,7 @@ smc n_prts model env_in = do
 
 {- | Call SMC on a probabilistic program.
 -}
-smcInternal :: (LastMember (Lift Sampler) fs)
+smcInternal :: HasSampler fs
   => Int                       -- ^ number of particles
   -> ProbProg a                 -- ^ probabilistic program
   -> Prog fs [(a, LogP)]   -- ^ final particle results and contexts
@@ -67,7 +67,7 @@ handleObs (Op op k) = case discharge op of
 
 {- | A handler for multinomial resampling of particles.
 -}
-handleResampleMul :: LastMember (Lift Sampler) fs => ResampleHandler fs LogP
+handleResampleMul :: HasSampler fs => ResampleHandler fs LogP
 handleResampleMul (Val x) = Val x
 handleResampleMul (Op op k) = case discharge op of
   Right (Resample (prts, logws) _) -> do
@@ -92,7 +92,7 @@ resampleMul logws = do
 
 {- | A handler for systematic resampling of particles.
 -}
-handleResampleSys :: LastMember (Lift Sampler) fs => ResampleHandler fs LogP
+handleResampleSys :: HasSampler fs => ResampleHandler fs LogP
 handleResampleSys (Val x) = Val x
 handleResampleSys (Op op k) = case discharge op of
   Right (Resample (prts, ctxs) _) -> do

@@ -33,7 +33,7 @@ import Model ( Model, handleCore, ProbProg )
 import Effects.ObsRW ( ObsRW )
 import Env ( Env )
 import Effects.Dist ( Dist, pattern SampPrj, pattern ObsPrj )
-import Effects.Lift ( Lift, lift, handleLift, liftPutStrLn )
+import Effects.Lift ( Lift, lift, handleLift, liftPutStrLn, HasSampler )
 import Sampler ( Sampler, sampleRandom )
 import qualified Inference.MC.SIM as SIM
 import Inference.MC.Metropolis as Metropolis
@@ -76,7 +76,7 @@ weighJoint logp (Op op k) = case op of
      - Propose by drawing all components for latent variable X' ~ P(X)
      - Accept using the ratio P(X', Y')/P(X, Y)
 -}
-handleAccept :: LastMember (Lift Sampler) fs => Prog (Accept LogP : fs) a -> Prog fs a
+handleAccept :: HasSampler fs => Prog (Accept LogP : fs) a -> Prog fs a
 handleAccept (Val x)   = pure x
 handleAccept (Op op k) = case discharge op of
   Right (Propose (_, strace))

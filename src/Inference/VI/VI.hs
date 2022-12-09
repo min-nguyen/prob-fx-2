@@ -41,7 +41,7 @@ import Util
 data GradDescent a where
   GradDescent :: [LogP] -> [GTrace] -> DTrace -> GradDescent DTrace
 
-viLoop :: (LastMember (Lift Sampler) fs, Show (Env env))
+viLoop :: (HasSampler fs, Show (Env env))
   => Int                                          -- ^ number of optimisation steps (T)
   -> Int                                          -- ^ number of samples to estimate the gradient over (L)
   -> Prog [Param, Sample] (a, Env env)            -- ^ guide Q(X; λ)
@@ -63,7 +63,7 @@ viLoop num_timesteps num_samples guide hdlGuide model hdlModel  (guideParams_0, 
      2. Compute an estimate of the ELBO gradient: E[δelbo]
      3. Update the parameters λ of the guide
 -}
-viStep :: (LastMember (Lift Sampler) fs, Show (Env env))
+viStep :: (HasSampler fs, Show (Env env))
   => Int                                          -- ^ time step index (t)
   -> Int                                          -- ^ number of samples to estimate the gradient over (L)
   -> Prog [Param, Sample] (a, Env env)            -- ^ guide Q(X; λ)

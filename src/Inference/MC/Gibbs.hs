@@ -19,7 +19,7 @@ import Model ( Model, handleCore, ProbProg )
 import Effects.ObsRW ( ObsRW )
 import Env ( Env, ContainsVars (varsToStrs), Vars )
 import Effects.Dist ( Dist, Addr, Tag )
-import Effects.Lift ( Lift, lift, handleLift, liftPutStrLn )
+import Effects.Lift ( Lift, lift, handleLift, liftPutStrLn, HasSampler )
 import Sampler ( Sampler, sampleRandom )
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.RWM as RWM
@@ -54,7 +54,7 @@ handleModel prog ((idx, logp), strace)  =
   ((assocR . first (second (idx,)) <$>) . (Metropolis.reuseSamples strace . SIM.handleObs . RWM.weighJoint logp)) prog
 
 -- | For simplicity, the acceptance ratio is p(X', Y)/p(X, Y), but should be p(X' \ {x_i}, Y)/p(X \ {x_i}, Y)
-handleAccept :: LastMember (Lift Sampler) fs => Prog (Accept (Int, LogP) : fs) a -> Prog fs a
+handleAccept :: HasSampler fs => Prog (Accept (Int, LogP) : fs) a -> Prog fs a
 handleAccept (Val x)    = pure x
 handleAccept (Op op k) = case discharge op of
     Right (Propose ((idx, _), strace))

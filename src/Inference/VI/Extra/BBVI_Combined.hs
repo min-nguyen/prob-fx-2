@@ -49,7 +49,7 @@ bbvi num_timesteps num_samples model env_in = do
 
 {- | BBVI on a probabilistic program.
 -}
-bbviInternal :: forall fs a. (LastMember (Lift Sampler) fs)
+bbviInternal :: forall fs a. (HasSampler fs)
   => Int                        -- ^ number of optimisation steps (T)
   -> Int                        -- ^ number of samples to estimate the gradient over (L)
   -> DTrace
@@ -65,7 +65,7 @@ bbviInternal num_timesteps num_samples proposals_0 bbvi_prog = do
      2. Compute an estimate of the ELBO gradient: E[δelbo]
      3. Update the proposal distributions: Q
 -}
-bbviStep :: (ProbSig es, LastMember (Lift Sampler) fs)
+bbviStep :: (ProbSig es, HasSampler fs)
   => Int                            -- ^ number of samples to estimate the gradient over (L)
   -> Prog (Score : es) a            -- ^ initial bbvi probabilistic program
   -> DTrace                         -- ^ proposal distributions (Q)

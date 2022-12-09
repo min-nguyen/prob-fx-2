@@ -30,7 +30,7 @@ import           PrimDist
 import           Model ( Model, handleCore, ProbProg )
 import           Effects.ObsRW ( ObsRW )
 import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), pattern SampPrj, pattern ObsPrj )
-import           Effects.Lift ( Lift, lift, handleLift, liftPutStrLn )
+import           Effects.Lift ( Lift, lift, handleLift, liftPutStrLn, HasSampler )
 import qualified Inference.MC.SIM as SIM
 import           Inference.MC.Metropolis as Metropolis
 import           Sampler ( Sampler, sampleRandom )
@@ -58,7 +58,7 @@ mh n model env_in obs_vars  = do
 
 {- | MH inference on a probabilistic program.
 -}
-mhInternal :: (LastMember (Lift Sampler) fs)
+mhInternal :: (HasSampler fs)
   => Int                                   -- ^ number of MH iterations
   -> [Tag]                                 -- ^ tags indicating variables of interest
   -> STrace                                -- ^ initial sample trace
@@ -92,7 +92,7 @@ traceLogProbs lptrace (Op op k) = case op of
     - Accept using the ratio:
        p(X', Y')q(X | X')/p(X, Y)q(X' | X)
 -}
-handleAccept :: LastMember (Lift Sampler) fs
+handleAccept :: HasSampler fs
   => [Tag]
   -> Prog (Accept (Addr, LPTrace) : fs) a
   -> Prog fs a

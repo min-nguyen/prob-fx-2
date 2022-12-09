@@ -15,7 +15,7 @@ import           Control.Monad ( mapAndUnzipM )
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Effects.Dist ( Addr, Observe (Observe), Sample, pattern ObsPrj )
-import           Effects.Lift ( Lift, handleLift, lift )
+import           Effects.Lift ( Lift, handleLift, lift, HasSampler )
 import           LogP ( LogP, logMeanExp )
 import           Prog ( Prog (..), weakenProg, Member, discharge, call, weaken, LastMember, Members )
 import           Sampler
@@ -53,7 +53,7 @@ type ResampleHandler fs ctx = forall a. Prog (Resample ctx : fs) a -> Prog fs a
 
 {- | A top-level template for sequential importance sampling.
 -}
-sis :: (LastMember (Lift Sampler) fs)
+sis :: HasSampler fs
   => Int                                                        -- ^ number of particles
   -> ParticleHandler ctx                                        -- ^ handler for running particles
   -> ctx
@@ -67,7 +67,7 @@ sis n_prts hdlParticle ctx_0 prog_0  = do
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
-loopSIS :: forall ctx fs a. (LastMember (Lift Sampler) fs)
+loopSIS :: forall ctx fs a. HasSampler fs
   => ParticleHandler ctx                                 -- ^ handler for running particles
   -> ProbProg a                                          -- ^ initial probabilistic program
   -> ([ProbProg a], [ctx])                               -- ^ input particles and corresponding contexts

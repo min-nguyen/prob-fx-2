@@ -23,7 +23,7 @@ import Model ( Model, handleCore, ProbProg )
 import Effects.ObsRW ( ObsRW )
 import Env ( ContainsVars(..), Vars, Env )
 import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr )
-import Effects.Lift ( Lift, lift, handleLift )
+import Effects.Lift ( Lift, lift, handleLift, HasSampler )
 import qualified Inference.MC.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
 
@@ -47,7 +47,7 @@ type ModelHandler ctx = forall a. ProbProg a -> (ctx, STrace) -> Sampler (a, (ct
 
 {- | A general framework for Metropolis inference.
 -}
-metropolisLoop :: (LastMember (Lift Sampler) fs)
+metropolisLoop :: (HasSampler fs)
    => Int                                                                    -- ^ number of iterations
    -> (ctx, STrace)                                                          -- ^ initial context + sample trace
    -> ModelHandler ctx                                                        -- ^ model handler
@@ -61,7 +61,7 @@ metropolisLoop n (ctx_0, strace_0) hdlModel prog_0 = do
 
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
-metropolisStep :: (LastMember (Lift Sampler) fs)
+metropolisStep :: (HasSampler fs)
   => ModelHandler ctx                                                       -- ^ model handler
   -> ProbProg a                                                             -- ^ probabilistic program
   -> [(a, (ctx, STrace))]                                                   -- ^ previous trace

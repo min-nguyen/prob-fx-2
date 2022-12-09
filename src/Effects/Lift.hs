@@ -2,12 +2,14 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 {- | For lifting arbitrary monadic computations into an algebraic effect setting.
 -}
 
 module Effects.Lift (
     Lift(..)
+  , HasSampler
   , lift
   , liftPrint
   , liftPutStrLn
@@ -18,6 +20,8 @@ import Sampler
 
 -- | Lift a monadic computation @m a@ into the effect @Lift m@
 newtype Lift m a = Lift (m a)
+
+type HasSampler es = LastMember (Lift Sampler) es
 
 -- | Wrapper function for calling @Lift@ as the last effect
 lift :: LastMember (Lift m) es => m a -> Prog es a

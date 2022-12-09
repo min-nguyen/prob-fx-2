@@ -69,7 +69,7 @@ rmsmc n_prts mh_steps model env_in obs_vars = do
 
 {- | Call RMSMC on a probabilistic program.
 -}
-rmsmcInternal :: (LastMember (Lift Sampler) fs)
+rmsmcInternal :: (HasSampler fs)
   => Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of MH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
@@ -104,7 +104,7 @@ handleObs (Op op k) = case discharge op of
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using MH.
 -}
-handleResample :: (LastMember (Lift Sampler) fs)
+handleResample :: (HasSampler fs)
   => Int                                          -- ^ number of MH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> Prog (Resample TracedParticle : fs) a

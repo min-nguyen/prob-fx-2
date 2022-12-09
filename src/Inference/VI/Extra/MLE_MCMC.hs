@@ -54,7 +54,7 @@ mle num_timesteps num_samples model_q model_env model_p = do
   -- | Run BBVI for T optimisation steps
   handleLift (mleInternal num_timesteps num_samples model_q' model_p proposals_0)
 
-mleInternal :: (LastMember (Lift Sampler) fs, Show (Env env))
+mleInternal :: (HasSampler fs, Show (Env env))
   => Int                                    -- ^ number of optimisation steps (T)
   -> Int                                    -- ^ number of samples to estimate the gradient over (L)
   -> Prog [Observe, Sample] (a, Env env)    -- ^ model Q ≈ P(X | Y)
@@ -73,7 +73,7 @@ mleInternal num_timesteps num_samples model_q model_p params_0 =
               - the gradient log-pdfs: δlog(P(Y=y, X=x; θ))
      2. Update the model parameters P(θ)
 -}
-mleStep :: (LastMember (Lift Sampler) fs, Show (Env env))
+mleStep :: (HasSampler fs, Show (Env env))
   => Int                                                        -- ^ time step index (t)
   -> ProbProg (a, Env env)                                      -- ^ model Q ≈ P(X | Y)
   -> (ProbProg (a, Env env) -> Sampler [((a, Env env), LogP)])  -- ^ X ~ Q
