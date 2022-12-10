@@ -23,7 +23,7 @@ import           Env
 import           Prog
 import           Model
 import           Sampler
-import           Trace  (STrace, filterTrace)
+import           Trace  (Trace, filterTrace)
 import           LogP
 import           Control.Monad
 import           Control.Applicative
@@ -47,7 +47,7 @@ import           Util
 data TracedParticle = TracedParticle {
     particleLogProb   :: LogP
   , particleObsAddr   :: Addr
-  , particleSTrace    :: STrace
+  , particleSTrace    :: Trace
   }
 
 {- | Call RMSMC on a model.
@@ -85,16 +85,16 @@ rmsmcInternal n_prts mh_steps tags  =
 -}
 handleParticle :: ProbProg a -> Sampler (ProbProg a, TracedParticle)
 handleParticle = (asTracedParticle <$>) . handleSamp . handleObs where
-  asTracedParticle ((prt, logp, α), strace) = (prt, TracedParticle logp α strace)
+  asTracedParticle ((prt, logp, α), trace) = (prt, TracedParticle logp α trace)
 
-handleSamp :: Prog '[Sample] a -> Sampler (a, STrace)
+handleSamp :: Prog '[Sample] a -> Sampler (a, Trace)
 handleSamp = loop Map.empty where
-  loop :: STrace ->  Prog '[Sample] a -> Sampler (a, STrace)
-  loop strace (Val x)   = pure (x, strace)
-  loop strace (Op op k) = case discharge1 op of
+  loop :: Trace ->  Prog '[Sample] a -> Sampler (a, Trace)
+  loop trace (Val x)   = pure (x, trace)
+  loop trace (Op op k) = case discharge1 op of
     (Sample d α) -> do r <- sampleRandom
                        let y = draw d r
-                       loop (Map.insert α r strace) (k y)
+                       loop (Map.insert α r trace) (k y)
 
 handleObs :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, LogP, Addr)
 handleObs (Val x)   = pure (Val x, 0, Addr 0 "" 0)
@@ -119,23 +119,23 @@ handleResample mh_steps tags = loop where
           -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head')
               resampled_α      = (particleObsAddr . head) resampled_ctxs
           -- | Get the sample trace of each resampled particle
-              resampled_straces = map particleSTrace resampled_ctxs
+              resampled_traces = map particleSTrace resampled_ctxs
           -- | Insert break point to perform MH up to
               partial_model = breakObserve resampled_α prog_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
           mh_trace <-  mapM ( fmap head
                             . flip (MH.mhInternal mh_steps tags) partial_model
-                           ) resampled_straces
+                           ) resampled_traces
           {- | Get:
               1) the continuations of each particle from the break point
               2) the log prob traces of each particle up until the break point
               3) the sample traces of each particle up until the break point -}
-          let (rejuv_prts, ((_, lp_traces), rejuv_straces)) = second (first unzip . unzip) (unzip mh_trace)
+          let (rejuv_prts, ((_, lp_traces), rejuv_traces)) = second (first unzip . unzip) (unzip mh_trace)
 
               -- | Recompute the log weights of all particles up until the break point
               rejuv_lps     = map (sum . map snd . Map.toList) lp_traces
 
-              rejuv_ctxs    = zipWith3 TracedParticle rejuv_lps (repeat resampled_α) rejuv_straces
+              rejuv_ctxs    = zipWith3 TracedParticle rejuv_lps (repeat resampled_α) rejuv_traces
 
           (loop . k) (rejuv_prts, rejuv_ctxs)
     Right (Accum ctxs ctxs') ->
@@ -146,8 +146,8 @@ normaliseParticles :: [TracedParticle] -> [TracedParticle] -> [TracedParticle]
 normaliseParticles ctxs ctxs' =
     let log_ps   = uncurry SMC.normaliseParticles (mapT2 (particleLogProb <$>)  (ctxs, ctxs'))
         α_obs    = particleObsAddr <$> ctxs'
-        straces  = uncurry (zipWith Map.union) (mapT2 (particleSTrace <$>)   (ctxs', ctxs))
-    in  zipWith3 TracedParticle log_ps α_obs straces
+        traces  = uncurry (zipWith Map.union) (mapT2 (particleSTrace <$>)   (ctxs', ctxs))
+    in  zipWith3 TracedParticle log_ps α_obs traces
 
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
      It returns the rest of the computation.

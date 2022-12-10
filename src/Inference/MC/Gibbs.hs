@@ -12,7 +12,7 @@ module Inference.MC.Gibbs where
 import Control.Monad ( replicateM )
 import qualified Data.Map as Map
 import Prog ( Prog(..), discharge, LastMember )
-import Trace ( STrace, LPTrace, filterTrace )
+import Trace ( Trace, LPTrace, filterTrace )
 import LogP ( LogP (..), expLogP )
 import PrimDist
 import Model ( Model, handleCore, ProbProg )
@@ -38,30 +38,30 @@ gibbs n model env_in   = do
   -- | Handle model to probabilistic program
   let prog_0   = handleCore env_in model
       ctx_0    = (0, LogP 0)
-      strace_0 = Map.empty
+      trace_0 = Map.empty
   gibbs_trace <-  ( handleLift
                   . handleAccept
-                  . metropolisLoop n (ctx_0, strace_0) handleModel) prog_0
+                  . metropolisLoop n (ctx_0, trace_0) handleModel) prog_0
   pure (map (snd . fst) gibbs_trace)
 
 {- | Handler for one iteration of Gibbs.
 -}
 handleModel ::
      ProbProg a                          -- ^ probabilistic program
-  -> ((Int, LogP), STrace)               -- ^ proposed index + initial log-prob + initial sample trace
-  -> Sampler (a, ((Int, LogP), STrace))  -- ^ proposed index + final log-prob   + final sample trace
-handleModel prog ((idx, logp), strace)  =
-  ((assocR . first (second (idx,)) <$>) . (Metropolis.reuseSamples strace . SIM.handleObs . RWM.joint logp)) prog
+  -> ((Int, LogP), Trace)               -- ^ proposed index + initial log-prob + initial sample trace
+  -> Sampler (a, ((Int, LogP), Trace))  -- ^ proposed index + final log-prob   + final sample trace
+handleModel prog ((idx, logp), trace)  =
+  ((assocR . first (second (idx,)) <$>) . (Metropolis.reuseSamples trace . SIM.handleObs . RWM.joint logp)) prog
 
 -- | For simplicity, the acceptance ratio is p(X', Y)/p(X, Y), but should be p(X' \ {x_i}, Y)/p(X \ {x_i}, Y)
 handleAccept :: HasSampler fs => Prog (Accept (Int, LogP) : fs) a -> Prog fs a
 handleAccept (Val x)    = pure x
 handleAccept (Op op k) = case discharge op of
-    Right (Propose ((idx, _), strace))
+    Right (Propose ((idx, _), trace))
       ->  do r <- lift sampleRandom
-             let prp_strace = Map.updateAt (\_ _ -> Just r) (idx `mod` length strace) strace
+             let prp_trace = Map.updateAt (\_ _ -> Just r) (idx `mod` length trace) trace
                  prp_ctx    = (idx + 1, LogP 0)
-             (handleAccept . k) (prp_ctx, prp_strace)
+             (handleAccept . k) (prp_ctx, prp_trace)
     Right (Accept (_, logp) (_, logp'))
       ->  do u <- lift $ sample (mkUniform 0 1)
              (handleAccept . k) (expLogP (logp' - logp) > u)

@@ -21,7 +21,7 @@
 
 module Trace (
   -- * Sample trace
-    STrace
+    Trace
   , filterTrace
   -- * Log-probability trace
   , LPTrace
@@ -60,10 +60,6 @@ import           Data.Kind (Constraint)
 import           Prelude hiding (lookup, map)
 import Control.Applicative ((<|>))
 
-{- | The type of generic traces, mapping addresses of probabilistic operations
-     to some data.
--}
-type Trace a = Map Addr a
 
 -- | Retrieve the values for the specified observable variable names
 filterTrace ::
@@ -78,12 +74,12 @@ filterTrace tags = filterByKey (\(Addr _ tag _)  -> tag `elem` tags)
 {- | The type of inverse sample traces, mapping addresses of Sample operations
      to the random values between 0 and 1 passed to their inverse CDF functions.
 -}
-type STrace = Trace Double
+type Trace = Map Addr Double
 
 {- | The type of log-probability traces, mapping addresses of sample/observe operations
      to their log probabilities.
 -}
-type LPTrace = Trace LogP
+type LPTrace = Map Addr LogP
 
 {- | Dependent map. -}
 data DistTrace c where

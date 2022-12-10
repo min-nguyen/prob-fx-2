@@ -25,7 +25,7 @@ MHInv-LR50,2.168895578344375e-2,4.355504358447563e-2,6.482763600725897e-2,8.6817
 MHInv-HMM50,4.364589721271627e-2,8.541110556045053e-2,0.12997180163513783,0.16811134448810222,0.21258858153317609
 MHInv-LDA100,0.1390644528927277,0.28075413461422916,0.42439315995746557,0.5913696782301182,0.7408875116034324
 
-------------------------------- Running all benchmarks using MHInv and STrace
+------------------------------- Running all benchmarks using MHInv and Trace
 Dataset size,200,400,600,800,1000
 LR-SIM1,7.262231071036301e-4,1.8160670730628283e-3,3.35127081723928e-3,5.37520414006663e-3,7.938759891171494e-3
 LR-LW100,4.9970795045125395e-2,0.15260452311843245,0.29436175166100537,0.4935568012292606,0.7357166124165815
@@ -610,9 +610,9 @@ Updates:
   - Metropolis template reworked:
       - The operations of Accept have been reworked to have different argument and return types
       - The type of model handlers is changed from:
-            STrace -> ProbProg a -> Sampler ((a, ctx), STrace)
+            Trace -> ProbProg a -> Sampler ((a, ctx), Trace)
         to:
-            (ctx, STrace) -> ProbProg a -> Sampler (a, (ctx, STrace))
+            (ctx, Trace) -> ProbProg a -> Sampler (a, (ctx, Trace))
         and so their implementations now require a lot of tuple reshaping at the end:
             `assocR . first (second (α,)) <$>)`
 

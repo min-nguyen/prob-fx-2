@@ -13,7 +13,7 @@ module Inference.MC.PMMH where
 import Prog
 import Sampler
 import LogP
-import Trace (STrace, filterTrace)
+import Trace (Trace, filterTrace)
 import Effects.Dist
 import PrimDist
 import Model
@@ -39,10 +39,10 @@ pmmh :: forall env vars a. (env `ContainsVars` vars)
 pmmh mh_steps n_prts model env_in obs_vars = do
   -- | Handle model to probabilistic program
   let prog_0   = handleCore env_in model
-      strace_0 = Map.empty
+      trace_0 = Map.empty
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
-  pmmh_trace <- handleLift (pmmhInternal mh_steps n_prts tags strace_0 prog_0)
+  pmmh_trace <- handleLift (pmmhInternal mh_steps n_prts tags trace_0 prog_0)
   pure (map (snd . fst) pmmh_trace)
 
 {- | PMMH inference on a probabilistic program.
@@ -51,11 +51,11 @@ pmmhInternal :: (HasSampler fs)
   => Int                                          -- ^ number of MH steps
   -> Int                                          -- ^ number of particles
   -> [Tag]                                        -- ^ parameter names
-  -> STrace                                       -- ^ initial sample trace
+  -> Trace                                       -- ^ initial sample trace
   -> ProbProg a                                   -- ^ probabilistic program
-  -> Prog fs [(a, (LogP, STrace))]
-pmmhInternal mh_steps n_prts tags strace_0 =
-  handleAccept tags . metropolisLoop mh_steps (ctx_0, strace_0) (handleModel n_prts tags)
+  -> Prog fs [(a, (LogP, Trace))]
+pmmhInternal mh_steps n_prts tags trace_0 =
+  handleAccept tags . metropolisLoop mh_steps (ctx_0, trace_0) (handleModel n_prts tags)
   where
     ctx_0 = LogP 0
 
@@ -65,16 +65,16 @@ handleModel ::
      Int                                          -- ^ number of particles
   -> [Tag]                                        -- ^ parameter names
   -> ProbProg a                                   -- ^ probabilistic program
-  -> (LogP, STrace)                               -- ^ proposed initial log-prob + sample trace
-  -> Sampler (a, (LogP, STrace))                  -- ^ proposed final log-prob + sample trace
-handleModel n_prts tags  prog (_, strace)  = do
-  (a, strace') <- (Metropolis.reuseSamples strace . SIM.handleObs) prog
-  let params = filterTrace tags strace'
+  -> (LogP, Trace)                               -- ^ proposed initial log-prob + sample trace
+  -> Sampler (a, (LogP, Trace))                  -- ^ proposed final log-prob + sample trace
+handleModel n_prts tags  prog (_, trace)  = do
+  (a, trace') <- (Metropolis.reuseSamples trace . SIM.handleObs) prog
+  let params = filterTrace tags trace'
   prts   <- ( handleLift
             . SMC.handleResampleMul
             . SIS.sis n_prts (((fst <$>) . Metropolis.reuseSamples params) . SMC.handleObs) (LogP 0)) prog
   let logZ = logMeanExp (map snd prts)
-  pure (a, (logZ, strace'))
+  pure (a, (logZ, trace'))
 
 {- | An acceptance mechanism for PMMH.
 -}
@@ -84,10 +84,10 @@ handleAccept :: HasSampler fs
 handleAccept tags = loop where
   loop (Val x)   = pure x
   loop (Op op k) = case discharge op of
-    Right (Propose (_, strace))
-      ->  do (_, prp_strace) <- lift (MH.propose tags strace)
+    Right (Propose (_, trace))
+      ->  do (_, prp_trace) <- lift (MH.propose tags trace)
              let prp_ctx = LogP 0
-             (loop . k) (prp_ctx, prp_strace)
+             (loop . k) (prp_ctx, prp_trace)
     Right (Accept log_p log_p')
       ->  do u <- lift $ sample (mkUniform 0 1)
              (loop . k) (expLogP (log_p' - log_p) > u)

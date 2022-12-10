@@ -16,7 +16,7 @@ import Data.Set ((\\))
 import qualified Data.Set as Set
 import Data.Maybe ( fromJust )
 import Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg )
-import Trace ( STrace, LPTrace, filterTrace )
+import Trace ( Trace, LPTrace, filterTrace )
 import LogP ( LogP )
 import PrimDist
 import Model ( Model, handleCore, ProbProg )
@@ -32,9 +32,9 @@ import Sampler ( Sampler, sampleRandom )
 data Accept ctx a where
   Propose
     -- | previous context and sample trace
-    :: (ctx, STrace)
+    :: (ctx, Trace)
     -- | proposed *initial* context and sample trace
-    -> Accept ctx (ctx, STrace)
+    -> Accept ctx (ctx, Trace)
   Accept
     -- | previous context
     :: ctx
@@ -43,19 +43,19 @@ data Accept ctx a where
     -- | whether the proposal is accepted or not
     -> Accept ctx Bool
 
-type ModelHandler ctx = forall a. ProbProg a -> (ctx, STrace) -> Sampler (a, (ctx, STrace))
+type ModelHandler ctx = forall a. ProbProg a -> (ctx, Trace) -> Sampler (a, (ctx, Trace))
 
 {- | A general framework for Metropolis inference.
 -}
 metropolisLoop :: (HasSampler fs)
    => Int                                                                    -- ^ number of iterations
-   -> (ctx, STrace)                                                          -- ^ initial context + sample trace
+   -> (ctx, Trace)                                                          -- ^ initial context + sample trace
    -> ModelHandler ctx                                                        -- ^ model handler
    -> ProbProg a                                                             -- ^ probabilistic program
-   -> Prog (Accept ctx : fs) [(a, (ctx, STrace))]                            -- ^ trace of accepted outputs
-metropolisLoop n (ctx_0, strace_0) hdlModel prog_0 = do
+   -> Prog (Accept ctx : fs) [(a, (ctx, Trace))]                            -- ^ trace of accepted outputs
+metropolisLoop n (ctx_0, trace_0) hdlModel prog_0 = do
   -- | Perform initial run of mh
-  ar_ctx_0 <- lift (hdlModel prog_0 (ctx_0, strace_0))
+  ar_ctx_0 <- lift (hdlModel prog_0 (ctx_0, trace_0))
   -- | A function performing n mhSteps using initial mh_ctx. The most recent samples are at the front of the trace.
   foldl (>=>) pure (replicate n (metropolisStep hdlModel prog_0)) [ar_ctx_0]
 
@@ -64,29 +64,29 @@ metropolisLoop n (ctx_0, strace_0) hdlModel prog_0 = do
 metropolisStep :: (HasSampler fs)
   => ModelHandler ctx                                                       -- ^ model handler
   -> ProbProg a                                                             -- ^ probabilistic program
-  -> [(a, (ctx, STrace))]                                                   -- ^ previous trace
-  -> Prog (Accept ctx : fs) [(a, (ctx, STrace))]                            -- ^ updated trace
-metropolisStep hdlModel prog_0 trace = do
+  -> [(a, (ctx, Trace))]                                                   -- ^ previous trace
+  -> Prog (Accept ctx : fs) [(a, (ctx, Trace))]                            -- ^ updated trace
+metropolisStep hdlModel prog_0 markov_chain = do
   -- | Get previous iteration output
-  let (_, (ctx, strace)) = head trace
+  let (_, (ctx, trace)) = head markov_chain
   -- | Construct an *initial* proposal
-  prp                   <- call (Propose (ctx, strace))
+  prp                   <- call (Propose (ctx, trace))
   -- | Execute the model under the initial proposal to return the *final* proposal
-  (r', (ctx', strace')) <- lift (hdlModel prog_0 prp )
+  (r', (ctx', trace')) <- lift (hdlModel prog_0 prp )
   -- | Compute acceptance ratio
   b                     <- call (Accept ctx ctx')
-  if b then pure ((r', (ctx', strace')):trace)
-       else pure trace
+  if b then pure ((r', (ctx', trace')):markov_chain)
+       else pure markov_chain
 
 {- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.
 -}
-reuseSamples :: STrace -> Prog '[Sample] a -> Sampler (a, STrace)
-reuseSamples strace (Val x) = pure (x, strace)
-reuseSamples strace (Op op k) = case discharge op of
-  Right (Sample d α) ->  case Map.lookup α strace of
+reuseSamples :: Trace -> Prog '[Sample] a -> Sampler (a, Trace)
+reuseSamples trace (Val x) = pure (x, trace)
+reuseSamples trace (Op op k) = case discharge op of
+  Right (Sample d α) ->  case Map.lookup α trace of
     Nothing -> do r <- sampleRandom
                   let y = draw d r
-                  reuseSamples (Map.insert α r strace) (k y)
+                  reuseSamples (Map.insert α r trace) (k y)
     Just r  -> do let y = draw d r
-                  reuseSamples strace  (k y)
+                  reuseSamples trace  (k y)
   Left op'  -> error "MH.handleSamp: Left should not happen"

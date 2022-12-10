@@ -26,7 +26,7 @@ module Inference.MC.RWM where
 import Control.Monad ( replicateM )
 import qualified Data.Map as Map
 import Prog ( Prog(..), discharge, LastMember )
-import Trace ( STrace, LPTrace, filterTrace )
+import Trace ( Trace, LPTrace, filterTrace )
 import LogP ( LogP (..), expLogP )
 import PrimDist
 import Model ( Model, handleCore, ProbProg )
@@ -50,18 +50,18 @@ rwm n model env_in   = do
   -- | Handle model to probabilistic program
   let prog_0   = handleCore env_in model
       ctx_0    = LogP 0
-      strace_0 = Map.empty
-  rwm_trace <- (handleLift . handleAccept . metropolisLoop n (ctx_0, strace_0) handleModel) prog_0
+      trace_0 = Map.empty
+  rwm_trace <- (handleLift . handleAccept . metropolisLoop n (ctx_0, trace_0) handleModel) prog_0
   pure (map (snd . fst) rwm_trace)
 
 {- | Handler for one iteration of RWM.
 -}
 handleModel ::
       ProbProg a                         -- ^ probabilistic program
-  -> (LogP, STrace)                     -- ^ sample trace of previous RWM iteration
-  -> Sampler (a, (LogP, STrace))        -- ^ ((model output, sample trace), log-probability trace)
-handleModel prog (logp, strace)  = do
-  ((assocR <$>) . Metropolis.reuseSamples strace . SIM.handleObs . joint logp) prog
+  -> (LogP, Trace)                     -- ^ sample trace of previous RWM iteration
+  -> Sampler (a, (LogP, Trace))        -- ^ ((model output, sample trace), log-probability trace)
+handleModel prog (logp, trace)  = do
+  ((assocR <$>) . Metropolis.reuseSamples trace . SIM.handleObs . joint logp) prog
 
 {- | Record the joint log-probability P(Y, X)
 -}
@@ -79,13 +79,13 @@ joint logp (Op op k) = case op of
 handleAccept :: HasSampler fs => Prog (Accept LogP : fs) a -> Prog fs a
 handleAccept (Val x)   = pure x
 handleAccept (Op op k) = case discharge op of
-  Right (Propose (_, strace))
-    ->  do  let αs = Map.keys strace
+  Right (Propose (_, trace))
+    ->  do  let αs = Map.keys trace
             rs <- replicateM (length αs) (lift sampleRandom)
-            let prp_strace = Map.union (Map.fromList (zip αs rs)) strace
+            let prp_trace = Map.union (Map.fromList (zip αs rs)) trace
                 prp_ctx    = LogP 0
             -- liftPutStrLn (show $ rs)
-            (handleAccept . k) (prp_ctx, prp_strace)
+            (handleAccept . k) (prp_ctx, prp_trace)
   Right (Accept logp logp')
     ->  do  u <- lift $ sample (mkUniform 0 1)
             -- liftPutStrLn (show $ logp' - logp)

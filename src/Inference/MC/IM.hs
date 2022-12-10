@@ -6,7 +6,7 @@
 module Inference.MC.IM where
 
 import qualified Data.Map as Map
-import Trace ( STrace )
+import Trace ( Trace )
 import LogP ( LogP (..) )
 import Model ( Model, handleCore, ProbProg )
 import Effects.ObsRW ( ObsRW )
@@ -30,15 +30,15 @@ im n model env_in   = do
   -- | Handle model to probabilistic program
   let prog_0   = handleCore env_in model
       ctx_0    = LogP 0
-      strace_0 = Map.empty
-  rwm_trace <- (handleLift . RWM.handleAccept . Metropolis.metropolisLoop n (ctx_0, strace_0) handleModel) prog_0
+      trace_0 = Map.empty
+  rwm_trace <- (handleLift . RWM.handleAccept . Metropolis.metropolisLoop n (ctx_0, trace_0) handleModel) prog_0
   pure (map (snd . fst) rwm_trace)
 
 {- | Handler for one iteration of IM.
 -}
 handleModel ::
      ProbProg a                         -- ^ probabilistic program
-  -> (LogP, STrace)                     -- ^ proposed initial log-prob + sample trace
-  -> Sampler (a, (LogP, STrace))        -- ^ proposed final log-prob + sample trace
-handleModel prog (logp, strace) =
-  ((assocR <$>) . Metropolis.reuseSamples strace . LW.likelihood logp) prog
+  -> (LogP, Trace)                     -- ^ proposed initial log-prob + sample trace
+  -> Sampler (a, (LogP, Trace))        -- ^ proposed final log-prob + sample trace
+handleModel prog (logp, trace) =
+  ((assocR <$>) . Metropolis.reuseSamples trace . LW.likelihood logp) prog
