@@ -57,16 +57,16 @@ metropolisLoop n (s_0, trace_0) hdlModel prog_0 = do
   -- | Perform initial run of mh
   ar_s_0 <- lift (hdlModel prog_0 (s_0, trace_0))
   -- | A function performing n mhSteps using initial mh_s. The most recent samples are at the front of the trace.
-  foldl (>=>) pure (replicate n (metropolisStep hdlModel prog_0)) [ar_s_0]
+  foldl (>=>) pure (replicate n (metropolisStep prog_0 hdlModel )) [ar_s_0]
 
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
 metropolisStep :: (HasSampler fs)
-  => ModelHandler s                                                       -- ^ model handler
-  -> ProbProg a                                                             -- ^ probabilistic program
+  => ProbProg a                                                       -- ^ model handler
+  ->  ModelHandler s                                                  -- ^ probabilistic program
   -> [(a, (s, Trace))]                                                   -- ^ previous trace
   -> Prog (Accept s : fs) [(a, (s, Trace))]                            -- ^ updated trace
-metropolisStep hdlModel prog_0 markov_chain = do
+metropolisStep prog_0 hdlModel markov_chain = do
   -- | Get previous iteration output
   let (_, (s, trace)) = head markov_chain
   -- | Construct an *initial* proposal
