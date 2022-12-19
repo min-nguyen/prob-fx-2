@@ -55,7 +55,7 @@ pmmhInternal :: (HasSampler fs)
   -> ProbProg a                                   -- ^ probabilistic program
   -> Prog fs [(a, (LogP, Trace))]
 pmmhInternal mh_steps n_prts tags trace_0 =
-  handleAccept tags . metropolisLoop mh_steps (s_0, trace_0) (handleModel n_prts tags)
+  handleAccept tags . metroLoop mh_steps (s_0, trace_0) (handleModel n_prts tags)
   where
     s_0 = LogP 0
 

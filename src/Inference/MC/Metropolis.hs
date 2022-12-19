@@ -47,26 +47,26 @@ type ModelHandler s = forall a. ProbProg a -> (s, Trace) -> Sampler (a, (s, Trac
 
 {- | A general framework for Metropolis inference.
 -}
-metropolisLoop :: (HasSampler fs)
+metroLoop :: (HasSampler fs)
    => Int                                                                    -- ^ number of iterations
    -> (s, Trace)                                                          -- ^ initial context + sample trace
    -> ModelHandler s                                                        -- ^ model handler
    -> ProbProg a                                                             -- ^ probabilistic program
    -> Prog (Accept s : fs) [(a, (s, Trace))]                            -- ^ trace of accepted outputs
-metropolisLoop n (s_0, trace_0) hdlModel prog_0 = do
+metroLoop n (s_0, trace_0) hdlModel prog_0 = do
   -- | Perform initial run of mh
   ar_s_0 <- lift (hdlModel prog_0 (s_0, trace_0))
   -- | A function performing n mhSteps using initial mh_s. The most recent samples are at the front of the trace.
-  foldl (>=>) pure (replicate n (metropolisStep prog_0 hdlModel )) [ar_s_0]
+  foldl (>=>) pure (replicate n (metroStep prog_0 hdlModel )) [ar_s_0]
 
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
-metropolisStep :: (HasSampler fs)
+metroStep :: (HasSampler fs)
   => ProbProg a                                                       -- ^ model handler
   ->  ModelHandler s                                                  -- ^ probabilistic program
   -> [(a, (s, Trace))]                                                   -- ^ previous trace
   -> Prog (Accept s : fs) [(a, (s, Trace))]                            -- ^ updated trace
-metropolisStep prog_0 hdlModel markov_chain = do
+metroStep prog_0 hdlModel markov_chain = do
   -- | Get previous iteration output
   let (_, (s, trace)) = head markov_chain
   -- | Construct an *initial* proposal
