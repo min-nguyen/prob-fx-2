@@ -65,9 +65,9 @@ mhInternal :: (HasSampler fs)
   -> ProbProg a                            -- ^ probabilistic program
   -> Prog fs [(a, ((Addr, LPTrace), Trace))]
 mhInternal n tags trace_0 =
-  handleAccept tags . metropolisLoop n (ctx_0, trace_0) handleModel
+  handleAccept tags . metropolisLoop n (s_0, trace_0) handleModel
   where
-    ctx_0 = (Addr 0 "" 0, Map.empty)
+    s_0 = (Addr 0 "" 0, Map.empty)
 
 {- | Handler for one iteration of MH.
 -}
@@ -102,8 +102,8 @@ handleAccept tags = loop
   loop (Op op k) = case discharge op of
     Right (Propose (_, trace))
       ->  do (α, prp_trace) <- lift (propose tags trace)
-             let prp_ctx = (α, Map.empty)
-             (loop . k) (prp_ctx, prp_trace)
+             let prp_s = (α, Map.empty)
+             (loop . k) (prp_s, prp_trace)
     Right (Accept (_, lptrace) (α', lptrace'))
       ->  do  let dom_logα = log (fromIntegral $ Map.size lptrace) - log (fromIntegral $ Map.size lptrace')
                   sampled  = Set.singleton α' `Set.union` (Map.keysSet lptrace \\ Map.keysSet lptrace')

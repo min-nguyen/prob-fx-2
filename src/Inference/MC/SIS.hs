@@ -27,64 +27,64 @@ import           Data.Bifunctor
 
 {- | The @Resample@ effect for resampling according to collection of particle contexts.
 -}
-data Resample ctx a where
+data Resample s a where
   Resample
     -- | (particles, contexts)
-    :: ([ProbProg a], [ctx])
+    :: ([ProbProg a], [s])
     -- | initial probabilistic program
     -> ProbProg a
-    -- | (resampled programs, resampled ctxs)
-    -> Resample ctx ([ProbProg a], [ctx])
+    -- | (resampled programs, resampled ss)
+    -> Resample s ([ProbProg a], [s])
   Accum
     -- | (particles, contexts)
-    :: [ctx]
+    :: [s]
     -- | initial probabilistic program
-    -> [ctx]
-    -- | (resampled programs, resampled ctxs)
-    -> Resample ctx [ctx]
+    -> [s]
+    -- | (resampled programs, resampled ss)
+    -> Resample s [s]
 
 {- | A @ParticleHandler@  runs a particle to the next @Observe@ break point.
 -}
-type ParticleHandler ctx = forall a. ProbProg a -> Sampler (ProbProg a, ctx)
+type ParticleHandler s = forall a. ProbProg a -> Sampler (ProbProg a, s)
 
 {- | A @ResampleHandler@ decides which of the current particles to continue execution with.
 -}
-type ResampleHandler fs ctx = forall a. Prog (Resample ctx : fs) a -> Prog fs a
+type ResampleHandler fs s = forall a. Prog (Resample s : fs) a -> Prog fs a
 
 {- | A top-level template for sequential importance sampling.
 -}
 sis :: HasSampler fs
   => Int                                                        -- ^ number of particles
-  -> ParticleHandler ctx                                        -- ^ handler for running particles
-  -> ctx
+  -> ParticleHandler s                                        -- ^ handler for running particles
+  -> s
   -> ProbProg a                                                 -- ^ initial probabilistic program
-  -> Prog (Resample ctx : fs) [(a, ctx)]                        -- ^ (final particle output, final particle context)
-sis n_prts hdlParticle ctx_0 prog_0  = do
+  -> Prog (Resample s : fs) [(a, s)]                        -- ^ (final particle output, final particle context)
+sis n_prts hdlParticle s_0 prog_0  = do
   -- | Create an initial population of particles and contexts
-  let population = unzip $ replicate n_prts (prog_0, ctx_0)
+  let population = unzip $ replicate n_prts (prog_0, s_0)
   -- | Execute the population until termination
   loopSIS hdlParticle prog_0 population
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
-loopSIS :: forall ctx fs a. HasSampler fs
-  => ParticleHandler ctx                                 -- ^ handler for running particles
+loopSIS :: forall s fs a. HasSampler fs
+  => ParticleHandler s                                 -- ^ handler for running particles
   -> ProbProg a                                          -- ^ initial probabilistic program
-  -> ([ProbProg a], [ctx])                               -- ^ input particles and corresponding contexts
-  -> Prog (Resample ctx  : fs) [(a, ctx)]                -- ^ final particle results and corresponding contexts
+  -> ([ProbProg a], [s])                               -- ^ input particles and corresponding contexts
+  -> Prog (Resample s  : fs) [(a, s)]                -- ^ final particle results and corresponding contexts
 loopSIS hdlParticle prog_0 = loop where
-  loop :: ([ProbProg a], [ctx]) -> Prog (Resample ctx : fs) [(a, ctx)]
-  loop (prts, ctxs) = do
+  loop :: ([ProbProg a], [s]) -> Prog (Resample s : fs) [(a, s)]
+  loop (prts, ss) = do
     -- | Run particles to next checkpoint and accumulate their contexts
     -- particles' <- mapM (lift . hdlParticle) particles
-    (prts', partial_ctxs) <- mapAndUnzipM (lift . hdlParticle) prts
-    ctxs' <- call (Accum ctxs partial_ctxs)
+    (prts', partial_ss) <- mapAndUnzipM (lift . hdlParticle) prts
+    ss' <- call (Accum ss partial_ss)
     -- | Check termination status of particles
     case foldVals prts' of
       -- | If all particles have finished, return their results and contexts
-      Right vals  -> (`zip` ctxs') <$> vals
+      Right vals  -> (`zip` ss') <$> vals
       -- | Otherwise, pick the particles to continue with
-      Left  _     -> call (Resample (prts', ctxs') prog_0) >>= loop
+      Left  _     -> call (Resample (prts', ss') prog_0) >>= loop
 
 {- | Check whether a list of programs have all terminated.
      If at least one program is unfinished, return all programs.

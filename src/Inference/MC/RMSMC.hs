@@ -112,14 +112,14 @@ handleResample :: (HasSampler fs)
 handleResample mh_steps tags = loop where
   loop (Val x) = Val x
   loop (Op op k) = case discharge op of
-    Right (Resample (prts, ctxs) prog_0) ->
+    Right (Resample (prts, ss) prog_0) ->
       do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
-          idxs <- lift $ SMC.resampleMul (map particleLogProb ctxs)
-          let resampled_ctxs   = map (ctxs !! ) idxs
+          idxs <- lift $ SMC.resampleMul (map particleLogProb ss)
+          let resampled_ss   = map (ss !! ) idxs
           -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head')
-              resampled_α      = (particleObsAddr . head) resampled_ctxs
+              resampled_α      = (particleObsAddr . head) resampled_ss
           -- | Get the sample trace of each resampled particle
-              resampled_traces = map particleSTrace resampled_ctxs
+              resampled_traces = map particleSTrace resampled_ss
           -- | Insert break point to perform MH up to
               partial_model = breakObserve resampled_α prog_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
@@ -135,18 +135,18 @@ handleResample mh_steps tags = loop where
               -- | Recompute the log weights of all particles up until the break point
               rejuv_lps     = map (sum . map snd . Map.toList) lp_traces
 
-              rejuv_ctxs    = zipWith3 TracedParticle rejuv_lps (repeat resampled_α) rejuv_traces
+              rejuv_ss    = zipWith3 TracedParticle rejuv_lps (repeat resampled_α) rejuv_traces
 
-          (loop . k) (rejuv_prts, rejuv_ctxs)
-    Right (Accum ctxs ctxs') ->
-      (loop . k) (normaliseParticles ctxs ctxs')
+          (loop . k) (rejuv_prts, rejuv_ss)
+    Right (Accum ss ss') ->
+      (loop . k) (normaliseParticles ss ss')
     Left op' -> Op op' (loop . k)
 
 normaliseParticles :: [TracedParticle] -> [TracedParticle] -> [TracedParticle]
-normaliseParticles ctxs ctxs' =
-    let log_ps   = uncurry SMC.normaliseParticles (mapT2 (particleLogProb <$>)  (ctxs, ctxs'))
-        α_obs    = particleObsAddr <$> ctxs'
-        traces  = uncurry (zipWith Map.union) (mapT2 (particleSTrace <$>)   (ctxs', ctxs))
+normaliseParticles ss ss' =
+    let log_ps   = uncurry SMC.normaliseParticles (mapT2 (particleLogProb <$>)  (ss, ss'))
+        α_obs    = particleObsAddr <$> ss'
+        traces  = uncurry (zipWith Map.union) (mapT2 (particleSTrace <$>)   (ss', ss))
     in  zipWith3 TracedParticle log_ps α_obs traces
 
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.

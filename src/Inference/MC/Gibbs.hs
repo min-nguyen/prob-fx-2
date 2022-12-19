@@ -37,11 +37,11 @@ gibbs ::
 gibbs n model env_in   = do
   -- | Handle model to probabilistic program
   let prog_0   = handleCore env_in model
-      ctx_0    = (0, LogP 0)
+      s_0    = (0, LogP 0)
       trace_0 = Map.empty
   gibbs_trace <-  ( handleLift
                   . handleAccept
-                  . metropolisLoop n (ctx_0, trace_0) handleModel) prog_0
+                  . metropolisLoop n (s_0, trace_0) handleModel) prog_0
   pure (map (snd . fst) gibbs_trace)
 
 {- | Handler for one iteration of Gibbs.
@@ -60,8 +60,8 @@ handleAccept (Op op k) = case discharge op of
     Right (Propose ((idx, _), trace))
       ->  do r <- lift sampleRandom
              let prp_trace = Map.updateAt (\_ _ -> Just r) (idx `mod` length trace) trace
-                 prp_ctx    = (idx + 1, LogP 0)
-             (handleAccept . k) (prp_ctx, prp_trace)
+                 prp_s    = (idx + 1, LogP 0)
+             (handleAccept . k) (prp_s, prp_trace)
     Right (Accept (_, logp) (_, logp'))
       ->  do u <- lift $ sample (mkUniform 0 1)
              (handleAccept . k) (expLogP (logp' - logp) > u)

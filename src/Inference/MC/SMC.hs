@@ -76,8 +76,8 @@ handleResampleMul (Op op k) = case discharge op of
     let resampled_prts  = map (prts !! ) idxs
         resampled_logws = map (logws !! ) idxs
     (handleResampleMul . k) (resampled_prts, resampled_logws)
-  Right (Accum ctxs ctxs') -> do
-    (handleResampleMul . k) (normaliseParticles ctxs ctxs')
+  Right (Accum ss ss') -> do
+    (handleResampleMul . k) (normaliseParticles ss ss')
   Left op' -> Op op' (handleResampleMul . k)
 
 normaliseParticles  :: [LogP] -> [LogP] -> [LogP]
@@ -95,9 +95,9 @@ resampleMul logws = do
 handleResampleSys :: HasSampler fs => ResampleHandler fs LogP
 handleResampleSys (Val x) = Val x
 handleResampleSys (Op op k) = case discharge op of
-  Right (Resample (prts, ctxs) _) -> do
+  Right (Resample (prts, ss) _) -> do
     -- | Get the weights for each particle
-    let ws = map expLogP ctxs
+    let ws = map expLogP ss
     -- | Select particles to continue with
     u <- lift Sampler.sampleRandom
     let prob i = ws !! i
@@ -110,9 +110,9 @@ handleResampleSys (Op op k) = case discharge op of
             else f i v (j + 1) (q + prob j) acc
         idxs = f 0 (u / fromIntegral n) 0 0 []
         resampled_prts = map (prts !! ) idxs
-        resampled_ctxs = map (ctxs !! ) idxs
+        resampled_ss = map (ss !! ) idxs
 
-    (handleResampleSys . k) (resampled_prts, resampled_ctxs)
-  Right (Accum ctxs ctxs') -> do
-    (handleResampleMul . k) (normaliseParticles ctxs ctxs')
+    (handleResampleSys . k) (resampled_prts, resampled_ss)
+  Right (Accum ss ss') -> do
+    (handleResampleMul . k) (normaliseParticles ss ss')
   Left op' -> Op op' (handleResampleSys . k)

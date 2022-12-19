@@ -49,9 +49,9 @@ rwm ::
 rwm n model env_in   = do
   -- | Handle model to probabilistic program
   let prog_0   = handleCore env_in model
-      ctx_0    = LogP 0
+      s_0    = LogP 0
       trace_0 = Map.empty
-  rwm_trace <- (handleLift . handleAccept . metropolisLoop n (ctx_0, trace_0) handleModel) prog_0
+  rwm_trace <- (handleLift . handleAccept . metropolisLoop n (s_0, trace_0) handleModel) prog_0
   pure (map (snd . fst) rwm_trace)
 
 {- | Handler for one iteration of RWM.
@@ -83,9 +83,9 @@ handleAccept (Op op k) = case discharge op of
     ->  do  let αs = Map.keys trace
             rs <- replicateM (length αs) (lift sampleRandom)
             let prp_trace = Map.union (Map.fromList (zip αs rs)) trace
-                prp_ctx    = LogP 0
+                prp_s    = LogP 0
             -- liftPutStrLn (show $ rs)
-            (handleAccept . k) (prp_ctx, prp_trace)
+            (handleAccept . k) (prp_s, prp_trace)
   Right (Accept logp logp')
     ->  do  u <- lift $ sample (mkUniform 0 1)
             -- liftPutStrLn (show $ logp' - logp)
