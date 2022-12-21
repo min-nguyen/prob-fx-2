@@ -104,14 +104,11 @@ handleAccept tags = loop
       ->  do (α, prp_trace) <- lift (propose tags trace)
              let prp_s = (α, Map.empty)
              (loop . k) (prp_s, prp_trace)
-    Right (Accept (_, lptrace) (α', lptrace'))
-      ->  do  let dom_logα = log (fromIntegral $ Map.size lptrace) - log (fromIntegral $ Map.size lptrace')
-                  sampled  = Set.singleton α' `Set.union` (Map.keysSet lptrace \\ Map.keysSet lptrace')
-                  sampled' = Set.singleton α' `Set.union` (Map.keysSet lptrace' \\ Map.keysSet lptrace)
-                  logα     = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace))
-                                    0 (Map.keysSet lptrace \\ sampled)
-                  logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
-                                    0 (Map.keysSet lptrace' \\ sampled')
+    Right (Accept (_, p) (α', p'))
+      ->  do  let dom_logα = log (fromIntegral $ Map.size p) - log (fromIntegral $ Map.size p')
+                  αs       = Map.keysSet (Map.intersection p p') \\ Set.singleton α'
+                  logα     = foldl (\logα v -> logα + fromJust (Map.lookup v p))  0 αs
+                  logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v p')) 0 αs
               u <- random'
               (loop . k) (expLogP (dom_logα + logα' - logα) > u)
     Left op' -> Op op' (loop . k)
