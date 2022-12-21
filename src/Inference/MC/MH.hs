@@ -30,7 +30,7 @@ import           PrimDist
 import           Model ( Model, handleCore, ProbProg )
 import           Effects.ObsRW ( ObsRW )
 import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), pattern SampPrj, pattern ObsPrj )
-import           Effects.Lift ( Lift, lift, handleLift, liftPutStrLn, HasSampler )
+import           Effects.Lift ( Lift, lift, handleLift, liftPutStrLn, HasSampler, random' )
 import qualified Inference.MC.SIM as SIM
 import           Inference.MC.Metropolis as Metropolis
 import           Sampler ( Sampler, sampleRandom )
@@ -112,7 +112,7 @@ handleAccept tags = loop
                                     0 (Map.keysSet lptrace \\ sampled)
                   logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v lptrace'))
                                     0 (Map.keysSet lptrace' \\ sampled')
-              u <- lift $ sample (mkUniform 0 1)
+              u <- random'
               (loop . k) (expLogP (dom_logα + logα' - logα) > u)
     Left op' -> Op op' (loop . k)
 

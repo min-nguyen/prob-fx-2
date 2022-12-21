@@ -3,6 +3,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE PolyKinds #-}
 
 {- | For lifting arbitrary monadic computations into an algebraic effect setting.
 -}
@@ -11,6 +13,7 @@ module Effects.Lift (
     Lift(..)
   , HasSampler
   , lift
+  , random'
   , liftPrint
   , liftPutStrLn
   , handleLift) where
@@ -22,6 +25,9 @@ import Sampler
 newtype Lift m a = Lift (m a)
 
 type HasSampler es = LastMember (Lift Sampler) es
+
+random' :: HasSampler es => Prog es Double
+random' = lift sampleRandom
 
 -- | Wrapper function for calling @Lift@ as the last effect
 lift :: LastMember (Lift m) es => m a -> Prog es a
