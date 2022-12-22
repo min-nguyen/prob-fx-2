@@ -105,12 +105,10 @@ handleAccept tags = loop
              let prp_s = (α, Map.empty)
              (loop . k) (prp_s, prp_τ)
     Right (Accept (_, p) (α', p'))
-      ->  do  let dom_logα = log (fromIntegral $ Map.size p) - log (fromIntegral $ Map.size p')
-                  αs       = Map.keysSet (Map.intersection p p') \\ Set.singleton α'
-                  logα     = foldl (\logα v -> logα + fromJust (Map.lookup v p))  0 αs
-                  logα'    = foldl (\logα v -> logα + fromJust (Map.lookup v p')) 0 αs
+      ->  do  let dom_lp = log (fromIntegral $ Map.size p) - log (fromIntegral $ Map.size p')
+                  lp       = (sum . Map.elems . Map.delete α') (Map.intersectionWith (-) p' p)
               u <- random'
-              (loop . k) (expLogP (dom_logα + logα' - logα) > u)
+              (loop . k) (expLogP (dom_lp + lp) > u)
     Left op' -> Op op' (loop . k)
 
 {- Propose a new random value at a single component x_i of latent variable X = {x_0, ... x_N}.
