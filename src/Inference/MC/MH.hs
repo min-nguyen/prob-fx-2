@@ -69,24 +69,6 @@ mhInternal n tags τ_0 =
   where
     s_0 = (Addr 0 "" 0, Map.empty)
 
-{- | Handler for one iteration of MH.
--}
-handleModel ::
-     ProbProg a                              -- ^ probabilistic program
-  -> ((Addr, LPTrace), Trace)               -- ^ proposed address + initial log-probability trace + initial sample trace
-  -> Sampler (a, ((Addr, LPTrace), Trace))  -- ^ proposed address + final log-probability trace + final sample trace
-handleModel prog ((α, lρ), τ)  = do
-  ((assocR . first (second (α,)) <$>) . (Metropolis.reuseSamples τ . SIM.handleObs . traceLogProbs lρ)) prog
-
-{- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
--}
-traceLogProbs :: LPTrace -> ProbProg a -> ProbProg (a, LPTrace)
-traceLogProbs lρ (Val x)   = pure (x, lρ)
-traceLogProbs lρ (Op op k) = case op of
-  ObsPrj d y α   -> Op op (\x -> traceLogProbs (Map.insert α (logProb d x) lρ) $ k x)
-  SampPrj d  α   -> Op op (\x -> traceLogProbs (Map.insert α (logProb d x) lρ) $ k x)
-  _              -> Op op (traceLogProbs lρ . k)
-
 {- | Handler for @Accept@ for MH.
     - Propose by drawing a component x_i of latent variable X' ~ p(X)
     - Accept using the ratio:
@@ -101,11 +83,9 @@ handleAccept tags = loop
   loop (Val x)   = pure x
   loop (Op op k) = case discharge op of
     Right (Propose (_, τ))
-      ->  do  -- | Draw proposal sample addresse
-              α0 <- randomFrom' (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
-              -- | Draw new random value
-              r <- random'
-              let τ0 = Map.insert α0 r τ
+      ->  do  α0 <- randomFrom' (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
+              r0 <- random'
+              let τ0 = Map.insert α0 r0 τ
               (loop . k) ((α0, Map.empty), τ0)
     Right (Accept (_, ρ) (α', ρ'))
       ->  do  let ratio = (exp . sum . Map.elems . Map.delete α') (Map.intersectionWith (-) ρ' ρ)
@@ -128,3 +108,21 @@ propose tags τ = do
   r <- sampleRandom
   let τ' = Map.insert α r τ
   return (α, τ')
+
+{- | Handler for one iteration of MH.
+-}
+handleModel ::
+     ProbProg a                              -- ^ probabilistic program
+  -> ((Addr, LPTrace), Trace)               -- ^ proposed address + initial log-probability trace + initial sample trace
+  -> Sampler (a, ((Addr, LPTrace), Trace))  -- ^ proposed address + final log-probability trace + final sample trace
+handleModel prog ((α, lρ), τ)  = do
+  ((assocR . first (second (α,)) <$>) . (Metropolis.reuseSamples τ . SIM.handleObs . traceLP lρ)) prog
+
+{- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
+-}
+traceLP :: LPTrace -> ProbProg a -> ProbProg (a, LPTrace)
+traceLP lρ (Val x)   = pure (x, lρ)
+traceLP lρ (Op op k) = case op of
+  ObsPrj d y α   -> Op op (\x -> traceLP (Map.insert α (logProb d x) lρ) $ k x)
+  SampPrj d  α   -> Op op (\x -> traceLP (Map.insert α (logProb d x) lρ) $ k x)
+  _              -> Op op (traceLP lρ . k)

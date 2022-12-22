@@ -60,8 +60,8 @@ handleAccept :: HasSampler fs => Prog (Accept LogP : fs) a -> Prog fs a
 handleAccept (Val x)   = pure x
 handleAccept (Op op k) = case discharge op of
   Right (Propose (_, τ))
-    ->  do  prp_τ <- mapM (const random') τ
-            (handleAccept . k) (0, prp_τ)
+    ->  do  τ0 <- mapM (const random') τ
+            (handleAccept . k) (0, τ0)
   Right (Accept lρ lρ')
     ->  do  u <- random'
             (handleAccept . k) (exp (lρ' - lρ) > u)
