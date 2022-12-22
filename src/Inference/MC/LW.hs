@@ -56,9 +56,9 @@ likelihood
   -> Prog (Observe : es) a
   -- | (model output, final likelihood weighting)
   -> Prog es (a, LogP)
-likelihood logp (Val x) = return (x, logp)
-likelihood logp (Op u k) = case discharge u of
+likelihood lρ (Val x) = return (x, lρ)
+likelihood lρ (Op u k) = case discharge u of
     Right (Observe d y α) -> do
-      let logp' = logProb d y
-      likelihood (logp + logp') (k y)
-    Left op' -> Op op' (likelihood logp . k)
+      let lρ' = logProb d y
+      likelihood (lρ + lρ') (k y)
+    Left op' -> Op op' (likelihood lρ . k)

@@ -75,17 +75,17 @@ handleModel ::
      ProbProg a                              -- ^ probabilistic program
   -> ((Addr, LPTrace), Trace)               -- ^ proposed address + initial log-probability trace + initial sample trace
   -> Sampler (a, ((Addr, LPTrace), Trace))  -- ^ proposed address + final log-probability trace + final sample trace
-handleModel prog ((α, lptrace), τ)  = do
-  ((assocR . first (second (α,)) <$>) . (Metropolis.reuseSamples τ . SIM.handleObs . traceLogProbs lptrace)) prog
+handleModel prog ((α, lρ), τ)  = do
+  ((assocR . first (second (α,)) <$>) . (Metropolis.reuseSamples τ . SIM.handleObs . traceLogProbs lρ)) prog
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}
 traceLogProbs :: LPTrace -> ProbProg a -> ProbProg (a, LPTrace)
-traceLogProbs lptrace (Val x)   = pure (x, lptrace)
-traceLogProbs lptrace (Op op k) = case op of
-  ObsPrj d y α   -> Op op (\x -> traceLogProbs (Map.insert α (logProb d x) lptrace) $ k x)
-  SampPrj d  α   -> Op op (\x -> traceLogProbs (Map.insert α (logProb d x) lptrace) $ k x)
-  _              -> Op op (traceLogProbs lptrace . k)
+traceLogProbs lρ (Val x)   = pure (x, lρ)
+traceLogProbs lρ (Op op k) = case op of
+  ObsPrj d y α   -> Op op (\x -> traceLogProbs (Map.insert α (logProb d x) lρ) $ k x)
+  SampPrj d  α   -> Op op (\x -> traceLogProbs (Map.insert α (logProb d x) lρ) $ k x)
+  _              -> Op op (traceLogProbs lρ . k)
 
 {- | Handler for @Accept@ for MH.
     - Propose by drawing a component x_i of latent variable X' ~ p(X)
@@ -103,11 +103,11 @@ handleAccept tags = loop
     Right (Propose (_, τ))
       ->  do (α, τ0) <- lift (propose tags τ)
              (loop . k) ((α, Map.empty), τ0)
-    Right (Accept (_, p) (α', p'))
-      ->  do  let dom_lp = log (fromIntegral $ Map.size p) - log (fromIntegral $ Map.size p')
-                  lp     = (expLogP . sum . Map.elems . Map.delete α') (Map.intersectionWith (-) p' p)
+    Right (Accept (_, lρ) (α', lρ'))
+      ->  do  let dom    = log (fromIntegral $ Map.size lρ) - log (fromIntegral $ Map.size lρ')
+                  ratio  = (expLogP . sum . Map.elems . Map.delete α') (Map.intersectionWith (-) lρ' lρ)
               u <- random'
-              (loop . k) (expLogP dom_lp * lp > u)
+              (loop . k) (expLogP dom * ratio > u)
     Left op' -> Op op' (loop . k)
 
 {- Propose a new random value at a single component x_i of latent variable X = {x_0, ... x_N}.

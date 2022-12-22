@@ -85,7 +85,7 @@ rmsmcInternal n_prts mh_steps tags  =
 -}
 handleParticle :: ProbProg a -> Sampler (ProbProg a, TracedParticle)
 handleParticle = (asTracedParticle <$>) . handleSamp . handleObs where
-  asTracedParticle ((prt, logp, α), τ) = (prt, TracedParticle logp α τ)
+  asTracedParticle ((prt, lρs, α), τ) = (prt, TracedParticle lρs α τ)
 
 handleSamp :: Prog '[Sample] a -> Sampler (a, Trace)
 handleSamp = loop Map.empty where
@@ -130,10 +130,10 @@ handleResample mh_steps tags = loop where
               1) the continuations of each particle from the break point
               2) the log prob traces of each particle up until the break point
               3) the sample traces of each particle up until the break point -}
-          let (rejuv_prts, ((_, lp_traces), rejuv_traces)) = second (first unzip . unzip) (unzip mh_trace)
+          let (rejuv_prts, ((_, lρs), rejuv_traces)) = second (first unzip . unzip) (unzip mh_trace)
 
               -- | Recompute the log weights of all particles up until the break point
-              rejuv_lps     = map (sum . map snd . Map.toList) lp_traces
+              rejuv_lps     = map (sum . map snd . Map.toList) lρs
 
               rejuv_ss    = zipWith3 TracedParticle rejuv_lps (repeat resampled_α) rejuv_traces
 

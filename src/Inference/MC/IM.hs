@@ -40,5 +40,5 @@ handleModel ::
      ProbProg a                         -- ^ probabilistic program
   -> (LogP, Trace)                     -- ^ proposed initial log-prob + sample trace
   -> Sampler (a, (LogP, Trace))        -- ^ proposed final log-prob + sample trace
-handleModel prog (logp, τ) =
-  ((assocR <$>) . Metropolis.reuseSamples τ . LW.likelihood logp) prog
+handleModel prog (lρ, τ) =
+  ((assocR <$>) . Metropolis.reuseSamples τ . LW.likelihood lρ) prog

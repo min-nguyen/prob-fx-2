@@ -60,17 +60,17 @@ handleModel ::
       ProbProg a                         -- ^ probabilistic program
   -> (LogP, Trace)                     -- ^ sample trace of previous RWM iteration
   -> Sampler (a, (LogP, Trace))        -- ^ ((model output, sample trace), log-probability trace)
-handleModel prog (logp, τ)  = do
-  ((assocR <$>) . Metropolis.reuseSamples τ . SIM.handleObs . joint logp) prog
+handleModel prog (lρ, τ)  = do
+  ((assocR <$>) . Metropolis.reuseSamples τ . SIM.handleObs . joint lρ) prog
 
 {- | Record the joint log-probability P(Y, X)
 -}
 joint :: LogP -> ProbProg a -> ProbProg (a, LogP)
-joint logp (Val x)   = pure (x, logp)
-joint logp (Op op k) = case op of
-  ObsPrj d y α   -> Op op (\x -> joint (logp + logProb d x) $ k x)
-  SampPrj d  α   -> Op op (\x -> joint (logp + logProb d x) $ k x)
-  _              -> Op op (joint logp . k)
+joint lρ (Val x)   = pure (x, lρ)
+joint lρ (Op op k) = case op of
+  ObsPrj d y α   -> Op op (\x -> joint (lρ + logProb d x) $ k x)
+  SampPrj d  α   -> Op op (\x -> joint (lρ + logProb d x) $ k x)
+  _              -> Op op (joint lρ . k)
 
 {- | Handler for @Accept@ for RWM.
      - Propose by drawing all components for latent variable X' ~ P(X)
@@ -82,7 +82,7 @@ handleAccept (Op op k) = case discharge op of
   Right (Propose (_, τ))
     ->  do  prp_τ <- mapM (const random') τ
             (handleAccept . k) (LogP 0, prp_τ)
-  Right (Accept logp logp')
+  Right (Accept lρ lρ')
     ->  do  u <- random'
-            (handleAccept . k) (expLogP (logp' - logp) > u)
+            (handleAccept . k) (expLogP (lρ' - lρ) > u)
   Left op' -> Op op' (handleAccept . k)

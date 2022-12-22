@@ -70,11 +70,11 @@ handleObs (Op op k) = case discharge op of
 handleResampleMul :: HasSampler fs => ResampleHandler fs LogP
 handleResampleMul (Val x) = Val x
 handleResampleMul (Op op k) = case discharge op of
-  Right (Resample (prts, logws) _) -> do
+  Right (Resample (prts, lρs) _) -> do
     -- | Select particles to continue with
-    idxs <- lift (resampleMul logws)
+    idxs <- lift (resampleMul lρs)
     let resampled_prts  = map (prts !! ) idxs
-        resampled_logws = map (logws !! ) idxs
+        resampled_logws = map (lρs !! ) idxs
     (handleResampleMul . k) (resampled_prts, resampled_logws)
   Right (Accum ss ss') -> do
     (handleResampleMul . k) (normaliseParticles ss ss')
@@ -85,23 +85,23 @@ normaliseParticles log_ps log_ps' =
   let logZ = logMeanExp log_ps in  map (+ logZ) log_ps'
 
 resampleMul :: [LogP] -> Sampler [Int]
-resampleMul logws = do
-  let ws = map expLogP logws
+resampleMul lρs = do
+  let ps = map expLogP lρs
   -- | Select particles to continue with
-  replicateM (length ws) (Sampler.sampleCategorical (Vector.fromList ws))
+  replicateM (length ps) (Sampler.sampleCategorical (Vector.fromList ps))
 
 {- | A handler for systematic resampling of particles.
 -}
 handleResampleSys :: HasSampler fs => ResampleHandler fs LogP
 handleResampleSys (Val x) = Val x
 handleResampleSys (Op op k) = case discharge op of
-  Right (Resample (prts, ss) _) -> do
+  Right (Resample (prts, lρs) _) -> do
     -- | Get the weights for each particle
-    let ws = map expLogP ss
+    let ps = map expLogP lρs
     -- | Select particles to continue with
     u <- lift Sampler.sampleRandom
-    let prob i = ws !! i
-        n      = length ws
+    let prob i = ps !! i
+        n      = length ps
         inc = 1 / fromIntegral n
         f i _ _ _ acc | i == n = acc
         f i v j q acc =
@@ -110,7 +110,7 @@ handleResampleSys (Op op k) = case discharge op of
             else f i v (j + 1) (q + prob j) acc
         idxs = f 0 (u / fromIntegral n) 0 0 []
         resampled_prts = map (prts !! ) idxs
-        resampled_ss = map (ss !! ) idxs
+        resampled_ss = map (lρs !! ) idxs
 
     (handleResampleSys . k) (resampled_prts, resampled_ss)
   Right (Accum ss ss') -> do

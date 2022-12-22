@@ -86,9 +86,8 @@ handleAccept tags = loop where
   loop (Op op k) = case discharge op of
     Right (Propose (_, τ))
       ->  do (_, prp_trace) <- lift (MH.propose tags τ)
-             let prp_s = LogP 0
-             (loop . k) (prp_s, prp_trace)
-    Right (Accept log_p log_p')
-      ->  do u <- lift $ sample (mkUniform 0 1)
-             (loop . k) (expLogP (log_p' - log_p) > u)
+             (loop . k) (LogP 0, prp_trace)
+    Right (Accept lρ lρ')
+      ->  do u <- random'
+             (loop . k) (expLogP (lρ' - lρ) > u)
     Left op' -> Op op' (loop . k)
