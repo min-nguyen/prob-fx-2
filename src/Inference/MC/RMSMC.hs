@@ -130,7 +130,7 @@ handleResample mh_steps tags = loop where
               1) the continuations of each particle from the break point
               2) the log prob traces of each particle up until the break point
               3) the sample traces of each particle up until the break point -}
-          let (rejuv_prts, ((_, lρs), rejuv_traces)) = second (first unzip . unzip) (unzip mh_trace)
+          let ((rejuv_prts, (_, lρs)), rejuv_traces) = first (second unzip . unzip) (unzip mh_trace)
 
               -- | Recompute the log weights of all particles up until the break point
               rejuv_lps     = map (sum . map snd . Map.toList) lρs

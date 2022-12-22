@@ -54,7 +54,7 @@ mh n model env_in obs_vars  = do
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
   mh_trace <- handleLift (mhInternal n tags trace_0 prog_0)
-  pure (map (snd . fst) mh_trace)
+  pure (map (snd . fst . fst) mh_trace)
 
 {- | MH inference on a probabilistic program.
 -}
@@ -63,7 +63,7 @@ mhInternal :: (HasSampler fs)
   -> [Tag]                                 -- ^ tags indicating variables of interest
   -> Trace                                -- ^ initial sample trace
   -> ProbProg a                            -- ^ probabilistic program
-  -> Prog fs [(a, ((Addr, LPTrace), Trace))]
+  -> Prog fs [((a, (Addr, LPTrace)), Trace)]
 mhInternal n tags τ_0 =
   handleAccept tags . metroLoop n (s_0, τ_0) handleModel
   where
@@ -114,10 +114,10 @@ propose tags τ = do
 handleModel ::
      ProbProg a                              -- ^ probabilistic program
   -> ((Addr, LPTrace), Trace)               -- ^ proposed address + initial log-probability trace + initial sample trace
-  -> Sampler (a, ((Addr, LPTrace), Trace))  -- ^ proposed address + final log-probability trace + final sample trace
+  -> Sampler ((a, (Addr, LPTrace)), Trace)  -- ^ proposed address + final log-probability trace + final sample trace
 handleModel prog ((α0, ρ0), τ0)  = do
   ((a, ρ), τ) <- (reuseSamples τ0 . defaultObserve . traceLP ρ0) prog
-  return (a, ((α0, ρ), τ))
+  return ((a, (α0, ρ)), τ)
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}

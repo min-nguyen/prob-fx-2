@@ -96,7 +96,7 @@ handleResample mh_steps n_inner_prts tags = loop where
               1) the continuations of each particle from the break point (augmented with the non-det effect)
               2) the total log weights of each particle up until the break point
               3) the sample traces of each particle up until the break point -}
-          let (rejuv_prts, (rejuv_lps, rejuv_traces)) = second unzip (unzip pmmh_trace)
+          let ((rejuv_prts, rejuv_lps), rejuv_traces) = first unzip (unzip pmmh_trace)
 
               rejuv_ss    = zipWith3 TracedParticle rejuv_lps (repeat resampled_α) rejuv_traces
 

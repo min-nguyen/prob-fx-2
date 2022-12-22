@@ -42,16 +42,17 @@ gibbs n model env_in   = do
   gibbs_trace <-  ( handleLift
                   . handleAccept
                   . metroLoop n (s_0, trace_0) handleModel) prog_0
-  pure (map (snd . fst) gibbs_trace)
+  pure (map (snd . fst . fst) gibbs_trace)
 
 {- | Handler for one iteration of Gibbs.
 -}
 handleModel ::
      ProbProg a                          -- ^ probabilistic program
   -> ((Int, LogP), Trace)               -- ^ proposed index + initial log-prob + initial sample trace
-  -> Sampler (a, ((Int, LogP), Trace))  -- ^ proposed index + final log-prob   + final sample trace
-handleModel prog ((idx, lρ), τ)  =
-  ((assocR . first (second (idx,)) <$>) . (Metropolis.reuseSamples τ . SIM.defaultObserve . LW.joint lρ)) prog
+  -> Sampler ((a, (Int, LogP)), Trace)  -- ^ proposed index + final log-prob   + final sample trace
+handleModel prog ((idx, ρ0), τ0)  = do
+  ((a, ρ), τ) <- (Metropolis.reuseSamples τ0 . SIM.defaultObserve . LW.joint ρ0) prog
+  return ((a, (idx, ρ)), τ)
 
 -- | For simplicity, the acceptance ratio is p(X', Y)/p(X, Y), but should be p(X' \ {x_i}, Y)/p(X \ {x_i}, Y)
 handleAccept :: HasSampler fs => Prog (Accept (Int, LogP) : fs) a -> Prog fs a

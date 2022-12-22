@@ -45,16 +45,16 @@ im n model env_in   = do
       s_0     =  0
       trace_0 = Map.empty
   rwm_trace <- (handleLift . handleAccept . Metropolis.metroLoop n (s_0, trace_0) handleModel) prog_0
-  pure (map (snd . fst) rwm_trace)
+  pure (map (snd . fst . fst) rwm_trace)
 
 {- | Handler for one iteration of IM.
 -}
 handleModel ::
      ProbProg a                         -- ^ probabilistic program
   -> (LogP, Trace)                     -- ^ proposed initial log-prob + sample trace
-  -> Sampler (a, (LogP, Trace))        -- ^ proposed final log-prob + sample trace
+  -> Sampler ((a, LogP), Trace)        -- ^ proposed final log-prob + sample trace
 handleModel prog (lρ, τ) =
-  ((assocR <$>) . Metropolis.reuseSamples τ . LW.likelihood lρ) prog
+  (Metropolis.reuseSamples τ . LW.likelihood lρ) prog
 
 handleAccept :: HasSampler fs => Prog (Accept LogP : fs) a -> Prog fs a
 handleAccept (Val x)   = pure x

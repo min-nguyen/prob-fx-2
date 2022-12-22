@@ -43,7 +43,7 @@ data Accept p a where
     -- | whether the proposal is accepted or not
     -> Accept p Bool
 
-type ModelHandler p = forall a. ProbProg a -> (p, Trace) -> Sampler (a, (p, Trace))
+type ModelHandler p = forall a. ProbProg a -> (p, Trace) -> Sampler ((a, p), Trace)
 
 {- | A general framework for Metropolis inference.
 -}
@@ -52,7 +52,7 @@ metroLoop :: (HasSampler fs)
    -> (p, Trace)                                                          -- ^ initial context + sample trace
    -> ModelHandler p                                                        -- ^ model handler
    -> ProbProg a                                                             -- ^ probabilistic program
-   -> Prog (Accept p : fs) [(a, (p, Trace))]                            -- ^ trace of accepted outputs
+   -> Prog (Accept p : fs) [((a, p), Trace)]                            -- ^ trace of accepted outputs
 metroLoop n (p_0, τ_0) hdlModel prog_0 = do
   -- | Perform initial run of mh
   x0 <- lift (hdlModel prog_0 (p_0, τ_0))
@@ -64,18 +64,18 @@ metroLoop n (p_0, τ_0) hdlModel prog_0 = do
 metroStep :: (HasSampler fs)
   => ProbProg a                                                       -- ^ model handler
   -> ModelHandler p                                                  -- ^ probabilistic program
-  -> [(a, (p, Trace))]                                                   -- ^ previous trace
-  -> Prog (Accept p : fs) [(a, (p, Trace))]                            -- ^ updated trace
+  -> [((a, p), Trace)]                                                   -- ^ previous trace
+  -> Prog (Accept p : fs) [((a, p), Trace)]                            -- ^ updated trace
 metroStep prog_0 hdlModel markov_chain = do
   -- | Get previous iteration output
-  let (_, (p, τ)) = head markov_chain
+  let ((_, p), τ) = head markov_chain
   -- | Construct an *initial* proposal
-  prp                   <- call (Propose (p, τ))
+  prp             <- call (Propose (p, τ))
   -- | Execute the model under the initial proposal to return the *final* proposal
-  (r', (p', τ')) <- lift (hdlModel prog_0 prp )
+  ((r', p'), τ') <- lift (hdlModel prog_0 prp )
   -- | Compute acceptance ratio
-  b                     <- call (Accept p p')
-  if b then pure ((r', (p', τ')):markov_chain)
+  b              <- call (Accept p p')
+  if b then pure (((r', p'), τ'):markov_chain)
        else pure markov_chain
 
 {- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.

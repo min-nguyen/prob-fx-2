@@ -43,7 +43,7 @@ pmmh mh_steps n_prts model env_in obs_vars = do
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
   pmmh_trace <- handleLift (pmmhInternal mh_steps n_prts tags trace_0 prog_0)
-  pure (map (snd . fst) pmmh_trace)
+  pure (map (snd . fst . fst) pmmh_trace)
 
 {- | PMMH inference on a probabilistic program.
 -}
@@ -53,7 +53,7 @@ pmmhInternal :: (HasSampler fs)
   -> [Tag]                                        -- ^ parameter names
   -> Trace                                       -- ^ initial sample trace
   -> ProbProg a                                   -- ^ probabilistic program
-  -> Prog fs [(a, (LogP, Trace))]
+  -> Prog fs [((a, LogP), Trace)]
 pmmhInternal mh_steps n_prts tags trace_0 =
   handleAccept tags . metroLoop mh_steps (0, trace_0) (handleModel n_prts tags)
 
@@ -64,7 +64,7 @@ handleModel ::
   -> [Tag]                                        -- ^ parameter names
   -> ProbProg a                                   -- ^ probabilistic program
   -> (LogP, Trace)                               -- ^ proposed initial log-prob + sample trace
-  -> Sampler (a, (LogP, Trace))                  -- ^ proposed final log-prob + sample trace
+  -> Sampler ((a, LogP), Trace)                  -- ^ proposed final log-prob + sample trace
 handleModel n_prts tags  prog (_, τ)  = do
   (a, τ') <- (Metropolis.reuseSamples τ . SIM.defaultObserve) prog
   let params = filterTrace tags τ'
@@ -72,7 +72,7 @@ handleModel n_prts tags  prog (_, τ)  = do
             . SMC.handleResampleMul
             . SIS.sis n_prts (((fst <$>) . Metropolis.reuseSamples params) . SMC.handleObs) 0) prog
   let logZ = logMeanExp (map snd prts)
-  pure (a, (logZ, τ'))
+  pure ((a, logZ), τ')
 
 {- | An acceptance mechanism for PMMH.
 -}
