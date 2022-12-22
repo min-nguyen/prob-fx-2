@@ -31,7 +31,7 @@ import           Model ( Model, handleCore, ProbProg )
 import           Effects.ObsRW ( ObsRW )
 import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), pattern SampPrj, pattern ObsPrj )
 import           Effects.Lift ( Lift, lift, handleLift, liftPutStrLn, HasSampler, random', randomFrom' )
-import qualified Inference.MC.SIM as SIM
+import           Inference.MC.SIM
 import           Inference.MC.Metropolis as Metropolis
 import           Sampler ( Sampler, sampleRandom, sampleUniformD, sampleRandomFrom )
 import           Data.Bifunctor (Bifunctor(..))
@@ -115,14 +115,15 @@ handleModel ::
      ProbProg a                              -- ^ probabilistic program
   -> ((Addr, LPTrace), Trace)               -- ^ proposed address + initial log-probability trace + initial sample trace
   -> Sampler (a, ((Addr, LPTrace), Trace))  -- ^ proposed address + final log-probability trace + final sample trace
-handleModel prog ((α, lρ), τ)  = do
-  ((assocR . first (second (α,)) <$>) . (Metropolis.reuseSamples τ . SIM.defaultObserve . traceLP lρ)) prog
+handleModel prog ((α0, ρ0), τ0)  = do
+  ((a, ρ), τ) <- (reuseSamples τ0 . defaultObserve . traceLP ρ0) prog
+  return (a, ((α0, ρ), τ))
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}
 traceLP :: LPTrace -> ProbProg a -> ProbProg (a, LPTrace)
-traceLP lρ (Val x)   = pure (x, lρ)
-traceLP lρ (Op op k) = case op of
-  ObsPrj d y α   -> Op op (\x -> traceLP (Map.insert α (logProb d x) lρ) $ k x)
-  SampPrj d  α   -> Op op (\x -> traceLP (Map.insert α (logProb d x) lρ) $ k x)
-  _              -> Op op (traceLP lρ . k)
+traceLP ρ (Val x)   = pure (x, ρ)
+traceLP ρ (Op op k) = case op of
+  ObsPrj d y α   -> Op op (\x -> traceLP (Map.insert α (logProb d x) ρ) $ k x)
+  SampPrj d  α   -> Op op (\x -> traceLP (Map.insert α (logProb d x) ρ) $ k x)
+  _              -> Op op (traceLP ρ . k)
