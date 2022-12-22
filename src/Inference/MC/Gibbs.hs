@@ -51,7 +51,7 @@ handleModel ::
   -> ((Int, LogP), Trace)               -- ^ proposed index + initial log-prob + initial sample trace
   -> Sampler (a, ((Int, LogP), Trace))  -- ^ proposed index + final log-prob   + final sample trace
 handleModel prog ((idx, lρ), τ)  =
-  ((assocR . first (second (idx,)) <$>) . (Metropolis.reuseSamples τ . SIM.handleObs . LW.joint lρ)) prog
+  ((assocR . first (second (idx,)) <$>) . (Metropolis.reuseSamples τ . SIM.defaultObserve . LW.joint lρ)) prog
 
 -- | For simplicity, the acceptance ratio is p(X', Y)/p(X, Y), but should be p(X' \ {x_i}, Y)/p(X \ {x_i}, Y)
 handleAccept :: HasSampler fs => Prog (Accept (Int, LogP) : fs) a -> Prog fs a

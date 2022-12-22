@@ -57,7 +57,7 @@ map num_timesteps num_samples model model_env vars = do
 -- | Handle the model P(X, Y; θ) by returning log-importance-weight P(Y, X; θ)
 handleModel :: [Tag] -> Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((a, Env env), LogP), GTrace)
 handleModel tags model params env  =
-  (SIM.handleSamp . SIM.handleObs . MLE.handleModelParams . weighModel . MLE.installModelParams tags params . handleCore env) model
+  (SIM.defaultSample . SIM.defaultObserve . MLE.handleModelParams . weighModel . MLE.installModelParams tags params . handleCore env) model
 
 -- | Compute: log(P(X, Y; θ)) over the model
 weighModel :: forall es a. (Members [Param, Observe, Sample] es) => Prog es a -> Prog es (a, LogP)

@@ -57,7 +57,7 @@ smcInternal n_prts  =
        2. the log probability of the @Observe operation
 -}
 handleParticle :: ProbProg a -> Sampler (ProbProg a, LogP)
-handleParticle = SIM.handleSamp . handleObs
+handleParticle = SIM.defaultSample . handleObs
 
 handleObs :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, LogP)
 handleObs (Val x)   = Val (Val x, 0)

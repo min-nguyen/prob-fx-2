@@ -100,14 +100,14 @@ handleModel model_p env params =
   let prog :: Prog '[Param, Observe, Sample] (a, Env env)
       prog = (installModelParams params . handleCore env) model_p
 
-  in  (SIM.handleSamp . SIM.handleObs . handleModelParams) prog
+  in  (SIM.defaultSample . SIM.defaultObserve . handleModelParams) prog
 
 {- | Collect all learnable distributions as the initial set of proposals.
 -}
 collectParams :: Model env '[ObsRW env, Dist] b -> ProbProg (a, Env env) -> Sampler DTrace
 collectParams model_p model_q = do
-  (_, env) <- (SIM.handleSamp . SIM.handleObs) model_q
-  (SIM.handleSamp . SIM.handleObs . collectModelParams . installModelParams Trace.empty . handleCore env) model_p
+  (_, env) <- (SIM.defaultSample . SIM.defaultObserve) model_q
+  (SIM.defaultSample . SIM.defaultObserve . collectModelParams . installModelParams Trace.empty . handleCore env) model_p
 
 collectModelParams :: Member Sample es => Prog (Param : es) a -> Prog es DTrace
 collectModelParams = ((fst <$>) . handleModelParams) . loop Trace.empty where

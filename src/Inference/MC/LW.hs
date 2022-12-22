@@ -24,7 +24,7 @@ import Effects.ObsRW ( ObsRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env )
 import LogP ( LogP )
-import Inference.MC.SIM as SIM (handleSamp)
+import Inference.MC.SIM as SIM (defaultSample)
 import Model ( handleCore, Model, ProbProg )
 import PrimDist ( logProb )
 import Prog ( discharge, Prog(..) )
@@ -50,7 +50,7 @@ runLW
   :: Prog [Observe, Sample] a
   -- | ((model output, sample trace), likelihood-weighting)
   -> Sampler (a, LogP)
-runLW = SIM.handleSamp . likelihood 0
+runLW = SIM.defaultSample . likelihood 0
 
 -- | Handle each @Observe@ operation by accumulating the log-likelihood P(Y | X)
 likelihood

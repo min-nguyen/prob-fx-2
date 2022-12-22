@@ -14,8 +14,8 @@ module Inference.MC.SIM
     simulate
    -- * Inference handlers
   , runSimulate
-  , handleObs
-  , handleSamp
+  , defaultObserve
+  , defaultSample
   )
   where
 
@@ -47,21 +47,21 @@ runSimulate
   -- | (model output, sample trace)
   -> Sampler a
 runSimulate
-  = handleSamp . handleObs
+  = defaultSample . defaultObserve
 
 -- | Handle @Observe@ operations by simply passing forward their observed value, performing no side-effects
-handleObs
+defaultObserve
   :: Prog (Observe : es) a
   -> Prog es a
-handleObs (Val x) = return x
-handleObs (Op op k) = case discharge op of
-  Right (Observe d y α) -> handleObs (k y)
-  Left op' -> Op op' (handleObs . k)
+defaultObserve (Val x) = return x
+defaultObserve (Op op k) = case discharge op of
+  Right (Observe d y α) -> defaultObserve (k y)
+  Left op' -> Op op' (defaultObserve . k)
 
 -- | Handle @Sample@ operations by using the @Sampler@ monad to draw from primitive distributions
-handleSamp
+defaultSample
   :: Prog '[Sample] a
   -> Sampler a
-handleSamp (Val x)   = return x
-handleSamp (Op op k) = case discharge1 op of
-  (Sample d α) -> sample d >>= handleSamp . k
+defaultSample (Val x)   = return x
+defaultSample (Op op k) = case discharge1 op of
+  (Sample d α) -> sample d >>= defaultSample . k

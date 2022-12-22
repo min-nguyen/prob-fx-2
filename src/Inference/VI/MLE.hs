@@ -58,16 +58,16 @@ mle num_timesteps num_samples model model_env vars = do
 -- | Handle the dummy guide Q by returning the original model environment Y and log-importance-weight log(Q(X)) = 0
 handleGuide :: Prog [Param, Sample] a -> DTrace -> Sampler ((a, LogP), GTrace)
 handleGuide guide _ =
-  (SIM.handleSamp . VI.handleGuideParams ) ((, 0) <$> guide)
+  (SIM.defaultSample . VI.handleGuideParams ) ((, 0) <$> guide)
 
 -- | Handle the model P(X, Y; θ) by returning log-importance-weight P(Y | X; θ)
 handleModel :: [Tag] -> Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((a, Env env), LogP), GTrace)
 handleModel tags model params env  =
-  (SIM.handleSamp . SIM.handleObs . handleModelParams . weighModel . installModelParams tags params . handleCore env) model
+  (SIM.defaultSample . SIM.defaultObserve . handleModelParams . weighModel . installModelParams tags params . handleCore env) model
 
 collectModelParams :: [Tag] -> ProbProg b -> Sampler DTrace
 collectModelParams tags =
-  SIM.handleSamp . SIM.handleObs . (fst <$>) . handleModelParams . loop Trace.empty . installModelParams tags Trace.empty
+  SIM.defaultSample . SIM.defaultObserve . (fst <$>) . handleModelParams . loop Trace.empty . installModelParams tags Trace.empty
   where
   loop :: DTrace -> Prog (Param : es) a -> Prog (Param : es) DTrace
   loop params (Val _)   = pure params

@@ -116,7 +116,7 @@ handleModel ::
   -> ((Addr, LPTrace), Trace)               -- ^ proposed address + initial log-probability trace + initial sample trace
   -> Sampler (a, ((Addr, LPTrace), Trace))  -- ^ proposed address + final log-probability trace + final sample trace
 handleModel prog ((α, lρ), τ)  = do
-  ((assocR . first (second (α,)) <$>) . (Metropolis.reuseSamples τ . SIM.handleObs . traceLP lρ)) prog
+  ((assocR . first (second (α,)) <$>) . (Metropolis.reuseSamples τ . SIM.defaultObserve . traceLP lρ)) prog
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}

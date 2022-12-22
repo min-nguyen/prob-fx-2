@@ -66,7 +66,7 @@ handleModel ::
   -> (LogP, Trace)                               -- ^ proposed initial log-prob + sample trace
   -> Sampler (a, (LogP, Trace))                  -- ^ proposed final log-prob + sample trace
 handleModel n_prts tags  prog (_, τ)  = do
-  (a, τ') <- (Metropolis.reuseSamples τ . SIM.handleObs) prog
+  (a, τ') <- (Metropolis.reuseSamples τ . SIM.defaultObserve) prog
   let params = filterTrace tags τ'
   prts   <- ( handleLift
             . SMC.handleResampleMul

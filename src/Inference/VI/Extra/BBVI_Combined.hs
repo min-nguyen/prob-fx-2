@@ -44,7 +44,7 @@ bbvi num_timesteps num_samples model env_in = do
   let bbvi_prog :: Prog [Score, Observe, Sample] ((a, Env env), DTrace)
       bbvi_prog = installScore (handleCore env_in model)
   -- | Collect initial proposal distributions
-  ((_, proposals_0), _) <- (SIM.handleSamp . SIM.handleObs . handleScore) bbvi_prog
+  ((_, proposals_0), _) <- (SIM.defaultSample . SIM.defaultObserve . handleScore) bbvi_prog
   handleLift (bbviInternal num_timesteps num_samples proposals_0 bbvi_prog)
 
 {- | BBVI on a probabilistic program.
@@ -88,7 +88,7 @@ bbviStep num_samples bbvi_prog proposals = do
 -}
 runBBVI :: [Score, Observe, Sample] ~ es => DTrace -> Prog es a -> Sampler ((a, LogP), GTrace)
 runBBVI proposals =
-  SIM.handleSamp . SIM.handleObs . handleScore . traceLogProbs . updateScore proposals
+  SIM.defaultSample . SIM.defaultObserve . handleScore . traceLogProbs . updateScore proposals
 
 {- | Replace all differentiable @Sample@ operations with @Score@ operations, initialising
      the proposals distributions Q as priors P.

@@ -98,11 +98,11 @@ viStep timestep num_samples guide hdlGuide model hdlModel (guideParams, modelPar
  -}
 handleGuide :: Prog [Param, Sample] a -> DTrace -> Sampler ((a, LogP), GTrace)
 handleGuide guide params =
-  (SIM.handleSamp . handleGuideParams . weighGuide . updateGuideParams params) guide
+  (SIM.defaultSample . handleGuideParams . weighGuide . updateGuideParams params) guide
 
 -- | Ignore the side-effects of all @Observe@ operations, and replace all differentiable @Sample@ operations (representing the proposal distributions Q(λ)) with @Param@ operations.
 installGuideParams :: Prog [Observe, Sample] a -> Prog [Param, Sample] a
-installGuideParams = loop . SIM.handleObs where
+installGuideParams = loop . SIM.defaultObserve where
   loop :: Prog '[Sample] a -> Prog [Param, Sample] a
   loop (Val x)   = pure x
   loop (Op op k) = case prj op of
@@ -114,7 +114,7 @@ installGuideParams = loop . SIM.handleObs where
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
 collectGuideParams :: Prog [Param, Sample] a -> Sampler DTrace
-collectGuideParams = SIM.handleSamp . (fst <$>) . handleGuideParams . loop Trace.empty
+collectGuideParams = SIM.defaultSample . (fst <$>) . handleGuideParams . loop Trace.empty
   where
   loop :: DTrace -> Prog (Param : es) a -> Prog (Param : es) DTrace
   loop params (Val _)   = pure params
@@ -170,7 +170,7 @@ handleGuideParams = loop Trace.empty where
 -}
 handleModel :: Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((a, Env env), LogP), GTrace)
 handleModel model _ env  =
-  (((, Trace.empty) <$>) . SIM.handleSamp . SIM.handleObs . weighModel . handleCore env) model
+  (((, Trace.empty) <$>) . SIM.defaultSample . SIM.defaultObserve . weighModel . handleCore env) model
 
 -- | Compute log(P(X, Y)) over the model.
 weighModel :: forall es a. (Members [Sample, Observe] es) => Prog es a -> Prog es (a, LogP)
