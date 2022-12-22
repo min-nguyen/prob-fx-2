@@ -101,14 +101,13 @@ handleAccept tags = loop
   loop (Val x)   = pure x
   loop (Op op k) = case discharge op of
     Right (Propose (_, τ))
-      ->  do (α, prp_τ) <- lift (propose tags τ)
-             let prp_s = (α, Map.empty)
-             (loop . k) (prp_s, prp_τ)
+      ->  do (α, τ0) <- lift (propose tags τ)
+             (loop . k) ((α, Map.empty), τ0)
     Right (Accept (_, p) (α', p'))
       ->  do  let dom_lp = log (fromIntegral $ Map.size p) - log (fromIntegral $ Map.size p')
-                  lp       = (sum . Map.elems . Map.delete α') (Map.intersectionWith (-) p' p)
+                  lp     = (expLogP . sum . Map.elems . Map.delete α') (Map.intersectionWith (-) p' p)
               u <- random'
-              (loop . k) (expLogP (dom_lp + lp) > u)
+              (loop . k) (expLogP dom_lp * lp > u)
     Left op' -> Op op' (loop . k)
 
 {- Propose a new random value at a single component x_i of latent variable X = {x_0, ... x_N}.

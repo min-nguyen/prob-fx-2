@@ -33,7 +33,7 @@ import Model ( Model, handleCore, ProbProg )
 import Effects.ObsRW ( ObsRW )
 import Env ( Env )
 import Effects.Dist ( Dist, pattern SampPrj, pattern ObsPrj )
-import Effects.Lift ( Lift, lift, handleLift, liftPutStrLn, HasSampler )
+import Effects.Lift ( Lift, lift, handleLift, liftPutStrLn, HasSampler, random' )
 import Sampler ( Sampler, sampleRandom )
 import qualified Inference.MC.SIM as SIM
 import Inference.MC.Metropolis as Metropolis
@@ -80,14 +80,9 @@ handleAccept :: HasSampler fs => Prog (Accept LogP : fs) a -> Prog fs a
 handleAccept (Val x)   = pure x
 handleAccept (Op op k) = case discharge op of
   Right (Propose (_, τ))
-    ->  do  let αs = Map.keys τ
-            rs <- replicateM (length αs) (lift sampleRandom)
-            let prp_trace = Map.union (Map.fromList (zip αs rs)) τ
-                prp_s    = LogP 0
-            -- liftPutStrLn (show $ rs)
-            (handleAccept . k) (prp_s, prp_trace)
+    ->  do  prp_τ <- mapM (const random') τ
+            (handleAccept . k) (LogP 0, prp_τ)
   Right (Accept logp logp')
-    ->  do  u <- lift $ sample (mkUniform 0 1)
-            -- liftPutStrLn (show $ logp' - logp)
+    ->  do  u <- random'
             (handleAccept . k) (expLogP (logp' - logp) > u)
   Left op' -> Op op' (handleAccept . k)
