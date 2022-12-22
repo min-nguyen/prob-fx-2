@@ -63,7 +63,7 @@ metroLoop n (p_0, τ_0) hdlModel prog_0 = do
 -}
 metroStep :: (HasSampler fs)
   => ProbProg a                                                       -- ^ model handler
-  ->  ModelHandler p                                                  -- ^ probabilistic program
+  -> ModelHandler p                                                  -- ^ probabilistic program
   -> [(a, (p, Trace))]                                                   -- ^ previous trace
   -> Prog (Accept p : fs) [(a, (p, Trace))]                            -- ^ updated trace
 metroStep prog_0 hdlModel markov_chain = do

@@ -104,10 +104,11 @@ handleAccept tags = loop
       ->  do (α, τ0) <- lift (propose tags τ)
              (loop . k) ((α, Map.empty), τ0)
     Right (Accept (_, lρ) (α', lρ'))
-      ->  do  let dom    = log (fromIntegral $ Map.size lρ) - log (fromIntegral $ Map.size lρ')
-                  ratio  = (expLogP . sum . Map.elems . Map.delete α') (Map.intersectionWith (-) lρ' lρ)
+      ->  do  -- let dom = log (fromIntegral $ Map.size lρ) - log (fromIntegral $ Map.size lρ')
+              -- (loop . k) (expLogP dom * ratio > u)
+              let ratio = (expLogP . sum . Map.elems . Map.delete α') (Map.intersectionWith (-) lρ' lρ)
               u <- random'
-              (loop . k) (expLogP dom * ratio > u)
+              (loop . k) (ratio > u)
     Left op' -> Op op' (loop . k)
 
 {- Propose a new random value at a single component x_i of latent variable X = {x_0, ... x_N}.
