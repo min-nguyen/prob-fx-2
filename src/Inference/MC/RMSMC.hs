@@ -85,16 +85,16 @@ rmsmcInternal n_prts mh_steps tags  =
 -}
 handleParticle :: ProbProg a -> Sampler (ProbProg a, TracedParticle)
 handleParticle = (asTracedParticle <$>) . handleSamp . handleObs where
-  asTracedParticle ((prt, logp, α), trace) = (prt, TracedParticle logp α trace)
+  asTracedParticle ((prt, logp, α), τ) = (prt, TracedParticle logp α τ)
 
 handleSamp :: Prog '[Sample] a -> Sampler (a, Trace)
 handleSamp = loop Map.empty where
   loop :: Trace ->  Prog '[Sample] a -> Sampler (a, Trace)
-  loop trace (Val x)   = pure (x, trace)
-  loop trace (Op op k) = case discharge1 op of
+  loop τ (Val x)   = pure (x, τ)
+  loop τ (Op op k) = case discharge1 op of
     (Sample d α) -> do r <- sampleRandom
                        let y = draw d r
-                       loop (Map.insert α r trace) (k y)
+                       loop (Map.insert α r τ) (k y)
 
 handleObs :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, LogP, Addr)
 handleObs (Val x)   = pure (Val x, 0, Addr 0 "" 0)

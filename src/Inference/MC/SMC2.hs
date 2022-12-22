@@ -85,13 +85,13 @@ handleResample mh_steps n_inner_prts tags = loop where
           -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head')
               resampled_α       = (particleObsAddr . head) resampled_ss
           -- | Get the sample trace of each resampled particle
-              resampled_traces = map particleSTrace resampled_ss
+              resampled_τs = map particleSTrace resampled_ss
           -- | Insert break point to perform MH up to
               partial_model     = RMSMC.breakObserve resampled_α prog_0
           -- | Perform PMMH using each resampled particle's sample trace and get the most recent PMMH iteration.
           pmmh_trace <- mapM ( fmap head
                              . flip (PMMH.pmmhInternal mh_steps n_inner_prts tags) partial_model
-                             ) resampled_traces
+                             ) resampled_τs
           {- | Get:
               1) the continuations of each particle from the break point (augmented with the non-det effect)
               2) the total log weights of each particle up until the break point

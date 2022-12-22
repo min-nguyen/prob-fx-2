@@ -33,7 +33,7 @@ import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), patter
 import           Effects.Lift ( Lift, lift, handleLift, liftPutStrLn, HasSampler, random' )
 import qualified Inference.MC.SIM as SIM
 import           Inference.MC.Metropolis as Metropolis
-import           Sampler ( Sampler, sampleRandom )
+import           Sampler ( Sampler, sampleRandom, sampleUniformD, sampleRandomFrom )
 import           Data.Bifunctor (Bifunctor(..))
 import           Util ( assocR )
 
@@ -64,8 +64,8 @@ mhInternal :: (HasSampler fs)
   -> Trace                                -- ^ initial sample trace
   -> ProbProg a                            -- ^ probabilistic program
   -> Prog fs [(a, ((Addr, LPTrace), Trace))]
-mhInternal n tags trace_0 =
-  handleAccept tags . metroLoop n (s_0, trace_0) handleModel
+mhInternal n tags τ_0 =
+  handleAccept tags . metroLoop n (s_0, τ_0) handleModel
   where
     s_0 = (Addr 0 "" 0, Map.empty)
 
@@ -75,8 +75,8 @@ handleModel ::
      ProbProg a                              -- ^ probabilistic program
   -> ((Addr, LPTrace), Trace)               -- ^ proposed address + initial log-probability trace + initial sample trace
   -> Sampler (a, ((Addr, LPTrace), Trace))  -- ^ proposed address + final log-probability trace + final sample trace
-handleModel prog ((α, lptrace), trace)  = do
-  ((assocR . first (second (α,)) <$>) . (Metropolis.reuseSamples trace . SIM.handleObs . traceLogProbs lptrace)) prog
+handleModel prog ((α, lptrace), τ)  = do
+  ((assocR . first (second (α,)) <$>) . (Metropolis.reuseSamples τ . SIM.handleObs . traceLogProbs lptrace)) prog
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}
@@ -100,10 +100,10 @@ handleAccept tags = loop
  where
   loop (Val x)   = pure x
   loop (Op op k) = case discharge op of
-    Right (Propose (_, trace))
-      ->  do (α, prp_trace) <- lift (propose tags trace)
+    Right (Propose (_, τ))
+      ->  do (α, prp_τ) <- lift (propose tags τ)
              let prp_s = (α, Map.empty)
-             (loop . k) (prp_s, prp_trace)
+             (loop . k) (prp_s, prp_τ)
     Right (Accept (_, p) (α', p'))
       ->  do  let dom_logα = log (fromIntegral $ Map.size p) - log (fromIntegral $ Map.size p')
                   αs       = Map.keysSet (Map.intersection p p') \\ Set.singleton α'
@@ -119,12 +119,12 @@ propose
   :: [Tag]                        -- ^ observable variable names of interest
   -> Trace                       -- ^ original sample trace
   -> Sampler (Addr, Trace)       -- ^ (proposed addresses, proposed sample trace)
-propose tags trace = do
+propose tags τ = do
   -- | Get possible addresses to propose new samples for
-  let α_range = Map.keys (if Prelude.null tags then trace else filterTrace tags trace)
+  let α_range = Map.keys (if Prelude.null tags then τ else filterTrace tags τ)
   -- | Draw proposal sample addresse
-  α <- sample (mkUniformD 0 (length α_range - 1)) <&> (α_range !!)
+  α <- sampleRandomFrom α_range
   -- | Draw new random value
   r <- sampleRandom
-  let trace' = Map.insert α r trace
-  return (α, trace')
+  let τ' = Map.insert α r τ
+  return (α, τ')

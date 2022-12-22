@@ -50,16 +50,16 @@ handleModel ::
      ProbProg a                          -- ^ probabilistic program
   -> ((Int, LogP), Trace)               -- ^ proposed index + initial log-prob + initial sample trace
   -> Sampler (a, ((Int, LogP), Trace))  -- ^ proposed index + final log-prob   + final sample trace
-handleModel prog ((idx, logp), trace)  =
-  ((assocR . first (second (idx,)) <$>) . (Metropolis.reuseSamples trace . SIM.handleObs . RWM.joint logp)) prog
+handleModel prog ((idx, logp), τ)  =
+  ((assocR . first (second (idx,)) <$>) . (Metropolis.reuseSamples τ . SIM.handleObs . RWM.joint logp)) prog
 
 -- | For simplicity, the acceptance ratio is p(X', Y)/p(X, Y), but should be p(X' \ {x_i}, Y)/p(X \ {x_i}, Y)
 handleAccept :: HasSampler fs => Prog (Accept (Int, LogP) : fs) a -> Prog fs a
 handleAccept (Val x)    = pure x
 handleAccept (Op op k) = case discharge op of
-    Right (Propose ((idx, _), trace))
+    Right (Propose ((idx, _), τ))
       ->  do r <- lift sampleRandom
-             let prp_trace = Map.updateAt (\_ _ -> Just r) (idx `mod` length trace) trace
+             let prp_trace = Map.updateAt (\_ _ -> Just r) (idx `mod` length τ) τ
                  prp_s    = (idx + 1, LogP 0)
              (handleAccept . k) (prp_s, prp_trace)
     Right (Accept (_, logp) (_, logp'))

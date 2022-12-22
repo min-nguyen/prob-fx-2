@@ -60,8 +60,8 @@ handleModel ::
       ProbProg a                         -- ^ probabilistic program
   -> (LogP, Trace)                     -- ^ sample trace of previous RWM iteration
   -> Sampler (a, (LogP, Trace))        -- ^ ((model output, sample trace), log-probability trace)
-handleModel prog (logp, trace)  = do
-  ((assocR <$>) . Metropolis.reuseSamples trace . SIM.handleObs . joint logp) prog
+handleModel prog (logp, τ)  = do
+  ((assocR <$>) . Metropolis.reuseSamples τ . SIM.handleObs . joint logp) prog
 
 {- | Record the joint log-probability P(Y, X)
 -}
@@ -79,10 +79,10 @@ joint logp (Op op k) = case op of
 handleAccept :: HasSampler fs => Prog (Accept LogP : fs) a -> Prog fs a
 handleAccept (Val x)   = pure x
 handleAccept (Op op k) = case discharge op of
-  Right (Propose (_, trace))
-    ->  do  let αs = Map.keys trace
+  Right (Propose (_, τ))
+    ->  do  let αs = Map.keys τ
             rs <- replicateM (length αs) (lift sampleRandom)
-            let prp_trace = Map.union (Map.fromList (zip αs rs)) trace
+            let prp_trace = Map.union (Map.fromList (zip αs rs)) τ
                 prp_s    = LogP 0
             -- liftPutStrLn (show $ rs)
             (handleAccept . k) (prp_s, prp_trace)

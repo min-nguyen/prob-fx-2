@@ -1,5 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use <&>" #-}
 
 {- | An IO-based sampling monad.
 -}
@@ -15,6 +17,7 @@ module Sampler (
   -- ** Raw sampling
   -- $Raw-sampling
   , sampleRandom
+  , sampleRandomFrom
   , sampleCauchy
   , sampleNormal
   , sampleUniform
@@ -81,6 +84,10 @@ mkSampler f = Sampler $ ask >>= lift . f
 sampleRandom
   :: Sampler Double
 sampleRandom = mkSampler MWC.uniform
+
+sampleRandomFrom
+  :: [a] -> Sampler a
+sampleRandomFrom xs = sampleUniformD 0 (length xs - 1) >>= pure . (xs !!)
 
 sampleCauchy
   :: Double -- ^ location

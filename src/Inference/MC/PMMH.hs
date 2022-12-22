@@ -67,14 +67,14 @@ handleModel ::
   -> ProbProg a                                   -- ^ probabilistic program
   -> (LogP, Trace)                               -- ^ proposed initial log-prob + sample trace
   -> Sampler (a, (LogP, Trace))                  -- ^ proposed final log-prob + sample trace
-handleModel n_prts tags  prog (_, trace)  = do
-  (a, trace') <- (Metropolis.reuseSamples trace . SIM.handleObs) prog
-  let params = filterTrace tags trace'
+handleModel n_prts tags  prog (_, τ)  = do
+  (a, τ') <- (Metropolis.reuseSamples τ . SIM.handleObs) prog
+  let params = filterTrace tags τ'
   prts   <- ( handleLift
             . SMC.handleResampleMul
             . SIS.sis n_prts (((fst <$>) . Metropolis.reuseSamples params) . SMC.handleObs) (LogP 0)) prog
   let logZ = logMeanExp (map snd prts)
-  pure (a, (logZ, trace'))
+  pure (a, (logZ, τ'))
 
 {- | An acceptance mechanism for PMMH.
 -}
@@ -84,8 +84,8 @@ handleAccept :: HasSampler fs
 handleAccept tags = loop where
   loop (Val x)   = pure x
   loop (Op op k) = case discharge op of
-    Right (Propose (_, trace))
-      ->  do (_, prp_trace) <- lift (MH.propose tags trace)
+    Right (Propose (_, τ))
+      ->  do (_, prp_trace) <- lift (MH.propose tags τ)
              let prp_s = LogP 0
              (loop . k) (prp_s, prp_trace)
     Right (Accept log_p log_p')

@@ -53,9 +53,9 @@ metroLoop :: (HasSampler fs)
    -> ModelHandler s                                                        -- ^ model handler
    -> ProbProg a                                                             -- ^ probabilistic program
    -> Prog (Accept s : fs) [(a, (s, Trace))]                            -- ^ trace of accepted outputs
-metroLoop n (s_0, trace_0) hdlModel prog_0 = do
+metroLoop n (s_0, τ_0) hdlModel prog_0 = do
   -- | Perform initial run of mh
-  ar_s_0 <- lift (hdlModel prog_0 (s_0, trace_0))
+  ar_s_0 <- lift (hdlModel prog_0 (s_0, τ_0))
   -- | A function performing n mhSteps using initial mh_s. The most recent samples are at the front of the trace.
   foldl (>=>) pure (replicate n (metroStep prog_0 hdlModel )) [ar_s_0]
 
@@ -68,25 +68,25 @@ metroStep :: (HasSampler fs)
   -> Prog (Accept s : fs) [(a, (s, Trace))]                            -- ^ updated trace
 metroStep prog_0 hdlModel markov_chain = do
   -- | Get previous iteration output
-  let (_, (s, trace)) = head markov_chain
+  let (_, (s, τ)) = head markov_chain
   -- | Construct an *initial* proposal
-  prp                   <- call (Propose (s, trace))
+  prp                   <- call (Propose (s, τ))
   -- | Execute the model under the initial proposal to return the *final* proposal
-  (r', (s', trace')) <- lift (hdlModel prog_0 prp )
+  (r', (s', τ')) <- lift (hdlModel prog_0 prp )
   -- | Compute acceptance ratio
   b                     <- call (Accept s s')
-  if b then pure ((r', (s', trace')):markov_chain)
+  if b then pure ((r', (s', τ')):markov_chain)
        else pure markov_chain
 
 {- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.
 -}
 reuseSamples :: Trace -> Prog '[Sample] a -> Sampler (a, Trace)
-reuseSamples trace (Val x) = pure (x, trace)
-reuseSamples trace (Op op k) = case discharge op of
-  Right (Sample d α) ->  case Map.lookup α trace of
+reuseSamples τ (Val x) = pure (x, τ)
+reuseSamples τ (Op op k) = case discharge op of
+  Right (Sample d α) ->  case Map.lookup α τ of
     Nothing -> do r <- sampleRandom
                   let y = draw d r
-                  reuseSamples (Map.insert α r trace) (k y)
+                  reuseSamples (Map.insert α r τ) (k y)
     Just r  -> do let y = draw d r
-                  reuseSamples trace  (k y)
+                  reuseSamples τ (k y)
   Left op'  -> error "MH.handleSamp: Left should not happen"
