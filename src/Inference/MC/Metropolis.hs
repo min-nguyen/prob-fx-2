@@ -29,53 +29,53 @@ import Sampler ( Sampler, sampleRandom )
 
 {- | The @Accept@ effect for proposing samples and accepting/rejecting according a context.
 -}
-data Accept s a where
+data Accept p a where
   Propose
     -- | previous context and sample trace
-    :: (s, Trace)
+    :: (p, Trace)
     -- | proposed *initial* context and sample trace
-    -> Accept s (s, Trace)
+    -> Accept p (p, Trace)
   Accept
     -- | previous context
-    :: s
+    :: p
     -- | proposed *final* context
-    -> s
+    -> p
     -- | whether the proposal is accepted or not
-    -> Accept s Bool
+    -> Accept p Bool
 
-type ModelHandler s = forall a. ProbProg a -> (s, Trace) -> Sampler (a, (s, Trace))
+type ModelHandler p = forall a. ProbProg a -> (p, Trace) -> Sampler (a, (p, Trace))
 
 {- | A general framework for Metropolis inference.
 -}
 metroLoop :: (HasSampler fs)
    => Int                                                                    -- ^ number of iterations
-   -> (s, Trace)                                                          -- ^ initial context + sample trace
-   -> ModelHandler s                                                        -- ^ model handler
+   -> (p, Trace)                                                          -- ^ initial context + sample trace
+   -> ModelHandler p                                                        -- ^ model handler
    -> ProbProg a                                                             -- ^ probabilistic program
-   -> Prog (Accept s : fs) [(a, (s, Trace))]                            -- ^ trace of accepted outputs
-metroLoop n (s_0, τ_0) hdlModel prog_0 = do
+   -> Prog (Accept p : fs) [(a, (p, Trace))]                            -- ^ trace of accepted outputs
+metroLoop n (p_0, τ_0) hdlModel prog_0 = do
   -- | Perform initial run of mh
-  ar_s_0 <- lift (hdlModel prog_0 (s_0, τ_0))
+  x0 <- lift (hdlModel prog_0 (p_0, τ_0))
   -- | A function performing n mhSteps using initial mh_s. The most recent samples are at the front of the trace.
-  foldl (>=>) pure (replicate n (metroStep prog_0 hdlModel )) [ar_s_0]
+  foldl (>=>) pure (replicate n (metroStep prog_0 hdlModel )) [x0]
 
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
 metroStep :: (HasSampler fs)
   => ProbProg a                                                       -- ^ model handler
-  ->  ModelHandler s                                                  -- ^ probabilistic program
-  -> [(a, (s, Trace))]                                                   -- ^ previous trace
-  -> Prog (Accept s : fs) [(a, (s, Trace))]                            -- ^ updated trace
+  ->  ModelHandler p                                                  -- ^ probabilistic program
+  -> [(a, (p, Trace))]                                                   -- ^ previous trace
+  -> Prog (Accept p : fs) [(a, (p, Trace))]                            -- ^ updated trace
 metroStep prog_0 hdlModel markov_chain = do
   -- | Get previous iteration output
-  let (_, (s, τ)) = head markov_chain
+  let (_, (p, τ)) = head markov_chain
   -- | Construct an *initial* proposal
-  prp                   <- call (Propose (s, τ))
+  prp                   <- call (Propose (p, τ))
   -- | Execute the model under the initial proposal to return the *final* proposal
-  (r', (s', τ')) <- lift (hdlModel prog_0 prp )
+  (r', (p', τ')) <- lift (hdlModel prog_0 prp )
   -- | Compute acceptance ratio
-  b                     <- call (Accept s s')
-  if b then pure ((r', (s', τ')):markov_chain)
+  b                     <- call (Accept p p')
+  if b then pure ((r', (p', τ')):markov_chain)
        else pure markov_chain
 
 {- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.

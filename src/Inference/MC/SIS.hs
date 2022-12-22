@@ -27,38 +27,38 @@ import           Data.Bifunctor
 
 {- | The @Resample@ effect for resampling according to collection of particle contexts.
 -}
-data Resample s a where
+data Resample p a where
   Resample
     -- | (particles, contexts)
-    :: ([ProbProg a], [s])
+    :: ([ProbProg a], [p])
     -- | initial probabilistic program
     -> ProbProg a
     -- | (resampled programs, resampled ss)
-    -> Resample s ([ProbProg a], [s])
+    -> Resample p ([ProbProg a], [p])
   Accum
     -- | (particles, contexts)
-    :: [s]
+    :: [p]
     -- | initial probabilistic program
-    -> [s]
+    -> [p]
     -- | (resampled programs, resampled ss)
-    -> Resample s [s]
+    -> Resample p [p]
 
 {- | A @ParticleHandler@  runs a particle to the next @Observe@ break point.
 -}
-type ParticleHandler s = forall a. ProbProg a -> Sampler (ProbProg a, s)
+type ParticleHandler p = forall a. ProbProg a -> Sampler (ProbProg a, p)
 
 {- | A @ResampleHandler@ decides which of the current particles to continue execution with.
 -}
-type ResampleHandler fs s = forall a. Prog (Resample s : fs) a -> Prog fs a
+type ResampleHandler fs p = forall a. Prog (Resample p : fs) a -> Prog fs a
 
 {- | A top-level template for sequential importance sampling.
 -}
 sis :: HasSampler fs
   => Int                                                        -- ^ number of particles
-  -> ParticleHandler s                                        -- ^ handler for running particles
-  -> s
+  -> ParticleHandler p                                        -- ^ handler for running particles
+  -> p
   -> ProbProg a                                                 -- ^ initial probabilistic program
-  -> Prog (Resample s : fs) [(a, s)]                        -- ^ (final particle output, final particle context)
+  -> Prog (Resample p : fs) [(a, p)]                        -- ^ (final particle output, final particle context)
 sis n_prts hdlParticle s_0 prog_0  = do
   -- | Create an initial population of particles and contexts
   let population = unzip $ replicate n_prts (prog_0, s_0)
@@ -67,13 +67,13 @@ sis n_prts hdlParticle s_0 prog_0  = do
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
-loopSIS :: forall s fs a. HasSampler fs
-  => ParticleHandler s                                 -- ^ handler for running particles
+loopSIS :: forall p fs a. HasSampler fs
+  => ParticleHandler p                                 -- ^ handler for running particles
   -> ProbProg a                                          -- ^ initial probabilistic program
-  -> ([ProbProg a], [s])                               -- ^ input particles and corresponding contexts
-  -> Prog (Resample s  : fs) [(a, s)]                -- ^ final particle results and corresponding contexts
+  -> ([ProbProg a], [p])                               -- ^ input particles and corresponding contexts
+  -> Prog (Resample p  : fs) [(a, p)]                -- ^ final particle results and corresponding contexts
 loopSIS hdlParticle prog_0 = loop where
-  loop :: ([ProbProg a], [s]) -> Prog (Resample s : fs) [(a, s)]
+  loop :: ([ProbProg a], [p]) -> Prog (Resample p : fs) [(a, p)]
   loop (prts, ss) = do
     -- | Run particles to next checkpoint and accumulate their contexts
     -- particles' <- mapM (lift . hdlParticle) particles
