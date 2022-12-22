@@ -1,23 +1,36 @@
 {-# LANGUAGE DataKinds #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE GADTs #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use <&>" #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 {- | Independence Metropolis inference, where proposals are independent of each other.
 -}
 
 module Inference.MC.IM where
 
+import Control.Monad ( replicateM )
 import qualified Data.Map as Map
-import Trace ( Trace )
-import LogP ( LogP (..) )
+import Prog ( Prog(..), discharge, LastMember )
+import Trace ( Trace, LPTrace, filterTrace )
+import LogP ( LogP (..), expLogP )
+import PrimDist
 import Model ( Model, handleCore, ProbProg )
 import Effects.ObsRW ( ObsRW )
-import Env (  Env )
-import Effects.Dist ( Dist )
-import Effects.Lift ( Lift, lift, handleLift, liftPutStrLn )
+import Env ( Env )
+import Effects.Dist ( Dist, pattern SampPrj, pattern ObsPrj )
+import Effects.Lift ( Lift, lift, handleLift, liftPutStrLn, HasSampler, random' )
 import Sampler ( Sampler, sampleRandom )
+import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.LW as LW
-import qualified Inference.MC.RWM as RWM
-import qualified Inference.MC.Metropolis as Metropolis
-import Util ( assocR )
+import Inference.MC.Metropolis as Metropolis
+import Util
+
 
 {- | Top-level wrapper for Independence Metropolis
 -}
@@ -31,7 +44,7 @@ im n model env_in   = do
   let prog_0   = handleCore env_in model
       s_0    = LogP 0
       trace_0 = Map.empty
-  rwm_trace <- (handleLift . RWM.handleAccept . Metropolis.metroLoop n (s_0, trace_0) handleModel) prog_0
+  rwm_trace <- (handleLift . handleAccept . Metropolis.metroLoop n (s_0, trace_0) handleModel) prog_0
   pure (map (snd . fst) rwm_trace)
 
 {- | Handler for one iteration of IM.
@@ -42,3 +55,14 @@ handleModel ::
   -> Sampler (a, (LogP, Trace))        -- ^ proposed final log-prob + sample trace
 handleModel prog (lρ, τ) =
   ((assocR <$>) . Metropolis.reuseSamples τ . LW.likelihood lρ) prog
+
+handleAccept :: HasSampler fs => Prog (Accept LogP : fs) a -> Prog fs a
+handleAccept (Val x)   = pure x
+handleAccept (Op op k) = case discharge op of
+  Right (Propose (_, τ))
+    ->  do  prp_τ <- mapM (const random') τ
+            (handleAccept . k) (LogP 0, prp_τ)
+  Right (Accept lρ lρ')
+    ->  do  u <- random'
+            (handleAccept . k) (expLogP (lρ' - lρ) > u)
+  Left op' -> Op op' (handleAccept . k)

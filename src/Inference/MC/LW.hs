@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -12,18 +13,19 @@ module Inference.MC.LW
     -- * Inference effect handlers
   , runLW
   , likelihood
+  , joint
   ) where
 
 import Data.Bifunctor ( Bifunctor(first), second, bimap )
 import Control.Monad ( replicateM )
-import Effects.Dist ( Sample, Observe(..), Dist )
+import Effects.Dist ( Sample, Observe(..), Dist, pattern ObsPrj, pattern SampPrj )
 import Effects.Lift ( handleLift, Lift )
 import Effects.ObsRW ( ObsRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env )
 import LogP ( LogP, expLogP )
 import Inference.MC.SIM as SIM (handleSamp)
-import Model ( handleCore, Model )
+import Model ( handleCore, Model, ProbProg )
 import PrimDist ( logProb )
 import Prog ( discharge, Prog(..) )
 import Sampler ( Sampler )
@@ -62,3 +64,12 @@ likelihood lρ (Op u k) = case discharge u of
       let lρ' = logProb d y
       likelihood (lρ + lρ') (k y)
     Left op' -> Op op' (likelihood lρ . k)
+
+{- | Record the joint log-probability P(Y, X)
+-}
+joint :: LogP -> ProbProg a -> ProbProg (a, LogP)
+joint lρ (Val x)   = pure (x, lρ)
+joint lρ (Op op k) = case op of
+  ObsPrj d y α   -> Op op (\x -> joint (lρ + logProb d x) $ k x)
+  SampPrj d  α   -> Op op (\x -> joint (lρ + logProb d x) $ k x)
+  _              -> Op op (joint lρ . k)

@@ -33,7 +33,6 @@ library
                       Effects.State,
                       Effects.Writer,
                       Inference.MC.LW,
-                      Inference.MC.RWM,
                       Inference.MC.IM,
                       Inference.MC.Gibbs,
                       Inference.MC.MH,

@@ -22,7 +22,7 @@ import Effects.Dist ( Dist, Addr, Tag )
 import Effects.Lift ( Lift, lift, handleLift, liftPutStrLn, HasSampler )
 import Sampler ( Sampler, sampleRandom )
 import qualified Inference.MC.SIM as SIM
-import qualified Inference.MC.RWM as RWM
+import qualified Inference.MC.LW as LW
 import Inference.MC.Metropolis as Metropolis
 import Data.Bifunctor (Bifunctor(..))
 import Util (assocR)
@@ -51,7 +51,7 @@ handleModel ::
   -> ((Int, LogP), Trace)               -- ^ proposed index + initial log-prob + initial sample trace
   -> Sampler (a, ((Int, LogP), Trace))  -- ^ proposed index + final log-prob   + final sample trace
 handleModel prog ((idx, lρ), τ)  =
-  ((assocR . first (second (idx,)) <$>) . (Metropolis.reuseSamples τ . SIM.handleObs . RWM.joint lρ)) prog
+  ((assocR . first (second (idx,)) <$>) . (Metropolis.reuseSamples τ . SIM.handleObs . LW.joint lρ)) prog
 
 -- | For simplicity, the acceptance ratio is p(X', Y)/p(X, Y), but should be p(X' \ {x_i}, Y)/p(X \ {x_i}, Y)
 handleAccept :: HasSampler fs => Prog (Accept (Int, LogP) : fs) a -> Prog fs a
