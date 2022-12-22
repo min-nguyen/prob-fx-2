@@ -13,7 +13,7 @@ import Control.Monad ( replicateM )
 import qualified Data.Map as Map
 import Prog ( Prog(..), discharge, LastMember )
 import Trace ( Trace, LPTrace, filterTrace )
-import LogP ( LogP (..), expLogP )
+import LogP ( LogP (..) )
 import PrimDist
 import Model ( Model, handleCore, ProbProg )
 import Effects.ObsRW ( ObsRW )
@@ -37,7 +37,7 @@ gibbs ::
 gibbs n model env_in   = do
   -- | Handle model to probabilistic program
   let prog_0   = handleCore env_in model
-      s_0    = (0, LogP 0)
+      s_0    = (0, 0)
       trace_0 = Map.empty
   gibbs_trace <-  ( handleLift
                   . handleAccept
@@ -60,9 +60,9 @@ handleAccept (Op op k) = case discharge op of
     Right (Propose ((idx, _), τ))
       ->  do r <- lift sampleRandom
              let prp_trace = Map.updateAt (\_ _ -> Just r) (idx `mod` length τ) τ
-                 prp_s    = (idx + 1, LogP 0)
+                 prp_s    = (idx + 1, 0)
              (handleAccept . k) (prp_s, prp_trace)
     Right (Accept (_, lρ) (_, lρ'))
       ->  do u <- lift $ sample (mkUniform 0 1)
-             (handleAccept . k) (expLogP (lρ' - lρ) > u)
+             (handleAccept . k) (exp (lρ' - lρ) > u)
     Left op' -> Op op' (handleAccept . k)

@@ -59,15 +59,11 @@ class (Show d, Typeable d) => Distribution d where
   sample      :: d -> Sampler (Base d)
 
   {- | Compute the log density of a primitive distribution generating an observed value. -}
-  logProbRaw  :: d -> Base d -> Double
-
-  {- | Compute the log density as the @LogP@ type. -}
-  logProb     :: d -> Base d -> LogP
-  logProb d   = LogP . logProbRaw d
+  logProb  :: d -> Base d -> LogP
 
   {- | Compute the probability density. -}
   prob        :: d -> Base d -> Double
-  prob d      = exp . logProbRaw d
+  prob d      = exp . logProb d
 
   {- | Provide proof that @d@ is differentiable. -}
   isDifferentiable :: d -> Maybe (Witness DiffDistribution d)
@@ -109,8 +105,8 @@ instance Distribution Beta where
   sample :: Beta -> Sampler Double
   sample (Beta α β) = Sampler.sampleBeta α β
 
-  logProbRaw :: Beta -> Double -> Double
-  logProbRaw (Beta α β) x
+  logProb :: Beta -> Double -> Double
+  logProb (Beta α β) x
     | x <= 0 || x >= 1 = m_neg_inf
     | otherwise = (α-1)*log x + (β-1)*log1p (-x) - logBeta α β
 
@@ -154,8 +150,8 @@ instance Distribution Cauchy where
   sample :: Cauchy -> Sampler Double
   sample (Cauchy loc scale) = Sampler.sampleCauchy loc scale
 
-  logProbRaw :: Cauchy -> Double -> Double
-  logProbRaw (Cauchy loc scale) x = -(log pi) + log scale - log (xloc**2 + scale**2)
+  logProb :: Cauchy -> Double -> Double
+  logProb (Cauchy loc scale) x = -(log pi) + log scale - log (xloc**2 + scale**2)
     where xloc = x - loc
 
   isDifferentiable :: Cauchy -> Maybe (Witness DiffDistribution Cauchy)
@@ -200,10 +196,10 @@ instance Distribution HalfCauchy where
   sample :: HalfCauchy -> Sampler Double
   sample (HalfCauchy scale) = abs <$> sample (Cauchy 0 scale)
 
-  logProbRaw :: HalfCauchy -> Double -> Double
-  logProbRaw (HalfCauchy scale) x
+  logProb :: HalfCauchy -> Double -> Double
+  logProb (HalfCauchy scale) x
     | x < 0     = m_neg_inf
-    | otherwise = log 2 + logProbRaw (Cauchy 0 scale) x
+    | otherwise = log 2 + logProb (Cauchy 0 scale) x
 
   isDifferentiable :: HalfCauchy -> Maybe (Witness DiffDistribution HalfCauchy)
   isDifferentiable _ = Just Witness
@@ -246,8 +242,8 @@ instance (TypeableSNatI n) => Distribution (Dirichlet n) where
   sample :: Dirichlet n -> Sampler (Vec n Double)
   sample (Dirichlet αs) = fromJust . Vec.fromList <$> Sampler.sampleDirichlet (Vec.toList αs)
 
-  logProbRaw :: Dirichlet n -> Vec n Double -> Double
-  logProbRaw (Dirichlet αs) xs
+  logProb :: Dirichlet n -> Vec n Double -> Double
+  logProb (Dirichlet αs) xs
     | length xs /= length αs     = trace "dirichletLogPdfRaw: length xs /= length αs" m_neg_inf
     | abs (sum xs - 1.0) > 1e-14 = trace "dirichletLogPdfRaw: data should sum to 1" m_neg_inf
     | any (<  0) xs              = trace "dirichletLogPdfRaw: data should be non-negative" m_neg_inf
@@ -294,8 +290,8 @@ instance Distribution Gamma where
   sample :: Gamma -> Sampler Double
   sample (Gamma k θ) = Sampler.sampleGamma k θ
 
-  logProbRaw :: Gamma -> Double -> Double
-  logProbRaw (Gamma k θ) x
+  logProb :: Gamma -> Double -> Double
+  logProb (Gamma k θ) x
     | x <= 0    = m_neg_inf
     | otherwise = (k - 1) * log x - (x/θ) - logGamma k - (k * log θ)
 
@@ -340,8 +336,8 @@ instance Distribution Normal where
   sample :: Normal -> Sampler Double
   sample (Normal μ σ) = Sampler.sampleNormal μ σ
 
-  logProbRaw :: Normal -> Double -> Double
-  logProbRaw (Normal μ σ) x = -(xμ * xμ / (2 * (σ ** 2))) - log m_sqrt_2_pi - log σ
+  logProb :: Normal -> Double -> Double
+  logProb (Normal μ σ) x = -(xμ * xμ / (2 * (σ ** 2))) - log m_sqrt_2_pi - log σ
     where xμ = x - μ
 
   isDifferentiable :: Normal -> Maybe (Witness DiffDistribution Normal)
@@ -383,10 +379,10 @@ instance Distribution HalfNormal where
   sample :: HalfNormal -> Sampler Double
   sample (HalfNormal σ) = sample (Normal 0 σ) <&> abs
 
-  logProbRaw :: HalfNormal -> Double -> Double
-  logProbRaw (HalfNormal σ) x
+  logProb :: HalfNormal -> Double -> Double
+  logProb (HalfNormal σ) x
     | x < 0     = m_neg_inf
-    | otherwise = log 2 + logProbRaw (Normal 0 σ) x
+    | otherwise = log 2 + logProb (Normal 0 σ) x
 
   isDifferentiable :: HalfNormal -> Maybe (Witness DiffDistribution HalfNormal)
   isDifferentiable _ = Just Witness
@@ -448,8 +444,8 @@ instance Distribution Bernoulli where
   sample :: Bernoulli -> Sampler Bool
   sample (Bernoulli p) = Sampler.sampleBernoulli p
 
-  logProbRaw :: Bernoulli -> Bool -> Double
-  logProbRaw (Bernoulli p) y
+  logProb :: Bernoulli -> Bool -> Double
+  logProb (Bernoulli p) y
     | y         = log p
     | otherwise = log (1 - p)
 
@@ -477,8 +473,8 @@ instance Distribution Binomial where
   sample :: Binomial -> Sampler Int
   sample (Binomial n p) = Sampler.sampleBinomial n p
 
-  logProbRaw :: Binomial -> Int -> Double
-  logProbRaw (Binomial n p) y
+  logProb :: Binomial -> Int -> Double
+  logProb (Binomial n p) y
     | y < 0 || y > n          = m_neg_inf
     | otherwise               = logChoose n y + log p * y' + log1p (-p) * ny'
     where
@@ -514,8 +510,8 @@ instance Distribution Categorical where
   sample :: Categorical  -> Sampler Int
   sample (Categorical ps) = Sampler.sampleCategorical (Vector.fromList ps)
 
-  logProbRaw :: Categorical  -> Int -> Double
-  logProbRaw (Categorical ps) idx
+  logProb :: Categorical  -> Int -> Double
+  logProb (Categorical ps) idx
     | idx < 0 || idx >= length ps = trace "CategoricalLogPdf: idx < 0 || idx >= length ps" m_neg_inf
     | otherwise                   = log (ps !! idx)
 
@@ -541,8 +537,8 @@ instance (Show a, Typeable a) => Distribution (Deterministic a) where
   sample :: Deterministic a -> Sampler a
   sample (Deterministic x) = pure x
 
-  logProbRaw :: Deterministic a -> a -> Double
-  logProbRaw (Deterministic x) y
+  logProb :: Deterministic a -> a -> Double
+  logProb (Deterministic x) y
     | x == y    = 0
     | otherwise = m_neg_inf
 
@@ -575,8 +571,8 @@ instance (Show a, Typeable a) => Distribution (Discrete a) where
   sample :: Discrete a -> Sampler a
   sample (Discrete xps) = Sampler.sampleDiscrete xps
 
-  logProbRaw :: Discrete a -> a -> Double
-  logProbRaw (Discrete xps) y = case lookup y xps of
+  logProb :: Discrete a -> a -> Double
+  logProb (Discrete xps) y = case lookup y xps of
       Nothing -> trace ("Couldn't find " ++ show y ++ " in Discrete dist") m_neg_inf
       Just p  -> log p
 
@@ -599,8 +595,8 @@ instance Distribution Poisson where
   sample :: Poisson -> Sampler Int
   sample (Poisson λ) = Sampler.samplePoisson λ
 
-  logProbRaw :: Poisson -> Int -> Double
-  logProbRaw (Poisson λ) y
+  logProb :: Poisson -> Int -> Double
+  logProb (Poisson λ) y
     | y < 0     = trace "poissonLogPdfRaw:  y < 0 " m_neg_inf
     | otherwise = log λ * fromIntegral y - logFactorial y - λ
 
@@ -628,8 +624,8 @@ instance Distribution Uniform where
   sample :: Uniform -> Sampler Double
   sample (Uniform min max) = Sampler.sampleUniform min max
 
-  logProbRaw :: Uniform -> Double -> Double
-  logProbRaw (Uniform min max) x
+  logProb :: Uniform -> Double -> Double
+  logProb (Uniform min max) x
     | x < min || x > max = m_neg_inf
     | otherwise          = -log(max - min)
 
@@ -654,8 +650,8 @@ instance Distribution UniformD where
   sample :: UniformD -> Sampler Int
   sample (UniformD min max) = Sampler.sampleUniformD min max
 
-  logProbRaw :: UniformD -> Int -> Double
-  logProbRaw (UniformD min max) idx
+  logProb :: UniformD -> Int -> Double
+  logProb (UniformD min max) idx
     | idx < min || idx > max  = m_neg_inf
     | otherwise               = - log (fromIntegral $ max - min + 1)
 

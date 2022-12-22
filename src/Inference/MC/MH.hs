@@ -25,12 +25,12 @@ import           Data.Maybe ( fromJust )
 import           Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg, weaken )
 import           Env ( ContainsVars(..), Vars, Env )
 import           Trace ( Trace, LPTrace, filterTrace )
-import           LogP ( LogP, expLogP )
+import           LogP ( LogP )
 import           PrimDist
 import           Model ( Model, handleCore, ProbProg )
 import           Effects.ObsRW ( ObsRW )
 import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), pattern SampPrj, pattern ObsPrj )
-import           Effects.Lift ( Lift, lift, handleLift, liftPutStrLn, HasSampler, random' )
+import           Effects.Lift ( Lift, lift, handleLift, liftPutStrLn, HasSampler, random', randomFrom' )
 import qualified Inference.MC.SIM as SIM
 import           Inference.MC.Metropolis as Metropolis
 import           Sampler ( Sampler, sampleRandom, sampleUniformD, sampleRandomFrom )
@@ -101,12 +101,14 @@ handleAccept tags = loop
   loop (Val x)   = pure x
   loop (Op op k) = case discharge op of
     Right (Propose (_, τ))
-      ->  do (α, τ0) <- lift (propose tags τ)
-             (loop . k) ((α, Map.empty), τ0)
-    Right (Accept (_, lρ) (α', lρ'))
-      ->  do  -- let dom = log (fromIntegral $ Map.size lρ) - log (fromIntegral $ Map.size lρ')
-              -- (loop . k) (expLogP dom * ratio > u)
-              let ratio = (expLogP . sum . Map.elems . Map.delete α') (Map.intersectionWith (-) lρ' lρ)
+      ->  do  -- | Draw proposal sample addresse
+              α0 <- randomFrom' (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
+              -- | Draw new random value
+              r <- random'
+              let τ0 = Map.insert α0 r τ
+              (loop . k) ((α0, Map.empty), τ0)
+    Right (Accept (_, ρ) (α', ρ'))
+      ->  do  let ratio = (exp . sum . Map.elems . Map.delete α') (Map.intersectionWith (-) ρ' ρ)
               u <- random'
               (loop . k) (ratio > u)
     Left op' -> Op op' (loop . k)

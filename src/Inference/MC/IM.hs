@@ -18,7 +18,7 @@ import Control.Monad ( replicateM )
 import qualified Data.Map as Map
 import Prog ( Prog(..), discharge, LastMember )
 import Trace ( Trace, LPTrace, filterTrace )
-import LogP ( LogP (..), expLogP )
+import LogP ( LogP (..) )
 import PrimDist
 import Model ( Model, handleCore, ProbProg )
 import Effects.ObsRW ( ObsRW )
@@ -41,8 +41,8 @@ im ::
   -> Sampler [Env env]              -- ^ output model environments
 im n model env_in   = do
   -- | Handle model to probabilistic program
-  let prog_0   = handleCore env_in model
-      s_0    = LogP 0
+  let prog_0  = handleCore env_in model
+      s_0     =  0
       trace_0 = Map.empty
   rwm_trace <- (handleLift . handleAccept . Metropolis.metroLoop n (s_0, trace_0) handleModel) prog_0
   pure (map (snd . fst) rwm_trace)
@@ -61,8 +61,8 @@ handleAccept (Val x)   = pure x
 handleAccept (Op op k) = case discharge op of
   Right (Propose (_, τ))
     ->  do  prp_τ <- mapM (const random') τ
-            (handleAccept . k) (LogP 0, prp_τ)
+            (handleAccept . k) (0, prp_τ)
   Right (Accept lρ lρ')
     ->  do  u <- random'
-            (handleAccept . k) (expLogP (lρ' - lρ) > u)
+            (handleAccept . k) (exp (lρ' - lρ) > u)
   Left op' -> Op op' (handleAccept . k)

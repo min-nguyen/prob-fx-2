@@ -25,7 +25,7 @@ import Effects.Lift
 import Effects.ObsRW ( ObsRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env, union )
-import LogP ( LogP(..), normaliseLogPs, expLogP )
+import LogP ( LogP(..), normaliseLogPs )
 import Model
 import PrimDist
 import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )
@@ -218,7 +218,7 @@ likelihoodRatioEstimator logWs δGs = foldr (\(Some v) -> Trace.insert v (estδE
         where the normalised importance weight is defined via:
             log(W_norm^l) = log(W^l) + max(log(W^{1:L})) -}
     δFs :: [GTrace]
-    δFs = zipWith (\logW -> Trace.map (\_ δ -> expLogP logW *| δ)) (normaliseLogPs logWs) δGs
+    δFs = zipWith (\logW -> Trace.map (\_ δ -> exp logW *| δ)) (normaliseLogPs logWs) δGs
     {- | Compute the ELBO gradient estimate for a random variable v's associated parameters:
             E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
         where the baseline is:
@@ -255,13 +255,13 @@ normalisingEstimator logWs δGs = δelbos
               else Just (foldr (\(Some v) -> estimateGrad v) Trace.empty vars)
     {- | Normalising constant -}
     norm_c :: Double
-    norm_c = 1 / (fromIntegral (length logWs) * sum (map expLogP logWs))
+    norm_c = 1 / (fromIntegral (length logWs) * sum (map exp logWs))
     {- | Optimisable variables -}
     vars :: [Some DiffDistribution Key]
     vars = (Trace.keys . head) δGs
     {- | Uniformly scale each iteration's gradient trace G^l by its corresponding unnormalised importance weight W_norm^l -}
     δFs :: [GTrace]
-    δFs = zipWith (\logW -> Trace.map (\_ δ -> expLogP logW *| δ)) logWs δGs
+    δFs = zipWith (\logW -> Trace.map (\_ δ -> exp logW *| δ)) logWs δGs
     {- | Compute the mean gradient estimate for a random variable v's associated parameters -}
     estimateGrad :: forall d. (DiffDistribution d) => Key d -> GTrace -> GTrace
     estimateGrad v = let δFv      = map (fromJust . Trace.lookup v) δFs

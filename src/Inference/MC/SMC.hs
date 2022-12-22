@@ -20,7 +20,7 @@ import           Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe 
 import           Effects.Lift ( Lift, lift, liftPrint, handleLift, HasSampler)
 import           Effects.ObsRW ( ObsRW, handleObsRW )
 import           Env ( Env )
-import           LogP ( LogP(..), logMeanExp, expLogP )
+import           LogP ( LogP(..), logMeanExp )
 import           Model ( Model(runModel), ProbProg )
 import           PrimDist ( mkCategorical, sample, logProb )
 import           Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge, prj )
@@ -50,7 +50,7 @@ smcInternal :: HasSampler fs
   -> ProbProg a                 -- ^ probabilistic program
   -> Prog fs [(a, LogP)]   -- ^ final particle results and contexts
 smcInternal n_prts  =
-  handleResampleMul . SIS.sis n_prts handleParticle (LogP 0)
+  handleResampleMul . SIS.sis n_prts handleParticle 0
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation
@@ -60,7 +60,7 @@ handleParticle :: ProbProg a -> Sampler (ProbProg a, LogP)
 handleParticle = SIM.handleSamp . handleObs
 
 handleObs :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, LogP)
-handleObs (Val x)   = Val (Val x,  LogP 0)
+handleObs (Val x)   = Val (Val x, 0)
 handleObs (Op op k) = case discharge op of
   Right (Observe d y α) -> Val (k y, logProb d y)
   Left op'              -> Op op' (handleObs . k)
@@ -86,7 +86,7 @@ normaliseParticles log_ps log_ps' =
 
 resampleMul :: [LogP] -> Sampler [Int]
 resampleMul lρs = do
-  let ps = map expLogP lρs
+  let ps = map exp lρs
   -- | Select particles to continue with
   replicateM (length ps) (Sampler.sampleCategorical (Vector.fromList ps))
 
@@ -97,7 +97,7 @@ handleResampleSys (Val x) = Val x
 handleResampleSys (Op op k) = case discharge op of
   Right (Resample (prts, lρs) _) -> do
     -- | Get the weights for each particle
-    let ps = map expLogP lρs
+    let ps = map exp lρs
     -- | Select particles to continue with
     u <- lift Sampler.sampleRandom
     let prob i = ps !! i

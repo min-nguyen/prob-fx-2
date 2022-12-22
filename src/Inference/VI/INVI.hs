@@ -21,7 +21,7 @@ import Effects.Lift
 import Effects.ObsRW ( ObsRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env, union )
-import LogP ( LogP(..), normaliseLogPs, expLogP )
+import LogP ( LogP(..), normaliseLogPs )
 import Model
 import PrimDist
 import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )

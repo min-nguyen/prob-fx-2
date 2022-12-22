@@ -14,6 +14,7 @@ module Effects.Lift (
   , HasSampler
   , lift
   , random'
+  , randomFrom'
   , liftPrint
   , liftPutStrLn
   , handleLift) where
@@ -28,6 +29,9 @@ type HasSampler es = LastMember (Lift Sampler) es
 
 random' :: HasSampler es => Prog es Double
 random' = lift sampleRandom
+
+randomFrom' :: HasSampler es => [a] -> Prog es a
+randomFrom' = lift . sampleRandomFrom
 
 -- | Wrapper function for calling @Lift@ as the last effect
 lift :: LastMember (Lift m) es => m a -> Prog es a

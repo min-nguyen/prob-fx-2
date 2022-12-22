@@ -55,9 +55,7 @@ pmmhInternal :: (HasSampler fs)
   -> ProbProg a                                   -- ^ probabilistic program
   -> Prog fs [(a, (LogP, Trace))]
 pmmhInternal mh_steps n_prts tags trace_0 =
-  handleAccept tags . metroLoop mh_steps (s_0, trace_0) (handleModel n_prts tags)
-  where
-    s_0 = LogP 0
+  handleAccept tags . metroLoop mh_steps (0, trace_0) (handleModel n_prts tags)
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}
@@ -72,7 +70,7 @@ handleModel n_prts tags  prog (_, τ)  = do
   let params = filterTrace tags τ'
   prts   <- ( handleLift
             . SMC.handleResampleMul
-            . SIS.sis n_prts (((fst <$>) . Metropolis.reuseSamples params) . SMC.handleObs) (LogP 0)) prog
+            . SIS.sis n_prts (((fst <$>) . Metropolis.reuseSamples params) . SMC.handleObs) 0) prog
   let logZ = logMeanExp (map snd prts)
   pure (a, (logZ, τ'))
 
@@ -86,8 +84,8 @@ handleAccept tags = loop where
   loop (Op op k) = case discharge op of
     Right (Propose (_, τ))
       ->  do (_, prp_trace) <- lift (MH.propose tags τ)
-             (loop . k) (LogP 0, prp_trace)
+             (loop . k) (0, prp_trace)
     Right (Accept lρ lρ')
       ->  do u <- random'
-             (loop . k) (expLogP (lρ' - lρ) > u)
+             (loop . k) (exp (lρ' - lρ) > u)
     Left op' -> Op op' (loop . k)
