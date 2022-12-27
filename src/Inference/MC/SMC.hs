@@ -72,10 +72,10 @@ handleResampleMul (Val x) = Val x
 handleResampleMul (Op op k) = case discharge op of
   Right (Resample (prts, ρs) _) -> do
     -- | Select particles to continue with
-    idxs <- lift (resampleMul ρs)
+    idxs <- lift (replicateM (length ρs) (Sampler.sampleCategorical (Vector.fromList (map exp ρs))))
     let resampled_prts  = map (prts !! ) idxs
-        resampled_logws = map (ρs !! ) idxs
-    (handleResampleMul . k) (resampled_prts, resampled_logws)
+        resampled_ρs = map (ρs !! ) idxs
+    (handleResampleMul . k) (resampled_prts, resampled_ρs)
   Right (Accum ρs ρs') -> do
     (handleResampleMul . k) (normaliseParticles ρs ρs')
   Left op' -> Op op' (handleResampleMul . k)
