@@ -59,9 +59,9 @@ sis :: HasSampler fs
   -> p
   -> ProbProg a                                                 -- ^ initial probabilistic program
   -> Prog (Resample p : fs) [(a, p)]                        -- ^ (final particle output, final particle context)
-sis n_prts hdlParticle s_0 prog_0  = do
+sis n_prts hdlParticle ρ_0 prog_0  = do
   -- | Create an initial population of particles and contexts
-  let population = unzip $ replicate n_prts (prog_0, s_0)
+  let population = unzip $ replicate n_prts (prog_0, ρ_0)
   -- | Execute the population until termination
   loopSIS hdlParticle prog_0 population
 
@@ -74,17 +74,17 @@ loopSIS :: forall p fs a. HasSampler fs
   -> Prog (Resample p  : fs) [(a, p)]                -- ^ final particle results and corresponding contexts
 loopSIS hdlParticle prog_0 = loop where
   loop :: ([ProbProg a], [p]) -> Prog (Resample p : fs) [(a, p)]
-  loop (prts, ss) = do
+  loop (prts, ρs) = do
     -- | Run particles to next checkpoint and accumulate their contexts
     -- particles' <- mapM (lift . hdlParticle) particles
-    (prts', partial_ss) <- mapAndUnzipM (lift . hdlParticle) prts
-    ss' <- call (Accum ss partial_ss)
+    (prts', partialρs) <- mapAndUnzipM (lift . hdlParticle) prts
+    ρs' <- call (Accum ρs partialρs)
     -- | Check termination status of particles
     case foldVals prts' of
       -- | If all particles have finished, return their results and contexts
-      Right vals  -> (`zip` ss') <$> vals
+      Right vals  -> (`zip` ρs') <$> vals
       -- | Otherwise, pick the particles to continue with
-      Left  _     -> call (Resample (prts', ss') prog_0) >>= loop
+      Left  _     -> call (Resample (prts', ρs') prog_0) >>= loop
 
 {- | Check whether a list of programs have all terminated.
      If at least one program is unfinished, return all programs.
