@@ -87,7 +87,7 @@ pfilter hdlParticle prog_0 (prts, ρs) = do
      If at least one program is unfinished, return all programs.
      If all programs have finished, return a single program that returns all results.
 -}
-foldVals :: [Prog es a] -> Either [Prog es a] (Prog es' [a])
+foldVals :: [ProbProg a] -> Either [ProbProg a] (Prog es [a])
 foldVals (Val v : progs) = do
   vs <- foldVals progs
   pure ((v:) <$> vs)
