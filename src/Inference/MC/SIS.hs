@@ -63,28 +63,25 @@ sis n_prts hdlParticle ρ_0 prog_0  = do
   -- | Create an initial population of particles and contexts
   let population = unzip $ replicate n_prts (prog_0, ρ_0)
   -- | Execute the population until termination
-  loopSIS hdlParticle prog_0 population
+  pfilter hdlParticle prog_0 population
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
-loopSIS :: forall p fs a. HasSampler fs
+pfilter :: forall p fs a. HasSampler fs
   => ParticleHandler p                                 -- ^ handler for running particles
   -> ProbProg a                                          -- ^ initial probabilistic program
   -> ([ProbProg a], [p])                               -- ^ input particles and corresponding contexts
   -> Prog (Resample p  : fs) [(a, p)]                -- ^ final particle results and corresponding contexts
-loopSIS hdlParticle prog_0 = loop where
-  loop :: ([ProbProg a], [p]) -> Prog (Resample p : fs) [(a, p)]
-  loop (prts, ρs) = do
-    -- | Run particles to next checkpoint and accumulate their contexts
-    -- particles' <- mapM (lift . hdlParticle) particles
-    (prts', partialρs) <- mapAndUnzipM (lift . hdlParticle) prts
-    ρs' <- call (Accum ρs partialρs)
-    -- | Check termination status of particles
-    case foldVals prts' of
-      -- | If all particles have finished, return their results and contexts
-      Right vals  -> (`zip` ρs') <$> vals
-      -- | Otherwise, pick the particles to continue with
-      Left  _     -> call (Resample (prts', ρs') prog_0) >>= loop
+pfilter hdlParticle prog_0 (prts, ρs) = do
+  -- | Run particles to next checkpoint and accumulate their contexts
+  (prts', partialρs) <- lift (mapAndUnzipM hdlParticle prts)
+  ρs'                <- call (Accum ρs partialρs)
+  -- | Check termination status of particles
+  case foldVals prts' of
+    -- | If all particles have finished, return their results and contexts
+    Right vals  -> (`zip` ρs') <$> vals
+    -- | Otherwise, pick the particles to continue with
+    Left  _     -> call (Resample (prts', ρs') prog_0) >>= pfilter hdlParticle prog_0
 
 {- | Check whether a list of programs have all terminated.
      If at least one program is unfinished, return all programs.
