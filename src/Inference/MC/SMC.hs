@@ -59,7 +59,7 @@ smcInternal n_prts  =
 handleParticle :: ProbProg a -> Sampler (ProbProg a, LogP)
 handleParticle = SIM.defaultSample . handleObs
 
-handleObs :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, LogP)
+handleObs :: ProbProg a -> Prog '[Sample] (ProbProg a, LogP)
 handleObs (Val x)   = Val (Val x, 0)
 handleObs (Op op k) = case discharge op of
   Right (Observe d y α) -> Val (k y, logProb d y)
@@ -76,8 +76,9 @@ handleResampleMul (Op op k) = case discharge op of
     let resampled_prts  = map (prts !! ) idxs
         resampled_ρs = map (ρs !! ) idxs
     (handleResampleMul . k) (resampled_prts, resampled_ρs)
-  Right (Accum ρs ρs') -> do
-    (handleResampleMul . k) (normaliseParticles ρs ρs')
+  Right (Accum ρs1 ρs2) -> do
+    let ρs = map (+ logMeanExp ρs1) ρs2
+    (handleResampleMul . k) ρs
   Left op' -> Op op' (handleResampleMul . k)
 
 normaliseParticles  :: [LogP] -> [LogP] -> [LogP]
