@@ -5,10 +5,10 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-{- | Particle Marginal Metropolis-Hastings inference.
+{- | Particle Independence Metropolis.
 -}
 
-module Inference.MC.PMMH where
+module Inference.MC.PIM where
 
 import Prog
 import Sampler
@@ -26,24 +26,25 @@ import qualified Inference.MC.MH as MH
 import Inference.MC.Metropolis as Metropolis
 import           Inference.MC.SIS as SIS
 import           Inference.MC.SMC as SMC
+import qualified Inference.MC.IM as IM
 
 {- | Top-level wrapper for PMMH inference.
 -}
-pmmh :: forall env vars a. (env `ContainsVars` vars)
+pim :: forall env vars a. (env `ContainsVars` vars)
   => Int                                            -- ^ number of MH steps
   -> Int                                            -- ^ number of particles
   -> Model env [ObsRW env, Dist] a                  -- ^ model
   -> Env env                                        -- ^ input environment
   -> Vars vars                                      -- ^ parameter names
   -> Sampler [Env env]                              -- ^ output environments
-pmmh mh_steps n_prts model env_in obs_vars = do
+pim mh_steps n_prts model env_in obs_vars = do
   -- | Handle model to probabilistic program
   let prog_0   = handleCore env_in model
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
   -- | Initialise sample trace to include only parameters
   τθ_0       <- (fmap (filterTrace tags . snd) . reuseSamples Map.empty . defaultObserve) prog_0
-  pmmh_trace <- (handleLift . handleAccept . metropolis mh_steps (0, τθ_0) (handleModel n_prts)) prog_0
+  pmmh_trace <- (handleLift . IM.handleAccept . metropolis mh_steps (0, τθ_0) (handleModel n_prts)) prog_0
   pure (map (snd . fst . fst) pmmh_trace)
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
@@ -61,19 +62,3 @@ handleModel n prog (_, τθ)  = do
       ρ   = logMeanExp ρs
   pure ((a, ρ), τθ)
 
-{- | An acceptance mechanism for PMMH.
--}
-handleAccept :: HasSampler fs
-  => Prog (Accept LogP : fs) a -> Prog fs a
-handleAccept (Val x)   = pure x
-handleAccept (Op op k) = case discharge op of
-  Right (Propose (_, τθ))
-    ->  do α <- randomFrom' (Map.keys τθ)
-           r <- random'
-           let τθ' = Map.insert α r τθ
-           (handleAccept . k) (0, τθ')
-  Right (Accept lρ lρ')
-    ->  do u <- random'
-           (handleAccept . k) (exp (lρ' - lρ) > u)
-  Left op'
-    -> Op op' (handleAccept . k)
