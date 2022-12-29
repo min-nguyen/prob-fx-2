@@ -24,7 +24,7 @@ import qualified Data.Map as Map
 import Inference.MC.SIM as SIM
 import qualified Inference.MC.MH as MH
 import Inference.MC.Metropolis as Metropolis
-import qualified Inference.MC.SIS as SIS
+import           Inference.MC.SIS as SIS
 import           Inference.MC.SMC as SMC
 
 {- | Top-level wrapper for PMMH inference.
@@ -65,14 +65,13 @@ handleModel ::
   -> ProbProg a                                   -- ^ probabilistic program
   -> (LogP, Trace)                               -- ^ proposed initial log-prob + sample trace
   -> Sampler ((a, LogP), Trace)                  -- ^ proposed final log-prob + sample trace
-handleModel n_prts tags  prog (_, τ)  = do
+handleModel n tags prog (_, τ)  = do
   (a, τ') <- (reuseSamples τ . defaultObserve) prog
-  let params = filterTrace tags τ'
-  prts   <- ( handleLift
-            . SMC.handleResampleMul
-            . SIS.sis n_prts (((fst <$>) . reuseSamples params) . suspend) 0) prog
-  let logZ = logMeanExp (map snd prts)
-  pure ((a, logZ), τ')
+  let θ'  = filterTrace tags τ'
+  prts    <- (handleLift . handleResampleMul
+            . sis n (fmap fst . reuseSamples θ' . suspend) 0) prog
+  let ρ   = logMeanExp (map snd prts)
+  pure ((a, ρ), τ')
 
 {- | An acceptance mechanism for PMMH.
 -}
