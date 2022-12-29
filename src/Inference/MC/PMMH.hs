@@ -21,11 +21,11 @@ import Env
 import Effects.Lift
 import Effects.ObsRW
 import qualified Data.Map as Map
-import qualified Inference.MC.SIM as SIM
+import Inference.MC.SIM as SIM
 import qualified Inference.MC.MH as MH
 import Inference.MC.Metropolis as Metropolis
 import qualified Inference.MC.SIS as SIS
-import qualified Inference.MC.SMC as SMC
+import           Inference.MC.SMC as SMC
 
 {- | Top-level wrapper for PMMH inference.
 -}
@@ -66,11 +66,11 @@ handleModel ::
   -> (LogP, Trace)                               -- ^ proposed initial log-prob + sample trace
   -> Sampler ((a, LogP), Trace)                  -- ^ proposed final log-prob + sample trace
 handleModel n_prts tags  prog (_, τ)  = do
-  (a, τ') <- (Metropolis.reuseSamples τ . SIM.defaultObserve) prog
+  (a, τ') <- (reuseSamples τ . defaultObserve) prog
   let params = filterTrace tags τ'
   prts   <- ( handleLift
             . SMC.handleResampleMul
-            . SIS.sis n_prts (((fst <$>) . Metropolis.reuseSamples params) . SMC.handleObs) 0) prog
+            . SIS.sis n_prts (((fst <$>) . reuseSamples params) . suspend) 0) prog
   let logZ = logMeanExp (map snd prts)
   pure ((a, logZ), τ')
 

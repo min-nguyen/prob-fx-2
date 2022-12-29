@@ -25,7 +25,7 @@ import           Model ( Model(runModel), ProbProg )
 import           PrimDist ( mkCategorical, sample, logProb )
 import           Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge, prj )
 import qualified Data.Map as Map
-import qualified Inference.MC.SIM as SIM
+import           Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS
 import           Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler)
 import           Sampler ( Sampler, sampleRandom, sampleCategorical)
@@ -57,13 +57,13 @@ smcInternal n_prts  =
        2. the log probability of the @Observe operation
 -}
 handleParticle :: ProbProg a -> Sampler (ProbProg a, LogP)
-handleParticle = SIM.defaultSample . handleObs
+handleParticle = defaultSample . suspend
 
-handleObs :: ProbProg a -> Prog '[Sample] (ProbProg a, LogP)
-handleObs (Val x)   = Val (Val x, 0)
-handleObs (Op op k) = case discharge op of
+suspend :: ProbProg a -> Prog '[Sample] (ProbProg a, LogP)
+suspend (Val x)   = Val (Val x, 0)
+suspend (Op op k) = case discharge op of
   Right (Observe d y α) -> Val (k y, logProb d y)
-  Left op'              -> Op op' (handleObs . k)
+  Left op'              -> Op op' (suspend . k)
 
 {- | A handler for multinomial resampling of particles.
 -}
