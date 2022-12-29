@@ -31,7 +31,6 @@ import Inference.MC.MH as MH ( mh )
 import Inference.MC.SMC as SMC ( smc )
 import Inference.MC.RMSMC as RMSMC ( rmsmc )
 import Inference.MC.PMMH as PMMH ( pmmh )
-import Inference.MC.SMC2 as SMC2 ( smc2 )
 import Inference.VI.BBVI as BBVI
 import Inference.VI.INVI as INVI
 import Inference.VI.Extra.BBVI_Combined as BBVI_Combined
@@ -224,20 +223,6 @@ pmmhLDA n_mhsteps n_particles n_words = do
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
 
   env_outs     <- PMMH.pmmh n_mhsteps n_particles  (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
-  -- Draw the most recent sampled parameters
-  let env_pred   = head env_outs
-      θs         = get #θ env_pred
-      φs         = get #φ env_pred
-  return (map Vec.toList θs, map Vec.toList φs)
-
--- | SMC2 inference on topic model (predictive)
-smc2LDA :: Int ->  Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
-smc2LDA n_outer_particles n_mhsteps n_inner_particles n_words = do
-
-  let n_topics  = snat @(FromGHC 2)
-      env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
-
-  env_outs     <- SMC2.smc2 n_outer_particles n_mhsteps n_inner_particles (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
   -- Draw the most recent sampled parameters
   let env_pred   = head env_outs
       θs         = get #θ env_pred

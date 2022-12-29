@@ -22,7 +22,6 @@ import Inference.MC.Gibbs as Gibbs ( gibbs )
 import Inference.MC.SMC as SMC ( smc )
 import Inference.MC.RMSMC as RMSMC ( rmsmc )
 import Inference.MC.PMMH as PMMH ( pmmh )
-import Inference.MC.SMC2 as SMC2 ( smc2 )
 import qualified Inference.VI.BBVI as BBVI
 import qualified Inference.VI.INVI as INVI
 import qualified Inference.VI.MLE as MLE
@@ -184,19 +183,6 @@ pmmhLinRegr n_mhsteps n_particles  n_datapoints = do
       cs  = concatMap (get #c) env_outs
   pure (mus, cs)
 
--- | SMC2 over linear regression
-smc2LinRegr :: Int -> Int -> Int -> Int -> Sampler ([Double], [Double])
-smc2LinRegr n_outer_particles n_mhsteps n_inner_particles  n_datapoints = do
-  -- Specify model inputs
-  let xs            = [0 .. fromIntegral n_datapoints]
-  -- Specify model environment
-      env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  -- Run SMC
-  env_outs <- SMC2.smc2 n_outer_particles n_mhsteps n_inner_particles (linRegr xs) env_in (#m <#> #c <#> vnil)
-  -- Get the sampled values of mu and c for each particle
-  let mus = concatMap (get #m) env_outs
-      cs  = concatMap (get #c) env_outs
-  pure (mus, cs)
 
 -- | BBVI over linear regression, using a custom guide
 bbviLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])

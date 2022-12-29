@@ -41,7 +41,7 @@ gibbs n model env_in   = do
       trace_0 = Map.empty
   gibbs_trace <-  ( handleLift
                   . handleAccept
-                  . metroLoop n (s_0, trace_0) handleModel) prog_0
+                  . metropolis n (s_0, trace_0) handleModel) prog_0
   pure (map (snd . fst . fst) gibbs_trace)
 
 {- | Handler for one iteration of Gibbs.

@@ -27,7 +27,6 @@ import Inference.MC.SMC as SMC ( smc )
 import Inference.MC.SIM as SIM ( simulate )
 import Inference.MC.RMSMC as RMSMC ( rmsmc )
 import Inference.MC.PMMH as PMMH ( pmmh )
-import Inference.MC.SMC2 as SMC2 ( smc2 )
 import Inference.VI.BBVI as BBVI
 import Inference.VI.INVI as INVI
 import Inference.VI.Extra.BBVI_Combined as BBVI_Combined
@@ -270,27 +269,6 @@ pmmhHMM n_mhsteps n_particles  hmm_length = do
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
   env_outs <- PMMH.pmmh n_mhsteps n_particles (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
-  let trans_ps    = concatMap (get #trans_p) env_outs
-      obs_ps      = concatMap (get #obs_p) env_outs
-  pure (trans_ps, obs_ps)
-
--- | SMC2 inference over a HMM
-smc2HMM
-  -- | number of outer particles
-  :: Int
-  -- | number of MH steps
-  -> Int
-  -- | number of inner particles
-  -> Int
-  -- | number of HMM nodes
-  -> Int
-  -- | [(transition parameter, observation parameter)]
-  -> Sampler ([Double], [Double])
-smc2HMM n_outer_particles n_mhsteps n_inner_particles  hmm_length = do
-  ys <- simHMM hmm_length
-  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
-
-  env_outs <- SMC2.smc2 n_outer_particles n_mhsteps n_inner_particles (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
   let trans_ps    = concatMap (get #trans_p) env_outs
       obs_ps      = concatMap (get #obs_p) env_outs
   pure (trans_ps, obs_ps)

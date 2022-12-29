@@ -65,7 +65,7 @@ mhInternal :: (HasSampler fs)
   -> ProbProg a                            -- ^ probabilistic program
   -> Prog fs [((a, (Addr, LPTrace)), Trace)]
 mhInternal n tags τ_0 =
-  handleAccept tags . metroLoop n (s_0, τ_0) handleModel
+  handleAccept tags . metropolis n (s_0, τ_0) handleModel
   where
     s_0 = (Addr 0 "" 0, Map.empty)
 

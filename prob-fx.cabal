@@ -39,7 +39,7 @@ library
                       Inference.MC.SIM,
                       Inference.MC.SIS,
                       Inference.MC.SMC,
-                      Inference.MC.SMC2,
+                      -- Inference.MC.SMC2,
                       Inference.MC.RMSMC,
                       Inference.MC.PMMH,
                       Inference.MC.Metropolis,

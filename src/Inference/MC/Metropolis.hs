@@ -47,13 +47,13 @@ type ModelHandler p = forall a. ProbProg a -> (p, Trace) -> Sampler ((a, p), Tra
 
 {- | A general framework for Metropolis inference.
 -}
-metroLoop :: (HasSampler fs)
+metropolis :: (HasSampler fs)
    => Int                                                                    -- ^ number of iterations
    -> (p, Trace)                                                          -- ^ initial context + sample trace
    -> ModelHandler p                                                        -- ^ model handler
    -> ProbProg a                                                             -- ^ probabilistic program
    -> Prog (Accept p : fs) [((a, p), Trace)]                            -- ^ trace of accepted outputs
-metroLoop n (p_0, τ_0) hdlModel prog_0 = do
+metropolis n (p_0, τ_0) hdlModel prog_0 = do
   -- | Perform initial run of mh
   x0 <- lift (hdlModel prog_0 (p_0, τ_0))
   -- | A function performing n mhSteps using initial mh_s. The most recent samples are at the front of the trace.
