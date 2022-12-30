@@ -51,9 +51,9 @@ pmmh mh_steps n_prts model env_in obs_vars = do
 handleModel ::
      Int                                          -- ^ number of particles
   -> ProbProg a                                   -- ^ probabilistic program
-  -> (LogP, Trace)                               -- ^ proposed initial log-prob + sample trace
+  -> Trace                                       -- ^ proposed initial log-prob + sample trace
   -> Sampler ((a, LogP), Trace)                  -- ^ proposed final log-prob + sample trace
-handleModel n prog (_, τθ)  = do
+handleModel n prog τθ  = do
   let handleParticle :: ProbProg a -> Sampler (ProbProg a, LogP)
       handleParticle = fmap fst . reuseSamples τθ . suspend
   (as, ρs) <- (handleLift . handleResampleMul . fmap unzip . pfilter handleParticle prog) ((unzip . replicate n) (prog, 0))
@@ -71,7 +71,7 @@ handleAccept (Op op k) = case discharge op of
     ->  do α <- randomFrom' (Map.keys τθ)
            r <- random'
            let τθ' = Map.insert α r τθ
-           (handleAccept . k) (0, τθ')
+           (handleAccept . k) τθ'
   Right (Accept lρ lρ')
     ->  do u <- random'
            (handleAccept . k) (exp (lρ' - lρ) > u)

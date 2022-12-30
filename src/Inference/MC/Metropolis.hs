@@ -4,6 +4,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeApplications #-}
 
 {- | Metropolis inference
 -}
@@ -34,7 +35,7 @@ data Accept p a where
     -- | previous context and sample trace
     :: Trace
     -- | proposed *initial* context and sample trace
-    -> Accept p (p, Trace)
+    -> Accept p Trace
   Accept
     -- | previous context
     :: p
@@ -43,7 +44,7 @@ data Accept p a where
     -- | whether the proposal is accepted or not
     -> Accept p Bool
 
-type ModelHandler p = forall a. ProbProg a -> (p, Trace) -> Sampler ((a, p), Trace)
+type ModelHandler p = forall a. ProbProg a -> Trace -> Sampler ((a, p), Trace)
 
 {- | A general framework for Metropolis inference.
 -}
@@ -55,13 +56,13 @@ metropolis :: (HasSampler fs)
    -> Prog (Accept p : fs) [((a, p), Trace)]                            -- ^ trace of accepted outputs
 metropolis n (p_0, τ_0) hdlModel prog_0 = do
   -- | Perform initial run of mh
-  x0 <- lift (hdlModel prog_0 (p_0, τ_0))
+  x0 <- lift (hdlModel prog_0 τ_0)
   -- | A function performing n mhSteps using initial mh_s. The most recent samples are at the front of the trace.
   foldl (>=>) pure (replicate n (metroStep prog_0 hdlModel )) [x0]
 
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
-metroStep :: (HasSampler fs)
+metroStep :: forall fs p a. (HasSampler fs)
   => ProbProg a                                                       -- ^ model handler
   -> ModelHandler p                                                  -- ^ probabilistic program
   -> [((a, p), Trace)]                                                   -- ^ previous trace
@@ -70,7 +71,7 @@ metroStep prog_0 hdlModel markov_chain = do
   -- | Get previous iteration output
   let ((_, p), τ) = head markov_chain
   -- | Construct an *initial* proposal
-  prp             <- call (Propose τ)
+  prp            <- call (Propose τ :: Accept p Trace)
   -- | Execute the model under the initial proposal to return the *final* proposal
   ((r', p'), τ') <- lift (hdlModel prog_0 prp )
   -- | Compute acceptance ratio

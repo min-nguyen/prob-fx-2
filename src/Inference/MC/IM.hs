@@ -51,17 +51,17 @@ im n model env_in   = do
 -}
 handleModel ::
      ProbProg a                         -- ^ probabilistic program
-  -> (LogP, Trace)                     -- ^ proposed initial log-prob + sample trace
+  -> Trace                             -- ^ proposed initial log-prob + sample trace
   -> Sampler ((a, LogP), Trace)        -- ^ proposed final log-prob + sample trace
-handleModel prog (lρ, τ) =
-  (Metropolis.reuseSamples τ . LW.likelihood lρ) prog
+handleModel prog τ =
+  (Metropolis.reuseSamples τ . LW.likelihood 0) prog
 
 handleAccept :: HasSampler fs => Prog (Accept LogP : fs) a -> Prog fs a
 handleAccept (Val x)   = pure x
 handleAccept (Op op k) = case discharge op of
   Right (Propose τ)
     ->  do  τ0 <- mapM (const random') τ
-            (handleAccept . k) (0, τ0)
+            (handleAccept . k) τ0
   Right (Accept lρ lρ')
     ->  do  u <- random'
             (handleAccept . k) (exp (lρ' - lρ) > u)

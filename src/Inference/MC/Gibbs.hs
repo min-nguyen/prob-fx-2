@@ -49,11 +49,11 @@ gibbs n model env_in   = do
 {- | Handler for one iteration of Gibbs.
 -}
 handleModel ::
-     ProbProg a                          -- ^ probabilistic program
-  -> (LogP, Trace)               -- ^ proposed index + initial log-prob + initial sample trace
+     ProbProg a                  -- ^ probabilistic program
+  -> Trace                       -- ^ proposed index + initial log-prob + initial sample trace
   -> Sampler ((a, LogP), Trace)  -- ^ proposed index + final log-prob   + final sample trace
-handleModel prog (ρ0, τ0)  = do
-  ((a, ρ), τ) <- (Metropolis.reuseSamples τ0 . SIM.defaultObserve . LW.joint ρ0) prog
+handleModel prog τ0  = do
+  ((a, ρ), τ) <- (Metropolis.reuseSamples τ0 . SIM.defaultObserve . LW.joint 0) prog
   return ((a, ρ), τ)
 
 -- | For simplicity, the acceptance ratio is p(X', Y)/p(X, Y), but should be p(X' \ {x_i}, Y)/p(X \ {x_i}, Y)
@@ -65,7 +65,7 @@ handleAccept (Op op k) = case discharge op of
              idx <- get
              put (idx + 1)
              let prp_τ = Map.updateAt (\_ _ -> Just r) (idx `mod` length τ) τ
-             (handleAccept . k) (0, prp_τ)
+             (handleAccept . k) prp_τ
     Right (Accept lρ lρ')
       ->  do u <- random'
              (handleAccept . k) (exp (lρ' - lρ) > u)
