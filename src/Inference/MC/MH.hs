@@ -66,7 +66,7 @@ mhInternal :: (HasSampler fs)
   -> ProbProg a                            -- ^ probabilistic program
   -> Prog fs [((a, LPTrace), Trace)]
 mhInternal n tags τ_0 =
-  evalState (Addr 0 "" 0) . handleAccept tags . metropolis n (Map.empty, τ_0) handleModel
+  evalState (Addr 0 "" 0) . handleAccept tags . metropolis n τ_0 handleModel
 
 {- | Handler for @Accept@ for MH.
     - Propose by drawing a component x_i of latent variable X' ~ p(X)

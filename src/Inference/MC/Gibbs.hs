@@ -37,13 +37,12 @@ gibbs ::
   -> Sampler [Env env]              -- ^ output environments
 gibbs n model env_in   = do
   -- | Handle model to probabilistic program
-  let prog_0   = handleCore env_in model
-      s_0    = (0, 0)
-      trace_0 = Map.empty
+  let prog_0  = handleCore env_in model
+      τ_0     = Map.empty
   gibbs_trace <-  ( handleLift
                   . evalState (0 :: Int)
                   . handleAccept
-                  . metropolis n (0, trace_0) handleModel) prog_0
+                  . metropolis n τ_0 handleModel) prog_0
   pure (map (snd . fst . fst) gibbs_trace)
 
 {- | Handler for one iteration of Gibbs.

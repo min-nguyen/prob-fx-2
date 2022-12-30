@@ -50,11 +50,11 @@ type ModelHandler p = forall a. ProbProg a -> Trace -> Sampler ((a, p), Trace)
 -}
 metropolis :: (HasSampler fs)
    => Int                                                                    -- ^ number of iterations
-   -> (p, Trace)                                                          -- ^ initial context + sample trace
+   -> Trace                                                          -- ^ initial context + sample trace
    -> ModelHandler p                                                        -- ^ model handler
    -> ProbProg a                                                             -- ^ probabilistic program
    -> Prog (Accept p : fs) [((a, p), Trace)]                            -- ^ trace of accepted outputs
-metropolis n (p_0, τ_0) hdlModel prog_0 = do
+metropolis n τ_0 hdlModel prog_0 = do
   -- | Perform initial run of mh
   x0 <- lift (hdlModel prog_0 τ_0)
   -- | A function performing n mhSteps using initial mh_s. The most recent samples are at the front of the trace.
@@ -69,11 +69,11 @@ metroStep :: forall fs p a. (HasSampler fs)
   -> Prog (Accept p : fs) [((a, p), Trace)]                            -- ^ updated trace
 metroStep prog_0 hdlModel markov_chain = do
   -- | Get previous iteration output
-  let ((_, p), τ) = head markov_chain
+  let ((r, p), τ) = head markov_chain
   -- | Construct an *initial* proposal
-  prp            <- call (Propose τ :: Accept p Trace)
+  τ_0            <- call (Propose τ :: Accept p Trace)
   -- | Execute the model under the initial proposal to return the *final* proposal
-  ((r', p'), τ') <- lift (hdlModel prog_0 prp )
+  ((r', p'), τ') <- lift (hdlModel prog_0 τ_0)
   -- | Compute acceptance ratio
   b              <- call (Accept p p')
   if b then pure (((r', p'), τ'):markov_chain)

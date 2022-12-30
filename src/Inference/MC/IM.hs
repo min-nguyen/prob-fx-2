@@ -42,9 +42,8 @@ im ::
 im n model env_in   = do
   -- | Handle model to probabilistic program
   let prog_0  = handleCore env_in model
-      s_0     =  0
-      trace_0 = Map.empty
-  rwm_trace <- (handleLift . handleAccept . Metropolis.metropolis n (s_0, trace_0) handleModel) prog_0
+      τ_0     = Map.empty
+  rwm_trace <- (handleLift . handleAccept . Metropolis.metropolis n τ_0 handleModel) prog_0
   pure (map (snd . fst . fst) rwm_trace)
 
 {- | Handler for one iteration of IM.
