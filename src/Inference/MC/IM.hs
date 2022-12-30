@@ -59,7 +59,7 @@ handleModel prog (lρ, τ) =
 handleAccept :: HasSampler fs => Prog (Accept LogP : fs) a -> Prog fs a
 handleAccept (Val x)   = pure x
 handleAccept (Op op k) = case discharge op of
-  Right (Propose (_, τ))
+  Right (Propose τ)
     ->  do  τ0 <- mapM (const random') τ
             (handleAccept . k) (0, τ0)
   Right (Accept lρ lρ')

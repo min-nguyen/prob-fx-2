@@ -32,7 +32,7 @@ import Sampler ( Sampler, sampleRandom )
 data Accept p a where
   Propose
     -- | previous context and sample trace
-    :: (p, Trace)
+    :: Trace
     -- | proposed *initial* context and sample trace
     -> Accept p (p, Trace)
   Accept
@@ -70,7 +70,7 @@ metroStep prog_0 hdlModel markov_chain = do
   -- | Get previous iteration output
   let ((_, p), τ) = head markov_chain
   -- | Construct an *initial* proposal
-  prp             <- call (Propose (p, τ))
+  prp             <- call (Propose τ)
   -- | Execute the model under the initial proposal to return the *final* proposal
   ((r', p'), τ') <- lift (hdlModel prog_0 prp )
   -- | Compute acceptance ratio

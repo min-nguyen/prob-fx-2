@@ -82,7 +82,7 @@ handleAccept tags = loop
  where
   loop (Val x)   = pure x
   loop (Op op k) = case discharge op of
-    Right (Propose (_, τ))
+    Right (Propose τ)
       ->  do  α0 <- randomFrom' (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
               r0 <- random'
               let τ0 = Map.insert α0 r0 τ

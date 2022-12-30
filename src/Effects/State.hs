@@ -15,7 +15,8 @@ module Effects.State (
   , putM
   , modify
   , handleState
-  , handleStateM) where
+  , handleStateM
+  , evalState) where
 
 import Prog ( Member(inj), Prog(..), discharge )
 import Model ( Model(..) )
@@ -61,6 +62,9 @@ handleState s m = loop s m where
     Right Get      -> loop s (k s)
     Right (Put s') -> loop s' (k ())
     Left  u'         -> Op u' (loop s . k)
+
+evalState :: s -> Prog (State s : es) a -> Prog es a
+evalState s = fmap fst . handleState s
 
 -- | Handle the @State s@ effect in a model
 handleStateM :: s -> Model env (State s : es) a -> Model env es (a, s)

@@ -67,7 +67,7 @@ handleAccept :: HasSampler fs
   => Prog (Accept LogP : fs) a -> Prog fs a
 handleAccept (Val x)   = pure x
 handleAccept (Op op k) = case discharge op of
-  Right (Propose (_, τθ))
+  Right (Propose τθ)
     ->  do α <- randomFrom' (Map.keys τθ)
            r <- random'
            let τθ' = Map.insert α r τθ
