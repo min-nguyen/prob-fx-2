@@ -50,11 +50,12 @@ mh :: forall env vars a. (env `ContainsVars` vars)
   -> Sampler [Env env]              -- ^ output model environments
 mh n model env_in obs_vars  = do
   -- | Handle model to probabilistic program
-  let prog_0   = handleCore env_in model
-      trace_0 = Map.empty
+  let prog_0 = handleCore env_in model
+      α_0    = Addr 0 "" 0
+      τ_0    = Map.empty
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
-  mh_trace <- handleLift (mhInternal n tags trace_0 prog_0)
+  mh_trace <- (handleLift . handleAccept tags α_0 . metropolis n τ_0 handleModel) prog_0
   pure (map (snd . fst . fst) mh_trace)
 
 {- | MH inference on a probabilistic program.
@@ -65,34 +66,31 @@ mhInternal :: (HasSampler fs)
   -> Trace                                -- ^ initial sample trace
   -> ProbProg a                            -- ^ probabilistic program
   -> Prog fs [((a, LPTrace), Trace)]
-mhInternal n tags τ_0 =
-  evalState (Addr 0 "" 0) . handleAccept tags . metropolis n τ_0 handleModel
+mhInternal n tags τ_0 = handleAccept tags α_0 . metropolis n τ_0 handleModel
+  where α_0 = Addr 0 "" 0
 
 {- | Handler for @Accept@ for MH.
     - Propose by drawing a component x_i of latent variable X' ~ p(X)
     - Accept using the ratio:
        p(X', Y')q(X | X')/p(X, Y)q(X' | X)
 -}
-handleAccept :: (Member (State Addr) fs, HasSampler fs)
+handleAccept :: (HasSampler fs)
   => [Tag]
+  -> Addr
   -> Prog (Accept LPTrace : fs) a
   -> Prog fs a
-handleAccept tags = loop
- where
-  loop (Val x)   = pure x
-  loop (Op op k) = case discharge op of
-    Right (Propose τ)
-      ->  do  α0 <- randomFrom' (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
-              r0 <- random'
-              put α0
-              let τ0 = Map.insert α0 r0 τ
-              (loop . k) τ0
-    Right (Accept ρ ρ')
-      ->  do  α' <- get
-              let ratio = (exp . sum . Map.elems . Map.delete α') (Map.intersectionWith (-) ρ' ρ)
-              u <- random'
-              (loop . k) (ratio > u)
-    Left op' -> Op op' (loop . k)
+handleAccept tags α (Val x)   = pure x
+handleAccept tags α (Op op k) = case discharge op of
+  Right (Propose τ)
+    ->  do  α0 <- randomFrom' (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
+            r0 <- random'
+            let τ0 = Map.insert α0 r0 τ
+            (handleAccept tags α0 . k) τ0
+  Right (Accept ρ ρ')
+    ->  do  let ratio = (exp . sum . Map.elems . Map.delete α) (Map.intersectionWith (-) ρ' ρ)
+            u <- random'
+            (handleAccept tags α . k) (ratio > u)
+  Left op' -> Op op' (handleAccept tags α . k)
 
 {- Propose a new random value at a single component x_i of latent variable X = {x_0, ... x_N}.
 -}
@@ -116,9 +114,7 @@ handleModel ::
      ProbProg a                             -- ^ probabilistic program
   -> Trace                                  -- ^ proposed address + initial log-probability trace + initial sample trace
   -> Sampler ((a, LPTrace), Trace)  -- ^ proposed address + final log-probability trace + final sample trace
-handleModel prog τ0  = do
-  ((a, ρ), τ) <- (reuseSamples τ0 . defaultObserve . traceLP Map.empty) prog
-  return ((a, ρ), τ)
+handleModel prog τ0 = (reuseSamples τ0 . defaultObserve . traceLP Map.empty) prog
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}
