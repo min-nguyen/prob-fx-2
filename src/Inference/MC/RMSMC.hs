@@ -103,30 +103,30 @@ handleResample :: (HasSampler fs)
 handleResample mh_steps tags = loop where
   loop (Val x) = Val x
   loop (Op op k) = case discharge op of
-    Right (Resample (prts, ss) prog_0) ->
+    Right (Resample (prts, ρs) prog_0) ->
       do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
-          idxs <- lift $ SMC.resampleMul (map particleLogProb ss)
-          let resampled_ss   = map (ss !! ) idxs
+          idxs <- lift $ SMC.resampleMul (map particleLogProb ρs)
+          let resampled_ρs   = map (ρs !! ) idxs
           -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head')
-              resampled_α      = (particleObsAddr . head) resampled_ss
+              resampled_α      = (particleObsAddr . head) resampled_ρs
           -- | Get the sample trace of each resampled particle
-              resampled_traces = map particleSTrace resampled_ss
+              resampled_τs = map particleSTrace resampled_ρs
           -- | Insert break point to perform MH up to
               partial_model = breakObserve resampled_α prog_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
           mh_trace <-  mapM ( fmap head
                             . flip (MH.mhInternal mh_steps tags) partial_model
-                           ) resampled_traces
+                           ) resampled_τs
           {- | Get:
               1) the continuations of each particle from the break point
               2) the log prob traces of each particle up until the break point
               3) the sample traces of each particle up until the break point -}
-          let ((rejuv_prts, lρs), rejuv_traces) = first unzip (unzip mh_trace)
+          let ((rejuv_prts, lρs), rejuv_τs) = first unzip (unzip mh_trace)
 
               -- | Recompute the log weights of all particles up until the break point
               rejuv_lps     = map (sum . map snd . Map.toList) lρs
 
-              rejuv_ss    = zipWith3 TracedParticle rejuv_lps (repeat resampled_α) rejuv_traces
+              rejuv_ss    = zipWith3 TracedParticle rejuv_lps (repeat resampled_α) rejuv_τs
 
           (loop . k) (rejuv_prts, rejuv_ss)
     Right (Accum ss ss') ->
