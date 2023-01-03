@@ -84,14 +84,14 @@ rmsmcInternal n_prts mh_steps tags  =
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
 handleParticle :: ProbProg a -> Sampler (ProbProg a, TracedParticle)
-handleParticle = (asTracedParticle <$>) . reuseSamples Map.empty . handleObs where
+handleParticle = (asTracedParticle <$>) . reuseSamples Map.empty . suspendα where
   asTracedParticle ((prt, ρ, α), τ) = (prt, TracedParticle ρ α τ)
 
-handleObs :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, LogP, Addr)
-handleObs (Val x)   = pure (Val x, 0, Addr 0 "" 0)
-handleObs (Op op k) = case discharge op of
+suspendα :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, LogP, Addr)
+suspendα (Val x)   = pure (Val x, 0, Addr 0 "" 0)
+suspendα (Op op k) = case discharge op of
   Right (Observe d y α) -> Val (k y, logProb d y, α)
-  Left op'              -> Op op' (handleObs . k)
+  Left op'              -> Op op' (suspendα . k)
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using MH.
 -}
