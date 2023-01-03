@@ -115,7 +115,7 @@ handleResample mh_steps tags = loop where
               partial_model = breakObserve resampled_α prog_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
           mh_trace <-  mapM ( fmap head
-                            . flip (MH.mhInternal mh_steps tags) partial_model
+                            . flip (\τ -> MH.ssmh mh_steps τ (Addr 0 "" 0) tags) partial_model
                            ) resampled_τs
           {- | Get:
               1) the continuations of each particle from the break point

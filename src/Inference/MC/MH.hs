@@ -60,14 +60,14 @@ mh n model env_in obs_vars  = do
 
 {- | MH inference on a probabilistic program.
 -}
-mhInternal :: (HasSampler fs)
+ssmh :: (HasSampler fs)
   => Int                                   -- ^ number of MH iterations
-  -> [Tag]                                 -- ^ tags indicating variables of interest
   -> Trace                                -- ^ initial sample trace
+  -> Addr
+  -> [Tag]                                 -- ^ tags indicating variables of interest
   -> ProbProg a                            -- ^ probabilistic program
   -> Prog fs [((a, LPTrace), Trace)]
-mhInternal n tags τ_0 = handleAccept tags α_0 . metropolis n τ_0 handleModel
-  where α_0 = Addr 0 "" 0
+ssmh n τ_0 α_0 tags = handleAccept tags α_0 . metropolis n τ_0 handleModel
 
 {- | Handler for @Accept@ for MH.
     - Propose by drawing a component x_i of latent variable X' ~ p(X)
