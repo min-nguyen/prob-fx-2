@@ -33,7 +33,7 @@ import           Effects.NonDet
 import qualified Inference.MC.MH as MH
 import qualified Inference.MC.SMC as SMC
 import qualified Inference.MC.SIM as SIM
-import qualified Inference.MC.Metropolis as Metropolis
+import           Inference.MC.Metropolis as Metropolis
 import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
 import           Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler)
 import           Effects.Lift
@@ -84,17 +84,8 @@ rmsmcInternal n_prts mh_steps tags  =
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
 handleParticle :: ProbProg a -> Sampler (ProbProg a, TracedParticle)
-handleParticle = (asTracedParticle <$>) . handleSamp . handleObs where
-  asTracedParticle ((prt, lρs, α), τ) = (prt, TracedParticle lρs α τ)
-
-handleSamp :: Prog '[Sample] a -> Sampler (a, Trace)
-handleSamp = loop Map.empty where
-  loop :: Trace ->  Prog '[Sample] a -> Sampler (a, Trace)
-  loop τ (Val x)   = pure (x, τ)
-  loop τ (Op op k) = case discharge1 op of
-    (Sample d α) -> do r <- sampleRandom
-                       let y = draw d r
-                       loop (Map.insert α r τ) (k y)
+handleParticle = (asTracedParticle <$>) . reuseSamples Map.empty . handleObs where
+  asTracedParticle ((prt, ρ, α), τ) = (prt, TracedParticle ρ α τ)
 
 handleObs :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, LogP, Addr)
 handleObs (Val x)   = pure (Val x, 0, Addr 0 "" 0)
