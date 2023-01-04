@@ -44,18 +44,18 @@ import           Util
 
 {- | The particle context for an MCMC trace.
 -}
-data TracedPrt = TracedPrt {
+data PrtTrace = PrtTrace {
     particleObsAddr   :: Addr
   , particleLogProb   :: LogP
   , particleSTrace    :: Trace
   }
 
-unpack :: [TracedPrt] -> (Addr, [LogP], [Trace])
+unpack :: [PrtTrace] -> (Addr, [LogP], [Trace])
 unpack prts = (head αs, ps, τs)
-  where (αs, ps, τs) = foldr (\(TracedPrt α p τ) (αs, ps, τs) -> (α:αs, p:ps, τ:τs) ) ([],[],[]) prts
+  where (αs, ps, τs) = foldr (\(PrtTrace α p τ) (αs, ps, τs) -> (α:αs, p:ps, τ:τs) ) ([],[],[]) prts
 
-pack :: (Addr, [LogP], [Trace]) -> [TracedPrt]
-pack (α, ps, τs) = zipWith3 TracedPrt (repeat α) ps τs
+pack :: (Addr, [LogP], [Trace]) -> [PrtTrace]
+pack (α, ps, τs) = zipWith3 PrtTrace (repeat α) ps τs
 
 {- | Call RMSMC on a model.
 -}
@@ -81,18 +81,18 @@ rmsmcInternal :: (HasSampler fs)
   -> Int                                          -- ^ number of MH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> ProbProg a                                    -- ^ probabilistic program
-  -> Prog fs [(a, TracedPrt)]                -- ^ final particle results and contexts
+  -> Prog fs [(a, PrtTrace)]                -- ^ final particle results and contexts
 rmsmcInternal n_prts mh_steps tags  =
-  handleResample mh_steps tags . SIS.sis n_prts handleParticle (TracedPrt (Addr 0 "" 0) 0  Map.empty)
+  handleResample mh_steps tags . SIS.sis n_prts handleParticle (PrtTrace (Addr 0 "" 0) 0  Map.empty)
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint
      at the first @Observe@ operation, by returning:
        1. the rest of the computation
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
-handleParticle :: ProbProg a -> Sampler (ProbProg a, TracedPrt)
-handleParticle = (asTracedPrt <$>) . reuseSamples Map.empty . suspendα where
-  asTracedPrt ((prt, ρ, α), τ) = (prt, TracedPrt ρ α τ)
+handleParticle :: ProbProg a -> Sampler (ProbProg a, PrtTrace)
+handleParticle = (asPrtTrace <$>) . reuseSamples Map.empty . suspendα where
+  asPrtTrace ((prt, ρ, α), τ) = (prt, PrtTrace ρ α τ)
 
 suspendα :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, Addr, LogP)
 suspendα (Val x)   = pure (Val x, Addr 0 "" 0, 0)
@@ -105,7 +105,7 @@ suspendα (Op op k) = case discharge op of
 handleResample :: (HasSampler fs)
   => Int                                          -- ^ number of MH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> Prog (Resample TracedPrt : fs) a
+  -> Prog (Resample PrtTrace : fs) a
   -> Prog fs a
 handleResample mh_steps tags = loop where
   loop (Val x) = Val x
@@ -122,7 +122,7 @@ handleResample mh_steps tags = loop where
           (prts_mov, σs_mov) <- mapAndUnzipM
                                     (\τ -> do ((prt_mov, lρ), τ_mov) <- fmap head (MH.ssmh mh_steps τ (Addr 0 "" 0) tags partial_model)
                                               let lρ_mov = (sum . map snd . Map.toList) lρ
-                                              return (prt_mov, TracedPrt α lρ_mov τ_mov) )
+                                              return (prt_mov, PrtTrace α lρ_mov τ_mov) )
                                     τs_res
           (loop . k) (prts_mov, σs_mov)
     Right (Accum σs σs') -> do
