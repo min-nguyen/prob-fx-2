@@ -44,11 +44,15 @@ import           Util
 
 {- | The particle context for an MCMC trace.
 -}
-data TracedParticle = TracedParticle {
-    particleLogProb   :: LogP
-  , particleObsAddr   :: Addr
+data TracedPrt = TracedPrt {
+    particleObsAddr   :: Addr
+  , particleLogProb   :: LogP
   , particleSTrace    :: Trace
   }
+
+unzipPrts :: [TracedPrt] -> (Addr, [LogP], [Trace])
+unzipPrts prts = (head αs, ps, τs)
+  where (αs, ps, τs) = foldr (\(TracedPrt α p τ) (αs, ps, τs) -> (α:αs, p:ps, τ:τs) ) ([],[],[]) prts
 
 {- | Call RMSMC on a model.
 -}
@@ -74,23 +78,23 @@ rmsmcInternal :: (HasSampler fs)
   -> Int                                          -- ^ number of MH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> ProbProg a                                    -- ^ probabilistic program
-  -> Prog fs [(a, TracedParticle)]                -- ^ final particle results and contexts
+  -> Prog fs [(a, TracedPrt)]                -- ^ final particle results and contexts
 rmsmcInternal n_prts mh_steps tags  =
-  handleResample mh_steps tags . SIS.sis n_prts handleParticle (TracedParticle 0 (Addr 0 "" 0) Map.empty)
+  handleResample mh_steps tags . SIS.sis n_prts handleParticle (TracedPrt (Addr 0 "" 0) 0  Map.empty)
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint
      at the first @Observe@ operation, by returning:
        1. the rest of the computation
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
-handleParticle :: ProbProg a -> Sampler (ProbProg a, TracedParticle)
-handleParticle = (asTracedParticle <$>) . reuseSamples Map.empty . suspendα where
-  asTracedParticle ((prt, ρ, α), τ) = (prt, TracedParticle ρ α τ)
+handleParticle :: ProbProg a -> Sampler (ProbProg a, TracedPrt)
+handleParticle = (asTracedPrt <$>) . reuseSamples Map.empty . suspendα where
+  asTracedPrt ((prt, ρ, α), τ) = (prt, TracedPrt ρ α τ)
 
-suspendα :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, LogP, Addr)
-suspendα (Val x)   = pure (Val x, 0, Addr 0 "" 0)
+suspendα :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, Addr, LogP)
+suspendα (Val x)   = pure (Val x, Addr 0 "" 0, 0)
 suspendα (Op op k) = case discharge op of
-  Right (Observe d y α) -> Val (k y, logProb d y, α)
+  Right (Observe d y α) -> Val (k y, α, logProb d y)
   Left op'              -> Op op' (suspendα . k)
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using MH.
@@ -98,47 +102,37 @@ suspendα (Op op k) = case discharge op of
 handleResample :: (HasSampler fs)
   => Int                                          -- ^ number of MH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> Prog (Resample TracedParticle : fs) a
+  -> Prog (Resample TracedPrt : fs) a
   -> Prog fs a
 handleResample mh_steps tags = loop where
   loop (Val x) = Val x
   loop (Op op k) = case discharge op of
-    Right (Resample (prts, ρs) prog_0) ->
+    Right (Resample (_, σs) prog_0) ->
       do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
-          idxs <- lift $ SMC.resampleMul (map particleLogProb ρs)
-          let ρs_res   = map (ρs !! ) idxs
-          -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head')
-              α_res    = (particleObsAddr . head) ρs_res
-          -- | Get the sample trace of each resampled particle
-              τs_res   = map particleSTrace ρs_res
+          idxs <- lift $ SMC.resampleMul (map particleLogProb σs)
+          let σs_res   = map (σs !! ) idxs
+          -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head'), and get the sample trace of each resampled particle
+              (α, _, τs_res)    = unzipPrts σs_res
           -- | Insert break point to perform MH up to
-              partial_model = breakObserve α_res prog_0
+              partial_model = breakObserve α prog_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
-          mh_trace <-  mapM ( fmap head
-                            . flip (\τ -> MH.ssmh mh_steps τ (Addr 0 "" 0) tags) partial_model
-                           ) τs_res
-          {- | Get:
-              1) the continuations of each particle from the break point
-              2) the log prob traces of each particle up until the break point
-              3) the sample traces of each particle up until the break point -}
-          let ((prts_mov, lρs), τs_mov) = first unzip (unzip mh_trace)
+          mh_trace <-  forM τs_res
+                            (\τ -> do ((prt_mov, lρ), τ_mov) <- fmap head (MH.ssmh mh_steps τ (Addr 0 "" 0) tags partial_model)
+                                      let lρ_mov = (sum . map snd . Map.toList) lρ
+                                      return (prt_mov, TracedPrt α lρ_mov τ_mov) )
+          let (prts_mov, σs_mov) =  unzip mh_trace
 
-              -- | Recompute the log weights of all particles up until the break point
-              lps_mov   = map (sum . map snd . Map.toList) lρs
-
-              ss_mov    = zipWith3 TracedParticle lps_mov (repeat α_res) τs_mov
-
-          (loop . k) (prts_mov, ss_mov)
+          (loop . k) (prts_mov, σs_mov)
     Right (Accum ss ss') ->
       (loop . k) (normaliseParticles ss ss')
     Left op' -> Op op' (loop . k)
 
-normaliseParticles :: [TracedParticle] -> [TracedParticle] -> [TracedParticle]
+normaliseParticles :: [TracedPrt] -> [TracedPrt] -> [TracedPrt]
 normaliseParticles ss ss' =
     let log_ps   = uncurry SMC.normaliseParticles (mapT2 (particleLogProb <$>)  (ss, ss'))
         α_obs    = particleObsAddr <$> ss'
         traces  = uncurry (zipWith Map.union) (mapT2 (particleSTrace <$>)   (ss', ss))
-    in  zipWith3 TracedParticle log_ps α_obs traces
+    in  zipWith3 TracedPrt α_obs log_ps  traces
 
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
      It returns the rest of the computation.
