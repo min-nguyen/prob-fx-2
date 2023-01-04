@@ -50,12 +50,12 @@ data TracedPrt = TracedPrt {
   , particleSTrace    :: Trace
   }
 
-unzipPrts :: [TracedPrt] -> (Addr, [LogP], [Trace])
-unzipPrts prts = (head αs, ps, τs)
+unpack :: [TracedPrt] -> (Addr, [LogP], [Trace])
+unpack prts = (head αs, ps, τs)
   where (αs, ps, τs) = foldr (\(TracedPrt α p τ) (αs, ps, τs) -> (α:αs, p:ps, τ:τs) ) ([],[],[]) prts
 
-zipPrts :: (Addr, [LogP], [Trace]) -> [TracedPrt]
-zipPrts (α, ps, τs) = zipWith3 TracedPrt (repeat α) ps τs
+pack :: (Addr, [LogP], [Trace]) -> [TracedPrt]
+pack (α, ps, τs) = zipWith3 TracedPrt (repeat α) ps τs
 
 {- | Call RMSMC on a model.
 -}
@@ -115,7 +115,7 @@ handleResample mh_steps tags = loop where
           idxs <- lift $ SMC.resampleMul (map particleLogProb σs)
           let σs_res          = map (σs !! ) idxs
           -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head'), and get the sample trace of each resampled particle
-              (α, _, τs_res)  = unzipPrts σs_res
+              (α, _, τs_res)  = unpack σs_res
           -- | Insert break point to perform MH up to
               partial_model   = suspendAt α prog_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
@@ -126,11 +126,11 @@ handleResample mh_steps tags = loop where
                                     τs_res
           (loop . k) (prts_mov, σs_mov)
     Right (Accum σs σs') -> do
-      let (_, ρs , τs ) = unzipPrts σs
-          (α, ρs', τs') = unzipPrts σs'
+      let (_, ρs , τs ) = unpack σs
+          (α, ρs', τs') = unpack σs'
           ρs_accum  = map (+ logMeanExp ρs) ρs'
           τs_accum  = zipWith Map.union τs' τs
-      (loop . k) (zipPrts (α, ρs_accum, τs_accum))
+      (loop . k) (pack (α, ρs_accum, τs_accum))
     Left op' -> Op op' (loop . k)
 
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
