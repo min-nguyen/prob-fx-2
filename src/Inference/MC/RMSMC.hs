@@ -54,6 +54,9 @@ unzipPrts :: [TracedPrt] -> (Addr, [LogP], [Trace])
 unzipPrts prts = (head αs, ps, τs)
   where (αs, ps, τs) = foldr (\(TracedPrt α p τ) (αs, ps, τs) -> (α:αs, p:ps, τ:τs) ) ([],[],[]) prts
 
+zipPrts :: (Addr, [LogP], [Trace]) -> [TracedPrt]
+zipPrts (α, ps, τs) = zipWith3 TracedPrt (repeat α) ps τs
+
 {- | Call RMSMC on a model.
 -}
 rmsmc :: forall env a xs. (env `ContainsVars` xs)
@@ -116,23 +119,19 @@ handleResample mh_steps tags = loop where
           -- | Insert break point to perform MH up to
               partial_model   = suspendAt α prog_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
-          pop_mov <-  forM τs_res
-                            (\τ -> do ((prt_mov, lρ), τ_mov) <- fmap head (MH.ssmh mh_steps τ (Addr 0 "" 0) tags partial_model)
-                                      let lρ_mov = (sum . map snd . Map.toList) lρ
-                                      return (prt_mov, TracedPrt α lρ_mov τ_mov) )
-          let (prts_mov, σs_mov) =  unzip pop_mov
-
+          (prts_mov, σs_mov) <- mapAndUnzipM
+                                    (\τ -> do ((prt_mov, lρ), τ_mov) <- fmap head (MH.ssmh mh_steps τ (Addr 0 "" 0) tags partial_model)
+                                              let lρ_mov = (sum . map snd . Map.toList) lρ
+                                              return (prt_mov, TracedPrt α lρ_mov τ_mov) )
+                                    τs_res
           (loop . k) (prts_mov, σs_mov)
-    Right (Accum ss ss') ->
-      (loop . k) (normaliseParticles ss ss')
+    Right (Accum σs σs') -> do
+      let (_, ρs , τs ) = unzipPrts σs
+          (α, ρs', τs') = unzipPrts σs'
+          ρs_accum  = map (+ logMeanExp ρs) ρs'
+          τs_accum  = zipWith Map.union τs' τs
+      (loop . k) (zipPrts (α, ρs_accum, τs_accum))
     Left op' -> Op op' (loop . k)
-
-normaliseParticles :: [TracedPrt] -> [TracedPrt] -> [TracedPrt]
-normaliseParticles ss ss' =
-    let log_ps   = uncurry SMC.normaliseParticles (mapT2 (particleLogProb <$>)  (ss, ss'))
-        α_obs    = particleObsAddr <$> ss'
-        traces  = uncurry (zipWith Map.union) (mapT2 (particleSTrace <$>)   (ss', ss))
-    in  zipWith3 TracedPrt α_obs log_ps  traces
 
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
      It returns the rest of the computation.
