@@ -116,11 +116,11 @@ handleResample mh_steps tags = loop where
           -- | Insert break point to perform MH up to
               partial_model   = suspendAt α prog_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
-          mh_trace <-  forM τs_res
+          pop_mov <-  forM τs_res
                             (\τ -> do ((prt_mov, lρ), τ_mov) <- fmap head (MH.ssmh mh_steps τ (Addr 0 "" 0) tags partial_model)
                                       let lρ_mov = (sum . map snd . Map.toList) lρ
                                       return (prt_mov, TracedPrt α lρ_mov τ_mov) )
-          let (prts_mov, σs_mov) =  unzip mh_trace
+          let (prts_mov, σs_mov) =  unzip pop_mov
 
           (loop . k) (prts_mov, σs_mov)
     Right (Accum ss ss') ->
@@ -137,10 +137,10 @@ normaliseParticles ss ss' =
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
      It returns the rest of the computation.
 -}
-suspendAt :: Member Observe es
-  => Addr       -- ^ Address of @Observe@ operation to break at
-  -> Prog es a
-  -> Prog es (Prog es a)
+suspendAt ::
+     Addr       -- ^ Address of @Observe@ operation to break at
+  -> ProbProg  a
+  -> ProbProg  (ProbProg  a)
 suspendAt α_break (Val x) = pure (Val x)
 suspendAt α_break (Op op k) = case prj op of
   Just (Observe d y α) -> do
