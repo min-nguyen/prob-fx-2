@@ -110,11 +110,11 @@ handleResample mh_steps tags = loop where
     Right (Resample (_, σs) prog_0) ->
       do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
           idxs <- lift $ SMC.resampleMul (map particleLogProb σs)
-          let σs_res   = map (σs !! ) idxs
+          let σs_res          = map (σs !! ) idxs
           -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head'), and get the sample trace of each resampled particle
-              (α, _, τs_res)    = unzipPrts σs_res
+              (α, _, τs_res)  = unzipPrts σs_res
           -- | Insert break point to perform MH up to
-              partial_model = breakObserve α prog_0
+              partial_model   = suspendAt α prog_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
           mh_trace <-  forM τs_res
                             (\τ -> do ((prt_mov, lρ), τ_mov) <- fmap head (MH.ssmh mh_steps τ (Addr 0 "" 0) tags partial_model)
@@ -137,15 +137,15 @@ normaliseParticles ss ss' =
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
      It returns the rest of the computation.
 -}
-breakObserve :: Member Observe es
+suspendAt :: Member Observe es
   => Addr       -- ^ Address of @Observe@ operation to break at
   -> Prog es a
   -> Prog es (Prog es a)
-breakObserve α_break (Val x) = pure (Val x)
-breakObserve α_break (Op op k) = case prj op of
+suspendAt α_break (Val x) = pure (Val x)
+suspendAt α_break (Op op k) = case prj op of
   Just (Observe d y α) -> do
     if α_break == α
       then Val (k y)
-      else Op op (breakObserve α_break . k)
-  _ -> Op op (breakObserve α_break . k)
+      else Op op (suspendAt α_break . k)
+  _ -> Op op (suspendAt α_break . k)
 
