@@ -106,29 +106,29 @@ handleResample mh_steps tags = loop where
     Right (Resample (prts, ρs) prog_0) ->
       do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
           idxs <- lift $ SMC.resampleMul (map particleLogProb ρs)
-          let resampled_ρs   = map (ρs !! ) idxs
+          let ρs_res   = map (ρs !! ) idxs
           -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head')
-              resampled_α      = (particleObsAddr . head) resampled_ρs
+              α_res    = (particleObsAddr . head) ρs_res
           -- | Get the sample trace of each resampled particle
-              resampled_τs = map particleSTrace resampled_ρs
+              τs_res   = map particleSTrace ρs_res
           -- | Insert break point to perform MH up to
-              partial_model = breakObserve resampled_α prog_0
+              partial_model = breakObserve α_res prog_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
           mh_trace <-  mapM ( fmap head
                             . flip (\τ -> MH.ssmh mh_steps τ (Addr 0 "" 0) tags) partial_model
-                           ) resampled_τs
+                           ) τs_res
           {- | Get:
               1) the continuations of each particle from the break point
               2) the log prob traces of each particle up until the break point
               3) the sample traces of each particle up until the break point -}
-          let ((rejuv_prts, lρs), rejuv_τs) = first unzip (unzip mh_trace)
+          let ((prts_mov, lρs), τs_mov) = first unzip (unzip mh_trace)
 
               -- | Recompute the log weights of all particles up until the break point
-              rejuv_lps     = map (sum . map snd . Map.toList) lρs
+              lps_mov   = map (sum . map snd . Map.toList) lρs
 
-              rejuv_ss    = zipWith3 TracedParticle rejuv_lps (repeat resampled_α) rejuv_τs
+              ss_mov    = zipWith3 TracedParticle lps_mov (repeat α_res) τs_mov
 
-          (loop . k) (rejuv_prts, rejuv_ss)
+          (loop . k) (prts_mov, ss_mov)
     Right (Accum ss ss') ->
       (loop . k) (normaliseParticles ss ss')
     Left op' -> Op op' (loop . k)

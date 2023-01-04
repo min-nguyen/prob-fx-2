@@ -73,9 +73,9 @@ handleResampleMul (Op op k) = case discharge op of
   Right (Resample (prts, ρs) _) -> do
     -- | Select particles to continue with
     idxs <- lift (replicateM (length ρs) (Sampler.sampleCategorical (Vector.fromList (map exp ρs))))
-    let resampled_prts  = map (prts !! ) idxs
-        resampled_ρs = map (ρs !! ) idxs
-    (handleResampleMul . k) (resampled_prts, resampled_ρs)
+    let prts_res  = map (prts !! ) idxs
+        ρs_res    = map (ρs  !! ) idxs
+    (handleResampleMul . k) (prts_res, ρs_res)
   Right (Accum ρs1 ρs2) -> do
     let ρs = map (+ logMeanExp ρs1) ρs2
     (handleResampleMul . k) ρs
@@ -109,11 +109,11 @@ handleResampleSys (Op op k) = case discharge op of
           if v < q
             then f (i + 1) (v + inc) j q (j - 1 : acc)
             else f i v (j + 1) (q + prob j) acc
-        idxs = f 0 (u / fromIntegral n) 0 0 []
-        resampled_prts = map (prts !! ) idxs
-        resampled_ss = map (ρs !! ) idxs
+        idxs     = f 0 (u / fromIntegral n) 0 0 []
+        prts_res = map (prts !! ) idxs
+        ρs_res   = map (ρs !! ) idxs
 
-    (handleResampleSys . k) (resampled_prts, resampled_ss)
+    (handleResampleSys . k) (prts_res, ρs_res)
   Right (Accum ss ss') -> do
     (handleResampleMul . k) (normaliseParticles ss ss')
   Left op' -> Op op' (handleResampleSys . k)
