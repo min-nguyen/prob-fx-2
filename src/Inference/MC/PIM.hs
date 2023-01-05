@@ -57,8 +57,6 @@ handleModel ::
 handleModel n prog τθ  = do
   let handleParticle :: ProbProg a -> Sampler (ProbProg a, LogP)
       handleParticle = fmap fst . reuseSamples τθ . suspend
-  (as, ρs) <- (handleLift . handleResampleMul . fmap unzip . pfilter handleParticle prog) ((unzip . replicate n) (prog, 0))
-  let a   = head as
-      ρ   = logMeanExp ρs
-  pure ((a, ρ), τθ)
+  (as, ρs) <- (fmap unzip . handleLift . handleResampleMul . pfilter handleParticle prog) ((unzip . replicate n) (prog, 0))
+  return ((head as, logMeanExp ρs), τθ)
 
