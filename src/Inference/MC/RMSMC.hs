@@ -35,7 +35,7 @@ import qualified Inference.MC.SMC as SMC
 import qualified Inference.MC.SIM as SIM
 import           Inference.MC.Metropolis as Metropolis
 import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
-import           Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler)
+import           Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler, pfilter)
 import           Effects.Lift
 import           PrimDist
 import           Data.Bifunctor
@@ -71,19 +71,20 @@ rmsmc n_prts mh_steps model env_in obs_vars = do
   let prog_0   = handleCore env_in model
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
-  rmsmc_trace <- handleLift (rmsmcInternal n_prts mh_steps tags prog_0)
+  rmsmc_trace <-  (rmpfilter n_prts mh_steps tags prog_0)
   pure (map (snd . fst) rmsmc_trace)
 
 {- | Call RMSMC on a probabilistic program.
 -}
-rmsmcInternal :: (HasSampler fs)
-  => Int                                          -- ^ number of SMC particles
+rmpfilter ::
+     Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of MH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> ProbProg a                                    -- ^ probabilistic program
-  -> Prog fs [(a, PrtState)]                -- ^ final particle results and contexts
-rmsmcInternal n_prts mh_steps tags  =
-  handleResample mh_steps tags . SIS.sis n_prts handleParticle (PrtState (Addr 0 "" 0) 0  Map.empty)
+  -> ProbProg a                                   -- ^ probabilistic program
+  -> Sampler [(a, PrtState)]                      -- ^ final particle results and contexts
+rmpfilter n_prts mh_steps tags model =
+  handleLift $ handleResample mh_steps tags $ pfilter handleParticle model (prts, ps)
+  where (prts, ps) = unzip $ replicate n_prts (model, PrtState (Addr 0 "" 0) 0  Map.empty)
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint
      at the first @Observe@ operation, by returning:
