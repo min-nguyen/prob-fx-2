@@ -63,7 +63,7 @@ mleInternal :: (HasSampler fs, Show (Env env))
   -> Prog fs DTrace                         -- ^ final model parameters P(θ_T)
 mleInternal num_timesteps num_samples model_q model_p params_0 =
   foldr (>=>) pure [mleStep t model_q smcHandler model_p | t <- [1 .. num_timesteps]] params_0
-  where smcHandler = handleLift . SMC.smcInternal num_samples
+  where smcHandler = SMC.mulpfilter num_samples
 
 {- | 1. For L iterations:
          a) Generate importance-weighted posterior samples X=x from the model Q(X),

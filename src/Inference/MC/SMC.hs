@@ -27,7 +27,7 @@ import           Prog ( LastMember, Prog(..), Members, Member, call, weakenProg,
 import qualified Data.Map as Map
 import           Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS
-import           Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler)
+import           Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler, pfilter)
 import           Sampler ( Sampler, sampleRandom, sampleCategorical)
 
 {- | Call SMC on a model.
@@ -40,17 +40,15 @@ smc
 smc n_prts model env_in = do
   -- | Handle model to probabilistic program
   let prog_0 = (handleDist . handleObsRW env_in) (runModel model)
-  smc_trace <- handleLift (smcInternal n_prts prog_0)
+  smc_trace <- mulpfilter n_prts prog_0
   pure (map (snd . fst) smc_trace)
 
 {- | Call SMC on a probabilistic program.
 -}
-smcInternal :: HasSampler fs
-  => Int                       -- ^ number of particles
-  -> ProbProg a                 -- ^ probabilistic program
-  -> Prog fs [(a, LogP)]   -- ^ final particle results and contexts
-smcInternal n_prts  =
-  handleResampleMul . SIS.sis n_prts handleParticle 0
+mulpfilter :: Int -> ProbProg a -> Sampler [(a, LogP)]
+mulpfilter n_prts model =
+ (handleLift . handleResampleMul . pfilter handleParticle model) (prts, ρs)
+ where (prts, ρs) = (unzip . replicate n_prts) (model, 0)
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation
