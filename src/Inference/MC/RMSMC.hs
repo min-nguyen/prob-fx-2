@@ -91,7 +91,7 @@ rmsmcInternal n_prts mh_steps tags  =
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
 handleParticle :: ProbProg a -> Sampler (ProbProg a, PrtState)
-handleParticle = (asPrtTrace <$>) . reuseSamples Map.empty . suspendα where
+handleParticle = fmap asPrtTrace . reuseSamples Map.empty . suspendα where
   asPrtTrace ((prt, ρ, α), τ) = (prt, PrtState ρ α τ)
 
 suspendα :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, Addr, LogP)
