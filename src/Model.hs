@@ -101,7 +101,7 @@ type ProbSig es = es ~ [Observe, Sample]
 {- | The initial handler for models, specialising a model under a certain environment
      to produce a probabilistic program consisting of @Sample@ and @Observe@ operations.
 -}
-handleCore :: Env env -> Model env (ObsRW env : Dist : es) a -> Prog (Observe : Sample : es) (a, Env env)
+handleCore :: Env env -> Model env (ObsRW env : Dist : '[]) a -> ProbProg (a, Env env)
 handleCore env_in m = (handleDist . handleObsRW env_in) (runModel m)
 
 {- $Smart-Constructors

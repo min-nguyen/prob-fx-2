@@ -37,6 +37,7 @@ import qualified Inference.MC.SIM as SIM
 import qualified Vec
 import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
+import Inference.MC.LW (joint)
 
 data GradDescent a where
   GradDescent :: [LogP] -> [GTrace] -> DTrace -> GradDescent DTrace
@@ -163,19 +164,7 @@ handleGuideParams = loop Trace.empty where
 -}
 handleModel :: Model env [ObsRW env, Dist] a -> Env env -> Sampler ((a, Env env), LogP)
 handleModel model env  =
-  (SIM.defaultSample . SIM.defaultObserve . weighModel . handleCore env) model
-
--- | Compute log(P(X, Y)) over the model.
-weighModel :: forall es a. (Members [Sample, Observe] es) => Prog es a -> Prog es (a, LogP)
-weighModel = loop 0 where
-  loop :: LogP -> Prog es a -> Prog es (a, LogP)
-  loop logW (Val a)   = pure (a, logW)
-  loop logW (Op op k) = case op of
-      -- | Compute: log(P(Y))
-      ObsPrj d y α -> Op op (\x -> loop (logW + logProb d x) $ k x)
-      -- | Compute: log(P(X))
-      SampPrj d α  -> Op op (\x -> loop (logW + logProb d x) $ k x)
-      _            -> Op op (loop logW . k)
+  (SIM.defaultSample . SIM.defaultObserve . joint 0 . handleCore env) model
 
 {- | Update each variable v's parameters λ using their estimated ELBO gradients E[δelbo(v)].
         λ_{t+1} = λ_t + η_t * E[δelbo(v)]

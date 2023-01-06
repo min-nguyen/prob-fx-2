@@ -33,6 +33,7 @@ import Debug.Trace
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.VI.VI as VI
 import qualified Inference.VI.MLE as MLE
+import Inference.MC.LW (joint)
 
 map :: forall env xs a b. (Show (Env env), (env `ContainsVars` xs))
   => Int                                -- ^ number of optimisation steps (T)
@@ -56,16 +57,4 @@ map num_timesteps num_samples model model_env vars = do
 -- | Handle the model P(X, Y; θ) by returning log-importance-weight P(Y, X; θ)
 handleModel :: Model env [ObsRW env, Dist] a -> Env env -> Sampler ((a, Env env), LogP)
 handleModel model env =
-  (SIM.defaultSample . SIM.defaultObserve . weighModel . handleCore env) model
-
--- | Compute: log(P(X, Y; θ)) over the model
-weighModel :: forall es a. (Members [Observe, Sample] es) => Prog es a -> Prog es (a, LogP)
-weighModel = loop 0 where
-  loop :: LogP -> Prog es a -> Prog es (a, LogP)
-  loop logW (Val a)   = pure (a, logW)
-  loop logW (Op op k) = case op of
-      -- | Compute: log(P(X; θ)) for non-optimisable dists
-      SampPrj p α     -> Op op (\xy -> loop (logW + logProb p xy) $ k xy)
-      -- | Compute: log(P(Y; θ)) for non-optimisable dists
-      ObsPrj p y α    -> Op op (\xy -> loop (logW + logProb p xy) $ k xy)
-      _               -> Op op (loop logW . k)
+  (SIM.defaultSample . SIM.defaultObserve . joint 0 . handleCore env) model

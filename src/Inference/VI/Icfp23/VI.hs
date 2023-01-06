@@ -37,6 +37,7 @@ import qualified Inference.MC.SIM as SIM
 import qualified Vec
 import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
+import Inference.MC.LW (joint)
 
 data GradDescent a where
   GradDescent :: [LogP] -> [GTrace] -> DTrace -> GradDescent DTrace
@@ -47,7 +48,7 @@ viLoop :: (HasSampler fs, Show (Env env))
   -> Prog [Param, Sample] (a, Env env)            -- ^ guide Q(X; λ)
   -> (forall c. Prog [Param, Sample] c -> DTrace -> Sampler ((c, LogP), GTrace))
   -> Model env [ObsRW env, Dist] b                -- ^ model P(X, Y)
-  -> (forall d env. Model env [ObsRW env, Dist] d -> Env env -> Sampler (((d, Env env), LogP), GTrace))
+  -> (forall d env. Model env [ObsRW env, Dist] d -> Env env -> Sampler ((d, Env env), LogP))
   -> DTrace                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Prog (GradDescent : fs) DTrace      -- ^ final guide parameters λ_T
 viLoop num_timesteps num_samples guide hdlGuide model hdlModel guideParams_0 = do
@@ -68,7 +69,7 @@ viStep :: (HasSampler fs, Show (Env env))
   -> Prog [Param, Sample] (a, Env env)            -- ^ guide Q(X; λ)
   -> (forall c. Prog [Param, Sample] c -> DTrace -> Sampler ((c, LogP), GTrace))
   -> Model env [ObsRW env, Dist] b                -- ^ model P(X, Y)
-  -> (forall d env. Model env [ObsRW env, Dist] d -> Env env -> Sampler (((d, Env env), LogP), GTrace))
+  -> (forall d env. Model env [ObsRW env, Dist] d -> Env env -> Sampler ((d, Env env), LogP))
   -> DTrace                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Prog (GradDescent : fs) DTrace    -- ^ next guide parameters λ_{t+1}
 viStep num_samples guide hdlGuide model hdlModel guideParams = do
@@ -76,7 +77,7 @@ viStep num_samples guide hdlGuide model hdlModel guideParams = do
   (((_, guide_envs), guide_logWs), guide_grads)
       <- Util.unzip4 <$> replicateM num_samples (lift (hdlGuide guide guideParams))
   -- | Execute the model P(X, Y) under the union of the model environment Y and guide environment X
-  ((_              , model_logWs), model_grads)
+  (_              , model_logWs)
       <- Util.unzip3 <$> mapM (lift . hdlModel model) guide_envs
   -- | Compute total log-importance-weight, log(P(X, Y)) - log(Q(X; λ))
   let logWs  = zipWith (-) model_logWs guide_logWs
@@ -161,21 +162,9 @@ handleGuideParams = loop Trace.empty where
        1. An output environment which we discard
        2. The total log-weight of all @Sample@ and @Observe@ operations: log(P(X=x, Y=y))
 -}
-handleModel :: Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((a, Env env), LogP), GTrace)
-handleModel model _ env  =
-  (((, Trace.empty) <$>) . SIM.defaultSample . SIM.defaultObserve . weighModel . handleCore env) model
-
--- | Compute log(P(X, Y)) over the model.
-weighModel :: forall es a. (Members [Sample, Observe] es) => Prog es a -> Prog es (a, LogP)
-weighModel = loop 0 where
-  loop :: LogP -> Prog es a -> Prog es (a, LogP)
-  loop logW (Val a)   = pure (a, logW)
-  loop logW (Op op k) = case op of
-      -- | Compute: log(P(Y))
-      ObsPrj d y α -> Op op (\x -> loop (logW + logProb d x) $ k x)
-      -- | Compute: log(P(X))
-      SampPrj d α  -> Op op (\x -> loop (logW + logProb d x) $ k x)
-      _            -> Op op (loop logW . k)
+handleModel :: Model env [ObsRW env, Dist] a -> Env env -> Sampler ((a, Env env), LogP)
+handleModel model env  =
+  (SIM.defaultSample . SIM.defaultObserve . joint 0 . handleCore env) model
 
 {- | Update each variable v's parameters λ using their estimated ELBO gradients E[δelbo(v)].
         λ_{t+1} = λ_t + η_t * E[δelbo(v)]
