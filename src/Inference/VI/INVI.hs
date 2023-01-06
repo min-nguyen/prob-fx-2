@@ -53,15 +53,5 @@ invi num_timesteps num_samples guide_model model model_env  = do
   -- | Collect initial proposal distributions
   guideParams_0 <- VI.collectGuideParams guide
   -- | Run BBVI for T optimisation steps
-  ((fst <$>) . handleLift . handleGradDescent) $
+  ((fst <$>) . handleLift . VI.handleNormGradDescent) $
     VI.viLoop num_timesteps num_samples guide VI.handleGuide model VI.handleModel (guideParams_0, Trace.empty)
-
-handleGradDescent :: Prog (GradDescent : fs) a -> Prog fs a
-handleGradDescent (Val a) = pure a
-handleGradDescent (Op op k) = case discharge op of
-  Right (GradDescent logWs δGs params) ->
-    let δelbos  = VI.normalisingEstimator logWs δGs
-        params' = case δelbos of Just δelbos' -> VI.gradStep 1 params δelbos'
-                                 Nothing      -> params
-    in  handleGradDescent (k params')
-  Left op' -> Op op' (handleGradDescent . k)

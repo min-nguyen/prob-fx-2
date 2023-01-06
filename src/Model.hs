@@ -53,7 +53,7 @@ module Model (
 import Control.Monad ( ap )
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
 import Data.Type.Nat
-import Effects.Dist ( handleDist, Dist(..), Observe, Sample )
+import Effects.Dist ( handleDist, Dist(..), Observe, Sample, Param )
 import Effects.ObsRW
 import Env
 import PrimDist
@@ -94,6 +94,7 @@ instance Monad (Model env es) where
 
 {- | Probabilistic programs are those with effects for conditioning and sampling.
 -}
+type Guide a    = Prog [Param, Sample] a
 type ProbProg a = Prog [Observe, Sample] a
 type ProbSig es = es ~ [Observe, Sample]
 
