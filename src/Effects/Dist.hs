@@ -28,8 +28,7 @@ module Effects.Dist (
   , pattern ObsDis
   -- ** Param effect
   , Param(..)
-  , pattern ParamSPrj
-  , pattern ParamOPrj
+  , pattern ParamPrj
   , setParamDist
   -- ** Param effect
   , Score(..)
@@ -98,26 +97,17 @@ pattern ObsDis d y α <- (discharge -> Right (Observe d y α))
 
 -- | The effect @Param@ for distributions with support for gradient log-pdfs
 data Param a where
-  ParamS :: (DiffDistribution d, a ~ Base d)
+  Param :: (DiffDistribution d, a ~ Base d)
          => d              -- ^ proposal distribution
-         -> Addr           -- ^ address of operation
-         -> Param a        -- ^ observed point
-  ParamO :: (DiffDistribution d, a ~ Base d)
-         => d              -- ^ proposal distribution
-         -> a              -- ^ an observed point
          -> Addr           -- ^ address of operation
          -> Param a        -- ^ observed point
 
 setParamDist :: (DiffDistribution d, a ~ Base d) => Param a -> d -> Param a
-setParamDist (ParamS q α) q' = ParamS q' α
-setParamDist (ParamO q x α) q' = ParamO q' x α
+setParamDist (Param q α) q' = Param q' α
 
 -- | For projecting and then successfully pattern matching against @Param@
-pattern ParamSPrj :: (Member Param es) => (DiffDistribution d, x ~ Base d) => d -> Addr -> EffectSum es x
-pattern ParamSPrj q α <- (prj -> Just (ParamS q α))
-
-pattern ParamOPrj :: (Member Param es) => (DiffDistribution d, x ~ Base d) => d -> a -> Addr -> EffectSum es x
-pattern ParamOPrj q x α <- (prj -> Just (ParamO q x α))
+pattern ParamPrj :: (Member Param es) => (DiffDistribution d, x ~ Base d) => d -> Addr -> EffectSum es x
+pattern ParamPrj q α <- (prj -> Just (Param q α))
 
 -- | The effect @Score@ is like @Param@ but retains the original distribution to be optimised
 data Score a where

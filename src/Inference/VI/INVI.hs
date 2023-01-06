@@ -53,5 +53,5 @@ invi num_timesteps num_samples guide_model model model_env  = do
   -- | Collect initial proposal distributions
   guideParams_0 <- VI.collectGuideParams guide
   -- | Run BBVI for T optimisation steps
-  ((fst <$>) . handleLift . VI.handleNormGradDescent) $
-    VI.viLoop num_timesteps num_samples guide VI.handleGuide model VI.handleModel (guideParams_0, Trace.empty)
+  (handleLift . VI.handleNormGradDescent) $
+    VI.viLoop num_timesteps num_samples guide VI.handleGuide model VI.handleModel guideParams_0

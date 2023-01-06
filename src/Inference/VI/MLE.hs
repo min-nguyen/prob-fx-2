@@ -50,10 +50,9 @@ mle num_timesteps num_samples model model_env vars = do
       guideParams_0 = Trace.empty
   -- | Collect initial model parameters θ
   let tags = Env.varsToStrs @env vars
-  modelParams_0 <- collectModelParams tags (handleCore model_env model)
   -- | Run MLE for T optimisation steps
-  ((snd <$>) . handleLift . VI.handleNormGradDescent) $
-      VI.viLoop num_timesteps num_samples guide handleGuide model (handleModel tags) (guideParams_0, modelParams_0)
+  (handleLift . VI.handleNormGradDescent) $
+      VI.viLoop num_timesteps num_samples guide handleGuide model (handleModel tags) guideParams_0
 
 -- | Handle the dummy guide Q by returning the original model environment Y and log-importance-weight log(Q(X)) = 0
 handleGuide :: Prog [Param, Sample] a -> DTrace -> Sampler ((a, LogP), GTrace)
@@ -61,62 +60,15 @@ handleGuide guide _ =
   (SIM.defaultSample . VI.handleGuideParams ) ((, 0) <$> guide)
 
 -- | Handle the model P(X, Y; θ) by returning log-importance-weight P(Y | X; θ)
-handleModel :: [Tag] -> Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((a, Env env), LogP), GTrace)
-handleModel tags model params env  =
-  (SIM.defaultSample . SIM.defaultObserve . handleModelParams . weighModel . installModelParams tags params . handleCore env) model
+handleModel :: [Tag] -> Model env [ObsRW env, Dist] a -> Env env -> Sampler ((a, Env env), LogP)
+handleModel tags model env  =
+  (SIM.defaultSample . SIM.defaultObserve . weighModel .handleCore env) model
 
-collectModelParams :: [Tag] -> ProbProg b -> Sampler DTrace
-collectModelParams tags =
-  SIM.defaultSample . SIM.defaultObserve . (fst <$>) . handleModelParams . loop Trace.empty . installModelParams tags Trace.empty
-  where
-  loop :: DTrace -> Prog (Param : es) a -> Prog (Param : es) DTrace
-  loop params (Val _)   = pure params
-  loop params (Op op k) = case prj op of
-    Just (ParamS q α)   -> do let params' = Trace.insert (Key α) q params
-                              Op op (loop params' . k)
-    Just (ParamO q x α) -> do let params' = Trace.insert (Key α) q params
-                              Op op (loop params' . k)
-    Nothing -> Op op (loop params . k)
-
-installModelParams :: Members [Observe, Sample] es => [Tag] -> DTrace -> Prog es a -> Prog (Param : es) a
-installModelParams tags proposals = loop where
-  loop (Val a)   = pure a
-  loop (Op op k) = case op of
-    SampPrj p α -> case (isDifferentiable p, tag α `elem` tags) of
-        (Just Witness, True) -> do
-            let p' = fromMaybe p (Trace.lookup (Key α) proposals)
-            x' <- call (ParamS p' α)
-            (loop . k) x'
-        _  -> Op (weaken op) (loop . k)
-    ObsPrj p xy α -> case (isDifferentiable p, tag α `elem` tags)  of
-        (Just Witness, True) -> do
-            let p' = fromMaybe p (Trace.lookup (Key α) proposals)
-            x' <- call (ParamO p' xy α)
-            (loop . k) x'
-        _      -> Op (weaken op) (loop . k)
-    _ -> Op (weaken op) (loop . k)
-
-handleModelParams :: forall es a. Member Sample es => Prog (Param : es) a -> Prog es (a, GTrace)
-handleModelParams = loop Trace.empty where
-  loop :: GTrace -> Prog (Param : es) a -> Prog es (a, GTrace)
-  loop grads (Val a)   = pure (a, grads)
-  loop grads (Op op k) = case discharge op of
-    Right (ParamS (q :: d) α)   -> do
-         x <- call (Sample q α)
-         let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
-         (loop grads' . k) x
-    Right (ParamO (q :: d) x α) -> do
-         let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
-         (loop grads' . k) x
-    Left op' -> Op op' (loop grads . k)
-
-weighModel :: forall es a. (Members [Param, Observe, Sample] es) => Prog es a -> Prog es (a, LogP)
+weighModel :: forall es a. (Members [Observe, Sample] es) => Prog es a -> Prog es (a, LogP)
 weighModel = loop 0 where
   loop :: LogP -> Prog es a -> Prog es (a, LogP)
   loop logW (Val a)   = pure (a, logW)
   loop logW (Op op k) = case op of
-      -- | Compute: log(P(Y; θ)) for optimisable dists, where Y is provided in the model environment
-      ParamOPrj p xy α -> Op op (\xy -> loop (logW + logProb p xy) $ k xy)
       -- | Compute: log(P(Y; θ)) for non-differentiable dists, where Y is provided in the model environment
       ObsPrj p xy α    -> Op op (\xy -> loop (logW + logProb p xy) $ k xy)
       _               -> Op op (loop logW . k)

@@ -106,7 +106,7 @@ installGuideParams = loop . SIM.defaultObserve where
   loop (Op op k) = case prj op of
     Just (Sample q α) -> case isDifferentiable q of
         Nothing      -> Op (weaken op) (loop  . k)
-        Just Witness -> do x <- call (ParamS q α)
+        Just Witness -> do x <- call (Param q α)
                            (loop  . k) x
     Nothing -> Op (weaken op) (loop . k)
 
@@ -117,9 +117,8 @@ collectGuideParams = SIM.defaultSample . (fst <$>) . handleGuideParams . loop Tr
   loop :: DTrace -> Prog (Param : es) a -> Prog (Param : es) DTrace
   loop params (Val _)   = pure params
   loop params (Op op k) = case prj op of
-    Just (ParamS q α)   -> do let params' = Trace.insert (Key α) q params
-                              Op op (loop params' . k)
-    Just (ParamO q x α) -> error "VI.collectGuideParams: Should not happen unless using collectProposals"
+    Just (Param q α)   -> do let params' = Trace.insert (Key α) q params
+                             Op op (loop params' . k)
     Nothing -> Op op (loop params . k)
 
 -- | Set the @Param@eters of the guide Q(X; λ).
@@ -128,11 +127,10 @@ updateGuideParams proposals = loop where
   loop :: Prog es a -> Prog es a
   loop (Val a)   = pure a
   loop (Op op k) = case prj op of
-    Just (ParamS q α) -> do
+    Just (Param q α) -> do
       let q' = fromMaybe q (Trace.lookup (Key α) proposals)
-      x <- call (ParamS q' α)
+      x <- call (Param q' α)
       (loop . k) x
-    Just (ParamO q x α) -> error "VI.updateGuideParams: Should not happen"
     Nothing -> Op op (loop . k)
 
 -- | Compute log(Q(X; λ)) over the guide.
@@ -142,7 +140,7 @@ weighGuide = loop 0 where
   loop logW (Val a)   = pure (a, logW)
   loop logW (Op op k) = case  op of
       -- | Compute: log(Q(X; λ)) for proposal distributions
-      ParamSPrj q α   -> Op op (\x -> loop (logW + logProb q x) $ k x)
+      ParamPrj q α   -> Op op (\x -> loop (logW + logProb q x) $ k x)
       -- | Compute: log(Q(X; λ)) for non-differentiable distributions
       SampPrj q α     -> Op op (\x -> loop (logW + logProb q x) $ k x)
       _               -> Op op (loop logW . k)
@@ -153,13 +151,10 @@ handleGuideParams = loop Trace.empty where
   loop :: GTrace -> Prog (Param : es) a -> Prog es (a, GTrace)
   loop grads (Val a)   = pure (a, grads)
   loop grads (Op op k) = case discharge op of
-    Right (ParamS (q :: d) α) -> do
+    Right (Param (q :: d) α) -> do
       x <- call (Sample q α)
       let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
       (loop grads' . k) x
-    Right (ParamO (q :: d) x α) ->
-      trace "VI.handleGuideParams: Should not happen unless using collectProposals"
-      loop grads (k x)
     Left op' -> Op op' (loop grads . k)
 
 {- | Execute the model P under an environment of samples X=x from the guide and observed values Y=y, producing:

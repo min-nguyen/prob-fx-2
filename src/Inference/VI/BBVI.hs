@@ -32,7 +32,7 @@ import           Trace (GTrace, DTrace, Key(..), Some(..))
 import qualified Trace
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.VI.VI as VI
-import           Inference.VI.VI as VI (GradDescent(..))
+-- import           Inference.VI.VI as VI (GradDescent(..))
 import qualified Vec
 import           Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 
@@ -57,6 +57,6 @@ bbvi num_timesteps num_samples guide_model model model_env  = do
   -- | Collect initial proposal distributions
   guideParams_0 <- VI.collectGuideParams guide
   -- | Run BBVI for T optimisation steps
-  ((fst <$>) . handleLift . VI.handleLRatioGradDescent)
-    $ VI.viLoop num_timesteps num_samples guide VI.handleGuide model VI.handleModel (guideParams_0, Trace.empty)
+  (handleLift . VI.handleLRatioGradDescent)
+    $ VI.viLoop num_timesteps num_samples guide VI.handleGuide model VI.handleModel guideParams_0
 

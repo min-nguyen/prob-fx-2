@@ -49,28 +49,23 @@ map num_timesteps num_samples model model_env vars = do
       guideParams_0 = Trace.empty
   -- | Collect initial model parameters θ
   let tags = Env.varsToStrs @env vars
-  modelParams_0 <- MLE.collectModelParams tags (handleCore model_env model)
   -- | Run MLE for T optimisation steps
-  ((snd <$>) . handleLift . VI.handleNormGradDescent) $
-      VI.viLoop num_timesteps num_samples guide MLE.handleGuide model (handleModel tags) (guideParams_0, modelParams_0)
+  (handleLift . VI.handleNormGradDescent) $
+      VI.viLoop num_timesteps num_samples guide MLE.handleGuide model handleModel guideParams_0
 
 -- | Handle the model P(X, Y; θ) by returning log-importance-weight P(Y, X; θ)
-handleModel :: [Tag] -> Model env [ObsRW env, Dist] a -> DTrace -> Env env -> Sampler (((a, Env env), LogP), GTrace)
-handleModel tags model params env  =
-  (SIM.defaultSample . SIM.defaultObserve . MLE.handleModelParams . weighModel . MLE.installModelParams tags params . handleCore env) model
+handleModel :: Model env [ObsRW env, Dist] a -> Env env -> Sampler ((a, Env env), LogP)
+handleModel model env =
+  (SIM.defaultSample . SIM.defaultObserve . weighModel . handleCore env) model
 
 -- | Compute: log(P(X, Y; θ)) over the model
-weighModel :: forall es a. (Members [Param, Observe, Sample] es) => Prog es a -> Prog es (a, LogP)
+weighModel :: forall es a. (Members [Observe, Sample] es) => Prog es a -> Prog es (a, LogP)
 weighModel = loop 0 where
   loop :: LogP -> Prog es a -> Prog es (a, LogP)
   loop logW (Val a)   = pure (a, logW)
   loop logW (Op op k) = case op of
-      -- | Compute: log(P(X; θ)) for optimisable dists
-      ParamSPrj p α   -> Op op (\xy -> loop (logW + logProb p xy) $ k xy)
       -- | Compute: log(P(X; θ)) for non-optimisable dists
       SampPrj p α     -> Op op (\xy -> loop (logW + logProb p xy) $ k xy)
-      -- | Compute: log(P(Y; θ)) for optimisable dists
-      ParamOPrj p y α -> Op op (\xy -> loop (logW + logProb p xy) $ k xy)
       -- | Compute: log(P(Y; θ)) for non-optimisable dists
       ObsPrj p y α    -> Op op (\xy -> loop (logW + logProb p xy) $ k xy)
       _               -> Op op (loop logW . k)

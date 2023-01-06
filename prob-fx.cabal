@@ -49,7 +49,6 @@ library
                       Inference.VI.INVI,
                       Inference.VI.MLE,
                       Inference.VI.MAP,
-                      Inference.VI.Extra.MLE_MCMC,
                       Inference.VI.Extra.BBVI_Combined,
                       -- Inference.MB,
                       Env,

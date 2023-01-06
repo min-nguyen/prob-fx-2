@@ -27,9 +27,7 @@ import qualified Inference.VI.BBVI as BBVI
 import qualified Inference.VI.INVI as INVI
 import qualified Inference.VI.MLE as MLE
 import qualified Inference.VI.MAP as MAP
-import qualified Inference.VI.INVI_MAP as INVI_MAP
 import qualified Inference.VI.Extra.BBVI_Combined as BBVI_Combined
-import qualified Inference.VI.Extra.MLE_MCMC as MLE_MCMC
 import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
 import qualified Trace
 import           Trace (Key(..))
@@ -238,15 +236,6 @@ inviLinRegr t_steps l_samples n_datapoints = do
       c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
   pure (m_dist, c_dist)
 
-mleMcmcLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
-mleMcmcLinRegr t_steps l_samples n_datapoints = do
-  let xs            = [1 .. fromIntegral n_datapoints]
-      env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  traceQ <- MLE_MCMC.mle t_steps l_samples (linRegr xs ) env_in (linRegr xs)
-  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
-      c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
-  pure (m_dist, c_dist)
-
 mleLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
 mleLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
@@ -264,18 +253,6 @@ mapLinRegr t_steps l_samples n_datapoints = do
   let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
       c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
   pure (m_dist, c_dist)
-
-invimapLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double], [Double])
-invimapLinRegr t_steps l_samples n_datapoints = do
-  let xs            = [1 .. fromIntegral n_datapoints]
-      env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  (guideParams, modelParams) <- INVI_MAP.invimap t_steps l_samples linRegrGuide (linRegr xs ) env_in (#m <#> #c <#> vnil)
-  let m_distλ = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) guideParams
-      c_distλ = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) guideParams
-      m_distθ = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) modelParams
-      c_distθ = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) modelParams
-
-  pure (m_distλ, c_distλ, m_distθ, c_distθ)
 
 {- | Linear regression model on individual data points at a time.
 -}
