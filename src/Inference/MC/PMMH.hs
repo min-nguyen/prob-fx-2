@@ -40,11 +40,16 @@ pmmh mh_steps n_prts model env_in obs_vars = do
   -- | Handle model to probabilistic program
   let prog_0   = handleCore env_in model
   -- | Convert observable variables to strings
-  let tags = varsToStrs @env obs_vars
+  let θ        = varsToStrs @env obs_vars
   -- | Initialise sample trace to include only parameters
-  τθ_0       <- (fmap (filterTrace tags . snd) . reuseSamples Map.empty . defaultObserve) prog_0
-  pmmh_trace <- (handleLift . handleAccept . metropolis mh_steps τθ_0 (handleModel n_prts)) prog_0
+  (_, τ)       <- (reuseSamples Map.empty . defaultObserve) prog_0
+  let τθ       = filterTrace θ τ
+  pmmh_trace <- (handleLift . handleAccept . metropolis mh_steps τθ (handleModel n_prts)) prog_0
   pure (map (snd . fst . fst) pmmh_trace)
+
+pm :: Int -> Int -> Trace -> ProbProg a -> Sampler [((a, LogP), Trace)]
+pm m n τθ model = do
+  (handleLift . handleAccept . metropolis m τθ (handleModel n)) model
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}

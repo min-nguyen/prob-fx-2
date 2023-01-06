@@ -51,7 +51,7 @@ viLoop :: (HasSampler fs, Show (Env env))
   -> (DTrace, DTrace)                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Prog (GradDescent : fs) (DTrace, DTrace)      -- ^ final guide parameters λ_T
 viLoop num_timesteps num_samples guide hdlGuide model hdlModel  (guideParams_0, modelParams_0) = do
-  foldr (>=>) pure [viStep t num_samples guide hdlGuide model hdlModel  | t <- [1 .. num_timesteps]]
+  foldr (>=>) pure [viStep num_samples guide hdlGuide model hdlModel  | t <- [1 .. num_timesteps]]
     (guideParams_0, modelParams_0)
 
 {- | 1. For L iterations,
@@ -64,15 +64,14 @@ viLoop num_timesteps num_samples guide hdlGuide model hdlModel  (guideParams_0, 
      3. Update the parameters λ of the guide
 -}
 viStep :: (HasSampler fs, Show (Env env))
-  => Int                                          -- ^ time step index (t)
-  -> Int                                          -- ^ number of samples to estimate the gradient over (L)
+  => Int                                          -- ^ number of samples to estimate the gradient over (L)
   -> Prog [Param, Sample] (a, Env env)            -- ^ guide Q(X; λ)
   -> (forall c. Prog [Param, Sample] c -> DTrace -> Sampler ((c, LogP), GTrace))
   -> Model env [ObsRW env, Dist] b                -- ^ model P(X, Y)
   -> (forall d env. Model env [ObsRW env, Dist] d -> DTrace -> Env env -> Sampler (((d, Env env), LogP), GTrace))
   -> (DTrace, DTrace)                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Prog (GradDescent : fs) (DTrace, DTrace)    -- ^ next guide parameters λ_{t+1}
-viStep timestep num_samples guide hdlGuide model hdlModel (guideParams, modelParams) = do
+viStep num_samples guide hdlGuide model hdlModel (guideParams, modelParams) = do
   -- | Execute the guide X ~ Q(X; λ) for (L) iterations
   (((_, guide_envs), guide_logWs), guide_grads)
       <- Util.unzip4 <$> replicateM num_samples (lift (hdlGuide guide guideParams))

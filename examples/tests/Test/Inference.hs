@@ -64,6 +64,11 @@ testLwLogRegr = TestCase $ do
   output <- sampleIOFixed (lwLogRegr 100 10)
   assertEqual "Testing (lwLogRegr 100 10)"  lwLogRegrExpected output
 
+testSmc2LinRegr :: Test
+testSmc2LinRegr = TestCase $ do
+  output <- sampleIOFixed (smc2LinRegr 20 20 20 30)
+  assertEqual "Testing (smc2LinRegr 20 20 20 30)"  smc2LinRegrExpected output
+
 testMhLogRegr :: Test
 testMhLogRegr = TestCase $ do
   output <- sampleIOFixed (mhLogRegr 500 10)
@@ -98,6 +103,11 @@ testPmmhHMM :: Test
 testPmmhHMM = TestCase $ do
   output <- sampleIOFixed (pmmhHMM 1000 5 20)
   assertEqual "Testing (pmmhHMM 1000 5 20)"  pmmhHMMExpected output
+
+testSmc2HMM :: Test
+testSmc2HMM = TestCase $ do
+  output <- sampleIOFixed (smc2HMM 100 50 4 20)
+  assertEqual "Testing (smc2HMM 100 50 4 20)"  smc2HMMExpected output
 
 testBbviHMM :: Test
 testBbviHMM = TestCase $ do
@@ -215,6 +225,7 @@ testInference = TestList
  , testSmcLinRegr
  , testRmsmcLinRegr
  , testPmmhLinRegr
+ , testSmc2LinRegr
  , testBbviLinRegr
  , testBbviDefaultLinRegr
  , testInviLinRegr
@@ -227,6 +238,7 @@ testInference = TestList
  , testSmcHMM
  , testRmsmcHMM
  , testPmmhHMM
+ , testSmc2HMM
  , testBbviHMM
  , testBbviDefaultHMM
  , testInviHMM
