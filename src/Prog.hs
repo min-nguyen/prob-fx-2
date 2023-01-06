@@ -27,6 +27,7 @@ module Prog (
   -- * Auxiliary functions
   , run
   , call
+  , handle
   , discharge
   , discharge1
   , weaken
@@ -121,6 +122,16 @@ run _ = error "Prog.run isn't defined for non-pure computations"
 -- | Call an operation in a computation
 call :: Member e es => e x -> Prog es x
 call e = Op (inj e) Val
+
+handle :: (forall x. e x -> (x -> Prog es b) -> Prog es b)
+       -> (a -> Prog es b)
+       -> Prog (e : es) a
+       -> Prog es b
+handle _   hval  (Val a)   = hval a
+handle hop hval  (Op op k) = case discharge op of
+  Right  op' -> hop op' k'
+  Left   u   -> Op u k'
+  where k' = handle hop hval . k
 
 -- | Discharge an effect from the front of an effect sum
 discharge :: EffectSum (e ': es) x -> Either (EffectSum es x) (e x)

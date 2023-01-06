@@ -18,7 +18,7 @@ module Effects.State (
   , handleStateM
   , evalState) where
 
-import Prog ( Member(inj), Prog(..), discharge )
+import Prog ( Member(inj), Prog(..), discharge, handle )
 import Model ( Model(..) )
 
 -- | The state effect
