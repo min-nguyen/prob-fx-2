@@ -27,7 +27,7 @@ import Model
 import PrimDist
 import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )
 import Sampler
-import           Trace (GTrace, DTrace, Key(..), Some(..))
+import           Trace (GradTrace, ParamTrace, Key(..), Some(..))
 import qualified Trace
 import Debug.Trace
 import qualified Inference.MC.SIM as SIM
@@ -41,12 +41,12 @@ map :: forall env xs a b. (Show (Env env), (env `ContainsVars` xs))
   -> Model env [ObsRW env, Dist] a      -- ^ model P(X, Y; θ)
   -> Env env                            -- ^ model environment (containing only observed data Y)
   -> Vars xs                            -- ^ parameter names θ
-  -> Sampler DTrace                     -- ^ final parameters θ_T
+  -> Sampler ParamTrace                     -- ^ final parameters θ_T
 map num_timesteps num_samples model model_env vars = do
   -- | Set up a empty dummy guide Q to return the original input model environment
   let guide :: Prog '[Param, Sample] ((), Env env)
       guide = pure ((), model_env)
-      guideParams_0 :: DTrace
+      guideParams_0 :: ParamTrace
       guideParams_0 = Trace.empty
   -- | Collect initial model parameters θ
   let tags = Env.varsToStrs @env vars

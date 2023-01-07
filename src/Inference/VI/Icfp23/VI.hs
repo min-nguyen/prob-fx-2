@@ -21,6 +21,7 @@ import Data.Proxy
 import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>) )
 import Effects.Dist
+import Model
 import Effects.Lift
 import Effects.ObsRW ( ObsRW )
 import Effects.State ( modify, handleState, State )
@@ -30,7 +31,7 @@ import Model
 import PrimDist
 import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )
 import Sampler
-import           Trace (GTrace, DTrace, Key(..), Some(..))
+import           Trace (GradTrace, ParamTrace, Key(..), Some(..), VTrace)
 import qualified Trace
 import Debug.Trace
 import qualified Inference.MC.SIM as SIM
@@ -40,20 +41,20 @@ import Util
 import Inference.MC.LW (joint)
 
 data GradDescent a where
-  GradDescent :: [LogP] -> [GTrace] -> DTrace -> GradDescent DTrace
+  GradDescent :: [LogP] -> [GradTrace] -> ParamTrace -> GradDescent ParamTrace
 
-viLoop :: (HasSampler fs, Show (Env env))
-  => Int                                          -- ^ number of optimisation steps (T)
-  -> Int                                          -- ^ number of samples to estimate the gradient over (L)
-  -> Prog [Param, Sample] (a, Env env)            -- ^ guide Q(X; λ)
-  -> (forall c. Prog [Param, Sample] c -> DTrace -> Sampler ((c, LogP), GTrace))
-  -> Model env [ObsRW env, Dist] b                -- ^ model P(X, Y)
-  -> (forall d env. Model env [ObsRW env, Dist] d -> Env env -> Sampler ((d, Env env), LogP))
-  -> DTrace                             -- ^ guide parameters λ_t, model parameters θ_t
-  -> Prog (GradDescent : fs) DTrace      -- ^ final guide parameters λ_T
-viLoop num_timesteps num_samples guide hdlGuide model hdlModel guideParams_0 = do
-  foldr (>=>) pure [viStep num_samples guide hdlGuide model hdlModel  | t <- [1 .. num_timesteps]]
-    guideParams_0
+-- viLoop :: (HasSampler fs, Show (Env env))
+--   => Int                                          -- ^ number of optimisation steps (T)
+--   -> Int                                          -- ^ number of samples to estimate the gradient over (L)
+--   -> Prog [Param, Sample] (a, Env env)            -- ^ guide Q(X; λ)
+--   -> (forall c. Prog [Param, Sample] c -> ParamTrace -> Sampler ((c, LogP), GradTrace))
+--   -> Model env [ObsRW env, Dist] b                -- ^ model P(X, Y)
+--   -> (forall d env. Model env [ObsRW env, Dist] d -> Env env -> Sampler ((d, Env env), LogP))
+--   -> ParamTrace                             -- ^ guide parameters λ_t, model parameters θ_t
+--   -> Prog (GradDescent : fs) ParamTrace      -- ^ final guide parameters λ_T
+-- viLoop num_timesteps num_samples guide hdlGuide model hdlModel guideParams_0 = do
+--   foldr (>=>) pure [viStep num_samples guide hdlGuide model hdlModel  | t <- [1 .. num_timesteps]]
+--     guideParams_0
 
 {- | 1. For L iterations,
         a) Generate values x from the guide Q(X; λ), accumulating:
@@ -64,17 +65,18 @@ viLoop num_timesteps num_samples guide hdlGuide model hdlModel guideParams_0 = d
      2. Compute an estimate of the ELBO gradient: E[δelbo]
      3. Update the parameters λ of the guide
 -}
-viStep :: (HasSampler fs, Show (Env env))
+
+viStep :: (HasSampler fs)
   => Int                                          -- ^ number of samples to estimate the gradient over (L)
-  -> Prog [Param, Sample] (a, Env env)            -- ^ guide Q(X; λ)
-  -> (forall c. Prog [Param, Sample] c -> DTrace -> Sampler ((c, LogP), GTrace))
-  -> Model env [ObsRW env, Dist] b                -- ^ model P(X, Y)
-  -> (forall d env. Model env [ObsRW env, Dist] d -> Env env -> Sampler ((d, Env env), LogP))
-  -> DTrace                             -- ^ guide parameters λ_t, model parameters θ_t
-  -> Prog (GradDescent : fs) DTrace    -- ^ next guide parameters λ_{t+1}
+  -> Guide a            -- ^ guide Q(X; λ)
+  -> (Guide a -> ParamTrace -> Sampler ((a, GradTrace), VTrace))
+  -> ProbProg b               -- ^ model P(X, Y)
+  -> (ProbProg b -> VTrace -> Sampler ((b, Env env), LogP))
+  -> ParamTrace                             -- ^ guide parameters λ_t, model parameters θ_t
+  -> Prog (GradDescent : fs) ParamTrace    -- ^ next guide parameters λ_{t+1}
 viStep num_samples guide hdlGuide model hdlModel guideParams = do
   -- | Execute the guide X ~ Q(X; λ) for (L) iterations
-  (((_, guide_envs), guide_logWs), guide_grads)
+  ((_, guide_logWs), guide_grads)
       <- Util.unzip4 <$> replicateM num_samples (lift (hdlGuide guide guideParams))
   -- | Execute the model P(X, Y) under the union of the model environment Y and guide environment X
   (_              , model_logWs)
@@ -95,7 +97,7 @@ viStep num_samples guide hdlGuide model hdlModel guideParams = do
       3. The gradients of all proposal distributions Q(λ) at X=x:
             δlog(Q(X=x; λ)),     where Q is learnable
  -}
-handleGuide :: Prog [Param, Sample] a -> DTrace -> Sampler ((a, LogP), GTrace)
+handleGuide :: Prog [Param, Sample] a -> ParamTrace -> Sampler ((a, LogP), GradTrace)
 handleGuide guide params =
   (SIM.defaultSample . handleGuideParams . weighGuide . updateGuideParams params) guide
 
@@ -112,10 +114,10 @@ installGuideParams = loop . SIM.defaultObserve where
     Nothing -> Op (weaken op) (loop . k)
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
-collectGuideParams :: Prog [Param, Sample] a -> Sampler DTrace
+collectGuideParams :: Prog [Param, Sample] a -> Sampler ParamTrace
 collectGuideParams = SIM.defaultSample . (fst <$>) . handleGuideParams . loop Trace.empty
   where
-  loop :: DTrace -> Prog (Param : es) a -> Prog (Param : es) DTrace
+  loop :: ParamTrace -> Prog (Param : es) a -> Prog (Param : es) ParamTrace
   loop params (Val _)   = pure params
   loop params (Op op k) = case prj op of
     Just (Param q α)   -> do let params' = Trace.insert (Key α) q params
@@ -123,7 +125,7 @@ collectGuideParams = SIM.defaultSample . (fst <$>) . handleGuideParams . loop Tr
     Nothing -> Op op (loop params . k)
 
 -- | Set the @Param@eters of the guide Q(X; λ).
-updateGuideParams :: forall es a. Member Param es => DTrace -> Prog es a -> Prog es a
+updateGuideParams :: forall es a. Member Param es => ParamTrace -> Prog es a -> Prog es a
 updateGuideParams proposals = loop where
   loop :: Prog es a -> Prog es a
   loop (Val a)   = pure a
@@ -147,9 +149,9 @@ weighGuide = loop 0 where
       _               -> Op op (loop logW . k)
 
 -- | Sample from each @Param@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
-handleGuideParams :: forall es a. Member Sample es => Prog (Param : es) a -> Prog es (a, GTrace)
+handleGuideParams :: forall es a. Member Sample es => Prog (Param : es) a -> Prog es (a, GradTrace)
 handleGuideParams = loop Trace.empty where
-  loop :: GTrace -> Prog (Param : es) a -> Prog es (a, GTrace)
+  loop :: GradTrace -> Prog (Param : es) a -> Prog es (a, GradTrace)
   loop grads (Val a)   = pure (a, grads)
   loop grads (Op op k) = case discharge op of
     Right (Param (q :: d) α) -> do
@@ -172,9 +174,9 @@ handleModel model env  =
 -}
 gradStep
   :: Double  -- ^ learning rate             η
-  -> DTrace  -- ^ optimisable distributions Q(λ_t)
-  -> GTrace  -- ^ elbo gradient estimates   E[δelbo]
-  -> DTrace  -- ^ updated distributions     Q(λ_{t+1})
+  -> ParamTrace  -- ^ optimisable distributions Q(λ_t)
+  -> GradTrace  -- ^ elbo gradient estimates   E[δelbo]
+  -> ParamTrace  -- ^ updated distributions     Q(λ_{t+1})
 gradStep η = Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (η *| δλ))
 
 -- | Compute and update the guide parameters using a likelihood-ratio-estimate E[δelbo] of the ELBO gradient
@@ -187,7 +189,7 @@ handleLRatioGradDescent (Op op k) = case discharge op of
     in  handleLRatioGradDescent (k params')
   Left op' -> Op op' (handleLRatioGradDescent . k)
 
-likelihoodRatioEstimator :: [LogP] -> [GTrace] -> GTrace
+likelihoodRatioEstimator :: [LogP] -> [GradTrace] -> GradTrace
 likelihoodRatioEstimator logWs δGs = foldr (\(Some v) -> Trace.insert v (estδELBO v)) Trace.empty vars
   where
     norm_c :: Double
@@ -199,7 +201,7 @@ likelihoodRatioEstimator logWs δGs = foldr (\(Some v) -> Trace.insert v (estδE
             F^{1:L} = W_norm^{1:L} * G^{1:L}
         where the normalised importance weight is defined via:
             log(W_norm^l) = log(W^l) + max(log(W^{1:L})) -}
-    δFs :: [GTrace]
+    δFs :: [GradTrace]
     δFs = zipWith (\logW -> Trace.map (\_ δ -> exp logW *| δ)) (normaliseLogPs logWs) δGs
     {- | Compute the ELBO gradient estimate for a random variable v's associated parameters:
             E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
@@ -227,11 +229,11 @@ handleNormGradDescent (Op op k) = case discharge op of
     in  handleNormGradDescent (k params')
   Left op' -> Op op' (handleNormGradDescent . k)
 
-normalisingEstimator :: [LogP] -> [GTrace] -> Maybe GTrace
+normalisingEstimator :: [LogP] -> [GradTrace] -> Maybe GradTrace
 normalisingEstimator logWs δGs = δelbos
   where
     {- | Store the gradient estimates for each variable v. -}
-    δelbos :: Maybe GTrace
+    δelbos :: Maybe GradTrace
     δelbos = if isInfinite norm_c
               then Nothing
               else Just (foldr (\(Some v) -> estimateGrad v) Trace.empty vars)
@@ -242,10 +244,10 @@ normalisingEstimator logWs δGs = δelbos
     vars :: [Some DiffDistribution Key]
     vars = (Trace.keys . head) δGs
     {- | Uniformly scale each iteration's gradient trace G^l by its corresponding unnormalised importance weight W_norm^l -}
-    δFs :: [GTrace]
+    δFs :: [GradTrace]
     δFs = zipWith (\logW -> Trace.map (\_ δ -> exp logW *| δ)) logWs δGs
     {- | Compute the mean gradient estimate for a random variable v's associated parameters -}
-    estimateGrad :: forall d. (DiffDistribution d) => Key d -> GTrace -> GTrace
+    estimateGrad :: forall d. (DiffDistribution d) => Key d -> GradTrace -> GradTrace
     estimateGrad v = let δFv      = map (fromJust . Trace.lookup v) δFs
                          norm_δFv = ((*|) norm_c . foldr (|+|) (Vec.zeros (Proxy @(Arity d))) ) δFv
                      in  Trace.insert v norm_δFv

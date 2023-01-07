@@ -26,7 +26,7 @@ import Model
 import PrimDist
 import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )
 import Sampler
-import           Trace (GTrace, DTrace, Key(..), Some(..))
+import           Trace (GradTrace, ParamTrace, Key(..), Some(..))
 import qualified Trace
 import Debug.Trace
 import qualified Inference.MC.SIM as SIM
@@ -46,7 +46,7 @@ invi :: forall env a b. (Show (Env env))
   -> Model env [ObsRW env, Dist] b      -- ^ guide Q(X; λ)
   -> Model env [ObsRW env, Dist] a      -- ^ model P(X, Y)
   -> Env env                            -- ^ model environment (containing only observed data Y)
-  -> Sampler DTrace           -- ^ final proposal distributions Q(λ_T)
+  -> Sampler ParamTrace           -- ^ final proposal distributions Q(λ_T)
 invi num_timesteps num_samples guide_model model model_env  = do
   let guide :: Prog '[Param, Sample] (b, Env env)
       guide = ((second (Env.union model_env) <$>) . VI.installGuideParams . handleCore model_env) guide_model

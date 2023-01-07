@@ -14,6 +14,7 @@
 
 module Model (
     Model(..)
+  , Guide
   , ProbProg
   , ProbSig
   , handleCore

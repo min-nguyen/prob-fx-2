@@ -23,13 +23,15 @@ module Trace (
   -- * Sample trace
     Trace
   , filterTrace
+  -- * Value trace
+  , VTrace
   -- * Log-probability trace
   , LPTrace
   -- , traceLogProbs
   -- * Gradient trace
-  , GTrace
+  , GradTrace
   -- * Dist trace
-  , DTrace
+  , ParamTrace
   , Key(..)
   , keys
   , Some(..)
@@ -59,6 +61,7 @@ import           Type.Reflection
 import           Data.Kind (Constraint)
 import           Prelude hiding (lookup, map)
 import Control.Applicative ((<|>))
+import Unsafe.Coerce
 
 
 -- | Retrieve the values for the specified observable variable names
@@ -75,6 +78,46 @@ filterTrace tags = filterByKey (\(Addr _ tag _)  -> tag `elem` tags)
      to the random values between 0 and 1 passed to their inverse CDF functions.
 -}
 type Trace = Map Addr Double
+
+{- | The type of value traces, mapping addresses of Sample operations to their actual values
+-}
+type VTrace = Map Addr (OpenSum [Double, Int])
+
+data OpenSum (as :: [*]) where
+  UnsafeOpenSum :: Int -> a -> OpenSum as
+
+instance Eq (OpenSum '[]) where
+  x == _ = case x of {}
+
+instance forall a as. (Eq a, Eq (OpenSum as)) => Eq (OpenSum (a : as)) where
+  UnsafeOpenSum i _ == UnsafeOpenSum j _ | i /= j = False
+  UnsafeOpenSum 0 x == UnsafeOpenSum 0 y =
+    unsafeCoerce x == (unsafeCoerce y :: a)
+  UnsafeOpenSum i x == UnsafeOpenSum j y =
+    UnsafeOpenSum (i - 1) x == (UnsafeOpenSum (j - 1) y :: OpenSum as)
+
+instance forall a as. (Show a, Show (OpenSum as)) => Show (OpenSum (a : as)) where
+  show (UnsafeOpenSum i a)
+    | i == 0    = show (unsafeCoerce a :: a)
+    | otherwise = show (UnsafeOpenSum (i - 1) a :: OpenSum as)
+
+instance {-# OVERLAPPING #-} Show a => Show (OpenSum '[a]) where
+  show (UnsafeOpenSum i a) = show (unsafeCoerce a :: a)
+
+class (FindElem a as) => VMember (a :: *) (as :: [*]) where
+  inj ::  a -> OpenSum as
+  prj ::  OpenSum as  -> Maybe a
+
+instance (Typeable a, a ~ a') => VMember a '[a'] where
+   inj = UnsafeOpenSum 0
+   prj (UnsafeOpenSum _ x) = Just (unsafeCoerce x)
+
+instance (FindElem a as) => VMember a as where
+  inj = UnsafeOpenSum (unIdx (findElem :: Idx a as))
+  prj = prj' (unIdx (findElem :: Idx a as))
+    where prj' n (UnsafeOpenSum n' x)
+            | n == n'   = Just (unsafeCoerce x)
+            | otherwise = Nothing
 
 {- | The type of log-probability traces, mapping addresses of sample/observe operations
      to their log probabilities.
@@ -99,14 +142,14 @@ type family Assoc (c :: * -> Constraint) (a :: *) = (b :: *) where
   Assoc Grad d = Vec (Arity d) Double
 
 -- | The type of differentiable distribution traces
-type DTrace = DistTrace Id
+type ParamTrace = DistTrace Id
 
-instance {-# OVERLAPPING #-} Show [DTrace] where
+instance {-# OVERLAPPING #-} Show [ParamTrace] where
   show (x:xs) = show x ++ "\n" ++ show xs
   show []     = ""
 
-instance Show DTrace where
-  show :: DTrace -> String
+instance Show ParamTrace where
+  show :: ParamTrace -> String
   show Leaf = ""
   show (Node (Key var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ") "
                                  ++ show l
@@ -115,10 +158,10 @@ instance Show DTrace where
           showNewline node  = "\n" ++ show node
 
 -- | The type of gradient traces
-type GTrace = DistTrace Grad
+type GradTrace = DistTrace Grad
 
-instance Show GTrace where
-  show :: GTrace -> String
+instance Show GradTrace where
+  show :: GradTrace -> String
   show Leaf = ""
   show (Node (Key var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ") "
                                  ++ show l
@@ -212,7 +255,7 @@ map f = go where
 
 -- | Combine the entries of two traces with an operation when their keys match,
 --   returning elements of the left trace that do not exist in the second trace.
-intersectLeftWith :: (forall d. DiffDistribution d => d -> Vec (Arity d) Double -> d) -> DTrace -> GTrace -> DTrace
+intersectLeftWith :: (forall d. DiffDistribution d => d -> Vec (Arity d) Double -> d) -> ParamTrace -> GradTrace -> ParamTrace
 intersectLeftWith _ t1 Leaf  = t1
 intersectLeftWith _ Leaf t2  = Leaf
 intersectLeftWith f (Node k1 x1 l1 r1) t2 =
@@ -223,7 +266,7 @@ intersectLeftWith f (Node k1 x1 l1 r1) t2 =
           !l1l2 = intersectLeftWith f l1 l2
           !r1r2 = intersectLeftWith f r1 r2
           -- | Split-lookup without rebalancing tree
-          dsplitLookup :: Typeable d => Key d -> GTrace -> (GTrace, Maybe (Vec (Arity d) Double), GTrace)
+          dsplitLookup :: Typeable d => Key d -> GradTrace -> (GradTrace, Maybe (Vec (Arity d) Double), GradTrace)
           dsplitLookup k = go where
             go Leaf            = (Leaf, Nothing, Leaf)
             go (Node kx x l r) = case trueCompare k kx of

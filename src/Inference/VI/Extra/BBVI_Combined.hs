@@ -27,7 +27,7 @@ import           Model
 import           PrimDist
 import           Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )
 import           Sampler
-import           Trace (GTrace, DTrace, Key(..), Some(..))
+import           Trace (GradTrace, ParamTrace, Key(..), Some(..))
 import qualified Trace
 import qualified Vec
 import           Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
@@ -38,10 +38,10 @@ import qualified Inference.VI.BBVI as BBVI
 
 {- | Top-level wrapper for BBVI inference.
 -}
-bbvi :: forall env a. Int -> Int -> Model env [ObsRW env, Dist] a -> Env env -> Sampler DTrace
+bbvi :: forall env a. Int -> Int -> Model env [ObsRW env, Dist] a -> Env env -> Sampler ParamTrace
 bbvi num_timesteps num_samples model env_in = do
   -- | Transform probabilistic program to use @Score@ operations
-  let bbvi_prog :: Prog [Score, Observe, Sample] ((a, Env env), DTrace)
+  let bbvi_prog :: Prog [Score, Observe, Sample] ((a, Env env), ParamTrace)
       bbvi_prog = installScore (handleCore env_in model)
   -- | Collect initial proposal distributions
   ((_, proposals_0), _) <- (SIM.defaultSample . SIM.defaultObserve . handleScore) bbvi_prog
@@ -52,9 +52,9 @@ bbvi num_timesteps num_samples model env_in = do
 bbviInternal :: forall fs a. (HasSampler fs)
   => Int                        -- ^ number of optimisation steps (T)
   -> Int                        -- ^ number of samples to estimate the gradient over (L)
-  -> DTrace
+  -> ParamTrace
   -> Prog [Score, Observe, Sample] a
-  -> Prog fs DTrace
+  -> Prog fs ParamTrace
 bbviInternal num_timesteps num_samples proposals_0 bbvi_prog = do
   -- | Run BBVI for T optimisation steps
   foldr (>=>) pure (replicate num_timesteps ((snd <$>) . bbviStep num_samples bbvi_prog)) proposals_0
@@ -68,8 +68,8 @@ bbviInternal num_timesteps num_samples proposals_0 bbvi_prog = do
 bbviStep :: (ProbSig es, HasSampler fs)
   => Int                            -- ^ number of samples to estimate the gradient over (L)
   -> Prog (Score : es) a            -- ^ initial bbvi probabilistic program
-  -> DTrace                         -- ^ proposal distributions (Q)
-  -> Prog fs ([(a, LogP)], DTrace)  -- ^ weighted outputs + next proposal distributions (Q')
+  -> ParamTrace                         -- ^ proposal distributions (Q)
+  -> Prog fs ([(a, LogP)], ParamTrace)  -- ^ weighted outputs + next proposal distributions (Q')
 bbviStep num_samples bbvi_prog proposals = do
   -- | Execute a model for L iterations, collecting gradient traces G_l and importance weights logW_l:
   ((as, logWs), grads) <- Util.unzip3 <$> replicateM num_samples (lift (runBBVI proposals bbvi_prog))
@@ -86,16 +86,16 @@ bbviStep num_samples bbvi_prog proposals = do
 
 {- | One iteration of model execution under BBVI.
 -}
-runBBVI :: [Score, Observe, Sample] ~ es => DTrace -> Prog es a -> Sampler ((a, LogP), GTrace)
+runBBVI :: [Score, Observe, Sample] ~ es => ParamTrace -> Prog es a -> Sampler ((a, LogP), GradTrace)
 runBBVI proposals =
   SIM.defaultSample . SIM.defaultObserve . handleScore . traceLogProbs . updateScore proposals
 
 {- | Replace all differentiable @Sample@ operations with @Score@ operations, initialising
      the proposals distributions Q as priors P.
 -}
-installScore :: forall es a. Member Sample es => Prog es a -> Prog (Score : es) (a, DTrace)
+installScore :: forall es a. Member Sample es => Prog es a -> Prog (Score : es) (a, ParamTrace)
 installScore = loop Trace.empty where
-  loop :: DTrace -> Prog es a -> Prog (Score : es) (a, DTrace)
+  loop :: ParamTrace -> Prog es a -> Prog (Score : es) (a, ParamTrace)
   loop proposals  (Val x)   = pure (x, proposals)
   loop proposals  (Op op k) = case prj op of
     Just (Sample d α) -> case isDifferentiable d of
@@ -107,7 +107,7 @@ installScore = loop Trace.empty where
 
 {- | Set the proposal distributions Q(λ) of @Score@ operations.
 -}
-updateScore :: forall es a. Member Score es => DTrace -> Prog es a -> Prog es a
+updateScore :: forall es a. Member Score es => ParamTrace -> Prog es a -> Prog es a
 updateScore proposals = loop where
   loop :: Prog es a -> Prog es a
   loop (Val a)   = pure a
@@ -123,9 +123,9 @@ updateScore proposals = loop where
     And for each proposal distribution Q(λ), compute its gradient log-pdf at sample X w.r.t parameters λ:
         δlog(Q(X; λ))
 -}
-handleScore :: forall es a. Member Sample es => Prog (Score : es) a -> Prog es (a, GTrace)
+handleScore :: forall es a. Member Sample es => Prog (Score : es) a -> Prog es (a, GradTrace)
 handleScore = loop Trace.empty where
-  loop :: GTrace -> Prog (Score : es) a -> Prog es (a, GTrace)
+  loop :: GradTrace -> Prog (Score : es) a -> Prog es (a, GradTrace)
   loop grads (Val a)   = pure (a, grads)
   loop grads (Op op k) = case discharge op of
     Right (Score _ (q :: d) α) -> do
