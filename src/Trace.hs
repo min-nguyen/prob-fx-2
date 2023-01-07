@@ -24,7 +24,7 @@ module Trace (
     Trace
   , filterTrace
   -- * Value trace
-  , VTrace
+  , ValueTrace
   -- * Log-probability trace
   , LPTrace
   -- , traceLogProbs
@@ -81,7 +81,7 @@ type Trace = Map Addr Double
 
 {- | The type of value traces, mapping addresses of Sample operations to their actual values
 -}
-type VTrace = Map Addr (OpenSum [Double, Int])
+type ValueTrace = Map Addr (OpenSum [Double, Int])
 
 data OpenSum (as :: [*]) where
   UnsafeOpenSum :: Int -> a -> OpenSum as
