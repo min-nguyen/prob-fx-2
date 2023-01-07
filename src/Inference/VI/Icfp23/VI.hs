@@ -76,9 +76,9 @@ viStep :: (HasSampler fs)
   -> Prog (GradDescent : fs) ParamTrace    -- ^ next guide parameters λ_{t+1}
 viStep num_samples guide hdlGuide model hdlModel params = do
   -- | Execute the guide X ~ Q(X; λ) for (L) iterations
-  (((_, guide_ρs), grads), env) <- Util.unzip4 <$> replicateM num_samples (lift (hdlGuide guide params))
+  (((_, guide_ρs), grads), envs) <- Util.unzip4 <$> replicateM num_samples (lift (hdlGuide guide params))
   -- | Execute the model P(X, Y) under the union of the model environment Y and guide environment X
-  (_              , model_ρs)  <- mapAndUnzipM (lift . hdlModel model) env
+  (_              , model_ρs)  <- mapAndUnzipM (lift . hdlModel model) envs
   -- | Compute total log-importance-weight, log(P(X, Y)) - log(Q(X; λ))
   let ρs      = zipWith (-) model_ρs guide_ρs
   -- | Update the parameters λ of the proposal distributions Q

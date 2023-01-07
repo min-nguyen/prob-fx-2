@@ -87,6 +87,8 @@ class (SNatI (Arity d), Distribution d) => DiffDistribution d where
 
   toList :: d -> [Double]
 
+type DiffDist d a = (DiffDistribution d, Base d ~ a)
+
 -- | Beta(α, β)
 data Beta = Beta Double Double
   deriving Show

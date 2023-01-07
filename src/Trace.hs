@@ -9,6 +9,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE RankNTypes #-}
