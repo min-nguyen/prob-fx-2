@@ -43,13 +43,8 @@ import           Unsafe.Coerce ( unsafeCoerce )
      @e@ in signature @es@; this represents a syntax tree whose nodes are operations and leaves are pure values.
 -}
 data Prog es a where
-  Val
-    :: a                -- ^ pure value
-    -> Prog es a
-  Op
-    :: EffectSum es x   -- ^ an operation belonging to some effect in @es@
-    -> (x -> Prog es a) -- ^ a continuation from the result of the operation
-    -> Prog es a
+  Val :: a -> Prog es a
+  Op  :: EffectSum es b -> (b -> Prog es a) -> Prog es a
 
 instance Functor (Prog es) where
   fmap f (Val a) = Val (f a)
@@ -61,20 +56,20 @@ instance Applicative (Prog es) where
   (Op fx k) <*> x = Op fx ((<*> x) . k)
 
 instance Monad (Prog es) where
-  return           = Val
-  Val a >>= f      = f a
+  return        = Val
+  Val a >>= f   = f a
   Op fx k >>= f = Op fx (k >=> f)
 
 -- | An open sum for an effect signature @es@, containing an operation @e x@ where @e@ is in @es@
-data EffectSum (es :: [* -> *]) (x :: *) :: * where
-  EffectSum :: Int -> e x -> EffectSum es x
+data EffectSum (es :: [* -> *]) (a :: *) :: * where
+  EffectSum :: Int -> e a -> EffectSum es a
 
 -- | Membership of an effect @e@ in @es@
 class (FindElem e es) => Member (e :: * -> *) (es :: [* -> *]) where
   -- | Inject an operation of type @e x@ into an effect sum
-  inj ::  e x -> EffectSum es x
+  inj ::  e a -> EffectSum es a
   -- | Attempt to project an operation of type @e x@ out from an effect sum
-  prj ::  EffectSum es x -> Maybe (e x)
+  prj ::  EffectSum es a -> Maybe (e a)
 
 instance {-# INCOHERENT #-} (e ~ e') => Member e '[e'] where
    inj = EffectSum 0
@@ -120,7 +115,7 @@ run (Val x) = x
 run _ = error "Prog.run isn't defined for non-pure computations"
 
 -- | Call an operation in a computation
-call :: Member e es => e x -> Prog es x
+call :: Member e es => e a -> Prog es a
 call e = Op (inj e) Val
 
 handle :: s
@@ -135,12 +130,12 @@ handle s hop hval  (Op op k) = case discharge op of
   where k' s' = handle s' hop hval . k
 
 -- | Discharge an effect from the front of an effect sum
-discharge :: EffectSum (e ': es) x -> Either (EffectSum es x) (e x)
+discharge :: EffectSum (e ': es) a -> Either (EffectSum es a) (e a)
 discharge (EffectSum 0 tv) = Right $ unsafeCoerce tv
 discharge (EffectSum n rv) = Left  $ EffectSum (n-1) rv
 
 -- | Discharge the only effect from an effect sum
-discharge1 :: EffectSum '[e] x -> e x
+discharge1 :: EffectSum '[e] a -> e a
 discharge1 (EffectSum 0 tv) = unsafeCoerce tv
 discharge1 _ = error "Prog.discharge1: impossible"
 
