@@ -21,8 +21,11 @@
 -}
 
 module Trace (
+  -- * Addr
+    Tag
+  , Addr(..)
   -- * Sample trace
-    Trace
+  , Trace(..)
   , filterTrace
   -- * Value trace
   , ValueTrace
@@ -49,8 +52,6 @@ module Trace (
 import           Data.Map (Map)
 import           Data.Maybe ( fromJust, fromMaybe )
 import           Data.Proxy ( Proxy(..) )
-import           Effects.Dist ( Tag, Addr(..), Observe, Sample(..), pattern ObsPrj, pattern SampPrj )
-import           Env ( enil, varToStr, UniqueVar, Var(..), Env(ECons), Assign((:=)) )
 import           GHC.TypeLits ( KnownSymbol )
 import           LogP ( LogP )
 import           Prog ( Member, Prog(..), weaken, install )
@@ -64,6 +65,20 @@ import           Prelude hiding (lookup, map)
 import Control.Applicative ((<|>))
 import Unsafe.Coerce
 
+
+{- $Address
+   Identifiers for probabilistic operations.
+-}
+
+-- | A compile-time identifier: observable variable name assigned to a primitive distribution
+type Tag  = String
+-- | A run-time identifier: global run-time occurrence + observable variable name + occurrence with respect to that variable name
+data Addr = Addr { global :: Int, tag :: Tag, local :: Int }
+  deriving (Eq, Ord, Show)
+
+instance {-# OVERLAPPING #-} Show (String, Int) where
+  show :: (String, Int) -> String
+  show (x, n) = "⟨" ++ x ++ "," ++ show n ++ "⟩"
 
 -- | Retrieve the values for the specified observable variable names
 filterTrace ::

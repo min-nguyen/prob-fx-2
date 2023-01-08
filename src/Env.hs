@@ -43,11 +43,12 @@ module Env
 import Type.Reflection
 import Data.Kind ( Constraint, Type )
 import Data.Proxy
-import Effects.Dist ( Tag )
+-- import Effects.Dist ( Tag )
 import TyCompare ( FindElem(..), Idx(..) )
 import GHC.OverloadedLabels ( IsLabel(..) )
 import GHC.TypeLits ( KnownSymbol, Symbol, symbolVal )
 import Unsafe.Coerce ( unsafeCoerce )
+import Trace (Tag, Addr)
 
 -- * Observable variable
 

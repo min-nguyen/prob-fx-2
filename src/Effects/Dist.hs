@@ -33,27 +33,18 @@ module Effects.Dist (
   -- ** Param effect
   , Score(..)
   , pattern ScorePrj
+  , module Effects.Sample
+  , module Effects.Observe
   ) where
 
 import           Data.Maybe ( fromMaybe )
 import qualified Data.Map as Map
 import           PrimDist
+import           Trace
 import           Prog ( call, discharge, weaken, Member(..), Prog(..), EffectSum )
 import           Util
-
-{- $Address
-   Identifiers for probabilistic operations.
--}
-
--- | A compile-time identifier: observable variable name assigned to a primitive distribution
-type Tag  = String
--- | A run-time identifier: global run-time occurrence + observable variable name + occurrence with respect to that variable name
-data Addr = Addr { global :: Int, tag :: Tag, local :: Int }
-  deriving (Eq, Ord, Show)
-
-instance {-# OVERLAPPING #-} Show (String, Int) where
-  show :: (String, Int) -> String
-  show (x, n) = "⟨" ++ x ++ "," ++ show n ++ "⟩"
+import           Effects.Sample
+import           Effects.Observe
 
 -- | The effect @Dist@ for primitive distributions
 data Dist a where
@@ -63,37 +54,6 @@ data Dist a where
            , getTag :: Maybe Tag      -- ^ optional observable variable name
            }
         -> Dist a
-
--- | The effect @Sample@ for sampling from distirbutions
-data Sample a where
-  Sample  :: (Distribution d, a ~ Base d)
-          => d              -- ^ distribution to sample from
-          -> Addr           -- ^ address of @Sample@ operation
-          -> Sample a
-
--- | For projecting and then successfully pattern matching against @Sample@
-pattern SampPrj :: (Member Sample es) => (Distribution d, x ~ Base d) => d -> Addr -> EffectSum es x
-pattern SampPrj d α <- (prj -> Just (Sample d α))
-
--- | For discharging and then successfully pattern matching against @Sample@
-pattern SampDis :: (Show x) =>  (Distribution d, x ~ Base d) => d -> Addr -> EffectSum (Sample : es) x
-pattern SampDis d α <- (discharge -> Right (Sample d α))
-
--- | The effect @Observe@ for conditioning against observed values
-data Observe a where
-  Observe :: (Distribution d, a ~ Base d)
-          => d              -- ^ distribution to condition with
-          -> a              -- ^ observed value
-          -> Addr           -- ^ address of @Observe@ operation
-          -> Observe a
-
--- | For projecting and then successfully pattern matching against @Observe@
-pattern ObsPrj :: (Member Observe es) => (Distribution d, x ~ Base d) => d -> x -> Addr -> EffectSum es x
-pattern ObsPrj d y α <- (prj -> Just (Observe d y α))
-
--- | For discharging and then successfully pattern matching against @Observe@
-pattern ObsDis :: () => (Distribution d, x ~ Base d) => d -> x -> Addr -> EffectSum (Observe : es) x
-pattern ObsDis d y α <- (discharge -> Right (Observe d y α))
 
 -- | The effect @Param@ for distributions with support for gradient log-pdfs
 data Param a where
