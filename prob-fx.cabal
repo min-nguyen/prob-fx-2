@@ -57,6 +57,7 @@ library
                       Inference.VI.MLE,
                       Inference.VI.MAP,
                       Inference.VI.Extra.BBVI_Combined,
+                      Inference.VI.Icfp23.VI,
                       -- Inference.MB,
                       Env,
                       LogP,

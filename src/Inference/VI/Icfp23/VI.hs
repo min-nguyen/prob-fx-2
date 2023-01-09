@@ -53,7 +53,7 @@ viLoop :: (HasSampler fs)
   -> ParamTrace                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Prog (GradDescent : fs) ParamTrace      -- ^ final guide parameters λ_T
 viLoop num_timesteps num_samples guide hdlGuide model hdlModel guideParams_0 = do
-  foldr (>=>) pure [viStep num_samples guide hdlGuide model hdlModel  | t <- [1 .. num_timesteps]]
+  foldr (>=>) pure [viStep num_samples  hdlGuide  hdlModel guide model  | t <- [1 .. num_timesteps]]
     guideParams_0
 
 {- | 1. For L iterations,
@@ -66,15 +66,14 @@ viLoop num_timesteps num_samples guide hdlGuide model hdlModel guideParams_0 = d
      3. Update the parameters λ of the guide
 -}
 
+type GuideHandler a = Guide a    -> ParamTrace -> Sampler (((a, LogP), GradTrace), ValueTrace)
+type ModelHandler a = ProbProg a -> ValueTrace -> Sampler (a, LogP)
+
 viStep :: (HasSampler fs)
-  => Int
-  -> Guide a
-  -> (Guide a -> ParamTrace -> Sampler (((a, LogP), GradTrace), ValueTrace))
-  -> ProbProg b
-  -> (ProbProg b -> ValueTrace -> Sampler (b, LogP))
+  => Int -> GuideHandler a -> ModelHandler b -> Guide a -> ProbProg b
   -> ParamTrace                            -- ^ guide parameters λ_t
   -> Prog (GradDescent : fs) ParamTrace    -- ^ next guide parameters λ_{t+1}
-viStep num_samples guide hdlGuide model hdlModel params = do
+viStep num_samples hdlGuide hdlModel guide model  params = do
   -- | Execute the guide X ~ Q(X; λ) for (L) iterations
   (((_, guide_ρs), grads), envs) <- Util.unzip4 <$> replicateM num_samples (lift (hdlGuide guide params))
   -- | Execute the model P(X, Y) under the union of the model environment Y and guide environment X
