@@ -170,6 +170,10 @@ test-suite tests
 
   hs-source-dirs:     examples/tests,
                       examples
+  default-extensions: GADTs,
+                      DataKinds,
+                      TypeOperators,
+                      ScopedTypeVariables
 
   main-is:            Main.hs
   other-modules:      Test.Numerics,

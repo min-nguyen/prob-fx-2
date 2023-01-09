@@ -17,7 +17,7 @@
 -}
 
 module PrimDist
-  (Distribution(..), DiffDistribution(..), PrimDist, Witness(..),
+  (Distribution(..), DiffDistribution(..), PrimDist, DiffDist, Witness(..),
    Beta, mkBeta, Bernoulli, mkBernoulli, Binomial, mkBinomial, Categorical, mkCategorical, Cauchy, mkCauchy, HalfCauchy, mkHalfCauchy,
    Deterministic, mkDeterministic, Discrete, mkDiscrete, Dirichlet, mkDirichlet, Gamma, mkGamma, Normal, mkNormal, HalfNormal, mkHalfNormal,
    Poisson, mkPoisson, Uniform, mkUniform, UniformD, mkUniformD) where

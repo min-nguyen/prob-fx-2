@@ -1,9 +1,7 @@
 {-# LANGUAGE PatternSynonyms #-}
-
 {-# LANGUAGE ViewPatterns #-}
-
-
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Effects.Param where
 
@@ -11,6 +9,7 @@ import Prog
 import PrimDist
 import Trace
 import Effects.Sample
+import Env
 
 -- | The effect @Param@ for distributions with support for gradient log-pdfs
 data Param a where
@@ -18,9 +17,6 @@ data Param a where
          => d              -- ^ proposal distribution
          -> Addr           -- ^ address of operation
          -> Param a        -- ^ observed point
-
-setParamDist :: (DiffDistribution d, a ~ Base d) => Param a -> d -> Param a
-setParamDist (Param q α) q' = Param q' α
 
 -- | For projecting and then successfully pattern matching against @Param@
 pattern ParamPrj :: (Member Param es) => (DiffDistribution d, x ~ Base d) => d -> Addr -> EffectSum es x
@@ -38,13 +34,21 @@ data Score a where
 pattern ScorePrj :: (Member Score es) => (DiffDistribution d, x ~ Base d) => d -> d -> Addr -> EffectSum es x
 pattern ScorePrj d q α <- (prj -> Just (Score d q α))
 
--- handleParams :: forall es a. Member Sample es => Prog (Param : es) a -> Prog es (a, GradTrace)
--- handleParams = loop Trace.empty where
---   loop :: GradTrace -> Prog (Param : es) a -> Prog es (a, GradTrace)
---   loop grads (Val a)   = pure (a, grads)
---   loop grads (Op op k) = case discharge op of
---     Right (Param (q :: d) α) -> do
---       x <- call (Sample q α)
---       let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
---       (loop grads' . k) x
---     Left op' -> Op op' (loop grads . k)
+-- | The effect @Param@ for distributions with support for gradient log-pdfs
+data Param' env a where
+  Param' :: (DiffDist d a, Observable env x a)
+         => d              -- ^ proposal distribution
+         -> Var x
+         -> Addr           -- ^ address of operation
+         -> Param' env a        -- ^ observed point
+
+handleParams' :: forall env es a. Member (Sample' env) es =>  Prog (Param' env : es) a -> Prog es (a, GradTrace)
+handleParams'  = loop Trace.empty where
+  loop :: GradTrace -> Prog (Param' env : es) a -> Prog es (a, GradTrace)
+  loop grads (Val a)   = pure (a, grads)
+  loop grads (Op op k) = case discharge op of
+    Right (Param' (q :: d) x α) -> do
+      x <- call (Sample' @env q x α)
+      let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
+      (loop grads' . k) x
+    Left op' -> Op op' (loop grads . k)
