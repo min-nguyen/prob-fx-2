@@ -1,8 +1,8 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use camelCase" #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE DataKinds #-}
+
 {-# LANGUAGE TypeApplications #-}
 module Test.Numerics where
 

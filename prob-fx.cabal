@@ -26,6 +26,10 @@ tested-with:
 
 library
   hs-source-dirs:     src
+  default-extensions: GADTs,
+                      DataKinds,
+                      ScopedTypeVariables,
+                      TypeOperators
   exposed-modules:    Effects.Dist,
                       Effects.Lift,
                       Effects.NonDet,
@@ -107,6 +111,10 @@ executable prob-fx
   hs-source-dirs:     examples,
                       -- leave 'src' uncommented for testing only
                       src
+  default-extensions: GADTs,
+                      DataKinds,
+                      TypeOperators,
+                      ScopedTypeVariables
   main-is:            Main.hs
   other-modules:      CoinFlip,
                       DataSets,
@@ -136,7 +144,10 @@ executable prob-fx
 executable benchmarks
   hs-source-dirs:     examples/benchmarks,
                       examples
-
+  default-extensions: GADTs,
+                      DataKinds,
+                      TypeOperators,
+                      ScopedTypeVariables
   main-is:            Main.hs
   other-modules:      HMM,
                       LDA,

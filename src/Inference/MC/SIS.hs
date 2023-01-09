@@ -1,9 +1,9 @@
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators #-}
+
+
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GADTs #-}
+
+
 {-# LANGUAGE FlexibleContexts #-}
 
 {- An infrastructure for Sequential Importance (Re)Sampling.

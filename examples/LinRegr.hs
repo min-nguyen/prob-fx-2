@@ -1,11 +1,11 @@
 
-{-# LANGUAGE DataKinds #-}
+
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE MonoLocalBinds #-}
-{-# LANGUAGE TypeOperators #-}
+
 {-# LANGUAGE TypeApplications #-}
 
 {- | A linear regression model, modelling a linear relationship between data points x and y.

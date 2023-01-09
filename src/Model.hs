@@ -1,12 +1,12 @@
-{-# LANGUAGE DataKinds #-}
+
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE GADTs #-}
+
+
 {-# LANGUAGE ConstraintKinds #-}
 
 {- | An algebraic effect embedding of probabilistic models.

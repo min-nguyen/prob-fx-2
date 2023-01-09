@@ -1,10 +1,10 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds #-}
+
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+
+
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
+
 
 {- | The effect for reading from and writing to observable variables from a model environment.
 -}

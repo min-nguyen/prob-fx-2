@@ -1,9 +1,9 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE DataKinds #-}
+
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeOperators #-}
+
+
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE PatternSynonyms #-}

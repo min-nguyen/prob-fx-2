@@ -1,8 +1,8 @@
-{-# LANGUAGE DataKinds #-}
+
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
+
 {-# LANGUAGE OverloadedLabels #-}
 
 {- | The Gelman and Hill [8-schools case study](https://cran.r-project.org/web/packages/rstan/vignettes/rstan.html),

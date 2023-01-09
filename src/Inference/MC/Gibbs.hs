@@ -1,9 +1,9 @@
 
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+
+
+
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs #-}
+
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE RankNTypes #-}
 

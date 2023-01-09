@@ -1,8 +1,8 @@
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE TypeOperators #-}
+
 {-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE DataKinds #-}
+
+
 {-# LANGUAGE FlexibleContexts #-}
 
 module Effects.Param where

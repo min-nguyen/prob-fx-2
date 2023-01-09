@@ -1,11 +1,11 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
-{-# LANGUAGE TypeOperators #-}
+
 {-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE DataKinds #-}
+
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+
 {-# LANGUAGE TypeApplications #-}
 
 {- | Auxiliary definitions for finding a type in a type-level list.

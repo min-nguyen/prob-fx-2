@@ -1,5 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes, PolyKinds #-}
-{-# LANGUAGE DataKinds #-}
+
 
 module Main where
 

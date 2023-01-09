@@ -1,9 +1,9 @@
-{-# LANGUAGE DataKinds #-}
+
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs #-}
+
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
+
+
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 {- | Simulation.

@@ -1,9 +1,9 @@
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DataKinds #-}
+
+
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE GADTs #-}
+
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
 {- | An interface that allows models in ProbFX to be translated to probabilistic programs in MonadBayes.

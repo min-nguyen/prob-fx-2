@@ -1,12 +1,12 @@
-{-# LANGUAGE DataKinds #-}
+
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs #-}
+
 {-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+
 {-# LANGUAGE RankNTypes #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
-{-# LANGUAGE TypeOperators #-}
+
 {-# LANGUAGE TypeApplications #-}
 
 {- | Maximum likelihood estimation in terms of VI that samples from the prior P(X) and assigns each simulation an
