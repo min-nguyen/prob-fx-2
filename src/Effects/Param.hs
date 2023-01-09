@@ -10,6 +10,7 @@ module Effects.Param where
 import Prog
 import PrimDist
 import Trace
+import Effects.Sample
 
 -- | The effect @Param@ for distributions with support for gradient log-pdfs
 data Param a where
@@ -36,3 +37,14 @@ data Score a where
 -- | For projecting and then successfully pattern matching against @Score@
 pattern ScorePrj :: (Member Score es) => (DiffDistribution d, x ~ Base d) => d -> d -> Addr -> EffectSum es x
 pattern ScorePrj d q α <- (prj -> Just (Score d q α))
+
+-- handleParams :: forall es a. Member Sample es => Prog (Param : es) a -> Prog es (a, GradTrace)
+-- handleParams = loop Trace.empty where
+--   loop :: GradTrace -> Prog (Param : es) a -> Prog es (a, GradTrace)
+--   loop grads (Val a)   = pure (a, grads)
+--   loop grads (Op op k) = case discharge op of
+--     Right (Param (q :: d) α) -> do
+--       x <- call (Sample q α)
+--       let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
+--       (loop grads' . k) x
+--     Left op' -> Op op' (loop grads . k)
