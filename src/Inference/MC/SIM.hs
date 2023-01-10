@@ -24,7 +24,7 @@ import           Effects.Lift ( handleLift, Lift, lift )
 import           Effects.ObsRW ( ObsRW )
 import           Env ( Env )
 import           Model ( handleCore, Model )
-import           PrimDist ( sample )
+import           PrimDist ( drawWithSampler )
 import           Prog ( discharge, Prog(..), LastMember, discharge1 )
 import           Sampler ( Sampler, liftIO )
 import           Unsafe.Coerce (unsafeCoerce)
@@ -64,4 +64,4 @@ defaultSample
   -> Sampler a
 defaultSample (Val x)   = return x
 defaultSample (Op op k) = case discharge1 op of
-  (Sample d α) -> sample d >>= defaultSample . k
+  (Sample d α) -> drawWithSampler d >>= (defaultSample . k)

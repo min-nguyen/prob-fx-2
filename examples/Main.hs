@@ -33,7 +33,7 @@ parseArgs cmd = case cmd of
   "pmmhLinRegr"         -> sampleIOFixed (pmmhLinRegr 1000 20 30) >>= printThenWrite
   "bbviLinRegr"         -> sampleIOFixed (bbviLinRegr 200 40 8) >>= printThenWrite
   "bbviDefaultLinRegr"  -> sampleIOFixed (bbviDefaultLinRegr 200 40 8) >>= printThenWrite
-  "inviLinRegr"         -> sampleIOFixed (inviLinRegr 400 40 8) >>= printThenWrite
+  "inviLinRegr"         -> sampleIOFixed (inviLinRegr 300 40 8) >>= printThenWrite
   "mleLinRegr"          -> sampleIOFixed (mleLinRegr 276 40 8) >>= printThenWrite
   "mapLinRegr"          -> sampleIOFixed (mapLinRegr 276 40 8) >>= printThenWrite
 

@@ -24,6 +24,11 @@ data Sample a where
           -> Addr           -- ^ address of @Sample@ operation
           -> Sample a
 
+sample :: (Member Sample es, PrimDist d a)
+       => d -> Prog es a
+sample d = do
+  call (Sample d (Addr 0 "" 0))
+
 -- | For projecting and then successfully pattern matching against @Sample@
 pattern SampPrj :: (Member Sample es) => PrimDist d a => d -> Addr -> EffectSum es a
 pattern SampPrj d α <- (prj -> Just (Sample d α))
@@ -45,6 +50,7 @@ sample' :: forall env es x d a. (Member (Sample' env) es, Observable env x a, Pr
 sample' d x = do
   call (Sample' @env d x (Addr 0 "" 0))
 
+
 defaultSample'
   :: Env env
   -> Prog '[Sample' env] a
@@ -53,5 +59,5 @@ defaultSample' env (Val x)   = return x
 defaultSample' env (Op op k) = case discharge1 op of
   (Sample' d x α) -> do let vs       = get x env
                             maybe_v  = safeHead vs
-                        v <- maybe (sample d) pure maybe_v
+                        v <- maybe (fmap (draw d) sampleRandom) pure maybe_v
                         (defaultSample' env . k) v

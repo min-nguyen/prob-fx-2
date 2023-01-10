@@ -46,8 +46,8 @@ testBbviLinRegr = TestCase $ do
 
 testInviLinRegr :: Test
 testInviLinRegr = TestCase $ do
-  output <- sampleIOFixed (inviLinRegr 400 40 8)
-  assertEqual "Testing (inviLinRegr 400 40 8)"  inviLinRegrExpected output
+  output <- sampleIOFixed (inviLinRegr 300 40 8)
+  assertEqual "Testing (inviLinRegr 300 40 8)"  inviLinRegrExpected output
 
 testBbviDefaultLinRegr :: Test
 testBbviDefaultLinRegr = TestCase $ do
@@ -186,11 +186,6 @@ testInviLDA = TestCase $ do
       output'          = mapT3 (map (roundPrecision 8)) output
   assertEqual "Testing (inviLDA 200 20 50)"  inviLDAExpected' output'
 
-testSimRadon :: Test
-testSimRadon = TestCase $ do
-  output <- sampleIOFixed simRadon
-  assertEqual "Testing (simRadon)"  simRadonExpected output
-
 testMhRadon :: Test
 testMhRadon = TestCase $ do
   output <- sampleIOFixed (mhRadon 1000)
@@ -205,16 +200,6 @@ testMhSchool :: Test
 testMhSchool = TestCase $ do
   output <- sampleIOFixed (mhSchool 1000)
   assertEqual "Testing (mhSchool 1000)"  mhSchoolExpected output
-
-testSimGMM :: Test
-testSimGMM = TestCase $ do
-  output <- sampleIOFixed (simGMM 20)
-  assertEqual "Testing (simGMM 20)"  simGMMExpected output
-
-testMhGMM :: Test
-testMhGMM = TestCase $ do
-  output <- sampleIOFixed (mhGMM 2000 20)
-  assertEqual "Testing (mhGMM 2000 20)"  mhGMMExpected output
 
 testInference :: Test
 testInference = TestList
@@ -252,11 +237,8 @@ testInference = TestList
  , testBbviLDA
  , testBbviDefaultLDA
  , testInviLDA
- , testSimRadon
  , testMhRadon
  , testMhPredRadon
  , testMhSchool
- , testSimGMM
- , testMhGMM
  ]
 

@@ -22,7 +22,7 @@ import           Effects.ObsRW ( ObsRW, handleObsRW )
 import           Env ( Env )
 import           LogP ( LogP(..), logMeanExp )
 import           Model ( Model(runModel), ProbProg )
-import           PrimDist ( mkCategorical, sample, logProb )
+import           PrimDist ( mkCategorical, drawWithSampler, logProb )
 import           Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge, prj )
 import qualified Data.Map as Map
 import           Inference.MC.SIM as SIM

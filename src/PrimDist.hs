@@ -55,8 +55,8 @@ class (Show d, Typeable d) => Distribution d where
        cumulative density function to draw a sampled value. -}
   draw   :: d -> Double -> Base d
 
-  {- | Draw a value from a primitive distribution in the @Sampler@ monad. -}
-  sample      :: d -> Sampler (Base d)
+  drawWithSampler :: d -> Sampler (Base d)
+  drawWithSampler d = fmap (draw d) sampleRandom
 
   {- | Compute the log density of a primitive distribution generating an observed value. -}
   logProb  :: d -> Base d -> LogP
@@ -103,10 +103,6 @@ instance Distribution Beta where
 
   draw :: Beta -> Double -> Double
   draw (Beta α β) = invIncompleteBeta α β
-
-  sample :: Beta -> Sampler Double
-  sample (Beta α β) = Sampler.sampleBeta α β
-
   logProb :: Beta -> Double -> Double
   logProb (Beta α β) x
     | x <= 0 || x >= 1 = m_neg_inf
@@ -148,9 +144,6 @@ instance Distribution Cauchy where
 
   draw :: Cauchy -> Double -> Double
   draw (Cauchy loc scale) r = loc + scale * tan( pi * (r - 0.5) )
-
-  sample :: Cauchy -> Sampler Double
-  sample (Cauchy loc scale) = Sampler.sampleCauchy loc scale
 
   logProb :: Cauchy -> Double -> Double
   logProb (Cauchy loc scale) x = -(log pi) + log scale - log (xloc**2 + scale**2)
@@ -195,9 +188,6 @@ instance Distribution HalfCauchy where
   draw :: HalfCauchy -> Double ->  Double
   draw (HalfCauchy scale) r = abs $ draw (Cauchy 0 scale) r
 
-  sample :: HalfCauchy -> Sampler Double
-  sample (HalfCauchy scale) = abs <$> sample (Cauchy 0 scale)
-
   logProb :: HalfCauchy -> Double -> Double
   logProb (HalfCauchy scale) x
     | x < 0     = m_neg_inf
@@ -240,9 +230,6 @@ instance (TypeableSNatI n) => Distribution (Dirichlet n) where
     let rs = Vec.linCongGen r snat
         xs = Vec.zipWith (\α r -> draw (Gamma α 1) r) αs rs
     in  Vec.map (/sum xs) xs
-
-  sample :: Dirichlet n -> Sampler (Vec n Double)
-  sample (Dirichlet αs) = fromJust . Vec.fromList <$> Sampler.sampleDirichlet (Vec.toList αs)
 
   logProb :: Dirichlet n -> Vec n Double -> Double
   logProb (Dirichlet αs) xs
@@ -289,9 +276,6 @@ instance Distribution Gamma where
   draw :: Gamma -> Double -> Double
   draw (Gamma k θ) r = θ * invIncompleteGamma k r
 
-  sample :: Gamma -> Sampler Double
-  sample (Gamma k θ) = Sampler.sampleGamma k θ
-
   logProb :: Gamma -> Double -> Double
   logProb (Gamma k θ) x
     | x <= 0    = m_neg_inf
@@ -335,9 +319,6 @@ instance Distribution Normal where
   draw :: Normal -> Double -> Double
   draw (Normal μ σ) r = (- invErfc (2 * r)) * (m_sqrt_2 * σ) + μ
 
-  sample :: Normal -> Sampler Double
-  sample (Normal μ σ) = Sampler.sampleNormal μ σ
-
   logProb :: Normal -> Double -> Double
   logProb (Normal μ σ) x = -(xμ * xμ / (2 * (σ ** 2))) - log m_sqrt_2_pi - log σ
     where xμ = x - μ
@@ -377,9 +358,6 @@ instance Distribution HalfNormal where
 
   draw :: HalfNormal -> Double -> Double
   draw (HalfNormal σ) = abs . draw (Normal 0 σ)
-
-  sample :: HalfNormal -> Sampler Double
-  sample (HalfNormal σ) = sample (Normal 0 σ) <&> abs
 
   logProb :: HalfNormal -> Double -> Double
   logProb (HalfNormal σ) x
@@ -443,9 +421,6 @@ instance Distribution Bernoulli where
   draw :: Bernoulli -> Double -> Bool
   draw (Bernoulli p) r = r < p
 
-  sample :: Bernoulli -> Sampler Bool
-  sample (Bernoulli p) = Sampler.sampleBernoulli p
-
   logProb :: Bernoulli -> Bool -> Double
   logProb (Bernoulli p) y
     | y         = log p
@@ -471,9 +446,6 @@ instance Distribution Binomial where
 
   draw :: Binomial -> Double -> Int
   draw (Binomial n p) = invCMF (prob (Binomial n p))
-
-  sample :: Binomial -> Sampler Int
-  sample (Binomial n p) = Sampler.sampleBinomial n p
 
   logProb :: Binomial -> Int -> Double
   logProb (Binomial n p) y
@@ -509,9 +481,6 @@ instance Distribution Categorical where
   draw :: Categorical  -> Double -> Int
   draw (Categorical ps) = invCMF (ps !!)
 
-  sample :: Categorical  -> Sampler Int
-  sample (Categorical ps) = Sampler.sampleCategorical (Vector.fromList ps)
-
   logProb :: Categorical  -> Int -> Double
   logProb (Categorical ps) idx
     | idx < 0 || idx >= length ps = trace "CategoricalLogPdf: idx < 0 || idx >= length ps" m_neg_inf
@@ -535,9 +504,6 @@ instance (Show a, Typeable a) => Distribution (Deterministic a) where
 
   draw :: Deterministic a -> Double -> a
   draw (Deterministic x) _ = x
-
-  sample :: Deterministic a -> Sampler a
-  sample (Deterministic x) = pure x
 
   logProb :: Deterministic a -> a -> Double
   logProb (Deterministic x) y
@@ -570,9 +536,6 @@ instance (Show a, Typeable a) => Distribution (Discrete a) where
   draw (Discrete xps) r = xs !! invCMF (ps !!) r
     where (xs, ps) = unzip xps
 
-  sample :: Discrete a -> Sampler a
-  sample (Discrete xps) = Sampler.sampleDiscrete xps
-
   logProb :: Discrete a -> a -> Double
   logProb (Discrete xps) y = case lookup y xps of
       Nothing -> trace ("Couldn't find " ++ show y ++ " in Discrete dist") m_neg_inf
@@ -593,9 +556,6 @@ instance Distribution Poisson where
 
   draw :: Poisson -> Double -> Int
   draw (Poisson λ) = invCMF (prob (Poisson λ))
-
-  sample :: Poisson -> Sampler Int
-  sample (Poisson λ) = Sampler.samplePoisson λ
 
   logProb :: Poisson -> Int -> Double
   logProb (Poisson λ) y
@@ -623,9 +583,6 @@ instance Distribution Uniform where
   draw :: Uniform -> Double -> Double
   draw (Uniform min max) r = min + (max - min) * r
 
-  sample :: Uniform -> Sampler Double
-  sample (Uniform min max) = Sampler.sampleUniform min max
-
   logProb :: Uniform -> Double -> Double
   logProb (Uniform min max) x
     | x < min || x > max = m_neg_inf
@@ -648,9 +605,6 @@ instance Distribution UniformD where
   draw (UniformD min max) r = floor (min' + (max' - min') * r)
      where min' = fromIntegral min
            max' = fromIntegral max + 1
-
-  sample :: UniformD -> Sampler Int
-  sample (UniformD min max) = Sampler.sampleUniformD min max
 
   logProb :: UniformD -> Int -> Double
   logProb (UniformD min max) idx
