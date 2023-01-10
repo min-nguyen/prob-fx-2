@@ -26,8 +26,8 @@ data Sample a where
 
 sample :: (Member Sample es, PrimDist d a)
        => d -> Prog es a
-sample d = do
-  call (Sample d (Addr 0 "" 0))
+sample d = call (Sample d α)
+  where α = Addr 0 "" 0
 
 -- | For projecting and then successfully pattern matching against @Sample@
 pattern SampPrj :: (Member Sample es) => PrimDist d a => d -> Addr -> EffectSum es a
@@ -47,9 +47,8 @@ data Sample' (env :: [Assign Symbol *]) a where
 
 sample' :: forall env es x d a. (Member (Sample' env) es, Observable env x a, PrimDist d a)
        => d -> Var x -> Prog es a
-sample' d x = do
-  call (Sample' @env d x (Addr 0 "" 0))
-
+sample' d x = call (Sample' @env d x (Addr 0 "" 0))
+  where α = Addr 0 "" 0
 
 defaultSample'
   :: Env env
