@@ -34,9 +34,10 @@ import           Trace (Key(..))
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
-import Effects.Dist (Addr(..))
+import Effects.Dist
 import PrimDist
 import Data.Maybe
+import Prog
 {-
 import Numeric.Log ( Log )
 import Inference.MB as MB ( handleMBayes )
@@ -74,6 +75,25 @@ linRegrGuide = do
   c <- normal 0 5 #c
   σ <- uniform 1 3 #σ
   pure ()
+
+{- | Linear regression as a probabilistic program for inference -}
+linRegrInf :: forall env. Observables env '["m", "c"] Double
+  => [(Double, Double)]
+  -> Prog [Observe, Sample' env] (Double, Double)  -- ^ y datapoints
+linRegrInf xys = do
+  -- Draw model parameters from prior
+  m <- sample' @env (mkNormal 0 3) #m
+  c <- sample' @env (mkNormal 0 5) #c
+  -- Generate outputs ys
+  mapM_ (\(x, y) -> observe (mkNormal (m * x + c) 1) y) xys
+  return (m, c)
+
+linRegrInfGuide :: forall env. Observables env '["m", "c"] Double
+  => Prog [Param' env, Sample' env] ()
+linRegrInfGuide = do
+  m <- param'  @env (mkNormal 0 3) #m
+  c <- sample' @env (mkNormal 0 5) #c
+  return ()
 
 -- | Simulate from linear regression
 simLinRegr :: Int -> Sampler [(Double, Double)]

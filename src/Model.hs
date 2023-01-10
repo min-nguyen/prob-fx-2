@@ -99,6 +99,8 @@ type Guide a    = Prog [Param, Sample] a
 type ProbProg a = Prog [Observe, Sample] a
 type ProbSig es = es ~ [Observe, Sample]
 
+
+
 {- | The initial handler for models, specialising a model under a certain environment
      to produce a probabilistic program consisting of @Sample@ and @Observe@ operations.
 -}

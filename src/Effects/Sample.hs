@@ -45,7 +45,7 @@ data Sample' (env :: [Assign Symbol *]) a where
           -> Addr           -- ^ address of @Sample@ operation
           -> Sample' env a
 
-sample' :: forall env es x d a. (Member (Sample' env) es, Observable env x a, PrimDist d a)
+sample' :: forall env es x d a. (Observable env x a, Member (Sample' env) es,  PrimDist d a)
        => d -> Var x -> Prog es a
 sample' d x = call (Sample' @env d x (Addr 0 "" 0))
   where α = Addr 0 "" 0
