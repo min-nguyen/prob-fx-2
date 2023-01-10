@@ -32,8 +32,6 @@ module Model (
   , cauchy'
   , halfCauchy
   , halfCauchy'
-  , deterministic
-  , deterministic'
   , dirichlet
   , dirichlet'
   , discrete
@@ -54,7 +52,7 @@ module Model (
 import Control.Monad ( ap )
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
 import Data.Type.Nat
-import Effects.Dist ( handleDist, Dist(..), Observe, Sample, Param )
+import Effects.Dist ( handleDist, Dist(..), Observe, Sample, Param)
 import Effects.ObsRW
 import Env
 import PrimDist
@@ -95,7 +93,7 @@ instance Monad (Model env es) where
 
 {- | Probabilistic programs are those with effects for conditioning and sampling.
 -}
-type Guide a    = Prog [Param, Sample] a
+type Guide  a    = Prog [Param , Sample ] a
 type ProbProg a = Prog [Observe, Sample] a
 type ProbSig es = es ~ [Observe, Sample]
 
@@ -140,17 +138,6 @@ callDist d field = Model $ do
 
 callDist' :: (PrimDist d a) => d -> Model env es a
 callDist' d = Model $ call (Dist d Nothing Nothing)
-
-deterministic :: (Typeable a, Eq a, Show a, Observable env x a) => a
-  -> Var x
-  -> Model env es a
-deterministic x = callDist (mkDeterministic x)
-
-deterministic' :: (Typeable a, Eq a, Show a) =>
-  -- | value to be deterministically generated
-     a
-  -> Model env es a
-deterministic' x = callDist' (mkDeterministic x)
 
 dirichlet :: (Observable env x (Vec n Double), TypeableSNatI n) =>
      Vec n Double

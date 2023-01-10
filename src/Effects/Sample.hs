@@ -24,7 +24,7 @@ data Sample a where
           -> Addr           -- ^ address of @Sample@ operation
           -> Sample a
 
-sample :: (Member Sample es, PrimDist d a)
+sample :: forall d a es. (Member Sample es, PrimDist d a)
        => d -> Prog es a
 sample d = call (Sample d α)
   where α = Addr 0 "" 0
@@ -37,26 +37,13 @@ pattern SampPrj d α <- (prj -> Just (Sample d α))
 pattern SampDis :: (Show a) => PrimDist d a => d -> Addr -> EffectSum (Sample : es) a
 pattern SampDis d α <- (discharge -> Right (Sample d α))
 
--- | The effect @Sample@ for sampling from distirbutions
-data Sample' (env :: [Assign Symbol *]) a where
-  Sample' :: forall env x d a. (PrimDist d a, Observable env x a)
-          => d              -- ^ distribution to sample from
-          -> Var x
-          -> Addr           -- ^ address of @Sample@ operation
-          -> Sample' env a
-
-sample' :: forall env es x d a. (Observable env x a, Member (Sample' env) es,  PrimDist d a)
-       => d -> Var x -> Prog es a
-sample' d x = call (Sample' @env d x (Addr 0 "" 0))
-  where α = Addr 0 "" 0
-
-defaultSample'
-  :: Env env
-  -> Prog '[Sample' env] a
-  -> Sampler a
-defaultSample' env (Val x)   = return x
-defaultSample' env (Op op k) = case discharge1 op of
-  (Sample' d x α) -> do let vs       = get x env
-                            maybe_v  = safeHead vs
-                        v <- maybe (fmap (draw d) sampleRandom) pure maybe_v
-                        (defaultSample' env . k) v
+sample' :: forall env es x d a.
+  (Observable env x a, Members [ObsRW env, Sample] es,  PrimDist d a)
+  => d -> Var x -> Prog es a
+sample' d varx = do
+  maybe_y <- call (OAsk @env varx)
+  y       <- case maybe_y of
+                Nothing -> sample d
+                Just y  -> sample (Deterministic d y)
+  call (OTell @env varx y)
+  pure y

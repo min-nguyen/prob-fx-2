@@ -187,7 +187,6 @@ test-suite tests
                       LinRegr,
                       LogRegr,
                       Radon,
-                      School,
                       SIR
   build-depends:      base,
                       containers,

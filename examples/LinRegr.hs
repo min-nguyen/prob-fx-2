@@ -38,6 +38,7 @@ import Effects.Dist
 import PrimDist
 import Data.Maybe
 import Prog
+import Effects.ObsRW
 {-
 import Numeric.Log ( Log )
 import Inference.MB as MB ( handleMBayes )
@@ -79,7 +80,7 @@ linRegrGuide = do
 {- | Linear regression as a probabilistic program for inference -}
 linRegrInf :: forall env. Observables env '["m", "c"] Double
   => [(Double, Double)]
-  -> Prog [Observe, Sample' env] (Double, Double)  -- ^ y datapoints
+  -> Prog [ObsRW env, Observe, Sample] (Double, Double)  -- ^ y datapoints
 linRegrInf xys = do
   -- Draw model parameters from prior
   m <- sample' @env (mkNormal 0 3) #m
@@ -89,7 +90,7 @@ linRegrInf xys = do
   return (m, c)
 
 linRegrInfGuide :: forall env. Observables env '["m", "c"] Double
-  => Prog [Param' env, Sample' env] ()
+  => Prog [ObsRW env, Param, Sample] ()
 linRegrInfGuide = do
   m <- param'  @env (mkNormal 0 3) #m
   c <- sample' @env (mkNormal 0 5) #c

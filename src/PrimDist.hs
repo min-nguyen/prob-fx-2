@@ -19,7 +19,7 @@
 module PrimDist
   (Distribution(..), DiffDistribution(..), PrimDist, DiffDist, Witness(..),
    Beta, mkBeta, Bernoulli, mkBernoulli, Binomial, mkBinomial, Categorical, mkCategorical, Cauchy, mkCauchy, HalfCauchy, mkHalfCauchy,
-   Deterministic, mkDeterministic, Discrete, mkDiscrete, Dirichlet, mkDirichlet, Gamma, mkGamma, Normal, mkNormal, HalfNormal, mkHalfNormal,
+   Deterministic(..), mkDeterministic, Discrete, mkDiscrete, Dirichlet, mkDirichlet, Gamma, mkGamma, Normal, mkNormal, HalfNormal, mkHalfNormal,
    Poisson, mkPoisson, Uniform, mkUniform, UniformD, mkUniformD) where
 
 import           Debug.Trace ( trace )
@@ -49,7 +49,7 @@ import           Vec (Vec(..), TypeableSNatI)
 
 {- Distributions that can be sampled from and conditioned against.
 -}
-class (Show d, Typeable d) => Distribution d where
+class (Show d, Typeable d, Show (Base d), Typeable (Base d)) => Distribution d where
   type family Base d :: Type
   {- | Given a random double @r@ in (0, 1), this is passed to a distribution's inverse
        cumulative density function to draw a sampled value. -}
@@ -88,6 +88,29 @@ class (SNatI (Arity d), Distribution d) => DiffDistribution d where
   toList :: d -> [Double]
 
 type DiffDist d a = (DiffDistribution d, Base d ~ a)
+
+-- | Deterministic(x)
+data Deterministic d  where
+  Deterministic
+    :: forall d a. (PrimDist d a)
+    => d
+    -> a                                  -- ^ value of probability @1@
+    -> Deterministic d
+
+mkDeterministic :: (PrimDist d a) => d -> a -> Deterministic d
+mkDeterministic = Deterministic
+
+instance (Show d) => Show (Deterministic d) where
+  show (Deterministic d x) = "Deterministic " ++ show x
+
+instance (PrimDist d a) => Distribution (Deterministic d) where
+  type Base (Deterministic d) = Base d
+
+  draw :: PrimDist d a => Deterministic d -> Double -> Base (Deterministic d)
+  draw (Deterministic d y) _ = y
+
+  logProb :: Deterministic d -> a -> Double
+  logProb (Deterministic d y) _ = logProb d y
 
 -- | Beta(α, β)
 data Beta = Beta Double Double
@@ -485,30 +508,6 @@ instance Distribution Categorical where
   logProb (Categorical ps) idx
     | idx < 0 || idx >= length ps = trace "CategoricalLogPdf: idx < 0 || idx >= length ps" m_neg_inf
     | otherwise                   = log (ps !! idx)
-
--- | Deterministic(x)
-data Deterministic a where
-  Deterministic
-    :: (Show a, Typeable a, Eq a)
-    => a                                  -- ^ value of probability @1@
-    -> Deterministic a
-
-mkDeterministic :: (Show a, Typeable a, Eq a) => a -> Deterministic a
-mkDeterministic = Deterministic
-
-instance Show a => Show (Deterministic a) where
-  show (Deterministic x) = "Deterministic " ++ show x
-
-instance (Show a, Typeable a) => Distribution (Deterministic a) where
-  type Base (Deterministic a) = a
-
-  draw :: Deterministic a -> Double -> a
-  draw (Deterministic x) _ = x
-
-  logProb :: Deterministic a -> a -> Double
-  logProb (Deterministic x) y
-    | x == y    = 0
-    | otherwise = m_neg_inf
 
 -- | Discrete(xps)
 --   @xps@ values `x` and associated probabilities `p`

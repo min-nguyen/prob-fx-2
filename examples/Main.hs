@@ -8,7 +8,6 @@ import LogRegr
 import SIR
 import LDA
 import Radon
-import School
 import HMM
 import GMM
 import Sampler
@@ -73,8 +72,6 @@ parseArgs cmd = case cmd of
   "simRadon"            -> sampleIOFixed simRadon >>= printThenWrite
   "mhRadon"             -> sampleIOFixed (mhRadon 1000) >>= printThenWrite
   "mhPredRadon"         -> sampleIOFixed (mhPredRadon 1500) >>= printThenWrite
-
-  "mhSchool"            -> sampleIOFixed (mhSchool 1000) >>= printThenWrite
 
   "simGMM"              -> sampleIOFixed (simGMM 20) >>= printThenWrite
   "mhGMM"               -> sampleIOFixed (mhGMM 2000 20) >>= printThenWrite

@@ -196,11 +196,6 @@ testMhPredRadon = TestCase $ do
   output <- sampleIOFixed (mhPredRadon 1500)
   assertEqual "Testing (mhPredRadon 1500)"  mhPredRadonExpected output
 
-testMhSchool :: Test
-testMhSchool = TestCase $ do
-  output <- sampleIOFixed (mhSchool 1000)
-  assertEqual "Testing (mhSchool 1000)"  mhSchoolExpected output
-
 testInference :: Test
 testInference = TestList
  [
@@ -239,6 +234,5 @@ testInference = TestList
  , testInviLDA
  , testMhRadon
  , testMhPredRadon
- , testMhSchool
  ]
 

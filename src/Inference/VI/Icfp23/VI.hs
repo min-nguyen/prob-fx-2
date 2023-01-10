@@ -43,13 +43,14 @@ import Inference.MC.LW (joint)
 data GradDescent a where
   GradDescent :: [LogP] -> [GradTrace] -> ParamTrace -> GradDescent ParamTrace
 
+type GuideHandler env a = Guide  a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
+type ModelHandler env a = ProbProg  a -> Env env    -> Sampler (a, LogP)
+
 viLoop :: (HasSampler fs)
   => Int                                          -- ^ number of optimisation steps (T)
   -> Int                                          -- ^ number of samples to estimate the gradient over (L)
-  -> Guide a                           -- ^ guide Q(X; λ)
-  -> (Guide a -> ParamTrace -> Sampler (((a, LogP), GradTrace), ValueTrace))
-  -> ProbProg b                -- ^ model P(X, Y)
-  -> (ProbProg b -> ValueTrace -> Sampler (b, LogP))
+  -> Guide  a -> GuideHandler env a
+  -> ProbProg  b -> ModelHandler env b
   -> ParamTrace                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Prog (GradDescent : fs) ParamTrace      -- ^ final guide parameters λ_T
 viLoop num_timesteps num_samples guide hdlGuide model hdlModel guideParams_0 = do
@@ -66,16 +67,14 @@ viLoop num_timesteps num_samples guide hdlGuide model hdlModel guideParams_0 = d
      3. Update the parameters λ of the guide
 -}
 
-type GuideHandler a = Guide a    -> ParamTrace -> Sampler (((a, LogP), GradTrace), ValueTrace)
-type ModelHandler a = ProbProg a -> ValueTrace -> Sampler (a, LogP)
-
 viStep :: (HasSampler fs)
-  => Int -> GuideHandler a -> ModelHandler b -> Guide a -> ProbProg b
+  => Int
+  -> GuideHandler env a -> ModelHandler env b -> Guide a -> ProbProg b
   -> ParamTrace                            -- ^ guide parameters λ_t
   -> Prog (GradDescent : fs) ParamTrace    -- ^ next guide parameters λ_{t+1}
 viStep num_samples hdlGuide hdlModel guide model  params = do
   -- | Execute the guide X ~ Q(X; λ) for (L) iterations
-  (((_, guide_ρs), grads), envs) <- Util.unzip4 <$> replicateM num_samples (lift (hdlGuide guide params))
+  (((_, envs), guide_ρs), grads) <- Util.unzip4 <$> replicateM num_samples (lift (hdlGuide guide params))
   -- | Execute the model P(X, Y) under the union of the model environment Y and guide environment X
   (_              , model_ρs)  <- mapAndUnzipM (lift . hdlModel model) envs
   -- | Compute total log-importance-weight, log(P(X, Y)) - log(Q(X; λ))
@@ -94,12 +93,12 @@ viStep num_samples hdlGuide hdlModel guide model  params = do
       3. The gradients of all proposal distributions Q(λ) at X=x:
             δlog(Q(X=x; λ)),     where Q is learnable
  -}
-handleGuide :: Guide a -> ParamTrace -> Sampler ((a, LogP), GradTrace)
+handleGuide :: Guide  a -> ParamTrace -> Sampler ((a, LogP), GradTrace)
 handleGuide guide params =
   (SIM.defaultSample . handleParams . weighGuide . updateParams params) guide
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
-collectParams :: Guide a -> Sampler ParamTrace
+collectParams :: Guide  a -> Sampler ParamTrace
 collectParams = SIM.defaultSample . (fst <$>) . handleParams . loop Trace.empty
   where
   loop :: ParamTrace -> Prog (Param : es) a -> Prog (Param : es) ParamTrace
