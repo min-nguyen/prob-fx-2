@@ -20,7 +20,7 @@ import Prog
 import Model
 import Sampler
 import Effects.Dist
-import Effects.ObsRW
+import Effects.EnvRW
 import Effects.NonDet
 import qualified Inference.MC.MH as MH
 import qualified Inference.MC.PMMH as PMMH
@@ -41,13 +41,13 @@ smc2 :: forall env es a xs. (env `ContainsVars` xs)
   => Int                                            -- ^ number of outer SMC particles
   -> Int                                            -- ^ number of PMMH steps
   -> Int                                            -- ^ number of inner SMC particles
-  -> Model env [ObsRW env, Dist] a                  -- ^ model
+  -> Model env [EnvRW env, Dist] a                  -- ^ model
   -> Env env                                        -- ^ input environment
   -> Vars xs                                        -- ^ optional observable variable names of interest
   -> Sampler [Env env]                              -- ^ output environments
 smc2 n_outer_prts mh_steps n_inner_prts model env obs_vars = do
   -- | Handle model to probabilistic program
-  let prog_0 = (handleDist . handleObsRW env) (runModel model)
+  let prog_0 = (handleDist . handleEnvRW env) (runModel model)
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
   -- | Run SMC2

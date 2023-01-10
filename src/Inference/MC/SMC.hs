@@ -18,7 +18,7 @@ import           Control.Monad ( replicateM )
 import qualified Data.Vector as Vector
 import           Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe (..), Sample )
 import           Effects.Lift ( Lift, lift, liftPrint, handleLift, HasSampler)
-import           Effects.ObsRW ( ObsRW, handleObsRW )
+import           Effects.EnvRW ( EnvRW, handleEnvRW )
 import           Env ( Env )
 import           LogP ( LogP(..), logMeanExp )
 import           Model ( Model(runModel), ProbProg )
@@ -34,12 +34,12 @@ import           Sampler ( Sampler, sampleRandom, sampleCategorical)
 -}
 smc
   :: Int                                -- ^ number of particles
-  -> Model env [ObsRW env, Dist] a      -- ^ model
+  -> Model env [EnvRW env, Dist] a      -- ^ model
   -> Env env                            -- ^ input model environment
   -> Sampler [Env env]                  -- ^ output model environments of each particle
 smc n_prts model env_in = do
   -- | Handle model to probabilistic program
-  let prog_0 = (handleDist . handleObsRW env_in) (runModel model)
+  let prog_0 = (handleDist . handleEnvRW env_in) (runModel model)
   smc_trace <- mulpfilter n_prts prog_0
   pure (map (snd . fst) smc_trace)
 

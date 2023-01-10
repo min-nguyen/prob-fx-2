@@ -16,7 +16,7 @@ import Trace ( Trace, LPTrace, filterTrace )
 import LogP ( LogP (..) )
 import PrimDist
 import Model ( Model, handleCore, ProbProg )
-import Effects.ObsRW ( ObsRW )
+import Effects.EnvRW ( EnvRW )
 import Env ( Env, ContainsVars (varsToStrs), Vars )
 import Effects.Dist ( Dist, Addr, Tag )
 import Effects.Lift ( Lift, lift, handleLift, liftPutStrLn, HasSampler, random' )
@@ -32,7 +32,7 @@ import Util (assocR)
 -}
 gibbs ::
      Int                            -- ^ number of Gibbs iterations
-  -> Model env [ObsRW env, Dist] a  -- ^ model
+  -> Model env [EnvRW env, Dist] a  -- ^ model
   -> Env env                        -- ^ input environment
   -> Sampler [Env env]              -- ^ output environments
 gibbs n model env_in   = do

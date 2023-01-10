@@ -20,7 +20,7 @@ import Data.Bifunctor ( Bifunctor(first), second, bimap )
 import Control.Monad ( replicateM )
 import Effects.Dist ( Sample, Observe(..), Dist, pattern ObsPrj, pattern SampPrj )
 import Effects.Lift ( handleLift, Lift )
-import Effects.ObsRW ( ObsRW )
+import Effects.EnvRW ( EnvRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env )
 import LogP ( LogP )
@@ -35,7 +35,7 @@ lw
   -- | number of LW iterations
   :: Int
   -- | model
-  -> Model env [ObsRW env, Dist] a
+  -> Model env [EnvRW env, Dist] a
   -- | input model environment
   -> Env env
   -- | [(output model environment, likelihood-weighting)]

@@ -17,7 +17,7 @@ Changed:
 Added:
 - `liftM` for lifting `m` into `Model`
 
-**Effect.ObsRW**
+**Effect.EnvRW**
 Changed:
 - Renamed `handleRead` to `handleObsRead`
 

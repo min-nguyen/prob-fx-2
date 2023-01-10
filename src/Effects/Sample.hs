@@ -10,7 +10,7 @@ module Effects.Sample where
 import Prog
 import PrimDist
 import Trace
-import Effects.ObsRW
+import Effects.EnvRW
 import Env
 import GHC.TypeLits ( KnownSymbol, Symbol, symbolVal )
 import Sampler
@@ -38,12 +38,12 @@ pattern SampDis :: (Show a) => PrimDist d a => d -> Addr -> EffectSum (Sample : 
 pattern SampDis d α <- (discharge -> Right (Sample d α))
 
 sample' :: forall env es x d a.
-  (Observable env x a, Members [ObsRW env, Sample] es,  PrimDist d a)
+  (Observable env x a, Members [EnvRW env, Sample] es,  PrimDist d a)
   => d -> Var x -> Prog es a
 sample' d varx = do
-  maybe_y <- call (OAsk @env varx)
+  maybe_y <- call (Read @env varx)
   y       <- case maybe_y of
                 Nothing -> sample d
                 Just y  -> sample (Deterministic d y)
-  call (OTell @env varx y)
+  call (Write @env varx y)
   pure y

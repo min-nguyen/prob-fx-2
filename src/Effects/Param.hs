@@ -12,7 +12,7 @@ import PrimDist
 import Trace
 import Effects.Sample
 import Env
-import Effects.ObsRW
+import Effects.EnvRW
 
 -- | The effect @Param@ for distributions with support for gradient log-pdfs
 data Param a where
@@ -43,9 +43,9 @@ pattern ScorePrj :: (Member Score es) => (DiffDistribution d, x ~ Base d) => d -
 pattern ScorePrj d q α <- (prj -> Just (Score d q α))
 
 param' :: forall env es x d a.
-  (Observable env x a, Members [ObsRW env, Param] es, DiffDist d a)
+  (Observable env x a, Members [EnvRW env, Param] es, DiffDist d a)
   => d -> Var x -> Prog es a
 param' d varx = do
   x <- param d
-  oTell @env varx x
+  write @env varx x
   return x

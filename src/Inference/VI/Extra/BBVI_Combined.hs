@@ -19,7 +19,7 @@ import           Data.Bifunctor ( Bifunctor(first) )
 import           Control.Monad ( replicateM, (>=>) )
 import           Effects.Dist
 import           Effects.Lift
-import           Effects.ObsRW ( ObsRW )
+import           Effects.EnvRW ( EnvRW )
 import           Effects.State ( modify, handleState, State )
 import           Env ( Env )
 import           LogP ( LogP(..), normaliseLogPs )
@@ -38,7 +38,7 @@ import qualified Inference.VI.BBVI as BBVI
 
 {- | Top-level wrapper for BBVI inference.
 -}
-bbvi :: forall env a. Int -> Int -> Model env [ObsRW env, Dist] a -> Env env -> Sampler ParamTrace
+bbvi :: forall env a. Int -> Int -> Model env [EnvRW env, Dist] a -> Env env -> Sampler ParamTrace
 bbvi num_timesteps num_samples model env_in = do
   -- | Transform probabilistic program to use @Score@ operations
   let bbvi_prog :: Prog [Score, Observe, Sample] ((a, Env env), ParamTrace)

@@ -22,7 +22,7 @@ import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>) )
 import Effects.Dist
 import Effects.Lift
-import Effects.ObsRW ( ObsRW )
+import Effects.EnvRW ( EnvRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env, union )
 import LogP ( LogP(..), normaliseLogPs )
@@ -47,8 +47,8 @@ viLoop :: (HasSampler fs, Show (Env env))
   -> Int                                          -- ^ number of samples to estimate the gradient over (L)
   -> Prog [Param, Sample] (a, Env env)            -- ^ guide Q(X; λ)
   -> (forall c. Prog [Param, Sample] c -> ParamTrace -> Sampler ((c, LogP), GradTrace))
-  -> Model env [ObsRW env, Dist] b                -- ^ model P(X, Y)
-  -> (forall d env. Model env [ObsRW env, Dist] d -> Env env -> Sampler ((d, Env env), LogP))
+  -> Model env [EnvRW env, Dist] b                -- ^ model P(X, Y)
+  -> (forall d env. Model env [EnvRW env, Dist] d -> Env env -> Sampler ((d, Env env), LogP))
   -> ParamTrace                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Prog (GradDescent : fs) ParamTrace      -- ^ final guide parameters λ_T
 viLoop num_timesteps num_samples guide hdlGuide model hdlModel guideParams_0 = do
@@ -68,8 +68,8 @@ viStep :: (HasSampler fs, Show (Env env))
   => Int                                          -- ^ number of samples to estimate the gradient over (L)
   -> Prog [Param, Sample] (a, Env env)            -- ^ guide Q(X; λ)
   -> (forall c. Prog [Param, Sample] c -> ParamTrace -> Sampler ((c, LogP), GradTrace))
-  -> Model env [ObsRW env, Dist] b                -- ^ model P(X, Y)
-  -> (forall d env. Model env [ObsRW env, Dist] d -> Env env -> Sampler ((d, Env env), LogP))
+  -> Model env [EnvRW env, Dist] b                -- ^ model P(X, Y)
+  -> (forall d env. Model env [EnvRW env, Dist] d -> Env env -> Sampler ((d, Env env), LogP))
   -> ParamTrace                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Prog (GradDescent : fs) ParamTrace    -- ^ next guide parameters λ_{t+1}
 viStep num_samples guide hdlGuide model hdlModel guideParams = do
@@ -162,7 +162,7 @@ handleGuideParams = loop Trace.empty where
        1. An output environment which we discard
        2. The total log-weight of all @Sample@ and @Observe@ operations: log(P(X=x, Y=y))
 -}
-handleModel :: Model env [ObsRW env, Dist] a -> Env env -> Sampler ((a, Env env), LogP)
+handleModel :: Model env [EnvRW env, Dist] a -> Env env -> Sampler ((a, Env env), LogP)
 handleModel model env  =
   (SIM.defaultSample . SIM.defaultObserve . joint 0 . handleCore env) model
 

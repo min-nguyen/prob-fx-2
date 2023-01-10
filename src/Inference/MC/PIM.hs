@@ -19,7 +19,7 @@ import PrimDist
 import Model
 import Env
 import Effects.Lift
-import Effects.ObsRW
+import Effects.EnvRW
 import qualified Data.Map as Map
 import Inference.MC.SIM as SIM
 import qualified Inference.MC.MH as MH
@@ -33,7 +33,7 @@ import qualified Inference.MC.IM as IM
 pim :: forall env vars a. (env `ContainsVars` vars)
   => Int                                            -- ^ number of MH steps
   -> Int                                            -- ^ number of particles
-  -> Model env [ObsRW env, Dist] a                  -- ^ model
+  -> Model env [EnvRW env, Dist] a                  -- ^ model
   -> Env env                                        -- ^ input environment
   -> Vars vars                                      -- ^ parameter names
   -> Sampler [Env env]                              -- ^ output environments

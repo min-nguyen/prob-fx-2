@@ -23,7 +23,7 @@ import Control.Monad ( replicateM, (>=>), mapAndUnzipM )
 import Effects.Dist
 import Model
 import Effects.Lift
-import Effects.ObsRW ( ObsRW )
+import Effects.EnvRW ( EnvRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env, union )
 import LogP ( LogP(..), normaliseLogPs )
@@ -148,7 +148,7 @@ handleParams = loop Trace.empty where
        1. An output environment which we discard
        2. The total log-weight of all @Sample@ and @Observe@ operations: log(P(X=x, Y=y))
 -}
-handleModel :: Model env [ObsRW env, Dist] a -> Env env -> Sampler ((a, Env env), LogP)
+handleModel :: Model env [EnvRW env, Dist] a -> Env env -> Sampler ((a, Env env), LogP)
 handleModel model env  =
   (SIM.defaultSample . SIM.defaultObserve . joint 0 . handleCore env) model
 

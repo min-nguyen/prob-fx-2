@@ -28,7 +28,7 @@ import           LogP
 import           Control.Monad
 import           Control.Applicative
 import           Effects.Dist
-import           Effects.ObsRW
+import           Effects.EnvRW
 import           Effects.NonDet
 import qualified Inference.MC.MH as MH
 import qualified Inference.MC.SMC as SMC
@@ -62,7 +62,7 @@ pack (α, ps, τs) = zipWith3 PrtState (repeat α) ps τs
 rmsmc :: forall env a xs. (env `ContainsVars` xs)
   => Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of MH (rejuvenation) steps
-  -> Model env [ObsRW env, Dist] a                -- ^ model
+  -> Model env [EnvRW env, Dist] a                -- ^ model
   -> Env env                                      -- ^ input model environment
   -> Vars xs                                      -- ^ optional observable variable names of interest
   -> Sampler [Env env]                            -- ^ output model environments of each particle

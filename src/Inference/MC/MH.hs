@@ -28,7 +28,7 @@ import           Trace ( Trace, LPTrace, filterTrace )
 import           LogP ( LogP )
 import           PrimDist
 import           Model ( Model, handleCore, ProbProg )
-import           Effects.ObsRW ( ObsRW )
+import           Effects.EnvRW ( EnvRW )
 import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), pattern SampPrj, pattern ObsPrj )
 import           Effects.Lift ( Lift, lift, handleLift, liftPutStrLn, HasSampler, random', randomFrom' )
 import           Inference.MC.SIM
@@ -42,7 +42,7 @@ import Effects.State
 -}
 mh :: forall env vars a. (env `ContainsVars` vars)
   => Int                            -- ^ number of MH iterations
-  -> Model env [ObsRW env, Dist] a  -- ^ model
+  -> Model env [EnvRW env, Dist] a  -- ^ model
   -> Env env                        -- ^ input environment
   -> Vars vars                      -- ^ optional variable names of interest
     {- These allow one to specify sample sites of interest; for example, for interest in sampling @#mu@

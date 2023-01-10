@@ -21,7 +21,7 @@ module Inference.MC.SIM
 
 import           Effects.Dist ( Sample(..), Observe(..), Dist )
 import           Effects.Lift ( handleLift, Lift, lift )
-import           Effects.ObsRW ( ObsRW )
+import           Effects.EnvRW ( EnvRW )
 import           Env ( Env )
 import           Model ( handleCore, Model )
 import           PrimDist ( drawWithSampler )
@@ -32,7 +32,7 @@ import           Unsafe.Coerce (unsafeCoerce)
 -- | Simulate from a model under a given model environment
 simulate
   -- | model
-  :: Model env [ObsRW env, Dist] a
+  :: Model env [EnvRW env, Dist] a
   -- | input model environment
   -> Env env
   -- | (model output, output environment)

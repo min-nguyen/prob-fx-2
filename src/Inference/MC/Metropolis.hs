@@ -21,7 +21,7 @@ import Trace ( Trace, LPTrace, filterTrace )
 import LogP ( LogP )
 import PrimDist
 import Model ( Model, handleCore, ProbProg )
-import Effects.ObsRW ( ObsRW )
+import Effects.EnvRW ( EnvRW )
 import Env ( ContainsVars(..), Vars, Env )
 import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr )
 import Effects.Lift ( Lift, lift, handleLift, HasSampler )

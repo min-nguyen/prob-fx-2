@@ -21,7 +21,7 @@ import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>) )
 import Effects.Dist
 import Effects.Lift
-import Effects.ObsRW ( ObsRW )
+import Effects.EnvRW ( EnvRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env, Vars, ContainsVars, union, empty, varsToStrs )
 import LogP ( LogP(..), normaliseLogPs )
@@ -39,7 +39,7 @@ import Inference.MC.LW (likelihood)
 mle :: forall env xs a b. (Show (Env env), (env `ContainsVars` xs))
   => Int                                -- ^ number of optimisation steps (T)
   -> Int                                -- ^ number of samples to estimate the gradient over (L)
-  -> Model env [ObsRW env, Dist] a      -- ^ model P(X, Y; θ)
+  -> Model env [EnvRW env, Dist] a      -- ^ model P(X, Y; θ)
   -> Env env                            -- ^ model environment (containing only observed data Y)
   -> Vars xs                            -- ^ parameter names θ
   -> Sampler ParamTrace                     -- ^ final parameters θ_T
@@ -61,6 +61,6 @@ handleGuide guide _ =
   (SIM.defaultSample . VI.handleGuideParams ) ((, 0) <$> guide)
 
 -- | Handle the model P(X, Y; θ) by returning log-importance-weight P(Y | X; θ)
-handleModel :: [Tag] -> Model env [ObsRW env, Dist] a -> Env env -> Sampler ((a, Env env), LogP)
+handleModel :: [Tag] -> Model env [EnvRW env, Dist] a -> Env env -> Sampler ((a, Env env), LogP)
 handleModel tags model env  =
   (SIM.defaultSample . likelihood 0 . handleCore env) model

@@ -20,7 +20,7 @@ import           Debug.Trace
 import           Control.Monad ( replicateM, (>=>) )
 import           Effects.Dist
 import           Effects.Lift
-import           Effects.ObsRW ( ObsRW )
+import           Effects.EnvRW ( EnvRW )
 import           Effects.State ( modify, handleState, State )
 import           Env ( Env, union )
 import           LogP ( LogP(..) )
@@ -41,8 +41,8 @@ import           Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 bbvi :: forall env a b. (Show (Env env))
   => Int                                -- ^ number of optimisation steps (T)
   -> Int                                -- ^ number of samples to estimate the gradient over (L)
-  -> Model env [ObsRW env, Dist] b      -- ^ guide Q(X; λ)
-  -> Model env [ObsRW env, Dist] a      -- ^ model P(X, Y)
+  -> Model env [EnvRW env, Dist] b      -- ^ guide Q(X; λ)
+  -> Model env [EnvRW env, Dist] a      -- ^ model P(X, Y)
   -> Env env                            -- ^ model environment (containing only observed data Y)
   -> Sampler ParamTrace                     -- ^ final guide parameters λ_T
 bbvi num_timesteps num_samples guide_model model model_env  = do

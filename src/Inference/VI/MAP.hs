@@ -19,7 +19,7 @@ import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>) )
 import Effects.Dist
 import Effects.Lift
-import Effects.ObsRW ( ObsRW )
+import Effects.EnvRW ( EnvRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env, Vars, ContainsVars, union, empty, varsToStrs )
 import LogP ( LogP(..), normaliseLogPs )
@@ -38,7 +38,7 @@ import Inference.MC.LW (joint)
 map :: forall env xs a b. (Show (Env env), (env `ContainsVars` xs))
   => Int                                -- ^ number of optimisation steps (T)
   -> Int                                -- ^ number of samples to estimate the gradient over (L)
-  -> Model env [ObsRW env, Dist] a      -- ^ model P(X, Y; θ)
+  -> Model env [EnvRW env, Dist] a      -- ^ model P(X, Y; θ)
   -> Env env                            -- ^ model environment (containing only observed data Y)
   -> Vars xs                            -- ^ parameter names θ
   -> Sampler ParamTrace                     -- ^ final parameters θ_T
@@ -55,6 +55,6 @@ map num_timesteps num_samples model model_env vars = do
       VI.viLoop num_timesteps num_samples guide MLE.handleGuide model handleModel guideParams_0
 
 -- | Handle the model P(X, Y; θ) by returning log-importance-weight P(Y, X; θ)
-handleModel :: Model env [ObsRW env, Dist] a -> Env env -> Sampler ((a, Env env), LogP)
+handleModel :: Model env [EnvRW env, Dist] a -> Env env -> Sampler ((a, Env env), LogP)
 handleModel model env =
   (SIM.defaultSample . SIM.defaultObserve . joint 0 . handleCore env) model

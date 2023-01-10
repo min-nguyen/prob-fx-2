@@ -53,7 +53,7 @@ import Control.Monad ( ap )
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
 import Data.Type.Nat
 import Effects.Dist ( handleDist, Dist(..), Observe, Sample, Param)
-import Effects.ObsRW
+import Effects.EnvRW
 import Env
 import PrimDist
 import Prog ( call, Member, Prog, Members, LastMember )
@@ -72,11 +72,11 @@ import Data.Typeable
     3) an output type @a@ of values that the model generates.
 
     A model initially consists of (at least) two effects: @Dist@ for calling primitive distributions
-    and @ObsRW env@ for reading from @env@.
+    and @EnvRW env@ for reading from @env@.
 -}
 newtype Model env es a =
   Model { runModel :: ( Member Dist es        -- models can call primitive distributions
-                      , Member (ObsRW env) es -- models can read observed values from their environment
+                      , Member (EnvRW env) es -- models can read observed values from their environment
                       )
                    => Prog es a }
   deriving Functor
@@ -102,8 +102,8 @@ type ProbSig es = es ~ [Observe, Sample]
 {- | The initial handler for models, specialising a model under a certain environment
      to produce a probabilistic program consisting of @Sample@ and @Observe@ operations.
 -}
-handleCore :: Env env -> Model env (ObsRW env : Dist : '[]) a -> ProbProg (a, Env env)
-handleCore env_in m = (handleDist . handleObsRW env_in) (runModel m)
+handleCore :: Env env -> Model env (EnvRW env : Dist : '[]) a -> ProbProg (a, Env env)
+handleCore env_in m = (handleDist . handleEnvRW env_in) (runModel m)
 
 {- $Smart-Constructors
 
@@ -131,9 +131,9 @@ handleCore env_in m = (handleDist . handleObsRW env_in) (runModel m)
 callDist :: forall env x d a es. (PrimDist d a,  Show a) => Observable env x a => d -> Var x -> Model env es a
 callDist d field = Model $ do
   let tag =  Just $ varToStr field
-  maybe_y <- oAsk @env field
+  maybe_y <- call (Read @env field)
   y <- call (Dist d maybe_y tag)
-  oTell @env field y
+  call (Write @env field y)
   pure y
 
 callDist' :: (PrimDist d a) => d -> Model env es a
