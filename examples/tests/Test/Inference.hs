@@ -45,6 +45,16 @@ testBbviLinRegr = TestCase $ do
   output <- sampleIOFixed (bbviLinRegr 200 40 8)
   assertEqual "Testing (bbviLinRegr 200 40 8)"  bbviLinRegrExpected output
 
+testMleLinRegr :: Test
+testMleLinRegr = TestCase $ do
+  output <- sampleIOFixed (mleLinRegr 276 40 8)
+  assertEqual "Testing (mleLinRegr 276 40 8)"  mleLinRegrExpected output
+
+testMapLinRegr :: Test
+testMapLinRegr = TestCase $ do
+  output <- sampleIOFixed (mapLinRegr 276 40 8)
+  assertEqual "Testing (mapLinRegr 276 40 8)"  mapLinRegrExpected output
+
 testSimLogRegr :: Test
 testSimLogRegr = TestCase $ do
   output <- sampleIOFixed (simLogRegr 50)
@@ -104,6 +114,16 @@ testBbviHMM :: Test
 testBbviHMM = TestCase $ do
   output <- sampleIOFixed (bbviHMM 1000 50 20)
   assertEqual "Testing (bbviHMM 1000 50 20)"  bbviHMMExpected output
+
+testMleHMM :: Test
+testMleHMM = TestCase $ do
+  output <- sampleIOFixed (mleHMM 1000 50 20)
+  assertEqual "Testing (mleHMM 1000 50 20)"  mleHMMExpected output
+
+testMapHMM :: Test
+testMapHMM = TestCase $ do
+  output <- sampleIOFixed (mapHMM 1000 50 20)
+  assertEqual "Testing (mapHMM 1000 50 20)"  mapHMMExpected output
 
 testSimSIR :: Test
 testSimSIR = TestCase $ do
@@ -174,6 +194,8 @@ testInference = TestList
  , testPmmhLinRegr
  , testSmc2LinRegr
  , testBbviLinRegr
+ , testMleLinRegr
+ , testMapLinRegr
  , testSimLogRegr
  , testLwLogRegr
  , testMhLogRegr
@@ -184,7 +206,9 @@ testInference = TestList
  , testRmsmcHMM
  , testPmmhHMM
  , testSmc2HMM
---  , testBbviHMM
+ , testBbviHMM
+ , testMleHMM
+ , testMapHMM
  , testSimSIR
  , testMhSIR
  , testSimLDA

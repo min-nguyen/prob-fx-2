@@ -106,20 +106,46 @@ hmm n x0 ys = do
                              return (x_i, idx + 1)
   foldr (>=>) return (replicate n hmmNode) (x0, 0)
 
-hmmGuide :: forall env. (Observables env '["obs_p", "trans_p"] Double)
-  => VIGuide env ()
-hmmGuide = do
+hmmGuide :: forall env. (Observables env '["obs_p", "trans_p"] Double, Observable env "x" Bool)
+  => Int -> Int -> VIGuide env ()
+hmmGuide n x0 = do
   trans_p <- param' @env (mkBeta 2 2) (#trans_p, 0)
   obs_p   <- param' @env (mkBeta 2 2) (#obs_p, 0)
+  let hmmNode (x, idx) = do b <- fromEnum <$> sample' @env (mkBernoulli trans_p) (#x, idx)
+                            let x_i = x + b
+                            return (x_i, idx + 1)
+  foldr (>=>) return (replicate n hmmNode) (x0, 0)
   pure ()
 
 bbviHMM :: Int -> Int -> Int -> Sampler ([Double], [Double])
 bbviHMM t_steps l_samples hmm_length = do
   ys <- simHMM hmm_length
   liftIO (print ys)
-  let empty_env  = #trans_p := [] <:> #obs_p := [] <:> enil
+  let empty_env  = #trans_p := [] <:> #obs_p := [] <:> #x := []  <:> enil
 
-  traceQ <- BBVI.bbvi t_steps l_samples hmmGuide (hmm hmm_length 0 ys) empty_env
+  traceQ <- BBVI.bbvi t_steps l_samples (hmmGuide hmm_length 0) (hmm hmm_length 0 ys) empty_env
+  let trans_dist = toList . fromJust $ Trace.lookupBy @Beta  ((== "trans_p") . tag ) traceQ
+      obs_dist   = toList . fromJust $ Trace.lookupBy @Beta  ((== "obs_p") . tag ) traceQ
+  pure (trans_dist, obs_dist)
+
+mleHMM :: Int -> Int -> Int -> Sampler ([Double], [Double])
+mleHMM t_steps l_samples hmm_length = do
+  ys <- simHMM hmm_length
+  liftIO (print ys)
+  let empty_env  = #trans_p := [] <:> #obs_p := [] <:> #x := []  <:> enil
+
+  traceQ <- MLE.mle t_steps l_samples (hmmGuide hmm_length 0) (hmm hmm_length 0 ys) empty_env
+  let trans_dist = toList . fromJust $ Trace.lookupBy @Beta  ((== "trans_p") . tag ) traceQ
+      obs_dist   = toList . fromJust $ Trace.lookupBy @Beta  ((== "obs_p") . tag ) traceQ
+  pure (trans_dist, obs_dist)
+
+mapHMM :: Int -> Int -> Int -> Sampler ([Double], [Double])
+mapHMM t_steps l_samples hmm_length = do
+  ys <- simHMM hmm_length
+  liftIO (print ys)
+  let empty_env  = #trans_p := [] <:> #obs_p := [] <:> #x := []  <:> enil
+
+  traceQ <- MAP.map t_steps l_samples (hmmGuide hmm_length 0) (hmm hmm_length 0 ys) empty_env
   let trans_dist = toList . fromJust $ Trace.lookupBy @Beta  ((== "trans_p") . tag ) traceQ
       obs_dist   = toList . fromJust $ Trace.lookupBy @Beta  ((== "obs_p") . tag ) traceQ
   pure (trans_dist, obs_dist)

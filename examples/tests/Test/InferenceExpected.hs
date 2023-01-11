@@ -32,6 +32,14 @@ smc2LinRegrExpected = ([2.9452092040633717,2.967450442976723,2.965810778677412,2
 bbviLinRegrExpected :: ([Double], [Double])
 bbviLinRegrExpected = ([1.5374546607466901,1.1530027596328638],[-6.642673722348555e-3,3.9302125839860906])
 
+-- | sampleIOFixed (mleLinRegr 276 40 8)
+mleLinRegrExpected :: ([Double], [Double])
+mleLinRegrExpected = ([2.057045301067879,0.19890545718302075],[3.0346948184602998e-2,3.6531855932175508])
+
+-- | sampleIOFixed (mapLinRegr 276 40 8)
+mapLinRegrExpected :: ([Double], [Double])
+mapLinRegrExpected = ([2.108758337217355,0.486236140088601],[3.25723877365499e-2,3.6554756240374338])
+
 -- | sampleIOFixed (simLogRegr 50)
 simLogRegrExpected :: [(Double, Bool)]
 simLogRegrExpected = [(-1.0,False),(-0.98,False),(-0.96,False),(-0.94,False),(-0.92,False),(-0.9,False),(-0.88,False),(-0.86,False),(-0.84,False),(-0.82,False),(-0.8,False),(-0.78,False),(-0.76,False),(-0.74,False),(-0.72,False),(-0.7,False),(-0.68,False),(-0.66,False),(-0.64,False),(-0.62,False),(-0.6,False),(-0.58,False),(-0.56,False),(-0.54,False),(-0.52,False),(-0.5,False),(-0.48,False),(-0.46,False),(-0.44,False),(-0.42,False),(-0.4,False),(-0.38,False),(-0.36,False),(-0.34,False),(-0.32,False),(-0.3,False),(-0.28,False),(-0.26,False),(-0.24,False),(-0.22,False),(-0.2,False),(-0.18,False),(-0.16,False),(-0.14,False),(-0.12,False),(-0.1,False),(-8.0e-2,True),(-6.0e-2,False),(-4.0e-2,False),(-2.0e-2,False),(0.0,False),(2.0e-2,False),(4.0e-2,False),(6.0e-2,False),(8.0e-2,False),(0.1,False),(0.12,False),(0.14,False),(0.16,False),(0.18,False),(0.2,False),(0.22,False),(0.24,False),(0.26,True),(0.28,False),(0.3,False),(0.32,False),(0.34,False),(0.36,False),(0.38,False),(0.4,True),(0.42,False),(0.44,True),(0.46,True),(0.48,True),(0.5,True),(0.52,True),(0.54,True),(0.56,True),(0.58,True),(0.6,True),(0.62,True),(0.64,True),(0.66,True),(0.68,True),(0.7,True),(0.72,True),(0.74,True),(0.76,True),(0.78,True),(0.8,True),(0.82,True),(0.84,True),(0.86,True),(0.88,True),(0.9,True),(0.92,True),(0.94,True),(0.96,True),(0.98,True),(1.0,True)]
@@ -75,8 +83,15 @@ smc2HMMExpected = ([0.4626042494430704,0.40493257534773175,0.22746626776402465,0
 
 -- | sampleIOFixed (bbviHMM 1000 50 20)
 bbviHMMExpected :: ([Double], [Double])
-bbviHMMExpected = ([3.9859732510342774,1.4995467510121032],[3.037063277119497,4.693318831512526])
+bbviHMMExpected = ([3.903477334208553,1.7125835303326886],[3.1470794414692183,4.709241947189482])
 
+-- | sampleIOFixed (mleHMM 1000 50 20)
+mleHMMExpected :: ([Double], [Double])
+mleHMMExpected = ([3.3215428639487365,2.791786172973704],[3.4780806888723075,3.2988286994835208])
+
+-- | sampleIOFixed (mapHMM 1000 50 20)
+mapHMMExpected :: ([Double], [Double])
+mapHMMExpected = ([3.461375513307202,1.5440449873731947],[2.6968460819372244,3.907224735934903])
 
 -- | sampleIOFixed (simSIR 100)
 simSIRExpected :: ([(Int, Int, Int)], [Int])
