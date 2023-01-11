@@ -8,6 +8,8 @@ module Effects.Observe where
 import Prog
 import PrimDist
 import Trace
+import Env
+import Effects.EnvRW
 
 -- | The effect @Observe@ for conditioning against observed values
 data Observe a where
@@ -18,9 +20,8 @@ data Observe a where
           -> Observe a
 
 observe :: (Member Observe es, PrimDist d a)
-       => d -> a -> Prog es a
-observe d y = call (Observe d y α)
-  where α = Addr "" 0
+       => d -> a -> Addr -> Prog es a
+observe d y α = call (Observe d y α)
 
 -- | For projecting and then successfully pattern matching against @Observe@
 pattern ObsPrj :: (Member Observe es) => (Distribution d, x ~ Base d) => d -> x -> Addr -> EffectSum es x

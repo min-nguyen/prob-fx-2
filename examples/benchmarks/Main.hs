@@ -95,8 +95,6 @@ bench_LR args = do
               , bbviLinRegr fixed_bbvi_steps fixed_bbvi_samples) row_header
     benchRow ("LR-[ ]-BBVIDefault-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
               , bbviDefaultLinRegr fixed_bbvi_steps fixed_bbvi_samples) row_header
-    benchRow ("LR-[ ]-BBVIDefaultCombined-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
-              , bbviDefaultCombinedLinRegr fixed_bbvi_steps fixed_bbvi_samples) row_header
     benchRow ("LR-[ ]-INVI-" ++ show fixed_invi_steps ++ "-" ++ show fixed_bbvi_samples
               , inviLinRegr fixed_invi_steps fixed_invi_samples) row_header
 
@@ -120,8 +118,6 @@ bench_HMM args = do
               , bbviHMM fixed_bbvi_steps fixed_bbvi_samples) row_header
     benchRow ("HMM-[ ]-BBVIDefault-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
               , bbviDefaultHMM fixed_bbvi_steps fixed_bbvi_samples) row_header
-    benchRow ("HMM-[ ]-BBVIDefaultCombined-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
-              , bbviDefaultCombinedHMM fixed_bbvi_steps fixed_bbvi_samples) row_header
     benchRow ("HMM-[ ]-INVI-" ++ show fixed_invi_steps ++ "-" ++ show fixed_bbvi_samples
               , inviHMM fixed_invi_steps fixed_invi_samples) row_header
 
@@ -145,8 +141,6 @@ bench_LDA args = do
               , bbviLDA fixed_bbvi_steps fixed_bbvi_samples) row_header
     benchRow ("LDA-[ ]-BBVIDefault-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
               , bbviDefaultLDA fixed_bbvi_steps fixed_bbvi_samples) row_header
-    benchRow ("LDA-[ ]-BBVIDefaultCombined-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
-              , bbviDefaultCombinedLDA fixed_bbvi_steps fixed_bbvi_samples) row_header
     benchRow ("LDA-[ ]-INVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
               , bbviLDA fixed_invi_steps fixed_invi_samples) row_header
 
@@ -255,17 +249,6 @@ bench_BBVIDefault args = do
     benchRow ("BBVIDefault-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LDA-" ++ show fixed_hmm_datasize_inf
               , flip (bbviDefaultLDA fixed_bbvi_samples_inf) fixed_lda_datasize_inf) row_header
 
-bench_BBVI_Combined :: [Int] -> IO ()
-bench_BBVI_Combined args = do
-    let row_header = ("Number of BBVI steps", args)
-    writeRow fixed_output_file row_header
-    benchRow ("BBVIDefaultCombined-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LR-" ++ show fixed_lr_datasize_inf
-              , flip (bbviDefaultCombinedLinRegr fixed_bbvi_samples_inf) fixed_lr_datasize_inf) row_header
-    benchRow ("BBVIDefaultCombined-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-HMM-" ++ show fixed_hmm_datasize_inf
-              , flip (bbviDefaultCombinedHMM fixed_bbvi_samples_inf) fixed_hmm_datasize_inf) row_header
-    benchRow ("BBVIDefaultCombined-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LDA-" ++ show fixed_hmm_datasize_inf
-              , flip (bbviDefaultCombinedLDA fixed_bbvi_samples_inf) fixed_lda_datasize_inf) row_header
-
 bench_INVI :: [Int] -> IO ()
 bench_INVI args = do
     let row_header = ("Number of INVI steps", args)
@@ -300,7 +283,6 @@ runBenchmarks = do
           bench_PMMH pmmh
           bench_BBVI bbvi
           bench_BBVIDefault bbvi
-          bench_BBVI_Combined bbvi
           bench_INVI invi
         _   -> error "bad input file"
 

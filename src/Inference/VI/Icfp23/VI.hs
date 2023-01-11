@@ -39,7 +39,7 @@ import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
 import Inference.MC.LW (joint)
 
-type VIGuide env a    = Prog [EnvRW env, Param , Sample] a
+type VIGuide env a  = Prog [EnvRW env, Param , Sample] a
 type VIModel env a  = Prog [EnvRW env, Observe, Sample] a
 
 data GradDescent a where
@@ -94,9 +94,7 @@ viStep num_samples hdlGuide hdlModel guide model  params = do
       3. The gradients of all proposal distributions Q(λ) at X=x:
             δlog(Q(X=x; λ)),     where Q is learnable
  -}
-handleGuide :: Env env -> VIGuide env a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
-handleGuide env guide params =
-  (SIM.defaultSample . handleParams . weighGuide . updateParams params . handleEnvRW env) guide
+
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
 collectParams :: Env env -> VIGuide env a -> Sampler ParamTrace

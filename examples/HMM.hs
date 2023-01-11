@@ -29,7 +29,6 @@ import Inference.MC.SMC2 as SMC2 ( smc2 )
 import Inference.MC.PMMH as PMMH ( pmmh )
 import Inference.VI.BBVI as BBVI
 import Inference.VI.INVI as INVI
-import Inference.VI.Extra.BBVI_Combined as BBVI_Combined
 import Model ( Model (..), bernoulli', binomial, uniform, beta )
 import Prog ( Member, LastMember )
 import Sampler ( Sampler, liftIO )
@@ -308,25 +307,6 @@ bbviDefaultHMM t_steps l_samples hmm_length = do
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
   traceQ <- BBVI.bbvi t_steps l_samples (hmm hmm_length 0) (hmm hmm_length 0) env_in
-  let trans_dist = toList . fromJust $ Trace.lookupBy @Beta  ((== "trans_p") . tag ) traceQ
-      obs_dist   = toList . fromJust $ Trace.lookupBy @Beta  ((== "obs_p") . tag ) traceQ
-  pure (trans_dist, obs_dist)
-
--- | BBVI inference over a HMM, using the model to generate a default guide
-bbviDefaultCombinedHMM
-  -- | number of optimisation steps
-  :: Int
-  -- | number of samples to estimate gradients over
-  -> Int
-  -- | number of HMM nodes
-  -> Int
-  -- | (transition beta parameters, observation beta parameters)
-  -> Sampler ([Double], [Double])
-bbviDefaultCombinedHMM t_steps l_samples hmm_length = do
-  ys <- simHMM hmm_length
-  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
-
-  traceQ <- BBVI_Combined.bbvi t_steps l_samples (hmm hmm_length 0) env_in
   let trans_dist = toList . fromJust $ Trace.lookupBy @Beta  ((== "trans_p") . tag ) traceQ
       obs_dist   = toList . fromJust $ Trace.lookupBy @Beta  ((== "obs_p") . tag ) traceQ
   pure (trans_dist, obs_dist)

@@ -29,23 +29,11 @@ param d α = call (Param d α)
 pattern ParamPrj :: (Member Param es) => (DiffDistribution d, x ~ Base d) => d -> Addr -> EffectSum es x
 pattern ParamPrj q α <- (prj -> Just (Param q α))
 
--- | The effect @Score@ is like @Param@ but retains the original distribution to be optimised
-data Score a where
-  Score  :: (DiffDistribution d, a ~ Base d)
-         => d              -- ^ original distribution
-         -> d              -- ^ proposal distribution
-         -> Addr           -- ^ address of operation
-         -> Score a        -- ^ observed point
-
--- | For projecting and then successfully pattern matching against @Score@
-pattern ScorePrj :: (Member Score es) => (DiffDistribution d, x ~ Base d) => d -> d -> Addr -> EffectSum es x
-pattern ScorePrj d q α <- (prj -> Just (Score d q α))
-
 param' :: forall env es x d a.
   (Observable env x a, Members [EnvRW env, Param] es, DiffDist d a)
-  => d -> Var x -> Prog es a
-param' d varx = do
+  => d -> (Var x, Int) -> Prog es a
+param' d (varx, idx) = do
   let tag = varToStr varx
-  y <- param d (Addr tag 0)
+  y <- param d (Addr tag idx)
   call (Write @env varx y)
   pure y

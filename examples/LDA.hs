@@ -33,7 +33,6 @@ import Inference.MC.RMSMC as RMSMC ( rmsmc )
 import Inference.MC.PMMH as PMMH ( pmmh )
 import Inference.VI.BBVI as BBVI
 import Inference.VI.INVI as INVI
-import Inference.VI.Extra.BBVI_Combined as BBVI_Combined
 import Data.Maybe
 import Data.Typeable
 {-
@@ -251,20 +250,6 @@ bbviDefaultLDA t_steps l_samples n_words = do
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
 
   traceQ <- BBVI.bbvi t_steps l_samples (topicModel vocab n_topics n_words) (topicModel vocab n_topics n_words) env_in
-  -- Draw the most recent sampled parameters
-  let θ_dist     = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 2))  ((== "θ") . tag) traceQ
-      φ0_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 0)) traceQ
-      φ1_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 1)) traceQ
-  return (θ_dist, φ0_dist, φ1_dist)
-
--- | BBVI inference on topic model, using the model to generate a default guide
-bbviDefaultCombinedLDA :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double])
-bbviDefaultCombinedLDA t_steps l_samples n_words = do
-
-  let n_topics  = snat @(FromGHC 2)
-      env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
-
-  traceQ <- BBVI_Combined.bbvi t_steps l_samples (topicModel vocab n_topics n_words) env_in
   -- Draw the most recent sampled parameters
   let θ_dist     = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 2))  ((== "θ") . tag) traceQ
       φ0_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 0)) traceQ

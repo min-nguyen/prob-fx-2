@@ -43,24 +43,24 @@ linRegr :: forall env. Observables env '["m", "c"] Double
   => [(Double, Double)] -> VIModel env (Double, Double)  -- ^ y datapoints
 linRegr xys = do
   -- Draw model parameters from prior
-  m <- sample' @env (mkNormal 0 3) #m
-  c <- sample' @env (mkNormal 0 5) #c
+  m <- sample' @env (mkNormal 0 3) (#m, 0)
+  c <- sample' @env (mkNormal 0 5) (#c, 0)
   -- Generate outputs ys
-  mapM_ (\(x, y) -> observe (mkNormal (m * x + c) 1) y) xys
+  mapM_ (\((x, y), idx) -> observe (mkNormal (m * x + c) 1) y (Addr "y" idx)) (zip xys [0 ..])
   return (m, c)
 
 linRegrGuide :: forall env. Observables env '["m", "c"] Double
   => VIGuide env ()
 linRegrGuide = do
-  m <- param' @env (mkNormal 0 3) #m
-  c <- param' @env (mkNormal 0 5) #c
+  m <- param' @env (mkNormal 0 3) (#m, 0)
+  c <- param' @env (mkNormal 0 5) (#c, 0)
   return ()
 
 bbviLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
 bbviLinRegr t_steps l_samples n_datapoints = do
-  let xys            = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
-      env_in         = (#y := []) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  traceQ <- BBVI.bbvi t_steps l_samples linRegrGuide (linRegr xys) env_in
+  let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
+      empty_env    = (#y := []) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+  traceQ <- BBVI.bbvi t_steps l_samples linRegrGuide (linRegr xys) empty_env
   let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
       c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
   pure (m_dist, c_dist)

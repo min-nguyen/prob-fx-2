@@ -26,7 +26,6 @@ import qualified Inference.VI.BBVI as BBVI
 import qualified Inference.VI.INVI as INVI
 import qualified Inference.VI.MLE as MLE
 import qualified Inference.VI.MAP as MAP
-import qualified Inference.VI.Extra.BBVI_Combined as BBVI_Combined
 import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
 import qualified Trace
 import           Trace (Key(..))
@@ -201,16 +200,6 @@ bbviDefaultLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- BBVI.bbvi t_steps l_samples (linRegr xs) (linRegr xs) env_in
-  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
-      c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
-  pure (m_dist, c_dist)
-
--- | BBVI over linear regression, using the model to generate a default guide
-bbviDefaultCombinedLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
-bbviDefaultCombinedLinRegr t_steps l_samples n_datapoints = do
-  let xs            = [1 .. fromIntegral n_datapoints]
-      env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  traceQ <- BBVI_Combined.bbvi t_steps l_samples (linRegr xs) env_in
   let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
       c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
   pure (m_dist, c_dist)

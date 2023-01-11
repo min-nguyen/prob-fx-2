@@ -30,7 +30,7 @@ import           Prog ( discharge, Prog(..), call, weaken, LastMember, Member (.
 import           Sampler ( Sampler, liftIO )
 import           Trace (GradTrace, ParamTrace, Key(..), Some(..))
 import qualified Trace
-import qualified Inference.MC.SIM as SIM
+import           Inference.MC.SIM as SIM
 import           Inference.VI.Icfp23.VI as VI
 -- import           Inference.VI.VI as VI (GradDescent(..))
 import qualified Vec
@@ -50,9 +50,12 @@ bbvi num_timesteps num_samples guide model env  = do
   λ_0 <- VI.collectParams env guide
   liftIO (print λ_0)
   (handleLift . VI.handleLRatioGradDescent)
-    $ VI.viLoop num_timesteps num_samples guide (VI.handleGuide env) model handleModel λ_0
+    $ VI.viLoop num_timesteps num_samples guide (handleGuide env) model handleModel λ_0
 
+handleGuide :: Env env -> VIGuide env a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
+handleGuide env guide params =
+  (SIM.defaultSample . handleParams . weighGuide . updateParams params . handleEnvRW env) guide
 
 handleModel :: VIModel env a -> Env env -> Sampler (a, LogP)
 handleModel model env  =
-  (SIM.defaultSample . SIM.defaultObserve . joint 0 . fmap fst . handleEnvRW env) model
+  (defaultSample . defaultObserve . joint 0 . fmap fst . handleEnvRW env) model

@@ -36,14 +36,13 @@ pattern SampPrj d α <- (prj -> Just (Sample d α))
 pattern SampDis :: (Show a) => PrimDist d a => d -> Addr -> EffectSum (Sample : es) a
 pattern SampDis d α <- (discharge -> Right (Sample d α))
 
-sample' :: forall env es x d a.
-  (Observable env x a, Members [EnvRW env, Sample] es,  PrimDist d a)
-  => d -> Var x -> Prog es a
-sample' d varx = do
+sample' :: forall env es x d a. (Observable env x a, Members [EnvRW env, Sample] es,  PrimDist d a)
+  => d -> (Var x, Int) -> Prog es a
+sample' d (varx, idx) = do
   let tag = varToStr varx
   maybe_y <- call (Read @env varx)
   y       <- case maybe_y of
-                Nothing -> sample d (Addr tag 0)
-                Just y  -> sample (Deterministic d y) (Addr tag 0)
+                Nothing -> sample d (Addr tag idx)
+                Just y  -> sample (Deterministic d y) (Addr tag idx)
   call (Write @env varx y)
   pure y
