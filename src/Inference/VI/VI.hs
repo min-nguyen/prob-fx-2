@@ -76,6 +76,7 @@ viStep num_samples guide hdlGuide model hdlModel guideParams = do
   -- | Execute the guide X ~ Q(X; λ) for (L) iterations
   (((_, guide_envs), guide_logWs), guide_grads)
       <- Util.unzip4 <$> replicateM num_samples (lift (hdlGuide guide guideParams))
+  liftPrint (show guide_envs)
   -- | Execute the model P(X, Y) under the union of the model environment Y and guide environment X
   (_              , model_logWs)
       <- Util.unzip3 <$> mapM (lift . hdlModel model) guide_envs

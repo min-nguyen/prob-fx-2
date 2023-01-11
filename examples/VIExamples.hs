@@ -17,6 +17,8 @@ import Inference.MC.SIM as SIM ( simulate )
 import Inference.MC.SMC2 as SMC2 ( smc2 )
 import Inference.VI.Icfp23.VI
 import qualified Inference.VI.Icfp23.BBVI as BBVI
+import qualified Inference.VI.Icfp23.MLE as MLE
+import qualified Inference.VI.Icfp23.MAP as MAP
 import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
 import qualified Trace
 import           Trace (Key(..))
@@ -61,6 +63,24 @@ bbviLinRegr t_steps l_samples n_datapoints = do
   let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
       empty_env    = (#y := []) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- BBVI.bbvi t_steps l_samples linRegrGuide (linRegr xys) empty_env
+  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
+      c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
+  pure (m_dist, c_dist)
+
+mleLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+mleLinRegr t_steps l_samples n_datapoints = do
+  let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
+      empty_env    = (#y := []) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+  traceQ <- MLE.mle t_steps l_samples linRegrGuide (linRegr xys) empty_env
+  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
+      c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
+  pure (m_dist, c_dist)
+
+mapLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+mapLinRegr t_steps l_samples n_datapoints = do
+  let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
+      empty_env    = (#y := []) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+  traceQ <- MAP.map t_steps l_samples linRegrGuide (linRegr xys) empty_env
   let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
       c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
   pure (m_dist, c_dist)

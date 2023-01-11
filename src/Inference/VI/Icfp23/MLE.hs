@@ -1,11 +1,7 @@
 
 {-# LANGUAGE FlexibleContexts #-}
-
 {-# LANGUAGE PolyKinds #-}
-
-
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
 {-# LANGUAGE TupleSections #-}

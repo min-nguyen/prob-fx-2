@@ -24,8 +24,6 @@ import Inference.MC.PMMH as PMMH ( pmmh )
 import Inference.MC.SMC2 as SMC2 ( smc2 )
 import qualified Inference.VI.BBVI as BBVI
 import qualified Inference.VI.INVI as INVI
-import qualified Inference.VI.MLE as MLE
-import qualified Inference.VI.MAP as MAP
 import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
 import qualified Trace
 import           Trace (Key(..))
@@ -210,24 +208,6 @@ inviLinRegr t_steps l_samples n_datapoints = do
   let xs            = [1 .. fromIntegral n_datapoints]
       env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- INVI.invi t_steps l_samples linRegrGuide (linRegr xs) env_in
-  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
-      c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
-  pure (m_dist, c_dist)
-
-mleLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
-mleLinRegr t_steps l_samples n_datapoints = do
-  let xs            = [1 .. fromIntegral n_datapoints]
-      env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  traceQ <- MLE.mle t_steps l_samples  (linRegr xs ) env_in (#m <#> #c <#> vnil)
-  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
-      c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
-  pure (m_dist, c_dist)
-
-mapLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
-mapLinRegr t_steps l_samples n_datapoints = do
-  let xs            = [1 .. fromIntegral n_datapoints]
-      env_in        = (#y := [2*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  traceQ <- MAP.map t_steps l_samples  (linRegr xs ) env_in (#m <#> #c <#> vnil)
   let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
       c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
   pure (m_dist, c_dist)
