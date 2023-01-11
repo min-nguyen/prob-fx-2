@@ -27,10 +27,14 @@ import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
 import Effects.Dist
 import PrimDist
+import Data.Type.Nat
 import Data.Maybe
 import HMM (simHMM)
 import Prog
 import Model
+import Vec (Vec, TypeableSNatI)
+import qualified Vec as Vec
+import Data.Proxy
 
 
 {- | Linear regression environment.
@@ -150,3 +154,30 @@ mapHMM t_steps l_samples hmm_length = do
       obs_dist   = toList . fromJust $ Trace.lookupBy @Beta  ((== "obs_p") . tag ) traceQ
   pure (trans_dist, obs_dist)
 
+
+-- | Distribution over the n topics in a document, over the distribution of m words in a topic
+topicModel :: forall m n env ts. (TypeableSNatI m, TypeableSNatI n,
+               Observable env "φ" (Vec m Double),
+               Observable env "θ" (Vec n Double),
+               Observable env "w" String)
+  -- | vocabulary
+  => Vec m String
+  -- | number of topics
+  -> SNat n
+  -- | number of words
+  -> Int
+  -- | generated words
+  -> VIModel env [String]
+topicModel vocab n_topics n_words = do
+  -- Generate distribution over words for each topic
+  let m :: Int = fromIntegral $ reflect (Proxy @m)
+      n :: Int = fromIntegral $ reflect (Proxy @n)
+  let idxs = Vec.iterate (snat @n) (+1) (0 :: Int)
+  topic_word_ps <- Vec.mapM (\idx -> sample' @env (mkDirichlet (Vec.replicate (snat @m) 1)) (#φ, idx)
+                            ) idxs
+  -- -- Generate distribution over topics for a given document
+  -- doc_topic_ps  <- docTopicPrior n_topics
+  -- replicateM n_words (do  z <- categorical' (Vec.toList doc_topic_ps)
+  --                         let word_ps = topic_word_ps' !! z
+  --                         wordDist vocab word_ps)
+  undefined

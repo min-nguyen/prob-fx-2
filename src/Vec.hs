@@ -67,6 +67,9 @@ replicate SS x = x ::: Vec.replicate snat x
 replicateM :: Monad m => SNat n -> m a -> m (Vec n a)
 replicateM n x = sequence $ Vec.replicate n x
 
+mapM :: Monad m => (a1 -> m a2) -> Vec n a1 -> m (Vec n a2)
+mapM f x = sequence $ Vec.map f x
+
 iterate :: SNat n -> (t -> t) -> t -> Vec n t
 iterate SZ f a = VNil
 iterate SS f a = a ::: Vec.iterate snat f (f a)
