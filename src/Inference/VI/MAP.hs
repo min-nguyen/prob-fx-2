@@ -14,7 +14,7 @@
      importance weight P(Y | X; θ).
 -}
 
-module Inference.VI.Icfp23.MAP (module Inference.VI.Icfp23.MAP) where
+module Inference.VI.MAP (module Inference.VI.MAP) where
 
 import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>) )
@@ -31,9 +31,8 @@ import Sampler
 import           Trace (GradTrace, ParamTrace, Key(..), Some(..))
 import qualified Trace
 import Debug.Trace
-import qualified Inference.MC.SIM as SIM
-import   Inference.VI.Icfp23.VI as VI
-import qualified Inference.VI.Icfp23.MLE as MLE
+import Inference.MC.SIM
+import Inference.VI.VI as VI
 import Inference.MC.LW (joint)
 
 map :: forall env a b.
@@ -52,9 +51,9 @@ map num_timesteps num_samples guide model env  = do
 
 handleGuide :: Env env -> VIGuide env a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
 handleGuide env guide params =
-  (SIM.defaultSample . handleParams . weighGuide . updateParams params . handleEnvRW env) guide
+  (defaultSample . handleParams . weighGuide . updateParams params . handleEnvRW env) guide
 
 -- | Handle the model P(X, Y; θ) by returning log-importance-weight P(Y, X; θ)
 handleModel :: VIModel env a -> Env env -> Sampler (a, LogP)
 handleModel model env =
-  (SIM.defaultSample . SIM.defaultObserve . joint 0 . fmap fst . handleEnvRW env) model
+  (defaultSample . defaultObserve . joint 0 . fmap fst . handleEnvRW env) model

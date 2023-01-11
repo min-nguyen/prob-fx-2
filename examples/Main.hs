@@ -19,6 +19,11 @@ printThenWrite a = print a >> writeFile "model-output.txt" (show a)
 
 parseArgs :: String -> IO ()
 parseArgs cmd = case cmd of
+  "bbviLinRegr"    -> sampleIOFixed (VIExamples.bbviLinRegr 200 40 8) >>= printThenWrite
+  "mleLinRegr"     -> sampleIOFixed (VIExamples.mleLinRegr 276 40 8) >>= printThenWrite
+  "mapLinRegr"     -> sampleIOFixed (VIExamples.mapLinRegr 276 40 8) >>= printThenWrite
+  "bbviHMM"        -> sampleIOFixed (VIExamples.bbviHMM 1000 50 20) >>= printThenWrite
+
   "simLinRegrOnce"      -> sampleIOFixed (simLinRegrOnce 50) >>= printThenWrite
   "lwLinRegrOnce"       -> sampleIOFixed (lwLinRegrOnce 10 10) >>= printThenWrite
   "mhLinRegrOnce"       -> sampleIOFixed (mhLinRegrOnce 50 10) >>= printThenWrite
@@ -30,13 +35,6 @@ parseArgs cmd = case cmd of
   "smcLinRegr"          -> sampleIOFixed (smcLinRegr 120 50) >>= printThenWrite
   "rmsmcLinRegr"        -> sampleIOFixed (rmsmcLinRegr 20 200 20) >>= printThenWrite
   "pmmhLinRegr"         -> sampleIOFixed (pmmhLinRegr 1000 20 30) >>= printThenWrite
-  "bbviLinRegr"         -> sampleIOFixed (bbviLinRegr 200 40 8) >>= printThenWrite
-  "bbviDefaultLinRegr"  -> sampleIOFixed (bbviDefaultLinRegr 200 40 8) >>= printThenWrite
-  "inviLinRegr"         -> sampleIOFixed (inviLinRegr 300 40 8) >>= printThenWrite
-
-  "icfp_bbviLinRegr"    -> sampleIOFixed (VIExamples.bbviLinRegr 200 40 8) >>= printThenWrite
-  "icfp_mleLinRegr"     -> sampleIOFixed (VIExamples.mleLinRegr 276 40 8) >>= printThenWrite
-  "icfp_mapLinRegr"     -> sampleIOFixed (VIExamples.mapLinRegr 276 40 8) >>= printThenWrite
 
   "simLogRegrOnce"      -> sampleIOFixed (simLogRegrOnce 50) >>= printThenWrite
   "lwLogRegrOnce"       -> sampleIOFixed (lwLogRegrOnce 10 10) >>= printThenWrite
@@ -52,9 +50,6 @@ parseArgs cmd = case cmd of
   "smcHMM"              -> sampleIOFixed (smcHMM 200 30) >>= printThenWrite
   "rmsmcHMM"            -> sampleIOFixed (rmsmcHMM 50 50 30) >>= printThenWrite
   "pmmhHMM"             -> sampleIOFixed (pmmhHMM 1000 5 20) >>= printThenWrite
-  "bbviHMM"             -> sampleIOFixed (bbviHMM 1000 50 20) >>= printThenWrite
-  "bbviDefaultHMM"      -> sampleIOFixed (bbviDefaultHMM 1000 50 20) >>= printThenWrite
-  "inviHMM"             -> sampleIOFixed (inviHMM 1000 100 20) >>= printThenWrite
 
   "simSIR"              -> sampleIOFixed (simSIR 100) >>= printThenWrite
   "simSIRS"             -> sampleIOFixed (simSIRS 100) >>= printThenWrite
@@ -66,9 +61,6 @@ parseArgs cmd = case cmd of
   "smcLDA"              -> sampleIOFixed (smcLDA 100 100) >>= printThenWrite
   "rmsmcLDA"            -> sampleIOFixed (rmsmcLDA 10 30 100) >>= printThenWrite
   "pmmhLDA"             -> sampleIOFixed (pmmhLDA 100 20 100) >>= printThenWrite
-  "bbviLDA"             -> sampleIOFixed (bbviLDA 200 20 50) >>= printThenWrite
-  "bbviDefaultLDA"      -> sampleIOFixed (bbviDefaultLDA 200 20 50) >>= printThenWrite
-  "inviLDA"             -> sampleIOFixed (inviLDA 200 20 50) >>= printThenWrite
 
   "simRadon"            -> sampleIOFixed simRadon >>= printThenWrite
   "mhRadon"             -> sampleIOFixed (mhRadon 1000) >>= printThenWrite

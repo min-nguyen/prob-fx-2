@@ -28,7 +28,6 @@ import Inference.MC.RMSMC as RMSMC ( rmsmc )
 import Inference.MC.SMC2 as SMC2 ( smc2 )
 import Inference.MC.PMMH as PMMH ( pmmh )
 import Inference.VI.BBVI as BBVI
-import Inference.VI.INVI as INVI
 import Model ( Model (..), bernoulli', binomial, uniform, beta )
 import Prog ( Member, LastMember )
 import Sampler ( Sampler, liftIO )
@@ -272,63 +271,6 @@ smc2HMM n_outer_particles n_mhsteps n_inner_particles  hmm_length = do
   let trans_ps    = concatMap (get #trans_p) env_outs
       obs_ps      = concatMap (get #obs_p) env_outs
   pure (trans_ps, obs_ps)
-
--- | BBVI inference over a HMM, using a custom guide
-bbviHMM
-  -- | number of optimisation steps
-  :: Int
-  -- | number of samples to estimate gradients over
-  -> Int
-  -- | number of HMM nodes
-  -> Int
-  -- | (transition beta parameters, observation beta parameters)
-  -> Sampler ([Double], [Double])
-bbviHMM t_steps l_samples hmm_length = do
-  ys <- simHMM hmm_length
-  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
-
-  traceQ <- BBVI.bbvi t_steps l_samples (hmmGuide hmm_length 0) (hmm hmm_length 0) env_in
-  let trans_dist = toList . fromJust $ Trace.lookupBy @Beta  ((== "trans_p") . tag ) traceQ
-      obs_dist   = toList . fromJust $ Trace.lookupBy @Beta  ((== "obs_p") . tag ) traceQ
-  pure (trans_dist, obs_dist)
-
--- | BBVI inference over a HMM, using the model to generate a default guide
-bbviDefaultHMM
-  -- | number of optimisation steps
-  :: Int
-  -- | number of samples to estimate gradients over
-  -> Int
-  -- | number of HMM nodes
-  -> Int
-  -- | (transition beta parameters, observation beta parameters)
-  -> Sampler ([Double], [Double])
-bbviDefaultHMM t_steps l_samples hmm_length = do
-  ys <- simHMM hmm_length
-  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
-
-  traceQ <- BBVI.bbvi t_steps l_samples (hmm hmm_length 0) (hmm hmm_length 0) env_in
-  let trans_dist = toList . fromJust $ Trace.lookupBy @Beta  ((== "trans_p") . tag ) traceQ
-      obs_dist   = toList . fromJust $ Trace.lookupBy @Beta  ((== "obs_p") . tag ) traceQ
-  pure (trans_dist, obs_dist)
-
--- | BBVI inference over a HMM, using a custom guide
-inviHMM
-  -- | number of optimisation steps
-  :: Int
-  -- | number of samples to estimate gradients over
-  -> Int
-  -- | number of HMM nodes
-  -> Int
-  -- | (transition beta parameters, observation beta parameters)
-  -> Sampler ([Double], [Double])
-inviHMM t_steps l_samples hmm_length = do
-  ys <- simHMM hmm_length
-  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
-
-  traceQ <- INVI.invi t_steps l_samples (hmmGuide hmm_length 0) (hmm hmm_length 0) env_in
-  let trans_dist = toList . fromJust $ Trace.lookupBy @Beta  ((== "trans_p") . tag ) traceQ
-      obs_dist   = toList . fromJust $ Trace.lookupBy @Beta  ((== "obs_p") . tag ) traceQ
-  pure (trans_dist, obs_dist)
 
 {- | Extending the modular HMM with a user-specific effect.
      This example uses the @Writer@ effect for recording the intermediate latent states.

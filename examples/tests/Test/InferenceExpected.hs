@@ -30,15 +30,7 @@ smc2LinRegrExpected = ([2.9452092040633717,2.967450442976723,2.965810778677412,2
 
 -- | sampleIOFixed (bbviLinRegr 200 40 8)
 bbviLinRegrExpected :: ([Double], [Double])
-bbviLinRegrExpected = ([2.3249647147680785,0.5019242042611285],[-1.9770853650319192e-2,3.6649117899964625])
-
--- | sampleIOFixed (bbviDefaultLinRegr 200 40 8)
-bbviDefaultLinRegrExpected :: ([Double], [Double])
-bbviDefaultLinRegrExpected = ([2.3249647147680785,0.5019242042611285],[-1.9770853650319192e-2,3.6649117899964625])
-
--- | sampleIOFixed (inviLDA 300 40 8)
-inviLinRegrExpected :: ([Double], [Double])
-inviLinRegrExpected = ([1.921670090951795,0.27639966010609257],[4.348763761751697e-2,3.634121403620397])
+bbviLinRegrExpected = ([1.5374546607466901,1.1530027596328638],[-6.642673722348555e-3,3.9302125839860906])
 
 -- | sampleIOFixed (simLogRegr 50)
 simLogRegrExpected :: [(Double, Bool)]
@@ -85,13 +77,6 @@ smc2HMMExpected = ([0.4626042494430704,0.40493257534773175,0.22746626776402465,0
 bbviHMMExpected :: ([Double], [Double])
 bbviHMMExpected = ([3.9859732510342774,1.4995467510121032],[3.037063277119497,4.693318831512526])
 
--- | sampleIOFixed (bbviDefaultHMM 1000 50 20)
-bbviDefaultHMMExpected :: ([Double], [Double])
-bbviDefaultHMMExpected = ([3.9859732510342774,1.4995467510121032],[3.037063277119497,4.693318831512526])
-
--- | sampleIOFixed (inviHMM 1000 100 20)
-inviHMMExpected :: ([Double], [Double])
-inviHMMExpected = ([2.981839097261309,1.2936346436307127],[2.2241151114914723,3.1404722609587323])
 
 -- | sampleIOFixed (simSIR 100)
 simSIRExpected :: ([(Int, Int, Int)], [Int])
@@ -128,14 +113,6 @@ smc2LDAExpected = ([[0.4988531095402826,0.5011468904597175]],[[1.334501340150149
 -- | sampleIOFixed (bbviLDA 200 20 50)
 bbviLDAExpected :: ([Double], [Double], [Double])
 bbviLDAExpected = ([0.89382244,1.55871495],[2.65891637,2.51513265,1.23267034,0.94072664],[3.25836993,2.81787586,0.9795562,1.24063641])
-
--- | sampleIOFixed (bbviDefaultLDA 200 20 50)
-bbviDefaultLDAExpected :: ([Double], [Double], [Double])
-bbviDefaultLDAExpected = ([0.89382244,1.55871495],[2.65891637,2.51513265,1.23267034,0.94072664],[3.25836993,2.81787586,0.9795562,1.24063641])
-
--- | sampleIOFixed (inviLDA 200 20 50)
-inviLDAExpected :: ([Double], [Double], [Double])
-inviLDAExpected = ([0.8079550233340425,0.5628298801545059],[2.654402232630136,2.6846038077632026,0.9780680819031089,0.952936451537379],[2.5950266700264026,2.6291207252525597,0.9551356839627168,1.1412016367665816])
 
 -- | sampleIOFixed (mhRadon 1000)
 mhRadonExpected :: ([Double], [Double])

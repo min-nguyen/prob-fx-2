@@ -1,4 +1,4 @@
-module Examples (module SIR, module HMM, module GMM, module Radon, module LinRegr, module LDA, module LogRegr) where
+module Examples ( module SIR, module HMM, module GMM, module Radon, module LinRegr, module LDA, module LogRegr) where
 
 import SIR
 import HMM

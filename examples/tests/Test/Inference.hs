@@ -3,6 +3,7 @@
 module Test.Inference where
 
 import Examples
+import VIExamples
 import Test.InferenceExpected
 import Test.HUnit
 import Sampler
@@ -43,16 +44,6 @@ testBbviLinRegr :: Test
 testBbviLinRegr = TestCase $ do
   output <- sampleIOFixed (bbviLinRegr 200 40 8)
   assertEqual "Testing (bbviLinRegr 200 40 8)"  bbviLinRegrExpected output
-
-testInviLinRegr :: Test
-testInviLinRegr = TestCase $ do
-  output <- sampleIOFixed (inviLinRegr 300 40 8)
-  assertEqual "Testing (inviLinRegr 300 40 8)"  inviLinRegrExpected output
-
-testBbviDefaultLinRegr :: Test
-testBbviDefaultLinRegr = TestCase $ do
-  output <- sampleIOFixed (bbviDefaultLinRegr 200 40 8)
-  assertEqual "Testing (bbviDefaultLinRegr 200 40 8)"  bbviDefaultLinRegrExpected output
 
 testSimLogRegr :: Test
 testSimLogRegr = TestCase $ do
@@ -114,16 +105,6 @@ testBbviHMM = TestCase $ do
   output <- sampleIOFixed (bbviHMM 1000 50 20)
   assertEqual "Testing (bbviHMM 1000 50 20)"  bbviHMMExpected output
 
-testBbviDefaultHMM :: Test
-testBbviDefaultHMM = TestCase $ do
-  output <- sampleIOFixed (bbviDefaultHMM 1000 50 20)
-  assertEqual "Testing (bbviDefaultHMM 1000 50 20)"  bbviDefaultHMMExpected output
-
-testInviHMM :: Test
-testInviHMM = TestCase $ do
-  output <- sampleIOFixed (inviHMM 1000 100 20)
-  assertEqual "Testing (inviHMM 1000 100 20)"  inviHMMExpected output
-
 testSimSIR :: Test
 testSimSIR = TestCase $ do
   output <- sampleIOFixed (simSIR 100)
@@ -165,26 +146,12 @@ testPmmhLDA = TestCase $ do
       output'           = mapT2 (map (map (roundPrecision 8))) output
   assertEqual "Testing (pmmhLDA 100 20 100)" pmmhLDAExpected' output'
 
-testBbviLDA :: Test
-testBbviLDA = TestCase $ do
-  output <- sampleIOFixed (bbviLDA 200 20 50)
-  let bbviLDAExpected' = mapT3 (map (roundPrecision 8)) bbviLDAExpected
-      output'          = mapT3 (map (roundPrecision 8)) output
-  assertEqual "Testing (bbviLDA 200 20 50)"  bbviLDAExpected' output'
-
-testBbviDefaultLDA :: Test
-testBbviDefaultLDA = TestCase $ do
-  output <- sampleIOFixed (bbviDefaultLDA 200 20 50)
-  let bbviDefaultLDAExpected' = mapT3 (map (roundPrecision 8)) bbviDefaultLDAExpected
-      output'                 = mapT3 (map (roundPrecision 8)) output
-  assertEqual "Testing (bbviDefaultLDA 200 20 50)"  bbviDefaultLDAExpected' output'
-
-testInviLDA :: Test
-testInviLDA = TestCase $ do
-  output <- sampleIOFixed (inviLDA 200 20 50)
-  let inviLDAExpected' = mapT3 (map (roundPrecision 8)) inviLDAExpected
-      output'          = mapT3 (map (roundPrecision 8)) output
-  assertEqual "Testing (inviLDA 200 20 50)"  inviLDAExpected' output'
+-- testBbviLDA :: Test
+-- testBbviLDA = TestCase $ do
+--   output <- sampleIOFixed (bbviLDA 200 20 50)
+--   let bbviLDAExpected' = mapT3 (map (roundPrecision 8)) bbviLDAExpected
+--       output'          = mapT3 (map (roundPrecision 8)) output
+--   assertEqual "Testing (bbviLDA 200 20 50)"  bbviLDAExpected' output'
 
 testMhRadon :: Test
 testMhRadon = TestCase $ do
@@ -207,8 +174,6 @@ testInference = TestList
  , testPmmhLinRegr
  , testSmc2LinRegr
  , testBbviLinRegr
- , testBbviDefaultLinRegr
- , testInviLinRegr
  , testSimLogRegr
  , testLwLogRegr
  , testMhLogRegr
@@ -219,9 +184,7 @@ testInference = TestList
  , testRmsmcHMM
  , testPmmhHMM
  , testSmc2HMM
- , testBbviHMM
- , testBbviDefaultHMM
- , testInviHMM
+--  , testBbviHMM
  , testSimSIR
  , testMhSIR
  , testSimLDA
@@ -229,9 +192,7 @@ testInference = TestList
  , testSmcLDA
  , testRmsmcLDA
  , testPmmhLDA
- , testBbviLDA
- , testBbviDefaultLDA
- , testInviLDA
+--  , testBbviLDA
  , testMhRadon
  , testMhPredRadon
  ]

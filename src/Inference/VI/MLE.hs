@@ -10,7 +10,7 @@
      importance weight P(Y | X; θ).
 -}
 
-module Inference.VI.Icfp23.MLE where
+module Inference.VI.MLE where
 
 import Data.Maybe ( fromMaybe )
 import Data.Bifunctor ( Bifunctor(..) )
@@ -28,7 +28,7 @@ import           Sampler ( Sampler )
 import           Trace (GradTrace, ParamTrace, Key(..), Some(..))
 import qualified Trace
 import qualified Inference.MC.SIM as SIM
-import           Inference.VI.Icfp23.VI
+import           Inference.VI.VI
 import Inference.MC.LW (likelihood)
 
 mle :: forall env a b.
