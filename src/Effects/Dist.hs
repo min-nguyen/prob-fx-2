@@ -54,11 +54,12 @@ handleDist = loop "" 0 Map.empty
          case maybe_y of
               Just y  -> do call (Observe d y α) >>= k'
               Nothing -> do call (Sample d α)    >>= k'
-          where α       = Addr counter tag tagIdx
-                tag     = fromMaybe "" maybe_tag
+          where α       = Addr tag tagIdx
+                tag     = fromMaybe (show counter) maybe_tag
                 tagIdx  = case Map.lookup tag tagMap of
                             Just currentIdx -> if tag /= prevTag then roundUp16 currentIdx else currentIdx
                             Nothing         -> 0
                 tagMap' = Map.insert tag (tagIdx + 1) tagMap
                 k'      = loop tag (counter + 1) tagMap' . k
     Left  u'  -> Op (weaken (weaken u')) (loop prevTag counter tagMap . k)
+

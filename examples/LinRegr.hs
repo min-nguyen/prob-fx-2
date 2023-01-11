@@ -18,7 +18,6 @@ import Inference.MC.SIM as SIM ( simulate )
 import Inference.MC.LW as LW ( lw )
 import Inference.MC.IM as IM ( im )
 import Inference.MC.MH as MH ( mh )
-import Inference.MC.Gibbs as Gibbs ( gibbs )
 import Inference.MC.SMC as SMC ( smc )
 import Inference.MC.RMSMC as RMSMC ( rmsmc )
 import Inference.MC.PMMH as PMMH ( pmmh )
@@ -39,6 +38,7 @@ import PrimDist
 import Data.Maybe
 import Prog
 import Effects.EnvRW
+import Inference.VI.Icfp23.VI
 {-
 import Numeric.Log ( Log )
 import Inference.MB as MB ( handleMBayes )
@@ -76,25 +76,6 @@ linRegrGuide = do
   c <- normal 0 5 #c
   σ <- uniform 1 3 #σ
   pure ()
-
-{- | Linear regression as a probabilistic program for inference -}
-linRegrInf :: forall env. Observables env '["m", "c"] Double
-  => [(Double, Double)]
-  -> Prog [EnvRW env, Observe, Sample] (Double, Double)  -- ^ y datapoints
-linRegrInf xys = do
-  -- Draw model parameters from prior
-  m <- sample' @env (mkNormal 0 3) #m
-  c <- sample' @env (mkNormal 0 5) #c
-  -- Generate outputs ys
-  mapM_ (\(x, y) -> observe (mkNormal (m * x + c) 1) y) xys
-  return (m, c)
-
-linRegrInfGuide :: forall env. Observables env '["m", "c"] Double
-  => Prog [EnvRW env, Param, Sample] ()
-linRegrInfGuide = do
-  m <- param'  @env (mkNormal 0 3) #m
-  c <- sample' @env (mkNormal 0 5) #c
-  return ()
 
 -- | Simulate from linear regression
 simLinRegr :: Int -> Sampler [(Double, Double)]
@@ -147,19 +128,6 @@ mhLinRegr n_mhsteps n_datapoints = do
   let cs = concatMap (get #c) env_outs
   pure (mus, cs)
 
--- | Metropolis-Hastings over linear regression
-gibbsLinRegr ::  Int -> Int ->  Sampler ([Double], [Double])
-gibbsLinRegr n_mhsteps n_datapoints = do
-  -- Specify model inputs
-  let xs            = [0 .. fromIntegral n_datapoints]
-  -- Specify model environment
-      env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  -- Run MH
-  env_outs <- Gibbs.gibbs n_mhsteps (linRegr xs) env_in
-  -- Get the sampled values of mu and c
-  let mus = concatMap (get #m) env_outs
-  let cs = concatMap (get #c) env_outs
-  pure (mus, cs)
 
 -- | SMC over linear regression
 smcLinRegr ::  Int -> Int ->  Sampler ([Double], [Double])

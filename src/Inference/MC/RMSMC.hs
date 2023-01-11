@@ -84,7 +84,7 @@ rmpfilter ::
   -> Sampler [(a, PrtState)]                      -- ^ final particle results and contexts
 rmpfilter n_prts mh_steps tags model =
   (handleLift . handleResample mh_steps tags . pfilter handleParticle model) (prts, ps)
-  where (prts, ps) = unzip $ replicate n_prts (model, PrtState (Addr 0 "" 0) 0  Map.empty)
+  where (prts, ps) = unzip $ replicate n_prts (model, PrtState (Addr "" 0) 0  Map.empty)
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint
      at the first @Observe@ operation, by returning:
@@ -96,7 +96,7 @@ handleParticle = fmap asPrtTrace . reuseSamples Map.empty . suspendα where
   asPrtTrace ((prt, ρ, α), τ) = (prt, PrtState ρ α τ)
 
 suspendα :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, Addr, LogP)
-suspendα (Val x)   = pure (Val x, Addr 0 "" 0, 0)
+suspendα (Val x)   = pure (Val x, Addr "" 0, 0)
 suspendα (Op op k) = case discharge op of
   Right (Observe d y α) -> Val (k y, α, logProb d y)
   Left op'              -> Op op' (suspendα . k)
@@ -121,7 +121,7 @@ handleResample mh_steps tags = loop where
               partial_model   = suspendAt α prog_0
           -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
           (prts_mov, σs_mov) <- mapAndUnzipM
-                                    (\τ -> do ((prt_mov, lρ), τ_mov) <- fmap head (MH.ssmh mh_steps τ (Addr 0 "" 0) tags partial_model)
+                                    (\τ -> do ((prt_mov, lρ), τ_mov) <- fmap head (MH.ssmh mh_steps τ (Addr "" 0) tags partial_model)
                                               let lρ_mov = (sum . map snd . Map.toList) lρ
                                               return (prt_mov, PrtState α lρ_mov τ_mov) )
                                     τs_res

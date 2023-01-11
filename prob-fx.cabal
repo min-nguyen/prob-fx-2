@@ -41,7 +41,6 @@ library
                       Effects.Writer,
                       Inference.MC.LW,
                       Inference.MC.IM,
-                      Inference.MC.Gibbs,
                       Inference.MC.MH,
                       Inference.MC.SIM,
                       Inference.MC.SIS,
@@ -58,6 +57,7 @@ library
                       Inference.VI.MAP,
                       Inference.VI.Extra.BBVI_Combined,
                       Inference.VI.Icfp23.VI,
+                      Inference.VI.Icfp23.BBVI,
                       -- Inference.MB,
                       Env,
                       LogP,
@@ -127,6 +127,7 @@ executable prob-fx
                       Radon,
                       SIR,
                       SIRNonModular,
+                      VIExamples
   build-depends:      base,
                       containers,
                       extensible,

@@ -22,9 +22,8 @@ data Param a where
          -> Param a        -- ^ observed point
 
 param :: forall d a es. (Member Param es, DiffDist d a)
-       => d -> Prog es a
-param d = call (Param d α)
-  where α = Addr 0 "" 0
+       => d -> Addr -> Prog es a
+param d α = call (Param d α)
 
 -- | For projecting and then successfully pattern matching against @Param@
 pattern ParamPrj :: (Member Param es) => (DiffDistribution d, x ~ Base d) => d -> Addr -> EffectSum es x
@@ -46,6 +45,7 @@ param' :: forall env es x d a.
   (Observable env x a, Members [EnvRW env, Param] es, DiffDist d a)
   => d -> Var x -> Prog es a
 param' d varx = do
-  x <- param d
-  write @env varx x
-  return x
+  let tag = varToStr varx
+  y <- param d (Addr tag 0)
+  call (Write @env varx y)
+  pure y

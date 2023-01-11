@@ -73,7 +73,7 @@ import Unsafe.Coerce
 -- | A compile-time identifier: observable variable name assigned to a primitive distribution
 type Tag  = String
 -- | A run-time identifier: global run-time occurrence + observable variable name + occurrence with respect to that variable name
-data Addr = Addr { global :: Int, tag :: Tag, local :: Int }
+data Addr = Addr { tag :: Tag, local :: Int }
   deriving (Eq, Ord, Show)
 
 instance {-# OVERLAPPING #-} Show (String, Int) where
@@ -88,7 +88,7 @@ filterTrace ::
   -> Map Addr a
   -- | filtered trace
   -> Map Addr a
-filterTrace tags = filterByKey (\(Addr _ tag _)  -> tag `elem` tags)
+filterTrace tags = filterByKey (\(Addr tag _)  -> tag `elem` tags)
 
 {- | The type of inverse sample traces, mapping addresses of Sample operations
      to the random values between 0 and 1 passed to their inverse CDF functions.

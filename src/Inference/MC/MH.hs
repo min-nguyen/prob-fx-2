@@ -51,7 +51,7 @@ mh :: forall env vars a. (env `ContainsVars` vars)
 mh n model env_in obs_vars  = do
   -- | Handle model to probabilistic program
   let prog_0 = handleCore env_in model
-      α_0    = Addr 0 "" 0
+      α_0    = Addr "" 0
       τ_0    = Map.empty
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars

@@ -65,7 +65,7 @@ smc2Internal :: (HasSampler fs)
   -> ProbProg a                                    -- ^ probabilistic program
   -> Prog fs [(a, PrtState)]                -- ^ final particle results and contexts
 smc2Internal n_outer_prts mh_steps n_inner_prts tags  =
-  handleResample mh_steps n_inner_prts tags . SIS.sis n_outer_prts RMSMC.handleParticle  (PrtState (Addr 0 "" 0) 0 Map.empty)
+  handleResample mh_steps n_inner_prts tags . SIS.sis n_outer_prts RMSMC.handleParticle  (PrtState (Addr "" 0) 0 Map.empty)
 
 {- | A handler for resampling particles according to their normalized log-likelihoods,
      and then pertrubing their sample traces using PMMH.

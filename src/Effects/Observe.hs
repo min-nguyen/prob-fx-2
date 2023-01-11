@@ -20,7 +20,7 @@ data Observe a where
 observe :: (Member Observe es, PrimDist d a)
        => d -> a -> Prog es a
 observe d y = call (Observe d y α)
-  where α = Addr 0 "" 0
+  where α = Addr "" 0
 
 -- | For projecting and then successfully pattern matching against @Observe@
 pattern ObsPrj :: (Member Observe es) => (Distribution d, x ~ Base d) => d -> x -> Addr -> EffectSum es x

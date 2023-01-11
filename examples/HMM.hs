@@ -22,7 +22,6 @@ import Effects.Dist (Addr(..))
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
 import Inference.MC.LW as LW ( lw )
 import Inference.MC.MH as MH ( mh )
-import Inference.MC.Gibbs as Gibbs ( gibbs )
 import Inference.MC.SMC as SMC ( smc )
 import Inference.MC.SIM as SIM ( simulate )
 import Inference.MC.RMSMC as RMSMC ( rmsmc )
@@ -191,26 +190,6 @@ mhHMM mh_samples hmm_length = do
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
   -- Handle the Writer effect and then run MH inference
   env_outs <- MH.mh mh_samples (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
-  -- Get the trace of sampled transition and observation parameters
-  let trans_ps    = concatMap (get #trans_p) env_outs
-      obs_ps      = concatMap (get #obs_p) env_outs
-  pure (trans_ps, obs_ps)
-
--- | Metropolis-Hastings inference over a HMM
-gibbsHMM
-  -- | number of MH iterations
-  :: Int
-  -- | number of HMM nodes
-  -> Int
-  -- | [(transition parameter, observation parameter)]
-  -> Sampler ([Double], [Double])
-gibbsHMM mh_samples hmm_length = do
-  -- Simulate a trace of observations from the HMM
-  ys <- simHMM hmm_length
-  -- Specify a model environment containing those observations
-  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
-  -- Handle the Writer effect and then run MH inference
-  env_outs <- Gibbs.gibbs mh_samples (hmm hmm_length 0) env_in
   -- Get the trace of sampled transition and observation parameters
   let trans_ps    = concatMap (get #trans_p) env_outs
       obs_ps      = concatMap (get #obs_p) env_outs

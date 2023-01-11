@@ -10,6 +10,7 @@ import LDA
 import Radon
 import HMM
 import GMM
+import qualified VIExamples
 import Sampler
 import System.Environment (getArgs)
 
@@ -26,7 +27,6 @@ parseArgs cmd = case cmd of
   "lwLinRegr"           -> sampleIOFixed (lwLinRegr 1000 10)>>= printThenWrite
   "imLinRegr"           -> sampleIOFixed (imLinRegr 100 50) >>= printThenWrite
   "mhLinRegr"           -> sampleIOFixed (mhLinRegr 10000 50) >>= printThenWrite
-  "gibbsLinRegr"        -> sampleIOFixed (gibbsLinRegr 100 50) >>= printThenWrite
   "smcLinRegr"          -> sampleIOFixed (smcLinRegr 120 50) >>= printThenWrite
   "rmsmcLinRegr"        -> sampleIOFixed (rmsmcLinRegr 20 200 20) >>= printThenWrite
   "pmmhLinRegr"         -> sampleIOFixed (pmmhLinRegr 1000 20 30) >>= printThenWrite
@@ -35,6 +35,9 @@ parseArgs cmd = case cmd of
   "inviLinRegr"         -> sampleIOFixed (inviLinRegr 300 40 8) >>= printThenWrite
   "mleLinRegr"          -> sampleIOFixed (mleLinRegr 276 40 8) >>= printThenWrite
   "mapLinRegr"          -> sampleIOFixed (mapLinRegr 276 40 8) >>= printThenWrite
+
+
+  "icfp_bbviLinRegr"    -> sampleIOFixed (VIExamples.bbviLinRegr 200 40 8) >>= printThenWrite
 
   "simLogRegrOnce"      -> sampleIOFixed (simLogRegrOnce 50) >>= printThenWrite
   "lwLogRegrOnce"       -> sampleIOFixed (lwLogRegrOnce 10 10) >>= printThenWrite
@@ -47,7 +50,6 @@ parseArgs cmd = case cmd of
   "simHMM"              -> sampleIOFixed (simHMM_WR 20) >>= printThenWrite
   "lwHMM"               -> sampleIOFixed (lwHMM 200 20) >>= printThenWrite
   "mhHMM"               -> sampleIOFixed (mhHMM 1000 20) >>= printThenWrite
-  "gibbsHMM"            -> sampleIOFixed (gibbsHMM 1000 20) >>= printThenWrite
   "smcHMM"              -> sampleIOFixed (smcHMM 200 30) >>= printThenWrite
   "rmsmcHMM"            -> sampleIOFixed (rmsmcHMM 50 50 30) >>= printThenWrite
   "pmmhHMM"             -> sampleIOFixed (pmmhHMM 1000 5 20) >>= printThenWrite

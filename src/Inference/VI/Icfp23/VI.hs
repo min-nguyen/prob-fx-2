@@ -23,11 +23,10 @@ import Control.Monad ( replicateM, (>=>), mapAndUnzipM )
 import Effects.Dist
 import Model
 import Effects.Lift
-import Effects.EnvRW ( EnvRW )
+import Effects.EnvRW ( EnvRW, handleEnvRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env, union )
 import LogP ( LogP(..), normaliseLogPs )
-import Model
 import PrimDist
 import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )
 import Sampler
@@ -40,22 +39,24 @@ import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
 import Inference.MC.LW (joint)
 
+type VIGuide env a    = Prog [EnvRW env, Param , Sample] a
+type VIModel env a  = Prog [EnvRW env, Observe, Sample] a
+
 data GradDescent a where
   GradDescent :: [LogP] -> [GradTrace] -> ParamTrace -> GradDescent ParamTrace
 
-type GuideHandler env a = Guide  a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
-type ModelHandler env a = ProbProg  a -> Env env    -> Sampler (a, LogP)
+type GuideHandler env a = VIGuide env a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
+type ModelHandler env a = VIModel env a -> Env env    -> Sampler (a, LogP)
 
 viLoop :: (HasSampler fs)
   => Int                                          -- ^ number of optimisation steps (T)
   -> Int                                          -- ^ number of samples to estimate the gradient over (L)
-  -> Guide  a -> GuideHandler env a
-  -> ProbProg  b -> ModelHandler env b
+  -> VIGuide env a -> GuideHandler env a
+  -> VIModel env b -> ModelHandler env b
   -> ParamTrace                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Prog (GradDescent : fs) ParamTrace      -- ^ final guide parameters λ_T
 viLoop num_timesteps num_samples guide hdlGuide model hdlModel guideParams_0 = do
-  foldr (>=>) pure [viStep num_samples  hdlGuide  hdlModel guide model  | t <- [1 .. num_timesteps]]
-    guideParams_0
+  foldr (>=>) pure [viStep num_samples  hdlGuide  hdlModel guide model  | t <- [1 .. num_timesteps]] guideParams_0
 
 {- | 1. For L iterations,
         a) Generate values x from the guide Q(X; λ), accumulating:
@@ -69,7 +70,7 @@ viLoop num_timesteps num_samples guide hdlGuide model hdlModel guideParams_0 = d
 
 viStep :: (HasSampler fs)
   => Int
-  -> GuideHandler env a -> ModelHandler env b -> Guide a -> ProbProg b
+  -> GuideHandler env a -> ModelHandler env b -> VIGuide env a -> VIModel env b
   -> ParamTrace                            -- ^ guide parameters λ_t
   -> Prog (GradDescent : fs) ParamTrace    -- ^ next guide parameters λ_{t+1}
 viStep num_samples hdlGuide hdlModel guide model  params = do
@@ -93,13 +94,13 @@ viStep num_samples hdlGuide hdlModel guide model  params = do
       3. The gradients of all proposal distributions Q(λ) at X=x:
             δlog(Q(X=x; λ)),     where Q is learnable
  -}
-handleGuide :: Guide  a -> ParamTrace -> Sampler ((a, LogP), GradTrace)
-handleGuide guide params =
-  (SIM.defaultSample . handleParams . weighGuide . updateParams params) guide
+handleGuide :: Env env -> VIGuide env a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
+handleGuide env guide params =
+  (SIM.defaultSample . handleParams . weighGuide . updateParams params . handleEnvRW env) guide
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
-collectParams :: Guide  a -> Sampler ParamTrace
-collectParams = SIM.defaultSample . (fst <$>) . handleParams . loop Trace.empty
+collectParams :: Env env -> VIGuide env a -> Sampler ParamTrace
+collectParams env = SIM.defaultSample . (fst <$>) . handleParams . loop Trace.empty . handleEnvRW env
   where
   loop :: ParamTrace -> Prog (Param : es) a -> Prog (Param : es) ParamTrace
   loop params (Val _)   = pure params
@@ -143,14 +144,6 @@ handleParams = loop Trace.empty where
       let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
       (loop grads' . k) x
     Left op' -> Op op' (loop grads . k)
-
-{- | Execute the model P under an environment of samples X=x from the guide and observed values Y=y, producing:
-       1. An output environment which we discard
-       2. The total log-weight of all @Sample@ and @Observe@ operations: log(P(X=x, Y=y))
--}
-handleModel :: Model env [EnvRW env, Dist] a -> Env env -> Sampler ((a, Env env), LogP)
-handleModel model env  =
-  (SIM.defaultSample . SIM.defaultObserve . joint 0 . handleCore env) model
 
 {- | Update each variable v's parameters λ using their estimated ELBO gradients E[δelbo(v)].
         λ_{t+1} = λ_t + η_t * E[δelbo(v)]

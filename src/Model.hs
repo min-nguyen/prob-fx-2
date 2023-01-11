@@ -14,7 +14,6 @@
 
 module Model (
     Model(..)
-  , Guide
   , ProbProg
   , ProbSig
   , handleCore
@@ -93,7 +92,7 @@ instance Monad (Model env es) where
 
 {- | Probabilistic programs are those with effects for conditioning and sampling.
 -}
-type Guide  a    = Prog [Param , Sample ] a
+
 type ProbProg a = Prog [Observe, Sample] a
 type ProbSig es = es ~ [Observe, Sample]
 
