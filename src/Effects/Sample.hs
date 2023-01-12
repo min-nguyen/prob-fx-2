@@ -24,10 +24,6 @@ data Sample a where
           -> Addr           -- ^ address of @Sample@ operation
           -> Sample a
 
-sample :: forall d a es. (Member Sample es, PrimDist d a)
-       => d -> Addr -> Prog es a
-sample d α = call (Sample d α)
-
 -- | For projecting and then successfully pattern matching against @Sample@
 pattern SampPrj :: (Member Sample es) => PrimDist d a => d -> Addr -> EffectSum es a
 pattern SampPrj d α <- (prj -> Just (Sample d α))
@@ -36,6 +32,14 @@ pattern SampPrj d α <- (prj -> Just (Sample d α))
 pattern SampDis :: (Show a) => PrimDist d a => d -> Addr -> EffectSum (Sample : es) a
 pattern SampDis d α <- (discharge -> Right (Sample d α))
 
+-- | For directly calling Sample with a known runtime address
+sample :: forall d a es. (Member Sample es, PrimDist d a)
+       => d -> Addr -> Prog es a
+sample d α = call (Sample d α)
+
+-- | For directly calling Sample for a variable in the model environment.
+--   The attempts to first use an existing sampled value in the input environment.
+--   The sampled value is written to an output environment.
 sample' :: forall env es x d a. (Observable env x a, Members [EnvRW env, Sample] es,  PrimDist d a)
   => d -> (Var x, Int) -> Prog es a
 sample' d (varx, idx) = do

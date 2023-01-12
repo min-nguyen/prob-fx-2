@@ -4,6 +4,7 @@
 
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes #-}
 
 {- | Particle Independence Metropolis.
 -}
@@ -28,7 +29,7 @@ import           Inference.MC.SIS as SIS
 import           Inference.MC.SMC as SMC
 import qualified Inference.MC.IM as IM
 
-{- | Top-level wrapper for PMMH inference.
+{- | Top-level wrapper for PIM inference.
 -}
 pim :: forall env vars a. (env `ContainsVars` vars)
   => Int                                            -- ^ number of MH steps
@@ -51,9 +52,7 @@ pim mh_steps n_prts model env_in obs_vars = do
 -}
 handleModel ::
      Int                                          -- ^ number of particles
-  -> ProbProg a                                   -- ^ probabilistic program
-  -> Trace                                       -- ^ proposed initial log-prob + sample trace
-  -> Sampler ((a, LogP), Trace)                  -- ^ proposed final log-prob + sample trace
+  -> ModelHandler LogP
 handleModel n prog τθ  = do
   let handleParticle :: ParticleHandler LogP
       handleParticle = fmap fst . reuseSamples τθ . suspend
