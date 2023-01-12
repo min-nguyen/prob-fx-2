@@ -17,7 +17,7 @@ module Inference.MC.SMC where
 import           Control.Monad ( replicateM )
 import qualified Data.Vector as Vector
 import           Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe (..), Sample )
-import           Effects.Lift ( lift, liftPrint, handleM, HasSampler)
+import           Effects.Lift ( liftPrint, handleM, HasSampler)
 import           Effects.EnvRW ( EnvRW, handleEnvRW )
 import           Env ( Env )
 import           LogP ( LogP(..), logMeanExp )
@@ -70,7 +70,7 @@ handleResampleMul (Val x) = Val x
 handleResampleMul (Op op k) = case discharge op of
   Right (Resample (prts, ρs) _) -> do
     -- | Select particles to continue with
-    idxs <- lift (replicateM (length ρs) (Sampler.sampleCategorical (Vector.fromList (map exp ρs))))
+    idxs <- call (replicateM (length ρs) (Sampler.sampleCategorical (Vector.fromList (map exp ρs))))
     let prts_res  = map (prts !! ) idxs
         ρs_res    = map (ρs  !! ) idxs
     (handleResampleMul . k) (prts_res, ρs_res)
@@ -98,7 +98,7 @@ handleResampleSys (Op op k) = case discharge op of
     -- | Get the weights for each particle
     let ps = map exp ρs
     -- | Select particles to continue with
-    u <- lift Sampler.sampleRandom
+    u <- call Sampler.sampleRandom
     let prob i = ps !! i
         n      = length ps
         inc = 1 / fromIntegral n

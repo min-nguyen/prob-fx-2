@@ -11,7 +11,6 @@
 
 module Effects.Lift (
     HasSampler
-  , lift
   , random'
   , randomFrom'
   , liftPrint
@@ -24,20 +23,17 @@ import Sampler
 type HasSampler es = LastMember Sampler es
 
 random' :: HasSampler es => Prog es Double
-random' = lift sampleRandom
+random' = call sampleRandom
 
 randomFrom' :: HasSampler es => [a] -> Prog es a
-randomFrom' = lift . sampleRandomFrom
+randomFrom' = call . sampleRandomFrom
 
 -- | Wrapper function for calling @Lift@ as the last effect
-lift :: LastMember m es => m a -> Prog es a
-lift = call
-
 liftPrint :: LastMember Sampler es => Show a => a -> Prog es ()
-liftPrint = lift . liftIO . print
+liftPrint = call . liftIO . print
 
 liftPutStrLn :: LastMember Sampler es => String -> Prog es ()
-liftPutStrLn = lift . liftIO . putStrLn
+liftPutStrLn = call . liftIO . putStrLn
 
 -- | Handle @Lift m@ as the last effect
 handleM :: Monad m => Prog '[m] w -> m w

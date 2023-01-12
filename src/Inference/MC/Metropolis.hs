@@ -24,7 +24,7 @@ import Model ( Model, handleCore, ProbProg )
 import Effects.EnvRW ( EnvRW )
 import Env ( ContainsVars(..), Vars, Env )
 import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr )
-import Effects.Lift ( lift, handleM, HasSampler )
+import Effects.Lift ( handleM, HasSampler )
 import qualified Inference.MC.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
 
@@ -56,7 +56,7 @@ metropolis :: (HasSampler fs)
    -> Prog (Accept p : fs) [((a, p), Trace)]                            -- ^ trace of accepted outputs
 metropolis n τ_0 hdlModel prog_0 = do
   -- | Perform initial run of mh
-  x0 <- lift (hdlModel prog_0 τ_0)
+  x0 <- call (hdlModel prog_0 τ_0)
   -- | A function performing n mhSteps using initial mh_s. The most recent samples are at the front of the trace.
   foldl (>=>) pure (replicate n (metroStep prog_0 hdlModel )) [x0]
 
@@ -73,7 +73,7 @@ metroStep prog_0 hdlModel markov_chain = do
   -- | Construct an *initial* proposal
   τ_0            <- call (Propose τ :: Accept p Trace)
   -- | Execute the model under the initial proposal to return the *final* proposal
-  ((r', p'), τ') <- lift (hdlModel prog_0 τ_0)
+  ((r', p'), τ') <- call (hdlModel prog_0 τ_0)
   -- | Compute acceptance ratio
   b              <- call (Accept p p')
   if b then pure (((r', p'), τ'):markov_chain)

@@ -81,7 +81,7 @@ handleResample mh_steps n_inner_prts θ = loop where
   loop (Op op k) = case discharge op of
     Right (Resample (prts, ss) prog_0) ->
       do  -- | Resample the particles according to the indexes returned by the SMC resampler
-          idxs <- lift $ SMC.resampleMul (map particleLogProb ss)
+          idxs <- call $ SMC.resampleMul (map particleLogProb ss)
           let resampled_ss    = map (ss !! ) idxs
           -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head')
               resampled_α       = (particleObsAddr . head) resampled_ss
@@ -91,7 +91,7 @@ handleResample mh_steps n_inner_prts θ = loop where
               partial_model     = suspendAt resampled_α prog_0
           -- | Perform PMMH using each resampled particle's sample trace and get the most recent PMMH iteration.
           pmmh_trace <- mapM ( fmap head
-                             . lift
+                             . call
                              . flip (PMMH.pm mh_steps n_inner_prts) partial_model
                              ) resampled_τθs
           {- | Get:

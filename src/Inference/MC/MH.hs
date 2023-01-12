@@ -30,7 +30,7 @@ import           PrimDist
 import           Model ( Model, handleCore, ProbProg )
 import           Effects.EnvRW ( EnvRW )
 import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), pattern SampPrj, pattern ObsPrj )
-import           Effects.Lift ( lift, handleM, liftPutStrLn, HasSampler, random', randomFrom' )
+import           Effects.Lift ( handleM, liftPutStrLn, HasSampler, random', randomFrom' )
 import           Inference.MC.SIM
 import           Inference.MC.Metropolis as Metropolis
 import           Sampler ( Sampler, sampleRandom, sampleUniformD, sampleRandomFrom )
@@ -117,7 +117,8 @@ handleModel prog τ0 = (reuseSamples τ0 . defaultObserve . traceLP Map.empty) p
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}
-traceLP :: LPTrace -> ProbProg a -> ProbProg (a, LPTrace)
+traceLP :: Members [Observe, Sample] es
+  => LPTrace -> Prog es a -> Prog es (a, LPTrace)
 traceLP ρ (Val x)   = pure (x, ρ)
 traceLP ρ (Op op k) = case op of
   ObsPrj d y α   -> Op op (\x -> traceLP (Map.insert α (logProb d x) ρ) $ k x)

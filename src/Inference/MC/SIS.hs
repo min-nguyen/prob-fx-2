@@ -15,7 +15,7 @@ import           Control.Monad ( mapAndUnzipM )
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Effects.Dist ( Addr, Observe (Observe), Sample, pattern ObsPrj )
-import           Effects.Lift ( handleM, lift, HasSampler )
+import           Effects.Lift ( handleM, HasSampler )
 import           LogP ( LogP, logMeanExp )
 import           Prog ( Prog (..), weakenProg, Member, discharge, call, weaken, LastMember, Members )
 import           Sampler
@@ -74,7 +74,7 @@ pfilter :: forall p fs a. HasSampler fs
   -> Prog (Resample p  : fs) [(a, p)]                -- ^ final particle results and corresponding contexts
 pfilter hdlParticle prog_0 (prts, ρs) = do
   -- | Run particles to next checkpoint and accumulate their contexts
-  (prts', partialρs) <- lift (mapAndUnzipM hdlParticle prts)
+  (prts', partialρs) <- call (mapAndUnzipM hdlParticle prts)
   ρs'                <- call (Accum ρs partialρs)
   -- | Check termination status of particles
   case foldVals prts' of

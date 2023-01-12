@@ -112,7 +112,7 @@ handleResample mh_steps tags = loop where
   loop (Op op k) = case discharge op of
     Right (Resample (_, σs) prog_0) ->
       do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
-          idxs <- lift $ SMC.resampleMul (map particleLogProb σs)
+          idxs <- call $ SMC.resampleMul (map particleLogProb σs)
           let σs_res          = map (σs !! ) idxs
           -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head'), and get the sample trace of each resampled particle
               (α, _, τs_res)  = unpack σs_res
