@@ -51,7 +51,7 @@ smc2 n_outer_prts mh_steps n_inner_prts model env obs_vars = do
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
   -- | Run SMC2
-  smc2_trace <- handleLift (smc2Internal n_outer_prts mh_steps n_inner_prts tags prog_0)
+  smc2_trace <- handleM (smc2Internal n_outer_prts mh_steps n_inner_prts tags prog_0)
   -- Return the accepted model environments
   pure (map (snd . fst) smc2_trace)
 

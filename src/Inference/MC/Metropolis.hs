@@ -24,7 +24,7 @@ import Model ( Model, handleCore, ProbProg )
 import Effects.EnvRW ( EnvRW )
 import Env ( ContainsVars(..), Vars, Env )
 import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr )
-import Effects.Lift ( Lift, lift, handleLift, HasSampler )
+import Effects.Lift ( lift, handleM, HasSampler )
 import qualified Inference.MC.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
 

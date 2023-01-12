@@ -83,7 +83,7 @@ rmpfilter ::
   -> ProbProg a                                   -- ^ probabilistic program
   -> Sampler [(a, PrtState)]                      -- ^ final particle results and contexts
 rmpfilter n_prts mh_steps tags model =
-  (handleLift . handleResample mh_steps tags . pfilter handleParticle model) (prts, ps)
+  (handleM . handleResample mh_steps tags . pfilter handleParticle model) (prts, ps)
   where (prts, ps) = unzip $ replicate n_prts (model, PrtState (Addr "" 0) 0  Map.empty)
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint

@@ -24,7 +24,7 @@ import Model ( Model, handleCore, ProbProg )
 import Effects.EnvRW ( EnvRW )
 import Env ( Env )
 import Effects.Dist ( Dist, pattern SampPrj, pattern ObsPrj )
-import Effects.Lift ( Lift, lift, handleLift, liftPutStrLn, HasSampler, random' )
+import Effects.Lift ( lift, handleM, liftPutStrLn, HasSampler, random' )
 import Sampler ( Sampler, sampleRandom )
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.LW as LW
@@ -43,7 +43,7 @@ im n model env_in   = do
   -- | Handle model to probabilistic program
   let prog_0  = handleCore env_in model
       τ_0     = Map.empty
-  rwm_trace <- (handleLift . handleAccept . Metropolis.metropolis n τ_0 handleModel) prog_0
+  rwm_trace <- (handleM . handleAccept . Metropolis.metropolis n τ_0 handleModel) prog_0
   pure (map (snd . fst . fst) rwm_trace)
 
 {- | Handler for one iteration of IM.

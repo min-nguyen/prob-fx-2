@@ -49,7 +49,7 @@ bbvi :: forall env a b.
 bbvi num_timesteps num_samples guide model env  = do
   λ_0 <- VI.collectParams env guide
   liftIO (print λ_0)
-  (handleLift . VI.handleLRatioGradDescent)
+  (handleM . VI.handleLRatioGradDescent)
     $ VI.viLoop num_timesteps num_samples guide (handleGuide env) model handleModel λ_0
 
 handleGuide :: Env env -> VIGuide env a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)

@@ -20,7 +20,7 @@ module Inference.MC.SIM
   where
 
 import           Effects.Dist ( Sample(..), Observe(..), Dist )
-import           Effects.Lift ( handleLift, Lift, lift )
+import           Effects.Lift ( handleM, lift )
 import           Effects.EnvRW ( EnvRW )
 import           Env ( Env )
 import           Model ( handleCore, Model )

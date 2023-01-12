@@ -45,12 +45,12 @@ pmmh mh_steps n_prts model env_in obs_vars = do
   -- | Initialise sample trace to include only parameters
   (_, τ)       <- (reuseSamples Map.empty . defaultObserve) prog_0
   let τθ       = filterTrace θ τ
-  pmmh_trace <- (handleLift . handleAccept . metropolis mh_steps τθ (handleModel n_prts)) prog_0
+  pmmh_trace <- (handleM . handleAccept . metropolis mh_steps τθ (handleModel n_prts)) prog_0
   pure (map (snd . fst . fst) pmmh_trace)
 
 pm :: Int -> Int -> Trace -> ProbProg a -> Sampler [((a, LogP), Trace)]
 pm m n τθ model = do
-  (handleLift . handleAccept . metropolis m τθ (handleModel n)) model
+  (handleM . handleAccept . metropolis m τθ (handleModel n)) model
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}
@@ -60,7 +60,7 @@ handleModel ::
 handleModel n prog τθ  = do
   let handleParticle :: ParticleHandler LogP
       handleParticle = fmap fst . reuseSamples τθ . suspend
-  (as, ρs) <- (handleLift . handleResampleMul . fmap unzip . pfilter handleParticle prog) ((unzip . replicate n) (prog, 0))
+  (as, ρs) <- (handleM . handleResampleMul . fmap unzip . pfilter handleParticle prog) ((unzip . replicate n) (prog, 0))
   let a   = head as
       ρ   = logMeanExp ρs
   pure ((a, ρ), τθ)

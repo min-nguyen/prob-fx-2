@@ -10,22 +10,18 @@
 -}
 
 module Effects.Lift (
-    Lift(..)
-  , HasSampler
+    HasSampler
   , lift
   , random'
   , randomFrom'
   , liftPrint
   , liftPutStrLn
-  , handleLift) where
+  , handleM) where
 
 import Prog ( call, Member(prj), LastMember, Prog(..) )
 import Sampler
 
--- | Lift a monadic computation @m a@ into the effect @Lift m@
-newtype Lift m a = Lift (m a)
-
-type HasSampler es = LastMember (Lift Sampler) es
+type HasSampler es = LastMember Sampler es
 
 random' :: HasSampler es => Prog es Double
 random' = lift sampleRandom
@@ -34,19 +30,19 @@ randomFrom' :: HasSampler es => [a] -> Prog es a
 randomFrom' = lift . sampleRandomFrom
 
 -- | Wrapper function for calling @Lift@ as the last effect
-lift :: LastMember (Lift m) es => m a -> Prog es a
-lift = call . Lift
+lift :: LastMember m es => m a -> Prog es a
+lift = call
 
-liftPrint :: LastMember (Lift Sampler) es => Show a => a -> Prog es ()
+liftPrint :: LastMember Sampler es => Show a => a -> Prog es ()
 liftPrint = lift . liftIO . print
 
-liftPutStrLn :: LastMember (Lift Sampler) es => String -> Prog es ()
+liftPutStrLn :: LastMember Sampler es => String -> Prog es ()
 liftPutStrLn = lift . liftIO . putStrLn
 
 -- | Handle @Lift m@ as the last effect
-handleLift :: Monad m => Prog '[Lift m] w -> m w
-handleLift (Val x) = return x
-handleLift (Op u q) = case prj u of
-     Just (Lift m) -> m >>= handleLift . q
+handleM :: Monad m => Prog '[m] w -> m w
+handleM (Val x) = return x
+handleM (Op u q) = case prj u of
+     Just m  -> m >>= handleM . q
      Nothing -> error "Impossible: Nothing cannot occur"
 

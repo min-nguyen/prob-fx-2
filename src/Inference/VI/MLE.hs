@@ -42,7 +42,7 @@ mle num_timesteps num_samples guide model env = do
   -- | Set up a empty dummy guide Q to return the original input model environment
   λ_0 <- collectParams env guide
   -- | Run MLE for T optimisation steps
-  (handleLift . handleNormGradDescent) $
+  (handleM . handleNormGradDescent) $
       viLoop num_timesteps num_samples guide (handleGuide env) model handleModel λ_0
 
 handleGuide :: Env env -> VIGuide env a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)

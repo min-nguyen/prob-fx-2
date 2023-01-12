@@ -30,7 +30,7 @@ import           PrimDist
 import           Model ( Model, handleCore, ProbProg )
 import           Effects.EnvRW ( EnvRW )
 import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), pattern SampPrj, pattern ObsPrj )
-import           Effects.Lift ( Lift, lift, handleLift, liftPutStrLn, HasSampler, random', randomFrom' )
+import           Effects.Lift ( lift, handleM, liftPutStrLn, HasSampler, random', randomFrom' )
 import           Inference.MC.SIM
 import           Inference.MC.Metropolis as Metropolis
 import           Sampler ( Sampler, sampleRandom, sampleUniformD, sampleRandomFrom )
@@ -55,7 +55,7 @@ mh n model env_in obs_vars  = do
       τ_0    = Map.empty
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
-  mh_trace <- (handleLift . handleAccept tags α_0 . metropolis n τ_0 handleModel) prog_0
+  mh_trace <- (handleM . handleAccept tags α_0 . metropolis n τ_0 handleModel) prog_0
   pure (map (snd . fst . fst) mh_trace)
 
 {- | MH inference on a probabilistic program.

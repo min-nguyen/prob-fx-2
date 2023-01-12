@@ -19,7 +19,7 @@ module Inference.MC.LW
 import Data.Bifunctor ( Bifunctor(first), second, bimap )
 import Control.Monad ( replicateM )
 import Effects.Dist ( Sample, Observe(..), Dist, pattern ObsPrj, pattern SampPrj )
-import Effects.Lift ( handleLift, Lift )
+import Effects.Lift ( handleM )
 import Effects.EnvRW ( EnvRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env )

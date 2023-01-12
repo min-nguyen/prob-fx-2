@@ -17,7 +17,7 @@ module Inference.MC.SMC where
 import           Control.Monad ( replicateM )
 import qualified Data.Vector as Vector
 import           Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe (..), Sample )
-import           Effects.Lift ( Lift, lift, liftPrint, handleLift, HasSampler)
+import           Effects.Lift ( lift, liftPrint, handleM, HasSampler)
 import           Effects.EnvRW ( EnvRW, handleEnvRW )
 import           Env ( Env )
 import           LogP ( LogP(..), logMeanExp )
@@ -47,7 +47,7 @@ smc n_prts model env_in = do
 -}
 mulpfilter :: Int -> ProbProg a -> Sampler [(a, LogP)]
 mulpfilter n_prts model =
- (handleLift . handleResampleMul . pfilter handleParticle model) (prts, ρs)
+ (handleM . handleResampleMul . pfilter handleParticle model) (prts, ρs)
  where (prts, ρs) = (unzip . replicate n_prts) (model, 0)
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
