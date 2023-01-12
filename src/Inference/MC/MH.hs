@@ -22,7 +22,7 @@ import qualified Data.Map as Map
 import           Data.Set ((\\))
 import qualified Data.Set as Set
 import           Data.Maybe ( fromJust )
-import           Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg, weaken )
+import           Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg, weaken, Handler )
 import           Env ( ContainsVars(..), Vars, Env )
 import           Trace ( Trace, LPTrace, filterTrace )
 import           LogP ( LogP )
@@ -77,8 +77,7 @@ ssmh n τ_0 α_0 tags = handleAccept tags α_0 . metropolis n τ_0 handleModel
 handleAccept :: (HasSampler fs)
   => [Tag]
   -> Addr
-  -> Prog (Accept LPTrace : fs) a
-  -> Prog fs a
+  -> Handler (Accept LPTrace) fs a a
 handleAccept tags α (Val x)   = pure x
 handleAccept tags α (Op op k) = case discharge op of
   Right (Propose τ)

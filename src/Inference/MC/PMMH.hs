@@ -4,6 +4,7 @@
 
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes #-}
 
 {- | Particle Marginal Metropolis-Hastings inference.
 -}
@@ -55,11 +56,9 @@ pm m n τθ model = do
 -}
 handleModel ::
      Int                                          -- ^ number of particles
-  -> ProbProg a                                   -- ^ probabilistic program
-  -> Trace                                       -- ^ proposed initial log-prob + sample trace
-  -> Sampler ((a, LogP), Trace)                  -- ^ proposed final log-prob + sample trace
+  -> ModelHandler LogP
 handleModel n prog τθ  = do
-  let handleParticle :: ProbProg a -> Sampler (ProbProg a, LogP)
+  let handleParticle :: ParticleHandler LogP
       handleParticle = fmap fst . reuseSamples τθ . suspend
   (as, ρs) <- (handleLift . handleResampleMul . fmap unzip . pfilter handleParticle prog) ((unzip . replicate n) (prog, 0))
   let a   = head as
@@ -69,7 +68,7 @@ handleModel n prog τθ  = do
 {- | An acceptance mechanism for PMMH.
 -}
 handleAccept :: HasSampler fs
-  => Prog (Accept LogP : fs) a -> Prog fs a
+  => Handler (Accept LogP) fs a a
 handleAccept (Val x)   = pure x
 handleAccept (Op op k) = case discharge op of
   Right (Propose τθ)

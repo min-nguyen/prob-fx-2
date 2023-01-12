@@ -91,11 +91,11 @@ rmpfilter n_prts mh_steps tags model =
        1. the rest of the computation
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
-handleParticle :: ProbProg a -> Sampler (ProbProg a, PrtState)
+handleParticle :: ParticleHandler PrtState
 handleParticle = fmap asPrtTrace . reuseSamples Map.empty . suspendα where
   asPrtTrace ((prt, ρ, α), τ) = (prt, PrtState ρ α τ)
 
-suspendα :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, Addr, LogP)
+suspendα :: Handler Observe es a (Prog (Observe : es) a, Addr, LogP)
 suspendα (Val x)   = pure (Val x, Addr "" 0, 0)
 suspendα (Op op k) = case discharge op of
   Right (Observe d y α) -> Val (k y, α, logProb d y)
@@ -106,8 +106,7 @@ suspendα (Op op k) = case discharge op of
 handleResample :: (HasSampler fs)
   => Int                                          -- ^ number of MH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> Prog (Resample PrtState : fs) a
-  -> Prog fs a
+  -> Handler (Resample PrtState) fs a a
 handleResample mh_steps tags = loop where
   loop (Val x) = Val x
   loop (Op op k) = case discharge op of

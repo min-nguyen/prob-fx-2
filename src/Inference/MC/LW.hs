@@ -27,7 +27,7 @@ import LogP ( LogP )
 import Inference.MC.SIM as SIM (defaultSample)
 import Model ( handleCore, Model, ProbProg )
 import PrimDist ( logProb )
-import Prog ( discharge, Prog(..) )
+import Prog ( discharge, Prog(..), Handler )
 import Sampler ( Sampler )
 
 -- | Top-level wrapper for Likelihood-Weighting (LW) inference
@@ -54,10 +54,7 @@ runLW = SIM.defaultSample . likelihood 0
 
 -- | Handle each @Observe@ operation by accumulating the log-likelihood P(Y | X)
 likelihood
-  :: LogP
-  -> Prog (Observe : es) a
-  -- | (model output, final likelihood weighting)
-  -> Prog es (a, LogP)
+  :: LogP -> Handler Observe es a (a, LogP)
 likelihood lρ (Val x) = return (x, lρ)
 likelihood lρ (Op u k) = case discharge u of
     Right (Observe d y α) -> do

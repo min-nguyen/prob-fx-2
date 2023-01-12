@@ -16,7 +16,7 @@ import qualified Data.Map as Map
 import Data.Set ((\\))
 import qualified Data.Set as Set
 import Data.Maybe ( fromJust )
-import Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg )
+import Prog
 import Trace ( Trace, LPTrace, filterTrace )
 import LogP ( LogP )
 import PrimDist

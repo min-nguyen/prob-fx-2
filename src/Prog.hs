@@ -19,6 +19,7 @@ module Prog (
   -- * Effectful program
     Prog(..)
   , EffectSum
+  , Handler
   , Member(..)
   , Members
   , UniqueMember
@@ -118,11 +119,13 @@ run _ = error "Prog.run isn't defined for non-pure computations"
 call :: Member e es => e a -> Prog es a
 call e = Op (inj e) Val
 
+-- | Handler abstraction
+type Handler e es a b = Prog (e : es) a -> Prog es b
+
 handle :: s
        -> (forall x. s -> e x -> (s -> x -> Prog es b) -> Prog es b)
        -> (s -> a -> Prog es b)
-       -> Prog (e : es) a
-       -> Prog es b
+       -> Handler e es a b
 handle s _   hval  (Val a)   = hval s a
 handle s hop hval  (Op op k) = case discharge op of
   Right  op' -> hop s op' k'

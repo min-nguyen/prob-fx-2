@@ -55,7 +55,7 @@ handleModel ::
   -> Trace                                       -- ^ proposed initial log-prob + sample trace
   -> Sampler ((a, LogP), Trace)                  -- ^ proposed final log-prob + sample trace
 handleModel n prog τθ  = do
-  let handleParticle :: ProbProg a -> Sampler (ProbProg a, LogP)
+  let handleParticle :: ParticleHandler LogP
       handleParticle = fmap fst . reuseSamples τθ . suspend
   (as, ρs) <- (fmap unzip . handleLift . handleResampleMul . pfilter handleParticle prog) ((unzip . replicate n) (prog, 0))
   return ((head as, logMeanExp ρs), τθ)
