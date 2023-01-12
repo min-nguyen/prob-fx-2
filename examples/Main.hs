@@ -25,6 +25,9 @@ parseArgs cmd = case cmd of
   "bbviHMM"        -> sampleIOFixed (VIExamples.bbviHMM 1000 50 20) >>= printThenWrite
   "mleHMM"         -> sampleIOFixed (VIExamples.mleHMM 1000 50 20) >>= printThenWrite
   "mapHMM"         -> sampleIOFixed (VIExamples.mapHMM 1000 50 20) >>= printThenWrite
+  "bbviLDA"        -> sampleIOFixed (VIExamples.bbviLDA 200 20 50) >>= printThenWrite
+  "mleLDA"         -> sampleIOFixed (VIExamples.mleLDA 200 20 50) >>= printThenWrite
+  "mapLDA"         -> sampleIOFixed (VIExamples.mapLDA 200 20 50) >>= printThenWrite
 
   "simLinRegrOnce"      -> sampleIOFixed (simLinRegrOnce 50) >>= printThenWrite
   "lwLinRegrOnce"       -> sampleIOFixed (lwLinRegrOnce 10 10) >>= printThenWrite

@@ -35,6 +35,7 @@ import Model
 import Vec (Vec, TypeableSNatI)
 import qualified Vec as Vec
 import Data.Proxy
+import qualified LDA
 
 
 {- | Linear regression environment.
@@ -159,25 +160,75 @@ mapHMM t_steps l_samples hmm_length = do
 topicModel :: forall m n env ts. (TypeableSNatI m, TypeableSNatI n,
                Observable env "φ" (Vec m Double),
                Observable env "θ" (Vec n Double),
-               Observable env "w" String)
+               Observable env "z" Int)
   -- | vocabulary
   => Vec m String
   -- | number of topics
   -> SNat n
   -- | number of words
-  -> Int
+  -> [String]
   -- | generated words
-  -> VIModel env [String]
-topicModel vocab n_topics n_words = do
+  -> VIModel env (Vec n (Vec m Double))
+topicModel vocab n_topics ws = do
   -- Generate distribution over words for each topic
-  let m :: Int = fromIntegral $ reflect (Proxy @m)
-      n :: Int = fromIntegral $ reflect (Proxy @n)
   let idxs = Vec.iterate (snat @n) (+1) (0 :: Int)
   topic_word_ps <- Vec.mapM (\idx -> sample' @env (mkDirichlet (Vec.replicate (snat @m) 1)) (#φ, idx)
                             ) idxs
+  let topic_word_ps' = (map Vec.toList . Vec.toList) topic_word_ps
   -- -- Generate distribution over topics for a given document
-  -- doc_topic_ps  <- docTopicPrior n_topics
-  -- replicateM n_words (do  z <- categorical' (Vec.toList doc_topic_ps)
-  --                         let word_ps = topic_word_ps' !! z
-  --                         wordDist vocab word_ps)
-  undefined
+  doc_topic_ps  <- sample' @env (mkDirichlet (Vec.replicate n_topics 1)) (#θ, 0)
+  mapM_  (\(w, idx) -> do  z <- sample' @env (mkCategorical (Vec.toList doc_topic_ps)) (#z, idx)
+                           let word_ps = topic_word_ps' !! z
+                           observe (mkDiscrete (zip (Vec.toList vocab) word_ps)) (ws !! idx) (Addr "w" idx)) (zip ws [0 ..])
+  pure topic_word_ps
+
+topicGuide :: forall m n env. (TypeableSNatI m, TypeableSNatI n,
+               Observable env "φ" (Vec m Double),
+               Observable env "θ" (Vec n Double),
+               Observable env "z" Int)
+  => Vec m String -> SNat n -> [String] -> VIGuide env ()
+topicGuide vocab n_topics ws = do
+  let idxs = Vec.iterate (snat @n) (+1) (0 :: Int)
+  topic_word_ps <- Vec.mapM (\idx -> param' @env (mkDirichlet (Vec.replicate (snat @m) 1)) (#φ, idx)
+                            ) idxs
+  doc_topic_ps  <- param' @env (mkDirichlet (Vec.replicate n_topics 1)) (#θ, 0)
+  mapM_  (\(w, idx) -> sample' @env (mkCategorical (Vec.toList doc_topic_ps)) (#z, idx)) (zip ws [0 ..])
+
+bbviLDA :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double])
+bbviLDA t_steps l_samples n_words = do
+
+  let empty_env  = #θ := [] <:>  #φ := [] <:> #z := [] <:> enil
+      vocab      = LDA.vocab
+      n_topics   = snat @(FromGHC 2)
+      ws         = take n_words LDA.document
+  traceQ <- BBVI.bbvi t_steps l_samples (topicGuide vocab n_topics ws) (topicModel vocab n_topics ws) empty_env
+  let θ_dist     = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 2)) ((== "θ") . tag) traceQ
+      φ0_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 0)) traceQ
+      φ1_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 1)) traceQ
+  pure (θ_dist, φ0_dist, φ1_dist)
+
+mleLDA :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double])
+mleLDA t_steps l_samples n_words = do
+
+  let empty_env  = #θ := [] <:>  #φ := [] <:> #z := [] <:> enil
+      vocab      = LDA.vocab
+      n_topics   = snat @(FromGHC 2)
+      ws         = take n_words LDA.document
+  traceQ <- MLE.mle t_steps l_samples (topicGuide vocab n_topics ws) (topicModel vocab n_topics ws) empty_env
+  let θ_dist     = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 2)) ((== "θ") . tag) traceQ
+      φ0_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 0)) traceQ
+      φ1_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 1)) traceQ
+  pure (θ_dist, φ0_dist, φ1_dist)
+
+mapLDA :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double])
+mapLDA t_steps l_samples n_words = do
+
+  let empty_env  = #θ := [] <:>  #φ := [] <:> #z := [] <:> enil
+      vocab      = LDA.vocab
+      n_topics   = snat @(FromGHC 2)
+      ws         = take n_words LDA.document
+  traceQ <- MAP.map t_steps l_samples (topicGuide vocab n_topics ws) (topicModel vocab n_topics ws) empty_env
+  let θ_dist     = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 2)) ((== "θ") . tag) traceQ
+      φ0_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 0)) traceQ
+      φ1_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 1)) traceQ
+  pure (θ_dist, φ0_dist, φ1_dist)

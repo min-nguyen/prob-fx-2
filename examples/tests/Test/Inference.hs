@@ -166,12 +166,26 @@ testPmmhLDA = TestCase $ do
       output'           = mapT2 (map (map (roundPrecision 8))) output
   assertEqual "Testing (pmmhLDA 100 20 100)" pmmhLDAExpected' output'
 
--- testBbviLDA :: Test
--- testBbviLDA = TestCase $ do
---   output <- sampleIOFixed (bbviLDA 200 20 50)
---   let bbviLDAExpected' = mapT3 (map (roundPrecision 8)) bbviLDAExpected
---       output'          = mapT3 (map (roundPrecision 8)) output
---   assertEqual "Testing (bbviLDA 200 20 50)"  bbviLDAExpected' output'
+testBbviLDA :: Test
+testBbviLDA = TestCase $ do
+  output <- sampleIOFixed (bbviLDA 200 20 50)
+  let bbviLDAExpected' = mapT3 (map (roundPrecision 8)) bbviLDAExpected
+      output'          = mapT3 (map (roundPrecision 8)) output
+  assertEqual "Testing (bbviLDA 200 20 50)"  bbviLDAExpected' output'
+
+testMleLDA :: Test
+testMleLDA = TestCase $ do
+  output <- sampleIOFixed (mleLDA 200 20 50)
+  let mleLDAExpected' = mapT3 (map (roundPrecision 8)) mleLDAExpected
+      output'          = mapT3 (map (roundPrecision 8)) output
+  assertEqual "Testing (mleLDA 200 20 50)"  mleLDAExpected' output'
+
+testMapLDA :: Test
+testMapLDA = TestCase $ do
+  output <- sampleIOFixed (mapLDA 200 20 50)
+  let mapLDAExpected' = mapT3 (map (roundPrecision 8)) mapLDAExpected
+      output'          = mapT3 (map (roundPrecision 8)) output
+  assertEqual "Testing (mapLDA 200 20 50)"  mapLDAExpected' output'
 
 testMhRadon :: Test
 testMhRadon = TestCase $ do
@@ -216,7 +230,9 @@ testInference = TestList
  , testSmcLDA
  , testRmsmcLDA
  , testPmmhLDA
---  , testBbviLDA
+ , testBbviLDA
+ , testMleLDA
+ , testMapLDA
  , testMhRadon
  , testMhPredRadon
  ]

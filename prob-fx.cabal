@@ -183,7 +183,8 @@ test-suite tests
                       LinRegr,
                       LogRegr,
                       Radon,
-                      SIR
+                      SIR,
+                      VIExamples
   build-depends:      base,
                       containers,
                       extensible,
