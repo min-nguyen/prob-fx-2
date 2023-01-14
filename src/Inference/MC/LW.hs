@@ -35,7 +35,7 @@ lw
   -- | number of LW iterations
   :: Int
   -- | model
-  -> Model env [EnvRW env, Dist] a
+  -> Model env [EnvRW env, Dist, Sampler] a
   -- | input model environment
   -> Env env
   -- | [(output model environment, likelihood-weighting)]
@@ -47,10 +47,10 @@ lw n model env_in = do
 
 -- | Handler for one iteration of LW
 runLW
-  :: Prog [Observe, Sample] a
+  :: Prog [Observe, Sample, Sampler] a
   -- | ((model output, sample trace), likelihood-weighting)
   -> Sampler (a, LogP)
-runLW = SIM.defaultSample . likelihood 0
+runLW = handleM . SIM.defaultSample . likelihood 0
 
 -- | Handle each @Observe@ operation by accumulating the log-likelihood P(Y | X)
 likelihood :: LogP -> Handler Observe es a (a, LogP)
@@ -61,7 +61,7 @@ likelihood lρ0 = handle lρ0 (\lρ x -> Val (x, lρ)) hop
 
 {- | Record the joint log-probability P(Y, X)
 -}
-joint :: LogP -> ProbProg a -> ProbProg (a, LogP)
+joint :: LogP -> ProbProg es a -> ProbProg es (a, LogP)
 joint lρ (Val x)   = pure (x, lρ)
 joint lρ (Op op k) = case op of
   ObsPrj d y α   -> Op op (\x -> joint (lρ + logProb d x) $ k x)

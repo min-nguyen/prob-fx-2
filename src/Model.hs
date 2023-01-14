@@ -92,12 +92,13 @@ instance Monad (Model env es) where
 {- | Probabilistic programs are those with effects for conditioning and sampling.
 -}
 
-type ProbProg a = Prog [Observe, Sample] a
+type ProbProg es a = Prog (Observe : Sample : es) a
 
 {- | The initial handler for models, specialising a model under a certain environment
      to produce a probabilistic program consisting of @Sample@ and @Observe@ operations.
 -}
-handleCore :: Env env -> Model env (EnvRW env : Dist : '[]) a -> ProbProg (a, Env env)
+handleCore :: Env env -> Model env (EnvRW env : Dist : es) a
+           -> Prog (Observe : Sample : es) (a, Env env)
 handleCore env_in m = (handleDist . handleEnvRW env_in) (runModel m)
 
 {- $Smart-Constructors

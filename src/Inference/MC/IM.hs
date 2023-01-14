@@ -36,8 +36,8 @@ import Util
 {- | Top-level wrapper for Independence Metropolis
 -}
 im ::
-     Int                            -- ^ number of iterations
-  -> Model env [EnvRW env, Dist] a  -- ^ model
+     Int                              -- ^ number of iterations
+  -> Model env [EnvRW env, Dist, Sampler] a  -- ^ model
   -> Env env                        -- ^ input environment
   -> Sampler [Env env]              -- ^ output model environments
 im n model env_in   = do
@@ -49,12 +49,12 @@ im n model env_in   = do
 
 {- | Handler for one iteration of IM.
 -}
-handleModel ::
-     ProbProg a                         -- ^ probabilistic program
-  -> Trace                             -- ^ proposed initial log-prob + sample trace
-  -> Sampler ((a, LogP), Trace)        -- ^ proposed final log-prob + sample trace
+handleModel :: ModelHandler '[Sampler] LogP
+  --    ProbProg '[Sampler] a                         -- ^ probabilistic program
+  -- -> Trace                             -- ^ proposed initial log-prob + sample trace
+  -- -> Sampler ((a, LogP), Trace)        -- ^ proposed final log-prob + sample trace
 handleModel prog τ =
-  (Metropolis.reuseSamples τ . LW.likelihood 0) prog
+  (handleM . Metropolis.reuseSamples τ . LW.likelihood 0) prog
 
 handleAccept :: Member Sampler fs => Handler (Accept LogP) fs a a
 handleAccept = handle () (\_ -> Val) (\_ op k -> hop op k)

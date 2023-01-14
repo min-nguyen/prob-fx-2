@@ -26,14 +26,14 @@ import           Effects.EnvRW ( EnvRW )
 import           Env ( Env )
 import           Model ( handleCore, Model )
 import           PrimDist ( drawWithSampler )
-import           Prog ( handle, discharge, Prog(..), LastMember, discharge1, Handler )
+import           Prog ( handle, discharge, Prog(..), LastMember, discharge1, Handler, Member, call )
 import           Sampler ( Sampler, liftIO )
 import           Unsafe.Coerce (unsafeCoerce)
 
 -- | Simulate from a model under a given model environment
 simulate
   -- | model
-  :: Model env [EnvRW env, Dist] a
+  :: Model env [EnvRW env, Dist, Sampler] a
   -- | input model environment
   -> Env env
   -- | (model output, output environment)
@@ -44,11 +44,11 @@ simulate model env_in = do
 
 -- | Handler for simulating once from a probabilistic program
 runSimulate
-  :: Prog [Observe, Sample] a
+  :: Prog [Observe, Sample, Sampler] a
   -- | (model output, sample trace)
   -> Sampler a
 runSimulate
-  = defaultSample . defaultObserve
+  = handleM . defaultSample . defaultObserve
 
 -- | Handle @Observe@ operations by simply passing forward their observed value, performing no side-effects
 defaultObserve :: Handler Observe es b b
@@ -58,9 +58,9 @@ defaultObserve = handle () (const Val) (const hop)
   hop (Observe d y α) k = k () y
 
 -- | Handle @Sample@ operations by using the @Sampler@ monad to draw from primitive distributions
-defaultSample
-  :: Prog '[Sample] a
-  -> Sampler a
-defaultSample (Val x)   = return x
-defaultSample (Op op k) = case discharge1 op of
-  (Sample d α) -> drawWithSampler d >>= (defaultSample . k)
+defaultSample ::  Member Sampler es => Handler Sample es b b
+defaultSample = handle () (const Val) (const hop)
+  where
+  hop :: Member Sampler es => Sample x -> (() -> x -> Prog es b) -> Prog es b
+  hop (Sample d α) k = do x <- call $ drawWithSampler d
+                          k () x

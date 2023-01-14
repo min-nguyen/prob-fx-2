@@ -52,7 +52,7 @@ pim mh_steps n_prts model env_in obs_vars = do
 -}
 handleModel ::
      Int                                          -- ^ number of particles
-  -> ModelHandler LogP
+  -> ModelHandler es LogP
 handleModel n prog τθ  = do
   let handleParticle :: ParticleHandler LogP
       handleParticle = fmap fst . reuseSamples τθ . suspend

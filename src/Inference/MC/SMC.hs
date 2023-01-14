@@ -45,7 +45,7 @@ smc n_prts model env_in = do
 
 {- | Call SMC on a probabilistic program.
 -}
-mulpfilter :: Int -> ProbProg a -> Sampler [(a, LogP)]
+mulpfilter :: Int -> ProbProg es a -> Sampler [(a, LogP)]
 mulpfilter n_prts model =
  (handleM . handleResampleMul . pfilter handleParticle model) (prts, ρs)
  where (prts, ρs) = (unzip . replicate n_prts) (model, 0)
@@ -54,10 +54,10 @@ mulpfilter n_prts model =
        1. the rest of the computation
        2. the log probability of the @Observe operation
 -}
-handleParticle :: ProbProg a -> Sampler (ProbProg a, LogP)
-handleParticle = defaultSample . suspend
+handleParticle :: ProbProg '[Sampler] a -> Sampler (ProbProg es a, LogP)
+handleParticle = handleM . defaultSample . suspend
 
-suspend :: ProbProg a -> Prog '[Sample] (ProbProg a, LogP)
+suspend :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, LogP)
 suspend (Val x)   = Val (Val x, 0)
 suspend (Op op k) = case discharge op of
   Right (Observe d y α) -> Val (k y, logProb d y)

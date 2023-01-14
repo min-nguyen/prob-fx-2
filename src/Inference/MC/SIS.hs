@@ -30,11 +30,11 @@ import           Data.Bifunctor
 data Resample p a where
   Resample
     -- | (particles, contexts)
-    :: ([ProbProg a], [p])
+    :: ([ProbProg es a], [p])
     -- | initial probabilistic program
-    -> ProbProg a
+    -> ProbProg es a
     -- | (resampled programs, resampled ss)
-    -> Resample p ([ProbProg a], [p])
+    -> Resample p ([ProbProg es a], [p])
   Accum
     -- | (particles, contexts)
     :: [p]
@@ -45,7 +45,7 @@ data Resample p a where
 
 {- | A @ParticleHandler@  runs a particle to the next @Observe@ break point.
 -}
-type ParticleHandler p = forall a. ProbProg a -> Sampler (ProbProg a, p)
+type ParticleHandler p = forall es a. ProbProg es a -> Sampler (ProbProg es a, p)
 
 {- | A @ResampleHandler@ decides which of the current particles to continue execution with.
 -}
@@ -57,7 +57,7 @@ sis :: (Members [Resample p, Sampler] fs)
   => Int                                                        -- ^ number of particles
   -> ParticleHandler p                                        -- ^ handler for running particles
   -> p
-  -> ProbProg a                                                 -- ^ initial probabilistic program
+  -> ProbProg es a                                                 -- ^ initial probabilistic program
   -> Prog fs [(a, p)]                        -- ^ (final particle output, final particle context)
 sis n_prts hdlParticle ρ_0 prog_0  = do
   -- | Create an initial population of particles and contexts
@@ -69,8 +69,8 @@ sis n_prts hdlParticle ρ_0 prog_0  = do
 -}
 pfilter :: (Members [Resample p, Sampler] fs)
   => ParticleHandler p                                 -- ^ handler for running particles
-  -> ProbProg a                                          -- ^ initial probabilistic program
-  -> ([ProbProg a], [p])                               -- ^ input particles and corresponding contexts
+  -> ProbProg es a                                          -- ^ initial probabilistic program
+  -> ([ProbProg es a], [p])                               -- ^ input particles and corresponding contexts
   -> Prog fs [(a, p)]                          -- ^ final particle results and corresponding contexts
 pfilter hdlParticle prog_0 (prts, ρs) = do
   -- | Run particles to next checkpoint and accumulate their contexts
@@ -87,7 +87,7 @@ pfilter hdlParticle prog_0 (prts, ρs) = do
      If at least one program is unfinished, return all programs.
      If all programs have finished, return a single program that returns all results.
 -}
-foldVals :: [ProbProg a] -> Either [ProbProg a] (Prog es [a])
+foldVals :: [ProbProg es a] -> Either [ProbProg es a] (Prog es' [a])
 foldVals (Val v : progs) = do
   vs <- foldVals progs
   pure ((v:) <$> vs)

@@ -42,7 +42,7 @@ import Effects.State
 -}
 mh :: forall env vars a. (env `ContainsVars` vars)
   => Int                            -- ^ number of MH iterations
-  -> Model env [EnvRW env, Dist] a  -- ^ model
+  -> Model env [EnvRW env, Dist, Sampler] a  -- ^ model
   -> Env env                        -- ^ input environment
   -> Vars vars                      -- ^ optional variable names of interest
     {- These allow one to specify sample sites of interest; for example, for interest in sampling @#mu@
@@ -65,7 +65,7 @@ ssmh :: (Member Sampler fs)
   -> Trace                                -- ^ initial sample trace
   -> Addr
   -> [Tag]                                 -- ^ tags indicating variables of interest
-  -> ProbProg a                            -- ^ probabilistic program
+  -> ProbProg '[Sampler] a                            -- ^ probabilistic program
   -> Prog fs [((a, LPTrace), Trace)]
 ssmh n τ_0 α_0 tags = handleAccept tags α_0 . metropolis n τ_0 handleModel
 
@@ -104,10 +104,10 @@ propose tags τ = do
 {- | Handler for one iteration of MH.
 -}
 handleModel ::
-     ProbProg a                             -- ^ probabilistic program
+     ProbProg '[Sampler] a                             -- ^ probabilistic program
   -> Trace                                  -- ^ proposed address + initial log-probability trace + initial sample trace
   -> Sampler ((a, LPTrace), Trace)  -- ^ proposed address + final log-probability trace + final sample trace
-handleModel prog τ0 = (reuseSamples τ0 . defaultObserve . traceLP Map.empty) prog
+handleModel prog τ0 = (handleM . reuseSamples τ0 . defaultObserve . traceLP Map.empty) prog
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}
