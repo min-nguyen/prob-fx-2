@@ -67,15 +67,14 @@ suspend (Op op k) = case discharge op of
 -}
 
 handleResampleMul :: Member Sampler es => Handler (Resample LogP) es b b
-handleResampleMul = handle () (const Val) (const hop)
-  where
+handleResampleMul = handle () (const Val) (const hop) where
   hop :: Member Sampler es =>  Resample LogP x -> (() -> x -> Prog es b) -> Prog es b
+  hop  (Accum ρs1 ρs2) k = let ρs = map (+ logMeanExp ρs1) ρs2 in k () ρs
   hop  (Resample (prts, ρs) _) k = do
     idxs <- call (replicateM (length ρs) (Sampler.sampleCategorical (Vector.fromList (map exp ρs))))
     let prts_res  = map (prts !! ) idxs
         ρs_res    = map (ρs  !! ) idxs
     k () (prts_res, ρs_res)
-  hop  (Accum ρs1 ρs2) k = let ρs = map (+ logMeanExp ρs1) ρs2 in k () ρs
 
 normaliseParticles  :: [LogP] -> [LogP] -> [LogP]
 normaliseParticles ρs ρs' =
