@@ -47,9 +47,9 @@ mle num_timesteps num_samples guide model env = do
 
 handleGuide :: Env env -> VIGuide env a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
 handleGuide env guide params =
-  (SIM.defaultSample . handleParams . fmap (,0) . updateParams params . handleEnvRW env) guide
+  (handleM . SIM.defaultSample . handleParams . fmap (,0) . updateParams params . handleEnvRW env) guide
 
 -- | Handle the model P(X, Y; θ) by returning log-importance-weight P(Y | X; θ)
 handleModel :: VIModel env a -> Env env -> Sampler (a, LogP)
 handleModel model env  =
-  (SIM.defaultSample . likelihood 0 . fmap fst . handleEnvRW env) model
+  (handleM . SIM.defaultSample . likelihood 0 . fmap fst . handleEnvRW env) model

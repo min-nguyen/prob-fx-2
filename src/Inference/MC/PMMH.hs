@@ -33,7 +33,7 @@ import           Inference.MC.SMC as SMC
 pmmh :: forall env vars a. (env `ContainsVars` vars)
   => Int                                            -- ^ number of MH steps
   -> Int                                            -- ^ number of particles
-  -> Model env [EnvRW env, Dist] a                  -- ^ model
+  -> Model env [EnvRW env, Dist, Sampler] a                  -- ^ model
   -> Env env                                        -- ^ input environment
   -> Vars vars                                      -- ^ parameter names
   -> Sampler [Env env]                              -- ^ output environments
@@ -43,12 +43,12 @@ pmmh mh_steps n_prts model env_in obs_vars = do
   -- | Convert observable variables to strings
   let θ        = varsToStrs @env obs_vars
   -- | Initialise sample trace to include only parameters
-  (_, τ)       <- (reuseSamples Map.empty . defaultObserve) prog_0
+  (_, τ)       <- (handleM . reuseSamples Map.empty . defaultObserve) prog_0
   let τθ       = filterTrace θ τ
   pmmh_trace <- (handleM . handleAccept . metropolis mh_steps τθ (handleModel n_prts)) prog_0
   pure (map (snd . fst . fst) pmmh_trace)
 
-pm :: Int -> Int -> Trace -> ProbProg a -> Sampler [((a, LogP), Trace)]
+pm :: Int -> Int -> Trace -> ProbProg '[Sampler] a -> Sampler [((a, LogP), Trace)]
 pm m n τθ model = do
   (handleM . handleAccept . metropolis m τθ (handleModel n)) model
 
@@ -56,10 +56,10 @@ pm m n τθ model = do
 -}
 handleModel ::
      Int                                          -- ^ number of particles
-  -> ModelHandler LogP
+  -> ModelHandler '[Sampler] LogP
 handleModel n prog τθ  = do
-  let handleParticle :: ParticleHandler LogP
-      handleParticle = fmap fst . reuseSamples τθ . suspend
+  let handleParticle :: ParticleHandler '[Sampler] LogP
+      handleParticle = fmap fst . handleM . reuseSamples τθ . suspend
   (as, ρs) <- (handleM . handleResampleMul . fmap unzip . pfilter handleParticle prog) ((unzip . replicate n) (prog, 0))
   let a   = head as
       ρ   = logMeanExp ρs

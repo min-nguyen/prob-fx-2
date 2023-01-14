@@ -34,7 +34,7 @@ import           Sampler ( Sampler, sampleRandom, sampleCategorical)
 -}
 smc
   :: Int                                -- ^ number of particles
-  -> Model env [EnvRW env, Dist] a      -- ^ model
+  -> Model env [EnvRW env, Dist, Sampler] a      -- ^ model
   -> Env env                            -- ^ input model environment
   -> Sampler [Env env]                  -- ^ output model environments of each particle
 smc n_prts model env_in = do
@@ -45,7 +45,7 @@ smc n_prts model env_in = do
 
 {- | Call SMC on a probabilistic program.
 -}
-mulpfilter :: Int -> ProbProg es a -> Sampler [(a, LogP)]
+mulpfilter :: Int -> ProbProg '[Sampler] a -> Sampler [(a, LogP)]
 mulpfilter n_prts model =
  (handleM . handleResampleMul . pfilter handleParticle model) (prts, ρs)
  where (prts, ρs) = (unzip . replicate n_prts) (model, 0)
@@ -54,10 +54,10 @@ mulpfilter n_prts model =
        1. the rest of the computation
        2. the log probability of the @Observe operation
 -}
-handleParticle :: ProbProg '[Sampler] a -> Sampler (ProbProg es a, LogP)
+handleParticle :: ProbProg '[Sampler] a -> Sampler (ProbProg '[Sampler] a, LogP)
 handleParticle = handleM . defaultSample . suspend
 
-suspend :: Prog (Observe : es) a -> Prog es (Prog (Observe : es) a, LogP)
+suspend :: Handler Observe es a (Prog (Observe : es) a, LogP)
 suspend (Val x)   = Val (Val x, 0)
 suspend (Op op k) = case discharge op of
   Right (Observe d y α) -> Val (k y, logProb d y)
@@ -67,15 +67,14 @@ suspend (Op op k) = case discharge op of
 -}
 
 handleResampleMul :: Member Sampler es => Handler (Resample LogP) es b b
-handleResampleMul = handle () (const Val) (const hop)
-  where
+handleResampleMul = handle () (const Val) (const hop) where
   hop :: Member Sampler es =>  Resample LogP x -> (() -> x -> Prog es b) -> Prog es b
+  hop  (Accum ρs1 ρs2) k = let ρs = map (+ logMeanExp ρs1) ρs2 in k () ρs
   hop  (Resample (prts, ρs) _) k = do
     idxs <- call (replicateM (length ρs) (Sampler.sampleCategorical (Vector.fromList (map exp ρs))))
     let prts_res  = map (prts !! ) idxs
         ρs_res    = map (ρs  !! ) idxs
     k () (prts_res, ρs_res)
-  hop  (Accum ρs1 ρs2) k = let ρs = map (+ logMeanExp ρs1) ρs2 in k () ρs
 
 normaliseParticles  :: [LogP] -> [LogP] -> [LogP]
 normaliseParticles ρs ρs' =

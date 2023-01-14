@@ -34,7 +34,7 @@ import qualified Inference.MC.IM as IM
 pim :: forall env vars a. (env `ContainsVars` vars)
   => Int                                            -- ^ number of MH steps
   -> Int                                            -- ^ number of particles
-  -> Model env [EnvRW env, Dist] a                  -- ^ model
+  -> Model env [EnvRW env, Dist, Sampler] a                  -- ^ model
   -> Env env                                        -- ^ input environment
   -> Vars vars                                      -- ^ parameter names
   -> Sampler [Env env]                              -- ^ output environments
@@ -44,7 +44,7 @@ pim mh_steps n_prts model env_in obs_vars = do
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
   -- | Initialise sample trace to include only parameters
-  τθ_0       <- (fmap (filterTrace tags . snd) . reuseSamples Map.empty . defaultObserve) prog_0
+  τθ_0       <- (fmap (filterTrace tags . snd) . handleM .  reuseSamples Map.empty . defaultObserve) prog_0
   pmmh_trace <- (handleM . IM.handleAccept . metropolis mh_steps τθ_0 (handleModel n_prts)) prog_0
   pure (map (snd . fst . fst) pmmh_trace)
 
@@ -52,10 +52,10 @@ pim mh_steps n_prts model env_in obs_vars = do
 -}
 handleModel ::
      Int                                          -- ^ number of particles
-  -> ModelHandler es LogP
+  -> ModelHandler '[Sampler] LogP
 handleModel n prog τθ  = do
-  let handleParticle :: ParticleHandler LogP
-      handleParticle = fmap fst . reuseSamples τθ . suspend
+  let handleParticle :: ParticleHandler '[Sampler] LogP
+      handleParticle = fmap fst .  handleM .  reuseSamples τθ . suspend
   (as, ρs) <- (fmap unzip . handleM . handleResampleMul . pfilter handleParticle prog) ((unzip . replicate n) (prog, 0))
   return ((head as, logMeanExp ρs), τθ)
 

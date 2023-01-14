@@ -51,9 +51,9 @@ map num_timesteps num_samples guide model env  = do
 
 handleGuide :: Env env -> VIGuide env a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
 handleGuide env guide params =
-  (defaultSample . handleParams . weighGuide . updateParams params . handleEnvRW env) guide
+  (handleM . defaultSample . handleParams . weighGuide . updateParams params . handleEnvRW env) guide
 
 -- | Handle the model P(X, Y; θ) by returning log-importance-weight P(Y, X; θ)
 handleModel :: VIModel env a -> Env env -> Sampler (a, LogP)
 handleModel model env =
-  (defaultSample . defaultObserve . joint 0 . fmap fst . handleEnvRW env) model
+  (handleM . defaultSample . defaultObserve . joint 0 . fmap fst . handleEnvRW env) model

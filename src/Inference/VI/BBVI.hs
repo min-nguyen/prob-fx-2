@@ -54,8 +54,8 @@ bbvi num_timesteps num_samples guide model env  = do
 
 handleGuide :: Env env -> VIGuide env a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
 handleGuide env guide params =
-  (SIM.defaultSample . handleParams . weighGuide . updateParams params . handleEnvRW env) guide
+  (handleM . SIM.defaultSample . handleParams . weighGuide . updateParams params . handleEnvRW env) guide
 
 handleModel :: VIModel env a -> Env env -> Sampler (a, LogP)
 handleModel model env  =
-  (defaultSample . defaultObserve . joint 0 . fmap fst . handleEnvRW env) model
+  (handleM . defaultSample . defaultObserve . joint 0 . fmap fst . handleEnvRW env) model

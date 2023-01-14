@@ -39,8 +39,8 @@ import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
 import Inference.MC.LW (joint)
 
-type VIGuide env a  = Prog [EnvRW env, Param , Sample] a
-type VIModel env a  = Prog [EnvRW env, Observe, Sample] a
+type VIGuide env a  = Prog [EnvRW env, Param , Sample, Sampler] a
+type VIModel env a  = Prog [EnvRW env, Observe, Sample, Sampler] a
 
 data GradDescent a where
   GradDescent :: [LogP] -> [GradTrace] -> ParamTrace -> GradDescent ParamTrace
@@ -98,7 +98,7 @@ viStep num_samples hdlGuide hdlModel guide model  params = do
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
 collectParams :: Env env -> VIGuide env a -> Sampler ParamTrace
-collectParams env = SIM.defaultSample . (fst <$>) . handleParams . loop Trace.empty . handleEnvRW env
+collectParams env = handleM . SIM.defaultSample . (fst <$>) . handleParams . loop Trace.empty . handleEnvRW env
   where
   loop :: ParamTrace -> Prog (Param : es) a -> Prog (Param : es) ParamTrace
   loop params (Val _)   = pure params

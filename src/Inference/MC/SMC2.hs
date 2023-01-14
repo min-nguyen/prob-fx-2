@@ -34,6 +34,7 @@ import Effects.Lift
 import Data.Bifunctor
 import Trace (filterTrace)
 import LogP
+import Unsafe.Coerce (unsafeCoerce)
 
 {- | Top-level wrapper for SMC2 inference.
 -}
@@ -41,7 +42,7 @@ smc2 :: forall env es a xs. (env `ContainsVars` xs)
   => Int                                            -- ^ number of outer SMC particles
   -> Int                                            -- ^ number of PMMH steps
   -> Int                                            -- ^ number of inner SMC particles
-  -> Model env [EnvRW env, Dist] a                  -- ^ model
+  -> Model env [EnvRW env, Dist, Sampler] a                  -- ^ model
   -> Env env                                        -- ^ input environment
   -> Vars xs                                        -- ^ optional observable variable names of interest
   -> Sampler [Env env]                              -- ^ output environments
@@ -62,7 +63,7 @@ smc2Internal :: (Member Sampler fs)
   -> Int                                          -- ^ number of PMMH steps
   -> Int                                          -- ^ number of inner SMC particles
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> ProbProg a                                    -- ^ probabilistic program
+  -> ProbProg '[Sampler] a                                    -- ^ probabilistic program
   -> Prog fs [(a, PrtState)]                -- ^ final particle results and contexts
 smc2Internal n_outer_prts mh_steps n_inner_prts tags  =
   handleResample mh_steps n_inner_prts tags . SIS.sis n_outer_prts RMSMC.handleParticle  (PrtState (Addr "" 0) 0 Map.empty)
@@ -92,7 +93,7 @@ handleResample mh_steps n_inner_prts θ = loop where
           -- | Perform PMMH using each resampled particle's sample trace and get the most recent PMMH iteration.
           pmmh_trace <- mapM ( fmap head
                              . call
-                             . flip (PMMH.pm mh_steps n_inner_prts) partial_model
+                             . flip (PMMH.pm mh_steps n_inner_prts) (unsafeCoerce partial_model)
                              ) resampled_τθs
           {- | Get:
               1) the continuations of each particle from the break point (augmented with the non-det effect)

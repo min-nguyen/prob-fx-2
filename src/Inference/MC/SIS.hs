@@ -45,7 +45,7 @@ data Resample p a where
 
 {- | A @ParticleHandler@  runs a particle to the next @Observe@ break point.
 -}
-type ParticleHandler p = forall es a. ProbProg es a -> Sampler (ProbProg es a, p)
+type ParticleHandler es p = forall a. ProbProg es a -> Sampler (ProbProg es a, p)
 
 {- | A @ResampleHandler@ decides which of the current particles to continue execution with.
 -}
@@ -55,7 +55,7 @@ type ResampleHandler fs p = forall a. Prog (Resample p : fs) a -> Prog fs a
 -}
 sis :: (Members [Resample p, Sampler] fs)
   => Int                                                        -- ^ number of particles
-  -> ParticleHandler p                                        -- ^ handler for running particles
+  -> ParticleHandler es p                                        -- ^ handler for running particles
   -> p
   -> ProbProg es a                                                 -- ^ initial probabilistic program
   -> Prog fs [(a, p)]                        -- ^ (final particle output, final particle context)
@@ -68,7 +68,7 @@ sis n_prts hdlParticle ρ_0 prog_0  = do
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
 pfilter :: (Members [Resample p, Sampler] fs)
-  => ParticleHandler p                                 -- ^ handler for running particles
+  => ParticleHandler es p                                 -- ^ handler for running particles
   -> ProbProg es a                                          -- ^ initial probabilistic program
   -> ([ProbProg es a], [p])                               -- ^ input particles and corresponding contexts
   -> Prog fs [(a, p)]                          -- ^ final particle results and corresponding contexts

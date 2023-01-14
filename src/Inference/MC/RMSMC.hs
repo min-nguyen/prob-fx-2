@@ -62,7 +62,7 @@ pack (α, ps, τs) = zipWith3 PrtState (repeat α) ps τs
 rmsmc :: forall env a xs. (env `ContainsVars` xs)
   => Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of MH (rejuvenation) steps
-  -> Model env [EnvRW env, Dist] a                -- ^ model
+  -> Model env [EnvRW env, Dist, Sampler] a                -- ^ model
   -> Env env                                      -- ^ input model environment
   -> Vars xs                                      -- ^ optional observable variable names of interest
   -> Sampler [Env env]                            -- ^ output model environments of each particle
@@ -80,7 +80,7 @@ rmpfilter ::
      Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of MH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> ProbProg a                                   -- ^ probabilistic program
+  -> ProbProg '[Sampler] a                                   -- ^ probabilistic program
   -> Sampler [(a, PrtState)]                      -- ^ final particle results and contexts
 rmpfilter n_prts mh_steps tags model =
   (handleM . handleResample mh_steps tags . pfilter handleParticle model) (prts, ps)
@@ -91,8 +91,8 @@ rmpfilter n_prts mh_steps tags model =
        1. the rest of the computation
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
-handleParticle :: ParticleHandler PrtState
-handleParticle = fmap asPrtTrace . reuseSamples Map.empty . suspendα where
+handleParticle :: ParticleHandler '[Sampler] PrtState
+handleParticle = fmap asPrtTrace . handleM . reuseSamples Map.empty . suspendα where
   asPrtTrace ((prt, ρ, α), τ) = (prt, PrtState ρ α τ)
 
 suspendα :: Handler Observe es a (Prog (Observe : es) a, Addr, LogP)
@@ -107,39 +107,37 @@ handleResample :: (Member Sampler fs)
   => Int                                          -- ^ number of MH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> Handler (Resample PrtState) fs a a
-handleResample mh_steps tags = loop where
-  loop (Val x) = Val x
-  loop (Op op k) = case discharge op of
-    Right (Resample (_, σs) prog_0) ->
-      do  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
-          idxs <- call $ SMC.resampleMul (map particleLogProb σs)
-          let σs_res          = map (σs !! ) idxs
-          -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head'), and get the sample trace of each resampled particle
-              (α, _, τs_res)  = unpack σs_res
-          -- | Insert break point to perform MH up to
-              partial_model   = suspendAt α prog_0
-          -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
-          (prts_mov, σs_mov) <- mapAndUnzipM
-                                    (\τ -> do ((prt_mov, lρ), τ_mov) <- fmap head (MH.ssmh mh_steps τ (Addr "" 0) tags partial_model)
-                                              let lρ_mov = (sum . map snd . Map.toList) lρ
-                                              return (prt_mov, PrtState α lρ_mov τ_mov) )
-                                    τs_res
-          (loop . k) (prts_mov, σs_mov)
-    Right (Accum σs σs') -> do
-      let (_, ρs , τs ) = unpack σs
-          (α, ρs', τs') = unpack σs'
-          ρs_accum  = map (+ logMeanExp ρs) ρs'
-          τs_accum  = zipWith Map.union τs' τs
-      (loop . k) (pack (α, ρs_accum, τs_accum))
-    Left op' -> Op op' (loop . k)
+handleResample mh_steps tags = handle () (const Val) (const hop) where
+  hop :: Member Sampler fs => Resample PrtState x -> (() -> x -> Prog fs a) -> Prog fs a
+  hop (Accum σs σs') k = do
+    let (_, ρs , τs ) = unpack σs
+        (α, ρs', τs') = unpack σs'
+        ρs_accum  = map (+ logMeanExp ρs) ρs'
+        τs_accum  = zipWith Map.union τs' τs
+    k () (pack (α, ρs_accum, τs_accum))
+  hop (Resample (_, σs) prog_0) k = do
+  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
+    idxs <- call $ SMC.resampleMul (map particleLogProb σs)
+    let σs_res          = map (σs !! ) idxs
+    -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head'), and get the sample trace of each resampled particle
+        (α, _, τs_res)  = unpack σs_res
+    -- | Insert break point to perform MH up to
+        partial_model   = suspendAt α prog_0
+    -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
+    (prts_mov, σs_mov) <- mapAndUnzipM
+                              (\τ -> do ((prt_mov, lρ), τ_mov) <- fmap head (MH.ssmh mh_steps τ (Addr "" 0) tags (unsafeCoerce partial_model))
+                                        let lρ_mov = (sum . map snd . Map.toList) lρ
+                                        return (prt_mov, PrtState α lρ_mov τ_mov) )
+                              τs_res
+    k () (prts_mov, σs_mov)
 
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
      It returns the rest of the computation.
 -}
 suspendAt ::
      Addr       -- ^ Address of @Observe@ operation to break at
-  -> ProbProg  a
-  -> ProbProg  (ProbProg  a)
+  -> ProbProg es a
+  -> ProbProg es (ProbProg es a)
 suspendAt α_break (Val x) = pure (Val x)
 suspendAt α_break (Op op k) = case prj op of
   Just (Observe d y α) -> do
