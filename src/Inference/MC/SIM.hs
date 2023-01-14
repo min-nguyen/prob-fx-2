@@ -52,15 +52,13 @@ runSimulate
 
 -- | Handle @Observe@ operations by simply passing forward their observed value, performing no side-effects
 defaultObserve :: Handler Observe es b b
-defaultObserve = handle () (const Val) (const hop)
-  where
+defaultObserve = handle () (const Val) (const hop) where
   hop :: Observe x -> (() -> x -> Prog es b) -> Prog es b
   hop (Observe d y α) k = k () y
 
 -- | Handle @Sample@ operations by using the @Sampler@ monad to draw from primitive distributions
-defaultSample ::  Member Sampler es => Handler Sample es b b
-defaultSample = handle () (const Val) (const hop)
-  where
+defaultSample ::  Member Sampler es => Handler Sample es a a
+defaultSample = handle () (const Val) (const hop) where
   hop :: Member Sampler es => Sample x -> (() -> x -> Prog es b) -> Prog es b
   hop (Sample d α) k = do x <- call $ drawWithSampler d
                           k () x
