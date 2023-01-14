@@ -22,7 +22,7 @@ import qualified Data.Map as Map
 import           Data.Set ((\\))
 import qualified Data.Set as Set
 import           Data.Maybe ( fromJust )
-import           Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg, weaken, Handler )
+import           Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg, weaken, Handler, handle )
 import           Env ( ContainsVars(..), Vars, Env )
 import           Trace ( Trace, LPTrace, filterTrace )
 import           LogP ( LogP )
@@ -30,7 +30,7 @@ import           PrimDist
 import           Model ( Model, handleCore, ProbProg )
 import           Effects.EnvRW ( EnvRW )
 import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), pattern SampPrj, pattern ObsPrj )
-import           Effects.Lift ( handleM, liftPutStrLn, HasSampler, random', randomFrom' )
+import           Effects.Lift ( handleM, liftPutStrLn, random', randomFrom' )
 import           Inference.MC.SIM
 import           Inference.MC.Metropolis as Metropolis
 import           Sampler ( Sampler, sampleRandom, sampleUniformD, sampleRandomFrom )
@@ -60,7 +60,7 @@ mh n model env_in obs_vars  = do
 
 {- | MH inference on a probabilistic program.
 -}
-ssmh :: (HasSampler fs)
+ssmh :: (Member Sampler fs)
   => Int                                   -- ^ number of MH iterations
   -> Trace                                -- ^ initial sample trace
   -> Addr
@@ -74,22 +74,16 @@ ssmh n τ_0 α_0 tags = handleAccept tags α_0 . metropolis n τ_0 handleModel
     - Accept using the ratio:
        p(X', Y')q(X | X')/p(X, Y)q(X' | X)
 -}
-handleAccept :: (HasSampler fs)
-  => [Tag]
-  -> Addr
-  -> Handler (Accept LPTrace) fs a a
-handleAccept tags α (Val x)   = pure x
-handleAccept tags α (Op op k) = case discharge op of
-  Right (Propose τ)
-    ->  do  α0 <- randomFrom' (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
-            r0 <- random'
-            let τ0 = Map.insert α0 r0 τ
-            (handleAccept tags α0 . k) τ0
-  Right (Accept ρ ρ')
-    ->  do  let ratio = (exp . sum . Map.elems . Map.delete α) (Map.intersectionWith (-) ρ' ρ)
-            u <- random'
-            (handleAccept tags α . k) (ratio > u)
-  Left op' -> Op op' (handleAccept tags α . k)
+handleAccept :: Member Sampler fs => [Tag] -> Addr -> Handler (Accept LPTrace) fs a a
+handleAccept tags α0 = handle α0 (const Val) hop
+  where
+    hop :: Member Sampler es => Addr -> Accept LPTrace x -> (Addr -> x -> Prog es b) -> Prog es b
+    hop _ (Propose τ) k   = do  α <- randomFrom' (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
+                                r <- random'
+                                k α (Map.insert α r τ)
+    hop α (Accept ρ ρ') k = do  let ratio = (exp . sum . Map.elems . Map.delete α) (Map.intersectionWith (-) ρ' ρ)
+                                u <- random'
+                                k α (ratio > u)
 
 {- Propose a new random value at a single component x_i of latent variable X = {x_0, ... x_N}.
 -}

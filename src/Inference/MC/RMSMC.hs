@@ -103,7 +103,7 @@ suspendα (Op op k) = case discharge op of
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using MH.
 -}
-handleResample :: (HasSampler fs)
+handleResample :: (Member Sampler fs)
   => Int                                          -- ^ number of MH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> Handler (Resample PrtState) fs a a

@@ -48,13 +48,13 @@ data GradDescent a where
 type GuideHandler env a = VIGuide env a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
 type ModelHandler env a = VIModel env a -> Env env    -> Sampler (a, LogP)
 
-viLoop :: (HasSampler fs)
-  => Int                                          -- ^ number of optimisation steps (T)
-  -> Int                                          -- ^ number of samples to estimate the gradient over (L)
+viLoop :: (Members [GradDescent, Sampler] fs)
+  => Int                                     -- ^ number of optimisation steps (T)
+  -> Int                                     -- ^ number of samples to estimate the gradient over (L)
   -> VIGuide env a -> GuideHandler env a
   -> VIModel env b -> ModelHandler env b
   -> ParamTrace                             -- ^ guide parameters λ_t, model parameters θ_t
-  -> Prog (GradDescent : fs) ParamTrace      -- ^ final guide parameters λ_T
+  -> Prog fs ParamTrace      -- ^ final guide parameters λ_T
 viLoop num_timesteps num_samples guide hdlGuide model hdlModel guideParams_0 = do
   foldr (>=>) pure [viStep num_samples  hdlGuide  hdlModel guide model  | t <- [1 .. num_timesteps]] guideParams_0
 
@@ -68,11 +68,11 @@ viLoop num_timesteps num_samples guide hdlGuide model hdlModel guideParams_0 = d
      3. Update the parameters λ of the guide
 -}
 
-viStep :: (HasSampler fs)
+viStep ::  (Members [GradDescent, Sampler] fs)
   => Int
   -> GuideHandler env a -> ModelHandler env b -> VIGuide env a -> VIModel env b
   -> ParamTrace                            -- ^ guide parameters λ_t
-  -> Prog (GradDescent : fs) ParamTrace    -- ^ next guide parameters λ_{t+1}
+  -> Prog fs ParamTrace    -- ^ next guide parameters λ_{t+1}
 viStep num_samples hdlGuide hdlModel guide model  params = do
   -- | Execute the guide X ~ Q(X; λ) for (L) iterations
   (((_, envs), guide_ρs), grads) <- Util.unzip4 <$> replicateM num_samples (call (hdlGuide guide params))

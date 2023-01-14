@@ -15,7 +15,7 @@ import           Control.Monad ( mapAndUnzipM )
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Effects.Dist ( Addr, Observe (Observe), Sample, pattern ObsPrj )
-import           Effects.Lift ( handleM, HasSampler )
+import           Effects.Lift ( handleM)
 import           LogP ( LogP, logMeanExp )
 import           Prog ( Prog (..), weakenProg, Member, discharge, call, weaken, LastMember, Members )
 import           Sampler
@@ -53,12 +53,12 @@ type ResampleHandler fs p = forall a. Prog (Resample p : fs) a -> Prog fs a
 
 {- | A top-level template for sequential importance sampling.
 -}
-sis :: HasSampler fs
+sis :: (Members [Resample p, Sampler] fs)
   => Int                                                        -- ^ number of particles
   -> ParticleHandler p                                        -- ^ handler for running particles
   -> p
   -> ProbProg a                                                 -- ^ initial probabilistic program
-  -> Prog (Resample p : fs) [(a, p)]                        -- ^ (final particle output, final particle context)
+  -> Prog fs [(a, p)]                        -- ^ (final particle output, final particle context)
 sis n_prts hdlParticle ρ_0 prog_0  = do
   -- | Create an initial population of particles and contexts
   let population = unzip $ replicate n_prts (prog_0, ρ_0)
@@ -67,11 +67,11 @@ sis n_prts hdlParticle ρ_0 prog_0  = do
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
-pfilter :: forall p fs a. HasSampler fs
+pfilter :: (Members [Resample p, Sampler] fs)
   => ParticleHandler p                                 -- ^ handler for running particles
   -> ProbProg a                                          -- ^ initial probabilistic program
   -> ([ProbProg a], [p])                               -- ^ input particles and corresponding contexts
-  -> Prog (Resample p  : fs) [(a, p)]                -- ^ final particle results and corresponding contexts
+  -> Prog fs [(a, p)]                          -- ^ final particle results and corresponding contexts
 pfilter hdlParticle prog_0 (prts, ρs) = do
   -- | Run particles to next checkpoint and accumulate their contexts
   (prts', partialρs) <- call (mapAndUnzipM hdlParticle prts)

@@ -5,6 +5,7 @@
 
 
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# LANGUAGE RankNTypes #-}
 
 {- | Simulation.
 -}
@@ -25,7 +26,7 @@ import           Effects.EnvRW ( EnvRW )
 import           Env ( Env )
 import           Model ( handleCore, Model )
 import           PrimDist ( drawWithSampler )
-import           Prog ( discharge, Prog(..), LastMember, discharge1 )
+import           Prog ( handle, discharge, Prog(..), LastMember, discharge1, Handler )
 import           Sampler ( Sampler, liftIO )
 import           Unsafe.Coerce (unsafeCoerce)
 
@@ -50,13 +51,11 @@ runSimulate
   = defaultSample . defaultObserve
 
 -- | Handle @Observe@ operations by simply passing forward their observed value, performing no side-effects
-defaultObserve
-  :: Prog (Observe : es) a
-  -> Prog es a
-defaultObserve (Val x) = return x
-defaultObserve (Op op k) = case discharge op of
-  Right (Observe d y α) -> defaultObserve (k y)
-  Left op' -> Op op' (defaultObserve . k)
+defaultObserve :: Handler Observe es b b
+defaultObserve = handle () (const Val) (const hop)
+  where
+  hop :: Observe x -> (() -> x -> Prog es b) -> Prog es b
+  hop (Observe d y α) k = k () y
 
 -- | Handle @Sample@ operations by using the @Sampler@ monad to draw from primitive distributions
 defaultSample

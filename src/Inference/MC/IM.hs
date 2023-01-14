@@ -8,6 +8,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 
 {- | Independence Metropolis inference, where proposals are independent of each other.
 -}
@@ -16,7 +17,7 @@ module Inference.MC.IM where
 
 import Control.Monad ( replicateM )
 import qualified Data.Map as Map
-import Prog ( Prog(..), discharge, LastMember )
+import Prog ( Handler, Prog(..), discharge, handle, LastMember, Member )
 import Trace ( Trace, LPTrace, filterTrace )
 import LogP ( LogP (..) )
 import PrimDist
@@ -24,7 +25,7 @@ import Model ( Model, handleCore, ProbProg )
 import Effects.EnvRW ( EnvRW )
 import Env ( Env )
 import Effects.Dist ( Dist, pattern SampPrj, pattern ObsPrj )
-import Effects.Lift ( handleM, liftPutStrLn, HasSampler, random' )
+import Effects.Lift ( handleM, liftPutStrLn, random' )
 import Sampler ( Sampler, sampleRandom )
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.LW as LW
@@ -55,13 +56,12 @@ handleModel ::
 handleModel prog τ =
   (Metropolis.reuseSamples τ . LW.likelihood 0) prog
 
-handleAccept :: HasSampler fs => Prog (Accept LogP : fs) a -> Prog fs a
-handleAccept (Val x)   = pure x
-handleAccept (Op op k) = case discharge op of
-  Right (Propose τ)
-    ->  do  τ0 <- mapM (const random') τ
-            (handleAccept . k) τ0
-  Right (Accept lρ lρ')
-    ->  do  u <- random'
-            (handleAccept . k) (exp (lρ' - lρ) > u)
-  Left op' -> Op op' (handleAccept . k)
+handleAccept :: Member Sampler fs => Handler (Accept LogP) fs a a
+handleAccept = handle () (\_ -> Val) (\_ op k -> hop op k)
+  where hop :: Member Sampler es => Accept LogP x -> (() -> x -> Prog es b) -> Prog es b
+        hop op k = case op of
+          (Propose τ)     -> do τ0 <- mapM (const random') τ
+                                k () τ0
+          (Accept lρ lρ') -> do let ratio = exp (lρ' - lρ)
+                                u <- random'
+                                k () (ratio > u)

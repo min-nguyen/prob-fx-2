@@ -67,7 +67,7 @@ handleModel n prog τθ  = do
 
 {- | An acceptance mechanism for PMMH.
 -}
-handleAccept :: HasSampler fs
+handleAccept :: Member Sampler fs
   => Handler (Accept LogP) fs a a
 handleAccept (Val x)   = pure x
 handleAccept (Op op k) = case discharge op of

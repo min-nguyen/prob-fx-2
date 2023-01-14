@@ -123,14 +123,14 @@ call e = Op (inj e) Val
 type Handler e es a b = Prog (e : es) a -> Prog es b
 
 handle :: s
-       -> (forall x. s -> e x -> (s -> x -> Prog es b) -> Prog es b)
        -> (s -> a -> Prog es b)
+       -> (forall x. s -> e x -> (s -> x -> Prog es b) -> Prog es b)
        -> Handler e es a b
-handle s _   hval  (Val a)   = hval s a
-handle s hop hval  (Op op k) = case discharge op of
+handle s hval _     (Val a)   = hval s a
+handle s hval hop   (Op op k) = case discharge op of
   Right  op' -> hop s op' k'
   Left   u   -> Op u (k' s)
-  where k' s' = handle s' hop hval . k
+  where k' s' = handle s' hval hop . k
 
 -- | Discharge an effect from the front of an effect sum
 discharge :: EffectSum (e ': es) a -> Either (EffectSum es a) (e a)

@@ -17,13 +17,13 @@ module Inference.MC.SMC where
 import           Control.Monad ( replicateM )
 import qualified Data.Vector as Vector
 import           Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe (..), Sample )
-import           Effects.Lift ( liftPrint, handleM, HasSampler)
+import           Effects.Lift ( liftPrint, handleM)
 import           Effects.EnvRW ( EnvRW, handleEnvRW )
 import           Env ( Env )
 import           LogP ( LogP(..), logMeanExp )
 import           Model ( Model(runModel), ProbProg )
 import           PrimDist ( mkCategorical, drawWithSampler, logProb )
-import           Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge, prj )
+import           Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge, prj, handle, Handler )
 import qualified Data.Map as Map
 import           Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS
@@ -65,19 +65,17 @@ suspend (Op op k) = case discharge op of
 
 {- | A handler for multinomial resampling of particles.
 -}
-handleResampleMul :: HasSampler fs => ResampleHandler fs LogP
-handleResampleMul (Val x) = Val x
-handleResampleMul (Op op k) = case discharge op of
-  Right (Resample (prts, ρs) _) -> do
-    -- | Select particles to continue with
+
+handleResampleMul :: Member Sampler es => Handler (Resample LogP) es b b
+handleResampleMul = handle () (const Val) (const hop)
+  where
+  hop :: Member Sampler es =>  Resample LogP x -> (() -> x -> Prog es b) -> Prog es b
+  hop  (Resample (prts, ρs) _) k = do
     idxs <- call (replicateM (length ρs) (Sampler.sampleCategorical (Vector.fromList (map exp ρs))))
     let prts_res  = map (prts !! ) idxs
         ρs_res    = map (ρs  !! ) idxs
-    (handleResampleMul . k) (prts_res, ρs_res)
-  Right (Accum ρs1 ρs2) -> do
-    let ρs = map (+ logMeanExp ρs1) ρs2
-    (handleResampleMul . k) ρs
-  Left op' -> Op op' (handleResampleMul . k)
+    k () (prts_res, ρs_res)
+  hop  (Accum ρs1 ρs2) k = let ρs = map (+ logMeanExp ρs1) ρs2 in k () ρs
 
 normaliseParticles  :: [LogP] -> [LogP] -> [LogP]
 normaliseParticles ρs ρs' =
@@ -91,7 +89,7 @@ resampleMul ρs = do
 
 {- | A handler for systematic resampling of particles.
 -}
-handleResampleSys :: HasSampler fs => ResampleHandler fs LogP
+handleResampleSys :: Member Sampler fs => ResampleHandler fs LogP
 handleResampleSys (Val x) = Val x
 handleResampleSys (Op op k) = case discharge op of
   Right (Resample (prts, ρs) _) -> do

@@ -57,7 +57,7 @@ smc2 n_outer_prts mh_steps n_inner_prts model env obs_vars = do
 
 {- | Perform SMC2 on a probabilistic program.
 -}
-smc2Internal :: (HasSampler fs)
+smc2Internal :: (Member Sampler fs)
   => Int                                          -- ^ number of outer SMC particles
   -> Int                                          -- ^ number of PMMH steps
   -> Int                                          -- ^ number of inner SMC particles
@@ -70,7 +70,7 @@ smc2Internal n_outer_prts mh_steps n_inner_prts tags  =
 {- | A handler for resampling particles according to their normalized log-likelihoods,
      and then pertrubing their sample traces using PMMH.
 -}
-handleResample :: HasSampler fs
+handleResample :: Member Sampler fs
   => Int                                           -- ^ number of PMMH steps
   -> Int                                           -- ^ number of inner SMC particles
   -> [String]                                      -- ^ tags indicating variables of interest

@@ -24,7 +24,7 @@ import Model ( Model, handleCore, ProbProg )
 import Effects.EnvRW ( EnvRW )
 import Env ( ContainsVars(..), Vars, Env )
 import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr )
-import Effects.Lift ( handleM, HasSampler )
+import Effects.Lift ( handleM, random' )
 import qualified Inference.MC.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
 
@@ -48,12 +48,12 @@ type ModelHandler p = forall a. ProbProg a -> Trace -> Sampler ((a, p), Trace)
 
 {- | A general framework for Metropolis inference.
 -}
-metropolis :: (HasSampler fs)
+metropolis :: (Members [Accept p, Sampler] fs)
    => Int                                                                    -- ^ number of iterations
    -> Trace                                                          -- ^ initial context + sample trace
    -> ModelHandler p                                                        -- ^ model handler
    -> ProbProg a                                                             -- ^ probabilistic program
-   -> Prog (Accept p : fs) [((a, p), Trace)]                            -- ^ trace of accepted outputs
+   -> Prog fs [((a, p), Trace)]                            -- ^ trace of accepted outputs
 metropolis n τ_0 hdlModel prog_0 = do
   -- | Perform initial run of mh
   x0 <- call (hdlModel prog_0 τ_0)
@@ -62,11 +62,11 @@ metropolis n τ_0 hdlModel prog_0 = do
 
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
-metroStep :: forall fs p a. (HasSampler fs)
+metroStep :: forall fs p a. (Members [Accept p, Sampler] fs)
   => ProbProg a                                                       -- ^ model handler
   -> ModelHandler p                                                  -- ^ probabilistic program
   -> [((a, p), Trace)]                                                   -- ^ previous trace
-  -> Prog (Accept p : fs) [((a, p), Trace)]                            -- ^ updated trace
+  -> Prog fs [((a, p), Trace)]                            -- ^ updated trace
 metroStep prog_0 hdlModel markov_chain = do
   -- | Get previous iteration output
   let ((r, p), τ) = head markov_chain
@@ -91,3 +91,14 @@ reuseSamples τ (Op op k) = case discharge op of
     Just r  -> do let y = draw d r
                   reuseSamples τ (k y)
   Left op'  -> error "MH.handleSamp: Left should not happen"
+
+reuseSamples' :: Member Sampler es => Trace -> Handler Sample es a (a, Trace)
+reuseSamples' τ0 = handle τ0 (\τ x -> Val (x, τ))
+  (\τ (Sample d α) k ->
+        case Map.lookup α τ of
+              Nothing -> (do r <- random'
+                             let y = draw d r;
+                             k (Map.insert α r τ) y)
+              Just r  -> (do let y = draw d r;
+                             k τ y)
+  )
