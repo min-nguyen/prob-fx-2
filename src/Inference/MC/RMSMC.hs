@@ -82,8 +82,9 @@ rmpfilter ::
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> ProbProg '[Sampler] a                                   -- ^ probabilistic program
   -> Sampler [(a, PrtState)]                      -- ^ final particle results and contexts
-rmpfilter n_prts mh_steps tags model =
-  (handleM . handleResample mh_steps tags . pfilter handleParticle model) (prts, ps)
+rmpfilter n_prts mh_steps tags model = do
+  -- let q =  pfilter handleParticle model (prts, ps)
+  (handleM . handleResample mh_steps tags model . pfilter handleParticle) (prts, ps)
   where (prts, ps) = unzip $ replicate n_prts (model, PrtState (Addr "" 0) 0  Map.empty)
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint
@@ -106,8 +107,9 @@ suspendα (Op op k) = case discharge op of
 handleResample :: (Member Sampler fs)
   => Int                                          -- ^ number of MH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> Handler (Resample PrtState) fs a a
-handleResample mh_steps tags = handle () (const Val) (const hop) where
+  -> ProbProg '[Sampler] a
+  -> Handler (Resample PrtState) fs [(a, PrtState)] [(a, PrtState)]
+handleResample mh_steps tags m = handle () (const Val) (const hop) where
   hop :: Member Sampler fs => Resample PrtState x -> (() -> x -> Prog fs a) -> Prog fs a
   hop (Accum σs σs') k = do
     let (_, ρs , τs ) = unpack σs
@@ -115,14 +117,14 @@ handleResample mh_steps tags = handle () (const Val) (const hop) where
         ρs_accum  = map (+ logMeanExp ρs) ρs'
         τs_accum  = zipWith Map.union τs' τs
     k () (pack (α, ρs_accum, τs_accum))
-  hop (Resample (_, σs) prog_0) k = do
+  hop (Resample (_, σs) ) k = do
   -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
     idxs <- call $ SMC.resampleMul (map particleLogProb σs)
     let σs_res          = map (σs !! ) idxs
     -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head'), and get the sample trace of each resampled particle
         (α, _, τs_res)  = unpack σs_res
     -- | Insert break point to perform MH up to
-        partial_model   = suspendAt α prog_0
+        partial_model   = suspendAt α m
     -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
     (prts_mov, σs_mov) <- mapAndUnzipM
                               (\τ -> do ((prt_mov, lρ), τ_mov) <- fmap head (MH.ssmh mh_steps τ (Addr "" 0) tags (unsafeCoerce partial_model))

@@ -47,7 +47,7 @@ smc n_prts model env_in = do
 -}
 mulpfilter :: Int -> ProbProg '[Sampler] a -> Sampler [(a, LogP)]
 mulpfilter n_prts model =
- (handleM . handleResampleMul . pfilter handleParticle model) (prts, ρs)
+ (handleM . handleResampleMul . pfilter handleParticle) (prts, ρs)
  where (prts, ρs) = (unzip . replicate n_prts) (model, 0)
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
@@ -70,7 +70,7 @@ handleResampleMul :: Member Sampler es => Handler (Resample LogP) es b b
 handleResampleMul = handle () (const Val) (const hop) where
   hop :: Member Sampler es =>  Resample LogP x -> (() -> x -> Prog es b) -> Prog es b
   hop  (Accum ρs1 ρs2) k = let ρs = map (+ logMeanExp ρs1) ρs2 in k () ρs
-  hop  (Resample (prts, ρs) _) k = do
+  hop  (Resample (prts, ρs)) k = do
     idxs <- call (replicateM (length ρs) (Sampler.sampleCategorical (Vector.fromList (map exp ρs))))
     let prts_res  = map (prts !! ) idxs
         ρs_res    = map (ρs  !! ) idxs
@@ -91,7 +91,7 @@ resampleMul ρs = do
 handleResampleSys :: Member Sampler fs => ResampleHandler fs LogP
 handleResampleSys (Val x) = Val x
 handleResampleSys (Op op k) = case discharge op of
-  Right (Resample (prts, ρs) _) -> do
+  Right (Resample (prts, ρs)) -> do
     -- | Get the weights for each particle
     let ps = map exp ρs
     -- | Select particles to continue with

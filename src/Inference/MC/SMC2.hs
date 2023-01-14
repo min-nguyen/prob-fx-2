@@ -65,8 +65,8 @@ smc2Internal :: (Member Sampler fs)
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> ProbProg '[Sampler] a                                    -- ^ probabilistic program
   -> Prog fs [(a, PrtState)]                -- ^ final particle results and contexts
-smc2Internal n_outer_prts mh_steps n_inner_prts tags  =
-  handleResample mh_steps n_inner_prts tags . SIS.sis n_outer_prts RMSMC.handleParticle  (PrtState (Addr "" 0) 0 Map.empty)
+smc2Internal n_outer_prts mh_steps n_inner_prts tags m  =
+  (handleResample mh_steps n_inner_prts tags m . SIS.sis n_outer_prts RMSMC.handleParticle  (PrtState (Addr "" 0) 0 Map.empty)) m
 
 {- | A handler for resampling particles according to their normalized log-likelihoods,
      and then pertrubing their sample traces using PMMH.
@@ -75,12 +75,13 @@ handleResample :: Member Sampler fs
   => Int                                           -- ^ number of PMMH steps
   -> Int                                           -- ^ number of inner SMC particles
   -> [String]                                      -- ^ tags indicating variables of interest
-  -> Prog (Resample PrtState : fs) a
-  -> Prog fs a
-handleResample mh_steps n_inner_prts θ = loop where
+  -> ProbProg '[Sampler] a
+  -> Prog (Resample PrtState : fs) [(a, PrtState)]
+  -> Prog fs [(a, PrtState)]
+handleResample mh_steps n_inner_prts θ m = loop where
   loop (Val x) = Val x
   loop (Op op k) = case discharge op of
-    Right (Resample (prts, ss) prog_0) ->
+    Right (Resample (prts, ss)) ->
       do  -- | Resample the particles according to the indexes returned by the SMC resampler
           idxs <- call $ SMC.resampleMul (map particleLogProb ss)
           let resampled_ss    = map (ss !! ) idxs
@@ -89,7 +90,7 @@ handleResample mh_steps n_inner_prts θ = loop where
           -- | Get the parameter sample trace of each resampled particle
               resampled_τθs     = map (filterTrace θ . particleSTrace) resampled_ss
           -- | Insert break point to perform MH up to
-              partial_model     = suspendAt resampled_α prog_0
+              partial_model     = suspendAt resampled_α m
           -- | Perform PMMH using each resampled particle's sample trace and get the most recent PMMH iteration.
           pmmh_trace <- mapM ( fmap head
                              . call

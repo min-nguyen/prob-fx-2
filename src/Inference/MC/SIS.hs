@@ -31,8 +31,6 @@ data Resample p a where
   Resample
     -- | (particles, contexts)
     :: ([ProbProg es a], [p])
-    -- | initial probabilistic program
-    -> ProbProg es a
     -- | (resampled programs, resampled ss)
     -> Resample p ([ProbProg es a], [p])
   Accum
@@ -63,16 +61,15 @@ sis n_prts hdlParticle ρ_0 prog_0  = do
   -- | Create an initial population of particles and contexts
   let population = unzip $ replicate n_prts (prog_0, ρ_0)
   -- | Execute the population until termination
-  pfilter hdlParticle prog_0 population
+  pfilter hdlParticle population
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
 pfilter :: (Members [Resample p, Sampler] fs)
   => ParticleHandler es p                                 -- ^ handler for running particles
-  -> ProbProg es a                                          -- ^ initial probabilistic program
   -> ([ProbProg es a], [p])                               -- ^ input particles and corresponding contexts
   -> Prog fs [(a, p)]                          -- ^ final particle results and corresponding contexts
-pfilter hdlParticle prog_0 (prts, ρs) = do
+pfilter hdlParticle  (prts, ρs) = do
   -- | Run particles to next checkpoint and accumulate their contexts
   (prts', partialρs) <- call (mapAndUnzipM hdlParticle prts)
   ρs'                <- call (Accum ρs partialρs)
@@ -81,7 +78,7 @@ pfilter hdlParticle prog_0 (prts, ρs) = do
     -- | If all particles have finished, return their results and contexts
     Right vals  -> (`zip` ρs') <$> vals
     -- | Otherwise, pick the particles to continue with
-    Left  _     -> call (Resample (prts', ρs') prog_0) >>= pfilter hdlParticle prog_0
+    Left  _     -> call (Resample (prts', ρs')) >>= pfilter hdlParticle
 
 {- | Check whether a list of programs have all terminated.
      If at least one program is unfinished, return all programs.
