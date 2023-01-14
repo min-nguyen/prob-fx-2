@@ -57,7 +57,7 @@ mulpfilter n_prts model =
 handleParticle :: ProbProg a -> Sampler (ProbProg a, LogP)
 handleParticle = defaultSample . suspend
 
-suspend :: ProbProg a -> Prog '[Sample] (ProbProg a, LogP)
+suspend :: Handler Observe es a (Prog (Observe : es) a, LogP)
 suspend (Val x)   = Val (Val x, 0)
 suspend (Op op k) = case discharge op of
   Right (Observe d y α) -> Val (k y, logProb d y)
