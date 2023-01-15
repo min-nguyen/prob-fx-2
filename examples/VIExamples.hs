@@ -48,8 +48,8 @@ type LinRegrEnv =
      ]
 
 {- | Linear regression as a probabilistic program for inference -}
-linRegr :: forall env. Observables env '["m", "c"] Double
-  => [(Double, Double)] -> VIModel env (Double, Double)  -- ^ y datapoints
+linRegr :: forall env es. Observables env '["m", "c"] Double
+  => [(Double, Double)] -> VIModel env es (Double, Double)  -- ^ y datapoints
 linRegr xys = do
   -- Draw model parameters from prior
   m <- sample' @env (mkNormal 0 3) (#m, 0)
@@ -58,8 +58,8 @@ linRegr xys = do
   mapM_ (\((x, y), idx) -> observe (mkNormal (m * x + c) 1) y (Addr "y" idx)) (zip xys [0 ..])
   return (m, c)
 
-linRegrGuide :: forall env. Observables env '["m", "c"] Double
-  => VIGuide env ()
+linRegrGuide :: forall env es. Observables env '["m", "c"] Double
+  => VIGuide env es ()
 linRegrGuide = do
   m <- param' @env (mkNormal 0 3) (#m, 0)
   c <- param' @env (mkNormal 0 5) (#c, 0)
@@ -93,7 +93,7 @@ mapLinRegr t_steps l_samples n_datapoints = do
   pure (m_dist, c_dist)
 
 -- | Chain of HMM nodes
-hmm :: forall env. (Observables env '["obs_p", "trans_p"] Double)
+hmm :: forall env es. (Observables env '["obs_p", "trans_p"] Double)
   -- | number of HMM nodes
   => Int
   -- | initial latent state
@@ -101,7 +101,7 @@ hmm :: forall env. (Observables env '["obs_p", "trans_p"] Double)
   -- | Observations
   -> [Int]
   -- | final latent state
-  -> VIModel env (Int, Int)
+  -> VIModel env es (Int, Int)
 hmm n x0 ys = do
   trans_p <- sample' @env (mkBeta 2 2) (#trans_p, 0)
   obs_p   <- sample' @env (mkBeta 2 2) (#obs_p, 0)
@@ -111,8 +111,8 @@ hmm n x0 ys = do
                              return (x_i, idx + 1)
   foldr (>=>) return (replicate n hmmNode) (x0, 0)
 
-hmmGuide :: forall env. (Observables env '["obs_p", "trans_p"] Double, Observable env "x" Bool)
-  => Int -> Int -> VIGuide env ()
+hmmGuide :: forall env es. (Observables env '["obs_p", "trans_p"] Double, Observable env "x" Bool)
+  => Int -> Int -> VIGuide env es ()
 hmmGuide n x0 = do
   trans_p <- param' @env (mkBeta 2 2) (#trans_p, 0)
   obs_p   <- param' @env (mkBeta 2 2) (#obs_p, 0)
@@ -157,7 +157,7 @@ mapHMM t_steps l_samples hmm_length = do
 
 
 -- | Distribution over the n topics in a document, over the distribution of m words in a topic
-topicModel :: forall m n env ts. (TypeableSNatI m, TypeableSNatI n,
+topicModel :: forall m n env es. (TypeableSNatI m, TypeableSNatI n,
                Observable env "φ" (Vec m Double),
                Observable env "θ" (Vec n Double),
                Observable env "z" Int)
@@ -168,7 +168,7 @@ topicModel :: forall m n env ts. (TypeableSNatI m, TypeableSNatI n,
   -- | number of words
   -> [String]
   -- | generated words
-  -> VIModel env (Vec n (Vec m Double))
+  -> VIModel env es (Vec n (Vec m Double))
 topicModel vocab n_topics ws = do
   -- Generate distribution over words for each topic
   let idxs = Vec.iterate (snat @n) (+1) (0 :: Int)
@@ -182,11 +182,11 @@ topicModel vocab n_topics ws = do
                            observe (mkDiscrete (zip (Vec.toList vocab) word_ps)) (ws !! idx) (Addr "w" idx)) (zip ws [0 ..])
   pure topic_word_ps
 
-topicGuide :: forall m n env. (TypeableSNatI m, TypeableSNatI n,
+topicGuide :: forall m n env es. (TypeableSNatI m, TypeableSNatI n,
                Observable env "φ" (Vec m Double),
                Observable env "θ" (Vec n Double),
                Observable env "z" Int)
-  => Vec m String -> SNat n -> [String] -> VIGuide env ()
+  => Vec m String -> SNat n -> [String] -> VIGuide env es ()
 topicGuide vocab n_topics ws = do
   let idxs = Vec.iterate (snat @n) (+1) (0 :: Int)
   topic_word_ps <- Vec.mapM (\idx -> param' @env (mkDirichlet (Vec.replicate (snat @m) 1)) (#φ, idx)

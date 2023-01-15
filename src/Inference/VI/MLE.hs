@@ -31,11 +31,11 @@ import qualified Inference.MC.SIM as SIM
 import           Inference.VI.VI
 import Inference.MC.LW (likelihood)
 
-mle :: forall env a b.
-     Int                                -- ^ number of optimisation steps (T)
+mle :: forall env es a b. es ~ '[Sampler]
+  => Int                                -- ^ number of optimisation steps (T)
   -> Int                                -- ^ number of samples to estimate the gradient over (L)
-  -> VIGuide env a                      -- ^ guide Q(X; λ)
-  -> VIModel env b                      -- ^ model P(X, Y)
+  -> VIGuide env es a                      -- ^ guide Q(X; λ)
+  -> VIModel env es b                      -- ^ model P(X, Y)
   -> Env env                            -- ^ model environment (containing only observed data Y)
   -> Sampler ParamTrace                     -- ^ final parameters θ_T
 mle num_timesteps num_samples guide model env = do
@@ -45,11 +45,11 @@ mle num_timesteps num_samples guide model env = do
   (handleM . handleNormGradDescent) $
       viLoop num_timesteps num_samples guide (handleGuide env) model handleModel λ_0
 
-handleGuide :: Env env -> VIGuide env a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
+handleGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
 handleGuide env guide params =
   (handleM . SIM.defaultSample . handleParams . fmap (,0) . updateParams params . handleEnvRW env) guide
 
 -- | Handle the model P(X, Y; θ) by returning log-importance-weight P(Y | X; θ)
-handleModel :: VIModel env a -> Env env -> Sampler (a, LogP)
+handleModel :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
 handleModel model env  =
   (handleM . SIM.defaultSample . likelihood 0 . fmap fst . handleEnvRW env) model

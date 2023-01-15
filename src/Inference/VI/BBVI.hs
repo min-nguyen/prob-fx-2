@@ -39,11 +39,11 @@ import Inference.MC.LW
 
 {- | Top-level wrapper for BBVI inference that takes a separate model and guide.
 -}
-bbvi :: forall env a b.
-    Int                                -- ^ number of optimisation steps (T)
+bbvi :: forall env es a b. es ~ '[Sampler]
+  => Int                                -- ^ number of optimisation steps (T)
   -> Int                                -- ^ number of samples to estimate the gradient over (L)
-  -> VIGuide env b      -- ^ guide Q(X; λ)
-  -> VIModel env a      -- ^ model P(X, Y)
+  -> VIGuide env es b      -- ^ guide Q(X; λ)
+  -> VIModel env es a      -- ^ model P(X, Y)
   -> Env env                            -- ^ empty environment
   -> Sampler ParamTrace                 -- ^ final guide parameters λ_T
 bbvi num_timesteps num_samples guide model env  = do
@@ -52,10 +52,10 @@ bbvi num_timesteps num_samples guide model env  = do
   (handleM . VI.handleLRatioGradDescent)
     $ VI.viLoop num_timesteps num_samples guide (handleGuide env) model handleModel λ_0
 
-handleGuide :: Env env -> VIGuide env a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
+handleGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
 handleGuide env guide params =
   (handleM . SIM.defaultSample . handleParams . weighGuide . updateParams params . handleEnvRW env) guide
 
-handleModel :: VIModel env a -> Env env -> Sampler (a, LogP)
+handleModel :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
 handleModel model env  =
   (handleM . defaultSample . defaultObserve . joint 0 . fmap fst . handleEnvRW env) model
