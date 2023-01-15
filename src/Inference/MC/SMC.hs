@@ -21,7 +21,7 @@ import           Effects.Lift ( liftPrint, handleM)
 import           Effects.EnvRW ( EnvRW, handleEnvRW )
 import           Env ( Env )
 import           LogP ( LogP(..), logMeanExp )
-import           Model ( Model(runModel), ProbProg )
+import           Model ( GenModel(runModel), Model )
 import           PrimDist ( mkCategorical, drawWithSampler, logProb )
 import           Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge, prj, handle, Handler )
 import qualified Data.Map as Map
@@ -34,7 +34,7 @@ import           Sampler ( Sampler, sampleRandom, sampleCategorical)
 -}
 smc
   :: Int                                -- ^ number of particles
-  -> Model env [EnvRW env, Dist, Sampler] a      -- ^ model
+  -> GenModel env [EnvRW env, Dist, Sampler] a      -- ^ model
   -> Env env                            -- ^ input model environment
   -> Sampler [Env env]                  -- ^ output model environments of each particle
 smc n_prts model env_in = do
@@ -45,7 +45,7 @@ smc n_prts model env_in = do
 
 {- | Call SMC on a probabilistic program.
 -}
-mulpfilter :: Int -> ProbProg '[Sampler] a -> Sampler [(a, LogP)]
+mulpfilter :: Int -> Model '[Sampler] a -> Sampler [(a, LogP)]
 mulpfilter n_prts model =
  (handleM . handleResampleMul . pfilter handleParticle) (prts, ρs)
  where (prts, ρs) = (unzip . replicate n_prts) (model, 0)
@@ -54,7 +54,7 @@ mulpfilter n_prts model =
        1. the rest of the computation
        2. the log probability of the @Observe operation
 -}
-handleParticle :: ProbProg '[Sampler] a -> Sampler (ProbProg '[Sampler] a, LogP)
+handleParticle :: Model '[Sampler] a -> Sampler (Model '[Sampler] a, LogP)
 handleParticle = handleM . defaultSample . suspend
 
 suspend :: Handler Observe es a (Prog (Observe : es) a, LogP)

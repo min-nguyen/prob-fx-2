@@ -21,7 +21,7 @@ import Prog ( Handler, Prog(..), discharge, handle, LastMember, Member )
 import Trace ( Trace, LPTrace, filterTrace )
 import LogP ( LogP (..) )
 import PrimDist
-import Model ( Model, handleCore, ProbProg )
+import Model ( GenModel, handleCore, Model )
 import Effects.EnvRW ( EnvRW )
 import Env ( Env )
 import Effects.Dist ( Dist, pattern SampPrj, pattern ObsPrj )
@@ -37,7 +37,7 @@ import Util
 -}
 im ::
      Int                              -- ^ number of iterations
-  -> Model env [EnvRW env, Dist, Sampler] a  -- ^ model
+  -> GenModel env [EnvRW env, Dist, Sampler] a  -- ^ model
   -> Env env                        -- ^ input environment
   -> Sampler [Env env]              -- ^ output model environments
 im n model env_in   = do
@@ -50,7 +50,7 @@ im n model env_in   = do
 {- | Handler for one iteration of IM.
 -}
 handleModel :: ModelHandler '[Sampler] LogP
-  --    ProbProg '[Sampler] a                         -- ^ probabilistic program
+  --    Model '[Sampler] a                         -- ^ probabilistic program
   -- -> Trace                             -- ^ proposed initial log-prob + sample trace
   -- -> Sampler ((a, LogP), Trace)        -- ^ proposed final log-prob + sample trace
 handleModel prog τ =

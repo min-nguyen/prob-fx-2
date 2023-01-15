@@ -24,7 +24,7 @@ import           Effects.Dist ( Sample(..), Observe(..), Dist )
 import           Effects.Lift ( handleM )
 import           Effects.EnvRW ( EnvRW )
 import           Env ( Env )
-import           Model ( handleCore, Model )
+import           Model ( handleCore, GenModel )
 import           PrimDist ( drawWithSampler )
 import           Prog ( handle, discharge, Prog(..), LastMember, discharge1, Handler, Member, call )
 import           Sampler ( Sampler, liftIO )
@@ -33,7 +33,7 @@ import           Unsafe.Coerce (unsafeCoerce)
 -- | Simulate from a model under a given model environment
 simulate
   -- | model
-  :: Model env [EnvRW env, Dist, Sampler] a
+  :: GenModel env [EnvRW env, Dist, Sampler] a
   -- | input model environment
   -> Env env
   -- | (model output, output environment)

@@ -15,7 +15,7 @@
 module Radon where
 
 import Control.Monad ( replicateM )
-import Model ( Model, halfCauchy', halfNormal, normal )
+import Model ( GenModel, halfCauchy', halfNormal, normal )
 import Env ( Env(..), Observables, Observable, Assign ((:=)), (<:>), enil, (<#>), vnil, get)
 import Sampler ( Sampler )
 import DataSets ( n_counties, logRadon, countyIdx, dataFloorValues )
@@ -36,7 +36,7 @@ type RadonEnv =
 
 -- | Prior distribution over model hyperparameters
 radonPrior :: Observables env '["mu_a", "mu_b", "sigma_a", "sigma_b"] Double
-  => Model env es (Double, Double, Double, Double)
+  => GenModel env es (Double, Double, Double, Double)
 radonPrior = do
   mu_a    <- normal 0 10 #mu_a
   sigma_a <- halfNormal 5 #sigma_a
@@ -53,14 +53,14 @@ radonModel :: Observables env '["mu_a", "mu_b", "sigma_a", "sigma_b", "a", "b", 
   -> [Int]
   -- | the county (as an integer) each house belongs to
   -> [Int]
-  -> Model env es [Double]
+  -> GenModel env es [Double]
 radonModel n_counties floor_x county_idx = do
   (mu_a, sigma_a, mu_b, sigma_b) <- radonPrior
   -- Intercept for each county
   a <- replicateM n_counties (normal mu_a sigma_a #a)  -- length = 85
   -- Gradient for each county
   b <- replicateM n_counties (normal mu_b sigma_b #b)  -- length = 85
-  -- Model error
+  -- GenModel error
   eps <- halfCauchy' 5
   let -- Get county intercept for each datapoint
       a_county_idx = map (a !!) county_idx

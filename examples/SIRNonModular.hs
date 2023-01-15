@@ -9,7 +9,7 @@
      This demonstrates:
       - The [SIR](https://en.wikipedia.org/wiki/Compartmental_models_in_epidemiology) model for modelling
         the transition between Susceptible (S), Infected (I), and Recovered (R) individuals during an epidemic.
-        We model this as a Hidden Markov Model, where the _latent states_ are the true values of S, I, and R,
+        We model this as a Hidden Markov GenModel, where the _latent states_ are the true values of S, I, and R,
         and the _observations_ are the reported number of infections (𝜉).
       - Extending the SIR to the SIRS model where recovered individuals (R) can become susceptible (S) again.
       - Extending the SIRS to the SIRSV model where susceptible individuals (S) can become vaccinated (V).
@@ -24,7 +24,7 @@ module SIRNonModular where
 
 import Prog ( Member )
 import Effects.Writer ( Writer, tellM, handleWriterM )
-import Model ( Model, beta, binomial', gamma, poisson )
+import Model ( GenModel, beta, binomial', gamma, poisson )
 import Control.Monad ( (>=>) )
 import Env ( Env(..), Observables, Observable, Assign ((:=)), (<:>), enil, (<#>), vnil, get)
 import HMM ( ObsModel, TransModel, hmmGen )
@@ -72,7 +72,7 @@ type ObsParams = Double
 
 -- | Transition model prior
 transPriorSIR :: Observables env '["β",  "γ"] Double
-  => Model env ts TransParamsSIR
+  => GenModel env ts TransParamsSIR
 transPriorSIR = do
   pBeta  <- gamma 2 1 #β
   pGamma <- gamma 1 (1/8) #γ
@@ -101,7 +101,7 @@ transSIR (TransParamsSIR beta gamma) sir = do
 
 -- | Observation model prior
 obsPriorSIR :: Observables env '["ρ"] Double
-  => Model env ts ObsParams
+  => GenModel env ts ObsParams
 obsPriorSIR = do
   pRho <- beta 2 7 #ρ
   return pRho
@@ -115,11 +115,11 @@ obsSIR rho (Popl _ i _)  = do
 
 -- | SIR as HMM
 hmmSIR :: (Member (Writer [Popl]) es, Observable env "𝜉" Int, Observables env '["ρ", "β", "γ"] Double)
-  => Int -> Popl -> Model env es Popl
+  => Int -> Popl -> GenModel env es Popl
 hmmSIR = hmmGen transPriorSIR obsPriorSIR transSIR obsSIR
 
 -- | Handle the user effect for writing each SIR state to a stream [Popl]
-hmmSIR' :: (Observables env '["𝜉"] Int , Observables env '[ "β" , "γ" , "ρ"] Double) => Int -> Popl -> Model env es (Popl, [Popl])
+hmmSIR' :: (Observables env '["𝜉"] Int , Observables env '[ "β" , "γ" , "ρ"] Double) => Int -> Popl -> GenModel env es (Popl, [Popl])
 hmmSIR' n = handleWriterM . hmmSIR n
 
 -- | Simulating from SIR model: ([(s, i, r)], [𝜉])
@@ -163,14 +163,14 @@ data TransParamsSIRS = TransParamsSIRS {
 
 -- | Transition model prior
 transPriorSIRS :: Observables env '["β", "η", "γ"] Double
-  => Model env ts TransParamsSIRS
+  => GenModel env ts TransParamsSIRS
 transPriorSIRS = do
   TransParamsSIR pBeta pGamma  <- transPriorSIR
   pEta <- gamma 1 (1/8) #η
   return (TransParamsSIRS pBeta pGamma pEta)
 
 -- | Transition model between R and S
-transRS :: Double -> Popl -> Model env ts Popl
+transRS :: Double -> Popl -> GenModel env ts Popl
 transRS eta (Popl s i r) = do
   dN_RS <- binomial' r (1 - exp (-eta))
   return $ Popl (s + dN_RS) i (r - dN_RS)
@@ -184,7 +184,7 @@ transSIRS (TransParamsSIRS beta gamma eta) sir = do
   return sir'
 
 -- | SIRS as HMM
-hmmSIRS :: (Observables env '["𝜉"] Int, Observables env '["β", "η", "γ", "ρ"] Double) => Int -> Popl -> Model env ts (Popl, [Popl])
+hmmSIRS :: (Observables env '["𝜉"] Int, Observables env '["β", "η", "γ", "ρ"] Double) => Int -> Popl -> GenModel env ts (Popl, [Popl])
 hmmSIRS n = handleWriterM . hmmGen transPriorSIRS obsPriorSIR transSIRS obsSIR n
 
 -- | Simulate from SIRS model: ([(s, i, r)], [𝜉])
@@ -258,7 +258,7 @@ transSIRSV (TransParamsSIRSV beta gamma omega eta) sirv = do
 
 -- | Transition model prior
 transPriorSIRSV :: Observables env '["β", "γ", "ω", "η"] Double
-  => Model env ts TransParamsSIRSV
+  => GenModel env ts TransParamsSIRSV
 transPriorSIRSV  = do
   TransParamsSIRS pBeta pGamma pEta <- transPriorSIRS
   pOmega <- gamma 1 (1/16) #ω
@@ -278,7 +278,7 @@ hmmSIRSV ::  (Observables env '["𝜉"] Int, Observables env '["β", "γ", "η",
   -- | initial population states
   -> PoplV
   -- | (final population state, intermediate population states)
-  -> Model env ts (PoplV, [PoplV])
+  -> GenModel env ts (PoplV, [PoplV])
 hmmSIRSV n = handleWriterM . hmmGen transPriorSIRSV obsPriorSIR transSIRSV obsSIRSV n
 
 -- | Simulate from SIRSV model : ([(s, i, r, v)], [𝜉])

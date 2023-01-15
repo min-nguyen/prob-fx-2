@@ -20,7 +20,7 @@ import Prog
 import Trace ( Trace, LPTrace, filterTrace )
 import LogP ( LogP )
 import PrimDist
-import Model ( Model, handleCore, ProbProg )
+import Model ( GenModel, handleCore, Model )
 import Effects.EnvRW ( EnvRW )
 import Env ( ContainsVars(..), Vars, Env )
 import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr )
@@ -44,7 +44,7 @@ data Accept p a where
     -- | whether the proposal is accepted or not
     -> Accept p Bool
 
-type ModelHandler es p = forall a. ProbProg es a -> Trace -> Sampler ((a, p), Trace)
+type ModelHandler es p = forall a. Model es a -> Trace -> Sampler ((a, p), Trace)
 
 {- | A general framework for Metropolis inference.
 -}
@@ -52,7 +52,7 @@ metropolis :: (Members [Accept p, Sampler] fs)
    => Int                                                                    -- ^ number of iterations
    -> Trace                                                          -- ^ initial context + sample trace
    -> ModelHandler es p                                                        -- ^ model handler
-   -> ProbProg es a                                                             -- ^ probabilistic program
+   -> Model es a                                                             -- ^ probabilistic program
    -> Prog fs [((a, p), Trace)]                            -- ^ trace of accepted outputs
 metropolis n τ_0 hdlModel prog_0 = do
   -- | Perform initial run of mh
@@ -63,7 +63,7 @@ metropolis n τ_0 hdlModel prog_0 = do
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
 metroStep :: forall es fs p a. (Members [Accept p, Sampler] fs)
-  => ProbProg es a                                                       -- ^ model handler
+  => Model es a                                                       -- ^ model handler
   -> ModelHandler es p                                                  -- ^ probabilistic program
   -> [((a, p), Trace)]                                                   -- ^ previous trace
   -> Prog fs [((a, p), Trace)]                            -- ^ updated trace
@@ -81,24 +81,13 @@ metroStep prog_0 hdlModel markov_chain = do
 
 {- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.
 -}
--- reuseSamples :: Member Sampler es => Trace -> Prog (Sample : es) a -> Prog es (a, Trace)
--- reuseSamples τ (Val x) = pure (x, τ)
--- reuseSamples τ (Op op k) = case discharge op of
---   Right (Sample d α) ->  case Map.lookup α τ of
---     Nothing -> do r <- random'
---                   let y = draw d r
---                   reuseSamples (Map.insert α r τ) (k y)
---     Just r  -> do let y = draw d r
---                   reuseSamples τ (k y)
---   Left op'  -> error "MH.handleSamp: Left should not happen"
-
 reuseSamples :: Member Sampler es => Trace -> Handler Sample es a (a, Trace)
 reuseSamples τ0 = handle τ0 (\τ x -> Val (x, τ))
   (\τ (Sample d α) k ->
         case Map.lookup α τ of
-              Nothing -> (do r <- random'
-                             let y = draw d r;
-                             k (Map.insert α r τ) y)
-              Just r  -> (do let y = draw d r;
-                             k τ y)
+              Nothing -> do r <- random'
+                            let y = draw d r;
+                            k (Map.insert α r τ) y
+              Just r  -> do let y = draw d r;
+                            k τ y
   )

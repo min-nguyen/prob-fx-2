@@ -33,7 +33,7 @@ import           Inference.MC.SMC as SMC
 pmmh :: forall env vars a. (env `ContainsVars` vars)
   => Int                                            -- ^ number of MH steps
   -> Int                                            -- ^ number of particles
-  -> Model env [EnvRW env, Dist, Sampler] a                  -- ^ model
+  -> GenModel env [EnvRW env, Dist, Sampler] a                  -- ^ model
   -> Env env                                        -- ^ input environment
   -> Vars vars                                      -- ^ parameter names
   -> Sampler [Env env]                              -- ^ output environments
@@ -48,7 +48,7 @@ pmmh mh_steps n_prts model env_in obs_vars = do
   pmmh_trace <- (handleM . handleAccept . metropolis mh_steps τθ (handleModel n_prts)) prog_0
   pure (map (snd . fst . fst) pmmh_trace)
 
-pm :: Int -> Int -> Trace -> ProbProg '[Sampler] a -> Sampler [((a, LogP), Trace)]
+pm :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
 pm m n τθ model = do
   (handleM . handleAccept . metropolis m τθ (handleModel n)) model
 

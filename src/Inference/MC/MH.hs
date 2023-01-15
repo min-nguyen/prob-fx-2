@@ -27,7 +27,7 @@ import           Env ( ContainsVars(..), Vars, Env )
 import           Trace ( Trace, LPTrace, filterTrace )
 import           LogP ( LogP )
 import           PrimDist
-import           Model ( Model, handleCore, ProbProg )
+import           Model ( GenModel, handleCore, Model )
 import           Effects.EnvRW ( EnvRW )
 import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), pattern SampPrj, pattern ObsPrj )
 import           Effects.Lift ( handleM, liftPutStrLn, random', randomFrom' )
@@ -42,7 +42,7 @@ import Effects.State
 -}
 mh :: forall env vars a. (env `ContainsVars` vars)
   => Int                            -- ^ number of MH iterations
-  -> Model env [EnvRW env, Dist, Sampler] a  -- ^ model
+  -> GenModel env [EnvRW env, Dist, Sampler] a  -- ^ model
   -> Env env                        -- ^ input environment
   -> Vars vars                      -- ^ optional variable names of interest
     {- These allow one to specify sample sites of interest; for example, for interest in sampling @#mu@
@@ -65,7 +65,7 @@ ssmh :: (Member Sampler fs)
   -> Trace                                -- ^ initial sample trace
   -> Addr
   -> [Tag]                                 -- ^ tags indicating variables of interest
-  -> ProbProg '[Sampler] a                            -- ^ probabilistic program
+  -> Model '[Sampler] a                            -- ^ probabilistic program
   -> Prog fs [((a, LPTrace), Trace)]
 ssmh n τ_0 α_0 tags = handleAccept tags α_0 . metropolis n τ_0 handleModel
 
@@ -104,7 +104,7 @@ propose tags τ = do
 {- | Handler for one iteration of MH.
 -}
 handleModel ::
-     ProbProg '[Sampler] a                             -- ^ probabilistic program
+     Model '[Sampler] a                             -- ^ probabilistic program
   -> Trace                                  -- ^ proposed address + initial log-probability trace + initial sample trace
   -> Sampler ((a, LPTrace), Trace)  -- ^ proposed address + final log-probability trace + final sample trace
 handleModel prog τ0 = (handleM . reuseSamples τ0 . defaultObserve . traceLP Map.empty) prog

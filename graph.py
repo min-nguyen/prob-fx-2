@@ -340,7 +340,7 @@ def main():
     plt.scatter(x0s, x1s, c=ys)
     plt.xlabel('x - axis')
     plt.ylabel('y - axis')
-    plt.title('Gaussian Mixture Model')
+    plt.title('Gaussian Mixture GenModel')
   if arg == "mhGMM":
     mu_0s = [d[0] for d in data]
     mu_1s = [d[1] for d in data]

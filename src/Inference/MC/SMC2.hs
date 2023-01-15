@@ -42,7 +42,7 @@ smc2 :: forall env es a xs. (env `ContainsVars` xs)
   => Int                                            -- ^ number of outer SMC particles
   -> Int                                            -- ^ number of PMMH steps
   -> Int                                            -- ^ number of inner SMC particles
-  -> Model env [EnvRW env, Dist, Sampler] a                  -- ^ model
+  -> GenModel env [EnvRW env, Dist, Sampler] a                  -- ^ model
   -> Env env                                        -- ^ input environment
   -> Vars xs                                        -- ^ optional observable variable names of interest
   -> Sampler [Env env]                              -- ^ output environments
@@ -63,7 +63,7 @@ smc2Internal :: (Member Sampler fs)
   -> Int                                          -- ^ number of PMMH steps
   -> Int                                          -- ^ number of inner SMC particles
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> ProbProg '[Sampler] a                                    -- ^ probabilistic program
+  -> Model '[Sampler] a                                    -- ^ probabilistic program
   -> Prog fs [(a, PrtState)]                -- ^ final particle results and contexts
 smc2Internal n_outer_prts mh_steps n_inner_prts tags m  =
   (handleResample mh_steps n_inner_prts tags m . SIS.sis n_outer_prts RMSMC.handleParticle  (PrtState (Addr "" 0) 0 Map.empty)) m
@@ -75,7 +75,7 @@ handleResample :: Member Sampler fs
   => Int                                           -- ^ number of PMMH steps
   -> Int                                           -- ^ number of inner SMC particles
   -> [String]                                      -- ^ tags indicating variables of interest
-  -> ProbProg '[Sampler] a
+  -> Model '[Sampler] a
   -> Prog (Resample PrtState : fs) [(a, PrtState)]
   -> Prog fs [(a, PrtState)]
 handleResample mh_steps n_inner_prts θ m = loop where

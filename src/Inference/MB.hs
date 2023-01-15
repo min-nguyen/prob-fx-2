@@ -20,7 +20,7 @@ import Effects.Dist ( Sample(..), Observe(..), Dist(Dist, getObs, getPrimDist), 
 import Effects.Lift ( handleM, Lift, lift )
 import Effects.EnvRW ( EnvRW )
 import Env ( Env )
-import Model (Model(..), handleCore)
+import Model (GenModel(..), handleCore)
 import Numeric.Log ( Log(Exp) )
 import LogP ( LogP(LogP) )
 import PrimDist ( logProb, sampleBayes )
@@ -29,7 +29,7 @@ import Prog ( discharge, Prog(..), LastMember )
 -- | Translate a ProbFX model under a given model environment to a MonadBayes program
 handleMBayes :: MonadInfer m
   -- | model
-  => Model env [EnvRW env, Dist, Lift m] a
+  => GenModel env [EnvRW env, Dist, Lift m] a
   -- | input model environment
   -> Env env
   -- | a computation @m@ in MonadBayes that returns a result and an output model environment

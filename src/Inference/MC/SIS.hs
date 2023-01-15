@@ -30,15 +30,15 @@ import           Data.Bifunctor
 data Resample p a where
   Resample
     -- | (particles, contexts)
-    :: ([ProbProg es b], [p])
+    :: ([Model es b], [p])
     -- | (resampled programs, resampled ss)
-    -> Resample p ([ProbProg es b], [p])
+    -> Resample p ([Model es b], [p])
   Accum
     :: [p] -> [p] -> Resample p [p]
 
 {- | A @ParticleHandler@  runs a particle to the next @Observe@ break point.
 -}
-type ParticleHandler es p = forall a. ProbProg es a -> Sampler (ProbProg es a, p)
+type ParticleHandler es p = forall a. Model es a -> Sampler (Model es a, p)
 
 {- | A top-level template for sequential importance sampling.
 -}
@@ -46,7 +46,7 @@ sis :: (Members [Resample p, Sampler] fs)
   => Int                                                        -- ^ number of particles
   -> ParticleHandler es p                                        -- ^ handler for running particles
   -> p
-  -> ProbProg es a                                                 -- ^ initial probabilistic program
+  -> Model es a                                                 -- ^ initial probabilistic program
   -> Prog fs [(a, p)]                        -- ^ (final particle output, final particle context)
 sis n_prts hdlParticle ρ_0 prog_0  = do
   -- | Create an initial population of particles and contexts
@@ -58,7 +58,7 @@ sis n_prts hdlParticle ρ_0 prog_0  = do
 -}
 pfilter :: (Members [Resample p, Sampler] fs)
   => ParticleHandler es p                                 -- ^ handler for running particles
-  -> ([ProbProg es a], [p])                               -- ^ input particles and corresponding contexts
+  -> ([Model es a], [p])                               -- ^ input particles and corresponding contexts
   -> Prog fs [(a, p)]                          -- ^ final particle results and corresponding contexts
 pfilter hdlParticle  (prts, ρs) = do
   -- | Run particles to next checkpoint and accumulate their contexts
@@ -75,7 +75,7 @@ pfilter hdlParticle  (prts, ρs) = do
      If at least one program is unfinished, return all programs.
      If all programs have finished, return a single program that returns all results.
 -}
-foldVals :: [ProbProg es a] -> Either [ProbProg es a] (Prog fs [a])
+foldVals :: [Model es a] -> Either [Model es a] (Prog fs [a])
 foldVals (Val v : progs) = do
   vs <- foldVals progs
   pure ((v:) <$> vs)

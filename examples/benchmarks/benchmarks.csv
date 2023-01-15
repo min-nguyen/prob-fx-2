@@ -610,9 +610,9 @@ Updates:
   - Metropolis template reworked:
       - The operations of Accept have been reworked to have different argument and return types
       - The type of model handlers is changed from:
-            Trace -> ProbProg a -> Sampler ((a, s), Trace)
+            Trace -> Model a -> Sampler ((a, s), Trace)
         to:
-            (s, Trace) -> ProbProg a -> Sampler (a, (s, Trace))
+            (s, Trace) -> Model a -> Sampler (a, (s, Trace))
         and so their implementations now require a lot of tuple reshaping at the end:
             `assocR . first (second (α,)) <$>)`
 

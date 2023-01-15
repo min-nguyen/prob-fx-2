@@ -13,7 +13,7 @@
 
 module LDA where
 
-import Model ( Model, dirichlet, discrete, categorical' )
+import Model ( GenModel, dirichlet, discrete, categorical' )
 import Sampler ( Sampler, sampleUniformD, liftIO )
 import Control.Monad ( replicateM, replicateM_ )
 import Data.Kind (Constraint)
@@ -66,7 +66,7 @@ docTopicPrior :: (TypeableSNatI n, Observable env "θ" (Vec n Double))
   -- | number of topics
   => SNat n
   -- | probability of each topic
-  -> Model env ts (Vec n Double)
+  -> GenModel env ts (Vec n Double)
 docTopicPrior n_topics = dirichlet (Vec.replicate n_topics 1) #θ
 
 -- | Prior distribution for words in a topic
@@ -74,7 +74,7 @@ topicWordPrior :: (TypeableSNatI m, Observable env "φ" (Vec m Double))
   -- | vocabulary
   => Vec m String
   -- | probability of each word
-  -> Model env ts (Vec m Double)
+  -> GenModel env ts (Vec m Double)
 topicWordPrior vocab
   = dirichlet (Vec.replicate snat 1) #φ
 
@@ -85,7 +85,7 @@ wordDist :: (SNatI m, Observable env "w" String)
   -- | probability of each word
   -> [Double]
   -- | generated word
-  -> Model env ts String
+  -> GenModel env ts String
 wordDist vocab ps =
   discrete (zip (Vec.toList vocab) ps) #w
 
@@ -101,7 +101,7 @@ topicModel :: (TypeableSNatI m, TypeableSNatI n,
   -- | number of words
   -> Int
   -- | generated words
-  -> Model env ts [String]
+  -> GenModel env ts [String]
 topicModel vocab n_topics n_words = do
   -- Generate distribution over words for each topic
   topic_word_ps <- (Vec.replicateM n_topics . topicWordPrior) vocab
@@ -115,7 +115,7 @@ topicModel vocab n_topics n_words = do
 topicGuide :: (TypeableSNatI m, TypeableSNatI n,
                Observable env "φ" (Vec m Double),
                Observable env "θ" (Vec n Double))
-  => Vec m String -> SNat n -> Int -> Model env es ()
+  => Vec m String -> SNat n -> Int -> GenModel env es ()
 topicGuide vocab n_topics n_words = do
   topic_word_ps <- (Vec.replicateM n_topics . topicWordPrior) vocab
   doc_topic_ps  <- docTopicPrior n_topics
@@ -133,7 +133,7 @@ topicModels :: (TypeableSNatI n, TypeableSNatI m,
   -- | number of words for each document
   -> [Int]
   -- | generated words for each document
-  -> Model env ts [[String]]
+  -> GenModel env ts [[String]]
 topicModels vocab n_topics doc_words = do
   mapM (topicModel vocab n_topics) doc_words
 

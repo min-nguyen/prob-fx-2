@@ -19,7 +19,7 @@ module Effects.State (
   , evalState) where
 
 import Prog ( Member(inj), Prog(..), discharge, handle )
-import Model ( Model(..) )
+import Model ( GenModel(..) )
 
 -- | The state effect
 data State s a where
@@ -33,16 +33,16 @@ get :: (Member (State s) es) => Prog es s
 get = Op (inj Get) Val
 
 -- | Wrapper function for @Get@ in a model
-getM :: (Member (State s) es) => Model env es s
-getM = Model get
+getM :: (Member (State s) es) => GenModel env es s
+getM = GenModel get
 
 -- | Wrapper function for @Set@
 put :: (Member (State s) es) => s -> Prog es ()
 put s = Op (inj $ Put s) Val
 
 -- | Wrapper function for @Set@ in a model
-putM :: (Member (State s) es) => s -> Model env es ()
-putM s = Model (put s)
+putM :: (Member (State s) es) => s -> GenModel env es ()
+putM s = GenModel (put s)
 
 -- | Wrapper function for apply a function to the state
 modify :: Member (State s) es => (s -> s) -> Prog es ()
@@ -67,5 +67,5 @@ evalState :: s -> Prog (State s : es) a -> Prog es a
 evalState s = fmap fst . handleState s
 
 -- | Handle the @State s@ effect in a model
-handleStateM :: s -> Model env (State s : es) a -> Model env es (a, s)
-handleStateM s m = Model $ handleState s $ runModel m
+handleStateM :: s -> GenModel env (State s : es) a -> GenModel env es (a, s)
+handleStateM s m = GenModel $ handleState s $ runModel m

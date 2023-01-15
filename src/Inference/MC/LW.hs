@@ -25,7 +25,7 @@ import Effects.State ( modify, handleState, State )
 import Env ( Env )
 import LogP ( LogP )
 import Inference.MC.SIM as SIM (defaultSample)
-import Model ( handleCore, Model, ProbProg )
+import Model ( handleCore, GenModel, Model )
 import PrimDist ( logProb )
 import Prog ( discharge, Prog(..), Handler, handle )
 import Sampler ( Sampler )
@@ -35,7 +35,7 @@ lw
   -- | number of LW iterations
   :: Int
   -- | model
-  -> Model env [EnvRW env, Dist, Sampler] a
+  -> GenModel env [EnvRW env, Dist, Sampler] a
   -- | input model environment
   -> Env env
   -- | [(output model environment, likelihood-weighting)]
@@ -61,7 +61,7 @@ likelihood lρ0 = handle lρ0 (\lρ x -> Val (x, lρ)) hop
 
 {- | Record the joint log-probability P(Y, X)
 -}
-joint :: LogP -> ProbProg es a -> ProbProg es (a, LogP)
+joint :: LogP -> Model es a -> Model es (a, LogP)
 joint lρ (Val x)   = pure (x, lρ)
 joint lρ (Op op k) = case op of
   ObsPrj d y α   -> Op op (\x -> joint (lρ + logProb d x) $ k x)

@@ -24,7 +24,7 @@ module Env
   , vnil
   , (<#>)
   , ContainsVars(..)
-    -- * Model environment
+    -- * GenModel environment
   , Assign(..)
   , Env(..)
   , enil
@@ -75,7 +75,7 @@ infixr 5 <#>
 (<#>) :: Var x -> Vars xs -> Vars (x : xs)
 x <#> xs = VCons xs
 
--- * Model environment
+-- * GenModel environment
 
 {- | A model environment assigning traces (lists) of observed values to observable
      variables i.e. the type @Env ((x := a) : env)@ indicates @x@ is assigned a value

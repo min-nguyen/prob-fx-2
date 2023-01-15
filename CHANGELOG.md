@@ -15,7 +15,7 @@ Changed:
 Changed:
 - `lift` now requires `m` to be the last member of the effect signature
 Added:
-- `liftM` for lifting `m` into `Model`
+- `liftM` for lifting `m` into `GenModel`
 
 **Effect.EnvRW**
 Changed:
@@ -23,7 +23,7 @@ Changed:
 
 **Effect.State**
 Added:
-- `putM`, `getM`, and `handleStateM` for calling and handling `State` in the `Model` type
+- `putM`, `getM`, and `handleStateM` for calling and handling `State` in the `GenModel` type
 
 **Inference.MC.LW**
 Changed:
@@ -49,7 +49,7 @@ Changed:
 Added:
 - `vnil`, `(<#>)`, `Vars`, `ContainsVars`, `GetVars`
 
-**Model**
+**GenModel**
 - Swapped names for `discrete` and `categorical`
 
 **PrimDist**
