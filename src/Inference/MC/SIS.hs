@@ -30,24 +30,15 @@ import           Data.Bifunctor
 data Resample p a where
   Resample
     -- | (particles, contexts)
-    :: ([ProbProg es a], [p])
+    :: ([ProbProg es b], [p])
     -- | (resampled programs, resampled ss)
-    -> Resample p ([ProbProg es a], [p])
+    -> Resample p ([ProbProg es b], [p])
   Accum
-    -- | (particles, contexts)
-    :: [p]
-    -- | initial probabilistic program
-    -> [p]
-    -- | (resampled programs, resampled ss)
-    -> Resample p [p]
+    :: [p] -> [p] -> Resample p [p]
 
 {- | A @ParticleHandler@  runs a particle to the next @Observe@ break point.
 -}
 type ParticleHandler es p = forall a. ProbProg es a -> Sampler (ProbProg es a, p)
-
-{- | A @ResampleHandler@ decides which of the current particles to continue execution with.
--}
-type ResampleHandler fs p = forall a. Prog (Resample p : fs) a -> Prog fs a
 
 {- | A top-level template for sequential importance sampling.
 -}
@@ -84,7 +75,7 @@ pfilter hdlParticle  (prts, ρs) = do
      If at least one program is unfinished, return all programs.
      If all programs have finished, return a single program that returns all results.
 -}
-foldVals :: [ProbProg es a] -> Either [ProbProg es a] (Prog es' [a])
+foldVals :: [ProbProg es a] -> Either [ProbProg es a] (Prog fs [a])
 foldVals (Val v : progs) = do
   vs <- foldVals progs
   pure ((v:) <$> vs)

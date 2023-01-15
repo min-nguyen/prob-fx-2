@@ -35,7 +35,7 @@ import qualified Inference.MC.SMC as SMC
 import qualified Inference.MC.SIM as SIM
 import           Inference.MC.Metropolis as Metropolis
 import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
-import           Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler, pfilter)
+import           Inference.MC.SIS (Resample(..), ParticleHandler, pfilter)
 import           Effects.Lift
 import           PrimDist
 import           Data.Bifunctor
@@ -71,16 +71,15 @@ rmsmc n_prts mh_steps model env_in obs_vars = do
   let prog_0   = handleCore env_in model
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
-  rmsmc_trace <-  (rmpfilter n_prts mh_steps tags prog_0)
-  pure (map (snd . fst) rmsmc_trace)
+  map (snd . fst) <$> rmpfilter n_prts mh_steps tags prog_0
 
 {- | Call RMSMC on a probabilistic program.
 -}
-rmpfilter ::
+rmpfilter :: es ~ '[Sampler] =>
      Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of MH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> ProbProg '[Sampler] a                                   -- ^ probabilistic program
+  -> ProbProg es a                                   -- ^ probabilistic program
   -> Sampler [(a, PrtState)]                      -- ^ final particle results and contexts
 rmpfilter n_prts mh_steps tags model = do
   -- let q =  pfilter handleParticle model (prts, ps)
@@ -92,22 +91,16 @@ rmpfilter n_prts mh_steps tags model = do
        1. the rest of the computation
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
-handleParticle :: ParticleHandler '[Sampler] PrtState
+handleParticle :: es ~ '[Sampler] => ParticleHandler es PrtState
 handleParticle = fmap asPrtTrace . handleM . reuseSamples Map.empty . suspendα where
   asPrtTrace ((prt, ρ, α), τ) = (prt, PrtState ρ α τ)
 
-suspendα :: Handler Observe es a (Prog (Observe : es) a, Addr, LogP)
-suspendα (Val x)   = pure (Val x, Addr "" 0, 0)
-suspendα (Op op k) = case discharge op of
-  Right (Observe d y α) -> Val (k y, α, logProb d y)
-  Left op'              -> Op op' (suspendα . k)
-
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using MH.
 -}
-handleResample :: (Member Sampler fs)
+handleResample :: (es ~ '[Sampler], Member Sampler fs)
   => Int                                          -- ^ number of MH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> ProbProg '[Sampler] a
+  -> ProbProg es a
   -> Handler (Resample PrtState) fs [(a, PrtState)] [(a, PrtState)]
 handleResample mh_steps tags m = handle () (const Val) (const hop) where
   hop :: Member Sampler fs => Resample PrtState x -> (() -> x -> Prog fs a) -> Prog fs a
@@ -132,6 +125,12 @@ handleResample mh_steps tags m = handle () (const Val) (const hop) where
                                         return (prt_mov, PrtState α lρ_mov τ_mov) )
                               τs_res
     k () (prts_mov, σs_mov)
+
+suspendα :: Handler Observe es a (Prog (Observe : es) a, Addr, LogP)
+suspendα (Val x)   = pure (Val x, Addr "" 0, 0)
+suspendα (Op op k) = case discharge op of
+  Right (Observe d y α) -> Val (k y, α, logProb d y)
+  Left op'              -> Op op' (suspendα . k)
 
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
      It returns the rest of the computation.

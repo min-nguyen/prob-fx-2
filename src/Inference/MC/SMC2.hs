@@ -28,7 +28,7 @@ import           Inference.MC.RMSMC as RMSMC (PrtState(..), handleParticle, susp
 import qualified Inference.MC.SMC as SMC
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
-import Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler)
+import Inference.MC.SIS (Resample(..), ParticleHandler)
 import Inference.MC.Metropolis as Metropolis
 import Effects.Lift
 import Data.Bifunctor

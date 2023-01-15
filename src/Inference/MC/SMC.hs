@@ -27,7 +27,7 @@ import           Prog ( LastMember, Prog(..), Members, Member, call, weakenProg,
 import qualified Data.Map as Map
 import           Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS
-import           Inference.MC.SIS (Resample(..), ResampleHandler, ParticleHandler, pfilter)
+import           Inference.MC.SIS (Resample(..), ParticleHandler, pfilter)
 import           Sampler ( Sampler, sampleRandom, sampleCategorical)
 
 {- | Call SMC on a model.
@@ -88,7 +88,7 @@ resampleMul ρs = do
 
 {- | A handler for systematic resampling of particles.
 -}
-handleResampleSys :: Member Sampler fs => ResampleHandler fs LogP
+handleResampleSys :: Member Sampler fs => Handler (Resample LogP) fs a a
 handleResampleSys (Val x) = Val x
 handleResampleSys (Op op k) = case discharge op of
   Right (Resample (prts, ρs)) -> do
