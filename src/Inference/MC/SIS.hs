@@ -65,7 +65,7 @@ pfilter hdlParticle  (prts, ρs) = do
   (prts', partialρs) <- call (mapAndUnzipM hdlParticle prts)
   ρs'                <- call (Accum ρs partialρs)
   -- | Check termination status of particles
-  case foldVals prts' of
+  case collapse prts' of
     -- | If all particles have finished, return their results and contexts
     Right vals  -> (`zip` ρs') <$> vals
     -- | Otherwise, pick the particles to continue with
@@ -75,9 +75,9 @@ pfilter hdlParticle  (prts, ρs) = do
      If at least one program is unfinished, return all programs.
      If all programs have finished, return a single program that returns all results.
 -}
-foldVals :: [Model es a] -> Either [Model es a] (Prog fs [a])
-foldVals (Val v : progs) = do
-  vs <- foldVals progs
+collapse :: [Model es a] -> Either [Model es a] (Prog fs [a])
+collapse (Val v : progs) = do
+  vs <- collapse progs
   pure ((v:) <$> vs)
-foldVals []    = pure (Val [])
-foldVals progs = Left progs
+collapse []    = pure (Val [])
+collapse progs = Left progs
