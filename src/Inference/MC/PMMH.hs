@@ -54,9 +54,9 @@ pm m n τθ model = do
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}
-handleModel :: es ~ '[Sampler] => Int -> ModelHandler es LogP
+handleModel :: Int -> ModelHandler '[Sampler] LogP
 handleModel n prog τθ  = do
-  let handleParticle :: es ~ '[Sampler] => ParticleHandler es LogP
+  let handleParticle :: ParticleHandler '[Sampler] LogP
       handleParticle = fmap fst . handleM . reuseSamples τθ . suspend
   (as, ρs) <- (handleM . handleResampleMul . fmap unzip . pfilter handleParticle) ((unzip . replicate n) (prog, 0))
   let a   = head as
@@ -65,8 +65,7 @@ handleModel n prog τθ  = do
 
 {- | An acceptance mechanism for PMMH.
 -}
-handleAccept :: Member Sampler fs
-  => Handler (Accept LogP) fs a a
+handleAccept :: Member Sampler fs => Handler (Accept LogP) fs a a
 handleAccept (Val x)   = pure x
 handleAccept (Op op k) = case discharge op of
   Right (Propose τθ)

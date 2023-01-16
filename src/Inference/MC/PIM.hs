@@ -50,9 +50,9 @@ pim mh_steps n_prts model env_in obs_vars = do
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}
-handleModel :: es ~ '[Sampler] => Int -> ModelHandler es LogP
+handleModel :: Int -> ModelHandler '[Sampler] LogP
 handleModel n prog τθ  = do
-  let handleParticle :: es ~ '[Sampler] => ParticleHandler es LogP
+  let handleParticle :: ParticleHandler '[Sampler] LogP
       handleParticle = fmap fst .  handleM .  reuseSamples τθ . suspend
   (as, ρs) <- (fmap unzip . handleM . handleResampleMul . pfilter handleParticle ) ((unzip . replicate n) (prog, 0))
   return ((head as, logMeanExp ρs), τθ)

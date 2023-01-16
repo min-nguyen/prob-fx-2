@@ -50,9 +50,6 @@ im n model env_in   = do
 {- | Handler for one iteration of IM.
 -}
 handleModel :: ModelHandler '[Sampler] LogP
-  --    Model '[Sampler] a                         -- ^ probabilistic program
-  -- -> Trace                             -- ^ proposed initial log-prob + sample trace
-  -- -> Sampler ((a, LogP), Trace)        -- ^ proposed final log-prob + sample trace
 handleModel prog τ =
   (handleM . Metropolis.reuseSamples τ . LW.likelihood 0) prog
 

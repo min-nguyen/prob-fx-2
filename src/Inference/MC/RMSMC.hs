@@ -75,11 +75,11 @@ rmsmc n_prts mh_steps model env_in obs_vars = do
 
 {- | Call RMSMC on a probabilistic program.
 -}
-rmpfilter :: es ~ '[Sampler] =>
+rmpfilter ::
      Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of MH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> Model es a                                   -- ^ probabilistic program
+  -> Model '[Sampler] a                                   -- ^ probabilistic program
   -> Sampler [(a, PrtState)]                      -- ^ final particle results and contexts
 rmpfilter n_prts mh_steps tags model = do
   -- let q =  pfilter handleParticle model (prts, ps)
@@ -91,16 +91,16 @@ rmpfilter n_prts mh_steps tags model = do
        1. the rest of the computation
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
-handleParticle :: es ~ '[Sampler] => ParticleHandler es PrtState
+handleParticle :: ParticleHandler '[Sampler] PrtState
 handleParticle = fmap asPrtTrace . handleM . reuseSamples Map.empty . suspendα where
   asPrtTrace ((prt, ρ, α), τ) = (prt, PrtState ρ α τ)
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using MH.
 -}
-handleResample :: (es ~ '[Sampler], Member Sampler fs)
+handleResample :: (Member Sampler fs)
   => Int                                          -- ^ number of MH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> Model es a
+  -> Model '[Sampler] a
   -> Handler (Resample PrtState) fs [(a, PrtState)] [(a, PrtState)]
 handleResample mh_steps tags m = handle () (const Val) (const hop) where
   hop :: Member Sampler fs => Resample PrtState x -> (() -> x -> Prog fs a) -> Prog fs a
@@ -135,10 +135,10 @@ suspendα (Op op k) = case discharge op of
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
      It returns the rest of the computation.
 -}
-suspendAt ::
-     Addr       -- ^ Address of @Observe@ operation to break at
-  -> Model es a
-  -> Model es (Model es a)
+suspendAt :: (Member Observe es)
+  => Addr       -- ^ Address of @Observe@ operation to break at
+  -> Prog es a
+  -> Prog es (Prog es a)
 suspendAt α_break (Val x) = pure (Val x)
 suspendAt α_break (Op op k) = case prj op of
   Just (Observe d y α) -> do
