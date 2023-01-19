@@ -33,12 +33,10 @@ data Resample p a where
     :: ([Model es b], [p])
     -- | (resampled programs, resampled ss)
     -> Resample p ([Model es b], [p])
-  Accum
-    :: [p] -> [p] -> Resample p [p]
 
 {- | A @ParticleHandler@  runs a particle to the next @Observe@ break point.
 -}
-type ParticleHandler es p = forall a. Model es a -> Sampler (Model es a, p)
+type ParticleHandler es p = forall a. Model es a -> p -> Sampler (Model es a, p)
 
 {- | A top-level template for sequential importance sampling.
 -}
@@ -50,7 +48,7 @@ sis :: (Members [Resample p, Sampler] fs)
   -> Prog fs [(a, p)]                        -- ^ (final particle output, final particle context)
 sis n_prts hdlParticle ρ_0 prog_0  = do
   -- | Create an initial population of particles and contexts
-  let population = unzip $ replicate n_prts (prog_0, ρ_0)
+  let population = replicate n_prts (prog_0, ρ_0)
   -- | Execute the population until termination
   pfilter hdlParticle population
 
@@ -58,26 +56,26 @@ sis n_prts hdlParticle ρ_0 prog_0  = do
 -}
 pfilter :: (Members [Resample p, Sampler] fs)
   => ParticleHandler es p                                 -- ^ handler for running particles
-  -> ([Model es a], [p])                               -- ^ input particles and corresponding contexts
+  -> [(Model es a, p)]                               -- ^ input particles and corresponding contexts
   -> Prog fs [(a, p)]                          -- ^ final particle results and corresponding contexts
-pfilter hdlParticle  (prts, ρs) = do
+pfilter hdlParticle prts = do
   -- | Run particles to next checkpoint and accumulate their contexts
-  (prts', partialρs) <- call (mapAndUnzipM hdlParticle prts)
-  ρs'                <- call (Accum ρs partialρs)
+  prts' <- call (mapM (uncurry hdlParticle) prts)
+  -- ρs'   <- call (Accum ρs partialρs)
   -- | Check termination status of particles
   case collapse prts' of
     -- | If all particles have finished, return their results and contexts
-    Right vals  -> (`zip` ρs') <$> vals
+    Just vals  -> vals
     -- | Otherwise, pick the particles to continue with
-    Left  _     -> call (Resample (prts', ρs')) >>= pfilter hdlParticle
+    Nothing    -> call (Resample (unzip prts')) >>= pfilter hdlParticle . uncurry zip
 
 {- | Check whether a list of programs have all terminated.
      If at least one program is unfinished, return all programs.
      If all programs have finished, return a single program that returns all results.
 -}
-collapse :: [Model es a] -> Either [Model es a] (Prog fs [a])
-collapse (Val v : progs) = do
+collapse :: [(Model es a, p)] -> Maybe (Prog fs [(a, p)])
+collapse ((Val v, p) : progs) = do
   vs <- collapse progs
-  pure ((v:) <$> vs)
+  pure (((v, p):) <$> vs)
 collapse []    = pure (Val [])
-collapse progs = Left progs
+collapse progs = Nothing

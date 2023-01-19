@@ -47,21 +47,21 @@ smc n_prts model env_in = do
 -}
 mulpfilter :: Int -> Model '[Sampler] a -> Sampler [(a, LogP)]
 mulpfilter n_prts model =
- (handleM . handleResampleMul . pfilter handleParticle) (prts, ρs)
- where (prts, ρs) = (unzip . replicate n_prts) (model, 0)
+ (handleM . handleResampleMul . pfilter handleParticle) prts
+ where prts = replicate n_prts (model, 0)
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation
        2. the log probability of the @Observe operation
 -}
-handleParticle :: Model '[Sampler] a -> Sampler (Model '[Sampler] a, LogP)
-handleParticle = handleM . defaultSample . suspend
+handleParticle :: Model '[Sampler] a -> LogP -> Sampler (Model '[Sampler] a, LogP)
+handleParticle model logp = (handleM . defaultSample . suspend logp) model
 
-suspend :: Handler Observe es a (Prog (Observe : es) a, LogP)
-suspend (Val x)   = Val (Val x, 0)
-suspend (Op op k) = case discharge op of
-  Right (Observe d y α) -> Val (k y, logProb d y)
-  Left op'              -> Op op' (suspend . k)
+suspend :: LogP -> Handler Observe es a (Prog (Observe : es) a, LogP)
+suspend logp (Val x)   = Val (Val x, logp)
+suspend logp (Op op k) = case discharge op of
+  Right (Observe d y α) -> Val (k y, logp + logProb d y)
+  Left op'              -> Op op' (suspend logp . k)
 
 {- | A handler for multinomial resampling of particles.
 -}
@@ -69,16 +69,13 @@ suspend (Op op k) = case discharge op of
 handleResampleMul :: Member Sampler es => Handler (Resample LogP) es b b
 handleResampleMul = handle () (const Val) (const hop) where
   hop :: Member Sampler es =>  Resample LogP x -> (() -> x -> Prog es b) -> Prog es b
-  hop  (Accum ρs1 ρs2) k = let ρs = map (+ logMeanExp ρs1) ρs2 in k () ρs
   hop  (Resample (prts, ρs)) k = do
-    idxs <- call (replicateM (length ρs) (Sampler.sampleCategorical (Vector.fromList (map exp ρs))))
+    let n = length ρs
+    idxs <- call (replicateM n (Sampler.sampleCategorical (Vector.fromList (map exp ρs))))
     let prts_res  = map (prts !! ) idxs
-        ρs_res    = map (ρs  !! ) idxs
-    k () (prts_res, ρs_res)
+        ρs_res    = (replicate n . logMeanExp . map (ρs  !! )) idxs
 
-normaliseParticles  :: [LogP] -> [LogP] -> [LogP]
-normaliseParticles ρs ρs' =
-  let logZ = logMeanExp ρs in  map (+ logZ) ρs'
+    k () (prts_res, ρs_res)
 
 resampleMul :: [LogP] -> Sampler [Int]
 resampleMul ρs = do
@@ -107,8 +104,7 @@ handleResampleSys (Op op k) = case discharge op of
         idxs     = f 0 (u / fromIntegral n) 0 0 []
         prts_res = map (prts !! ) idxs
         ρs_res   = map (ρs !! ) idxs
+        ρs_mean   = map (const (logMeanExp ρs_res)) ρs_res
 
-    (handleResampleSys . k) (prts_res, ρs_res)
-  Right (Accum ss ss') -> do
-    (handleResampleMul . k) (normaliseParticles ss ss')
+    (handleResampleSys . k) (prts_res, ρs_mean)
   Left op' -> Op op' (handleResampleSys . k)

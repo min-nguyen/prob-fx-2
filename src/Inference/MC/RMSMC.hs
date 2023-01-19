@@ -75,8 +75,8 @@ rmpfilter ::
 rmpfilter n_prts mh_steps tags model = do
   -- let q =  pfilter handleParticle model (prts, ps)
   obs_αs <- (handleM . defaultSample . observeAddresses) model
-  (handleM . handleResample mh_steps tags obs_αs model . pfilter handleParticle) (prts, ps)
-  where (prts, ps) = unzip $ replicate n_prts (model, (0, Map.empty))
+  (handleM . handleResample mh_steps tags obs_αs model . pfilter handleParticle) prts
+  where prts = replicate n_prts (model, (0, Map.empty))
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint
      at the first @Observe@ operation, by returning:
@@ -84,7 +84,7 @@ rmpfilter n_prts mh_steps tags model = do
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
 handleParticle :: ParticleHandler '[Sampler] PrtState
-handleParticle = fmap asPrtTrace . handleM . reuseSamples Map.empty . suspend where
+handleParticle model (logp, τ) = (fmap asPrtTrace . handleM . reuseSamples τ . suspend logp) model where
   asPrtTrace ((prt, ρ), τ) = (prt, (ρ, τ))
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using MH.
@@ -97,12 +97,6 @@ handleResample :: (Member Sampler fs)
   -> Handler (Resample PrtState) fs [(a, PrtState)] [(a, PrtState)]
 handleResample mh_steps tags obs_αs m = handle obs_αs (const Val) ( hop) where
   hop :: Member Sampler fs => [Addr] -> Resample PrtState x -> ([Addr] -> x -> Prog fs a) -> Prog fs a
-  hop αs (Accum σs σs') k = do
-    let (ρs , τs ) = unzip σs
-        (ρs', τs') = unzip σs'
-        ρs_accum  = map (+ logMeanExp ρs) ρs'
-        τs_accum  = zipWith Map.union τs' τs
-    k αs (zip ρs_accum τs_accum)
   hop αs (Resample (_, σs) ) k = do
     let (ρs , τs ) = unzip σs
   -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
