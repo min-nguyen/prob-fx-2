@@ -53,7 +53,7 @@ pim mh_steps n_prts model env_in obs_vars = do
 handleModel :: Int -> ModelHandler '[Sampler] LogP
 handleModel n prog τθ  = do
   let handleParticle :: ParticleHandler '[Sampler] LogP
-      handleParticle model logp = (fmap fst .  handleM .  reuseSamples τθ . suspend logp) model
+      handleParticle model logp = (fmap fst .  handleM .  reuseSamples τθ . step logp) model
   (as, ρs) <- (fmap unzip . handleM . handleResampleMul . pfilter handleParticle ) (replicate n (prog, 0))
   return ((head as, logMeanExp ρs), τθ)
 

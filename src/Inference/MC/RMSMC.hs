@@ -42,7 +42,7 @@ import           Data.Bifunctor
 import           Unsafe.Coerce
 import           Util
 import Inference.MC.SIM (defaultSample)
-import Inference.MC.SMC (suspend)
+import Inference.MC.SMC (step)
 
 {- | The particle context for an MCMC trace.
 -}

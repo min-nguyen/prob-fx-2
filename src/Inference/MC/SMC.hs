@@ -55,13 +55,13 @@ mulpfilter n_prts model =
        2. the log probability of the @Observe operation
 -}
 handleParticle :: Model '[Sampler] a -> LogP -> Sampler (Model '[Sampler] a, LogP)
-handleParticle model logp = (handleM . defaultSample . suspend logp) model
+handleParticle model logp = (handleM . defaultSample . step logp) model
 
-suspend :: LogP -> Handler Observe es a (Prog (Observe : es) a, LogP)
-suspend logp (Val x)   = Val (Val x, logp)
-suspend logp (Op op k) = case discharge op of
+step :: LogP -> Handler Observe es a (Prog (Observe : es) a, LogP)
+step logp (Val x)   = Val (Val x, logp)
+step logp (Op op k) = case discharge op of
   Right (Observe d y α) -> Val (k y, logp + logProb d y)
-  Left op'              -> Op op' (suspend logp . k)
+  Left op'              -> Op op' (step logp . k)
 
 {- | A handler for multinomial resampling of particles.
 -}
@@ -69,11 +69,11 @@ suspend logp (Op op k) = case discharge op of
 handleResampleMul :: Member Sampler es => Handler (Resample LogP) es b b
 handleResampleMul = handle () (const Val) (const hop) where
   hop :: Member Sampler es =>  Resample LogP x -> (() -> x -> Prog es b) -> Prog es b
-  hop  (Resample (prts, ρs)) k = do
-    let n = length ρs
-    idxs <- call (replicateM n (Sampler.sampleCategorical (Vector.fromList (map exp ρs))))
+  hop  (Resample (prts, ws)) k = do
+    let n = length ws
+    idxs <- call (replicateM n (Sampler.sampleCategorical (Vector.fromList (map exp ws))))
     let prts_res  = map (prts !! ) idxs
-        ρs_res    = (replicate n . logMeanExp . map (ρs  !! )) idxs
+        ρs_res    = (replicate n . logMeanExp . map (ws  !! )) idxs
 
     k () (zip prts_res ρs_res)
 

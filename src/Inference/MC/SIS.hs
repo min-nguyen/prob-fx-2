@@ -58,16 +58,16 @@ pfilter :: (Members [Resample p, Sampler] fs)
   => ParticleHandler es p                                 -- ^ handler for running particles
   -> [(Model es a, p)]                               -- ^ input particles and corresponding contexts
   -> Prog fs [(a, p)]                          -- ^ final particle results and corresponding contexts
-pfilter hdlParticle prts = do
+pfilter hdlParticle wprts = do
   -- | Run particles to next checkpoint and accumulate their contexts
-  prts' <- call ((mapM . uncurry) hdlParticle prts)
+  wprts' <- call ((mapM . uncurry) hdlParticle wprts)
   -- ρs'   <- call (Accum ρs partialρs)
   -- | Check termination status of particles
-  case collapse prts' of
+  case collapse wprts' of
     -- | If all particles have finished, return their results and contexts
     Just vals  -> Val vals
     -- | Otherwise, pick the particles to continue with
-    Nothing    -> call (Resample (unzip prts')) >>= pfilter hdlParticle
+    Nothing    -> call (Resample (unzip wprts')) >>= pfilter hdlParticle
 
 {- | Check whether a list of programs have all terminated.
      If at least one program is unfinished, return all programs.
