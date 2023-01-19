@@ -110,6 +110,7 @@ handleResample mh_steps tags obs_αs m = handle obs_αs (const Val) ( hop) where
                                         let lρ_mov = (sum . map snd . Map.toList) lρ
                                         return (prt_mov, (lρ_mov, τ_mov)) )
                               τs_res
+    -- let σs_normalised = map (first (const (logMeanExp (map fst σs_mov)))) σs_mov
     k (tail αs) (prts_mov, σs_mov)
 
 observeAddresses :: Handler Observe es a [Addr]

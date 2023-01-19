@@ -105,15 +105,9 @@ handleResample mh_steps n_inner_prts θ obs_αs m = loop obs_αs where
               2) the total log weights of each particle up until the break point
               3) the sample traces of each particle up until the break point -}
           let ((rejuv_prts, rejuv_lps), rejuv_traces) = first unzip (unzip pmmh_trace)
-              rejuv_lps'  = map (const (logMeanExp rejuv_lps)) rejuv_lps
+              -- rejuv_lps_normalised  = map (const (logMeanExp rejuv_lps)) rejuv_lps
 
-              rejuv_ss    = zip rejuv_lps' rejuv_traces
+              rejuv_ss    = zip rejuv_lps rejuv_traces
 
           (loop (tail αs)  . k) (rejuv_prts, rejuv_ss)
-    -- Right (Accum σs σs') -> do
-    --   let ( ρs , τs ) = unzip σs
-    --       ( ρs', τs') = unzip σs'
-    --       ρs_accum  = map (+ logMeanExp ρs) ρs'
-    --       τs_accum  = zipWith Map.union τs' τs
-    --   (loop αs . k) (zip ρs_accum τs_accum)
     Left op' -> Op op' (loop αs . k)
