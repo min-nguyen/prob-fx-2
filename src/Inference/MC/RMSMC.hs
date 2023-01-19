@@ -41,21 +41,12 @@ import           PrimDist
 import           Data.Bifunctor
 import           Unsafe.Coerce
 import           Util
+import Inference.MC.SIM (defaultSample)
+import Inference.MC.SMC (suspend)
 
 {- | The particle context for an MCMC trace.
 -}
-data PrtState = PrtState {
-    particleObsAddr   :: Addr
-  , particleLogProb   :: LogP
-  , particleSTrace    :: Trace
-  }
-
-unpack :: [PrtState] -> (Addr, [LogP], [Trace])
-unpack prts = (head αs, ps, τs)
-  where (αs, ps, τs) = foldr (\(PrtState α p τ) (αs, ps, τs) -> (α:αs, p:ps, τ:τs) ) ([],[],[]) prts
-
-pack :: (Addr, [LogP], [Trace]) -> [PrtState]
-pack (α, ps, τs) = zipWith3 PrtState (repeat α) ps τs
+type PrtState = (LogP, Trace)
 
 {- | Call RMSMC on a model.
 -}
@@ -83,8 +74,9 @@ rmpfilter ::
   -> Sampler [(a, PrtState)]                      -- ^ final particle results and contexts
 rmpfilter n_prts mh_steps tags model = do
   -- let q =  pfilter handleParticle model (prts, ps)
-  (handleM . handleResample mh_steps tags model . pfilter handleParticle) (prts, ps)
-  where (prts, ps) = unzip $ replicate n_prts (model, PrtState (Addr "" 0) 0  Map.empty)
+  obs_αs <- (handleM . defaultSample . observeAddresses) model
+  (handleM . handleResample mh_steps tags obs_αs model . pfilter handleParticle) (prts, ps)
+  where (prts, ps) = unzip $ replicate n_prts (model, (0, Map.empty))
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint
      at the first @Observe@ operation, by returning:
@@ -92,45 +84,44 @@ rmpfilter n_prts mh_steps tags model = do
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
 handleParticle :: ParticleHandler '[Sampler] PrtState
-handleParticle = fmap asPrtTrace . handleM . reuseSamples Map.empty . suspendα where
-  asPrtTrace ((prt, ρ, α), τ) = (prt, PrtState ρ α τ)
+handleParticle = fmap asPrtTrace . handleM . reuseSamples Map.empty . suspend where
+  asPrtTrace ((prt, ρ), τ) = (prt, (ρ, τ))
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using MH.
 -}
 handleResample :: (Member Sampler fs)
   => Int                                          -- ^ number of MH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
+  -> [Addr]
   -> Model '[Sampler] a
   -> Handler (Resample PrtState) fs [(a, PrtState)] [(a, PrtState)]
-handleResample mh_steps tags m = handle () (const Val) (const hop) where
-  hop :: Member Sampler fs => Resample PrtState x -> (() -> x -> Prog fs a) -> Prog fs a
-  hop (Accum σs σs') k = do
-    let (_, ρs , τs ) = unpack σs
-        (α, ρs', τs') = unpack σs'
+handleResample mh_steps tags obs_αs m = handle obs_αs (const Val) ( hop) where
+  hop :: Member Sampler fs => [Addr] -> Resample PrtState x -> ([Addr] -> x -> Prog fs a) -> Prog fs a
+  hop αs (Accum σs σs') k = do
+    let (ρs , τs ) = unzip σs
+        (ρs', τs') = unzip σs'
         ρs_accum  = map (+ logMeanExp ρs) ρs'
         τs_accum  = zipWith Map.union τs' τs
-    k () (pack (α, ρs_accum, τs_accum))
-  hop (Resample (_, σs) ) k = do
+    k αs (zip ρs_accum τs_accum)
+  hop αs (Resample (_, σs) ) k = do
+    let (ρs , τs ) = unzip σs
   -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
-    idxs <- call $ SMC.resampleMul (map particleLogProb σs)
-    let σs_res          = map (σs !! ) idxs
-    -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head'), and get the sample trace of each resampled particle
-        (α, _, τs_res)  = unpack σs_res
+    idxs <- call $ SMC.resampleMul ρs
+    let τs_res    = map (τs !!) idxs
     -- | Insert break point to perform MH up to
-        partial_model   = suspendAt α m
+        partial_model   = suspendAt (head αs) m
     -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
     (prts_mov, σs_mov) <- mapAndUnzipM
                               (\τ -> do ((prt_mov, lρ), τ_mov) <- fmap head (MH.ssmh mh_steps τ (Addr "" 0) tags (unsafeCoerce partial_model))
                                         let lρ_mov = (sum . map snd . Map.toList) lρ
-                                        return (prt_mov, PrtState α lρ_mov τ_mov) )
+                                        return (prt_mov, (lρ_mov, τ_mov)) )
                               τs_res
-    k () (prts_mov, σs_mov)
+    k (tail αs) (prts_mov, σs_mov)
 
-suspendα :: Handler Observe es a (Prog (Observe : es) a, Addr, LogP)
-suspendα (Val x)   = pure (Val x, Addr "" 0, 0)
-suspendα (Op op k) = case discharge op of
-  Right (Observe d y α) -> Val (k y, α, logProb d y)
-  Left op'              -> Op op' (suspendα . k)
+observeAddresses :: Handler Observe es a [Addr]
+observeAddresses = handle [] (flip (const (Val . Prelude.reverse))) hop where
+  hop :: [Addr] -> Observe x -> ([Addr] -> x -> Prog es [Addr]) -> Prog es [Addr]
+  hop αs (Observe d y α) k = k (α:αs) y
 
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
      It returns the rest of the computation.
