@@ -118,11 +118,6 @@ handleResample mh_steps tags  m = handle () (const Val) (const hop) where
     --     prts_norm   =  zip (map fst prts_mov) (pack (α, map (const (logMeanExp ps)) ps, ts))
     k () prts_mov
 
-observeAddresses :: Handler Observe es a [Addr]
-observeAddresses = handle [] (flip (const (Val . Prelude.reverse))) hop where
-  hop :: [Addr] -> Observe x -> ([Addr] -> x -> Prog es [Addr]) -> Prog es [Addr]
-  hop αs (Observe d y α) k = k (α:αs) y
-
 suspendα :: LogP -> Handler Observe es a (Prog (Observe : es) a, Addr, LogP)
 suspendα logp (Val x)   = pure (Val x, Addr "" 0, logp)
 suspendα logp (Op op k) = case discharge op of

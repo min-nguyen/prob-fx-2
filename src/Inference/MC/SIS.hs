@@ -60,7 +60,7 @@ pfilter :: (Members [Resample p, Sampler] fs)
   -> Prog fs [(a, p)]                          -- ^ final particle results and corresponding contexts
 pfilter hdlParticle prts = do
   -- | Run particles to next checkpoint and accumulate their contexts
-  prts' <- call (mapM (uncurry hdlParticle) prts)
+  prts' <- call ((mapM . uncurry) hdlParticle prts)
   -- ρs'   <- call (Accum ρs partialρs)
   -- | Check termination status of particles
   case collapse prts' of
