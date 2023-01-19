@@ -110,9 +110,9 @@ handleResample mh_steps tags  m = handle () (const Val) (const hop) where
     -- | Insert break point to perform MH up to
         partial_model   = suspendAt α m
     -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
-    wprts_mov <- mapM (\τ -> do ((prt_mov, lρ), τ_mov) <- fmap head (MH.ssmh mh_steps τ (Addr "" 0) tags (unsafeCoerce partial_model))
-                                let lρ_mov = (sum . map snd . Map.toList) lρ
-                                return (prt_mov, PrtState α lρ_mov τ_mov) )
+    wprts_mov <- mapM (\τ -> do ((prt_mov, lρtrace), τ_mov) <- fmap head (MH.ssmh mh_steps τ tags (unsafeCoerce partial_model))
+                                let w_mov = (sum . Map.elems) lρtrace
+                                return (prt_mov, PrtState α w_mov τ_mov) )
                       τs_res
 
     let (prts_mov, (α, ps_mov, τs_mov)) = (second unpack . unzip) wprts_mov
