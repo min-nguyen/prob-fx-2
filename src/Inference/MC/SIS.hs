@@ -65,7 +65,7 @@ pfilter hdlParticle prts = do
   -- | Check termination status of particles
   case collapse prts' of
     -- | If all particles have finished, return their results and contexts
-    Just vals  -> vals
+    Just vals  -> Val vals
     -- | Otherwise, pick the particles to continue with
     Nothing    -> call (Resample (unzip prts')) >>= pfilter hdlParticle
 
@@ -73,9 +73,9 @@ pfilter hdlParticle prts = do
      If at least one program is unfinished, return all programs.
      If all programs have finished, return a single program that returns all results.
 -}
-collapse :: [(Model es a, p)] -> Maybe (Prog fs [(a, p)])
+collapse :: [(Model es a, p)] -> Maybe [(a, p)]
 collapse ((Val v, p) : progs) = do
   vs <- collapse progs
-  pure (((v, p):) <$> vs)
-collapse []    = pure (Val [])
+  pure ((v, p):vs)
+collapse []    = pure []
 collapse progs = Nothing
