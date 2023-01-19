@@ -24,7 +24,7 @@ import Effects.EnvRW
 import Effects.NonDet
 import qualified Inference.MC.MH as MH
 import qualified Inference.MC.PMMH as PMMH
-import           Inference.MC.RMSMC as RMSMC (PrtState(..), handleParticle, suspendAt, observeAddresses)
+import           Inference.MC.RMSMC as RMSMC (PrtState(..), handleParticle, suspendAt, unpack, pack)
 import qualified Inference.MC.SMC as SMC
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
@@ -53,8 +53,7 @@ smc2 n_outer_prts mh_steps n_inner_prts model env obs_vars = do
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
   -- | Run SMC2do
-  obs_αs <- (handleM . defaultSample . observeAddresses) prog_0
-  smc2_trace <- handleM (smc2Internal n_outer_prts mh_steps n_inner_prts tags obs_αs prog_0)
+  smc2_trace <- handleM (smc2Internal n_outer_prts mh_steps n_inner_prts tags  prog_0)
   -- Return the accepted model environments
   pure (map (snd . fst) smc2_trace)
 
@@ -65,11 +64,10 @@ smc2Internal :: (Member Sampler fs)
   -> Int                                          -- ^ number of PMMH steps
   -> Int                                          -- ^ number of inner SMC particles
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> [Addr]
   -> Model '[Sampler] a                                    -- ^ probabilistic program
   -> Prog fs [(a, PrtState)]                -- ^ final particle results and contexts
-smc2Internal n_outer_prts mh_steps n_inner_prts tags obs_αs m  =
-  (handleResample mh_steps n_inner_prts tags obs_αs m . SIS.sis n_outer_prts RMSMC.handleParticle  (0, Map.empty)) m
+smc2Internal n_outer_prts mh_steps n_inner_prts tags  m  =
+  (handleResample mh_steps n_inner_prts tags  m . SIS.sis n_outer_prts RMSMC.handleParticle  (PrtState (Addr "" 0) 0 Map.empty)) m
 
 {- | A handler for resampling particles according to their normalized log-likelihoods,
      and then pertrubing their sample traces using PMMH.
@@ -78,23 +76,21 @@ handleResample :: Member Sampler fs
   => Int                                           -- ^ number of PMMH steps
   -> Int                                           -- ^ number of inner SMC particles
   -> [Tag]                                      -- ^ tags indicating variables of interest
-  -> [Addr]
   -> Model '[Sampler] a
   -> Prog (Resample PrtState : fs) [(a, PrtState)]
   -> Prog fs [(a, PrtState)]
-handleResample mh_steps n_inner_prts θ obs_αs m = loop obs_αs where
-  loop αs (Val x) = Val x
-  loop αs (Op op k) = case discharge op of
-    Right  (Resample (prts, ss)) ->
+handleResample mh_steps n_inner_prts θ  m = loop  where
+  loop  (Val x) = Val x
+  loop  (Op op k) = case discharge op of
+    Right  (Resample (prts, σs)) ->
       do  -- | Resample the particles according to the indexes returned by the SMC resampler
-          idxs <- call $ SMC.resampleMul (map fst ss)
-          let resampled_ss      = map (ss !! ) idxs
-          -- | Get the observe address at the breakpoint (from the context of any arbitrary particle, e.g. by using 'head')
-              resampled_α       = head αs
+          let (α, ρs, τs ) = unpack σs
+          idxs <- call $ SMC.resampleMul ρs
+          let resampled_τs      = map (τs !! ) idxs
           -- | Get the parameter sample trace of each resampled particle
-              resampled_τθs     = map (filterTrace θ . snd) resampled_ss
+              resampled_τθs     = map (filterTrace θ) resampled_τs
           -- | Insert break point to perform MH up to
-              partial_model     = suspendAt resampled_α m
+              partial_model     = suspendAt α m
           -- | Perform PMMH using each resampled particle's sample trace and get the most recent PMMH iteration.
           pmmh_trace <- mapM ( fmap head
                              . call
@@ -105,9 +101,9 @@ handleResample mh_steps n_inner_prts θ obs_αs m = loop obs_αs where
               2) the total log weights of each particle up until the break point
               3) the sample traces of each particle up until the break point -}
           let ((rejuv_prts, rejuv_lps), rejuv_traces) = first unzip (unzip pmmh_trace)
-              -- rejuv_lps_normalised  = map (const (logMeanExp rejuv_lps)) rejuv_lps
+              rejuv_lps_normalised  = map (const (logMeanExp rejuv_lps)) rejuv_lps
 
-              rejuv_ss    = zip rejuv_lps rejuv_traces
+              rejuv_ss    = pack (α, rejuv_lps_normalised, rejuv_traces)
 
-          (loop (tail αs)  . k) (rejuv_prts, rejuv_ss)
-    Left op' -> Op op' (loop αs . k)
+          (loop . k) (zip rejuv_prts rejuv_ss)
+    Left op' -> Op op' (loop  . k)

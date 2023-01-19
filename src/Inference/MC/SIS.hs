@@ -32,7 +32,7 @@ data Resample p a where
     -- | (particles, contexts)
     :: ([Model es b], [p])
     -- | (resampled programs, resampled ss)
-    -> Resample p ([Model es b], [p])
+    -> Resample p [(Model es b, p)]
 
 {- | A @ParticleHandler@  runs a particle to the next @Observe@ break point.
 -}
@@ -67,7 +67,7 @@ pfilter hdlParticle prts = do
     -- | If all particles have finished, return their results and contexts
     Just vals  -> vals
     -- | Otherwise, pick the particles to continue with
-    Nothing    -> call (Resample (unzip prts')) >>= pfilter hdlParticle . uncurry zip
+    Nothing    -> call (Resample (unzip prts')) >>= pfilter hdlParticle
 
 {- | Check whether a list of programs have all terminated.
      If at least one program is unfinished, return all programs.

@@ -75,7 +75,7 @@ handleResampleMul = handle () (const Val) (const hop) where
     let prts_res  = map (prts !! ) idxs
         ρs_res    = (replicate n . logMeanExp . map (ρs  !! )) idxs
 
-    k () (prts_res, ρs_res)
+    k () (zip prts_res ρs_res)
 
 resampleMul :: [LogP] -> Sampler [Int]
 resampleMul ρs = do
@@ -106,5 +106,5 @@ handleResampleSys (Op op k) = case discharge op of
         ρs_res   = map (ρs !! ) idxs
         ρs_mean   = map (const (logMeanExp ρs_res)) ρs_res
 
-    (handleResampleSys . k) (prts_res, ρs_mean)
+    (handleResampleSys . k) (zip prts_res ρs_mean)
   Left op' -> Op op' (handleResampleSys . k)
