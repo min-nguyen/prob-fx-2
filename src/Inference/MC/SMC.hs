@@ -54,13 +54,13 @@ mulpfilter n_prts model = (handleM . handleResampleMul . pfilter handleParticle)
        2. the log probability of the @Observe operation
 -}
 handleParticle :: Model '[Sampler] a -> LogP -> Sampler (Model '[Sampler] a, LogP)
-handleParticle model logp = (handleM . defaultSample . step logp) model
+handleParticle model w = (handleM . defaultSample . step w) model
 
 step :: LogP -> Handler Observe es a (Prog (Observe : es) a, LogP)
-step logp (Val x)   = Val (Val x, logp)
-step logp (Op op k) = case discharge op of
-  Right (Observe d y α) -> Val (k y, logp + logProb d y)
-  Left op'              -> Op op' (step logp . k)
+step w (Val x)   = Val (Val x, w)
+step w (Op op k) = case discharge op of
+  Right (Observe d y α) -> Val (k y, w + logProb d y)
+  Left op'              -> Op op' (step w . k)
 
 {- | A handler for multinomial resampling of particles.
 -}
@@ -72,13 +72,13 @@ handleResampleMul = handle () (const Val) (const hop) where
     let n = length ws
     idxs <- call (replicateM n (Sampler.sampleCategorical (Vector.fromList (map exp ws))))
     let prts_res  = map (prts !! ) idxs
-        ρs_res    = (replicate n . logMeanExp . map (ws  !! )) idxs
+        ws_res    = (replicate n . logMeanExp . map (ws  !! )) idxs
 
-    k () (zip prts_res ρs_res)
+    k () (zip prts_res ws_res)
 
 resampleMul :: [LogP] -> Sampler [Int]
-resampleMul ρs = do
-  let ps = map exp ρs
+resampleMul ws = do
+  let ps = map exp ws
   -- | Select particles to continue with
   replicateM (length ps) (Sampler.sampleCategorical (Vector.fromList ps))
 
@@ -87,9 +87,9 @@ resampleMul ρs = do
 handleResampleSys :: Member Sampler fs => Handler (Resample LogP) fs a a
 handleResampleSys (Val x) = Val x
 handleResampleSys (Op op k) = case discharge op of
-  Right (Resample (prts, ρs)) -> do
+  Right (Resample (prts, ws)) -> do
     -- | Get the weights for each particle
-    let ps = map exp ρs
+    let ps = map exp ws
     -- | Select particles to continue with
     u <- call Sampler.sampleRandom
     let prob i = ps !! i
@@ -102,8 +102,8 @@ handleResampleSys (Op op k) = case discharge op of
             else f i v (j + 1) (q + prob j) acc
         idxs     = f 0 (u / fromIntegral n) 0 0 []
         prts_res = map (prts !! ) idxs
-        ρs_res   = map (ρs !! ) idxs
-        ρs_mean   = map (const (logMeanExp ρs_res)) ρs_res
+        ws_res   = map (ws !! ) idxs
+        ws_mean   = map (const (logMeanExp ws_res)) ws_res
 
-    (handleResampleSys . k) (zip prts_res ρs_mean)
+    (handleResampleSys . k) (zip prts_res ws_mean)
   Left op' -> Op op' (handleResampleSys . k)

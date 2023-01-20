@@ -58,10 +58,10 @@ handleModel :: Int -> ModelHandler '[Sampler] LogP
 handleModel n prog τθ  = do
   let handleParticle :: ParticleHandler '[Sampler] LogP
       handleParticle prt logp = (fmap fst . handleM . reuseSamples τθ . step logp) prt
-  (as, ρs) <- (handleM . handleResampleMul . fmap unzip . pfilter handleParticle) (replicate n (prog, 0))
+  (as, ws) <- (handleM . handleResampleMul . fmap unzip . pfilter handleParticle) (replicate n (prog, 0))
   let a   = head as
-      ρ   = logMeanExp ρs
-  pure ((a, ρ), τθ)
+      w   = logMeanExp ws
+  pure ((a, w), τθ)
 
 {- | An acceptance mechanism for PMMH.
 -}
@@ -73,8 +73,8 @@ handleAccept (Op op k) = case discharge op of
            r <- random'
            let τθ' = Map.insert α r τθ
            (handleAccept . k) τθ'
-  Right (Accept lρ lρ')
+  Right (Accept lw lw')
     ->  do u <- random'
-           (handleAccept . k) (exp (lρ' - lρ) > u)
+           (handleAccept . k) (exp (lw' - lw) > u)
   Left op'
     -> Op op' (handleAccept . k)

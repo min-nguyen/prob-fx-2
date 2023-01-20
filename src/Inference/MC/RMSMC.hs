@@ -91,7 +91,7 @@ rmpfilter n_prts mh_steps tags model = do
 -}
 handleParticle :: ParticleHandler '[Sampler] PrtState
 handleParticle model (PrtState _ logp τ) = (fmap asPrtTrace . handleM . reuseSamples τ . suspendα logp) model where
-  asPrtTrace ((prt, ρ, α), τ) = (prt, PrtState ρ α τ)
+  asPrtTrace ((prt, α, w), τ) = (prt, PrtState α w τ)
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using MH.
 -}
@@ -103,15 +103,15 @@ handleResample :: (Member Sampler fs)
 handleResample mh_steps tags  m = handle () (const Val) (const hop) where
   hop :: Member Sampler fs => Resample PrtState x -> (() -> x -> Prog fs a) -> Prog fs a
   hop  (Resample (_, σs) ) k = do
-    let (α, ρs, τs ) = unpack σs
+    let (α, ws, τs ) = unpack σs
   -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
-    idxs <- call $ SMC.resampleMul ρs
+    idxs <- call $ SMC.resampleMul ws
     let τs_res    = map (τs !!) idxs
     -- | Insert break point to perform MH up to
         partial_model   = suspendAt α m
     -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
-    wprts_mov <- mapM (\τ -> do ((prt_mov, lρtrace), τ_mov) <- fmap head (MH.ssmh mh_steps τ tags (unsafeCoerce partial_model))
-                                let w_mov = (sum . Map.elems) lρtrace
+    wprts_mov <- mapM (\τ -> do ((prt_mov, lwtrace), τ_mov) <- fmap head (MH.ssmh mh_steps τ tags (unsafeCoerce partial_model))
+                                let w_mov = (sum . Map.elems) lwtrace
                                 return (prt_mov, PrtState α w_mov τ_mov) )
                       τs_res
 
