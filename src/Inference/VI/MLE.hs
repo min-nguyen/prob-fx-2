@@ -49,7 +49,7 @@ mle num_timesteps num_samples guide model env = do
   (handleM . handleNormGradDescent) $
       viLoop num_timesteps num_samples guide (handleGuide env) model handleModel λ_0
 
--- | Return log-probability of 0
+-- | Return probability of 1
 handleGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
 handleGuide env guide params =
   (handleM . SIM.defaultSample . handleParams . fmap (,0) . updateParams params . handleEnvRW env) guide
