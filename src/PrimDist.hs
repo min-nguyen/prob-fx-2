@@ -89,13 +89,15 @@ class (SNatI (Arity d), Distribution d) => DiffDistribution d where
 
 type DiffDist d a = (DiffDistribution d, Base d ~ a)
 
--- | Deterministic(x)
-data Deterministic d  where
-  Deterministic
-    :: forall d a. (PrimDist d a)
-    => d
-    -> a                                  -- ^ value of probability @1@
-    -> Deterministic d
+data Deterministic d = forall a. PrimDist d a => Deterministic d a
+
+-- -- | Deterministic(x)
+-- data Deterministic d  where
+--   Deterministic
+--     :: forall d a. (PrimDist d a)
+--     => d
+--     -> a                                  -- ^ value of probability @1@
+--     -> Deterministic d
 
 mkDeterministic :: (PrimDist d a) => d -> a -> Deterministic d
 mkDeterministic = Deterministic

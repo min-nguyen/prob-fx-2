@@ -33,6 +33,7 @@ import qualified Trace
 import Debug.Trace
 import Inference.MC.SIM
 import Inference.VI.VI as VI
+import Inference.VI.MLE (handleNormGradDescent)
 import Inference.MC.LW (joint)
 
 map :: forall env es a b. es ~ '[Sampler]
@@ -45,15 +46,16 @@ map :: forall env es a b. es ~ '[Sampler]
 map num_timesteps num_samples guide model env  = do
   -- | Set up a empty dummy guide Q to return the original input model environment
   λ_0 <- collectParams env guide
-  -- | Run MLE for T optimisation steps
-  (handleM . VI.handleNormGradDescent) $
+  -- | Run MAP for T optimisation steps
+  (handleM . handleNormGradDescent) $
       VI.viLoop num_timesteps num_samples guide (handleGuide env) model handleModel λ_0
 
+-- | Compute Q(X; λ)
 handleGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
 handleGuide env guide params =
   (handleM . defaultSample . handleParams . weighGuide . updateParams params . handleEnvRW env) guide
 
--- | Handle the model P(X, Y; θ) by returning log-importance-weight P(Y, X; θ)
+-- | Compute P(Y, X)
 handleModel :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
 handleModel model env =
   (handleM . defaultSample . defaultObserve . joint 0 . fmap fst . handleEnvRW env) model
