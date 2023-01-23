@@ -141,7 +141,7 @@ instance DiffDistribution Beta where
 
   gradLogProb :: Beta -> Double -> Vec Nat2 Double
   gradLogProb (Beta α β) x
-    | x <= 0 || x >= 1 = error "betaGradLogPdfRaw: x <= 0 || x >= 1"
+    | x < 0 || x > 1 = error $ "betaGradLogPdfRaw: x <= 0 || x > 1" ++ show x
     | otherwise = da ::: db ::: VNil
     where digamma_ab = digamma (α + β)
           da = log x       - digamma α + digamma_ab
@@ -149,8 +149,8 @@ instance DiffDistribution Beta where
           dx = (α - 1)/x + (β - 1)/(1 - x)
 
   safeAddGrad (Beta α β) (dα ::: dβ ::: VNil) = Beta α' β'
-    where α' = let α_new = α + dα in if α_new <= 0 then α else α_new
-          β' = let β_new = β + dβ in if β_new <= 0 then β else β_new
+    where α' = let α_new = α + dα in if α_new <= 0 || isNaN α_new then α else α_new
+          β' = let β_new = β + dβ in if β_new <= 0 || isNaN β_new then β else β_new
 
   toList :: Beta -> [Double]
   toList (Beta dα dβ) = [dα, dβ]
@@ -280,7 +280,7 @@ instance (TypeableSNatI n) => DiffDistribution (Dirichlet n) where
           derivX a x = (a - 1) / x
 
   safeAddGrad (Dirichlet αs) dαs = Dirichlet (Vec.zipWith add_dα αs dαs)
-    where add_dα α dα = let α_new = α + dα in if α_new <= 0 then α else α_new
+    where add_dα α dα = let α_new = α + dα in if α_new <= 0 || isNaN (α_new)  then α else α_new
 
   toList :: Dirichlet n -> [Double]
   toList (Dirichlet dαs) = Vec.toList dαs
