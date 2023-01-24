@@ -28,7 +28,7 @@ import Effects.State ( modify, handleState, State )
 import Env ( Env, union )
 import LogP ( LogP(..), normaliseLogPs )
 import PrimDist
-import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )
+import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handle )
 import Sampler
 import           Trace (GradTrace, ParamTrace, Key(..), Some(..), ValueTrace)
 import qualified Trace
@@ -99,7 +99,7 @@ viStep num_samples hdlGuide hdlModel guide model  params = do
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
 collectParams :: es ~ '[Sampler] => Env env -> VIGuide env es a -> Sampler ParamTrace
-collectParams env = handleM . SIM.defaultSample . (fst <$>) . handleParams . loop Trace.empty . handleEnvRW env
+collectParams env = handleM . SIM.defaultSample . (fst <$>) . defaultParam . loop Trace.empty . handleEnvRW env
   where
   loop :: ParamTrace -> Prog (Param : es) a -> Prog (Param : es) ParamTrace
   loop params (Val _)   = pure params
@@ -133,16 +133,13 @@ weighGuide = loop 0 where
       _               -> Op op (loop logW . k)
 
 -- | Sample from each @Param@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
-handleParams :: forall es a. Member Sample es => Prog (Param : es) a -> Prog es (a, GradTrace)
-handleParams = loop Trace.empty where
-  loop :: GradTrace -> Prog (Param : es) a -> Prog es (a, GradTrace)
-  loop grads (Val a)   = pure (a, grads)
-  loop grads (Op op k) = case discharge op of
-    Right (Param (q :: d) α) -> do
+defaultParam :: forall es a. Member Sample es => Handler Param es a (a, GradTrace)
+defaultParam = handle Trace.empty (\s a -> Val (a, s)) hop where
+  hop :: GradTrace -> Param x -> (GradTrace -> x -> Prog es b) -> Prog es b
+  hop grads (Param (q :: d) α) k = do
       x <- call (Sample q α)
       let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
-      (loop grads' . k) x
-    Left op' -> Op op' (loop grads . k)
+      k grads' x
 
 {- | Update each variable v's parameters λ using their estimated ELBO gradients E[δelbo(v)].
         λ_{t+1} = λ_t + η_t * E[δelbo(v)]

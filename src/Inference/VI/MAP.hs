@@ -53,7 +53,7 @@ map num_timesteps num_samples guide model env  = do
 -- | Return probability of 1
 handleGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
 handleGuide env guide params =
-  (handleM . defaultSample . handleParams . fmap (,0) . updateParams params . handleEnvRW env) guide
+  (handleM . defaultSample . defaultParam . fmap (,0) . updateParams params . handleEnvRW env) guide
 
 -- | Compute P(Y, X)
 handleModel :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
