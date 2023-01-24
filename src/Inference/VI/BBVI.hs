@@ -26,13 +26,13 @@ import           Env ( Env, union )
 import           LogP ( LogP(..), normaliseLogPs )
 import           Model
 import           PrimDist
-import           Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )
+import           Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handle )
 import           Sampler ( Sampler, liftIO )
 import           Trace (GradTrace, ParamTrace, Key(..), Some(..))
 import qualified Trace
 import           Inference.MC.SIM as SIM
 import           Inference.VI.VI as VI
--- import           Inference.VI.VI as VI (GradDescent(..))
+-- import           Inference.VI.VI as VI (UpdateParam(..))
 import qualified Vec
 import           Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Inference.MC.LW
@@ -50,7 +50,7 @@ bbvi :: forall env es a b. es ~ '[Sampler]
 bbvi num_timesteps num_samples guide model env  = do
   λ_0 <- VI.collectParams env guide
   liftIO (print λ_0)
-  (handleM . handleLRatioGradDescent)
+  (handleM . handleLRatio)
     $ VI.viLoop num_timesteps num_samples guide (handleGuide env) model handleModel λ_0
 
 -- | Compute Q(X; λ)
@@ -60,23 +60,22 @@ handleGuide env guide params =
 
 -- | Compute P(X, Y)
 handleModel :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
-handleModel model env  =
-  (handleM . defaultSample . defaultObserve . joint 0 . fmap fst . handleEnvRW env) model
+handleModel model env  = (handleM . joint . fmap fst . handleEnvRW env) model where
+  joint = fmap (\((x, a), b) -> (x, a + b)) . prior . likelihood 0
+
 
 -- | Compute and update the guide parameters using a likelihood-ratio-estimate E[δelbo] of the ELBO gradient
-handleLRatioGradDescent :: Prog (GradDescent : fs) a -> Prog fs a
-handleLRatioGradDescent (Val a) = pure a
-handleLRatioGradDescent (Op op k) = case discharge op of
-  Right (GradDescent logWs δGs params) ->
-    let δelbos  = likelihoodRatioEstimator logWs δGs
-        params' = gradStep 1 params δelbos
-    in  handleLRatioGradDescent (k params')
-  Left op' -> Op op' (handleLRatioGradDescent . k)
+handleLRatio :: forall fs a. Handler GradEst fs a a
+handleLRatio = handle () (const Val) (const hop) where
+  hop :: GradEst x -> (() -> x -> Prog fs a) -> Prog fs a
+  hop (UpdateParam ws grads params) k =
+    let δelbo = lratio ws grads
+    in  k () (Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (1 *| δλ)) params δelbo)
 
 -- | Where logWs = logP(X, Y) - logQ(X; λ)
 --         δGs   = δ_λ logQ(X;λ)
-likelihoodRatioEstimator :: [LogP] -> [GradTrace] -> GradTrace
-likelihoodRatioEstimator logWs δGs = foldr (\(Some v) -> Trace.insert v (estδELBO v)) Trace.empty vars
+lratio :: [LogP] -> [GradTrace] -> GradTrace
+lratio logWs δGs = foldr (\(Some v) -> Trace.insert v (estδELBO v)) Trace.empty vars
   where
     norm_c :: Double
     norm_c = 1/fromIntegral (length logWs)

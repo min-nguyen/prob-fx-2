@@ -60,10 +60,10 @@ handleModel model env  =
   (handleM . SIM.defaultSample . likelihood 0 . fmap fst . handleEnvRW env) model
 
 -- | Compute and update the guide parameters using a self-normalised importance weighted gradient estimate
-handleNormGradDescent :: Prog (GradDescent : fs) a -> Prog fs a
+handleNormGradDescent :: Prog (GradEst : fs) a -> Prog fs a
 handleNormGradDescent (Val a) = pure a
 handleNormGradDescent (Op op k) = case discharge op of
-  Right (GradDescent logWs δGs params) ->
+  Right (UpdateParam logWs δGs params) ->
     let δelbos  = normalisingEstimator logWs δGs
         params' = case δelbos of Just δelbos' -> gradStep 1 params δelbos'
                                  Nothing      -> params

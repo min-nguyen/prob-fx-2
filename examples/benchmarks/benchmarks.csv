@@ -545,7 +545,7 @@ BBVIDefaultCombined-[ ]-10-LDA-50,0.6622737072501271,1.4078172265206301,2.116482
 
 -------------------------------
 Updates:
- - Added VI template (that uses GradDescent effect) which takes a model and guide as *separate models*.
+ - Added VI template (that uses UpdateParam effect) which takes a model and guide as *separate models*.
  - BBVI and (newly implemented but not benchmarked) INVI defined in terms of VI template.
  - BBVIDefault is just BBVI where the same model is provided as the guide. BBVIDefaultCombined is completely unchanged.
 
