@@ -35,6 +35,7 @@ import Inference.MC.SIM
 import Inference.VI.VI as VI
 import Inference.VI.MLE (handleNormGradDescent)
 import Inference.MC.LW (joint)
+import qualified Inference.VI.BBVI as BBVI
 
 map :: forall env es a b. es ~ '[Sampler]
   => Int                                -- ^ number of optimisation steps (T)
@@ -52,8 +53,8 @@ map num_timesteps num_samples guide model env  = do
 
 -- | Return probability of 1
 handleGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), GradTrace), LogP)
-handleGuide env guide params =
-  (handleM . fmap (,0) . defaultSample . defaultParam params . handleEnvRW env) guide
+handleGuide env guide params = second (const 0) <$> BBVI.handleGuide  env guide params
+  -- (handleM . fmap (,0) . defaultSample . defaultParam params . handleEnvRW env) guide
 
 -- | Compute P(Y, X)
 handleModel :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
