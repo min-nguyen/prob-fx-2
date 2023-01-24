@@ -45,7 +45,7 @@ type VIModel env es a  = Prog (EnvRW env : Observe : Sample : es) a
 data GradDescent a where
   GradDescent :: [LogP] -> [GradTrace] -> ParamTrace -> GradDescent ParamTrace
 
-type GuideHandler env es a = VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
+type GuideHandler env es a = VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), GradTrace), LogP)
 type ModelHandler env es a = VIModel env es a -> Env env    -> Sampler (a, LogP)
 
 viLoop :: (Members [GradDescent, Sampler] fs)
@@ -75,7 +75,7 @@ viStep ::  (Members [GradDescent, Sampler] fs)
   -> Prog fs ParamTrace    -- ^ next guide parameters λ_{t+1}
 viStep num_samples hdlGuide hdlModel guide model  params = do
   let hdlGuideModel = do -- | Execute the guide X ~ Q(X; λ)
-                          (((_, env), guide_w), δλ) <- call (hdlGuide guide params)
+                          (((_, env), δλ ), guide_w) <- call (hdlGuide guide params)
                           -- | Execute the model P(X, Y) under the guide environment X
                           (_        , model_w)      <- call (hdlModel model env)
                           -- | Compute total log-importance-weight, log(P(X, Y)) - log(Q(X; λ))
@@ -99,7 +99,7 @@ viStep num_samples hdlGuide hdlModel guide model  params = do
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
 collectParams :: es ~ '[Sampler] => Env env -> VIGuide env es a -> Sampler ParamTrace
-collectParams env = handleM . SIM.defaultSample . (fst <$>) . defaultParam . loop Trace.empty . handleEnvRW env
+collectParams env = handleM . SIM.defaultSample . (fst <$>) . defaultParam Trace.empty . loop Trace.empty . handleEnvRW env
   where
   loop :: ParamTrace -> Prog (Param : es) a -> Prog (Param : es) ParamTrace
   loop params (Val _)   = pure params
@@ -108,38 +108,21 @@ collectParams env = handleM . SIM.defaultSample . (fst <$>) . defaultParam . loo
                              Op op (loop params' . k)
     Nothing -> Op op (loop params . k)
 
--- | Set the @Param@eters of the guide Q(X; λ).
-updateParams :: forall es a. Member Param es => ParamTrace -> Prog es a -> Prog es a
-updateParams proposals = loop where
-  loop :: Prog es a -> Prog es a
-  loop (Val a)   = pure a
-  loop (Op op k) = case prj op of
-    Just (Param q α) -> do
-      let q' = fromMaybe q (Trace.lookup (Key α) proposals)
-      x <- call (Param q' α)
-      (loop . k) x
-    Nothing -> Op op (loop . k)
-
--- | Compute log(Q(X; λ)) over the guide.
-weighGuide :: forall es a. (Members [Param, Sample] es) => Prog es a -> Prog es (a, LogP)
-weighGuide = loop 0 where
-  loop :: LogP -> Prog es a -> Prog es (a, LogP)
-  loop logW (Val a)   = pure (a, logW)
-  loop logW (Op op k) = case  op of
-      -- | Compute: log(Q(X; λ)) for proposal distributions
-      ParamPrj q α   -> Op op (\x -> loop (logW + logProb q x) $ k x)
-      -- | Compute: log(Q(X; λ)) for non-differentiable distributions
-      SampPrj q α     -> Op op (\x -> loop (logW + logProb q x) $ k x)
-      _               -> Op op (loop logW . k)
-
 -- | Sample from each @Param@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
-defaultParam :: forall es a. Member Sample es => Handler Param es a (a, GradTrace)
-defaultParam = handle Trace.empty (\s a -> Val (a, s)) hop where
+defaultParam :: forall es a. Member Sample es => ParamTrace -> Handler Param es a (a, GradTrace)
+defaultParam param = handle Trace.empty (\s a -> Val (a, s)) hop where
   hop :: GradTrace -> Param x -> (GradTrace -> x -> Prog es b) -> Prog es b
   hop grads (Param (q :: d) α) k = do
-      x <- call (Sample q α)
-      let grads' = Trace.insert @d (Key α) (gradLogProb q x) grads
-      k grads' x
+      let q' = fromMaybe q (Trace.lookup (Key α) param)
+      x <- call (Sample q' α)
+      k (Trace.insert @d (Key α) (gradLogProb q' x) grads) x
+
+prior :: forall es a. Member Sampler es => Handler Sample es a (a, LogP)
+prior = handle 0 (\lρ x -> Val (x, lρ)) hop
+  where
+  hop :: LogP -> Sample x -> (LogP -> x -> Prog es b) -> Prog es b
+  hop lρ (Sample d α) k = do x <- call $ drawWithSampler d
+                             k (lρ + logProb d x) x
 
 {- | Update each variable v's parameters λ using their estimated ELBO gradients E[δelbo(v)].
         λ_{t+1} = λ_t + η_t * E[δelbo(v)]

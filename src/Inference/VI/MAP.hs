@@ -51,9 +51,9 @@ map num_timesteps num_samples guide model env  = do
       VI.viLoop num_timesteps num_samples guide (handleGuide env) model handleModel λ_0
 
 -- | Return probability of 1
-handleGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
+handleGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), GradTrace), LogP)
 handleGuide env guide params =
-  (handleM . defaultSample . defaultParam . fmap (,0) . updateParams params . handleEnvRW env) guide
+  (handleM . fmap (,0) . defaultSample . defaultParam params . handleEnvRW env) guide
 
 -- | Compute P(Y, X)
 handleModel :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)

@@ -54,9 +54,9 @@ bbvi num_timesteps num_samples guide model env  = do
     $ VI.viLoop num_timesteps num_samples guide (handleGuide env) model handleModel λ_0
 
 -- | Compute Q(X; λ)
-handleGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), LogP), GradTrace)
+handleGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), GradTrace), LogP)
 handleGuide env guide params =
-  (handleM . SIM.defaultSample . defaultParam . weighGuide . updateParams params . handleEnvRW env) guide
+  (handleM . VI.prior . defaultParam params . handleEnvRW env) guide
 
 -- | Compute P(X, Y)
 handleModel :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
