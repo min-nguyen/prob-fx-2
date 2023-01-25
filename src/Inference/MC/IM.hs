@@ -53,9 +53,9 @@ handleModel :: ModelHandler '[Sampler] LogP
 handleModel prog τ =
   (handleM . Metropolis.reuseSamples τ . LW.likelihood 0) prog
 
-handleAccept :: Member Sampler fs => Handler (Accept LogP) fs a a
+handleAccept :: Member Sampler fs => Handler (Proposal LogP) fs a a
 handleAccept = handle () (\_ -> Val) (\_ op k -> hop op k)
-  where hop :: Member Sampler es => Accept LogP x -> (() -> x -> Prog es b) -> Prog es b
+  where hop :: Member Sampler es => Proposal LogP x -> (() -> x -> Prog es b) -> Prog es b
         hop op k = case op of
           (Propose τ)     -> do τ0 <- mapM (const random') τ
                                 k () τ0

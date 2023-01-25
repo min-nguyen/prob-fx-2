@@ -28,27 +28,27 @@ import Effects.Lift ( handleM, random' )
 import qualified Inference.MC.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
 
-{- | The @Accept@ effect for proposing samples and accepting/rejecting according a context.
+{- | The @Proposal@ effect for proposing samples and accepting/rejecting according a context.
 -}
-data Accept p a where
+data Proposal p a where
   Propose
     -- | previous context and sample trace
     :: Trace
     -- | proposed *initial* context and sample trace
-    -> Accept p Trace
+    -> Proposal p Trace
   Accept
     -- | previous context
     :: p
     -- | proposed *final* context
     -> p
     -- | whether the proposal is accepted or not
-    -> Accept p Bool
+    -> Proposal p Bool
 
 type ModelHandler es p = forall a. Model es a -> Trace -> Sampler ((a, p), Trace)
 
 {- | A general framework for Metropolis inference.
 -}
-metropolis :: (Members [Accept p, Sampler] fs)
+metropolis :: (Members [Proposal p, Sampler] fs)
    => Int                                                                    -- ^ number of iterations
    -> Trace                                                          -- ^ initial context + sample trace
    -> ModelHandler es p                                                        -- ^ model handler
@@ -62,7 +62,7 @@ metropolis n τ_0 hdlModel prog_0 = do
 
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
-metroStep :: forall es fs p a. (Members [Accept p, Sampler] fs)
+metroStep :: forall es fs p a. (Members [Proposal p, Sampler] fs)
   => Model es a                                                       -- ^ model handler
   -> ModelHandler es p                                                  -- ^ probabilistic program
   -> [((a, p), Trace)]                                                   -- ^ previous trace
@@ -71,7 +71,7 @@ metroStep prog_0 hdlModel markov_chain = do
   -- | Get previous iteration output
   let ((r, p), τ) = head markov_chain
   -- | Construct an *initial* proposal
-  τ_0            <- call (Propose τ :: Accept p Trace)
+  τ_0            <- call (Propose τ :: Proposal p Trace)
   -- | Execute the model under the initial proposal to return the *final* proposal
   ((r', p'), τ') <- call (hdlModel prog_0 τ_0)
   -- | Compute acceptance ratio

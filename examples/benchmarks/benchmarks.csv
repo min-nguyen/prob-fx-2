@@ -276,7 +276,7 @@ PMMH-50-LR-50,8.930419018898834e-2,0.20606295417230236,0.33939262283320204,0.557
 
 -------------------------------
 Updates:
-- Benchmarks after introducing Accept effect
+- Benchmarks after introducing Proposal effect
 
 Dataset size,100,200,300,400,500
 LR-SIM-1,2.4927098205255197e-4,6.849338888042154e-4,1.2680318770719524e-3,2.0031689353530663e-3,2.8976864673518252e-3
@@ -315,7 +315,7 @@ PMMH-50-LR-50,9.964315615289124e-2,0.2342777116333347,0.384276829687451,0.563168
 
 -------------------------------
 Updates:
-- Benchmarks after introducing template for Accept-Reject sampling (used by MH and PMMH)
+- Benchmarks after introducing template for Proposal-Reject sampling (used by MH and PMMH)
 
 Dataset size,100,200,300,400,500
 LR-SIM-1,2.600495909930811e-4,7.299071735279149e-4,1.3092135376439522e-3,2.0502569502106193e-3,2.970054891187284e-3
@@ -608,7 +608,7 @@ INVI-[ ]-10-LDA-50,0.6711361966032806,1.4096668559795944,2.1464595376883153,2.94
 Updates:
   - Addr is a datatype rather than a tuple (tag, tag_idx)
   - Metropolis template reworked:
-      - The operations of Accept have been reworked to have different argument and return types
+      - The operations of Proposal have been reworked to have different argument and return types
       - The type of model handlers is changed from:
             Trace -> Model a -> Sampler ((a, s), Trace)
         to:

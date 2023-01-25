@@ -37,7 +37,7 @@ Changed:
 - Type signature for `accept`
 Added:
 - `mhInternal`
-- abstractions for accepting new proposals: `MHCtx`, `Accept`
+- abstractions for accepting new proposals: `MHCtx`, `Proposal`
 
 **Inference.MB**
 Added:

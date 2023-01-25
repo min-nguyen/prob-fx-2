@@ -67,15 +67,15 @@ ssmh :: (Member Sampler fs)
   -> Prog fs [((a, LPTrace), Trace)]
 ssmh n τ_0  tags = handleAccept tags  . metropolis n τ_0 handleModel
 
-{- | Handler for @Accept@ for MH.
+{- | Handler for @Proposal@ for MH.
     - Propose by drawing a component x_i of latent variable X' ~ p(X)
-    - Accept using the ratio:
+    - Proposal using the ratio:
        p(X', Y')q(X | X')/p(X, Y)q(X' | X)
 -}
-handleAccept :: Member Sampler fs => [Tag] -> Handler (Accept LPTrace) fs a a
+handleAccept :: Member Sampler fs => [Tag] -> Handler (Proposal LPTrace) fs a a
 handleAccept tags  = handle (Addr "" 0) (const Val) hop
   where
-    hop :: Member Sampler es => Addr -> Accept LPTrace x -> (Addr -> x -> Prog es b) -> Prog es b
+    hop :: Member Sampler es => Addr -> Proposal LPTrace x -> (Addr -> x -> Prog es b) -> Prog es b
     hop _ (Propose τ) k   = do  α <- randomFrom' (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
                                 r <- random'
                                 k α (Map.insert α r τ)
