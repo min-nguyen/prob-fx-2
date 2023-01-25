@@ -7,7 +7,7 @@
 
 module Effects.Sample where
 
-import Prog
+import Comp
 import PrimDist
 import Trace
 import Effects.EnvRW
@@ -34,14 +34,14 @@ pattern SampDis d α <- (discharge -> Right (Sample d α))
 
 -- | For directly calling Sample with a known runtime address
 sample :: forall d a es. (Member Sample es, PrimDist d a)
-       => d -> Addr -> Prog es a
+       => d -> Addr -> Comp es a
 sample d α = call (Sample d α)
 
 -- | For directly calling Sample for a variable in the model environment.
 --   The attempts to first use an existing sampled value in the input environment.
 --   The sampled value is written to an output environment.
 sample' :: forall env es x d a. (Observable env x a, Members [EnvRW env, Sample] es,  PrimDist d a)
-  => d -> (Var x, Int) -> Prog es a
+  => d -> (Var x, Int) -> Comp es a
 sample' d (varx, idx) = do
   let tag = varToStr varx
   maybe_y <- call (Read @env varx)

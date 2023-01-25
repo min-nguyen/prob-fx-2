@@ -17,7 +17,7 @@ module Inference.MC.IM where
 
 import Control.Monad ( replicateM )
 import qualified Data.Map as Map
-import Prog ( Handler, Prog(..), discharge, handle, LastMember, Member )
+import Comp ( Handler, Comp(..), discharge, handle, LastMember, Member )
 import Trace ( Trace, LPTrace, filterTrace )
 import LogP ( LogP (..) )
 import PrimDist
@@ -55,7 +55,7 @@ handleModel prog τ =
 
 handleProposal :: Member Sampler fs => Handler (Proposal LogP) fs a a
 handleProposal = handle () (\_ -> Val) (\_ op k -> hop op k)
-  where hop :: Member Sampler es => Proposal LogP x -> (() -> x -> Prog es b) -> Prog es b
+  where hop :: Member Sampler es => Proposal LogP x -> (() -> x -> Comp es b) -> Comp es b
         hop op k = case op of
           (Propose τ)     -> do τ0 <- mapM (const random) τ
                                 k () τ0

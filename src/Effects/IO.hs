@@ -16,23 +16,23 @@ module Effects.IO (
   , liftPutStrLn
   , handleIO) where
 
-import Prog ( call, Member(prj), LastMember, Prog(..), Handler, handle )
+import Comp ( call, Member(prj), LastMember, Comp(..), Handler, handle )
 import Sampler
 
-random :: Member Sampler es => Prog es Double
+random :: Member Sampler es => Comp es Double
 random = call sampleRandom
 
-randomFrom :: Member Sampler es => [a] -> Prog es a
+randomFrom :: Member Sampler es => [a] -> Comp es a
 randomFrom = call . sampleRandomFrom
 
 -- | Wrapper function for calling @Lift@ as the last effect
-liftPrint :: Member Sampler es => Show a => a -> Prog es ()
+liftPrint :: Member Sampler es => Show a => a -> Comp es ()
 liftPrint = call . liftIO . print
 
-liftPutStrLn :: Member Sampler es => String -> Prog es ()
+liftPutStrLn :: Member Sampler es => String -> Comp es ()
 liftPutStrLn = call . liftIO . putStrLn
 
-handleIO :: Monad m => Prog '[m] w -> m w
+handleIO :: Monad m => Comp '[m] w -> m w
 handleIO (Val x) = return x
 handleIO (Op u q) = case prj u of
   Just m  -> m >>= handleIO . q

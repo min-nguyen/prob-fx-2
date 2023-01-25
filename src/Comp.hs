@@ -15,9 +15,9 @@
 {- | An encoding for algebraic effects, based on the @freer@ monad.
 -}
 
-module Prog (
+module Comp (
   -- * Effectful program
-    Prog(..)
+    Comp(..)
   , EffectSum
   , Handler
   , Member(..)
@@ -43,20 +43,20 @@ import           Unsafe.Coerce ( unsafeCoerce )
 {- | A program that returns a value of type @a@ and can call operations that belong to some effect
      @e@ in signature @es@; this represents a syntax tree whose nodes are operations and leaves are pure values.
 -}
-data Prog es a where
-  Val :: a -> Prog es a
-  Op  :: EffectSum es b -> (b -> Prog es a) -> Prog es a
+data Comp es a where
+  Val :: a -> Comp es a
+  Op  :: EffectSum es b -> (b -> Comp es a) -> Comp es a
 
-instance Functor (Prog es) where
+instance Functor (Comp es) where
   fmap f (Val a) = Val (f a)
   fmap f (Op fx k) = Op fx (fmap f . k)
 
-instance Applicative (Prog es) where
+instance Applicative (Comp es) where
   pure = Val
   Val f <*> x = fmap f x
   (Op fx k) <*> x = Op fx ((<*> x) . k)
 
-instance Monad (Prog es) where
+instance Monad (Comp es) where
   return        = Val
   Val a >>= f   = f a
   Op fx k >>= f = Op fx (k >=> f)
@@ -111,20 +111,20 @@ instance {-# OVERLAPPABLE #-} LastMember e es => LastMember e (e' ': es)
 instance LastMember e (e ': '[])
 
 -- | Run a pure computation
-run :: Prog '[] a -> a
+run :: Comp '[] a -> a
 run (Val x) = x
-run _ = error "Prog.run isn't defined for non-pure computations"
+run _ = error "Comp.run isn't defined for non-pure computations"
 
 -- | Call an operation in a computation
-call :: Member e es => e a -> Prog es a
+call :: Member e es => e a -> Comp es a
 call e = Op (inj e) Val
 
 -- | Handler abstraction
-type Handler e es a b = Prog (e : es) a -> Prog es b
+type Handler e es a b = Comp (e : es) a -> Comp es b
 
 handle :: s
-       -> (s -> a -> Prog es b)
-       -> (forall x. s -> e x -> (s -> x -> Prog es b) -> Prog es b)
+       -> (s -> a -> Comp es b)
+       -> (forall x. s -> e x -> (s -> x -> Comp es b) -> Comp es b)
        -> Handler e es a b
 handle s hval _     (Val a)   = hval s a
 handle s hval hop   (Op op k) = case discharge op of
@@ -140,14 +140,14 @@ discharge (EffectSum n rv) = Left  $ EffectSum (n-1) rv
 -- | Discharge the only effect from an effect sum
 discharge1 :: EffectSum '[e] a -> e a
 discharge1 (EffectSum 0 tv) = unsafeCoerce tv
-discharge1 _ = error "Prog.discharge1: impossible"
+discharge1 _ = error "Comp.discharge1: impossible"
 
 -- | Prepend an effect to the front of an effect sum
 weaken :: EffectSum es a -> EffectSum (e ': es) a
 weaken (EffectSum n ta) = EffectSum (n + 1) ta
 
 -- | Prepend an effect to the front of a computation's effect signature
-weakenProg :: forall e es a. Prog es a -> Prog (e : es) a
+weakenProg :: forall e es a. Comp es a -> Comp (e : es) a
 weakenProg (Val x)   = Val x
 weakenProg (Op op k) = Op (weaken op) (weakenProg . k)
 
@@ -156,10 +156,10 @@ weakenProg (Op op k) = Op (weaken op) (weakenProg . k)
      type application on usage to specify which effect is being intercepted.
 -}
 install :: Member e es =>
-     (a -> Prog (e' ': es) a)
-  -> (forall x. x -> e x -> (x -> Prog (e' ': es) a) -> Prog (e' ': es) a)
-  -> Prog es a
-  -> Prog (e' ': es) a
+     (a -> Comp (e' ': es) a)
+  -> (forall x. x -> e x -> (x -> Comp (e' ': es) a) -> Comp (e' ': es) a)
+  -> Comp es a
+  -> Comp (e' ': es) a
 install ret h (Val x )  = ret x
 install ret h (Op u k) =
   case prj u  of

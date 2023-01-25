@@ -22,7 +22,7 @@ import qualified Data.Map as Map
 import           Data.Set ((\\))
 import qualified Data.Set as Set
 import           Data.Maybe ( fromJust )
-import           Prog ( Prog(..), discharge, Members, LastMember, Member (..), call, weakenProg, weaken, Handler, handle )
+import           Comp ( Comp(..), discharge, Members, LastMember, Member (..), call, weakenProg, weaken, Handler, handle )
 import           Env ( ContainsVars(..), Vars, Env )
 import           Trace ( Trace, LPTrace, filterTrace )
 import           LogP ( LogP )
@@ -64,7 +64,7 @@ ssmh :: (Member Sampler fs)
   -> Trace                                -- ^ initial sample trace
   -> [Tag]                                 -- ^ tags indicating variables of interest
   -> Model '[Sampler] a                            -- ^ probabilistic program
-  -> Prog fs [((a, LPTrace), Trace)]
+  -> Comp fs [((a, LPTrace), Trace)]
 ssmh n τ_0  tags = handleProposal tags  . metropolis n τ_0 handleModel
 
 {- | Handler for @Proposal@ for MH.
@@ -75,7 +75,7 @@ ssmh n τ_0  tags = handleProposal tags  . metropolis n τ_0 handleModel
 handleProposal :: Member Sampler fs => [Tag] -> Handler (Proposal LPTrace) fs a a
 handleProposal tags  = handle (Addr "" 0) (const Val) hop
   where
-    hop :: Member Sampler es => Addr -> Proposal LPTrace x -> (Addr -> x -> Prog es b) -> Prog es b
+    hop :: Member Sampler es => Addr -> Proposal LPTrace x -> (Addr -> x -> Comp es b) -> Comp es b
     hop _ (Propose τ) k   = do  α <- randomFrom (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
                                 r <- random
                                 k α (Map.insert α r τ)
@@ -110,7 +110,7 @@ handleModel prog τ0 = (handleIO . reuseTrace τ0 . defaultObserve . traceLP Map
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}
 traceLP :: Members [Observe, Sample] es
-  => LPTrace -> Prog es a -> Prog es (a, LPTrace)
+  => LPTrace -> Comp es a -> Comp es (a, LPTrace)
 traceLP ρ (Val x)   = pure (x, ρ)
 traceLP ρ (Op op k) = case op of
   ObsPrj d y α   -> Op op (\x -> traceLP (Map.insert α (logProb d x) ρ) $ k x)

@@ -11,7 +11,7 @@
 
 module Inference.MC.PMMH where
 
-import Prog
+import Comp
 import Sampler
 import LogP
 import Trace (Trace, filterTrace)

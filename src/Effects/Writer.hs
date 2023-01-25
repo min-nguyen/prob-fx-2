@@ -14,7 +14,7 @@ module Effects.Writer (
   , handleWriter
   , handleWriterM) where
 
-import Prog ( discharge, Member(inj), Prog(..) )
+import Comp ( discharge, Member(inj), Comp(..) )
 import Model ( GenModel(..) )
 
 -- | Writer effect for writing to a strean @w@
@@ -25,7 +25,7 @@ data Writer w a where
     -> Writer w ()
 
 -- | Wrapper for @Tell@
-tell :: Member (Writer w) es => w -> Prog es ()
+tell :: Member (Writer w) es => w -> Comp es ()
 tell w = Op (inj $ Tell w) Val
 
 -- | Wrapper for @Tell@ inside @GenModel@
@@ -34,11 +34,11 @@ tellM w = GenModel $ tell w
 
 -- | Handle the @Writer@ effect for a stream @w@
 handleWriter :: forall w es a. Monoid w
-  => Prog (Writer w ': es) a
+  => Comp (Writer w ': es) a
   -- | (output, final stream)
-  -> Prog es (a, w)
+  -> Comp es (a, w)
 handleWriter = loop mempty where
-  loop ::  w -> Prog (Writer w ': es) a -> Prog es (a, w)
+  loop ::  w -> Comp (Writer w ': es) a -> Comp es (a, w)
   loop w (Val x) = return (x, w)
   loop w (Op u k) = case discharge u of
     Right (Tell w') -> loop (w `mappend` w') (k ())

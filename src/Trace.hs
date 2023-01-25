@@ -54,7 +54,7 @@ import           Data.Maybe ( fromJust, fromMaybe )
 import           Data.Proxy ( Proxy(..) )
 import           GHC.TypeLits ( KnownSymbol )
 import           LogP ( LogP )
-import           Prog ( Member, Prog(..), weaken, install )
+import           Comp ( Member, Comp(..), weaken, install )
 import           PrimDist
 import           Util
 import           TyCompare

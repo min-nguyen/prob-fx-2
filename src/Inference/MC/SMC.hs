@@ -23,7 +23,7 @@ import           Env ( Env )
 import           LogP ( LogP(..), logMeanExp )
 import           Model ( GenModel(runModel), Model )
 import           PrimDist ( mkCategorical, drawWithSampler, logProb )
-import           Prog ( LastMember, Prog(..), Members, Member, call, weakenProg, discharge, prj, handle, Handler )
+import           Comp ( LastMember, Comp(..), Members, Member, call, weakenProg, discharge, prj, handle, Handler )
 import qualified Data.Map as Map
 import           Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS
@@ -56,7 +56,7 @@ mulpfilter n_prts model = (handleIO . handleResampleMul . pfilter handleParticle
 handleParticle :: Model '[Sampler] a -> LogP -> Sampler (Model '[Sampler] a, LogP)
 handleParticle model w = (handleIO . defaultSample . step w) model
 
-step :: LogP -> Handler Observe es a (Prog (Observe : es) a, LogP)
+step :: LogP -> Handler Observe es a (Comp (Observe : es) a, LogP)
 step w (Val x)   = Val (Val x, w)
 step w (Op op k) = case discharge op of
   Right (Observe d y α) -> Val (k y, w + logProb d y)
@@ -67,7 +67,7 @@ step w (Op op k) = case discharge op of
 
 handleResampleMul :: Member Sampler es => Handler (Resample LogP) es b b
 handleResampleMul = handle () (const Val) (const hop) where
-  hop :: Member Sampler es =>  Resample LogP x -> (() -> x -> Prog es b) -> Prog es b
+  hop :: Member Sampler es =>  Resample LogP x -> (() -> x -> Comp es b) -> Comp es b
   hop  (Resample (prts, ws)) k = do
     let n = length ws
     idxs <- call (replicateM n (Sampler.sampleCategorical (Vector.fromList (map exp ws))))

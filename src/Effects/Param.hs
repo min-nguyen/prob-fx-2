@@ -7,7 +7,7 @@
 
 module Effects.Param where
 
-import Prog
+import Comp
 import PrimDist
 import Trace
 import Effects.Sample
@@ -27,14 +27,14 @@ pattern ParamPrj q α <- (prj -> Just (Param q α))
 
 -- | For directly calling Param with a known runtime address,
 param :: forall d a es. (Member Param es, DiffDist d a)
-       => d -> Addr -> Prog es a
+       => d -> Addr -> Comp es a
 param d α = call (Param d α)
 
 -- | For directly calling Param for a variable in the model environment.
 --   The value returned is written to the output environment.
 param' :: forall env es x d a.
   (Observable env x a, Members [EnvRW env, Param] es, DiffDist d a)
-  => d -> (Var x, Int) -> Prog es a
+  => d -> (Var x, Int) -> Comp es a
 param' d (varx, idx) = do
   let tag = varToStr varx
   y <- param d (Addr tag idx)

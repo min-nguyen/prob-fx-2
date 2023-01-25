@@ -30,7 +30,7 @@ import PrimDist
 import Data.Type.Nat
 import Data.Maybe
 import HMM (simHMM)
-import Prog
+import Comp
 import Model
 import Vec (Vec, TypeableSNatI)
 import qualified Vec as Vec

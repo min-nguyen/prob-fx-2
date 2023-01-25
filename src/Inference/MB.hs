@@ -24,7 +24,7 @@ import Model (GenModel(..), handleCore)
 import Numeric.Log ( Log(Exp) )
 import LogP ( LogP(LogP) )
 import PrimDist ( logProb, sampleBayes )
-import Prog ( discharge, Prog(..), LastMember )
+import Comp ( discharge, Comp(..), LastMember )
 
 -- | Translate a ProbFX model under a given model environment to a MonadBayes program
 handleMBayes :: MonadInfer m
@@ -39,8 +39,8 @@ handleMBayes model env_in =
 
 -- | Handle @Observe@ operations by computing the log-probability and calling the @score@ method of the @MonadCond@ class
 handleObs :: (MonadCond m, LastMember (Lift m) es)
-  => Prog (Observe : es) a
-  -> Prog es a
+  => Comp (Observe : es) a
+  -> Comp es a
 handleObs (Val x)  = Val x
 handleObs (Op u k) = case discharge u of
   Right (Observe d y _) ->
@@ -52,8 +52,8 @@ handleObs (Op u k) = case discharge u of
 
 -- | Handle @Sample@ operations by calling the sampling methods of the @MonadSample@ class
 handleSamp :: (MonadSample m, LastMember (Lift m) es)
- => Prog (Sample : es) a
- -> Prog es a
+ => Comp (Sample : es) a
+ -> Comp es a
 handleSamp (Val x) = pure x
 handleSamp (Op u k) = case discharge u of
   Right (Sample d _) ->
@@ -63,7 +63,7 @@ handleSamp (Op u k) = case discharge u of
      Op u' (handleSamp  . k)
 
 -- | Alternative for handling Dist as the last effect directly into a monad
-handleDistMB :: MonadInfer m => Prog '[Dist] a -> m a
+handleDistMB :: MonadInfer m => Comp '[Dist] a -> m a
 handleDistMB (Val x)  = pure x
 handleDistMB (Op u k) = case discharge u of
   Right (Dist d maybe_y _) ->

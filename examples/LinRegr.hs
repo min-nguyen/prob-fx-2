@@ -32,7 +32,7 @@ import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, 
 import Effects.Dist
 import PrimDist
 import Data.Maybe
-import Prog
+import Comp
 import Effects.EnvRW
 {-
 import Numeric.Log ( Log )

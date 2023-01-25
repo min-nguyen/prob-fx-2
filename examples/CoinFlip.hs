@@ -10,7 +10,7 @@
 
 module CoinFlip where
 
-import Prog ( call )
+import Comp ( call )
 import Effects.EnvRW ( EnvRW(Read) )
 import Model ( GenModel(GenModel), bernoulli, uniform )
 import PrimDist ( mkBernoulli, mkUniform )

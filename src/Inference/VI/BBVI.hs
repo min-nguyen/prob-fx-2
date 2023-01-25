@@ -26,7 +26,7 @@ import           Env ( Env, union )
 import           LogP ( LogP(..), normaliseLogPs )
 import           Model
 import           PrimDist
-import           Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handle )
+import           Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handle )
 import           Sampler ( Sampler, liftIO )
 import           Trace (GradTrace, ParamTrace, Key(..), Some(..))
 import qualified Trace
@@ -67,7 +67,7 @@ handleModel model env  = (handleIO . joint . fmap fst . handleEnvRW env) model w
 -- | Compute and update the guide parameters using a likelihood-ratio-estimate E[δelbo] of the ELBO gradient
 handleLRatio :: forall fs a. Handler GradEst fs a a
 handleLRatio = handle () (const Val) (const hop) where
-  hop :: GradEst x -> (() -> x -> Prog fs a) -> Prog fs a
+  hop :: GradEst x -> (() -> x -> Comp fs a) -> Comp fs a
   hop (UpdateParam ws grads params) k =
     let δelbo = lratio ws grads
     in  k () (Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (1 *| δλ)) params δelbo)

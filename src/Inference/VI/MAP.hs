@@ -26,7 +26,7 @@ import Env ( Env, Vars, ContainsVars, union, empty, varsToStrs )
 import LogP ( LogP(..), normaliseLogPs )
 import Model
 import PrimDist
-import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )
+import Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg )
 import Sampler
 import           Trace (GradTrace, ParamTrace, Key(..), Some(..))
 import qualified Trace

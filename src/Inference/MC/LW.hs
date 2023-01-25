@@ -27,7 +27,7 @@ import LogP ( LogP )
 import Inference.MC.SIM as SIM (defaultSample)
 import Model ( handleCore, GenModel, Model )
 import PrimDist ( logProb )
-import Prog ( discharge, Prog(..), Handler, handle )
+import Comp ( discharge, Comp(..), Handler, handle )
 import Sampler ( Sampler )
 
 -- | Top-level wrapper for Likelihood-Weighting (LW) inference
@@ -47,7 +47,7 @@ lw n model env_in = do
 
 -- | Handler for one iteration of LW
 runLW
-  :: Prog [Observe, Sample, Sampler] a
+  :: Comp [Observe, Sample, Sampler] a
   -- | ((model output, sample trace), likelihood-weighting)
   -> Sampler (a, LogP)
 runLW = handleIO . SIM.defaultSample . likelihood 0
@@ -56,7 +56,7 @@ runLW = handleIO . SIM.defaultSample . likelihood 0
 likelihood :: LogP -> Handler Observe es a (a, LogP)
 likelihood lρ0 = handle lρ0 (\lρ x -> Val (x, lρ)) hop
   where
-  hop :: LogP -> Observe x -> (LogP -> x -> Prog es b) -> Prog es b
+  hop :: LogP -> Observe x -> (LogP -> x -> Comp es b) -> Comp es b
   hop lρ (Observe d y α) k = k (lρ + logProb d y) y
 
 {- | Record the joint log-probability P(Y, X)

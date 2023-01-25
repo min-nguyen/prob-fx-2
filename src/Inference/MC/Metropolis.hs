@@ -16,7 +16,7 @@ import qualified Data.Map as Map
 import Data.Set ((\\))
 import qualified Data.Set as Set
 import Data.Maybe ( fromJust )
-import Prog
+import Comp
 import Trace ( Trace, LPTrace, filterTrace )
 import LogP ( LogP )
 import PrimDist
@@ -53,7 +53,7 @@ metropolis :: (Members [Proposal p, Sampler] fs)
    -> Trace                                                          -- ^ initial context + sample trace
    -> ModelHandler es p                                                        -- ^ model handler
    -> Model es a                                                             -- ^ probabilistic program
-   -> Prog fs [((a, p), Trace)]                            -- ^ trace of accepted outputs
+   -> Comp fs [((a, p), Trace)]                            -- ^ trace of accepted outputs
 metropolis n τ_0 hdlModel prog_0 = do
   -- | Perform initial run of mh
   x0 <- call (hdlModel prog_0 τ_0)
@@ -66,7 +66,7 @@ metroStep :: forall es fs p a. (Members [Proposal p, Sampler] fs)
   => Model es a                                                       -- ^ model handler
   -> ModelHandler es p                                                  -- ^ probabilistic program
   -> [((a, p), Trace)]                                                   -- ^ previous trace
-  -> Prog fs [((a, p), Trace)]                            -- ^ updated trace
+  -> Comp fs [((a, p), Trace)]                            -- ^ updated trace
 metroStep prog_0 hdlModel markov_chain = do
   -- | Get previous iteration output
   let ((r, p), τ) = head markov_chain

@@ -29,7 +29,7 @@ import Inference.MC.SMC2 as SMC2 ( smc2 )
 import Inference.MC.PMMH as PMMH ( pmmh )
 import Inference.VI.BBVI as BBVI
 import Model ( GenModel (..), bernoulli', binomial, uniform, beta )
-import Prog ( Member, LastMember )
+import Comp ( Member, LastMember )
 import Sampler ( Sampler, liftIO )
 import Util (boolToInt)
 import qualified Trace

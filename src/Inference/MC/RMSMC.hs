@@ -20,7 +20,7 @@ module Inference.MC.RMSMC where
 import qualified Data.Map as Map
 import           Data.Map (Map)
 import           Env
-import           Prog
+import           Comp
 import           Model
 import           Sampler
 import           Trace  (Trace, filterTrace)
@@ -101,7 +101,7 @@ handleResample :: (Member Sampler fs)
   -> Model '[Sampler] a
   -> Handler (Resample PrtState) fs [(a, PrtState)] [(a, PrtState)]
 handleResample mh_steps tags  m = handle () (const Val) (const hop) where
-  hop :: Member Sampler fs => Resample PrtState x -> (() -> x -> Prog fs a) -> Prog fs a
+  hop :: Member Sampler fs => Resample PrtState x -> (() -> x -> Comp fs a) -> Comp fs a
   hop  (Resample (_, σs) ) k = do
     let (α, ws, τs ) = unpack σs
   -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
@@ -120,7 +120,7 @@ handleResample mh_steps tags  m = handle () (const Val) (const hop) where
     k () wprts_norm
     -- k () wprts_mov
 
-suspendα :: LogP -> Handler Observe es a (Prog (Observe : es) a, Addr, LogP)
+suspendα :: LogP -> Handler Observe es a (Comp (Observe : es) a, Addr, LogP)
 suspendα logp (Val x)   = pure (Val x, Addr "" 0, logp)
 suspendα logp (Op op k) = case discharge op of
   Right (Observe d y α) -> Val (k y, α, logp + logProb d y)
@@ -131,8 +131,8 @@ suspendα logp (Op op k) = case discharge op of
 -}
 suspendAt :: (Member Observe es)
   => Addr       -- ^ Address of @Observe@ operation to break at
-  -> Prog es a
-  -> Prog es (Prog es a)
+  -> Comp es a
+  -> Comp es (Comp es a)
 suspendAt α_break (Val x) = pure (Val x)
 suspendAt α_break (Op op k) = case prj op of
   Just (Observe d y α) -> do

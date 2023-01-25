@@ -59,7 +59,7 @@ library
                       LogP,
                       Model,
                       PrimDist,
-                      Prog,
+                      Comp,
                       Sampler,
                       Trace,
                       TyCompare,

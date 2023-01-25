@@ -16,7 +16,7 @@ module Inference.MC.SMC2 where
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Env
-import Prog
+import Comp
 import Model
 import Sampler
 import Effects.Dist
@@ -65,7 +65,7 @@ smc2Internal :: (Member Sampler fs)
   -> Int                                          -- ^ number of inner SMC particles
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> Model '[Sampler] a                                    -- ^ probabilistic program
-  -> Prog fs [(a, PrtState)]                -- ^ final particle results and contexts
+  -> Comp fs [(a, PrtState)]                -- ^ final particle results and contexts
 smc2Internal n_outer_prts mh_steps n_inner_prts tags  m  =
   (handleResample mh_steps n_inner_prts tags  m . SIS.sis n_outer_prts RMSMC.handleParticle  (PrtState (Addr "" 0) 0 Map.empty)) m
 
@@ -77,8 +77,8 @@ handleResample :: Member Sampler fs
   -> Int                                           -- ^ number of inner SMC particles
   -> [Tag]                                      -- ^ tags indicating variables of interest
   -> Model '[Sampler] a
-  -> Prog (Resample PrtState : fs) [(a, PrtState)]
-  -> Prog fs [(a, PrtState)]
+  -> Comp (Resample PrtState : fs) [(a, PrtState)]
+  -> Comp fs [(a, PrtState)]
 handleResample mh_steps n_inner_prts θ  m = loop  where
   loop  (Val x) = Val x
   loop  (Op op k) = case discharge op of

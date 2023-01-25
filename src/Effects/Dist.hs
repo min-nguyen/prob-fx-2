@@ -24,7 +24,7 @@ import           Data.Maybe ( fromMaybe )
 import qualified Data.Map as Map
 import           PrimDist
 import           Trace
-import           Prog ( call, discharge, weaken, Member(..), Prog(..), EffectSum )
+import           Comp ( call, discharge, weaken, Member(..), Comp(..), EffectSum )
 import           Util
 import           Effects.Sample
 import           Effects.Observe
@@ -40,14 +40,14 @@ data Dist a where
         -> Dist a
 
 -- | Handle the @Dist@ effect to a @Sample@ or @Observe@ effect and assign an address
-handleDist :: Prog (Dist : es) a -> Prog (Observe : Sample : es) a
+handleDist :: Comp (Dist : es) a -> Comp (Observe : Sample : es) a
 handleDist = loop "" 0 Map.empty
   where
   loop :: String              -- ^ the tag of the previous @Dist@ operation
        -> Int                 -- ^ a counter for giving tags to unnamed @Dist@ operations
        -> Map.Map Tag Int     -- ^ a mapping from tags to their run-time occurrence
-       -> Prog (Dist : es) a
-       -> Prog (Observe : Sample : es) a
+       -> Comp (Dist : es) a
+       -> Comp (Observe : Sample : es) a
   loop _ _ _ (Val x) = return x
   loop prevTag counter tagMap (Op u k) = case discharge u of
     Right (Dist d maybe_y maybe_tag) ->

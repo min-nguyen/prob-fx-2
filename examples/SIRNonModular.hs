@@ -22,7 +22,7 @@
 
 module SIRNonModular where
 
-import Prog ( Member )
+import Comp ( Member )
 import Effects.Writer ( Writer, tellM, handleWriterM )
 import Model ( GenModel, beta, binomial', gamma, poisson )
 import Control.Monad ( (>=>) )

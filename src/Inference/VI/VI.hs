@@ -28,7 +28,7 @@ import Effects.State ( modify, handleState, State )
 import Env ( Env, union )
 import LogP ( LogP(..), normaliseLogPs )
 import PrimDist
-import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handle )
+import Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handle )
 import Sampler
 import           Trace (GradTrace, ParamTrace, Key(..), Some(..), ValueTrace)
 import qualified Trace
@@ -39,8 +39,8 @@ import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
 import Inference.MC.LW (joint)
 
-type VIGuide env es a  = Prog (EnvRW env : Param : Sample : es) a
-type VIModel env es a  = Prog (EnvRW env : Observe : Sample : es) a
+type VIGuide env es a  = Comp (EnvRW env : Param : Sample : es) a
+type VIModel env es a  = Comp (EnvRW env : Observe : Sample : es) a
 
 data GradEst a where
   UpdateParam :: [LogP] -> [GradTrace] -> ParamTrace -> GradEst ParamTrace
@@ -54,7 +54,7 @@ viLoop :: (Members [GradEst, Sampler] fs)
   -> VIGuide env es1 a -> GuideHandler env es1 a
   -> VIModel env es2 b -> ModelHandler env es2 b
   -> ParamTrace                             -- ^ guide parameters λ_t, model parameters θ_t
-  -> Prog fs ParamTrace      -- ^ final guide parameters λ_T
+  -> Comp fs ParamTrace      -- ^ final guide parameters λ_T
 viLoop num_timesteps num_samples guide hdlGuide model hdlModel guideParams_0 = do
   foldr (>=>) pure [viStep num_samples  hdlGuide  hdlModel guide model  | t <- [1 .. num_timesteps]] guideParams_0
 
@@ -72,7 +72,7 @@ viStep ::  (Members [GradEst, Sampler] fs)
   => Int
   -> GuideHandler env es1 a -> ModelHandler env es2 b -> VIGuide env es1 a -> VIModel env es2 b
   -> ParamTrace                            -- ^ guide parameters λ_t
-  -> Prog fs ParamTrace    -- ^ next guide parameters λ_{t+1}
+  -> Comp fs ParamTrace    -- ^ next guide parameters λ_{t+1}
 viStep num_samples hdlGuide hdlModel guide model  params = do
   let hdlGuideModel = do -- | Execute the guide X ~ Q(X; λ)
                           (((_, env), δλ ), guide_w) <- call (hdlGuide guide params)
@@ -100,7 +100,7 @@ viStep num_samples hdlGuide hdlModel guide model  params = do
 collectParams :: es ~ '[Sampler] => Env env -> VIGuide env es a -> Sampler ParamTrace
 collectParams env = handleIO . SIM.defaultSample . (fst <$>) . defaultParam Trace.empty . loop Trace.empty . handleEnvRW env
   where
-  loop :: ParamTrace -> Prog (Param : es) a -> Prog (Param : es) ParamTrace
+  loop :: ParamTrace -> Comp (Param : es) a -> Comp (Param : es) ParamTrace
   loop params (Val _)   = pure params
   loop params (Op op k) = case prj op of
     Just (Param q α)   -> do let params' = Trace.insert (Key α) q params
@@ -110,7 +110,7 @@ collectParams env = handleIO . SIM.defaultSample . (fst <$>) . defaultParam Trac
 -- | Sample from each @Param@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
 defaultParam :: forall es a. Member Sample es => ParamTrace -> Handler Param es a (a, GradTrace)
 defaultParam param = handle Trace.empty (\s a -> Val (a, s)) hop where
-  hop :: GradTrace -> Param x -> (GradTrace -> x -> Prog es b) -> Prog es b
+  hop :: GradTrace -> Param x -> (GradTrace -> x -> Comp es b) -> Comp es b
   hop grads (Param (q :: d) α) k = do
       let q' = fromMaybe q (Trace.lookup (Key α) param)
       x <- call (Sample q' α)
@@ -119,7 +119,7 @@ defaultParam param = handle Trace.empty (\s a -> Val (a, s)) hop where
 prior :: forall es a. Member Sampler es => Handler Sample es a (a, LogP)
 prior = handle 0 (\lρ x -> Val (x, lρ)) hop
   where
-  hop :: LogP -> Sample x -> (LogP -> x -> Prog es b) -> Prog es b
+  hop :: LogP -> Sample x -> (LogP -> x -> Comp es b) -> Comp es b
   hop lρ (Sample d α) k = do x <- call $ drawWithSampler d
                              k (lρ + logProb d x) x
 

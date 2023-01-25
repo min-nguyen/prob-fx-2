@@ -26,7 +26,7 @@ import           Effects.EnvRW ( EnvRW )
 import           Env ( Env )
 import           Model ( handleCore, GenModel )
 import           PrimDist ( drawWithSampler )
-import           Prog ( handle, discharge, Prog(..), LastMember, discharge1, Handler, Member, call )
+import           Comp ( handle, discharge, Comp(..), LastMember, discharge1, Handler, Member, call )
 import           Sampler ( Sampler, liftIO )
 import           Unsafe.Coerce (unsafeCoerce)
 
@@ -44,7 +44,7 @@ simulate model env_in = do
 
 -- | Handler for simulating once from a probabilistic program
 runSimulate
-  :: Prog [Observe, Sample, Sampler] a
+  :: Comp [Observe, Sample, Sampler] a
   -- | (model output, sample trace)
   -> Sampler a
 runSimulate
@@ -53,12 +53,12 @@ runSimulate
 -- | Handle @Observe@ operations by simply passing forward their observed value, performing no side-effects
 defaultObserve :: Handler Observe es b b
 defaultObserve = handle () (const Val) (const hop) where
-  hop :: Observe x -> (() -> x -> Prog es b) -> Prog es b
+  hop :: Observe x -> (() -> x -> Comp es b) -> Comp es b
   hop (Observe d y α) k = k () y
 
 -- | Handle @Sample@ operations by using the @Sampler@ monad to draw from primitive distributions
 defaultSample ::  Member Sampler es => Handler Sample es a a
 defaultSample = handle () (const Val) (const hop) where
-  hop :: Member Sampler es => Sample x -> (() -> x -> Prog es b) -> Prog es b
+  hop :: Member Sampler es => Sample x -> (() -> x -> Comp es b) -> Comp es b
   hop (Sample d α) k = do x <- call $ drawWithSampler d
                           k () x

@@ -23,7 +23,7 @@
 module SIR where
 
 import Data.Extensible ( mkField, Record, Lookup, type (>:), (@=), (<:), emptyRecord, Assoc ((:>)) )
-import Prog ( Member )
+import Comp ( Member )
 import Control.Lens ( (&), (^.), (.~) )
 import Effects.Writer ( Writer, tellM, handleWriterM )
 import Model ( GenModel, beta, binomial', gamma, poisson )

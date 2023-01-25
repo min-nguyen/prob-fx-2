@@ -24,7 +24,7 @@ import Env ( Env, Vars, ContainsVars, union, empty, varsToStrs )
 import LogP ( LogP(..), normaliseLogPs )
 import Model
 import PrimDist
-import Prog ( discharge, Prog(..), call, weaken, LastMember, Member (..), Members, weakenProg )
+import Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg )
 import           Sampler ( Sampler )
 import           Trace (GradTrace, ParamTrace, Key(..), Some(..))
 import qualified Trace
@@ -60,7 +60,7 @@ handleModel model env  =
   (handleIO . SIM.defaultSample . likelihood 0 . fmap fst . handleEnvRW env) model
 
 -- | Compute and update the guide parameters using a self-normalised importance weighted gradient estimate
-handleNormGradDescent :: Prog (GradEst : fs) a -> Prog fs a
+handleNormGradDescent :: Comp (GradEst : fs) a -> Comp fs a
 handleNormGradDescent (Val a) = pure a
 handleNormGradDescent (Op op k) = case discharge op of
   Right (UpdateParam logWs δGs params) ->

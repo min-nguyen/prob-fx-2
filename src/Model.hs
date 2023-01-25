@@ -54,7 +54,7 @@ import Effects.Dist ( handleDist, Dist(..), Observe, Sample, Param)
 import Effects.EnvRW
 import Env
 import PrimDist
-import Prog ( call, Member, Prog, Members, LastMember )
+import Comp ( call, Member, Comp, Members, LastMember )
 import Vec
 import Debug.Trace
 import Sampler
@@ -76,7 +76,7 @@ newtype GenModel env es a =
   GenModel { runModel :: ( Member Dist es        -- models can call primitive distributions
                       , Member (EnvRW env) es -- models can read observed values from their environment
                       )
-                   => Prog es a }
+                   => Comp es a }
   deriving Functor
 
 instance Applicative (GenModel env es) where
@@ -92,13 +92,13 @@ instance Monad (GenModel env es) where
 {- | Probabilistic programs are those with effects for conditioning and sampling.
 -}
 
-type Model es a = Prog (Observe : Sample : es) a
+type Model es a = Comp (Observe : Sample : es) a
 
 {- | The initial handler for models, specialising a model under a certain environment
      to produce a probabilistic program consisting of @Sample@ and @Observe@ operations.
 -}
 handleCore :: Env env -> GenModel env (EnvRW env : Dist : es) a
-           -> Prog (Observe : Sample : es) (a, Env env)
+           -> Comp (Observe : Sample : es) (a, Env env)
 handleCore env_in m = (handleDist . handleEnvRW env_in) (runModel m)
 
 {- $Smart-Constructors

@@ -5,7 +5,7 @@
 
 module Effects.Observe where
 
-import Prog
+import Comp
 import PrimDist
 import Trace
 import Env
@@ -20,7 +20,7 @@ data Observe a where
           -> Observe a
 
 observe :: (Member Observe es, PrimDist d a)
-       => d -> a -> Addr -> Prog es a
+       => d -> a -> Addr -> Comp es a
 observe d y α = call (Observe d y α)
 
 -- | For projecting and then successfully pattern matching against @Observe@

@@ -15,7 +15,7 @@ module Effects.EnvRW (
   , write
   , handleEnvRW) where
 
-import Prog ( call, discharge, Member, Prog(..) )
+import Comp ( call, discharge, Member, Comp(..) )
 import Env ( Env, Var, Observable(..), empty, reverse )
 import Util ( safeHead, safeTail )
 
@@ -34,14 +34,14 @@ data EnvRW env a where
 -- | Wrapper function for calling @Read@
 read :: forall env es x a. (Member (EnvRW env) es, Observable env x a)
   => Var x
-  -> Prog es (Maybe a)
+  -> Comp es (Maybe a)
 read x = call (Read @env x)
 
 -- | Wrapper function for calling @Write@
 write :: forall env es x a. (Member (EnvRW env) es, Observable env x a)
   => Var x
   -> a
-  -> Prog es ()
+  -> Comp es ()
 write x v = call (Write @env x v)
 
 {- Handle the @Read@ operations by reading from an input model environment,
@@ -49,11 +49,11 @@ write x v = call (Write @env x v)
 handleEnvRW :: forall env es a.
   -- | input model environment
      Env env
-  -> Prog (EnvRW env ': es) a
+  -> Comp (EnvRW env ': es) a
   -- | (final result, output model environment)
-  -> Prog es (a, Env env)
+  -> Comp es (a, Env env)
 handleEnvRW env_in = loop env_in (Env.empty env_in) where
-  loop :: Env env -> Env env -> Prog (EnvRW env ': es) a -> Prog es (a, Env env)
+  loop :: Env env -> Env env -> Comp (EnvRW env ': es) a -> Comp es (a, Env env)
   loop env_in env_out (Val x) = return (x, Env.reverse env_out)
   loop env_in env_out (Op op k) = case discharge op of
     Right (Read x) ->

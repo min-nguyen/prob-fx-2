@@ -17,7 +17,7 @@ import qualified Data.Map as Map
 import           Effects.Dist ( Addr, Observe (Observe), Sample, pattern ObsPrj )
 import           Effects.IO ( handleIO)
 import           LogP ( LogP, logMeanExp )
-import           Prog ( Prog (..), weakenProg, Member, discharge, call, weaken, LastMember, Members )
+import           Comp ( Comp (..), weakenProg, Member, discharge, call, weaken, LastMember, Members )
 import           Sampler
 import           Util ( uncurry3 )
 import           Model
@@ -45,7 +45,7 @@ sis :: (Members [Resample p, Sampler] fs)
   -> ParticleHandler es p                                        -- ^ handler for running particles
   -> p
   -> Model es a                                                 -- ^ initial probabilistic program
-  -> Prog fs [(a, p)]                        -- ^ (final particle output, final particle context)
+  -> Comp fs [(a, p)]                        -- ^ (final particle output, final particle context)
 sis n_prts hdlParticle ρ_0 prog_0  = do
   -- | Create an initial population of particles and contexts
   let population = replicate n_prts (prog_0, ρ_0)
@@ -57,7 +57,7 @@ sis n_prts hdlParticle ρ_0 prog_0  = do
 pfilter :: (Members [Resample p, Sampler] fs)
   => ParticleHandler es p                                 -- ^ handler for running particles
   -> [(Model es a, p)]                               -- ^ input particles and corresponding contexts
-  -> Prog fs [(a, p)]                          -- ^ final particle results and corresponding contexts
+  -> Comp fs [(a, p)]                          -- ^ final particle results and corresponding contexts
 pfilter hdlParticle wprts = do
   -- | Run particles to next checkpoint and accumulate their contexts
   wprts' <- call ((mapM . uncurry) hdlParticle wprts)

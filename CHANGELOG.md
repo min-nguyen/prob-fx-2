@@ -64,7 +64,7 @@ Changed:
 - Removed the `Dist` suffix on the constructor names of `PrimDist`
 - `DiscrUniform` -> `UniformD`
 
-**Prog**
+**Comp**
 Added:
 - `weaken`, `install`, `UniqueMember`, `LastMember`
 
