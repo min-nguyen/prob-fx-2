@@ -105,7 +105,7 @@ handleModel ::
      Model '[Sampler] a                             -- ^ probabilistic program
   -> Trace                                  -- ^ proposed address + initial log-probability trace + initial sample trace
   -> Sampler ((a, LPTrace), Trace)  -- ^ proposed address + final log-probability trace + final sample trace
-handleModel prog τ0 = (handleM . reuseSamples τ0 . defaultObserve . traceLP Map.empty) prog
+handleModel prog τ0 = (handleM . reuseTrace τ0 . defaultObserve . traceLP Map.empty) prog
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}

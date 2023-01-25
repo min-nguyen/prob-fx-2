@@ -43,7 +43,7 @@ pmmh mh_steps n_prts model env_in obs_vars = do
   -- | Convert observable variables to strings
   let θ        = varsToStrs @env obs_vars
   -- | Initialise sample trace to include only parameters
-  (_, τ)       <- (handleM . reuseSamples Map.empty . defaultObserve) prog_0
+  (_, τ)       <- (handleM . reuseTrace Map.empty . defaultObserve) prog_0
   let τθ       = filterTrace θ τ
   pmmh_trace <- (handleM . handleAccept . metropolis mh_steps τθ (handleModel n_prts)) prog_0
   pure (map (snd . fst . fst) pmmh_trace)
@@ -57,7 +57,7 @@ pm m n τθ model = do
 handleModel :: Int -> ModelHandler '[Sampler] LogP
 handleModel n prog τθ  = do
   let handleParticle :: ParticleHandler '[Sampler] LogP
-      handleParticle prt logp = (fmap fst . handleM . reuseSamples τθ . step logp) prt
+      handleParticle prt logp = (fmap fst . handleM . reuseTrace τθ . step logp) prt
   (as, ws) <- (handleM . handleResampleMul . fmap unzip . pfilter handleParticle) (replicate n (prog, 0))
   let a   = head as
       w   = logMeanExp ws

@@ -51,7 +51,7 @@ im n model env_in   = do
 -}
 handleModel :: ModelHandler '[Sampler] LogP
 handleModel prog τ =
-  (handleM . Metropolis.reuseSamples τ . LW.likelihood 0) prog
+  (handleM . Metropolis.reuseTrace τ . LW.likelihood 0) prog
 
 handleAccept :: Member Sampler fs => Handler (Proposal LogP) fs a a
 handleAccept = handle () (\_ -> Val) (\_ op k -> hop op k)

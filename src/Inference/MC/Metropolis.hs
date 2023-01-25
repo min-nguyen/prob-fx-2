@@ -81,8 +81,8 @@ metroStep prog_0 hdlModel markov_chain = do
 
 {- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.
 -}
-reuseSamples :: Member Sampler es => Trace -> Handler Sample es a (a, Trace)
-reuseSamples τ0 = handle τ0 (\τ x -> Val (x, τ))
+reuseTrace :: Member Sampler es => Trace -> Handler Sample es a (a, Trace)
+reuseTrace τ0 = handle τ0 (\τ x -> Val (x, τ))
   (\τ (Sample d α) k ->
         case Map.lookup α τ of
               Nothing -> do r <- random'
