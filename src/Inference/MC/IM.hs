@@ -44,7 +44,7 @@ im n model env_in   = do
   -- | Handle model to probabilistic program
   let prog_0  = handleCore env_in model
       τ_0     = Map.empty
-  rwm_trace <- (handleM . handleAccept . Metropolis.metropolis n τ_0 handleModel) prog_0
+  rwm_trace <- (handleM . handleProposal . Metropolis.metropolis n τ_0 handleModel) prog_0
   pure (map (snd . fst . fst) rwm_trace)
 
 {- | Handler for one iteration of IM.
@@ -53,8 +53,8 @@ handleModel :: ModelHandler '[Sampler] LogP
 handleModel prog τ =
   (handleM . Metropolis.reuseTrace τ . LW.likelihood 0) prog
 
-handleAccept :: Member Sampler fs => Handler (Proposal LogP) fs a a
-handleAccept = handle () (\_ -> Val) (\_ op k -> hop op k)
+handleProposal :: Member Sampler fs => Handler (Proposal LogP) fs a a
+handleProposal = handle () (\_ -> Val) (\_ op k -> hop op k)
   where hop :: Member Sampler es => Proposal LogP x -> (() -> x -> Prog es b) -> Prog es b
         hop op k = case op of
           (Propose τ)     -> do τ0 <- mapM (const random') τ

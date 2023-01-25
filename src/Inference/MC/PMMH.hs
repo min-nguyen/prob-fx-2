@@ -45,12 +45,12 @@ pmmh mh_steps n_prts model env_in obs_vars = do
   -- | Initialise sample trace to include only parameters
   (_, τ)       <- (handleM . reuseTrace Map.empty . defaultObserve) prog_0
   let τθ       = filterTrace θ τ
-  pmmh_trace <- (handleM . handleAccept . metropolis mh_steps τθ (handleModel n_prts)) prog_0
+  pmmh_trace <- (handleM . handleProposal . metropolis mh_steps τθ (handleModel n_prts)) prog_0
   pure (map (snd . fst . fst) pmmh_trace)
 
 pm :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
 pm m n τθ model = do
-  (handleM . handleAccept . metropolis m τθ (handleModel n)) model
+  (handleM . handleProposal . metropolis m τθ (handleModel n)) model
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}
@@ -65,16 +65,16 @@ handleModel n prog τθ  = do
 
 {- | An acceptance mechanism for PMMH.
 -}
-handleAccept :: Member Sampler fs => Handler (Proposal LogP) fs a a
-handleAccept (Val x)   = pure x
-handleAccept (Op op k) = case discharge op of
+handleProposal :: Member Sampler fs => Handler (Proposal LogP) fs a a
+handleProposal (Val x)   = pure x
+handleProposal (Op op k) = case discharge op of
   Right (Propose τθ)
     ->  do α <- randomFrom' (Map.keys τθ)
            r <- random'
            let τθ' = Map.insert α r τθ
-           (handleAccept . k) τθ'
+           (handleProposal . k) τθ'
   Right (Accept lw lw')
     ->  do u <- random'
-           (handleAccept . k) (exp (lw' - lw) > u)
+           (handleProposal . k) (exp (lw' - lw) > u)
   Left op'
-    -> Op op' (handleAccept . k)
+    -> Op op' (handleProposal . k)

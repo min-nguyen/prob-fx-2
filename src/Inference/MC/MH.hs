@@ -54,7 +54,7 @@ mh n model env_in obs_vars  = do
       τ_0    = Map.empty
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
-  mh_trace <- (handleM . handleAccept tags . metropolis n τ_0 handleModel) prog_0
+  mh_trace <- (handleM . handleProposal tags . metropolis n τ_0 handleModel) prog_0
   pure (map (snd . fst . fst) mh_trace)
 
 {- | MH inference on a probabilistic program.
@@ -65,15 +65,15 @@ ssmh :: (Member Sampler fs)
   -> [Tag]                                 -- ^ tags indicating variables of interest
   -> Model '[Sampler] a                            -- ^ probabilistic program
   -> Prog fs [((a, LPTrace), Trace)]
-ssmh n τ_0  tags = handleAccept tags  . metropolis n τ_0 handleModel
+ssmh n τ_0  tags = handleProposal tags  . metropolis n τ_0 handleModel
 
 {- | Handler for @Proposal@ for MH.
     - Propose by drawing a component x_i of latent variable X' ~ p(X)
     - Proposal using the ratio:
        p(X', Y')q(X | X')/p(X, Y)q(X' | X)
 -}
-handleAccept :: Member Sampler fs => [Tag] -> Handler (Proposal LPTrace) fs a a
-handleAccept tags  = handle (Addr "" 0) (const Val) hop
+handleProposal :: Member Sampler fs => [Tag] -> Handler (Proposal LPTrace) fs a a
+handleProposal tags  = handle (Addr "" 0) (const Val) hop
   where
     hop :: Member Sampler es => Addr -> Proposal LPTrace x -> (Addr -> x -> Prog es b) -> Prog es b
     hop _ (Propose τ) k   = do  α <- randomFrom' (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
