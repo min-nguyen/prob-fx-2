@@ -30,7 +30,7 @@ import           PrimDist
 import           Model ( GenModel, handleCore, Model )
 import           Effects.EnvRW ( EnvRW )
 import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), pattern SampPrj, pattern ObsPrj )
-import           Effects.IO ( handleIO, liftPutStrLn, random', randomFrom' )
+import           Effects.IO ( handleIO, liftPutStrLn, random, randomFrom )
 import           Inference.MC.SIM
 import           Inference.MC.Metropolis as Metropolis
 import           Sampler ( Sampler, sampleRandom, sampleUniformD, sampleRandomFrom )
@@ -76,11 +76,11 @@ handleProposal :: Member Sampler fs => [Tag] -> Handler (Proposal LPTrace) fs a 
 handleProposal tags  = handle (Addr "" 0) (const Val) hop
   where
     hop :: Member Sampler es => Addr -> Proposal LPTrace x -> (Addr -> x -> Prog es b) -> Prog es b
-    hop _ (Propose τ) k   = do  α <- randomFrom' (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
-                                r <- random'
+    hop _ (Propose τ) k   = do  α <- randomFrom (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
+                                r <- random
                                 k α (Map.insert α r τ)
     hop α (Accept ρ ρ') k = do  let ratio = (exp . sum . Map.elems . Map.delete α) (Map.intersectionWith (-) ρ' ρ)
-                                u <- random'
+                                u <- random
                                 k α (ratio > u)
 
 {- Propose a new random value at a single component x_i of latent variable X = {x_0, ... x_N}.

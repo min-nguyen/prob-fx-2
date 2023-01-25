@@ -25,7 +25,7 @@ import Model ( GenModel, handleCore, Model )
 import Effects.EnvRW ( EnvRW )
 import Env ( Env )
 import Effects.Dist ( Dist, pattern SampPrj, pattern ObsPrj )
-import Effects.IO ( handleIO, liftPutStrLn, random' )
+import Effects.IO ( handleIO, liftPutStrLn, random )
 import Sampler ( Sampler, sampleRandom )
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.LW as LW
@@ -57,8 +57,8 @@ handleProposal :: Member Sampler fs => Handler (Proposal LogP) fs a a
 handleProposal = handle () (\_ -> Val) (\_ op k -> hop op k)
   where hop :: Member Sampler es => Proposal LogP x -> (() -> x -> Prog es b) -> Prog es b
         hop op k = case op of
-          (Propose τ)     -> do τ0 <- mapM (const random') τ
+          (Propose τ)     -> do τ0 <- mapM (const random) τ
                                 k () τ0
           (Accept lρ lρ') -> do let ratio = exp (lρ' - lρ)
-                                u <- random'
+                                u <- random
                                 k () (ratio > u)

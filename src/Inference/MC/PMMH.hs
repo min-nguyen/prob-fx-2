@@ -69,12 +69,12 @@ handleProposal :: Member Sampler fs => Handler (Proposal LogP) fs a a
 handleProposal (Val x)   = pure x
 handleProposal (Op op k) = case discharge op of
   Right (Propose τθ)
-    ->  do α <- randomFrom' (Map.keys τθ)
-           r <- random'
+    ->  do α <- randomFrom (Map.keys τθ)
+           r <- random
            let τθ' = Map.insert α r τθ
            (handleProposal . k) τθ'
   Right (Accept lw lw')
-    ->  do u <- random'
+    ->  do u <- random
            (handleProposal . k) (exp (lw' - lw) > u)
   Left op'
     -> Op op' (handleProposal . k)

@@ -24,7 +24,7 @@ import Model ( GenModel, handleCore, Model )
 import Effects.EnvRW ( EnvRW )
 import Env ( ContainsVars(..), Vars, Env )
 import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr )
-import Effects.IO ( handleIO, random' )
+import Effects.IO ( handleIO, random )
 import qualified Inference.MC.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
 
@@ -85,7 +85,7 @@ reuseTrace :: Member Sampler es => Trace -> Handler Sample es a (a, Trace)
 reuseTrace τ0 = handle τ0 (\τ x -> Val (x, τ))
   (\τ (Sample d α) k ->
         case Map.lookup α τ of
-              Nothing -> do r <- random'
+              Nothing -> do r <- random
                             let y = draw d r;
                             k (Map.insert α r τ) y
               Just r  -> do let y = draw d r;
