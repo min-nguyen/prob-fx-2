@@ -19,7 +19,7 @@ module Inference.VI.MAP (module Inference.VI.MAP) where
 import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>) )
 import Effects.Dist
-import Effects.Lift
+import Effects.IO
 import Effects.EnvRW ( EnvRW, handleEnvRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env, Vars, ContainsVars, union, empty, varsToStrs )
@@ -48,15 +48,15 @@ map num_timesteps num_samples guide model env  = do
   -- | Set up a empty dummy guide Q to return the original input model environment
   λ_0 <- collectParams env guide
   -- | Run MAP for T optimisation steps
-  (handleM . handleNormGradDescent) $
+  (handleIO . handleNormGradDescent) $
       VI.viLoop num_timesteps num_samples guide (handleGuide env) model handleModel λ_0
 
 -- | Return probability of 1
 handleGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), GradTrace), LogP)
 handleGuide env guide params = second (const 0) <$> BBVI.handleGuide  env guide params
-  -- (handleM . fmap (,0) . defaultSample . defaultParam params . handleEnvRW env) guide
+  -- (handleIO . fmap (,0) . defaultSample . defaultParam params . handleEnvRW env) guide
 
 -- | Compute P(Y, X)
 handleModel :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
 handleModel model env =
-  (handleM . defaultSample . defaultObserve . joint 0 . fmap fst . handleEnvRW env) model
+  (handleIO . defaultSample . defaultObserve . joint 0 . fmap fst . handleEnvRW env) model

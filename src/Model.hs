@@ -58,7 +58,7 @@ import Prog ( call, Member, Prog, Members, LastMember )
 import Vec
 import Debug.Trace
 import Sampler
-import Effects.Lift
+import Effects.IO
 import Data.Typeable
 
 {- | Models are parameterised by:

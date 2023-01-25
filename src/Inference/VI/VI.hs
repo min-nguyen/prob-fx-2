@@ -22,7 +22,7 @@ import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>), mapAndUnzipM )
 import Effects.Dist
 import Model
-import Effects.Lift
+import Effects.IO
 import Effects.EnvRW ( EnvRW, handleEnvRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env, union )
@@ -98,7 +98,7 @@ viStep num_samples hdlGuide hdlModel guide model  params = do
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
 collectParams :: es ~ '[Sampler] => Env env -> VIGuide env es a -> Sampler ParamTrace
-collectParams env = handleM . SIM.defaultSample . (fst <$>) . defaultParam Trace.empty . loop Trace.empty . handleEnvRW env
+collectParams env = handleIO . SIM.defaultSample . (fst <$>) . defaultParam Trace.empty . loop Trace.empty . handleEnvRW env
   where
   loop :: ParamTrace -> Prog (Param : es) a -> Prog (Param : es) ParamTrace
   loop params (Val _)   = pure params

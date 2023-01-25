@@ -19,7 +19,7 @@ module Inference.MC.LW
 import Data.Bifunctor ( Bifunctor(first), second, bimap )
 import Control.Monad ( replicateM )
 import Effects.Dist ( Sample, Observe(..), Dist, pattern ObsPrj, pattern SampPrj )
-import Effects.Lift ( handleM )
+import Effects.IO ( handleIO )
 import Effects.EnvRW ( EnvRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env )
@@ -50,7 +50,7 @@ runLW
   :: Prog [Observe, Sample, Sampler] a
   -- | ((model output, sample trace), likelihood-weighting)
   -> Sampler (a, LogP)
-runLW = handleM . SIM.defaultSample . likelihood 0
+runLW = handleIO . SIM.defaultSample . likelihood 0
 
 -- | Handle each @Observe@ operation by accumulating the log-likelihood P(Y | X)
 likelihood :: LogP -> Handler Observe es a (a, LogP)

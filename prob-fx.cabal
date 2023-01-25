@@ -31,7 +31,7 @@ library
                       ScopedTypeVariables,
                       TypeOperators
   exposed-modules:    Effects.Dist,
-                      Effects.Lift,
+                      Effects.IO,
                       Effects.NonDet,
                       Effects.EnvRW,
                       Effects.Observe,

@@ -19,7 +19,7 @@ import           Data.Bifunctor ( Bifunctor(..) )
 import           Debug.Trace
 import           Control.Monad ( replicateM, (>=>) )
 import           Effects.Dist
-import           Effects.Lift
+import           Effects.IO
 import           Effects.EnvRW ( EnvRW, handleEnvRW )
 import           Effects.State ( modify, handleState, State )
 import           Env ( Env, union )
@@ -50,17 +50,17 @@ bbvi :: forall env es a b. es ~ '[Sampler]
 bbvi num_timesteps num_samples guide model env  = do
   λ_0 <- VI.collectParams env guide
   liftIO (print λ_0)
-  (handleM . handleLRatio)
+  (handleIO . handleLRatio)
     $ VI.viLoop num_timesteps num_samples guide (handleGuide env) model handleModel λ_0
 
 -- | Compute Q(X; λ)
 handleGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), GradTrace), LogP)
 handleGuide env guide params =
-  (handleM . VI.prior . defaultParam params . handleEnvRW env) guide
+  (handleIO . VI.prior . defaultParam params . handleEnvRW env) guide
 
 -- | Compute P(X, Y)
 handleModel :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
-handleModel model env  = (handleM . joint . fmap fst . handleEnvRW env) model where
+handleModel model env  = (handleIO . joint . fmap fst . handleEnvRW env) model where
   joint = fmap (\((x, a), b) -> (x, a + b)) . prior . likelihood 0
 
 

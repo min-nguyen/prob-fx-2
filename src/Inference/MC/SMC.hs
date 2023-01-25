@@ -17,7 +17,7 @@ module Inference.MC.SMC where
 import           Control.Monad ( replicateM )
 import qualified Data.Vector as Vector
 import           Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe (..), Sample )
-import           Effects.Lift ( liftPrint, handleM)
+import           Effects.IO ( liftPrint, handleIO)
 import           Effects.EnvRW ( EnvRW, handleEnvRW )
 import           Env ( Env )
 import           LogP ( LogP(..), logMeanExp )
@@ -46,7 +46,7 @@ smc n_prts model env_in = do
 {- | Call SMC on a probabilistic program.
 -}
 mulpfilter :: Int -> Model '[Sampler] a -> Sampler [(a, LogP)]
-mulpfilter n_prts model = (handleM . handleResampleMul . pfilter handleParticle) wprts
+mulpfilter n_prts model = (handleIO . handleResampleMul . pfilter handleParticle) wprts
  where wprts = replicate n_prts (model, 0)
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
@@ -54,7 +54,7 @@ mulpfilter n_prts model = (handleM . handleResampleMul . pfilter handleParticle)
        2. the log probability of the @Observe operation
 -}
 handleParticle :: Model '[Sampler] a -> LogP -> Sampler (Model '[Sampler] a, LogP)
-handleParticle model w = (handleM . defaultSample . step w) model
+handleParticle model w = (handleIO . defaultSample . step w) model
 
 step :: LogP -> Handler Observe es a (Prog (Observe : es) a, LogP)
 step w (Val x)   = Val (Val x, w)

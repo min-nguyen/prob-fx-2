@@ -17,7 +17,7 @@ import Data.Maybe ( fromMaybe, fromJust )
 import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>) )
 import Effects.Dist
-import Effects.Lift
+import Effects.IO
 import Effects.EnvRW ( EnvRW, handleEnvRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env, Vars, ContainsVars, union, empty, varsToStrs )
@@ -46,18 +46,18 @@ mle num_timesteps num_samples guide model env = do
   -- | Set up a empty dummy guide Q to return the original input model environment
   λ_0 <- collectParams env guide
   -- | Run MLE for T optimisation steps
-  (handleM . handleNormGradDescent) $
+  (handleIO . handleNormGradDescent) $
       viLoop num_timesteps num_samples guide (handleGuide env) model handleModel λ_0
 
 -- | Return probability of 1
 handleGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), GradTrace), LogP)
 handleGuide env guide params =
-  (handleM . fmap (,0) . SIM.defaultSample . defaultParam params .  handleEnvRW env) guide
+  (handleIO . fmap (,0) . SIM.defaultSample . defaultParam params .  handleEnvRW env) guide
 
 -- | Compute P(Y | X; θ)
 handleModel :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
 handleModel model env  =
-  (handleM . SIM.defaultSample . likelihood 0 . fmap fst . handleEnvRW env) model
+  (handleIO . SIM.defaultSample . likelihood 0 . fmap fst . handleEnvRW env) model
 
 -- | Compute and update the guide parameters using a self-normalised importance weighted gradient estimate
 handleNormGradDescent :: Prog (GradEst : fs) a -> Prog fs a

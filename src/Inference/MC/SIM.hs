@@ -21,7 +21,7 @@ module Inference.MC.SIM
   where
 
 import           Effects.Dist ( Sample(..), Observe(..), Dist )
-import           Effects.Lift ( handleM )
+import           Effects.IO ( handleIO )
 import           Effects.EnvRW ( EnvRW )
 import           Env ( Env )
 import           Model ( handleCore, GenModel )
@@ -48,7 +48,7 @@ runSimulate
   -- | (model output, sample trace)
   -> Sampler a
 runSimulate
-  = handleM . defaultSample . defaultObserve
+  = handleIO . defaultSample . defaultObserve
 
 -- | Handle @Observe@ operations by simply passing forward their observed value, performing no side-effects
 defaultObserve :: Handler Observe es b b

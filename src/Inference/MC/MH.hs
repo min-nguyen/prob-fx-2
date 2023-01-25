@@ -30,7 +30,7 @@ import           PrimDist
 import           Model ( GenModel, handleCore, Model )
 import           Effects.EnvRW ( EnvRW )
 import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), pattern SampPrj, pattern ObsPrj )
-import           Effects.Lift ( handleM, liftPutStrLn, random', randomFrom' )
+import           Effects.IO ( handleIO, liftPutStrLn, random', randomFrom' )
 import           Inference.MC.SIM
 import           Inference.MC.Metropolis as Metropolis
 import           Sampler ( Sampler, sampleRandom, sampleUniformD, sampleRandomFrom )
@@ -54,7 +54,7 @@ mh n model env_in obs_vars  = do
       τ_0    = Map.empty
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
-  mh_trace <- (handleM . handleProposal tags . metropolis n τ_0 handleModel) prog_0
+  mh_trace <- (handleIO . handleProposal tags . metropolis n τ_0 handleModel) prog_0
   pure (map (snd . fst . fst) mh_trace)
 
 {- | MH inference on a probabilistic program.
@@ -105,7 +105,7 @@ handleModel ::
      Model '[Sampler] a                             -- ^ probabilistic program
   -> Trace                                  -- ^ proposed address + initial log-probability trace + initial sample trace
   -> Sampler ((a, LPTrace), Trace)  -- ^ proposed address + final log-probability trace + final sample trace
-handleModel prog τ0 = (handleM . reuseTrace τ0 . defaultObserve . traceLP Map.empty) prog
+handleModel prog τ0 = (handleIO . reuseTrace τ0 . defaultObserve . traceLP Map.empty) prog
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}

@@ -30,7 +30,7 @@ import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
 import Inference.MC.SIS (Resample(..), ParticleHandler)
 import Inference.MC.Metropolis as Metropolis
-import Effects.Lift
+import Effects.IO
 import Data.Bifunctor
 import Trace (filterTrace)
 import LogP
@@ -53,7 +53,7 @@ smc2 n_outer_prts mh_steps n_inner_prts model env obs_vars = do
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
   -- | Run SMC2do
-  smc2_trace <- handleM (smc2Internal n_outer_prts mh_steps n_inner_prts tags  prog_0)
+  smc2_trace <- handleIO (smc2Internal n_outer_prts mh_steps n_inner_prts tags  prog_0)
   -- Return the accepted model environments
   pure (map (snd . fst) smc2_trace)
 

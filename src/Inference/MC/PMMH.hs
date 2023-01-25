@@ -19,7 +19,7 @@ import Effects.Dist
 import PrimDist
 import Model
 import Env
-import Effects.Lift
+import Effects.IO
 import Effects.EnvRW
 import qualified Data.Map as Map
 import Inference.MC.SIM as SIM
@@ -43,22 +43,22 @@ pmmh mh_steps n_prts model env_in obs_vars = do
   -- | Convert observable variables to strings
   let θ        = varsToStrs @env obs_vars
   -- | Initialise sample trace to include only parameters
-  (_, τ)       <- (handleM . reuseTrace Map.empty . defaultObserve) prog_0
+  (_, τ)       <- (handleIO . reuseTrace Map.empty . defaultObserve) prog_0
   let τθ       = filterTrace θ τ
-  pmmh_trace <- (handleM . handleProposal . metropolis mh_steps τθ (handleModel n_prts)) prog_0
+  pmmh_trace <- (handleIO . handleProposal . metropolis mh_steps τθ (handleModel n_prts)) prog_0
   pure (map (snd . fst . fst) pmmh_trace)
 
 pm :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
 pm m n τθ model = do
-  (handleM . handleProposal . metropolis m τθ (handleModel n)) model
+  (handleIO . handleProposal . metropolis m τθ (handleModel n)) model
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}
 handleModel :: Int -> ModelHandler '[Sampler] LogP
 handleModel n prog τθ  = do
   let handleParticle :: ParticleHandler '[Sampler] LogP
-      handleParticle prt logp = (fmap fst . handleM . reuseTrace τθ . step logp) prt
-  (as, ws) <- (handleM . handleResampleMul . fmap unzip . pfilter handleParticle) (replicate n (prog, 0))
+      handleParticle prt logp = (fmap fst . handleIO . reuseTrace τθ . step logp) prt
+  (as, ws) <- (handleIO . handleResampleMul . fmap unzip . pfilter handleParticle) (replicate n (prog, 0))
   let a   = head as
       w   = logMeanExp ws
   pure ((a, w), τθ)

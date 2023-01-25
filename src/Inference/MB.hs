@@ -17,7 +17,7 @@ module Inference.MB
 
 import Control.Monad.Bayes.Class as MB ( MonadCond(..), MonadInfer, MonadSample )
 import Effects.Dist ( Sample(..), Observe(..), Dist(Dist, getObs, getPrimDist), handleDist )
-import Effects.Lift ( handleM, Lift, lift )
+import Effects.IO ( handleIO, Lift, lift )
 import Effects.EnvRW ( EnvRW )
 import Env ( Env )
 import Model (GenModel(..), handleCore)
@@ -35,7 +35,7 @@ handleMBayes :: MonadInfer m
   -- | a computation @m@ in MonadBayes that returns a result and an output model environment
   -> m (a, Env env)
 handleMBayes model env_in =
-   (handleM . handleSamp . handleObs . handleCore env_in) model
+   (handleIO . handleSamp . handleObs . handleCore env_in) model
 
 -- | Handle @Observe@ operations by computing the log-probability and calling the @score@ method of the @MonadCond@ class
 handleObs :: (MonadCond m, LastMember (Lift m) es)

@@ -24,7 +24,7 @@ import Model ( GenModel, handleCore, Model )
 import Effects.EnvRW ( EnvRW )
 import Env ( ContainsVars(..), Vars, Env )
 import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr )
-import Effects.Lift ( handleM, random' )
+import Effects.IO ( handleIO, random' )
 import qualified Inference.MC.SIM as SIM
 import Sampler ( Sampler, sampleRandom )
 

@@ -25,7 +25,7 @@ import Model ( GenModel, handleCore, Model )
 import Effects.EnvRW ( EnvRW )
 import Env ( Env )
 import Effects.Dist ( Dist, pattern SampPrj, pattern ObsPrj )
-import Effects.Lift ( handleM, liftPutStrLn, random' )
+import Effects.IO ( handleIO, liftPutStrLn, random' )
 import Sampler ( Sampler, sampleRandom )
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.LW as LW
@@ -44,14 +44,14 @@ im n model env_in   = do
   -- | Handle model to probabilistic program
   let prog_0  = handleCore env_in model
       τ_0     = Map.empty
-  rwm_trace <- (handleM . handleProposal . Metropolis.metropolis n τ_0 handleModel) prog_0
+  rwm_trace <- (handleIO . handleProposal . Metropolis.metropolis n τ_0 handleModel) prog_0
   pure (map (snd . fst . fst) rwm_trace)
 
 {- | Handler for one iteration of IM.
 -}
 handleModel :: ModelHandler '[Sampler] LogP
 handleModel prog τ =
-  (handleM . Metropolis.reuseTrace τ . LW.likelihood 0) prog
+  (handleIO . Metropolis.reuseTrace τ . LW.likelihood 0) prog
 
 handleProposal :: Member Sampler fs => Handler (Proposal LogP) fs a a
 handleProposal = handle () (\_ -> Val) (\_ op k -> hop op k)
