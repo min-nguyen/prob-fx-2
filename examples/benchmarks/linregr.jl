@@ -28,9 +28,23 @@ function hmmData(n_datapoints::Int)
   return hmm(n_datapoints)
 end
 
+@gen function hmmGuide(T::Int)
+  @param trans_p_a
+  @param trans_p_b
+  @param obs_p_a
+  @param obs_p_b
+  trans_p = @trace(beta(trans_p_a, trans_p_b), :trans_p)
+  obs_p   = @trace(beta(obs_p_a, obs_p_b), :obs_p)
+  x  = 0::Int
+  for t=1:T
+    dX    = @trace(bernoulli(trans_p), (:x, t))
+    x     = x + Int(dX)
+  end
+end
+
 @gen function hmm(T::Int)
-  trans_p = @trace(uniform(0, 1), :trans_p)
-  obs_p   = @trace(uniform(0, 1), :obs_p)
+  trans_p = @trace(beta(2, 2), :trans_p)
+  obs_p   = @trace(beta(2, 2), :obs_p)
   x  = 0::Int
   ys = Array{Int}(undef, T)
   for t=1:T
@@ -67,7 +81,6 @@ function mhHMM(num_iters::Int, n_datapoints::Int)
   return (choices[:trans_p], choices[:obs_p])
 end
 
-
 function smcHMM(num_particles::Int, n_datapoints::Int)
   ys = hmmData(n_datapoints)
   # construct initial observations
@@ -80,6 +93,25 @@ function smcHMM(num_particles::Int, n_datapoints::Int)
       obs = Gen.choicemap(((:y, t), ys[t+1]))
       Gen.particle_filter_step!(state, (t,), (UnknownChange(),), obs)
   end
+end
+
+function bbviHMM(num_iters::Int, n_samples::Int, n_datapoints::Int)
+  # Create a set of constraints fixing the
+  # y coordinates to the observed y values
+  ys = hmmData(n_datapoints)
+  constraints = choicemap()
+  for (i, y) in enumerate(ys)
+    constraints[(:y, i)] = y
+  end
+
+  init_param!(hmmGuide, :trans_p_a, 0.5)
+  init_param!(hmmGuide, :trans_p_b, 0.5)
+  init_param!(hmmGuide, :obs_p_a, 0.5)
+  init_param!(hmmGuide, :obs_p_b, 0.5)
+
+  update = ParamUpdate(GradientDescent(1e-15, 1000000000), hmmGuide)
+  black_box_vi!(hmm, (n_datapoints,), constraints, hmmGuide, (n_datapoints,), update;
+    iters=num_iters, samples_per_iter=n_samples, verbose=true)
 end
 
 function bench_HMM_MH()
@@ -102,8 +134,20 @@ function bench_HMM_SMC()
   parseBenchmark("HMM-[ ]-SMC-" * string(fixed_smc_particles), results)
 end
 
-# smcHMM(10, 10)
-bench_HMM_SMC()
+# function bench_HMM_BBVI()
+#   results = Array{Any}(undef, length(hmm_range))
+#   for (i, n_datapoints) in enumerate(hmm_range)
+#     b = @benchmark bbviHMM(fixed_bbvi_steps, fixed_bbvi_samples, $n_datapoints)
+#     t = mean(b.times)/(1000000000)
+#     results[i] = mean(b.times)/(1000000000)
+#   end
+#   parseBenchmark("HMM-[ ]-BBVI-" * string(fixed_bbvi_steps) * "-" * string(fixed_bbvi_samples), results)
+# end
+
+bbviHMM(1, 1, 10)
+
+# bench_HMM_BBVI()
+
 
 ##### LIN REGR
 
@@ -229,10 +273,6 @@ end
 # bench_LR_SMC()
 
 function bench_LR_BBVI()
-  init_param!(linRegrGuide, :m_mu, 0.)
-  init_param!(linRegrGuide, :m_std, 0.)
-  init_param!(linRegrGuide, :c_mu, 0.)
-  init_param!(linRegrGuide, :c_std, 0.)
   results = Array{Any}(undef, length(lr_range))
   for (i, n_datapoints) in enumerate(lr_range)
     b = @benchmark bbviLinRegr(fixed_bbvi_steps, fixed_bbvi_samples, $n_datapoints)
