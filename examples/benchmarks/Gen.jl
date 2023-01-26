@@ -24,6 +24,8 @@ function parseBenchmark(label::String, row)
   write(fileStream, "\n")
 end
 
+##### HMM
+
 function hmmData(n_datapoints::Int)
   return hmm(n_datapoints)
 end
