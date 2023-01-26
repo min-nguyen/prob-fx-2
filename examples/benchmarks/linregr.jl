@@ -67,6 +67,21 @@ function mhHMM(num_iters::Int, n_datapoints::Int)
   return (choices[:trans_p], choices[:obs_p])
 end
 
+
+function smcHMM(num_particles::Int, n_datapoints::Int)
+  ys = hmmData(n_datapoints)
+  # construct initial observations
+  init_obs = Gen.choicemap(((:y, 1), ys[1]))
+  state = Gen.initialize_particle_filter(hmm, (0,), init_obs, num_particles)
+
+  # steps
+  for t=1:length(ys)-1
+      Gen.maybe_resample!(state, ess_threshold=num_particles/2)
+      obs = Gen.choicemap(((:y, t), ys[t+1]))
+      Gen.particle_filter_step!(state, (t,), (UnknownChange(),), obs)
+  end
+end
+
 function bench_HMM_MH()
   results = Array{Any}(undef, length(hmm_range))
   for (i, n_datapoints) in enumerate(hmm_range)
@@ -77,7 +92,35 @@ function bench_HMM_MH()
   parseBenchmark("HMM-[ ]-MH-" * string(fixed_mh_steps), results)
 end
 
-bench_HMM_MH()
+function bench_HMM_SMC()
+  results = Array{Any}(undef, length(hmm_range))
+  for (i, n_datapoints) in enumerate(hmm_range)
+    b = @benchmark smcHMM(fixed_smc_particles, $n_datapoints)
+    t = mean(b.times)/(1000000000)
+    results[i] = mean(b.times)/(1000000000)
+  end
+  parseBenchmark("HMM-[ ]-SMC-" * string(fixed_smc_particles), results)
+end
+
+# smcHMM(10, 10)
+bench_HMM_SMC()
+
+##### LIN REGR
+
+function linRegrData(n_datapoints::Int)
+  xs = range(0.0, n_datapoints, length=n_datapoints)
+  ys = map(x -> x * 3, xs)
+  return (xs, ys)
+end
+
+@gen function linRegr(xs)
+  m = @trace(normal(0, exp(3)), :m)
+  c = @trace(normal(0, exp(5)), :c)
+  σ = @trace(uniform(1, 3), :σ)
+  for (i, x) in enumerate(xs)
+      @trace(normal(m * x + c, exp(σ)), (:y, i))
+  end
+end
 
 @gen function linRegrSMC(T::Int)
   m = @trace(normal(0, exp(3)), :m)
@@ -95,22 +138,6 @@ end
   @param c_std
   m = @trace(normal(m_mu, exp(m_std)), :m)
   c = @trace(normal(c_mu, exp(c_std)), :c)
-end
-
-
-function linRegrData(n_datapoints::Int)
-  xs = range(0.0, n_datapoints, length=n_datapoints)
-  ys = map(x -> x * 3, xs)
-  return (xs, ys)
-end
-
-@gen function linRegr(xs)
-  m = @trace(normal(0, exp(3)), :m)
-  c = @trace(normal(0, exp(5)), :c)
-  σ = @trace(uniform(1, 3), :σ)
-  for (i, x) in enumerate(xs)
-      @trace(normal(m * x + c, exp(σ)), (:y, i))
-  end
 end
 
 function mhLinRegr(num_iters::Int, n_datapoints::Int)
@@ -198,6 +225,8 @@ function bench_LR_SMC()
   end
   parseBenchmark("LR-[ ]-SMC-" * string(fixed_smc_particles), results)
 end
+
+# bench_LR_SMC()
 
 function bench_LR_BBVI()
   init_param!(linRegrGuide, :m_mu, 0.)
