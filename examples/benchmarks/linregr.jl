@@ -7,6 +7,7 @@ using Statistics
 lr_range = [100,200]#,300,400,500]
 
 fixed_mh_steps = 100
+fixed_smc_particles = 100
 fixed_bbvi_steps = 50
 fixed_bbvi_samples = 10
 
@@ -36,6 +37,15 @@ end
   σ = @trace(uniform(1, 3), :σ)
   for (i, x) in enumerate(xs)
       @trace(normal(m * x + c, exp(σ)), (:y, i))
+  end
+end
+
+@gen function linRegrSMC(T::Int)
+  m = @trace(normal(0, exp(3)), :m)
+  c = @trace(normal(0, exp(5)), :c)
+  σ = @trace(uniform(1, 3), :σ)
+  for t=1:T
+      @trace(normal(m * t + c, exp(σ)), (:y, t))
   end
 end
 
@@ -94,6 +104,25 @@ function bbviLinRegr(num_iters::Int, n_samples::Int, n_datapoints::Int)
     iters=num_iters, samples_per_iter=n_samples, verbose=true)
 end
 
+function smcLinRegr(num_particles::Int, n_datapoints::Int)
+
+  (xs, ys) = linRegrData(n_datapoints)
+  # construct initial observations
+  init_obs = Gen.choicemap(((:y, 1), ys[1]))
+  state = Gen.initialize_particle_filter(linRegrSMC, (0,), init_obs, num_particles)
+
+  # steps
+  for t=1:length(ys)-1
+      Gen.maybe_resample!(state, ess_threshold=num_particles/2)
+      obs = Gen.choicemap(((:y, t), ys[t+1]))
+      Gen.particle_filter_step!(state, (t,), (UnknownChange(),), obs)
+  end
+
+  # return a sample of unweighted traces from the weighted collection
+  num_samples = num_particles
+  return Gen.sample_unweighted_traces(state, num_samples)
+end;
+
 function bench_LR_MH()
   results = Array{Any}(undef, length(lr_range))
   for (i, n_datapoints) in enumerate(lr_range)
@@ -118,11 +147,22 @@ function bench_LR_BBVI()
   parseBenchmark("LR-[ ]-BBVI-" * string(fixed_bbvi_steps) * "-" * string(fixed_bbvi_samples), results)
 end
 
+function bench_LR_SMC()
+  results = Array{Any}(undef, length(lr_range))
+  for (i, n_datapoints) in enumerate(lr_range)
+    b = @benchmark smcLinRegr(fixed_smc_particles, $n_datapoints)
+    t = mean(b.times)/(1000000000)
+    results[i] = mean(b.times)/(1000000000)
+  end
+  parseBenchmark("LR-[ ]-SMC-" * string(fixed_smc_particles), results)
+end
+
 function bench_LR()
   parseBenchmark("Dataset size", lr_range)
   bench_LR_MH()
   bench_LR_BBVI()
-
+  bench_LR_SMC()
+end
 
 
 # bbviLinRegr(100, 100, 100)
