@@ -15,7 +15,7 @@ import Data.Maybe
 import Data.Vector (Vector, fromList, toList)
 import Data.List
 import Control.Monad.Bayes.Inference.MCMC
-import Control.Monad.Bayes.Population (multinomial, resampleMultinomial)
+import Control.Monad.Bayes.Population (multinomial, resampleMultinomial, runPopulation)
 import Control.Monad.Bayes.Inference.SMC
 import Control.Monad.Bayes.Inference.PMMH
 
@@ -49,6 +49,13 @@ mhLinRegr :: Int -> Int -> IO ()
 mhLinRegr mh_steps n_datapoints = do
   let mcmcConfig = MCMCConfig {numMCMCSteps = mh_steps, numBurnIn = 0, proposal = SingleSiteMH}
   x <- sampler . unweighted . mcmc mcmcConfig $ linRegrPrior >>= linRegr (linRegrData n_datapoints)
+  return ()
+
+smcLinRegr :: Int -> Int -> IO ()
+smcLinRegr n_particles n_datapoints = do
+  let n_timesteps = n_datapoints
+      smc_config  = SMCConfig { resampler = resampleMultinomial, numSteps = n_timesteps, numParticles = n_particles }
+  x <- sampler . runPopulation . smc smc_config $ linRegrPrior >>= linRegr (linRegrData n_datapoints)
   return ()
 
 pmmhLinRegr :: Int -> Int -> Int -> IO ()
@@ -131,10 +138,18 @@ simHMM :: Int -> Int -> IO [[Int]]
 simHMM n_samples n_steps = sampler $ replicateM n_samples $ simulateHmmNsteps initialParams 0 n_steps
 
 mhHMM :: Int -> Int -> IO ()
-mhHMM mh_steps n_steps = do
-  ys <- simHMM 1 n_steps
+mhHMM mh_steps n_datapoints = do
+  ys <- simHMM 1 n_datapoints
   let mcmcConfig = MCMCConfig {numMCMCSteps = mh_steps, numBurnIn = 0, proposal = SingleSiteMH}
   x <- sampler . unweighted . mcmc mcmcConfig $ mh mh_steps (hmmPrior >>= hmm 0 (head ys))
+  return ()
+
+smcHMM :: Int -> Int -> IO ()
+smcHMM n_particles n_datapoints = do
+  let n_timesteps = n_datapoints
+      smc_config  = SMCConfig { resampler = resampleMultinomial, numSteps = n_timesteps, numParticles = n_particles }
+  ys <- simHMM 1 n_datapoints
+  x <- sampler . runPopulation . smc smc_config $ hmmPrior >>= hmm 0 (head ys)
   return ()
 
 pmmhHMM :: Int -> Int -> Int -> IO ()
@@ -214,6 +229,13 @@ mhLDA :: Int -> Int -> IO ()
 mhLDA mh_steps n_words = do
   let mcmcConfig = MCMCConfig {numMCMCSteps = mh_steps, numBurnIn = 0, proposal = SingleSiteMH}
   x <- sampler . unweighted . mcmc mcmcConfig $ mh mh_steps (ldaPrior 2 vocabulary >>= lda 2 vocabulary (take n_words document))
+  return ()
+
+smcLDA :: Int -> Int -> IO ()
+smcLDA n_particles n_words = do
+  let n_timesteps = n_words
+      smc_config  = SMCConfig { resampler = resampleMultinomial, numSteps = n_timesteps, numParticles = n_particles }
+  x <- sampler . runPopulation . smc smc_config $ (ldaPrior 2 vocabulary >>= lda 2 vocabulary (take n_words document))
   return ()
 
 pmmhLDA :: Int -> Int -> Int -> IO ()
