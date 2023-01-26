@@ -5,7 +5,7 @@ using CSV
 using Statistics
 
 lr_range = [100,200]#,300,400,500]
-
+hmm_range = [100,200]#,300,400,500]
 fixed_mh_steps = 100
 fixed_smc_particles = 100
 fixed_bbvi_steps = 50
@@ -24,6 +24,79 @@ function parseBenchmark(label::String, row)
   write(fileStream, "\n")
 end
 
+function hmmData(n_datapoints::Int)
+  return hmm(n_datapoints)
+end
+
+@gen function hmm(T::Int)
+  trans_p = @trace(uniform(0, 1), :trans_p)
+  obs_p   = @trace(uniform(0, 1), :obs_p)
+  x  = 0::Int
+  ys = Array{Int}(undef, T)
+  for t=1:T
+    dX    = @trace(bernoulli(trans_p), (:x, t))
+    x     = x + Int(dX)
+    ys[t] = @trace(binom(x, obs_p), (:y, t))
+  end
+  return ys
+end
+
+function mhHMM(num_iters::Int, n_datapoints::Int)
+  # Create a set of constraints fixing the
+  # y coordinates to the observed y values
+  ys = hmmData(n_datapoints)
+  constraints = choicemap()
+  for (i, y) in enumerate(ys)
+      constraints[(:y, i)] = y
+  end
+
+  # # Run the model, constrained by `constraints`,
+  # # to get an initial execution trace
+  (trace, _) = generate(hmm, (n_datapoints,), constraints)
+
+  # Iteratively update the slope then the intercept,
+  # using Gen's metropolis_hastings operator.
+  for iter=1:num_iters
+      (trace, _) = metropolis_hastings(trace, Gen.select(:trans_p))
+      (trace, _) = metropolis_hastings(trace, Gen.select(:obs_p))
+  end
+
+  # From the final trace, read out the slope and
+  # the intercept.
+  choices = get_choices(trace)
+  return (choices[:trans_p], choices[:obs_p])
+end
+
+function bench_HMM_MH()
+  results = Array{Any}(undef, length(hmm_range))
+  for (i, n_datapoints) in enumerate(hmm_range)
+    b = @benchmark mhHMM(fixed_mh_steps, $n_datapoints)
+    t = mean(b.times)/(1000000000)
+    results[i] = mean(b.times)/(1000000000)
+  end
+  parseBenchmark("HMM-[ ]-MH-" * string(fixed_mh_steps), results)
+end
+
+bench_HMM_MH()
+
+@gen function linRegrSMC(T::Int)
+  m = @trace(normal(0, exp(3)), :m)
+  c = @trace(normal(0, exp(5)), :c)
+  σ = @trace(uniform(1, 3), :σ)
+  for t=1:T
+      @trace(normal(m * t + c, exp(σ)), (:y, t))
+  end
+end
+
+@gen function linRegrGuide(xs)
+  @param m_mu
+  @param m_std
+  @param c_mu
+  @param c_std
+  m = @trace(normal(m_mu, exp(m_std)), :m)
+  c = @trace(normal(c_mu, exp(c_std)), :c)
+end
+
 
 function linRegrData(n_datapoints::Int)
   xs = range(0.0, n_datapoints, length=n_datapoints)
@@ -38,42 +111,6 @@ end
   for (i, x) in enumerate(xs)
       @trace(normal(m * x + c, exp(σ)), (:y, i))
   end
-end
-
-function hmmData(n_datapoints::Int)
-  return Gen.simulate(hmm, (n_datapoints,))
-end
-
-@gen function hmm(T::Int)
-  trans_p = @trace(uniform(0, 1), :trans_p)
-  obs_p   = @trace(uniform(0, 1), :obs_p)
-  x  = 0::Int
-  ys = Array{Any}(undef, T)
-  for t=1:T
-    dX    = @trace(bernoulli(trans_p), (:x, t))
-    x     = x + Int(dX)
-    ys[t] = @trace(binom(x, obs_p), (:y, t))
-  end
-  return ys
-end
-
-
-@gen function linRegrSMC(T::Int)
-  m = @trace(normal(0, exp(3)), :m)
-  c = @trace(normal(0, exp(5)), :c)
-  σ = @trace(uniform(1, 3), :σ)
-  for t=1:T
-      @trace(normal(m * t + c, exp(σ)), (:y, t))
-  end
-end
-
-@gen function guide(xs)
-  @param m_mu
-  @param m_std
-  @param c_mu
-  @param c_std
-  m = @trace(normal(m_mu, exp(m_std)), :m)
-  c = @trace(normal(c_mu, exp(c_std)), :c)
 end
 
 function mhLinRegr(num_iters::Int, n_datapoints::Int)
@@ -103,25 +140,6 @@ function mhLinRegr(num_iters::Int, n_datapoints::Int)
   return (choices[:m], choices[:c])
 end
 
-function bbviLinRegr(num_iters::Int, n_samples::Int, n_datapoints::Int)
-  # Create a set of constraints fixing the
-  # y coordinates to the observed y values
-  (xs, ys) = linRegrData(n_datapoints)
-  constraints = choicemap()
-  for (i, y) in enumerate(ys)
-    constraints[(:y, i)] = y
-  end
-
-  init_param!(guide, :m_mu, 0.)
-  init_param!(guide, :m_std, 0.)
-  init_param!(guide, :c_mu, 0.)
-  init_param!(guide, :c_std, 0.)
-
-  update = ParamUpdate(GradientDescent(1e-6, 100000), guide)
-  black_box_vi!(linRegr, (xs,), constraints, guide, (xs,), update;
-    iters=num_iters, samples_per_iter=n_samples, verbose=true)
-end
-
 function smcLinRegr(num_particles::Int, n_datapoints::Int)
 
   (xs, ys) = linRegrData(n_datapoints)
@@ -139,7 +157,27 @@ function smcLinRegr(num_particles::Int, n_datapoints::Int)
   # return a sample of unweighted traces from the weighted collection
   num_samples = num_particles
   return Gen.sample_unweighted_traces(state, num_samples)
-end;
+end
+
+function bbviLinRegr(num_iters::Int, n_samples::Int, n_datapoints::Int)
+  # Create a set of constraints fixing the
+  # y coordinates to the observed y values
+  (xs, ys) = linRegrData(n_datapoints)
+  constraints = choicemap()
+  for (i, y) in enumerate(ys)
+    constraints[(:y, i)] = y
+  end
+
+  init_param!(linRegrGuide, :m_mu, 0.)
+  init_param!(linRegrGuide, :m_std, 0.)
+  init_param!(linRegrGuide, :c_mu, 0.)
+  init_param!(linRegrGuide, :c_std, 0.)
+
+  update = ParamUpdate(GradientDescent(1e-6, 100000), linRegrGuide)
+  black_box_vi!(linRegr, (xs,), constraints, linRegrGuide, (xs,), update;
+    iters=num_iters, samples_per_iter=n_samples, verbose=true)
+end
+
 
 function bench_LR_MH()
   results = Array{Any}(undef, length(lr_range))
@@ -149,20 +187,6 @@ function bench_LR_MH()
     results[i] = mean(b.times)/(1000000000)
   end
   parseBenchmark("LR-[ ]-MH-" * string(fixed_mh_steps), results)
-end
-
-function bench_LR_BBVI()
-  init_param!(guide, :m_mu, 0.)
-  init_param!(guide, :m_std, 0.)
-  init_param!(guide, :c_mu, 0.)
-  init_param!(guide, :c_std, 0.)
-  results = Array{Any}(undef, length(lr_range))
-  for (i, n_datapoints) in enumerate(lr_range)
-    b = @benchmark bbviLinRegr(fixed_bbvi_steps, fixed_bbvi_samples, $n_datapoints)
-    t = mean(b.times)/(1000000000)
-    results[i] = mean(b.times)/(1000000000)
-  end
-  parseBenchmark("LR-[ ]-BBVI-" * string(fixed_bbvi_steps) * "-" * string(fixed_bbvi_samples), results)
 end
 
 function bench_LR_SMC()
@@ -175,11 +199,25 @@ function bench_LR_SMC()
   parseBenchmark("LR-[ ]-SMC-" * string(fixed_smc_particles), results)
 end
 
+function bench_LR_BBVI()
+  init_param!(linRegrGuide, :m_mu, 0.)
+  init_param!(linRegrGuide, :m_std, 0.)
+  init_param!(linRegrGuide, :c_mu, 0.)
+  init_param!(linRegrGuide, :c_std, 0.)
+  results = Array{Any}(undef, length(lr_range))
+  for (i, n_datapoints) in enumerate(lr_range)
+    b = @benchmark bbviLinRegr(fixed_bbvi_steps, fixed_bbvi_samples, $n_datapoints)
+    t = mean(b.times)/(1000000000)
+    results[i] = mean(b.times)/(1000000000)
+  end
+  parseBenchmark("LR-[ ]-BBVI-" * string(fixed_bbvi_steps) * "-" * string(fixed_bbvi_samples), results)
+end
+
 function bench_LR()
   parseBenchmark("Dataset size", lr_range)
   bench_LR_MH()
-  bench_LR_BBVI()
   bench_LR_SMC()
+  bench_LR_BBVI()
 end
 
 
