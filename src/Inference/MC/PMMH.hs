@@ -19,7 +19,6 @@ import Effects.Dist
 import PrimDist
 import Model
 import Env
-import Effects.IO
 import Effects.EnvRW
 import qualified Data.Map as Map
 import Inference.MC.SIM as SIM

@@ -17,7 +17,6 @@ module Inference.MC.SMC where
 import           Control.Monad ( replicateM )
 import qualified Data.Vector as Vector
 import           Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe (..), Sample )
-import           Effects.IO ( liftPrint, handleIO)
 import           Effects.EnvRW ( EnvRW, handleEnvRW )
 import           Env ( Env )
 import           LogP ( LogP(..), logMeanExp )
@@ -28,7 +27,7 @@ import qualified Data.Map as Map
 import           Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS
 import           Inference.MC.SIS (Resample(..), ParticleHandler, pfilter)
-import           Sampler ( Sampler, sampleRandom, sampleCategorical)
+import           Sampler ( Sampler, random, sampleCategorical, handleIO)
 
 {- | Call SMC on a model.
 -}
@@ -91,7 +90,7 @@ handleResampleSys (Op op k) = case discharge op of
     -- | Get the weights for each particle
     let ps = map exp ws
     -- | Select particles to continue with
-    u <- call Sampler.sampleRandom
+    u <- random
     let prob i = ps !! i
         n      = length ps
         inc = 1 / fromIntegral n

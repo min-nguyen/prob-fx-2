@@ -58,7 +58,6 @@ import Comp ( call, Member, Comp, Members, LastMember )
 import Vec
 import Debug.Trace
 import Sampler
-import Effects.IO
 import Data.Typeable
 
 {- | Models are parameterised by:

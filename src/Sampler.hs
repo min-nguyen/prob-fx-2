@@ -9,6 +9,9 @@
 module Sampler (
   -- * Sampler monad
     Sampler
+  , random
+  , randomFrom
+  , handleIO
   , liftIO
   , sampleIO
   , sampleIOFixed
@@ -51,10 +54,36 @@ import           Statistics.Distribution.Beta ( betaDistr )
 import           Statistics.Distribution.Gamma ( gammaDistr )
 import           Statistics.Distribution.CauchyLorentz ( cauchyDistribution )
 import           System.Random.MWC ( initialize )
+import           Comp
 
 -- | Sampler type, for running IO computations alongside a random number generator
 newtype Sampler a = Sampler {runSampler :: ReaderT MWC.GenIO IO a}
   deriving (Functor, Applicative, Monad)
+
+handleIO :: Monad m => Comp '[m] w -> m w
+handleIO (Val x) = return x
+handleIO (Op u q) = case prj u of
+  Just m  -> m >>= handleIO . q
+  Nothing -> error "Impossible: Nothing cannot occur"
+
+random :: Member Sampler es => Comp es Double
+random = call sampleRandom
+
+sampleRandom :: Sampler Double
+sampleRandom = mkSampler MWC.uniform
+
+randomFrom :: Member Sampler es => [a] -> Comp es a
+randomFrom = call . sampleRandomFrom
+
+sampleRandomFrom :: [b] -> Sampler b
+sampleRandomFrom xs = sampleUniformD 0 (length xs - 1) >>= pure . (xs !!)
+
+-- | Wrapper function for calling @Lift@ as the last effect
+liftPrint :: Member Sampler es => Show a => a -> Comp es ()
+liftPrint = call . liftIO . print
+
+liftPutStrLn :: Member Sampler es => String -> Comp es ()
+liftPutStrLn = call . liftIO . putStrLn
 
 -- | Lift an @IO@ computation into @Sampler@
 liftIO :: IO a -> Sampler a
@@ -76,15 +105,6 @@ mkSampler f = Sampler $ ask >>= lift . f
   Given their distribution parameters, these functions await a generator and
   then sample a value from the distribution in the @IO@ monad.
 -}
-
-sampleRandom
-  :: Sampler Double
-sampleRandom = mkSampler MWC.uniform
-
-sampleRandomFrom
-  :: [a] -> Sampler a
-sampleRandomFrom xs = sampleUniformD 0 (length xs - 1) >>= pure . (xs !!)
-
 sampleCauchy
   :: Double -- ^ location
   -> Double -- ^ scale

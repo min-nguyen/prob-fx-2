@@ -15,7 +15,6 @@ import           Control.Monad ( mapAndUnzipM )
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Effects.Dist ( Addr, Observe (Observe), Sample, pattern ObsPrj )
-import           Effects.IO ( handleIO)
 import           LogP ( LogP, logMeanExp )
 import           Comp ( Comp (..), weakenProg, Member, discharge, call, weaken, LastMember, Members )
 import           Sampler

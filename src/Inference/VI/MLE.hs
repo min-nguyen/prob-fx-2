@@ -17,7 +17,6 @@ import Data.Maybe ( fromMaybe, fromJust )
 import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>) )
 import Effects.Dist
-import Effects.IO
 import Effects.EnvRW ( EnvRW, handleEnvRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env, Vars, ContainsVars, union, empty, varsToStrs )
@@ -25,7 +24,7 @@ import LogP ( LogP(..), normaliseLogPs )
 import Model
 import PrimDist
 import Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg )
-import           Sampler ( Sampler )
+import           Sampler ( Sampler, handleIO )
 import           Trace (GradTrace, ParamTrace, Key(..), Some(..))
 import qualified Trace
 import qualified Inference.MC.SIM as SIM

@@ -36,7 +36,7 @@ import qualified Inference.MC.SIM as SIM
 import           Inference.MC.Metropolis as Metropolis
 import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
 import           Inference.MC.SIS (Resample(..), ParticleHandler, pfilter)
-import           Effects.IO
+
 import           PrimDist
 import           Data.Bifunctor
 import           Unsafe.Coerce

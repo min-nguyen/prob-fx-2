@@ -22,7 +22,6 @@ import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>), mapAndUnzipM )
 import Effects.Dist
 import Model
-import Effects.IO
 import Effects.EnvRW ( EnvRW, handleEnvRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env, union )

@@ -19,7 +19,6 @@ module Inference.MC.LW
 import Data.Bifunctor ( Bifunctor(first), second, bimap )
 import Control.Monad ( replicateM )
 import Effects.Dist ( Sample, Observe(..), Dist, pattern ObsPrj, pattern SampPrj )
-import Effects.IO ( handleIO )
 import Effects.EnvRW ( EnvRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env )
@@ -28,7 +27,7 @@ import Inference.MC.SIM as SIM (defaultSample)
 import Model ( handleCore, GenModel, Model )
 import PrimDist ( logProb )
 import Comp ( discharge, Comp(..), Handler, handle )
-import Sampler ( Sampler )
+import Sampler ( Sampler, handleIO )
 
 -- | Top-level wrapper for Likelihood-Weighting (LW) inference
 lw

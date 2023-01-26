@@ -17,7 +17,6 @@ module Inference.MB
 
 import Control.Monad.Bayes.Class as MB ( MonadCond(..), MonadInfer, MonadSample )
 import Effects.Dist ( Sample(..), Observe(..), Dist(Dist, getObs, getPrimDist), handleDist )
-import Effects.IO ( handleIO, Lift, lift )
 import Effects.EnvRW ( EnvRW )
 import Env ( Env )
 import Model (GenModel(..), handleCore)

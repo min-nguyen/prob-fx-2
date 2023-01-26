@@ -30,10 +30,9 @@ import           PrimDist
 import           Model ( GenModel, handleCore, Model )
 import           Effects.EnvRW ( EnvRW )
 import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), pattern SampPrj, pattern ObsPrj )
-import           Effects.IO ( handleIO, liftPutStrLn, random, randomFrom )
 import           Inference.MC.SIM
 import           Inference.MC.Metropolis as Metropolis
-import           Sampler ( Sampler, sampleRandom, sampleUniformD, sampleRandomFrom )
+import           Sampler ( Sampler, random, randomFrom, handleIO )
 import           Data.Bifunctor (Bifunctor(..))
 import           Util ( assocR )
 import Effects.State
@@ -82,22 +81,6 @@ handleProposal tags  = handle (Addr "" 0) (const Val) hop
     hop α (Accept ρ ρ') k = do  let ratio = (exp . sum . Map.elems . Map.delete α) (Map.intersectionWith (-) ρ' ρ)
                                 u <- random
                                 k α (ratio > u)
-
-{- Propose a new random value at a single component x_i of latent variable X = {x_0, ... x_N}.
--}
-propose
-  :: [Tag]                        -- ^ observable variable names of interest
-  -> Trace                       -- ^ original sample trace
-  -> Sampler (Addr, Trace)       -- ^ (proposed addresses, proposed sample trace)
-propose tags τ = do
-  -- | Get possible addresses to propose new samples for
-  let α_range = Map.keys (if Prelude.null tags then τ else filterTrace tags τ)
-  -- | Draw proposal sample addresse
-  α <- sampleRandomFrom α_range
-  -- | Draw new random value
-  r <- sampleRandom
-  let τ' = Map.insert α r τ
-  return (α, τ')
 
 {- | Handler for one iteration of MH.
 -}

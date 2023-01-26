@@ -21,13 +21,12 @@ module Inference.MC.SIM
   where
 
 import           Effects.Dist ( Sample(..), Observe(..), Dist )
-import           Effects.IO ( handleIO )
 import           Effects.EnvRW ( EnvRW )
 import           Env ( Env )
 import           Model ( handleCore, GenModel )
 import           PrimDist ( drawWithSampler )
 import           Comp ( handle, discharge, Comp(..), LastMember, discharge1, Handler, Member, call )
-import           Sampler ( Sampler, liftIO )
+import           Sampler ( Sampler, liftIO, handleIO )
 import           Unsafe.Coerce (unsafeCoerce)
 
 -- | Simulate from a model under a given model environment

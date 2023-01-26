@@ -25,8 +25,7 @@ import Model ( GenModel, handleCore, Model )
 import Effects.EnvRW ( EnvRW )
 import Env ( Env )
 import Effects.Dist ( Dist, pattern SampPrj, pattern ObsPrj )
-import Effects.IO ( handleIO, liftPutStrLn, random )
-import Sampler ( Sampler, sampleRandom )
+import Sampler ( Sampler, random, handleIO )
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.LW as LW
 import Inference.MC.Metropolis as Metropolis
