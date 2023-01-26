@@ -5,7 +5,10 @@ using CSV
 using Statistics
 
 lr_range = [100,200]#,300,400,500]
+
 fixed_mh_steps = 100
+fixed_bbvi_steps = 50
+fixed_bbvi_samples = 10
 
 fileStream = open("benchmarks-gen.csv","a")
 
@@ -28,12 +31,21 @@ function linRegrData(n_datapoints::Int)
 end
 
 @gen function linRegr(xs)
-  m = @trace(normal(0, 3), :m)
-  c = @trace(normal(0, 5), :c)
+  m = @trace(normal(0, exp(3)), :m)
+  c = @trace(normal(0, exp(5)), :c)
   σ = @trace(uniform(1, 3), :σ)
   for (i, x) in enumerate(xs)
-      @trace(normal(m * x + c, σ), "y-$i")
+      @trace(normal(m * x + c, exp(σ)), (:y, i))
   end
+end
+
+@gen function guide(xs)
+  @param m_mu
+  @param m_std
+  @param c_mu
+  @param c_std
+  m = @trace(normal(m_mu, exp(m_std)), :m)
+  c = @trace(normal(c_mu, exp(c_std)), :c)
 end
 
 function mhLinRegr(num_iters::Int, n_datapoints::Int)
@@ -42,7 +54,7 @@ function mhLinRegr(num_iters::Int, n_datapoints::Int)
   (xs, ys) = linRegrData(n_datapoints)
   constraints = choicemap()
   for (i, y) in enumerate(ys)
-      constraints["y-$i"] = y
+      constraints[(:y, i)] = y
   end
 
   # Run the model, constrained by `constraints`,
@@ -63,28 +75,26 @@ function mhLinRegr(num_iters::Int, n_datapoints::Int)
   return (choices[:m], choices[:c])
 end
 
-function particle_filter(n_particles::Int, n_datapoints::Int)
-
-  # construct initial observations
+function bbviLinRegr(num_iters::Int, n_samples::Int, n_datapoints::Int)
+  # Create a set of constraints fixing the
+  # y coordinates to the observed y values
   (xs, ys) = linRegrData(n_datapoints)
-
-  init_obs = Gen.choicemap((:y0, ys[1]))
-  state = Gen.initialize_particle_filter(linRegr, (xs,), init_obs, n_particles)
-
-  # steps
-  for t=1:length(ys)-1
-      Gen.maybe_resample!(state, ess_threshold=n_particles/2)
-      obs = Gen.choicemap(("y-$t", ys[t+1]))
-      Gen.particle_filter_step!(state, (t,), (UnknownChange(),), obs)
+  constraints = choicemap()
+  for (i, y) in enumerate(ys)
+    constraints[(:y, i)] = y
   end
 
-  # return a sample of unweighted traces from the weighted collection
-  return Gen.sample_unweighted_traces(state, 1)
-end;
+  init_param!(guide, :m_mu, 0.)
+  init_param!(guide, :m_std, 0.)
+  init_param!(guide, :c_mu, 0.)
+  init_param!(guide, :c_std, 0.)
 
+  update = ParamUpdate(GradientDescent(1e-6, 100000), guide)
+  black_box_vi!(linRegr, (xs,), constraints, guide, (xs,), update;
+    iters=num_iters, samples_per_iter=n_samples, verbose=true)
+end
 
-function bench_LR()
-  parseBenchmark("Dataset size", lr_range)
+function bench_LR_MH()
   results = Array{Any}(undef, length(lr_range))
   for (i, n_datapoints) in enumerate(lr_range)
     b = @benchmark mhLinRegr(fixed_mh_steps, $n_datapoints)
@@ -92,11 +102,30 @@ function bench_LR()
     results[i] = mean(b.times)/(1000000000)
   end
   parseBenchmark("LR-[ ]-MH-" * string(fixed_mh_steps), results)
-
-
 end
 
-particle_filter(10, 10)
+function bench_LR_BBVI()
+  init_param!(guide, :m_mu, 0.)
+  init_param!(guide, :m_std, 0.)
+  init_param!(guide, :c_mu, 0.)
+  init_param!(guide, :c_std, 0.)
+  results = Array{Any}(undef, length(lr_range))
+  for (i, n_datapoints) in enumerate(lr_range)
+    b = @benchmark bbviLinRegr(fixed_bbvi_steps, fixed_bbvi_samples, $n_datapoints)
+    t = mean(b.times)/(1000000000)
+    results[i] = mean(b.times)/(1000000000)
+  end
+  parseBenchmark("LR-[ ]-BBVI-" * string(fixed_bbvi_steps) * "-" * string(fixed_bbvi_samples), results)
+end
+
+function bench_LR()
+  parseBenchmark("Dataset size", lr_range)
+  bench_LR_MH()
+  bench_LR_BBVI()
+
+
+
+# bbviLinRegr(100, 100, 100)
 
 # bench_LR()
 
