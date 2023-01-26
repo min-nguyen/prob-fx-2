@@ -1,7 +1,7 @@
 module MonadBayes where
 
 import Control.Monad.Bayes.Class
-import Control.Monad.Bayes.Traced.Basic
+import Control.Monad.Bayes.Traced.Dynamic
 import Control.Monad.Bayes.Sampler.Lazy
 import Control.Monad.Bayes.Weighted
 import Criterion.Main
@@ -45,26 +45,25 @@ linRegrData :: Int -> [(Double, Double)]
 linRegrData n_datapoints = zip [0 .. (fromIntegral n_datapoints)] (map (*3) [0 .. (fromIntegral n_datapoints)])
 
 -- Execute log regression
-mhLinRegr :: Int -> Int -> IO ()
+mhLinRegr :: Int -> Int -> IO [(Double, Double, Double)]
 mhLinRegr mh_steps n_datapoints = do
-  let mcmcConfig = MCMCConfig {numMCMCSteps = mh_steps, numBurnIn = 0, proposal = SingleSiteMH}
-  x <- sampler . unweighted . mcmc mcmcConfig $ linRegrPrior >>= linRegr (linRegrData n_datapoints)
-  return ()
+  x <- sampler . unweighted $ mh mh_steps $ linRegrPrior >>= linRegr (linRegrData n_datapoints)
+  return (map fromLinRegrParams x)
 
-smcLinRegr :: Int -> Int -> IO ()
+smcLinRegr :: Int -> Int -> IO [(Double, Double, Double)]
 smcLinRegr n_particles n_datapoints = do
   let n_timesteps = n_datapoints
       smc_config  = SMCConfig { resampler = resampleMultinomial, numSteps = n_timesteps, numParticles = n_particles }
   x <- sampler . runPopulation . smc smc_config $ linRegrPrior >>= linRegr (linRegrData n_datapoints)
-  return ()
+  return  (map (fromLinRegrParams . fst) x)
 
-pmmhLinRegr :: Int -> Int -> Int -> IO ()
+pmmhLinRegr :: Int -> Int -> Int -> IO [(Double, Double, Double)]
 pmmhLinRegr mh_steps n_particles n_datapoints = do
   let n_timesteps = n_datapoints
   let mcmc_config  = MCMCConfig { proposal = SingleSiteMH, numMCMCSteps = mh_steps, numBurnIn = 0 }
       smc_config   = SMCConfig { resampler = resampleMultinomial, numSteps = n_timesteps, numParticles = n_particles }
   x <- sampler $ pmmh mcmc_config smc_config linRegrPrior (linRegr (linRegrData n_datapoints))
-  return ()
+  return (map (fromLinRegrParams . fst) (concat x))
 
 {- Hidden Markov Model -}
 
@@ -83,8 +82,8 @@ data HMMParams = HMMParams {
     observation_p :: {-# UNPACK #-} !Double
 } deriving Show
 
-fromParams :: HMMParams -> (Double, Double)
-fromParams (HMMParams trans_p obs_p) = (trans_p, obs_p)
+fromHMMParams :: HMMParams -> (Double, Double)
+fromHMMParams (HMMParams trans_p obs_p) = (trans_p, obs_p)
 
 initialParams :: HMMParams
 initialParams = HMMParams 0.5 0.5
@@ -134,32 +133,31 @@ hmm x_0 ys params = do
   return params
 
 --- Execute HMM
-simHMM :: Int -> Int -> IO [[Int]]
-simHMM n_samples n_steps = sampler $ replicateM n_samples $ simulateHmmNsteps initialParams 0 n_steps
+simHMM :: Int -> IO [Int]
+simHMM  n_steps = sampler $ simulateHmmNsteps initialParams 0 n_steps
 
-mhHMM :: Int -> Int -> IO ()
+mhHMM :: Int -> Int -> IO [(Double, Double)]
 mhHMM mh_steps n_datapoints = do
-  ys <- simHMM 1 n_datapoints
-  let mcmcConfig = MCMCConfig {numMCMCSteps = mh_steps, numBurnIn = 0, proposal = SingleSiteMH}
-  x <- sampler . unweighted . mcmc mcmcConfig $ mh mh_steps (hmmPrior >>= hmm 0 (head ys))
-  return ()
+  ys <- simHMM  n_datapoints
+  x <- sampler . unweighted . mh mh_steps $ (hmmPrior >>= hmm 0 ( ys))
+  return (map fromHMMParams x)
 
-smcHMM :: Int -> Int -> IO ()
+smcHMM :: Int -> Int -> IO [(Double, Double)]
 smcHMM n_particles n_datapoints = do
   let n_timesteps = n_datapoints
       smc_config  = SMCConfig { resampler = resampleMultinomial, numSteps = n_timesteps, numParticles = n_particles }
-  ys <- simHMM 1 n_datapoints
-  x <- sampler . runPopulation . smc smc_config $ hmmPrior >>= hmm 0 (head ys)
-  return ()
+  ys <- simHMM  n_datapoints
+  x <- sampler . runPopulation . smc smc_config $ hmmPrior >>= hmm 0 ( ys)
+  return  (map (fromHMMParams . fst) x)
 
-pmmhHMM :: Int -> Int -> Int -> IO ()
+pmmhHMM :: Int -> Int -> Int -> IO [(Double, Double)]
 pmmhHMM mh_steps n_particles n_datapoints = do
   let n_timesteps = n_datapoints
       mcmc_config  = MCMCConfig { proposal = SingleSiteMH, numMCMCSteps = mh_steps, numBurnIn = 0 }
       smc_config   = SMCConfig { resampler = resampleMultinomial, numSteps = n_timesteps, numParticles = n_particles }
-  ys <- simHMM 1 n_datapoints
-  x <- sampler $ pmmh mcmc_config smc_config hmmPrior (hmm 0 (head ys))
-  return ()
+  ys <- simHMM  n_datapoints
+  x <- sampler $ pmmh mcmc_config smc_config hmmPrior (hmm 0 ( ys))
+  return  (map (fromHMMParams . fst) (concat x))
 
 {- Latent Dirichlet Allocation -}
 data LDAParams = LDAParams {
@@ -167,6 +165,8 @@ data LDAParams = LDAParams {
     φ :: [[Double]]  -- probabilities of each word in a topic in a document
    } deriving Show
 
+fromLDAParams :: LDAParams -> ([Double], [[Double]])
+fromLDAParams (LDAParams a b) = (a, b)
 
 -- Topic Model SIM
 documentDistSim :: MonadDistribution m => LDAParams -> [String] -> Int -> Int -> m [String]
@@ -225,23 +225,22 @@ simLDA :: Int -> Int -> IO [[String]]
 simLDA n_samples n_words = do
   sampler $ replicateM n_samples (documentDistSim initialLDAParams vocabulary 2 n_words)
 
-mhLDA :: Int -> Int -> IO ()
+mhLDA :: Int -> Int -> IO [([Double], [[Double]])]
 mhLDA mh_steps n_words = do
-  let mcmcConfig = MCMCConfig {numMCMCSteps = mh_steps, numBurnIn = 0, proposal = SingleSiteMH}
-  x <- sampler . unweighted . mcmc mcmcConfig $ mh mh_steps (ldaPrior 2 vocabulary >>= lda 2 vocabulary (take n_words document))
-  return ()
+  x <- sampler . unweighted . mh mh_steps  $ (ldaPrior 2 vocabulary >>= lda 2 vocabulary (take n_words document))
+  return (map fromLDAParams x)
 
-smcLDA :: Int -> Int -> IO ()
+smcLDA :: Int -> Int -> IO [([Double], [[Double]])]
 smcLDA n_particles n_words = do
   let n_timesteps = n_words
       smc_config  = SMCConfig { resampler = resampleMultinomial, numSteps = n_timesteps, numParticles = n_particles }
   x <- sampler . runPopulation . smc smc_config $ (ldaPrior 2 vocabulary >>= lda 2 vocabulary (take n_words document))
-  return ()
+  return (map (fromLDAParams . fst) x)
 
-pmmhLDA :: Int -> Int -> Int -> IO ()
+pmmhLDA :: Int -> Int -> Int -> IO [([Double], [[Double]])]
 pmmhLDA mh_steps n_particles n_words = do
   let n_timesteps = n_words
       mcmc_config  = MCMCConfig { proposal = SingleSiteMH, numMCMCSteps = mh_steps, numBurnIn = 0 }
       smc_config   = SMCConfig { resampler = resampleMultinomial, numSteps = n_timesteps, numParticles = n_particles }
-  sampler $ pmmh mcmc_config smc_config (ldaPrior 2 vocabulary) (lda 2 vocabulary  (take n_words document))
-  return ()
+  x <- sampler $ pmmh mcmc_config smc_config (ldaPrior 2 vocabulary) (lda 2 vocabulary  (take n_words document))
+  return (map (fromLDAParams . fst ) (concat x))

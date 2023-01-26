@@ -26,7 +26,7 @@ input_file :: String
 input_file = "examples/benchmarks/benchmark_params.txt"
 
 output_file :: String
-output_file = "examples/benchmarks/benchmarks.csv"
+output_file = "examples/benchmarks/benchmarks-prob-fx.csv"
 
 appendFileLn :: String -> String -> IO ()
 appendFileLn file_name = appendFile file_name . (++ "\n")
@@ -78,46 +78,46 @@ bench_LR :: [Int] -> IO ()
 bench_LR args = do
     let row_header = ("Dataset size", args)
     writeRow output_file row_header
-    -- benchRow ("LR-[ ]-MH-" ++ show fixed_mh_steps
-    --           , mhLinRegr fixed_mh_steps) row_header
+    benchRow ("LR-[ ]-MH-" ++ show fixed_mh_steps
+              , mhLinRegr fixed_mh_steps) row_header output_file
     benchRow ("LR-[ ]-SMC-" ++ show fixed_smc_particles
               , smcLinRegr fixed_smc_particles)  row_header output_file
-    -- benchRow ("LR-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
-    --           , pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
-    -- benchRow ("LR-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
-    --           , bbviLinRegr fixed_bbvi_steps fixed_bbvi_samples) row_header
+    benchRow ("LR-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
+              , pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
+    benchRow ("LR-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
+              , bbviLinRegr fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
     -- benchRow ("LR-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
-    --           , rmsmcLinRegr fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
+    --           , rmsmcLinRegr fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header output_file
 
 bench_HMM :: [Int] -> IO ()
 bench_HMM args = do
     let row_header = ("Dataset size", args)
     writeRow output_file row_header
-    -- benchRow ("HMM-[ ]-MH-" ++ show fixed_mh_steps
-    --           , mhHMM fixed_mh_steps) row_header
+    benchRow ("HMM-[ ]-MH-" ++ show fixed_mh_steps
+              , mhHMM fixed_mh_steps) row_header output_file
     benchRow ("HMM-[ ]-SMC-" ++ show fixed_mh_steps
               , smcHMM fixed_smc_particles) row_header output_file
-    -- benchRow ("HMM-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
-    --           , pmmhHMM fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
-    -- benchRow ("HMM-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
-    --           , bbviHMM fixed_bbvi_steps fixed_bbvi_samples) row_header
+    benchRow ("HMM-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
+              , pmmhHMM fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
+    benchRow ("HMM-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
+              , bbviHMM fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
     -- benchRow ("HMM-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
-    --           , rmsmcHMM fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
+    --           , rmsmcHMM fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header output_file
 
 bench_LDA :: [Int] -> IO ()
 bench_LDA args = do
     let row_header = ("Dataset size", args)
     writeRow output_file row_header
-    -- benchRow ("LDA-[ ]-MH-" ++ show fixed_mh_steps
-    --           , mhLDA fixed_mh_steps) row_header
+    benchRow ("LDA-[ ]-MH-" ++ show fixed_mh_steps
+              , mhLDA fixed_mh_steps) row_header output_file
     benchRow ("LDA-[ ]-SMC-" ++ show fixed_mh_steps
               , smcLDA fixed_smc_particles) row_header output_file
-    -- benchRow ("LDA-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
-    --           , pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
-    -- benchRow ("LDA-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
-    --           , bbviLDA fixed_bbvi_steps fixed_bbvi_samples) row_header
+    benchRow ("LDA-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
+              , pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
+    benchRow ("LDA-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
+              , bbviLDA fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
     -- benchRow ("LDA-[ ]-RMSMC-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
-    --           , rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header
+    --           , rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header output_file
 
 {- | Varying over inference parameters
 -}
@@ -204,10 +204,10 @@ runBenchmarks = do
           bench_LR lr
           bench_HMM hmm
           bench_LDA lda
-          -- bench_MH mh
+          bench_MH mh
           bench_SMC smc
-          -- bench_PMMH pmmh
-          -- bench_BBVI bbvi
+          bench_PMMH pmmh
+          bench_BBVI bbvi
           -- bench_RMSMC rmsmc
         _   -> error "bad input file"
 
@@ -216,7 +216,7 @@ runBenchmarks = do
 -}
 
 output_file_MonadBayes :: String
-output_file_MonadBayes = "examples/benchmarks/benchmarks.csv"
+output_file_MonadBayes = "examples/benchmarks/benchmarks-monad-bayes.csv"
 
 bench_LR_MonadBayes :: [Int] -> IO ()
 bench_LR_MonadBayes args = do
@@ -266,10 +266,10 @@ bench_SMC_MonadBayes :: [Int] -> IO ()
 bench_SMC_MonadBayes args = do
     let row_header = ("Number of SMC particles", args)
     writeRow output_file_MonadBayes row_header
-    benchRow ("SMC-[ ]-LR-" ++ show fixed_lr_datasize_inf
-              , liftIO . flip MonadBayes.smcLinRegr fixed_lr_datasize_inf) row_header output_file_MonadBayes
-    benchRow ("SMC-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
-              , liftIO . flip MonadBayes.smcHMM fixed_hmm_datasize_inf) row_header output_file_MonadBayes
+    -- benchRow ("SMC-[ ]-LR-" ++ show fixed_lr_datasize_inf
+    --           , liftIO . flip MonadBayes.smcLinRegr fixed_lr_datasize_inf) row_header output_file_MonadBayes
+    -- benchRow ("SMC-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
+    --           , liftIO . flip MonadBayes.smcHMM fixed_hmm_datasize_inf) row_header output_file_MonadBayes
     benchRow ("SMC-[ ]-LDA-" ++ show fixed_lda_datasize_inf
               , liftIO . flip MonadBayes.smcLinRegr fixed_lda_datasize_inf) row_header output_file_MonadBayes
 
@@ -277,8 +277,8 @@ bench_PMMH_MonadBayes :: [Int] -> IO ()
 bench_PMMH_MonadBayes args = do
     let row_header = ("Number of PMMH particles", args)
     writeRow output_file_MonadBayes row_header
-    benchRow ("PMMH-" ++ show fixed_pmmh_mhsteps_inf ++ "-[ ]-LR-" ++ show fixed_lr_datasize_inf
-              , liftIO . flip (MonadBayes.pmmhLinRegr fixed_pmmh_mhsteps_inf) fixed_lr_datasize_inf) row_header output_file_MonadBayes
+    -- benchRow ("PMMH-" ++ show fixed_pmmh_mhsteps_inf ++ "-[ ]-LR-" ++ show fixed_lr_datasize_inf
+    --           , liftIO . flip (MonadBayes.pmmhLinRegr fixed_pmmh_mhsteps_inf) fixed_lr_datasize_inf) row_header output_file_MonadBayes
     benchRow ("PMMH-" ++ show fixed_pmmh_mhsteps_inf ++ "-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
               , liftIO . flip (MonadBayes.pmmhHMM fixed_pmmh_mhsteps_inf) fixed_hmm_datasize_inf) row_header output_file_MonadBayes
     benchRow ("PMMH-" ++ show fixed_pmmh_mhsteps_inf ++ "-[ ]-LDA-" ++ show fixed_lda_datasize_inf
@@ -296,14 +296,14 @@ runBenchmarks_MonadBayes = do
   -- | Run benchmark programs on their corresponding parameters
   case args of
         [lr, hmm, lda, mh, smc, rmsmc, pmmh, bbvi] -> do
-          bench_LR_MonadBayes lr
-          bench_HMM_MonadBayes hmm
-          bench_LDA_MonadBayes lda
-          bench_MH_MonadBayes mh
-          bench_SMC_MonadBayes smc
+          -- bench_LR_MonadBayes lr
+          -- bench_HMM_MonadBayes hmm
+          -- bench_LDA_MonadBayes lda
+          -- bench_MH_MonadBayes mh
+          -- bench_SMC_MonadBayes smc
           bench_PMMH_MonadBayes pmmh
         _   -> error "bad input file"
 
 main :: IO ()
-main = runBenchmarks
-
+main =  -- runBenchmarks
+ runBenchmarks_MonadBayes

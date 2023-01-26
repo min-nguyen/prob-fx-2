@@ -4,7 +4,6 @@ dist/
 dist-newstyle/
 model-output.txt
 sys
-*.csv
 *.dat
 !paper.pdf
 !*benchmarks.csv
