@@ -2,6 +2,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE LambdaCase #-}
 {-# HLINT ignore "Use camelCase" #-}
+
 module Main where
 
 import LinRegr
@@ -54,10 +55,6 @@ benchRow (prog_name, prog) (_, params) = do
 
 {- | Varying over dataset size
 -}
-fixed_simulations :: Int
-fixed_simulations = 1
-fixed_lw_steps :: Int
-fixed_lw_steps = 100
 fixed_mh_steps :: Int
 fixed_mh_steps = 100
 fixed_smc_particles :: Int
@@ -79,10 +76,6 @@ bench_LR :: [Int] -> IO ()
 bench_LR args = do
     let row_header = ("Dataset size", args)
     writeRow fixed_output_file row_header
-    -- benchRow ("LR-[ ]-SIM-" ++ show fixed_simulations
-    --           , simLinRegr) row_header
-    -- benchRow ("LR-[ ]-LW-" ++ show fixed_lw_steps
-    --           , lwLinRegr fixed_lw_steps) row_header
     benchRow ("LR-[ ]-MH-" ++ show fixed_mh_steps
               , mhLinRegr fixed_mh_steps) row_header
     -- benchRow ("LR-[ ]-SMC-" ++ show fixed_smc_particles
@@ -93,17 +86,11 @@ bench_LR args = do
               , pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
     benchRow ("LR-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
               , bbviLinRegr fixed_bbvi_steps fixed_bbvi_samples) row_header
-    -- benchRow ("LR-[ ]-INVI-" ++ show fixed_invi_steps ++ "-" ++ show fixed_bbvi_samples
-    --           , inviLinRegr fixed_invi_steps fixed_invi_samples) row_header
 
 bench_HMM :: [Int] -> IO ()
 bench_HMM args = do
     let row_header = ("Dataset size", args)
     writeRow fixed_output_file row_header
-    -- benchRow ("HMM-[ ]-SIM-" ++ show fixed_simulations
-    --           , simHMM) row_header
-    -- benchRow ("HMM-[ ]-LW-" ++ show fixed_lw_steps
-    --           , lwHMM fixed_lw_steps) row_header
     benchRow ("HMM-[ ]-MH-" ++ show fixed_mh_steps
               , mhHMM fixed_mh_steps) row_header
     -- benchRow ("HMM-[ ]-SMC-" ++ show fixed_mh_steps
@@ -114,17 +101,11 @@ bench_HMM args = do
               , pmmhHMM fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
     benchRow ("HMM-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
               , bbviHMM fixed_bbvi_steps fixed_bbvi_samples) row_header
-    -- benchRow ("HMM-[ ]-INVI-" ++ show fixed_invi_steps ++ "-" ++ show fixed_bbvi_samples
-    --           , inviHMM fixed_invi_steps fixed_invi_samples) row_header
 
 bench_LDA :: [Int] -> IO ()
 bench_LDA args = do
     let row_header = ("Dataset size", args)
     writeRow fixed_output_file row_header
-    -- benchRow ("LDA-[ ]-SIM-" ++ show fixed_simulations
-    --           , simLDA) row_header
-    -- benchRow ("LDA-[ ]-LW-" ++ show fixed_lw_steps
-    --           , lwLDA fixed_lw_steps) row_header
     benchRow ("LDA-[ ]-MH-" ++ show fixed_mh_steps
               , mhLDA fixed_mh_steps) row_header
     -- benchRow ("LDA-[ ]-SMC-" ++ show fixed_mh_steps
@@ -135,8 +116,6 @@ bench_LDA args = do
               , pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header
     benchRow ("LDA-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
               , bbviLDA fixed_bbvi_steps fixed_bbvi_samples) row_header
-    -- benchRow ("LDA-[ ]-INVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples
-    --           , bbviLDA fixed_invi_steps fixed_invi_samples) row_header
 
 {- | Varying over inference parameters
 -}
@@ -152,30 +131,6 @@ fixed_pmmh_mhsteps_inf :: Int
 fixed_pmmh_mhsteps_inf = 50
 fixed_bbvi_samples_inf :: Int
 fixed_bbvi_samples_inf = 10
-fixed_invi_samples_inf :: Int
-fixed_invi_samples_inf = 10
-
--- bench_SIM :: [Int] -> IO ()
--- bench_SIM args = do
---     let row_header = ("Number of simulations", args)
---     writeRow fixed_output_file row_header
---     benchRow ("SIM-[ ]-LR-" ++ show fixed_lr_datasize_inf
---               , flip replicateM (simLinRegr fixed_lr_datasize_inf)) row_header
---     benchRow ("SIM-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
---               , flip replicateM (simHMM fixed_hmm_datasize_inf)) row_header
---     benchRow ("SIM-[ ]-LDA-" ++ show fixed_lda_datasize_inf
---               , flip replicateM (simLDA fixed_lda_datasize_inf)) row_header
-
--- bench_LW :: [Int] -> IO ()
--- bench_LW args = do
---     let row_header = ("Number of LW iterations", args)
---     writeRow fixed_output_file row_header
---     benchRow ("LW-[ ]-LR-" ++ show fixed_lr_datasize_inf
---               , flip lwLinRegr fixed_lr_datasize_inf) row_header
---     benchRow ("LW-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
---               , flip lwHMM fixed_hmm_datasize_inf) row_header
---     benchRow ("LW-[ ]-LDA-" ++ show fixed_lda_datasize_inf
---               , flip lwLDA fixed_lda_datasize_inf) row_header
 
 bench_MH :: [Int] -> IO ()
 bench_MH args = do
@@ -232,17 +187,6 @@ bench_BBVI args = do
     benchRow ("BBVI-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LDA-" ++ show fixed_hmm_datasize_inf
               , flip (bbviLDA fixed_bbvi_samples_inf) fixed_lda_datasize_inf) row_header
 
--- bench_INVI :: [Int] -> IO ()
--- bench_INVI args = do
---     let row_header = ("Number of INVI steps", args)
---     writeRow fixed_output_file row_header
---     benchRow ("INVI-[ ]-" ++ show fixed_invi_samples_inf ++ "-LR-" ++ show fixed_lr_datasize_inf
---               , flip (inviLinRegr fixed_invi_samples_inf) fixed_lr_datasize_inf) row_header
---     benchRow ("INVI-[ ]-" ++ show fixed_invi_samples_inf ++ "-HMM-" ++ show fixed_hmm_datasize_inf
---               , flip (inviHMM fixed_invi_samples_inf) fixed_hmm_datasize_inf) row_header
---     benchRow ("INVI-[ ]-" ++ show fixed_invi_samples_inf ++ "-LDA-" ++ show fixed_hmm_datasize_inf
---               , flip (inviLDA fixed_invi_samples_inf) fixed_lda_datasize_inf) row_header
-
 runBenchmarks :: IO ()
 runBenchmarks = do
   -- | Read input benchmark parameters
@@ -254,18 +198,15 @@ runBenchmarks = do
       args = map (map read . splitOn ",") (removeComments (lines content))
   -- | Run benchmark programs on their corresponding parameters
   case args of
-        [lr, hmm, lda, sim, lw, mh, smc, rmsmc, pmmh, bbvi, invi] -> do
+        [lr, hmm, lda, mh, smc, rmsmc, pmmh, bbvi] -> do
           bench_LR lr
           bench_HMM hmm
           bench_LDA lda
-          -- bench_SIM sim
-          -- bench_LW lw
           bench_MH mh
           -- bench_SMC smc
           -- bench_RMSMC rmsmc
           bench_PMMH pmmh
           bench_BBVI bbvi
-          -- bench_INVI invi
         _   -> error "bad input file"
 
 main :: IO ()
