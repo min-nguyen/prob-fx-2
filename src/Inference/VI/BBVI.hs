@@ -49,7 +49,7 @@ bbvi :: forall env es a b. es ~ '[Sampler]
   -> Sampler ParamTrace                 -- ^ final guide parameters λ_T
 bbvi num_timesteps num_samples guide model env  = do
   λ_0 <- VI.collectParams env guide
-  liftIO (print λ_0)
+  -- liftIO (print λ_0)
   (handleIO . handleLRatio)
     $ VI.viLoop num_timesteps num_samples guide (handleGuide env) model handleModel λ_0
 

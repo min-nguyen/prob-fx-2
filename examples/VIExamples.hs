@@ -125,7 +125,7 @@ hmmGuide n x0 = do
 bbviHMM :: Int -> Int -> Int -> Sampler ([Double], [Double])
 bbviHMM t_steps l_samples hmm_length = do
   ys <- simHMM hmm_length
-  liftIO (print ys)
+  -- liftIO (print ys)
   let empty_env  = #trans_p := [] <:> #obs_p := [] <:> #x := []  <:> enil
 
   traceQ <- BBVI.bbvi t_steps l_samples (hmmGuide hmm_length 0) (hmm hmm_length 0 ys) empty_env
@@ -136,7 +136,7 @@ bbviHMM t_steps l_samples hmm_length = do
 mleHMM :: Int -> Int -> Int -> Sampler ([Double], [Double])
 mleHMM t_steps l_samples hmm_length = do
   ys <- simHMM hmm_length
-  liftIO (print ys)
+  -- liftIO (print ys)
   let empty_env  = #trans_p := [] <:> #obs_p := [] <:> #x := []  <:> enil
 
   traceQ <- MLE.mle t_steps l_samples (hmmGuide hmm_length 0) (hmm hmm_length 0 ys) empty_env
@@ -147,7 +147,7 @@ mleHMM t_steps l_samples hmm_length = do
 mapHMM :: Int -> Int -> Int -> Sampler ([Double], [Double])
 mapHMM t_steps l_samples hmm_length = do
   ys <- simHMM hmm_length
-  liftIO (print ys)
+  -- liftIO (print ys)
   let empty_env  = #trans_p := [] <:> #obs_p := [] <:> #x := []  <:> enil
 
   traceQ <- MAP.map t_steps l_samples (hmmGuide hmm_length 0) (hmm hmm_length 0 ys) empty_env
