@@ -40,6 +40,24 @@ end
   end
 end
 
+function hmmData(n_datapoints::Int)
+  return Gen.simulate(hmm, (n_datapoints,))
+end
+
+@gen function hmm(T::Int)
+  trans_p = @trace(uniform(0, 1), :trans_p)
+  obs_p   = @trace(uniform(0, 1), :obs_p)
+  x  = 0::Int
+  ys = Array{Any}(undef, T)
+  for t=1:T
+    dX    = @trace(bernoulli(trans_p), (:x, t))
+    x     = x + Int(dX)
+    ys[t] = @trace(binom(x, obs_p), (:y, t))
+  end
+  return ys
+end
+
+
 @gen function linRegrSMC(T::Int)
   m = @trace(normal(0, exp(3)), :m)
   c = @trace(normal(0, exp(5)), :c)
