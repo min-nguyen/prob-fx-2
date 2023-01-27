@@ -11,7 +11,6 @@ import Control.Monad.Bayes.Weighted
 import Sampler
 import           Statistics.Distribution        ( logProbability )
 import qualified Statistics.Distribution.Binomial  as SB
-import           Numeric.Log
 import Control.Monad
 import Data.Maybe
 import Data.Vector (Vector, fromList, toList)
@@ -84,7 +83,7 @@ bench_SMC_MonadBayes args = do
     benchRow ("SMC-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
               , liftIO . flip MonadBayes.smcHMM fixed_hmm_datasize_inf) row_header output_file
     benchRow ("SMC-[ ]-LDA-" ++ show fixed_lda_datasize_inf
-              , liftIO . flip MonadBayes.smcLinRegr fixed_lda_datasize_inf) row_header output_file
+              , liftIO . flip MonadBayes.smcLDA fixed_lda_datasize_inf) row_header output_file
 
 bench_PMMH_MonadBayes :: [Int] -> IO ()
 bench_PMMH_MonadBayes args = do

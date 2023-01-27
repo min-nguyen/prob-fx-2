@@ -30,6 +30,7 @@ def plotPage(data_dicts, n_groups, n_rows):
       header_row  = group[0]
       x_parameter = header_row[0]
       x_values    = list(map(int, header_row[1:]))
+      print(x_values)
       # Iterate over programs
       for col_idx, prog in enumerate((group[1:])):
         # Set up plot labels
@@ -42,7 +43,12 @@ def plotPage(data_dicts, n_groups, n_rows):
 
         # Plot benchmarks
         prog_values  = list(map(float, prog[1:]))
-        axis_a[row_idx][col_idx].plot(x_values, prog_values, color=data_dict["color"], label=data_dict["label"])
+
+        # Don't plot dummy results
+        if (not (0 in prog_values)):
+          axis_a[row_idx][col_idx].plot(x_values, prog_values, color=data_dict["color"], label=data_dict["label"])
+  fig_a.legend([data_dict["label"] for data_dict in data_dicts])
+
 
 with open('benchmarks-prob-fx.csv') as benchmarks_pfx, open('benchmarks-monad-bayes.csv') as benchmarks_mb:
 

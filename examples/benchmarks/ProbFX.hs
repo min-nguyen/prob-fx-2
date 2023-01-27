@@ -113,16 +113,16 @@ bench_BBVI args = do
     benchRow ("BBVI-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LDA-" ++ show fixed_lda_datasize_inf
               , flip (bbviLDA fixed_bbvi_samples_inf) fixed_lda_datasize_inf) row_header output_file
 
--- bench_RMSMC :: [Int] -> IO ()
--- bench_RMSMC args = do
---     let row_header = ("Number of RMSMC rejuvenation steps", args)
---     writeRow output_file row_header
---     benchRow ("RMSMC-" ++ show fixed_rmsmc_particles_inf ++ "-[ ]-LR-" ++ show fixed_lr_datasize_inf
---               , flip (rmsmcLinRegr fixed_rmsmc_particles_inf) fixed_lr_datasize_inf) row_header output_file
---     benchRow ("RMSMC-" ++ show fixed_rmsmc_particles_inf ++ "-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
---               , flip (rmsmcHMM fixed_rmsmc_particles_inf) fixed_hmm_datasize_inf) row_header output_file
---     benchRow ("RMSMC-" ++ show fixed_rmsmc_particles_inf ++ "-[ ]-LDA-" ++ show fixed_lda_datasize_inf
---               , flip (rmsmcLDA fixed_rmsmc_particles_inf) fixed_lda_datasize_inf) row_header output_file
+bench_RMSMC :: [Int] -> IO ()
+bench_RMSMC args = do
+    let row_header = ("Number of RMSMC rejuvenation steps", args)
+    writeRow output_file row_header
+    benchRow ("RMSMC-" ++ show fixed_rmsmc_particles_inf ++ "-[ ]-LR-" ++ show fixed_lr_datasize_inf
+              , flip (rmsmcLinRegr fixed_rmsmc_particles_inf) fixed_lr_datasize_inf) row_header output_file
+    benchRow ("RMSMC-" ++ show fixed_rmsmc_particles_inf ++ "-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
+              , flip (rmsmcHMM fixed_rmsmc_particles_inf) fixed_hmm_datasize_inf) row_header output_file
+    benchRow ("RMSMC-" ++ show fixed_rmsmc_particles_inf ++ "-[ ]-LDA-" ++ show fixed_lda_datasize_inf
+              , flip (rmsmcLDA fixed_rmsmc_particles_inf) fixed_lda_datasize_inf) row_header output_file
 
 runBenchmarks :: IO ()
 runBenchmarks = do

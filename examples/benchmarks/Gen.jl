@@ -101,12 +101,12 @@ function bbviHMM(num_iters::Int, n_samples::Int, n_datapoints::Int)
     constraints[(:y, i)] = y
   end
 
-  init_param!(hmmGuide, :trans_p_a, -0.5)
-  init_param!(hmmGuide, :trans_p_b, -0.5)
-  init_param!(hmmGuide, :obs_p_a, -0.5)
-  init_param!(hmmGuide, :obs_p_b, -0.5)
+  init_param!(hmmGuide, :trans_p_a, 5)
+  init_param!(hmmGuide, :trans_p_b, 5)
+  init_param!(hmmGuide, :obs_p_a, 5)
+  init_param!(hmmGuide, :obs_p_b, 5)
 
-  update = ParamUpdate(GradientDescent(1e-9, 1000000000), hmmGuide)
+  update = ParamUpdate(GradientDescent(1e-9, 100000), hmmGuide)
   black_box_vi!(hmm, (n_datapoints,), constraints, hmmGuide, (n_datapoints,), update;
     iters=num_iters, samples_per_iter=n_samples, verbose=true)
 end
