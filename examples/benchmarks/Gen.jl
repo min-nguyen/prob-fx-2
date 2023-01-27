@@ -35,18 +35,13 @@ end
   @param trans_p_b
   @param obs_p_a
   @param obs_p_b
-  trans_p = @trace(beta(trans_p_a, trans_p_b), :trans_p)
-  obs_p   = @trace(beta(obs_p_a, obs_p_b), :obs_p)
-  x  = 0::Int
-  for t=1:T
-    dX    = @trace(bernoulli(trans_p), (:x, t))
-    x     = x + Int(dX)
-  end
+  trans_p = @trace(beta(exp(trans_p_a), exp(trans_p_b)), :trans_p)
+  obs_p   = @trace(beta(exp(obs_p_a), exp(obs_p_b)), :obs_p)
 end
 
 @gen function hmm(T::Int)
-  trans_p = @trace(beta(2, 2), :trans_p)
-  obs_p   = @trace(beta(2, 2), :obs_p)
+  trans_p = @trace(beta(exp(0), exp(0)), :trans_p)
+  obs_p   = @trace(beta(exp(0), exp(0)), :obs_p)
   x  = 0::Int
   ys = Array{Int}(undef, T)
   for t=1:T
@@ -106,15 +101,16 @@ function bbviHMM(num_iters::Int, n_samples::Int, n_datapoints::Int)
     constraints[(:y, i)] = y
   end
 
-  init_param!(hmmGuide, :trans_p_a, 0.5)
-  init_param!(hmmGuide, :trans_p_b, 0.5)
-  init_param!(hmmGuide, :obs_p_a, 0.5)
-  init_param!(hmmGuide, :obs_p_b, 0.5)
+  init_param!(hmmGuide, :trans_p_a, -0.5)
+  init_param!(hmmGuide, :trans_p_b, -0.5)
+  init_param!(hmmGuide, :obs_p_a, -0.5)
+  init_param!(hmmGuide, :obs_p_b, -0.5)
 
-  update = ParamUpdate(GradientDescent(1e-15, 1000000000), hmmGuide)
+  update = ParamUpdate(GradientDescent(1e-9, 1000000000), hmmGuide)
   black_box_vi!(hmm, (n_datapoints,), constraints, hmmGuide, (n_datapoints,), update;
     iters=num_iters, samples_per_iter=n_samples, verbose=true)
 end
+bbviHMM(6, 100, 10)
 
 function bench_HMM_MH()
   results = Array{Any}(undef, length(hmm_range))
@@ -146,7 +142,6 @@ end
 #   parseBenchmark("HMM-[ ]-BBVI-" * string(fixed_bbvi_steps) * "-" * string(fixed_bbvi_samples), results)
 # end
 
-bbviHMM(1, 1, 10)
 
 # bench_HMM_BBVI()
 
