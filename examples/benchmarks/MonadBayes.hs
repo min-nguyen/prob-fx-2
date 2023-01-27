@@ -1,16 +1,18 @@
+{-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use camelCase" #-}
 module MonadBayes where
 
+import BenchmarkUtil
 import Control.Monad.Bayes.Class
 import Control.Monad.Bayes.Traced.Basic
 import Control.Monad.Bayes.Sampler.Lazy
 import Control.Monad.Bayes.Weighted
-import Criterion.Main
-import Criterion (benchmark)
+import Sampler
 import           Statistics.Distribution        ( logProbability )
 import qualified Statistics.Distribution.Binomial  as SB
 import           Numeric.Log
 import Control.Monad
-import Data.Bifunctor
 import Data.Maybe
 import Data.Vector (Vector, fromList, toList)
 import Data.List
@@ -18,6 +20,112 @@ import Control.Monad.Bayes.Inference.MCMC
 import Control.Monad.Bayes.Population (multinomial, resampleMultinomial, runPopulation)
 import Control.Monad.Bayes.Inference.SMC
 import Control.Monad.Bayes.Inference.PMMH
+import Data.List.Split (splitOn)
+
+input_file :: String
+input_file = "examples/benchmarks/params-monad-bayes.txt"
+
+output_file :: String
+output_file = "examples/benchmarks/benchmarks-monad-bayes.csv"
+
+bench_LR_MonadBayes :: [Int] -> IO ()
+bench_LR_MonadBayes args = do
+    let row_header = ("Dataset size", args)
+    writeRow output_file row_header
+    benchRow ("LR-[ ]-MH-" ++ show fixed_mh_steps
+              , liftIO . MonadBayes.mhLinRegr fixed_mh_steps) row_header output_file
+    benchRow ("LR-[ ]-SMC-" ++ show fixed_smc_particles
+              , liftIO . MonadBayes.smcLinRegr fixed_smc_particles)  row_header output_file
+    benchRow ("LR-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
+              , liftIO . MonadBayes.pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header  output_file
+    dummyRow ("LR-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples) row_header output_file
+
+bench_HMM_MonadBayes :: [Int] -> IO ()
+bench_HMM_MonadBayes args = do
+    let row_header = ("Dataset size", args)
+    writeRow output_file row_header
+    benchRow ("HMM-[ ]-MH-" ++ show fixed_mh_steps
+              , liftIO . MonadBayes.mhHMM fixed_mh_steps) row_header output_file
+    benchRow ("HMM-[ ]-SMC-" ++ show fixed_mh_steps
+              , liftIO . MonadBayes.smcHMM fixed_smc_particles) row_header output_file
+    benchRow ("HMM-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
+              , liftIO . MonadBayes.pmmhHMM fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
+    dummyRow ("HMM-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples) row_header output_file
+
+bench_LDA_MonadBayes :: [Int] -> IO ()
+bench_LDA_MonadBayes args = do
+    let row_header = ("Dataset size", args)
+    writeRow output_file row_header
+    benchRow ("LDA-[ ]-MH-" ++ show fixed_mh_steps
+              , liftIO . MonadBayes.mhLDA fixed_mh_steps) row_header output_file
+    benchRow ("LDA-[ ]-SMC-" ++ show fixed_mh_steps
+              , liftIO . MonadBayes.smcLDA fixed_smc_particles) row_header output_file
+    benchRow ("LDA-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
+              , liftIO . MonadBayes.pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
+    dummyRow ("LDA-[ ]-BBVI-" ++ show fixed_bbvi_steps ++ "-" ++ show fixed_bbvi_samples) row_header output_file
+
+bench_MH_MonadBayes :: [Int] -> IO ()
+bench_MH_MonadBayes args = do
+    let row_header = ("Number of MH steps", args)
+    writeRow output_file row_header
+    benchRow ("MH-[ ]-LR-" ++ show fixed_lr_datasize_inf
+              , liftIO . flip MonadBayes.mhLinRegr fixed_lr_datasize_inf) row_header output_file
+    benchRow ("MH-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
+              , liftIO . flip MonadBayes.mhHMM fixed_hmm_datasize_inf) row_header output_file
+    benchRow ("MH-[ ]-LDA-" ++ show fixed_lda_datasize_inf
+              , liftIO . flip MonadBayes.mhLDA fixed_lda_datasize_inf) row_header output_file
+
+bench_SMC_MonadBayes :: [Int] -> IO ()
+bench_SMC_MonadBayes args = do
+    let row_header = ("Number of SMC particles", args)
+    writeRow output_file row_header
+    benchRow ("SMC-[ ]-LR-" ++ show fixed_lr_datasize_inf
+              , liftIO . flip MonadBayes.smcLinRegr fixed_lr_datasize_inf) row_header output_file
+    benchRow ("SMC-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
+              , liftIO . flip MonadBayes.smcHMM fixed_hmm_datasize_inf) row_header output_file
+    benchRow ("SMC-[ ]-LDA-" ++ show fixed_lda_datasize_inf
+              , liftIO . flip MonadBayes.smcLinRegr fixed_lda_datasize_inf) row_header output_file
+
+bench_PMMH_MonadBayes :: [Int] -> IO ()
+bench_PMMH_MonadBayes args = do
+    let row_header = ("Number of PMMH particles", args)
+    writeRow output_file row_header
+    benchRow ("PMMH-" ++ show fixed_pmmh_mhsteps_inf ++ "-[ ]-LR-" ++ show fixed_lr_datasize_inf
+              , liftIO . flip (MonadBayes.pmmhLinRegr fixed_pmmh_mhsteps_inf) fixed_lr_datasize_inf) row_header output_file
+    benchRow ("PMMH-" ++ show fixed_pmmh_mhsteps_inf ++ "-[ ]-HMM-" ++ show fixed_hmm_datasize_inf
+              , liftIO . flip (MonadBayes.pmmhHMM fixed_pmmh_mhsteps_inf) fixed_hmm_datasize_inf) row_header output_file
+    benchRow ("PMMH-" ++ show fixed_pmmh_mhsteps_inf ++ "-[ ]-LDA-" ++ show fixed_lda_datasize_inf
+              , liftIO . flip (MonadBayes.pmmhLDA fixed_pmmh_mhsteps_inf) fixed_lda_datasize_inf) row_header output_file
+
+bench_BBVI_MonadBayes :: [Int] -> IO ()
+bench_BBVI_MonadBayes args = do
+    let row_header = ("Number of BBVI steps", args)
+    writeRow output_file row_header
+    dummyRow ("BBVI-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LR-" ++ show fixed_lr_datasize_inf) row_header output_file
+    dummyRow ("BBVI-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-HMM-" ++ show fixed_hmm_datasize_inf) row_header output_file
+    dummyRow ("BBVI-[ ]-" ++ show fixed_bbvi_samples_inf ++ "-LDA-" ++ show fixed_lda_datasize_inf) row_header output_file
+
+runBenchmarks :: IO ()
+runBenchmarks = do
+  -- | Read input benchmark parameters
+  content <- readFile input_file
+  let removeComments :: [String] -> [String]
+      removeComments = filter (\case []     -> False
+                                     (x:xs) -> x /= '#')
+  let args :: [[Int]]
+      args = map (map read . splitOn ",") (removeComments (lines content))
+  -- | Run benchmark programs on their corresponding parameters
+  case args of
+        [lr, hmm, lda, mh, smc, rmsmc, pmmh, bbvi] -> do
+        --   bench_LR_MonadBayes lr
+        --   bench_HMM_MonadBayes hmm
+        --   bench_LDA_MonadBayes lda
+        --   bench_MH_MonadBayes mh
+            bench_SMC_MonadBayes smc
+            bench_PMMH_MonadBayes pmmh
+            -- bench_BBVI_MonadBayes bbvi
+        _   -> error "bad input file"
+
 
 {- Lin Regression -}
 

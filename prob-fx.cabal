@@ -149,7 +149,9 @@ executable benchmarks
                       LDA,
                       LinRegr,
                       VIExamples,
-                      MonadBayes
+                      BenchmarkUtil,
+                      MonadBayes,
+                      ProbFX
   build-depends:      base,
                       criterion,
                       deepseq,
