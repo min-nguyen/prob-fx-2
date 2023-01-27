@@ -7,8 +7,7 @@ using GenDistributions # Requires: https://github.com/probcomp/GenDistributions.
 using Distributions
 using Gen
 
-fileStream = open("benchmarks-gen.csv","a")
-
+benchmark_file = "benchmarks-gen.csv"
 lr_range = [100,200,300,400,500]
 hmm_range = [100,200,300,400,500]
 lda_range = [200,400,600,800,1000]
@@ -29,6 +28,7 @@ fixed_lda_size = 50
 const dirichlet = DistributionsBacked(alpha -> Dirichlet(alpha), (true,), true, Vector{Float64})
 
 function parseBenchmark(label::String, row)
+  fileStream = open(benchmark_file,"a")
   write(fileStream, label * ",")
   for (i, t) in enumerate(row)
     write(fileStream, string(t))
@@ -37,6 +37,8 @@ function parseBenchmark(label::String, row)
     end
   end
   write(fileStream, "\n")
+  println("Done: " * string(row))
+  close(fileStream)
 end
 
 ######################################## LDA
@@ -177,8 +179,8 @@ function bench_LDA_SMC()
   parseBenchmark("LDA-[ ]-SMC-" * string(fixed_smc_particles), results)
 end
 
-function bench_HMM_PMMH()
-  parseBenchmark("LDA-[ ]-PMMH-" * string(fixed_pmmh_mhsteps) * "-" * string(fixed_pmmh_particles), zeros(length(lda_range)))
+function bench_LDA_PMMH()
+  parseBenchmark("LDA-[ ]-PMMH-" * string(fixed_pmmh_mhsteps), zeros(length(lda_range)))
 end
 
 function bench_LDA_BBVI()
@@ -188,7 +190,7 @@ function bench_LDA_BBVI()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("LDA-[ ]-BBVI-" * string(fixed_bbvi_steps) * "-" * string(fixed_bbvi_samples), results)
+  parseBenchmark("LDA-[ ]-BBVI-" * string(fixed_bbvi_steps) , results)
 end
 
 ######################################## HMM
@@ -288,7 +290,7 @@ function bench_HMM_SMC()
 end
 
 function bench_HMM_PMMH()
-  parseBenchmark("HMM-[ ]-PMMH-" * string(fixed_pmmh_mhsteps) * "-" * string(fixed_pmmh_particles), zeros(length(hmm_range)))
+  parseBenchmark("HMM-[ ]-PMMH-" * string(fixed_pmmh_particles), zeros(length(hmm_range)))
 end
 
 function bench_HMM_BBVI()
@@ -298,7 +300,7 @@ function bench_HMM_BBVI()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("HMM-[ ]-BBVI-" * string(fixed_bbvi_steps) * "-" * string(fixed_bbvi_samples), results)
+  parseBenchmark("HMM-[ ]-BBVI-" * string(fixed_bbvi_steps), results)
 end
 
 ######################################## LIN REGR
@@ -431,7 +433,7 @@ function bench_LR_BBVI()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("LR-[ ]-BBVI-" * string(fixed_bbvi_steps) * "-" * string(fixed_bbvi_samples), results)
+  parseBenchmark("LR-[ ]-BBVI-" * string(fixed_bbvi_steps), results)
 end
 
 ######################################## MH
@@ -501,15 +503,15 @@ end
 ######################################## PMMH
 
 function bench_PMMH_LR()
-  parseBenchmark("PMMH-" ++ show fixed_pmmh_mhsteps ++ "-[ ]-LR-" ++ show fixed_lr_size, zeros(length(pmmh_range)))
+  parseBenchmark("PMMH-" * "-[ ]-LR-" * string(fixed_lr_size), zeros(length(pmmh_range)))
 end
 
 function bench_PMMH_HMM()
-  parseBenchmark("PMMH-" ++ show fixed_pmmh_mhsteps ++ "-[ ]-HMM-" ++ show fixed_hmm_size, zeros(length(pmmh_range)))
+  parseBenchmark("PMMH-" * "-[ ]-HMM-" * string(fixed_hmm_size), zeros(length(pmmh_range)))
 end
 
 function bench_PMMH_LDA()
-  parseBenchmark("PMMH-" ++ show fixed_pmmh_mhsteps ++ "-[ ]-LDA-" ++ show fixed_lda_size, zeros(length(pmmh_range)))
+  parseBenchmark("PMMH-"  * "-[ ]-LDA-" * string(fixed_lda_size), zeros(length(pmmh_range)))
 end
 
 ######################################## BBVI
@@ -521,7 +523,7 @@ function bench_BBVI_LR()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("BBVI-[ ]-" *  string(fixed_bbvi_samples) * "-LR-" * string(fixed_lr_size), results)
+  parseBenchmark("BBVI-[ ]-" * "-LR-" * string(fixed_lr_size), results)
 end
 
 function bench_BBVI_HMM()
@@ -531,7 +533,7 @@ function bench_BBVI_HMM()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("BBVI-[ ]-" *  string(fixed_bbvi_samples) * "-HMM-" * string(fixed_hmm_size), results)
+  parseBenchmark("BBVI-[ ]-" *  "-HMM-" * string(fixed_hmm_size), results)
 end
 
 function bench_BBVI_LDA()
@@ -541,13 +543,13 @@ function bench_BBVI_LDA()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("BBVI-[ ]-" *  string(fixed_bbvi_samples) * "-LDA-" * string(fixed_lda_size), results)
+  parseBenchmark("BBVI-[ ]-" * "-LDA-" * string(fixed_lda_size), results)
 end
 
 ######################################## Top-level benchmarks
 
 function bench_LR()
-  parseBenchmark("Dataset size", lr_range)
+  parseBenchmark("Number of points", lr_range)
   bench_LR_MH()
   bench_LR_SMC()
   bench_LR_PMMH()
@@ -555,7 +557,7 @@ function bench_LR()
 end
 
 function bench_HMM()
-  parseBenchmark("Dataset size", hmm_range)
+  parseBenchmark("Number of nodes", hmm_range)
   bench_HMM_MH()
   bench_HMM_SMC()
   bench_HMM_PMMH()
@@ -563,7 +565,7 @@ function bench_HMM()
 end
 
 function bench_LDA()
-  parseBenchmark("Dataset size", lda_range)
+  parseBenchmark("Number of words", lda_range)
   bench_LDA_MH()
   bench_LDA_SMC()
   bench_LDA_PMMH()
@@ -599,7 +601,7 @@ function bench_BBVI()
 end
 
 function benchAll()
-  # bench_LR()
+  bench_LR()
   bench_HMM()
   bench_LDA()
   bench_MH()
@@ -607,3 +609,5 @@ function benchAll()
   bench_PMMH()
   bench_BBVI()
 end
+
+benchAll()
