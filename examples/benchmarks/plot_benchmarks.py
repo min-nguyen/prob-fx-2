@@ -49,8 +49,8 @@ def plotPage(data_dicts, n_groups, n_rows):
 
         # Don't plot dummy results
         if (not (0 in prog_values)):
-          axis_a[row_idx][col_idx].plot(x_values, prog_values, color=data_dict["color"], label=data_dict["label"])
-  fig_a.legend([data_dict["label"] for data_dict in data_dicts], bbox_to_anchor=[1, 1], loc="upper right")
+          axis_a[row_idx][col_idx].plot(x_values, prog_values, color=data_dict["color"], label=data_dict["language"])
+  fig_a.legend([data_dict["language"] for data_dict in data_dicts], bbox_to_anchor=[1, 1], loc="upper right")
 
 
 with open('benchmarks-prob-fx.csv') as benchmarks_pfx, open('benchmarks-monad-bayes.csv') as benchmarks_mb, open('benchmarks-gen.csv') as benchmarks_gen:
@@ -58,20 +58,20 @@ with open('benchmarks-prob-fx.csv') as benchmarks_pfx, open('benchmarks-monad-ba
   raw_data_pfx                = [row for row in csv.reader(benchmarks_pfx, delimiter=',')]
   (models_pfx, raw_data_pfx)  = groupBenchmarks(raw_data_pfx, n_groups=3, n_rows=4)
   (infs_pfx, _)                = groupBenchmarks(raw_data_pfx, n_groups=4, n_rows=3)
-  models_pfx                  = { "label": "ProbFX", "color": 'b', "data": models_pfx }
-  infs_pfx                     = { "label": "ProbFX", "color": 'b', "data": infs_pfx }
+  models_pfx                  = { "language": "ProbFX", "color": 'b', "data": models_pfx }
+  infs_pfx                     = { "language": "ProbFX", "color": 'b', "data": infs_pfx }
 
   raw_data_mb                 = [row for row in csv.reader(benchmarks_mb, delimiter=',')]
   (models_mb, raw_data_mb)    = groupBenchmarks(raw_data_mb, n_groups=3, n_rows=4)
   (infs_mb, _)                 = groupBenchmarks(raw_data_mb, n_groups=4, n_rows=3)
-  models_mb                   = { "label": "MonadBayes", "color": 'r', "data": models_mb }
-  infs_mb                      = { "label": "MonadBayes", "color": 'r', "data": infs_mb }
+  models_mb                   = { "language": "MonadBayes", "color": 'r', "data": models_mb }
+  infs_mb                      = { "language": "MonadBayes", "color": 'r', "data": infs_mb }
 
   raw_data_gen                 = [row for row in csv.reader(benchmarks_gen, delimiter=',')]
   (models_gen, raw_data_gen)    = groupBenchmarks(raw_data_gen, n_groups=3, n_rows=4)
   (infs_gen, _)                 = groupBenchmarks(raw_data_gen, n_groups=4, n_rows=3)
-  models_gen                   = { "label": "Gen", "color": 'g', "data": models_gen }
-  infs_gen                      = { "label": "Gen", "color": 'g', "data": infs_gen }
+  models_gen                   = { "language": "Gen", "color": 'g', "data": models_gen }
+  infs_gen                      = { "language": "Gen", "color": 'g', "data": infs_gen }
 
   print(models_pfx, infs_pfx)
 
