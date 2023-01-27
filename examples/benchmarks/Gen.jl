@@ -11,6 +11,7 @@ fileStream = open("benchmarks-gen.csv","a")
 
 lr_range = [100,200]#,300,400,500]
 hmm_range = [100,200]#,300,400,500]
+lda_range = [200,400]#,600,800,1000]
 fixed_mh_steps = 100
 fixed_smc_particles = 100
 fixed_bbvi_steps = 50
@@ -58,7 +59,7 @@ fixed_words      = ["DNA","evolution","DNA","evolution","DNA","evolution","DNA",
 function ldaData(n_words::Int)
   words     = Vector{String}(undef, n_words)
   for i in 1:n_words
-    words[i] = fixed_words[mod(length(fixed_words), i) + 1]
+    words[i] = fixed_words[mod(i, length(fixed_words)) + 1]
   end
   return wordsToIdxs(words)
 end
@@ -161,6 +162,38 @@ function bbviLDA(num_iters::Int, n_samples::Int, n_words::Int)
   black_box_vi!(lda, (n_words,), constraints, ldaGuide, (n_words,), update;
     iters=num_iters, samples_per_iter=n_samples, verbose=true)
 end
+
+function bench_LDA_MH()
+  results = Array{Any}(undef, length(lda_range))
+  for (i, n_words) in enumerate(lda_range)
+    b = @benchmark mhLDA(fixed_mh_steps, $n_words)
+    t = mean(b.times)/(1000000000)
+    results[i] = mean(b.times)/(1000000000)
+  end
+  parseBenchmark("LDA-[ ]-MH-" * string(fixed_mh_steps), results)
+end
+
+function bench_LDA_SMC()
+  results = Array{Any}(undef, length(lda_range))
+  for (i, n_words) in enumerate(lda_range)
+    b = @benchmark smcLDA(fixed_smc_particles, $n_words)
+    t = mean(b.times)/(1000000000)
+    results[i] = mean(b.times)/(1000000000)
+  end
+  parseBenchmark("LDA-[ ]-SMC-" * string(fixed_smc_particles), results)
+end
+
+function bench_LDA_BBVI()
+  results = Array{Any}(undef, length(lda_range))
+  for (i, n_words) in enumerate(lda_range)
+    b = @benchmark bbviLDA(fixed_bbvi_steps, fixed_bbvi_samples, $n_words)
+    t = mean(b.times)/(1000000000)
+    results[i] = mean(b.times)/(1000000000)
+  end
+  parseBenchmark("LDA-[ ]-BBVI-" * string(fixed_bbvi_steps) * "-" * string(fixed_bbvi_samples), results)
+end
+
+bench_LDA_BBVI()
 
 ##### HMM
 
