@@ -49,49 +49,50 @@ function idxsToWords(word_idxs)
   return word_idxs
 end
 
-fixed_vocab     = ["DNA", "evolution", "parsing", "phonology"]
-fixed_topics    = 2
+fixed_vocab      = ["DNA", "evolution", "parsing", "phonology"]
+fixed_vocab_size = 4
+fixed_topics     = 2
+fixed_words      = ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA"]
+
+function ldaData(n_words)
+  words     = Vector{String}(undef, n_words)
+  for i in 1:n_words
+    words[i] = fixed_words[mod(length(fixed_words), i) + 1]
+  end
+  return words
+end
 
 @gen function topicModel(n_words)
+  doc_topic_ps  = @trace(dirichlet(ones(fixed_topics)), :doc_topic_ps)
+  topic_word_ps = Vector{Vector{Float64}}(undef, fixed_topics)
+
+  # set list of topic probabilities for the document
+  for i in 1:fixed_topics
+    # set list of word probabilities for each topic
+    topic_word_ps[i] = @trace(dirichlet(ones(fixed_vocab_size)), (:topic_word_ps, i))
+  end
+
   # initialise list of corresponding word indexes observed
   words     = Vector{String}(undef, n_words)
   word_idxs = Vector{Int64}(undef, n_words)
 
-  ps = @trace(dirichlet(ones(fixed_topics)), :ps)
-  println(ps)
-  # doc_topic_ps ~ Dirichlet(ones(fixed_topics))
-  # # print(word_idxs)
-  # if topic_word_ps === missing
-  #   # initialise list of word probabilities for each topic
-  #   topic_word_ps = Vector{Vector{Float64}}(undef, fixed_topics)
-  # end
+  # # initialis list of topics observed
+  topic_obs = Vector{Int64}(undef, n_words)
 
-  # # set list of topic probabilities for the document
-  # for i in 1:fixed_topics
-  #   # set list of word probabilities for each topic
-  #   topic_word_ps[i] ~ Dirichlet((ones(length(fixed_vocab))))
-  # end
-
-  # # initialise list of topics observed
-  # topic_obs = Vector{Int64}(undef, n_words)
-
-  # for i in 1:n_words
-  #   # observe a topic
-  #   topic_obs[i] ~ Categorical(doc_topic_ps)
-  #   # fetch the topic's corresponding word distribution
-  #   word_ps = topic_word_ps[topic_obs[i]]
-  #   # observe a word index for that topic
-  #   word_idxs[i] ~ Categorical(word_ps)
-  # end
-  # # print(word_idxs)
-
-  # # print(word_idxs)
-  # # print(doc_topic_ps)
-  # # print(topic_word_ps)
-  # return word_idxs
+  for i in 1:n_words
+    # observe a topic
+    topic_obs[i] = @trace(categorical(doc_topic_ps), (:topic, i))
+    # fetch the topic's corresponding word distribution
+    word_ps      = topic_word_ps[topic_obs[i]]
+    # observe a word index for that topic
+    word_idxs[i] = @trace(categorical(word_ps), (:word, i))
+  end
+  println(idxsToWords(word_idxs))
 end
 
-topicModel(5)
+# topicModel(5)
+
+println(ldaData(50))
 
 ##### HMM
 
