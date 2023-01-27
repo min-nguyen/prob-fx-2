@@ -3,22 +3,30 @@ using BenchmarkTools
 using DataFrames
 using CSV
 using Statistics
-using GenDistributions
+using GenDistributions # Requires: https://github.com/probcomp/GenDistributions.jl/blob/main/src/GenDistributions.jl
 using Distributions
 using Gen
 
 fileStream = open("benchmarks-gen.csv","a")
 
-lr_range = [100,200]#,300,400,500]
-hmm_range = [100,200]#,300,400,500]
-lda_range = [200,400]#,600,800,1000]
+lr_range = [100,200,300,400,500]
+hmm_range = [100,200,300,400,500]
+lda_range = [200,400,600,800,1000]
 fixed_mh_steps = 100
 fixed_smc_particles = 100
+fixed_pmmh_mhsteps   = 50
+fixed_pmmh_particles = 10
 fixed_bbvi_steps = 50
 fixed_bbvi_samples = 10
+mh_range=[200,400,600,800,1000]
+smc_range=[200,400,600,800,1000]
+pmmh_range=[10,20,30,40,50]
+bbvi_range=[200,400,600,800,1000]
+fixed_lr_size = 50
+fixed_hmm_size = 50
+fixed_lda_size = 50
 
 const dirichlet = DistributionsBacked(alpha -> Dirichlet(alpha), (true,), true, Vector{Float64})
-
 
 function parseBenchmark(label::String, row)
   write(fileStream, label * ",")
@@ -31,7 +39,7 @@ function parseBenchmark(label::String, row)
   write(fileStream, "\n")
 end
 
-##### LDA
+######################################## LDA
 
 function wordsToIdxs(words)
   n_words = length(words)
@@ -73,22 +81,20 @@ end
 
   topic_word_ps[1] = @trace(dirichlet(topic1_word_conc), (:topic_word_ps, 1))
   topic_word_ps[2] = @trace(dirichlet(topic2_word_conc), (:topic_word_ps, 2))
-
 end
 
 @gen function lda(n_words::Int)
-  doc_topic_ps  = @trace(dirichlet(ones(fixed_topics)), :doc_topic_ps)
-  topic_word_ps = Vector{Vector{Float64}}(undef, fixed_topics)
-
   # set list of topic probabilities for the document
+  doc_topic_ps  = @trace(dirichlet(ones(fixed_topics)), :doc_topic_ps)
+
+  # set list of word probabilities for each topic
+  topic_word_ps = Vector{Vector{Float64}}(undef, fixed_topics)
   for i in 1:fixed_topics
-    # set list of word probabilities for each topic
     topic_word_ps[i] = @trace(dirichlet(ones(fixed_vocab_size)), (:topic_word_ps, i))
   end
 
   # initialise list of word indexes observed
   word_idxs = Vector{Int64}(undef, n_words)
-
   # # initialis list of topics observed
   topic_obs = Vector{Int64}(undef, n_words)
 
@@ -105,39 +111,29 @@ end
 end
 
 function mhLDA(num_iters::Int, n_words::Int)
-  # Create a set of constraints fixing the
-  # y coordinates to the observed y values
   word_idxs = ldaData(n_words)
   constraints = choicemap()
   for (i, word) in enumerate(word_idxs)
       constraints[(:word, i)] = word
   end
 
-  # # Run the model, constrained by `constraints`,
-  # # to get an initial execution trace
   (trace, _) = generate(lda, (n_words,), constraints)
 
-  # Iteratively update the slope then the intercept,
-  # using Gen's metropolis_hastings operator.
   for iter=1:num_iters
       (trace, _) = metropolis_hastings(trace, Gen.select(:doc_topic_ps))
       (trace, _) = metropolis_hastings(trace, Gen.select((:topic_word_ps, 1)))
       (trace, _) = metropolis_hastings(trace, Gen.select((:topic_word_ps, 2)))
   end
 
-  # From the final trace, read out the slope and
-  # the intercept.
   choices = get_choices(trace)
   return (choices[:doc_topic_ps])
 end
 
 function smcLDA(num_particles::Int, n_words::Int)
   word_idxs = ldaData(n_words)
-  # construct initial observations
   init_obs = Gen.choicemap(((:word, 1), word_idxs[1]))
   state = Gen.initialize_particle_filter(lda, (0,), init_obs, num_particles)
 
-  # steps
   for t=1:n_words-1
       Gen.maybe_resample!(state, ess_threshold=num_particles/2)
       obs = Gen.choicemap(((:word, t), word_idxs[t+1]))
@@ -147,8 +143,6 @@ function smcLDA(num_particles::Int, n_words::Int)
 end
 
 function bbviLDA(num_iters::Int, n_samples::Int, n_words::Int)
-  # Create a set of constraints fixing the
-  # y coordinates to the observed y values
   word_idxs = ldaData(n_words)
   constraints = choicemap()
   for (i, word) in enumerate(word_idxs)
@@ -183,6 +177,10 @@ function bench_LDA_SMC()
   parseBenchmark("LDA-[ ]-SMC-" * string(fixed_smc_particles), results)
 end
 
+function bench_HMM_PMMH()
+  parseBenchmark("LDA-[ ]-PMMH-" * string(fixed_pmmh_mhsteps) * "-" * string(fixed_pmmh_particles), zeros(length(lda_range)))
+end
+
 function bench_LDA_BBVI()
   results = Array{Any}(undef, length(lda_range))
   for (i, n_words) in enumerate(lda_range)
@@ -193,9 +191,7 @@ function bench_LDA_BBVI()
   parseBenchmark("LDA-[ ]-BBVI-" * string(fixed_bbvi_steps) * "-" * string(fixed_bbvi_samples), results)
 end
 
-bench_LDA_BBVI()
-
-##### HMM
+######################################## HMM
 
 function hmmData(n_datapoints::Int)
   return hmm(n_datapoints)
@@ -224,34 +220,25 @@ end
 end
 
 function mhHMM(num_iters::Int, n_datapoints::Int)
-  # Create a set of constraints fixing the
-  # y coordinates to the observed y values
   ys = hmmData(n_datapoints)
   constraints = choicemap()
   for (i, y) in enumerate(ys)
       constraints[(:y, i)] = y
   end
 
-  # # Run the model, constrained by `constraints`,
-  # # to get an initial execution trace
   (trace, _) = generate(hmm, (n_datapoints,), constraints)
 
-  # Iteratively update the slope then the intercept,
-  # using Gen's metropolis_hastings operator.
   for iter=1:num_iters
       (trace, _) = metropolis_hastings(trace, Gen.select(:trans_p))
       (trace, _) = metropolis_hastings(trace, Gen.select(:obs_p))
   end
 
-  # From the final trace, read out the slope and
-  # the intercept.
   choices = get_choices(trace)
   return (choices[:trans_p], choices[:obs_p])
 end
 
 function smcHMM(num_particles::Int, n_datapoints::Int)
   ys = hmmData(n_datapoints)
-  # construct initial observations
   init_obs = Gen.choicemap(((:y, 1), ys[1]))
   state = Gen.initialize_particle_filter(hmm, (0,), init_obs, num_particles)
 
@@ -264,8 +251,6 @@ function smcHMM(num_particles::Int, n_datapoints::Int)
 end
 
 function bbviHMM(num_iters::Int, n_samples::Int, n_datapoints::Int)
-  # Create a set of constraints fixing the
-  # y coordinates to the observed y values
   ys = hmmData(n_datapoints)
   constraints = choicemap()
   for (i, y) in enumerate(ys)
@@ -281,7 +266,6 @@ function bbviHMM(num_iters::Int, n_samples::Int, n_datapoints::Int)
   black_box_vi!(hmm, (n_datapoints,), constraints, hmmGuide, (n_datapoints,), update;
     iters=num_iters, samples_per_iter=n_samples, verbose=true)
 end
-
 
 function bench_HMM_MH()
   results = Array{Any}(undef, length(hmm_range))
@@ -303,6 +287,10 @@ function bench_HMM_SMC()
   parseBenchmark("HMM-[ ]-SMC-" * string(fixed_smc_particles), results)
 end
 
+function bench_HMM_PMMH()
+  parseBenchmark("HMM-[ ]-PMMH-" * string(fixed_pmmh_mhsteps) * "-" * string(fixed_pmmh_particles), zeros(length(hmm_range)))
+end
+
 function bench_HMM_BBVI()
   results = Array{Any}(undef, length(hmm_range))
   for (i, n_datapoints) in enumerate(hmm_range)
@@ -313,7 +301,7 @@ function bench_HMM_BBVI()
   parseBenchmark("HMM-[ ]-BBVI-" * string(fixed_bbvi_steps) * "-" * string(fixed_bbvi_samples), results)
 end
 
-##### LIN REGR
+######################################## LIN REGR
 
 function linRegrData(n_datapoints::Int)
   xs = range(0.0, n_datapoints, length=n_datapoints)
@@ -376,7 +364,6 @@ function mhLinRegr(num_iters::Int, n_datapoints::Int)
 end
 
 function smcLinRegr(num_particles::Int, n_datapoints::Int)
-
   (xs, ys) = linRegrData(n_datapoints)
   # construct initial observations
   init_obs = Gen.choicemap(((:y, 1), ys[1]))
@@ -413,7 +400,6 @@ function bbviLinRegr(num_iters::Int, n_samples::Int, n_datapoints::Int)
     iters=num_iters, samples_per_iter=n_samples, verbose=true)
 end
 
-
 function bench_LR_MH()
   results = Array{Any}(undef, length(lr_range))
   for (i, n_datapoints) in enumerate(lr_range)
@@ -434,7 +420,9 @@ function bench_LR_SMC()
   parseBenchmark("LR-[ ]-SMC-" * string(fixed_smc_particles), results)
 end
 
-# bench_LR_SMC()
+function bench_LR_PMMH()
+  parseBenchmark("LR-[ ]-PMMH-" * string(fixed_pmmh_mhsteps) * "-" * string(fixed_pmmh_particles), zeros(length(lr_range)))
+end
 
 function bench_LR_BBVI()
   results = Array{Any}(undef, length(lr_range))
@@ -446,36 +434,176 @@ function bench_LR_BBVI()
   parseBenchmark("LR-[ ]-BBVI-" * string(fixed_bbvi_steps) * "-" * string(fixed_bbvi_samples), results)
 end
 
+######################################## MH
+
+function bench_MH_LR()
+  results = Array{Any}(undef, length(mh_range))
+  for (i, mh_steps) in enumerate(mh_range)
+    b = @benchmark mhLinRegr($mh_steps, fixed_lr_size)
+    t = mean(b.times)/(1000000000)
+    results[i] = mean(b.times)/(1000000000)
+  end
+  parseBenchmark("MH-[ ]-LR-" * string(fixed_lr_size), results)
+end
+
+function bench_MH_HMM()
+  results = Array{Any}(undef, length(mh_range))
+  for (i, mh_steps) in enumerate(mh_range)
+    b = @benchmark mhHMM($mh_steps, fixed_hmm_size)
+    t = mean(b.times)/(1000000000)
+    results[i] = mean(b.times)/(1000000000)
+  end
+  parseBenchmark("MH-[ ]-HMM-" * string(fixed_hmm_size), results)
+end
+
+function bench_MH_LDA()
+  results = Array{Any}(undef, length(mh_range))
+  for (i, mh_steps) in enumerate(mh_range)
+    b = @benchmark mhLDA($mh_steps, fixed_lda_size)
+    t = mean(b.times)/(1000000000)
+    results[i] = mean(b.times)/(1000000000)
+  end
+  parseBenchmark("MH-[ ]-LDA-" * string(fixed_lda_size), results)
+end
+
+######################################## SMC
+
+function bench_SMC_LR()
+  results = Array{Any}(undef, length(smc_range))
+  for (i, n_particles) in enumerate(smc_range)
+    b = @benchmark smcLinRegr($n_particles, fixed_lr_size)
+    t = mean(b.times)/(1000000000)
+    results[i] = mean(b.times)/(1000000000)
+  end
+  parseBenchmark("SMC-[ ]-LR-" * string(fixed_lr_size), results)
+end
+
+function bench_SMC_HMM()
+  results = Array{Any}(undef, length(smc_range))
+  for (i, n_particles) in enumerate(smc_range)
+    b = @benchmark smcHMM($n_particles, fixed_hmm_size)
+    t = mean(b.times)/(1000000000)
+    results[i] = mean(b.times)/(1000000000)
+  end
+  parseBenchmark("SMC-[ ]-HMM-" * string(fixed_hmm_size), results)
+end
+
+function bench_SMC_LDA()
+  results = Array{Any}(undef, length(smc_range))
+  for (i, n_particles) in enumerate(smc_range)
+    b = @benchmark smcHMM($n_particles, fixed_lda_size)
+    t = mean(b.times)/(1000000000)
+    results[i] = mean(b.times)/(1000000000)
+  end
+  parseBenchmark("SMC-[ ]-LDA-" * string(fixed_lda_size), results)
+end
+
+######################################## PMMH
+
+function bench_PMMH_LR()
+  parseBenchmark("PMMH-" ++ show fixed_pmmh_mhsteps ++ "-[ ]-LR-" ++ show fixed_lr_size, zeros(length(pmmh_range)))
+end
+
+function bench_PMMH_HMM()
+  parseBenchmark("PMMH-" ++ show fixed_pmmh_mhsteps ++ "-[ ]-HMM-" ++ show fixed_hmm_size, zeros(length(pmmh_range)))
+end
+
+function bench_PMMH_LDA()
+  parseBenchmark("PMMH-" ++ show fixed_pmmh_mhsteps ++ "-[ ]-LDA-" ++ show fixed_lda_size, zeros(length(pmmh_range)))
+end
+
+######################################## BBVI
+
+function bench_BBVI_LR()
+  results = Array{Any}(undef, length(bbvi_range))
+  for (i, bbvi_steps) in enumerate(bbvi_range)
+    b = @benchmark bbviLinRegr($bbvi_steps, fixed_bbvi_samples, fixed_lr_size)
+    t = mean(b.times)/(1000000000)
+    results[i] = mean(b.times)/(1000000000)
+  end
+  parseBenchmark("BBVI-[ ]-" *  string(fixed_bbvi_samples) * "-LR-" * string(fixed_lr_size), results)
+end
+
+function bench_BBVI_HMM()
+  results = Array{Any}(undef, length(bbvi_range))
+  for (i, bbvi_steps) in enumerate(bbvi_range)
+    b = @benchmark bbviHMM($bbvi_steps, fixed_bbvi_samples, fixed_hmm_size)
+    t = mean(b.times)/(1000000000)
+    results[i] = mean(b.times)/(1000000000)
+  end
+  parseBenchmark("BBVI-[ ]-" *  string(fixed_bbvi_samples) * "-HMM-" * string(fixed_hmm_size), results)
+end
+
+function bench_BBVI_LDA()
+  results = Array{Any}(undef, length(bbvi_range))
+  for (i, bbvi_steps) in enumerate(bbvi_range)
+    b = @benchmark bbviLDA($bbvi_steps, fixed_bbvi_samples, fixed_lda_size)
+    t = mean(b.times)/(1000000000)
+    results[i] = mean(b.times)/(1000000000)
+  end
+  parseBenchmark("BBVI-[ ]-" *  string(fixed_bbvi_samples) * "-LDA-" * string(fixed_lda_size), results)
+end
+
+######################################## Top-level benchmarks
+
 function bench_LR()
   parseBenchmark("Dataset size", lr_range)
   bench_LR_MH()
   bench_LR_SMC()
+  bench_LR_PMMH()
   bench_LR_BBVI()
 end
 
+function bench_HMM()
+  parseBenchmark("Dataset size", hmm_range)
+  bench_HMM_MH()
+  bench_HMM_SMC()
+  bench_HMM_PMMH()
+  bench_HMM_BBVI()
+end
 
-# bbviLinRegr(100, 100, 100)
+function bench_LDA()
+  parseBenchmark("Dataset size", lda_range)
+  bench_LDA_MH()
+  bench_LDA_SMC()
+  bench_LDA_PMMH()
+  bench_LDA_BBVI()
+end
 
-# bench_LR()
+function bench_MH()
+  parseBenchmark("Number of MH steps", mh_range)
+  bench_MH_LR()
+  bench_MH_HMM()
+  bench_MH_LDA()
+end
 
-#   mhtrace = @benchmark sample(linRegrInf(200), MH(), 2000)
-#   parseBenchmark("linRegr/MH/data-size/200", mhtrace)
+function bench_SMC()
+  parseBenchmark("Number of SMC particles", smc_range)
+  bench_SMC_LR()
+  bench_SMC_HMM()
+  bench_SMC_LDA()
+end
 
-#   print("linRegr/MH/data-size/400" )
-#   mhtrace = @benchmark sample(linRegrInf(400), MH(), 2000)
-#   parseBenchmark("linRegr/MH/data-size/400", mhtrace)
+function bench_PMMH()
+  parseBenchmark("Number of PMMH particles", pmmh_range)
+  bench_PMMH_LR()
+  bench_PMMH_HMM()
+  bench_PMMH_LDA()
+end
 
-#   print("linRegr/MH/data-size/600" )
-#   mhtrace = @benchmark sample(linRegrInf(600), MH(), 2000)
-#   parseBenchmark("linRegr/MH/data-size/600", mhtrace)
+function bench_BBVI()
+  parseBenchmark("Number of BBVI steps", bbvi_range)
+  bench_BBVI_LR()
+  bench_BBVI_HMM()
+  bench_BBVI_LDA()
+end
 
-#   print("linRegr/MH/data-size/800" )
-#   mhtrace = @benchmark sample(linRegrInf(800), MH(), 2000)
-#   parseBenchmark("linRegr/MH/data-size/800", mhtrace)
-
-#   print("linRegr/MH/data-size/1000" )
-#   mhtrace = @benchmark sample(linRegrInf(1000), MH(), 2000)
-#   parseBenchmark("linRegr/MH/data-size/1000", mhtrace)
-# end
-
-# print(mhLinRegr(50, 50))
+function benchAll()
+  # bench_LR()
+  bench_HMM()
+  bench_LDA()
+  bench_MH()
+  bench_SMC()
+  bench_PMMH()
+  bench_BBVI()
+end
