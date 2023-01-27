@@ -31,6 +31,7 @@ function parseBenchmark(label::String, row)
 end
 
 ##### LDA
+
 function wordsToIdxs(words)
   n_words = length(words)
   word_idxs = Vector{Int64}(undef, n_words)
@@ -60,6 +61,18 @@ function ldaData(n_words::Int)
     words[i] = fixed_words[mod(length(fixed_words), i) + 1]
   end
   return wordsToIdxs(words)
+end
+
+@gen function ldaGuide(n_words::Int)
+  @param doc_topic_conc :: Vector{Float64}
+  @param topic1_word_conc :: Vector{Float64}
+  @param topic2_word_conc :: Vector{Float64}
+  doc_topic_ps  = @trace(dirichlet(doc_topic_conc), :doc_topic_ps)
+  topic_word_ps = Vector{Vector{Float64}}(undef, fixed_topics)
+
+  topic_word_ps[1] = @trace(dirichlet(topic1_word_conc), (:topic_word_ps, 1))
+  topic_word_ps[2] = @trace(dirichlet(topic2_word_conc), (:topic_word_ps, 2))
+
 end
 
 @gen function lda(n_words::Int)
@@ -132,7 +145,22 @@ function smcLDA(num_particles::Int, n_words::Int)
   return Gen.sample_unweighted_traces(state, num_particles)
 end
 
-println(smcLDA(50, 50))
+function bbviLDA(num_iters::Int, n_samples::Int, n_words::Int)
+  # Create a set of constraints fixing the
+  # y coordinates to the observed y values
+  word_idxs = ldaData(n_words)
+  constraints = choicemap()
+  for (i, word) in enumerate(word_idxs)
+      constraints[(:word, i)] = word
+  end
+
+  init_param!(ldaGuide, :doc_topic_conc, ones(fixed_topics) :: Vector{Float64})
+  init_param!(ldaGuide, :topic1_word_conc, ones(fixed_vocab_size) :: Vector{Float64})
+  init_param!(ldaGuide, :topic2_word_conc, ones(fixed_vocab_size) :: Vector{Float64})
+  update = ParamUpdate(GradientDescent(1e-12, 100000), ldaGuide)
+  black_box_vi!(lda, (n_words,), constraints, ldaGuide, (n_words,), update;
+    iters=num_iters, samples_per_iter=n_samples, verbose=true)
+end
 
 ##### HMM
 
