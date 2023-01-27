@@ -1,8 +1,13 @@
-using Gen
+
 using BenchmarkTools
 using DataFrames
 using CSV
 using Statistics
+using GenDistributions
+using Distributions
+using Gen
+
+fileStream = open("benchmarks-gen.csv","a")
 
 lr_range = [100,200]#,300,400,500]
 hmm_range = [100,200]#,300,400,500]
@@ -11,7 +16,8 @@ fixed_smc_particles = 100
 fixed_bbvi_steps = 50
 fixed_bbvi_samples = 10
 
-fileStream = open("benchmarks-gen.csv","a")
+const dirichlet = DistributionsBacked(alpha -> Dirichlet(alpha), (true,), true, Vector{Float64})
+
 
 function parseBenchmark(label::String, row)
   write(fileStream, label * ",")
@@ -23,6 +29,69 @@ function parseBenchmark(label::String, row)
   end
   write(fileStream, "\n")
 end
+
+##### LDA
+function wordsToIdxs(words)
+  n_words = length(words)
+  word_idxs = Vector{Int64}(undef, n_words)
+  for i in 1:n_words
+    word_idxs[i] = findfirst(w -> w==words[i], fixed_vocab)
+  end
+  return word_idxs
+end
+
+function idxsToWords(word_idxs)
+  n_words = length(word_idxs)
+  words = Vector{String}(undef, n_words)
+  for i in 1:n_words
+    words[i] = fixed_vocab[word_idxs[i]]
+  end
+  return word_idxs
+end
+
+fixed_vocab     = ["DNA", "evolution", "parsing", "phonology"]
+fixed_topics    = 2
+
+@gen function topicModel(n_words)
+  # initialise list of corresponding word indexes observed
+  words     = Vector{String}(undef, n_words)
+  word_idxs = Vector{Int64}(undef, n_words)
+
+  ps = @trace(dirichlet(ones(fixed_topics)), :ps)
+  println(ps)
+  # doc_topic_ps ~ Dirichlet(ones(fixed_topics))
+  # # print(word_idxs)
+  # if topic_word_ps === missing
+  #   # initialise list of word probabilities for each topic
+  #   topic_word_ps = Vector{Vector{Float64}}(undef, fixed_topics)
+  # end
+
+  # # set list of topic probabilities for the document
+  # for i in 1:fixed_topics
+  #   # set list of word probabilities for each topic
+  #   topic_word_ps[i] ~ Dirichlet((ones(length(fixed_vocab))))
+  # end
+
+  # # initialise list of topics observed
+  # topic_obs = Vector{Int64}(undef, n_words)
+
+  # for i in 1:n_words
+  #   # observe a topic
+  #   topic_obs[i] ~ Categorical(doc_topic_ps)
+  #   # fetch the topic's corresponding word distribution
+  #   word_ps = topic_word_ps[topic_obs[i]]
+  #   # observe a word index for that topic
+  #   word_idxs[i] ~ Categorical(word_ps)
+  # end
+  # # print(word_idxs)
+
+  # # print(word_idxs)
+  # # print(doc_topic_ps)
+  # # print(topic_word_ps)
+  # return word_idxs
+end
+
+topicModel(5)
 
 ##### HMM
 
@@ -141,10 +210,6 @@ function bench_HMM_BBVI()
   end
   parseBenchmark("HMM-[ ]-BBVI-" * string(fixed_bbvi_steps) * "-" * string(fixed_bbvi_samples), results)
 end
-
-
-bench_HMM_BBVI()
-
 
 ##### LIN REGR
 
