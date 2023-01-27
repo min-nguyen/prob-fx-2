@@ -54,15 +54,15 @@ fixed_vocab_size = 4
 fixed_topics     = 2
 fixed_words      = ["DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution","DNA","evolution", "parsing", "phonology", "DNA","evolution", "DNA", "parsing", "evolution","phonology", "evolution", "DNA"]
 
-function ldaData(n_words)
+function ldaData(n_words::Int)
   words     = Vector{String}(undef, n_words)
   for i in 1:n_words
     words[i] = fixed_words[mod(length(fixed_words), i) + 1]
   end
-  return words
+  return wordsToIdxs(words)
 end
 
-@gen function topicModel(n_words)
+@gen function lda(n_words::Int)
   doc_topic_ps  = @trace(dirichlet(ones(fixed_topics)), :doc_topic_ps)
   topic_word_ps = Vector{Vector{Float64}}(undef, fixed_topics)
 
@@ -72,8 +72,7 @@ end
     topic_word_ps[i] = @trace(dirichlet(ones(fixed_vocab_size)), (:topic_word_ps, i))
   end
 
-  # initialise list of corresponding word indexes observed
-  words     = Vector{String}(undef, n_words)
+  # initialise list of word indexes observed
   word_idxs = Vector{Int64}(undef, n_words)
 
   # # initialis list of topics observed
@@ -87,12 +86,37 @@ end
     # observe a word index for that topic
     word_idxs[i] = @trace(categorical(word_ps), (:word, i))
   end
-  println(idxsToWords(word_idxs))
+  # println(idxsToWords(word_idxs))
+  return word_idxs
 end
 
-# topicModel(5)
+function mhLDA(num_iters::Int, n_words::Int)
+  # Create a set of constraints fixing the
+  # y coordinates to the observed y values
+  word_idxs = ldaData(n_words)
+  constraints = choicemap()
+  for (i, word) in enumerate(word_idxs)
+      constraints[(:word, i)] = word
+  end
 
-println(ldaData(50))
+  # # Run the model, constrained by `constraints`,
+  # # to get an initial execution trace
+  (trace, _) = generate(lda, (n_words,), constraints)
+
+  # Iteratively update the slope then the intercept,
+  # using Gen's metropolis_hastings operator.
+  for iter=1:num_iters
+      (trace, _) = metropolis_hastings(trace, Gen.select(:doc_topic_ps))
+      (trace, _) = metropolis_hastings(trace, Gen.select((:topic_word_ps, 1)))
+      (trace, _) = metropolis_hastings(trace, Gen.select((:topic_word_ps, 2)))
+  end
+
+  # From the final trace, read out the slope and
+  # the intercept.
+  choices = get_choices(trace)
+  return (choices[:doc_topic_ps])
+end
+
 
 ##### HMM
 
