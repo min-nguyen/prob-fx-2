@@ -117,6 +117,22 @@ function mhLDA(num_iters::Int, n_words::Int)
   return (choices[:doc_topic_ps])
 end
 
+function smcLDA(num_particles::Int, n_words::Int)
+  word_idxs = ldaData(n_words)
+  # construct initial observations
+  init_obs = Gen.choicemap(((:word, 1), word_idxs[1]))
+  state = Gen.initialize_particle_filter(lda, (0,), init_obs, num_particles)
+
+  # steps
+  for t=1:n_words-1
+      Gen.maybe_resample!(state, ess_threshold=num_particles/2)
+      obs = Gen.choicemap(((:word, t), word_idxs[t+1]))
+      Gen.particle_filter_step!(state, (t,), (UnknownChange(),), obs)
+  end
+  return Gen.sample_unweighted_traces(state, num_particles)
+end
+
+println(smcLDA(50, 50))
 
 ##### HMM
 
