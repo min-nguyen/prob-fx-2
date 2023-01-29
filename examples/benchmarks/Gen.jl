@@ -7,7 +7,8 @@ using GenDistributions # Requires: https://github.com/probcomp/GenDistributions.
 using Distributions
 using Gen
 
-benchmark_file = "benchmarks-gen.csv"
+# input_file  = "params-prob-fx.txt"
+output_file = "benchmarks-gen.csv"
 lr_range = [100,200,300,400,500]
 hmm_range = [100,200,300,400,500]
 lda_range = [200,400,600,800,1000]
@@ -27,8 +28,26 @@ fixed_lda_size = 50
 
 const dirichlet = DistributionsBacked(alpha -> Dirichlet(alpha), (true,), true, Vector{Float64})
 
+# function parseParams()
+#   data   = filter(xs -> xs[1] != '#', readlines(input_file))
+#   params = Vector{Vector{Int64}}(undef, length(data))
+#   for (row_idx, row) in enumerate(data)
+#     println(row)
+#     params[row_idx] = [parse(Int, d) for d in split(row, ",")]
+#   end
+#   println(params)
+#   lr_range = params[1]
+#   hmm_range = params[2]
+#   lda_range = params[3]
+#   mh_range = params[4]
+#   smc_range = params[5]
+#   rmsmc_range = params[6]
+#   pmmh_range = params[7]
+#   bbvi_range = params[8]
+# end
+
 function parseBenchmark(label::String, row)
-  fileStream = open(benchmark_file,"a")
+  fileStream = open(output_file,"a")
   write(fileStream, label * ",")
   for (i, t) in enumerate(row)
     write(fileStream, string(t))
@@ -37,7 +56,7 @@ function parseBenchmark(label::String, row)
     end
   end
   write(fileStream, "\n")
-  println("Done: " * string(row))
+  println("Finished benching " * label * ": " * string(row))
   close(fileStream)
 end
 
@@ -549,7 +568,7 @@ end
 ######################################## Top-level benchmarks
 
 function bench_LR()
-  parseBenchmark("Number of points", lr_range)
+  parseBenchmark("Num points", lr_range)
   bench_LR_MH()
   bench_LR_SMC()
   bench_LR_PMMH()
@@ -557,7 +576,7 @@ function bench_LR()
 end
 
 function bench_HMM()
-  parseBenchmark("Number of nodes", hmm_range)
+  parseBenchmark("Num nodes", hmm_range)
   bench_HMM_MH()
   bench_HMM_SMC()
   bench_HMM_PMMH()
@@ -565,7 +584,7 @@ function bench_HMM()
 end
 
 function bench_LDA()
-  parseBenchmark("Number of words", lda_range)
+  parseBenchmark("Num words", lda_range)
   bench_LDA_MH()
   bench_LDA_SMC()
   bench_LDA_PMMH()
@@ -573,28 +592,28 @@ function bench_LDA()
 end
 
 function bench_MH()
-  parseBenchmark("Number of MH steps", mh_range)
+  parseBenchmark("Num MH steps", mh_range)
   bench_MH_LR()
   bench_MH_HMM()
   bench_MH_LDA()
 end
 
 function bench_SMC()
-  parseBenchmark("Number of SMC particles", smc_range)
+  parseBenchmark("Num SMC particles", smc_range)
   bench_SMC_LR()
   bench_SMC_HMM()
   bench_SMC_LDA()
 end
 
 function bench_PMMH()
-  parseBenchmark("Number of PMMH particles", pmmh_range)
+  parseBenchmark("Num PMMH particles", pmmh_range)
   bench_PMMH_LR()
   bench_PMMH_HMM()
   bench_PMMH_LDA()
 end
 
 function bench_BBVI()
-  parseBenchmark("Number of BBVI steps", bbvi_range)
+  parseBenchmark("Num BBVI steps", bbvi_range)
   bench_BBVI_LR()
   bench_BBVI_HMM()
   bench_BBVI_LDA()

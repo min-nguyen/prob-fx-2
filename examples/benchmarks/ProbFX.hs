@@ -16,14 +16,14 @@ input_file :: String
 input_file = "examples/benchmarks/params-prob-fx.txt"
 
 output_file :: String
-output_file = "examples/benchmarks/benchmarks-prob-fx-2.csv"
+output_file = "examples/benchmarks/benchmarks-prob-fx.csv"
 
 {- | Varying over dataset size
 -}
 
 bench_LR :: [Int] -> IO ()
 bench_LR args = do
-    let row_header = ("Number of points", args)
+    let row_header = ("Num points", args)
     writeRow output_file row_header
     benchRow ("LR-[ ]-MH-" ++ show fixed_mh_steps
               , mhLinRegr fixed_mh_steps) row_header output_file
@@ -38,7 +38,7 @@ bench_LR args = do
 
 bench_HMM :: [Int] -> IO ()
 bench_HMM args = do
-    let row_header = ("Number of nodes", args)
+    let row_header = ("Num nodes", args)
     writeRow output_file row_header
     benchRow ("HMM-[ ]-MH-" ++ show fixed_mh_steps
               , mhHMM fixed_mh_steps) row_header output_file
@@ -53,7 +53,7 @@ bench_HMM args = do
 
 bench_LDA :: [Int] -> IO ()
 bench_LDA args = do
-    let row_header = ("Number of words", args)
+    let row_header = ("Num words", args)
     writeRow output_file row_header
     benchRow ("LDA-[ ]-MH-" ++ show fixed_mh_steps
               , mhLDA fixed_mh_steps) row_header output_file
@@ -71,7 +71,7 @@ bench_LDA args = do
 
 bench_MH :: [Int] -> IO ()
 bench_MH args = do
-    let row_header = ("Number of MH steps", args)
+    let row_header = ("Num MH steps", args)
     writeRow output_file row_header
     benchRow ("MH-[ ]-LR-" ++ show fixed_lr
               , flip mhLinRegr fixed_lr) row_header output_file
@@ -82,7 +82,7 @@ bench_MH args = do
 
 bench_SMC :: [Int] -> IO ()
 bench_SMC args = do
-    let row_header = ("Number of SMC particles", args)
+    let row_header = ("Num SMC particles", args)
     writeRow output_file row_header
     benchRow ("SMC-[ ]-LR-" ++ show fixed_lr
               , flip smcLinRegr fixed_lr) row_header output_file
@@ -93,7 +93,7 @@ bench_SMC args = do
 
 bench_PMMH :: [Int] -> IO ()
 bench_PMMH args = do
-    let row_header = ("Number of PMMH particles", args)
+    let row_header = ("Num PMMH particles", args)
     writeRow output_file row_header
     benchRow ("PMMH-[ ]-LR-" ++ show fixed_lr
               , flip (pmmhLinRegr fixed_pmmh_mhsteps) fixed_lr) row_header output_file
@@ -104,7 +104,7 @@ bench_PMMH args = do
 
 bench_BBVI :: [Int] -> IO ()
 bench_BBVI args = do
-    let row_header = ("Number of BBVI steps", args)
+    let row_header = ("Num BBVI steps", args)
     writeRow output_file row_header
     benchRow ("BBVI-[ ]-LR-" ++ show fixed_lr
               , flip (bbviLinRegr fixed_bbvi_samples) fixed_lr) row_header output_file
@@ -115,7 +115,7 @@ bench_BBVI args = do
 
 bench_RMSMC :: [Int] -> IO ()
 bench_RMSMC args = do
-    let row_header = ("Number of RMSMC rejuvenation steps", args)
+    let row_header = ("Num RMSMC rejuvenation steps", args)
     writeRow output_file row_header
     benchRow ("RMSMC-[ ]-LR-" ++ show fixed_lr
               , flip (rmsmcLinRegr fixed_rmsmc_particles) fixed_lr) row_header output_file
