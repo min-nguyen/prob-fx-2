@@ -185,7 +185,7 @@ function bench_LDA_MH()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("LDA-[ ]-MH-" * string(fixed_mh_steps), results)
+  parseBenchmark("LatDiri-[ ]-SSMH-" * string(fixed_mh_steps), results)
 end
 
 function bench_LDA_SMC()
@@ -195,11 +195,11 @@ function bench_LDA_SMC()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("LDA-[ ]-SMC-" * string(fixed_smc_particles), results)
+  parseBenchmark("LatDiri-[ ]-MPF-" * string(fixed_smc_particles), results)
 end
 
 function bench_LDA_PMMH()
-  parseBenchmark("LDA-[ ]-PMMH-" * string(fixed_pmmh_mhsteps), zeros(length(lda_range)))
+  parseBenchmark("LatDiri-[ ]-PMMH-" * string(fixed_pmmh_mhsteps), zeros(length(lda_range)))
 end
 
 function bench_LDA_BBVI()
@@ -209,7 +209,7 @@ function bench_LDA_BBVI()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("LDA-[ ]-BBVI-" * string(fixed_bbvi_steps) , results)
+  parseBenchmark("LatDiri-[ ]-BBVI-" * string(fixed_bbvi_steps) , results)
 end
 
 ######################################## HMM
@@ -295,7 +295,7 @@ function bench_HMM_MH()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("HMM-[ ]-MH-" * string(fixed_mh_steps), results)
+  parseBenchmark("HidMark-[ ]-SSMH-" * string(fixed_mh_steps), results)
 end
 
 function bench_HMM_SMC()
@@ -305,11 +305,11 @@ function bench_HMM_SMC()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("HMM-[ ]-SMC-" * string(fixed_smc_particles), results)
+  parseBenchmark("HidMark-[ ]-MPF-" * string(fixed_smc_particles), results)
 end
 
 function bench_HMM_PMMH()
-  parseBenchmark("HMM-[ ]-PMMH-" * string(fixed_pmmh_particles), zeros(length(hmm_range)))
+  parseBenchmark("HidMark-[ ]-PMMH-" * string(fixed_pmmh_particles), zeros(length(hmm_range)))
 end
 
 function bench_HMM_BBVI()
@@ -319,7 +319,7 @@ function bench_HMM_BBVI()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("HMM-[ ]-BBVI-" * string(fixed_bbvi_steps), results)
+  parseBenchmark("HidMark-[ ]-BBVI-" * string(fixed_bbvi_steps), results)
 end
 
 ######################################## LIN REGR
@@ -428,7 +428,7 @@ function bench_LR_MH()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("LR-[ ]-MH-" * string(fixed_mh_steps), results)
+  parseBenchmark("LinRegr-[ ]-SSMH-" * string(fixed_mh_steps), results)
 end
 
 function bench_LR_SMC()
@@ -438,11 +438,11 @@ function bench_LR_SMC()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("LR-[ ]-SMC-" * string(fixed_smc_particles), results)
+  parseBenchmark("LinRegr-[ ]-MPF-" * string(fixed_smc_particles), results)
 end
 
 function bench_LR_PMMH()
-  parseBenchmark("LR-[ ]-PMMH-" * string(fixed_pmmh_mhsteps) * "-" * string(fixed_pmmh_particles), zeros(length(lr_range)))
+  parseBenchmark("LinRegr-[ ]-PMMH-" * string(fixed_pmmh_mhsteps) * "-" * string(fixed_pmmh_particles), zeros(length(lr_range)))
 end
 
 function bench_LR_BBVI()
@@ -452,7 +452,7 @@ function bench_LR_BBVI()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("LR-[ ]-BBVI-" * string(fixed_bbvi_steps), results)
+  parseBenchmark("LinRegr-[ ]-BBVI-" * string(fixed_bbvi_steps), results)
 end
 
 ######################################## MH
@@ -464,7 +464,7 @@ function bench_MH_LR()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("MH-[ ]-LR-" * string(fixed_lr_size), results)
+  parseBenchmark("SSMH-[ ]-LinRegr-" * string(fixed_lr_size), results)
 end
 
 function bench_MH_HMM()
@@ -474,7 +474,7 @@ function bench_MH_HMM()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("MH-[ ]-HMM-" * string(fixed_hmm_size), results)
+  parseBenchmark("SSMH-[ ]-HidMark-" * string(fixed_hmm_size), results)
 end
 
 function bench_MH_LDA()
@@ -484,7 +484,7 @@ function bench_MH_LDA()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("MH-[ ]-LDA-" * string(fixed_lda_size), results)
+  parseBenchmark("SSMH-[ ]-LatDiri-" * string(fixed_lda_size), results)
 end
 
 ######################################## SMC
@@ -496,7 +496,7 @@ function bench_SMC_LR()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("SMC-[ ]-LR-" * string(fixed_lr_size), results)
+  parseBenchmark("MPF-[ ]-LinRegr-" * string(fixed_lr_size), results)
 end
 
 function bench_SMC_HMM()
@@ -506,7 +506,7 @@ function bench_SMC_HMM()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("SMC-[ ]-HMM-" * string(fixed_hmm_size), results)
+  parseBenchmark("MPF-[ ]-HidMark-" * string(fixed_hmm_size), results)
 end
 
 function bench_SMC_LDA()
@@ -516,21 +516,21 @@ function bench_SMC_LDA()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("SMC-[ ]-LDA-" * string(fixed_lda_size), results)
+  parseBenchmark("MPF-[ ]-LatDiri-" * string(fixed_lda_size), results)
 end
 
 ######################################## PMMH
 
 function bench_PMMH_LR()
-  parseBenchmark("PMMH-" * "-[ ]-LR-" * string(fixed_lr_size), zeros(length(pmmh_range)))
+  parseBenchmark("PMMH-" * "-[ ]-LinRegr-" * string(fixed_lr_size), zeros(length(pmmh_range)))
 end
 
 function bench_PMMH_HMM()
-  parseBenchmark("PMMH-" * "-[ ]-HMM-" * string(fixed_hmm_size), zeros(length(pmmh_range)))
+  parseBenchmark("PMMH-" * "-[ ]-HidMark-" * string(fixed_hmm_size), zeros(length(pmmh_range)))
 end
 
 function bench_PMMH_LDA()
-  parseBenchmark("PMMH-"  * "-[ ]-LDA-" * string(fixed_lda_size), zeros(length(pmmh_range)))
+  parseBenchmark("PMMH-"  * "-[ ]-LatDiri-" * string(fixed_lda_size), zeros(length(pmmh_range)))
 end
 
 ######################################## BBVI
@@ -542,7 +542,7 @@ function bench_BBVI_LR()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("BBVI-[ ]-" * "-LR-" * string(fixed_lr_size), results)
+  parseBenchmark("BBVI-[ ]-" * "-LinRegr-" * string(fixed_lr_size), results)
 end
 
 function bench_BBVI_HMM()
@@ -552,7 +552,7 @@ function bench_BBVI_HMM()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("BBVI-[ ]-" *  "-HMM-" * string(fixed_hmm_size), results)
+  parseBenchmark("BBVI-[ ]-" *  "-HidMark-" * string(fixed_hmm_size), results)
 end
 
 function bench_BBVI_LDA()
@@ -562,7 +562,7 @@ function bench_BBVI_LDA()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("BBVI-[ ]-" * "-LDA-" * string(fixed_lda_size), results)
+  parseBenchmark("BBVI-[ ]-" * "-LatDiri-" * string(fixed_lda_size), results)
 end
 
 ######################################## Top-level benchmarks
@@ -599,7 +599,7 @@ function bench_MH()
 end
 
 function bench_SMC()
-  parseBenchmark("Num SMC particles", smc_range)
+  parseBenchmark("Num MPF particles", smc_range)
   bench_SMC_LR()
   bench_SMC_HMM()
   bench_SMC_LDA()
