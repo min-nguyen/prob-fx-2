@@ -105,5 +105,5 @@ with open('benchmarks-prob-fx.csv') as benchmarks_pfx, open('benchmarks-monad-ba
   # # # benchmarks for varying over inference parameters
   # # vary_inf = groups[3:6]
   infs   = [infs_pfx, infs_mb, infs_gen]
-  plotPage("plot-model-inference.pdf", infs, n_groups=4, n_rows=3)
+  plotPage("plot-inference-benchmarks.pdf", infs, n_groups=4, n_rows=3)
   plt.show()
