@@ -28,18 +28,12 @@ fixed_invi_steps, fixed_invi_samples :: Int
 fixed_invi_steps = 50
 fixed_invi_samples = 10
 
-fixed_lr_datasize_inf :: Int
-fixed_lr_datasize_inf = 50
-fixed_hmm_datasize_inf :: Int
-fixed_hmm_datasize_inf = 50
-fixed_lda_datasize_inf :: Int
-fixed_lda_datasize_inf = 50
-fixed_rmsmc_particles_inf :: Int
-fixed_rmsmc_particles_inf = 10
-fixed_pmmh_mhsteps_inf :: Int
-fixed_pmmh_mhsteps_inf = 50
-fixed_bbvi_samples_inf :: Int
-fixed_bbvi_samples_inf = 10
+fixed_lr :: Int
+fixed_lr = 50
+fixed_hmm :: Int
+fixed_hmm = 50
+fixed_lda :: Int
+fixed_lda = 50
 
 appendFileLn :: String -> String -> IO ()
 appendFileLn file_name = appendFile file_name . (++ "\n")
