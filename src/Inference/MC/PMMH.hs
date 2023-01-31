@@ -25,7 +25,7 @@ import Inference.MC.SIM as SIM
 import qualified Inference.MC.MH as MH
 import Inference.MC.Metropolis as Metropolis
 import           Inference.MC.SIS as SIS
-import           Inference.MC.SMC as SMC
+import           Inference.MC.SMC (handleResampleMul, step)
 
 {- | Top-level wrapper for PMMH inference.
 -}
@@ -44,20 +44,20 @@ pmmh mh_steps n_prts model env_in obs_vars = do
   -- | Initialise sample trace to include only parameters
   (_, τ)       <- (handleIO . reuseTrace Map.empty . defaultObserve) prog_0
   let τθ       = filterTrace θ τ
-  pmmh_trace <- (handleIO . handleProposal . metropolis mh_steps τθ (handleModel n_prts)) prog_0
+  pmmh_trace <- (handleIO . handleProposal . metropolis mh_steps τθ (exec n_prts)) prog_0
   pure (map (snd . fst . fst) pmmh_trace)
 
 pm :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
 pm m n τθ model = do
-  (handleIO . handleProposal . metropolis m τθ (handleModel n)) model
+  (handleIO . handleProposal . metropolis m τθ (exec n)) model
 
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}
-handleModel :: Int -> ModelHandler '[Sampler] LogP
-handleModel n prog τθ  = do
-  let handleParticle :: ParticleHandler '[Sampler] LogP
-      handleParticle prt logp = (fmap fst . handleIO . reuseTrace τθ . step logp) prt
-  (as, ws) <- (handleIO . handleResampleMul . fmap unzip . pfilter handleParticle) (replicate n (prog, 0))
+exec :: Int -> ModelHandler '[Sampler] LogP
+exec n prog τθ  = do
+  let execPrt :: ParticleHandler '[Sampler] LogP
+      execPrt prt logp = (fmap fst . handleIO . reuseTrace τθ . step logp) prt
+  (as, ws) <- (handleIO . handleResampleMul . fmap unzip . pfilter execPrt) (replicate n (prog, 0))
   let a   = head as
       w   = logMeanExp ws
   pure ((a, w), τθ)

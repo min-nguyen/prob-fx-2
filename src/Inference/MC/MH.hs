@@ -53,7 +53,7 @@ mh n model env_in obs_vars  = do
       τ_0    = Map.empty
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
-  mh_trace <- (handleIO . handleProposal tags . metropolis n τ_0 handleModel) prog_0
+  mh_trace <- (handleIO . handleProposal tags . metropolis n τ_0 exec) prog_0
   pure (map (snd . fst . fst) mh_trace)
 
 {- | MH inference on a probabilistic program.
@@ -64,7 +64,7 @@ ssmh :: (Member Sampler fs)
   -> [Tag]                                 -- ^ tags indicating variables of interest
   -> Model '[Sampler] a                            -- ^ probabilistic program
   -> Comp fs [((a, LPTrace), Trace)]
-ssmh n τ_0  tags = handleProposal tags  . metropolis n τ_0 handleModel
+ssmh n τ_0  tags = handleProposal tags  . metropolis n τ_0 exec
 
 {- | Handler for @Proposal@ for MH.
     - Propose by drawing a component x_i of latent variable X' ~ p(X)
@@ -84,11 +84,11 @@ handleProposal tags  = handle (Addr "" 0) (const Val) hop
 
 {- | Handler for one iteration of MH.
 -}
-handleModel ::
+exec ::
      Model '[Sampler] a                             -- ^ probabilistic program
   -> Trace                                  -- ^ proposed address + initial log-probability trace + initial sample trace
   -> Sampler ((a, LPTrace), Trace)  -- ^ proposed address + final log-probability trace + final sample trace
-handleModel prog τ0 = (handleIO . reuseTrace τ0 . defaultObserve . traceLP Map.empty) prog
+exec prog τ0 = (handleIO . reuseTrace τ0 . defaultObserve . traceLP Map.empty) prog
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}

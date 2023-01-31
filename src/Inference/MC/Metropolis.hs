@@ -53,11 +53,11 @@ metropolis :: (Members [Proposal p, Sampler] fs)
    -> ModelHandler es p                                                        -- ^ model handler
    -> Model es a                                                             -- ^ probabilistic program
    -> Comp fs [((a, p), Trace)]                            -- ^ trace of accepted outputs
-metropolis n τ_0 hdlModel prog_0 = do
+metropolis n τ_0 exec prog_0 = do
   -- | Perform initial run of mh
-  x0 <- call (hdlModel prog_0 τ_0)
+  x0 <- call (exec prog_0 τ_0)
   -- | A function performing n mhSteps using initial mh_s. The most recent samples are at the front of the trace.
-  foldl (>=>) pure (replicate n (metroStep prog_0 hdlModel )) [x0]
+  foldl (>=>) pure (replicate n (metroStep prog_0 exec )) [x0]
 
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
@@ -66,13 +66,13 @@ metroStep :: forall es fs p a. (Members [Proposal p, Sampler] fs)
   -> ModelHandler es p                                                  -- ^ probabilistic program
   -> [((a, p), Trace)]                                                   -- ^ previous trace
   -> Comp fs [((a, p), Trace)]                            -- ^ updated trace
-metroStep prog_0 hdlModel markov_chain = do
+metroStep prog_0 exec markov_chain = do
   -- | Get previous iteration output
   let ((r, p), τ) = head markov_chain
   -- | Construct an *initial* proposal
   τ_0            <- call (Propose τ :: Proposal p Trace)
   -- | Execute the model under the initial proposal to return the *final* proposal
-  ((r', p'), τ') <- call (hdlModel prog_0 τ_0)
+  ((r', p'), τ') <- call (exec prog_0 τ_0)
   -- | Compute acceptance ratio
   b              <- call (Accept p p')
   if b then pure (((r', p'), τ'):markov_chain)

@@ -48,14 +48,14 @@ map num_timesteps num_samples guide model env  = do
   λ_0 <- collectParams env guide
   -- | Run MAP for T optimisation steps
   (handleIO . handleNormGradDescent) $
-      VI.viLoop num_timesteps num_samples guide (handleGuide env) model handleModel λ_0
+      VI.viLoop num_timesteps num_samples guide (execGuide env) model exec λ_0
 
 -- | Return probability of 1
-handleGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), GradTrace), LogP)
-handleGuide env guide params = second (const 0) <$> BBVI.handleGuide  env guide params
+execGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), GradTrace), LogP)
+execGuide env guide params = second (const 0) <$> BBVI.execGuide  env guide params
   -- (handleIO . fmap (,0) . defaultSample . defaultParam params . handleEnvRW env) guide
 
 -- | Compute P(Y, X)
-handleModel :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
-handleModel model env =
+exec :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
+exec model env =
   (handleIO . defaultSample . defaultObserve . joint 0 . fmap fst . handleEnvRW env) model

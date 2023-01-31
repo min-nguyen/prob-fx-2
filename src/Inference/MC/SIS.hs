@@ -45,11 +45,11 @@ sis :: (Members [Resample p, Sampler] fs)
   -> p
   -> Model es a                                                 -- ^ initial probabilistic program
   -> Comp fs [(a, p)]                        -- ^ (final particle output, final particle context)
-sis n_prts hdlParticle ρ_0 prog_0  = do
+sis n_prts exec ρ_0 prog_0  = do
   -- | Create an initial population of particles and contexts
   let population = replicate n_prts (prog_0, ρ_0)
   -- | Execute the population until termination
-  pfilter hdlParticle population
+  pfilter exec population
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
@@ -57,16 +57,16 @@ pfilter :: (Members [Resample p, Sampler] fs)
   => ParticleHandler es p                                 -- ^ handler for running particles
   -> [(Model es a, p)]                               -- ^ input particles and corresponding contexts
   -> Comp fs [(a, p)]                          -- ^ final particle results and corresponding contexts
-pfilter hdlParticle wprts = do
+pfilter exec wprts = do
   -- | Run particles to next checkpoint and accumulate their contexts
-  wprts' <- call ((mapM . uncurry) hdlParticle wprts)
+  wprts' <- call ((mapM . uncurry) exec wprts)
   -- ρs'   <- call (Accum ρs partialρs)
   -- | Check termination status of particles
   case collapse wprts' of
     -- | If all particles have finished, return their results and contexts
     Just vals  -> Val vals
     -- | Otherwise, pick the particles to continue with
-    Nothing    -> call (Resample (unzip wprts')) >>= pfilter hdlParticle
+    Nothing    -> call (Resample (unzip wprts')) >>= pfilter exec
 
 {- | Check whether a list of programs have all terminated.
      If at least one program is unfinished, return all programs.

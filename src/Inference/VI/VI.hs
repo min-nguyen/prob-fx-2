@@ -54,8 +54,8 @@ viLoop :: (Members [GradEst, Sampler] fs)
   -> VIModel env es2 b -> ModelHandler env es2 b
   -> ParamTrace                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Comp fs ParamTrace      -- ^ final guide parameters λ_T
-viLoop num_timesteps num_samples guide hdlGuide model hdlModel guideParams_0 = do
-  foldr (>=>) pure [viStep num_samples  hdlGuide  hdlModel guide model  | t <- [1 .. num_timesteps]] guideParams_0
+viLoop num_timesteps num_samples guide hdlGuide model exec guideParams_0 = do
+  foldr (>=>) pure [viStep num_samples  hdlGuide  exec guide model  | t <- [1 .. num_timesteps]] guideParams_0
 
 {- | 1. For L iterations,
         a) Generate values x from the guide Q(X; λ), accumulating:
@@ -72,11 +72,11 @@ viStep ::  (Members [GradEst, Sampler] fs)
   -> GuideHandler env es1 a -> ModelHandler env es2 b -> VIGuide env es1 a -> VIModel env es2 b
   -> ParamTrace                            -- ^ guide parameters λ_t
   -> Comp fs ParamTrace    -- ^ next guide parameters λ_{t+1}
-viStep num_samples hdlGuide hdlModel guide model  params = do
+viStep num_samples hdlGuide exec guide model  params = do
   let hdlGuideModel = do -- | Execute the guide X ~ Q(X; λ)
                           (((_, env), δλ ), guide_w) <- call (hdlGuide guide params)
                           -- | Execute the model P(X, Y) under the guide environment X
-                          (_        , model_w)      <- call (hdlModel model env)
+                          (_        , model_w)      <- call (exec model env)
                           -- | Compute total log-importance-weight, log(P(X, Y)) - log(Q(X; λ))
                           let w     =  model_w - guide_w
                           pure (δλ, w)

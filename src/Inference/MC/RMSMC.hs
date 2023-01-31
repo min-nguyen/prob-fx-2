@@ -80,8 +80,8 @@ rmpfilter ::
   -> Model '[Sampler] a                                   -- ^ probabilistic program
   -> Sampler [(a, PrtState)]                      -- ^ final particle results and contexts
 rmpfilter n_prts mh_steps tags model = do
-  -- let q =  pfilter handleParticle model (prts, ps)
-  (handleIO . handleResample mh_steps tags  model . pfilter handleParticle) prts
+  -- let q =  pfilter exec model (prts, ps)
+  (handleIO . handleResample mh_steps tags  model . pfilter exec) prts
   where prts = replicate n_prts (model, PrtState (Addr "" 0) 0 Map.empty)
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint
@@ -89,8 +89,8 @@ rmpfilter n_prts mh_steps tags model = do
        1. the rest of the computation
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
-handleParticle :: ParticleHandler '[Sampler] PrtState
-handleParticle model (PrtState _ logp τ) = (fmap asPrtTrace . handleIO . reuseTrace τ . suspendα logp) model where
+exec :: ParticleHandler '[Sampler] PrtState
+exec model (PrtState _ logp τ) = (fmap asPrtTrace . handleIO . reuseTrace τ . suspendα logp) model where
   asPrtTrace ((prt, α, w), τ) = (prt, PrtState α w τ)
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using MH.

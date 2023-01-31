@@ -46,16 +46,16 @@ mle num_timesteps num_samples guide model env = do
   λ_0 <- collectParams env guide
   -- | Run MLE for T optimisation steps
   (handleIO . handleNormGradDescent) $
-      viLoop num_timesteps num_samples guide (handleGuide env) model handleModel λ_0
+      viLoop num_timesteps num_samples guide (execGuide env) model exec λ_0
 
 -- | Return probability of 1
-handleGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), GradTrace), LogP)
-handleGuide env guide params =
+execGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), GradTrace), LogP)
+execGuide env guide params =
   (handleIO . fmap (,0) . SIM.defaultSample . defaultParam params .  handleEnvRW env) guide
 
 -- | Compute P(Y | X; θ)
-handleModel :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
-handleModel model env  =
+exec :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
+exec model env  =
   (handleIO . SIM.defaultSample . likelihood 0 . fmap fst . handleEnvRW env) model
 
 -- | Compute and update the guide parameters using a self-normalised importance weighted gradient estimate
