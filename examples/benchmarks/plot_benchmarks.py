@@ -37,16 +37,16 @@ def plotPage(output_file, data_dicts, n_groups, n_rows):
         if dict_idx == 0:
           if row_idx == 0:
             ### Set top x-title
-            axis_a[0][col_idx].set_title(prefix_label, fontsize=10)
+            axis_a[0][col_idx].set_title(prefix_label, fontsize=9)
             ### Set bottom x-label
-            axis_a[n_rows - 1][col_idx].set_xlabel(x_parameter, fontsize=8)
+            axis_a[n_rows - 1][col_idx].set_xlabel(x_parameter, fontsize=6.5)
           if col_idx == 0:
             ### Set left y-label
-            axis_a[row_idx][0].set_ylabel("Exec time (s)", fontsize=7)
+            axis_a[row_idx][0].set_ylabel("Exec time (s)", fontsize=6.5)
             ### Set right y-label
             twin_axis = axis_a[row_idx][n_groups - 1].twinx()
             twin_axis.set_yticks([])
-            twin_axis.set_ylabel(suffix_label, fontsize=10, rotation='horizontal', va='center', ha='left', labelpad=10)
+            twin_axis.set_ylabel(suffix_label, fontsize=9, rotation='horizontal', va='center', ha='left')
 
         ### Get benchmarks
         prog_values  = list(map(float, prog[1:]))
@@ -60,20 +60,21 @@ def plotPage(output_file, data_dicts, n_groups, n_rows):
         ### Set x ticks
         axis_a[row_idx][col_idx].set_xticks([xmin, xmax])
         axis_a[row_idx][col_idx].xaxis.set_major_locator(plt.MaxNLocator(5))
-        plt.setp(axis_a[row_idx][col_idx].get_xticklabels(), rotation=30, horizontalalignment='left', fontsize='x-small')
+        axis_a[row_idx][col_idx].tick_params(axis='x', which='major', pad=0)
+        plt.setp(axis_a[row_idx][col_idx].get_xticklabels(), rotation=20,  horizontalalignment='center', fontsize=5)
 
         ### Set y ticks
         axis_a[row_idx][col_idx].set_yticks([0, ymax])
         axis_a[row_idx][col_idx].yaxis.set_major_locator(plt.MaxNLocator(4))
-        axis_a[row_idx][col_idx].yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-        plt.setp(axis_a[row_idx][col_idx].get_yticklabels(), fontsize='x-small')
+        axis_a[row_idx][col_idx].tick_params(axis='y', which='major', pad=0)
+        plt.setp(axis_a[row_idx][col_idx].get_yticklabels(), fontsize=5)
 
   ### Adjust padding between subplots
-  plt.subplots_adjust(hspace=0.4, wspace=0.35)
+  plt.subplots_adjust(hspace=0.29, wspace=0.2)
   # fig_a.tight_layout()
 
   ###
-  lgd = fig_a.legend([data_dict["language"] for data_dict in data_dicts], loc="upper center", bbox_to_anchor=(0.5, 1), ncol=len(data_dicts))
+  lgd = fig_a.legend([data_dict["language"] for data_dict in data_dicts], loc="upper center", bbox_to_anchor=(0.5, 1), fontsize=8, ncol=len(data_dicts))
   ### Adjust bounding box for legend in saved figure
   fig_a.savefig(output_file, bbox_extra_artists=(lgd,), bbox_inches='tight')
 
@@ -105,5 +106,5 @@ with open('benchmarks-prob-fx.csv') as benchmarks_pfx, open('benchmarks-monad-ba
   # # # benchmarks for varying over inference parameters
   # # vary_inf = groups[3:6]
   infs   = [infs_pfx, infs_mb, infs_gen]
-  plotPage("plot-model-inference.pdf", infs, n_groups=4, n_rows=3)
+  plotPage("plot-inference-benchmarks.pdf", infs, n_groups=4, n_rows=3)
   plt.show()

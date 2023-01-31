@@ -1,16 +1,16 @@
-#LR-[ ]-MH-100, LR-[ ]-SMC-100, LR-[ ]-RMSMC-10-1, LR-[ ]-PMMH-50-10, LR-[ ]-BBVI-50-10
+#LinRegr-[ ]-SSMH-100, LinRegr-[ ]-MPF-100, LinRegr-[ ]-RMSMC-10-1, LinRegr-[ ]-PMMH-50-10, LinRegr-[ ]-BBVI-50-10
 100,200,300,400,500
-#HMM-[ ]-MH-100, HMM-[ ]-SMC-100, HMM-[ ]-RMSMC-10-1, HMM-[ ]-PMMH-50-10, HMM-[ ]-BBVI-50-10
+#HidMark-[ ]-SSMH-100, HidMark-[ ]-MPF-100, HidMark-[ ]-RMSMC-10-1, HidMark-[ ]-PMMH-50-10, HidMark-[ ]-BBVI-50-10
 100,200,300,400,500
-#LDA-[ ]-MH-100, LDA-[ ]-SMC-100, LDA-[ ]-RMSMC-10-1, LDA-[ ]-PMMH-50-10, LDA-[ ]-BBVI-50-10
+#LatDiri-[ ]-SSMH-100, LatDiri-[ ]-MPF-100, LatDiri-[ ]-RMSMC-10-1, LatDiri-[ ]-PMMH-50-10, LatDiri-[ ]-BBVI-50-10
 200,400,600,800,1000
-#MH-[ ]-LR-50, MH-[ ]-HMM-50, MH-[ ]-LDA-100
+#SSMH-[ ]-LinRegr-50, SSMH-[ ]-HidMark-50, SSMH-[ ]-LatDiri-100
 200,400,600,800,1000
-#SMC-[ ]-LR-50, SMC-[ ]-HMM-50, SMC-[ ]-LDA-100
+#MPF-[ ]-LinRegr-50, MPF-[ ]-HidMark-50, MPF-[ ]-LatDiri-100
 200,400,600,800,1000
-#RMSMC-10-[ ]-LR-50, RMSMC-10-[ ]-HMM-50, RMSMC-10-[ ]-LDA-100
+#RMSMC-10-[ ]-LinRegr-50, RMSMC-10-[ ]-HidMark-50, RMSMC-10-[ ]-LatDiri-100
 20,40,60,80,100
-#PMMH-50-[ ]-LR-50, PMMH-50-[ ]-HMM-50, PMMH-50-[ ]-LDA-100
+#PMMH-50-[ ]-LinRegr-50, PMMH-50-[ ]-HidMark-50, PMMH-50-[ ]-LatDiri-100
 20,40,60,80,100
-#BBVI-[ ]-10-LR-50, BBVI-[ ]-10-HMM-50, BBVI-[ ]-10-LDA-100
+#BBVI-[ ]-10-LinRegr-50, BBVI-[ ]-10-HidMark-50, BBVI-[ ]-10-LatDiri-100
 200,400,600,800,1000
