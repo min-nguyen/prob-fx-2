@@ -5,6 +5,8 @@
 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeApplications #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use <&>" #-}
 
 {- | Metropolis inference
 -}
@@ -45,26 +47,36 @@ data Proposal p a where
 
 type ModelHandler es p = forall a. Model es a -> Trace -> Sampler ((a, p), Trace)
 
-{- | A general framework for Metropolis inference.
+metropolis :: forall p fs es a. (Members [Proposal p, Sampler] fs)
+   => Int                                                                    -- ^ number of iterations
+   -> Trace                                                          -- ^ initial context + sample trace
+   -> ModelHandler es p                                                        -- ^ model handler
+   -> Model es a                                                             -- ^ probabilistic program
+   -> Comp fs [((a, p), Trace)]                            -- ^ trace of accepted outputs
+metropolis n τ_0 exec model = do
+  -- | Perform initial run of mh
+  x0 <- call (exec model τ_0)
+  -- | A function performing n mhSteps using initial mh_s. The most recent samples are at the front of the trace.
+  foldl (>=>) pure (replicate n f) [x0]
+  where f :: [((a, p), Trace)] -> Comp fs [((a, p), Trace)]
+        f mchain = metroStep model exec (head mchain) >>= return . (:mchain)
+
+{- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
-metropolis :: forall fs es a p. (Members [Proposal p, Sampler] fs)
-   => Int -> Trace -> ModelHandler es p -> Model es a -> Comp fs [((a, p), Trace)]
-metropolis n τ_0 exec prog_0 = do
-  -- | A function performing n mhSteps using initial mh_s.
-  let loop :: Int -> [((a, p), Trace)] -> Comp fs [((a, p), Trace)]
-      loop i mrkchain
-        | i < n     = do
-            let ((x, w), τ) = head mrkchain
-            τ_0            <- call (Propose τ :: Proposal p Trace)
-            ((x', w'), τ') <- call (exec prog_0 τ_0)
-            b              <- call (Accept w w')
-            let mrkchain'   = if b then ((x', w'), τ') : mrkchain else mrkchain
-            loop (i + 1) mrkchain'
-        | otherwise = return mrkchain
-  -- | Perform initial run of mh
-  node_0 <- call (exec prog_0 τ_0)
-  -- | Perform initial run of mh
-  loop 0 [node_0]
+metroStep :: forall es fs p a. (Members [Proposal p, Sampler] fs)
+  => Model es a                                                       -- ^ model handler
+  -> ModelHandler es p                                                  -- ^ probabilistic program
+  -> ((a, p), Trace)                                                   -- ^ previous trace
+  -> Comp fs ((a, p), Trace)                            -- ^ updated trace
+metroStep prog_0 exec ((r, p), τ) = do
+  -- | Construct an *initial* proposal
+  τ_0            <- call (Propose τ :: Proposal p Trace)
+  -- | Execute the model under the initial proposal to return the *final* proposal
+  ((r', p'), τ') <- call (exec prog_0 τ_0)
+  -- | Compute acceptance ratio
+  b              <- call (Accept p p')
+  if b then pure ((r', p'), τ')
+       else pure ((r, p), τ)
 
 
 {- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.
@@ -80,7 +92,7 @@ reuseTrace τ0 = handle τ0 (\τ x -> Val (x, τ))
                             k τ y
   )
 
-{- Old version, for benchmarking purposes
+{- Original version, for benchmarking purposes
 metropolis :: (Members [Proposal p, Sampler] fs)
    => Int                                                                    -- ^ number of iterations
    -> Trace                                                          -- ^ initial context + sample trace
@@ -111,4 +123,26 @@ metroStep prog_0 exec markov_chain = do
   b              <- call (Accept p p')
   if b then pure (((r', p'), τ'):markov_chain)
        else pure markov_chain
+-}
+
+{- One function version of metropolis
+metropolis :: forall fs es a p. (Members [Proposal p, Sampler] fs)
+   => Int -> Trace -> ModelHandler es p -> Model es a -> Comp fs [((a, p), Trace)]
+metropolis n τ_0 exec prog_0 = do
+  -- | A function performing n mhSteps using initial mh_s.
+  let loop :: Int -> [((a, p), Trace)] -> Comp fs [((a, p), Trace)]
+      loop i mrkchain
+        | i < n     = do
+            let ((x, w), τ) = head mrkchain
+            τ_0            <- call (Propose τ :: Proposal p Trace)
+            ((x', w'), τ') <- call (exec prog_0 τ_0)
+            b              <- call (Accept w w')
+            let mrkchain'   = if b then ((x', w'), τ') : mrkchain else mrkchain
+            loop (i + 1) mrkchain'
+        | otherwise = return mrkchain
+  -- | Perform initial run of mh
+  node_0 <- call (exec prog_0 τ_0)
+  -- | Perform initial run of mh
+  loop 0 [node_0]
+
 -}
