@@ -71,7 +71,7 @@ metropolis n τ_0 exec prog_0 = do
   -- | Perform initial run of mh
   x0 <- call (exec prog_0 τ_0)
   -- | A function performing n mhSteps using initial mh_s. The most recent samples are at the front of the trace.
-  foldl (>=>) pure (replicate n (metroStep prog_0 exec )) [x0]
+  foldl1 (>=>) (replicate n (metroStep prog_0 exec)) [x0]
 
 metroStep :: forall es fs p a. (Members [Proposal p, Sampler] fs)
   => Model es a                                                       -- ^ model handler
@@ -102,7 +102,7 @@ metropolis n τ_0 exec model = do
   -- | Perform initial run of mh
   x0 <- call (exec model τ_0)
   -- | A function performing n mhSteps using initial mh_s. The most recent samples are at the front of the trace.
-  foldl (>=>) pure (replicate n f) [x0]
+  foldl1 (>=>) (replicate n f) [x0]
   where f :: [((a, p), Trace)] -> Comp fs [((a, p), Trace)]
         f mchain = metroStep model exec (head mchain) >>= return . (:mchain)
 
