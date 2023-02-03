@@ -66,7 +66,7 @@ smc2Internal :: (Member Sampler fs)
   -> Model '[Sampler] a                                    -- ^ probabilistic program
   -> Comp fs [(a, PrtState)]                -- ^ final particle results and contexts
 smc2Internal n_outer_prts mh_steps n_inner_prts tags  m  =
-  (handleResample mh_steps n_inner_prts tags  m . SIS.sis n_outer_prts RMSMC.exec  (PrtState (Addr "" 0) 0 Map.empty)) m
+  (handleResample mh_steps n_inner_prts tags  m . SIS.sis n_outer_prts RMSMC.exec (PrtState (Addr "" 0) 0 Map.empty)) m
 
 {- | A handler for resampling particles according to their normalized log-likelihoods,
      and then pertrubing their sample traces using PMMH.

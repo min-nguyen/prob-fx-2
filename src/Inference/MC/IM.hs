@@ -49,8 +49,8 @@ im n model env_in   = do
 {- | Handler for one iteration of IM.
 -}
 exec :: ModelHandler '[Sampler] LogP
-exec prog τ =
-  (handleIO . Metropolis.reuseTrace τ . LW.likelihood 0) prog
+exec τ   =
+  handleIO . Metropolis.reuseTrace τ . LW.likelihood 0
 
 handleProposal :: Member Sampler fs => Handler (Proposal LogP) fs a a
 handleProposal = handle () (\_ -> Val) (\_ op k -> hop op k)

@@ -54,7 +54,7 @@ pm m n τθ model = do
 {- | Handle probabilistic program using MH and compute the average log-probability using SMC.
 -}
 exec :: Int -> ModelHandler '[Sampler] LogP
-exec n prog τθ  = do
+exec n τθ prog   = do
   let execPrt :: ParticleHandler '[Sampler] LogP
       execPrt prt logp = (fmap fst . handleIO . reuseTrace τθ . step logp) prt
   (as, ws) <- (handleIO . handleResampleMul . fmap unzip . pfilter execPrt) (replicate n (prog, 0))

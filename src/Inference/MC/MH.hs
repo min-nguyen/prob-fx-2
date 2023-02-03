@@ -84,11 +84,10 @@ handleProposal tags  = handle (Addr "" 0) (const Val) hop
 
 {- | Handler for one iteration of MH.
 -}
-exec ::
-     Model '[Sampler] a                             -- ^ probabilistic program
-  -> Trace                                  -- ^ proposed address + initial log-probability trace + initial sample trace
+exec :: Trace
+  -> Model '[Sampler] a                             -- ^ probabilistic program
   -> Sampler ((a, LPTrace), Trace)  -- ^ proposed address + final log-probability trace + final sample trace
-exec prog τ0 = (handleIO . reuseTrace τ0 . defaultObserve . traceLP Map.empty) prog
+exec τ0 = handleIO . reuseTrace τ0 . defaultObserve . traceLP Map.empty
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}
