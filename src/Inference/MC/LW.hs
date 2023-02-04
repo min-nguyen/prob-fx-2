@@ -49,11 +49,11 @@ runLW
   :: Comp [Observe, Sample, Sampler] a
   -- | ((model output, sample trace), likelihood-weighting)
   -> Sampler (a, LogP)
-runLW = handleIO . SIM.defaultSample . likelihood 0
+runLW = handleIO . SIM.defaultSample . likelihood
 
 -- | Handle each @Observe@ operation by accumulating the log-likelihood P(Y | X)
-likelihood :: LogP -> Handler Observe es a (a, LogP)
-likelihood lρ0 = handle lρ0 (\lρ x -> Val (x, lρ)) hop
+likelihood :: Handler Observe es a (a, LogP)
+likelihood  = handle 0 (\lρ x -> Val (x, lρ)) hop
   where
   hop :: LogP -> Observe x -> (LogP -> x -> Comp es b) -> Comp es b
   hop lρ (Observe d y α) k = k (lρ + logProb d y) y

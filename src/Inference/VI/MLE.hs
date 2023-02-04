@@ -56,7 +56,7 @@ execGuide env guide params =
 -- | Compute P(Y | X; θ)
 exec :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
 exec model env  =
-  (handleIO . SIM.defaultSample . likelihood 0 . fmap fst . handleEnvRW env) model
+  (handleIO . SIM.defaultSample . likelihood . fmap fst . handleEnvRW env) model
 
 -- | Compute and update the guide parameters using a self-normalised importance weighted gradient estimate
 handleNormGradDescent :: Comp (GradEst : fs) a -> Comp fs a

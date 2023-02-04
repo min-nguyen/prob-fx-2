@@ -50,7 +50,7 @@ im n model env_in   = do
 -}
 exec :: ModelHandler '[Sampler] LogP
 exec τ   =
-  handleIO . Metropolis.reuseTrace τ . LW.likelihood 0
+  handleIO . Metropolis.reuseTrace τ . LW.likelihood
 
 handleProposal :: Member Sampler fs => Handler (Proposal LogP) fs a a
 handleProposal = handle () (\_ -> Val) (\_ op k -> hop op k)

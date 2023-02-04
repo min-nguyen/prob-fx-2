@@ -61,7 +61,7 @@ execGuide env guide params =
 -- | Compute P(X, Y)
 exec :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
 exec model env  = (handleIO . joint . fmap fst . handleEnvRW env) model where
-  joint = fmap (\((x, a), b) -> (x, a + b)) . prior . likelihood 0
+  joint = fmap (\((x, a), b) -> (x, a + b)) . prior . likelihood
 
 
 -- | Compute and update the guide parameters using a likelihood-ratio-estimate E[δelbo] of the ELBO gradient
