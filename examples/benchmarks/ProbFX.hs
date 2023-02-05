@@ -25,47 +25,47 @@ output_file = "examples/benchmarks/benchmarks-prob-fx.csv"
 bench_LR :: [Int] -> IO ()
 bench_LR args = do
     let row_header = ("Num points", args)
-    -- writeRow output_file row_header
-    -- benchRow ("LinRegr-[ ]-SSMH-" ++ show fixed_mh_steps
-    --           , mhLinRegr fixed_mh_steps) row_header output_file
-    -- benchRow ("LinRegr-[ ]-MPF-" ++ show fixed_smc_particles
-    --           , smcLinRegr fixed_smc_particles)  row_header output_file
-    -- benchRow ("LinRegr-[ ]-PMMH-" ++ show fixed_pmmh_particles
-    --           , pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
+    writeRow output_file row_header
+    benchRow ("LinRegr-[ ]-SSMH-" ++ show fixed_mh_steps
+              , mhLinRegr fixed_mh_steps) row_header output_file
+    benchRow ("LinRegr-[ ]-MPF-" ++ show fixed_smc_particles
+              , smcLinRegr fixed_smc_particles)  row_header output_file
+    benchRow ("LinRegr-[ ]-PMMH-" ++ show fixed_pmmh_particles
+              , pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
     benchRow ("LinRegr-[ ]-RMPF-" ++ show fixed_rmsmc_mhsteps
               , rmsmcLinRegr fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header output_file
+    benchRow ("LinRegr-[ ]-BBVI-" ++ show fixed_bbvi_steps
+              , bbviLinRegr fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
 
-    -- benchRow ("LinRegr-[ ]-BBVI-" ++ show fixed_bbvi_steps
-    --           , bbviLinRegr fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
 bench_HMM :: [Int] -> IO ()
 bench_HMM args = do
     let row_header = ("Num nodes", args)
-    -- writeRow output_file row_header
-    -- benchRow ("HidMark-[ ]-SSMH-" ++ show fixed_mh_steps
-    --           , mhHMM fixed_mh_steps) row_header output_file
-    -- benchRow ("HidMark-[ ]-MPF-" ++ show fixed_mh_steps
-    --           , smcHMM fixed_smc_particles) row_header output_file
-    -- benchRow ("HidMark-[ ]-PMMH-" ++ show fixed_pmmh_particles
-    --           , pmmhHMM fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
+    writeRow output_file row_header
+    benchRow ("HidMark-[ ]-SSMH-" ++ show fixed_mh_steps
+              , mhHMM fixed_mh_steps) row_header output_file
+    benchRow ("HidMark-[ ]-MPF-" ++ show fixed_mh_steps
+              , smcHMM fixed_smc_particles) row_header output_file
+    benchRow ("HidMark-[ ]-PMMH-" ++ show fixed_pmmh_particles
+              , pmmhHMM fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
     benchRow ("HidMark-[ ]-RMPF-" ++ show fixed_rmsmc_mhsteps
               , rmsmcHMM fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header output_file
-    -- benchRow ("HidMark-[ ]-BBVI-" ++ show fixed_bbvi_steps
-    --           , bbviHMM fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
+    benchRow ("HidMark-[ ]-BBVI-" ++ show fixed_bbvi_steps
+              , bbviHMM fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
 
 bench_LDA :: [Int] -> IO ()
 bench_LDA args = do
     let row_header = ("Num words", args)
-    -- writeRow output_file row_header
-    -- benchRow ("LatDiri-[ ]-SSMH-" ++ show fixed_mh_steps
-    --           , mhLDA fixed_mh_steps) row_header output_file
-    -- benchRow ("LatDiri-[ ]-MPF-" ++ show fixed_mh_steps
-    --           , smcLDA fixed_smc_particles) row_header output_file
-    -- benchRow ("LatDiri-[ ]-PMMH-" ++ show fixed_pmmh_particles
-    --           , pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
+    writeRow output_file row_header
+    benchRow ("LatDiri-[ ]-SSMH-" ++ show fixed_mh_steps
+              , mhLDA fixed_mh_steps) row_header output_file
+    benchRow ("LatDiri-[ ]-MPF-" ++ show fixed_mh_steps
+              , smcLDA fixed_smc_particles) row_header output_file
+    benchRow ("LatDiri-[ ]-PMMH-" ++ show fixed_pmmh_particles
+              , pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
     benchRow ("LatDiri-[ ]-RMPF-" ++ show fixed_rmsmc_mhsteps
-              , rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) (second (take 2) row_header) output_file
-    -- benchRow ("LatDiri-[ ]-BBVI-" ++ show fixed_bbvi_steps
-    --           , bbviLDA fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
+              , rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) (second (take 3) row_header) output_file
+    benchRow ("LatDiri-[ ]-BBVI-" ++ show fixed_bbvi_steps
+              , bbviLDA fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
 
 {- | Varying over inference parameters
 -}
@@ -116,7 +116,7 @@ bench_BBVI args = do
 
 bench_RMSMC :: [Int] -> IO ()
 bench_RMSMC args = do
-    let row_header = ("Num RMPF rejuvenation steps", args)
+    let row_header = ("Num RMPF mh steps", args)
     writeRow output_file row_header
     benchRow ("RMPF-[ ]-LinRegr-" ++ show fixed_lr
               , flip (rmsmcLinRegr fixed_rmsmc_particles) fixed_lr) row_header output_file
@@ -136,13 +136,13 @@ runBenchmarks = do
       args = map (map read . splitOn ",") (removeComments (lines content))
   -- | Run benchmark programs on their corresponding parameters
   case args of
-        [lr, hmm, lda, mh, smc, rmsmc, pmmh, bbvi] -> do
+        [lr, hmm, lda, mh, smc, rmpf, pmmh, bbvi] -> do
         --   bench_LR lr
         --   bench_HMM hmm
         --   bench_LDA lda
         --   bench_MH mh
         --   bench_SMC smc
         --   bench_PMMH pmmh
-          bench_RMSMC rmsmc
+          bench_RMSMC rmpf
         --   bench_BBVI bbvi
         _   -> error "bad input file"

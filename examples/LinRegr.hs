@@ -19,7 +19,7 @@ import Inference.MC.LW as LW ( lw )
 import Inference.MC.IM as IM ( im )
 import Inference.MC.MH as MH ( mh )
 import Inference.MC.SMC as SMC ( smc )
-import Inference.MC.RMSMC as RMSMC ( rmsmc )
+import Inference.MC.RMPF as RMPF ( rmpf )
 import Inference.MC.PMMH as PMMH ( pmmh )
 import Inference.MC.SMC2 as SMC2 ( smc2 )
 import qualified Inference.VI.BBVI as BBVI
@@ -138,7 +138,7 @@ smcLinRegr n_particles n_datapoints = do
       cs = concatMap (get #c) env_outs
   pure (mus, cs)
 
--- | RMSMC over linear regression
+-- | RMPF over linear regression
 rmsmcLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
 rmsmcLinRegr n_particles n_mhsteps n_datapoints = do
   -- Specify model inputs
@@ -146,7 +146,7 @@ rmsmcLinRegr n_particles n_mhsteps n_datapoints = do
   -- Specify model environment
       env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   -- Run SMC
-  env_outs <- RMSMC.rmsmc n_particles n_mhsteps (linRegr xs) env_in vnil
+  env_outs <- RMPF.rmpf n_particles n_mhsteps (linRegr xs) env_in vnil
   -- Get the sampled values of mu and c for each particle
   let mus = concatMap (get #m) env_outs
       cs  = concatMap (get #c) env_outs

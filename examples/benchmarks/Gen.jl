@@ -633,7 +633,7 @@ function bench_PMMH_LDA()
   parseBenchmark("PMMH-"  * "-[ ]-LatDiri-" * string(fixed_lda_size), zeros(length(pmmh_range)))
 end
 
-######################################## RMSMC
+######################################## RMPF
 
 function bench_RMSMC_LR()
   results = Array{Any}(undef, length(rmsmc_range))
@@ -762,14 +762,14 @@ function bench_BBVI()
 end
 
 function benchAll()
-  # bench_LR()
-  # bench_HMM()
+  bench_LR()
+  bench_HMM()
   bench_LDA()
-  # bench_MH()
-  # bench_SMC()
-  # bench_PMMH()
+  bench_MH()
+  bench_SMC()
+  bench_PMMH()
   bench_RMSMC()
-  # bench_BBVI()
+  bench_BBVI()
 end
 
 benchAll()

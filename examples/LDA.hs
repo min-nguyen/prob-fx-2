@@ -29,7 +29,7 @@ import Inference.MC.SIM as SIM ( simulate )
 import Inference.MC.LW as LW ( lw )
 import Inference.MC.MH as MH ( mh )
 import Inference.MC.SMC as SMC ( smc )
-import Inference.MC.RMSMC as RMSMC ( rmsmc )
+import Inference.MC.RMPF as RMPF ( rmpf )
 import Inference.MC.PMMH as PMMH ( pmmh )
 import Inference.VI.BBVI as BBVI
 import Data.Maybe
@@ -198,14 +198,14 @@ smcLDA n_particles n_words = do
       φs         = get #φ env_pred
   return (map Vec.toList θs, map Vec.toList φs)
 
--- | RMSMC inference on topic model (predictive)
+-- | RMPF inference on topic model (predictive)
 rmsmcLDA :: Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
 rmsmcLDA n_particles n_mhsteps n_words = do
 
   let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
 
-  env_outs     <- RMSMC.rmsmc n_particles n_mhsteps (topicModel vocab n_topics n_words) env_in vnil
+  env_outs     <- RMPF.rmpf n_particles n_mhsteps (topicModel vocab n_topics n_words) env_in vnil
   -- Draw a random particle's environment
   env_pred_idx <- sampleUniformD 0 (length env_outs - 1)
   let env_pred   = env_outs !! env_pred_idx

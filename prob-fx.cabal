@@ -44,7 +44,7 @@ library
                       Inference.MC.SIM,
                       Inference.MC.SIS,
                       Inference.MC.SMC,
-                      Inference.MC.RMSMC,
+                      Inference.MC.RMPF,
                       Inference.MC.PIM,
                       Inference.MC.PMMH,
                       Inference.MC.SMC2,

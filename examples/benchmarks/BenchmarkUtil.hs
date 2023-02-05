@@ -9,7 +9,7 @@ import Data.List
 import Sampler
 import Statistics.Types
 import Control.DeepSeq
-import Criterion (benchmark', benchmarkWith)
+import Criterion (benchmark', benchmarkWith')
 
 fixed_mh_steps :: Int
 fixed_mh_steps = 100
@@ -43,7 +43,7 @@ writeRow file_name (label, values) = appendFileLn file_name (intercalate "," (la
 
 benchMean :: NFData a => IO a -> IO Double
 benchMean prog = do
-  report <- benchmark' (nfIO prog)
+  report <- benchmarkWith' (defaultConfig {confInterval=mkCL 0.14, resamples = 1}) (nfIO prog)
   let analysis = reportAnalysis report
       estMean  = estPoint (anMean analysis)
   return estMean

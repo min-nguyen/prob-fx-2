@@ -15,7 +15,7 @@
 {- Rejuvenate-Move Sequential Monte Carlo inference.
 -}
 
-module Inference.MC.RMSMC where
+module Inference.MC.RMPF where
 
 import qualified Data.Map as Map
 import           Data.Map (Map)
@@ -55,23 +55,23 @@ unpack prts = (head αs, ps, τs)
 pack :: (Addr, [LogP], [Trace]) -> [PrtState]
 pack (α, ps, τs) = zipWith3 PrtState (repeat α) ps τs
 
-{- | Call RMSMC on a model.
+{- | Call RMPF on a model.
 -}
-rmsmc :: forall env a xs. (env `ContainsVars` xs)
+rmpf :: forall env a xs. (env `ContainsVars` xs)
   => Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of MH (rejuvenation) steps
   -> GenModel env [EnvRW env, Dist, Sampler] a                -- ^ model
   -> Env env                                      -- ^ input model environment
   -> Vars xs                                      -- ^ optional observable variable names of interest
   -> Sampler [Env env]                            -- ^ output model environments of each particle
-rmsmc n_prts mh_steps model env_in obs_vars = do
+rmpf n_prts mh_steps model env_in obs_vars = do
   -- | Handle model to probabilistic program
   let prog_0   = handleCore env_in model
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
   map (snd . fst) <$> rmpfilter n_prts mh_steps tags prog_0
 
-{- | Call RMSMC on a probabilistic program.
+{- | Call RMPF on a probabilistic program.
 -}
 rmpfilter ::
      Int                                          -- ^ number of SMC particles
@@ -104,7 +104,7 @@ handleResample mh_steps tags  m = handle () (const Val) (const hop) where
   hop :: Member Sampler fs => Resample PrtState x -> (() -> x -> Comp fs a) -> Comp fs a
   hop  (Resample (_, σs) ) k = do
     let (α, ws, τs ) = unpack σs
-  -- | Resample the RMSMC particles according to the indexes returned by the SMC resampler
+  -- | Resample the RMPF particles according to the indexes returned by the SMC resampler
     idxs <- call $ SMC.resampleMul ws
     let τs_res    = map (τs !!) idxs
     -- | Insert break point to perform MH up to
