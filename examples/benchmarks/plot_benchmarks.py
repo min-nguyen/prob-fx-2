@@ -73,7 +73,7 @@ def plotPage(output_file, data_dicts, n_groups, n_rows):
         plt.setp(axis_a[row_idx][col_idx].get_yticklabels(), fontsize=5)
 
   ### Adjust padding between subplots
-  plt.subplots_adjust(hspace=0.29, wspace=0.2)
+  plt.subplots_adjust(hspace=0.39, wspace=0.25)
   # fig_a.tight_layout()
 
   ###
