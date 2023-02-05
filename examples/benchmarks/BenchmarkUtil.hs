@@ -9,7 +9,7 @@ import Data.List
 import Sampler
 import Statistics.Types
 import Control.DeepSeq
-import Criterion (benchmark')
+import Criterion (benchmark', benchmarkWith)
 
 fixed_mh_steps :: Int
 fixed_mh_steps = 100
@@ -60,7 +60,9 @@ benchRow  (prog_name, prog) (_, params) ofile = do
   putStrLn ("Running " ++ prog_name ++ " over " ++ show params)
   -- Run program over varying parameter values and write e.g. "LinRegr-MH100, 0.23, 0.87, 1.23, 1.78, 2.45"
   means <- mapM (benchMean . sampleIOFixed . prog) params
-  writeRow ofile (prog_name, means)
+  -- Append any zeros onto early terminated benchmarks
+  let means' = means ++ replicate (5 - length means) 0
+  writeRow ofile (prog_name, means')
 
 dummyRow :: String -> (a1, [a2]) -> String -> IO ()
 dummyRow prog_name (_, params) ofile = do

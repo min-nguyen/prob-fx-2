@@ -3,6 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import FormatStrFormatter
 
+def zero_to_nan(values):
+    """Replace every 0 with 'nan' and return a copy."""
+    return [float('nan') if x==0 else x for x in values]
+
 def groupBenchmarks(raw_data, n_groups, n_rows):
   def chunksOf(xs, n):
       for i in range(0, len(xs), n):
@@ -48,10 +52,9 @@ def plotPage(output_file, data_dicts, n_groups, n_rows):
             twin_axis.set_yticks([])
             twin_axis.set_ylabel(suffix_label, fontsize=9, rotation='horizontal', va='center', ha='left')
 
-        ### Get benchmarks
-        prog_values  = list(map(float, prog[1:]))
+        ### Get benchmarks, and use 'zero_to_nan' to avoid plotting dummy results
+        prog_values  = zero_to_nan(list(map(float, prog[1:])))
 
-        ### Don't plot dummy results
         if (not (0 in prog_values)):
           axis_a[row_idx][col_idx].plot(x_values, prog_values, color=data_dict["color"], label=data_dict["language"])
 
