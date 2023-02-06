@@ -22,15 +22,15 @@ import Env
 import Effects.EnvRW
 import qualified Data.Map as Map
 import Inference.MC.SIM as SIM
-import qualified Inference.MC.MH as MH
-import Inference.MC.Metropolis as Metropolis
+import qualified Inference.MC.SSMH as SSMH
+import Inference.MC.MH as MH
 import           Inference.MC.SIS as SIS
 import           Inference.MC.SMC (handleResampleMul, step)
 
 {- | Top-level wrapper for PMMH inference.
 -}
 pmmh :: forall env vars a. (env `ContainsVars` vars)
-  => Int                                            -- ^ number of MH steps
+  => Int                                            -- ^ number of SSMH steps
   -> Int                                            -- ^ number of particles
   -> GenModel env [EnvRW env, Dist, Sampler] a                  -- ^ model
   -> Env env                                        -- ^ input environment
@@ -44,14 +44,14 @@ pmmh mh_steps n_prts model env_in obs_vars = do
   -- | Initialise sample trace to include only parameters
   (_, τ)       <- (handleIO . reuseTrace Map.empty . defaultObserve) prog_0
   let τθ       = filterTrace θ τ
-  pmmh_trace <- (handleIO . handleProposal . metropolis mh_steps τθ (exec n_prts)) prog_0
+  pmmh_trace <- (handleIO . handleProposal . mh mh_steps τθ (exec n_prts)) prog_0
   pure (map (snd . fst . fst) pmmh_trace)
 
-pm :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
-pm m n τθ model = do
-  (handleIO . handleProposal . metropolis m τθ (exec n)) model
+pmmh' :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
+pmmh' m n τθ model = do
+  (handleIO . handleProposal . mh m τθ (exec n)) model
 
-{- | Handle probabilistic program using MH and compute the average log-probability using SMC.
+{- | Handle probabilistic program using SSMH and compute the average log-probability using SMC.
 -}
 exec :: Int -> ModelHandler '[Sampler] LogP
 exec n τθ prog   = do

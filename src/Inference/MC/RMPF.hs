@@ -30,10 +30,10 @@ import           Control.Applicative
 import           Effects.Dist
 import           Effects.EnvRW
 import           Effects.NonDet
-import qualified Inference.MC.MH as MH
+import qualified Inference.MC.SSMH as SSMH
 import qualified Inference.MC.SMC as SMC
 import qualified Inference.MC.SIM as SIM
-import           Inference.MC.Metropolis as Metropolis
+import           Inference.MC.MH as MH
 import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
 import           Inference.MC.SIS (Resample(..), ParticleHandler, pfilter)
 
@@ -59,7 +59,7 @@ pack (α, ps, τs) = zipWith3 PrtState (repeat α) ps τs
 -}
 rmpf :: forall env a xs. (env `ContainsVars` xs)
   => Int                                          -- ^ number of SMC particles
-  -> Int                                          -- ^ number of MH (rejuvenation) steps
+  -> Int                                          -- ^ number of SSMH (rejuvenation) steps
   -> GenModel env [EnvRW env, Dist, Sampler] a                -- ^ model
   -> Env env                                      -- ^ input model environment
   -> Vars xs                                      -- ^ optional observable variable names of interest
@@ -75,7 +75,7 @@ rmpf n_prts mh_steps model env_in obs_vars = do
 -}
 rmpfilter ::
      Int                                          -- ^ number of SMC particles
-  -> Int                                          -- ^ number of MH (rejuvenation) steps
+  -> Int                                          -- ^ number of SSMH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> Model '[Sampler] a                                   -- ^ probabilistic program
   -> Sampler [(a, PrtState)]                      -- ^ final particle results and contexts
@@ -93,10 +93,10 @@ exec :: ParticleHandler '[Sampler] PrtState
 exec (PrtState _ logp τ)  = fmap asPrtTrace . handleIO . reuseTrace τ . suspendα logp where
   asPrtTrace ((prt, α, w), τ) = (prt, PrtState α w τ)
 
-{- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using MH.
+{- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using SSMH.
 -}
 handleResample :: (Member Sampler fs)
-  => Int                                          -- ^ number of MH (rejuvenation) steps
+  => Int                                          -- ^ number of SSMH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> Model '[Sampler] a
   -> Handler (Resample PrtState) fs [(a, PrtState)] [(a, PrtState)]
@@ -107,10 +107,10 @@ handleResample mh_steps tags  m = handle () (const Val) (const hop) where
   -- | Resample the RMPF particles according to the indexes returned by the SMC resampler
     idxs <- call $ SMC.resampleMul ws
     let τs_res    = map (τs !!) idxs
-    -- | Insert break point to perform MH up to
+    -- | Insert break point to perform SSMH up to
         partial_model   = suspendAt α m
-    -- | Perform MH using each resampled particle's sample trace and get the most recent MH iteration.
-    wprts_mov <- mapM (\τ -> do ((prt_mov, lwtrace), τ_mov) <- fmap head (MH.ssmh mh_steps τ tags (unsafeCoerce partial_model))
+    -- | Perform SSMH using each resampled particle's sample trace and get the most recent SSMH iteration.
+    wprts_mov <- mapM (\τ -> do ((prt_mov, lwtrace), τ_mov) <- fmap head (SSMH.ssmh' mh_steps τ tags (unsafeCoerce partial_model))
                                 let w_mov = (sum . Map.elems) lwtrace
                                 return (prt_mov, PrtState α w_mov τ_mov) )
                       τs_res

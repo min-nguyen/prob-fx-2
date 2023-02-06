@@ -34,7 +34,7 @@ import GHC.TypeLits ( Symbol )
 import Data.Kind (Constraint)
 import Sampler ( Sampler )
 import Inference.MC.SIM as SIM ( simulate )
-import Inference.MC.MH as MH ( mh )
+import Inference.MC.SSMH as SSMH ( ssmh )
 {-
 import Inference.MB as MB ( handleMBayes )
 import qualified Control.Monad.Bayes.Class as Bayes
@@ -140,9 +140,9 @@ simSIR n_days = do
       sirs = map (\sir -> (sir ^. s, sir ^. i, sir ^. r)) sir_trace
   return (sirs, 𝜉s)
 
--- | MH inference from SIR model:
+-- | SSMH inference from SIR model:
 mhSIR
-  -- | number of MH iterations
+  -- | number of SSMH iterations
   :: Int
   -- | number of days
   -> Int
@@ -155,8 +155,8 @@ mhSIR n_mhsteps n_days = do
   let sir_0     = #s @= 762 <: #i @= 1 <: #r @= 0 <: emptyRecord
   -- Specify model environment
       mh_env_in = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> enil
-  -- Run MH inference over 50000 iterations
-  mhTrace <- MH.mh n_mhsteps (hmmSIR n_days sir_0) mh_env_in (#β <#> #ρ <#> vnil)
+  -- Run SSMH inference over 50000 iterations
+  mhTrace <- SSMH.ssmh n_mhsteps (hmmSIR n_days sir_0) mh_env_in (#β <#> #ρ <#> vnil)
   -- Get the sampled values for model parameters ρ and β
   let ρs = concatMap (get #ρ) mhTrace
       βs = concatMap (get #β) mhTrace
@@ -309,7 +309,7 @@ simSIRMB n_days = do
 
 -- | Metropolis-Hastings from the SIR model in Monad Bayes.
 mhSIRMB
-  -- | number of MH iterations
+  -- | number of SSMH iterations
   :: Int
   -- | number of days
   -> Int

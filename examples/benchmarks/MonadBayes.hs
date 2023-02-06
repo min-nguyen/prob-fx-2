@@ -73,7 +73,7 @@ bench_LDA_MonadBayes args = do
 
 bench_MH_MonadBayes :: [Int] -> IO ()
 bench_MH_MonadBayes args = do
-    let row_header = ("Num MH steps", args)
+    let row_header = ("Num SSMH steps", args)
     writeRow output_file row_header
     benchRow ("SSMH-[ ]-LinRegr-" ++ show fixed_lr
               , liftIO . flip MonadBayes.mhLinRegr fixed_lr) row_header output_file

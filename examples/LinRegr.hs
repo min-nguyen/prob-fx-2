@@ -17,7 +17,7 @@ import Model ( GenModel, normal, uniform, handleCore )
 import Inference.MC.SIM as SIM ( simulate )
 import Inference.MC.LW as LW ( lw )
 import Inference.MC.IM as IM ( im )
-import Inference.MC.MH as MH ( mh )
+import Inference.MC.SSMH as SSMH ( ssmh )
 import Inference.MC.SMC as SMC ( smc )
 import Inference.MC.RMPF as RMPF ( rmpf )
 import Inference.MC.PMMH as PMMH ( pmmh )
@@ -102,7 +102,7 @@ imLinRegr n_mhsteps n_datapoints = do
   let xs            = [0 .. fromIntegral n_datapoints]
   -- Specify model environment
       env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  -- Run MH
+  -- Run SSMH
   env_outs <- IM.im n_mhsteps (linRegr xs) env_in
   -- Get the sampled values of mu and c
   let mus = concatMap (get #m) env_outs
@@ -116,8 +116,8 @@ mhLinRegr n_mhsteps n_datapoints = do
   let xs            = [0 .. fromIntegral n_datapoints]
   -- Specify model environment
       env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  -- Run MH
-  env_outs <- MH.mh n_mhsteps (linRegr xs) env_in (#m <#> #c <#> vnil)
+  -- Run SSMH
+  env_outs <- SSMH.ssmh n_mhsteps (linRegr xs) env_in (#m <#> #c <#> vnil)
   -- Get the sampled values of mu and c
   let mus = concatMap (get #m) env_outs
   let cs = concatMap (get #c) env_outs
@@ -226,8 +226,8 @@ mhLinRegrOnce n_mhsteps n_datapoints = do
   let xs  = [0 .. fromIntegral n_datapoints]
   -- Specify model environments and pair with model input
       xys = [(x, env_in) | x <- xs, let env_in = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x]) <:> enil]
-  -- Run MH for n_mhsteps iterations on each pair of model input and environment
-  mhTrace <- concat <$> mapM (\(x, y) -> MH.mh n_mhsteps (linRegrOnce x) y  (#m <#> #c <#> vnil)) xys
+  -- Run SSMH for n_mhsteps iterations on each pair of model input and environment
+  mhTrace <- concat <$> mapM (\(x, y) -> SSMH.ssmh n_mhsteps (linRegrOnce x) y  (#m <#> #c <#> vnil)) xys
   -- Get the sampled values of mu and c
   let mus = concatMap (get #m) mhTrace
       cs  = concatMap (get #c) mhTrace

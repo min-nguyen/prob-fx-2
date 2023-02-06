@@ -32,7 +32,7 @@ import GHC.TypeLits ( Symbol )
 import Data.Kind (Constraint)
 import Sampler ( Sampler )
 import Inference.MC.SIM as SIM ( simulate )
-import Inference.MC.MH as MH ( mh )
+import Inference.MC.SSMH as SSMH ( ssmh )
 {-
 import Inference.MB as MB ( handleMBayes )
 import qualified Control.Monad.Bayes.Class as Bayes
@@ -137,7 +137,7 @@ simSIR n_days = do
       sirs = map (\(Popl s i recov) -> (s, i, recov)) sir_trace
   return (sirs, 𝜉s)
 
--- | MH inference from SIR model: ([ρ], [β])
+-- | SSMH inference from SIR model: ([ρ], [β])
 mhSIR :: Int -> Int -> Sampler ([Double], [Double])
 mhSIR n_mhsteps n_days = do
   𝜉s <- snd <$> simSIR n_days
@@ -145,8 +145,8 @@ mhSIR n_mhsteps n_days = do
   let sir_0           = Popl {s = 762, i = 1, r = 0}
   -- Specify model environment
       mh_env_in = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> enil
-  -- Run MH inference over 50000 iterations
-  mhTrace <- MH.mh 5000 (hmmSIR' 100 sir_0) mh_env_in (#β <#> #ρ <#> vnil)
+  -- Run SSMH inference over 50000 iterations
+  mhTrace <- SSMH.ssmh 5000 (hmmSIR' 100 sir_0) mh_env_in (#β <#> #ρ <#> vnil)
   -- Get the sampled values for model parameters ρ and β
   let ρs = concatMap (get #ρ) mhTrace
       βs = concatMap (get #β) mhTrace

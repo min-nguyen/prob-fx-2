@@ -27,7 +27,7 @@ import Vec (Vec(..), TypeableSNatI)
 import qualified Vec
 import Inference.MC.SIM as SIM ( simulate )
 import Inference.MC.LW as LW ( lw )
-import Inference.MC.MH as MH ( mh )
+import Inference.MC.SSMH as SSMH ( ssmh )
 import Inference.MC.SMC as SMC ( smc )
 import Inference.MC.RMPF as RMPF ( rmpf )
 import Inference.MC.PMMH as PMMH ( pmmh )
@@ -163,7 +163,7 @@ document = concat $ repeat ["DNA","evolution","DNA","evolution","DNA","evolution
 -- | LW inference on topic model
 lwLDA :: Int -> Int -> Sampler ([[Double]], [Double])
 lwLDA n_lwsteps n_words = do
-  -- Do MH inference over the topic model using the above data
+  -- Do SSMH inference over the topic model using the above data
   let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
   (env_outs, ws) <- unzip <$> LW.lw n_lwsteps (topicModel vocab n_topics n_words) env_in
@@ -172,13 +172,13 @@ lwLDA n_lwsteps n_words = do
       θs         = get #θ env_pred
   return (map Vec.toList θs, ws)
 
--- | MH inference on topic model (predictive)
+-- | SSMH inference on topic model (predictive)
 mhLDA :: Int -> Int -> Sampler ([[Double]], [[Double]])
 mhLDA n_mhsteps n_words = do
-  -- Do MH inference over the topic model using the above data
+  -- Do SSMH inference over the topic model using the above data
   let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document <:> enil
-  env_outs <- MH.mh n_mhsteps (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
+  env_outs <- SSMH.ssmh n_mhsteps (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
   -- Draw the most recent sampled parameters
   let env_pred   = head env_outs
       θs         = get #θ env_pred

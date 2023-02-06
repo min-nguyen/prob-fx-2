@@ -555,7 +555,7 @@ function bench_LR_BBVI()
   parseBenchmark("LinRegr-[ ]-BBVI-" * string(fixed_bbvi_steps), results)
 end
 
-######################################## MH
+######################################## SSMH
 
 function bench_MH_LR()
   results = Array{Any}(undef, length(mh_range))
@@ -727,7 +727,7 @@ function bench_LDA()
 end
 
 function bench_MH()
-  parseBenchmark("Num MH steps", mh_range)
+  parseBenchmark("Num SSMH steps", mh_range)
   bench_MH_LR()
   bench_MH_HMM()
   bench_MH_LDA()

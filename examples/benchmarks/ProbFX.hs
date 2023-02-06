@@ -72,7 +72,7 @@ bench_LDA args = do
 
 bench_MH :: [Int] -> IO ()
 bench_MH args = do
-    let row_header = ("Num MH steps", args)
+    let row_header = ("Num SSMH steps", args)
     writeRow output_file row_header
     benchRow ("SSMH-[ ]-LinRegr-" ++ show fixed_lr
               , flip mhLinRegr fixed_lr) row_header output_file

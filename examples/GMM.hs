@@ -18,7 +18,7 @@ import Data.Typeable
 import Data.Proxy
 import Model ( GenModel, dirichlet', discrete, normal )
 import Inference.MC.SIM as SIM ( simulate )
-import Inference.MC.MH as MH ( mh )
+import Inference.MC.SSMH as SSMH ( ssmh )
 import Sampler ( Sampler )
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
@@ -64,13 +64,13 @@ simGMM n_datapoints = do
   pure $ fst bs
 
 mhGMM
-  :: Int -- ^ num MH iterations
+  :: Int -- ^ num SSMH iterations
   -> Int -- ^ num data points
   -> Sampler [[Double]]
 mhGMM n_mhsteps n_datapoints = do
   bs <- simGMM n_datapoints
   let (xs, ys) = unzip (map fst bs)
       env =  #mu := [] <:> #mu_k := [] <:> #x := xs <:> #y := ys <:> enil
-  env_out <- MH.mh n_mhsteps (gmm (snat @(FromGHC 2)) n_datapoints) env (#mu <#> vnil)
+  env_out <- SSMH.ssmh n_mhsteps (gmm (snat @(FromGHC 2)) n_datapoints) env (#mu <#> vnil)
   let mus = map (get #mu) env_out
   pure mus
