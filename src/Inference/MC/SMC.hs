@@ -52,8 +52,8 @@ mulpfilter n_prts model = (handleIO . handleResampleMul . pfilter exec) wprts
        1. the rest of the computation
        2. the log probability of the @Observe operation
 -}
-exec :: Model '[Sampler] a -> LogP -> Sampler (Model '[Sampler] a, LogP)
-exec model w = (handleIO . defaultSample . step w) model
+exec :: LogP -> Model '[Sampler] a -> Sampler (Model '[Sampler] a, LogP)
+exec w = handleIO . defaultSample . step w
 
 step :: LogP -> Handler Observe es a (Comp (Observe : es) a, LogP)
 step w (Val x)   = Val (Val x, w)
@@ -69,7 +69,7 @@ handleResampleMul = handle () (const Val) (const hop) where
   hop :: Member Sampler es =>  Resample LogP x -> (() -> x -> Comp es b) -> Comp es b
   hop  (Resample (prts, ws)) k = do
     let n = length ws
-    idxs <- call (replicateM n (Sampler.sampleCategorical (Vector.fromList (map exp ws))))
+    idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList (map exp ws))
     let prts_res  = map (prts !! ) idxs
         ws_res    = (replicate n . logMeanExp . map (ws  !! )) idxs
 

@@ -56,7 +56,7 @@ pm m n τθ model = do
 exec :: Int -> ModelHandler '[Sampler] LogP
 exec n τθ prog   = do
   let execPrt :: ParticleHandler '[Sampler] LogP
-      execPrt prt logp = (fmap fst . handleIO . reuseTrace τθ . step logp) prt
+      execPrt logp = fmap fst . handleIO . reuseTrace τθ . step logp
   (as, ws) <- (handleIO . handleResampleMul . fmap unzip . pfilter execPrt) (replicate n (prog, 0))
   let a   = head as
       w   = logMeanExp ws

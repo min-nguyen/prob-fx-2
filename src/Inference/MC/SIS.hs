@@ -35,7 +35,7 @@ data Resample p a where
 
 {- | A @ParticleHandler@  runs a particle to the next @Observe@ break point.
 -}
-type ParticleHandler es p = forall a. Model es a -> p -> Sampler (Model es a, p)
+type ParticleHandler es p = forall a. p -> Model es a -> Sampler (Model es a, p)
 
 {- | A top-level template for sequential importance sampling.
 -}
@@ -59,7 +59,7 @@ pfilter :: (Members [Resample p, Sampler] fs)
   -> Comp fs [(a, p)]                          -- ^ final particle results and corresponding contexts
 pfilter exec wprts = do
   -- | Run particles to next checkpoint and accumulate their contexts
-  wprts' <- call ((mapM . uncurry) exec wprts)
+  wprts' <- call (mapM (\(prt, w) -> exec w prt) wprts)
   -- ρs'   <- call (Accum ρs partialρs)
   -- | Check termination status of particles
   case collapse wprts' of
