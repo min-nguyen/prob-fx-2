@@ -73,8 +73,6 @@ pfilter exec wprts = do
      If all programs have finished, return a single program that returns all results.
 -}
 collapse :: [(Model es a, p)] -> Maybe [(a, p)]
-collapse ((Val v, p) : progs) = do
-  vs <- collapse progs
-  pure ((v, p):vs)
-collapse []    = pure []
+collapse ((Val v, p) : progs) = collapse progs >>= return . ((v, p):)
+collapse []    = Just []
 collapse progs = Nothing
