@@ -54,13 +54,13 @@ bbvi num_timesteps num_samples guide model env  = do
     $ VI.viLoop num_timesteps num_samples guide (execGuide env) model exec λ_0
 
 -- | Compute Q(X; λ)
-execGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), GradTrace), LogP)
-execGuide env guide params =
-  (handleIO . VI.prior . defaultParam params . handleEnvRW env) guide
+execGuide :: Env env -> ParamTrace -> VIGuide env '[Sampler] a -> Sampler (((a, Env env), GradTrace), LogP)
+execGuide env params =
+  handleIO . VI.prior . defaultParam params . handleEnvRW env
 
 -- | Compute P(X, Y)
-exec :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
-exec model env  = (handleIO . joint . fmap fst . handleEnvRW env) model where
+exec :: Env env -> VIModel env '[Sampler] a -> Sampler (a, LogP)
+exec env = handleIO . joint . fmap fst . handleEnvRW env where
   joint = fmap (\((x, a), b) -> (x, a + b)) . prior . likelihood
 
 

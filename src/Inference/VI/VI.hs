@@ -44,8 +44,8 @@ type VIModel env es a  = Comp (EnvRW env : Observe : Sample : es) a
 data GradEst a where
   UpdateParam :: [LogP] -> [GradTrace] -> ParamTrace -> GradEst ParamTrace
 
-type GuideHandler env es a = VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), GradTrace), LogP)
-type ModelHandler env es a = VIModel env es a -> Env env    -> Sampler (a, LogP)
+type GuideHandler env es a = ParamTrace -> VIGuide env es a -> Sampler (((a, Env env), GradTrace), LogP)
+type ModelHandler env es a = Env env    -> VIModel env es a -> Sampler (a, LogP)
 
 viLoop :: (Members [GradEst, Sampler] fs)
   => Int                                     -- ^ number of optimisation steps (T)
@@ -54,8 +54,8 @@ viLoop :: (Members [GradEst, Sampler] fs)
   -> VIModel env es2 b -> ModelHandler env es2 b
   -> ParamTrace                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Comp fs ParamTrace      -- ^ final guide parameters λ_T
-viLoop num_timesteps num_samples guide hdlGuide model exec guideParams_0 = do
-  foldr (>=>) pure [viStep num_samples  hdlGuide  exec guide model  | t <- [1 .. num_timesteps]] guideParams_0
+viLoop num_timesteps num_samples guide execg model execm guideParams_0 = do
+  foldr (>=>) pure [viStep num_samples execg execm guide model  | t <- [1 .. num_timesteps]] guideParams_0
 
 {- | 1. For L iterations,
         a) Generate values x from the guide Q(X; λ), accumulating:
@@ -72,16 +72,16 @@ viStep ::  (Members [GradEst, Sampler] fs)
   -> GuideHandler env es1 a -> ModelHandler env es2 b -> VIGuide env es1 a -> VIModel env es2 b
   -> ParamTrace                            -- ^ guide parameters λ_t
   -> Comp fs ParamTrace    -- ^ next guide parameters λ_{t+1}
-viStep num_samples hdlGuide exec guide model  params = do
-  let hdlGuideModel = do -- | Execute the guide X ~ Q(X; λ)
-                          (((_, env), δλ ), guide_w) <- call (hdlGuide guide params)
-                          -- | Execute the model P(X, Y) under the guide environment X
-                          (_        , model_w)      <- call (exec model env)
-                          -- | Compute total log-importance-weight, log(P(X, Y)) - log(Q(X; λ))
-                          let w     =  model_w - guide_w
-                          pure (δλ, w)
+viStep num_samples execg execm guide model  params = do
+  let exec = do -- | Execute the guide X ~ Q(X; λ)
+                (((_, env), δλ ), guide_w) <- call (execg params guide )
+                -- | Execute the model P(X, Y) under the guide environment X
+                (_        , model_w)      <- call (execm env model )
+                -- | Compute total log-importance-weight, log(P(X, Y)) - log(Q(X; λ))
+                let w     =  model_w - guide_w
+                pure (δλ, w)
   -- | Execute for L iterations
-  (δλs, ws) <- unzip <$> replicateM num_samples hdlGuideModel
+  (δλs, ws) <- unzip <$> replicateM num_samples exec
   -- | Update the parameters λ of the proposal distributions Q
   call (UpdateParam ws δλs params)
 
