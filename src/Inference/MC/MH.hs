@@ -91,6 +91,8 @@ mhStep prog_0 exec markov_chain = do
        else pure markov_chain
 {--}
 
+
+
 {- Paper version
 mh :: forall p fs es a. (Members [Proposal p, Sampler] fs)
    => Int                                                                    -- ^ number of iterations
@@ -125,23 +127,22 @@ metroStep prog_0 exec ((r, p), τ) = do
 -}
 
 {- One function version of mh
-mh :: forall fs es a p. (Members [Proposal p, Sampler] fs)
+mh' :: forall fs es a p. (Members [Proposal p, Sampler] fs)
    => Int -> Trace -> ModelHandler es p -> Model es a -> Comp fs [((a, p), Trace)]
-mh n τ_0 exec prog_0 = do
+mh' n τ_0 exec prog_0 = do
   -- | A function performing n mhSteps using initial mh_s.
   let loop :: Int -> [((a, p), Trace)] -> Comp fs [((a, p), Trace)]
       loop i mrkchain
         | i < n     = do
             let ((x, w), τ) = head mrkchain
             τ_0            <- call (Propose τ :: Proposal p Trace)
-            ((x', w'), τ') <- call (exec prog_0 τ_0)
+            ((x', w'), τ') <- call (exec τ_0 prog_0 )
             b              <- call (Accept w w')
             let mrkchain'   = if b then ((x', w'), τ') : mrkchain else mrkchain
             loop (i + 1) mrkchain'
         | otherwise = return mrkchain
   -- | Perform initial run of mh
-  node_0 <- call (exec prog_0 τ_0)
+  node_0 <- call (exec τ_0 prog_0 )
   -- | Perform initial run of mh
   loop 0 [node_0]
-
 -}
