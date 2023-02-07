@@ -27,7 +27,7 @@ import Effects.State ( modify, handleState, State )
 import Env ( Env, union )
 import LogP ( LogP(..), normaliseLogPs )
 import PrimDist
-import Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handle )
+import Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handleSt )
 import Sampler
 import           Trace (GradTrace, ParamTrace, Key(..), Some(..), ValueTrace)
 import qualified Trace
@@ -108,7 +108,7 @@ collectParams env = handleIO . SIM.defaultSample . (fst <$>) . defaultParam Trac
 
 -- | Sample from each @Param@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
 defaultParam :: forall es a. Member Sample es => ParamTrace -> Handler Param es a (a, GradTrace)
-defaultParam param = handle Trace.empty (\s a -> Val (a, s)) hop where
+defaultParam param = handleSt Trace.empty (\s a -> Val (a, s)) hop where
   hop :: GradTrace -> Param x -> (GradTrace -> x -> Comp es b) -> Comp es b
   hop grads (Param (q :: d) α) k = do
       let q' = fromMaybe q (Trace.lookup (Key α) param)
@@ -116,7 +116,7 @@ defaultParam param = handle Trace.empty (\s a -> Val (a, s)) hop where
       k (Trace.insert @d (Key α) (gradLogProb q' x) grads) x
 
 prior :: forall es a. Member Sampler es => Handler Sample es a (a, LogP)
-prior = handle 0 (\lρ x -> Val (x, lρ)) hop
+prior = handleSt 0 (\lρ x -> Val (x, lρ)) hop
   where
   hop :: LogP -> Sample x -> (LogP -> x -> Comp es b) -> Comp es b
   hop lρ (Sample d α) k = do x <- call $ drawWithSampler d

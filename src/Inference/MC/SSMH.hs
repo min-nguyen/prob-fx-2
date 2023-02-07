@@ -22,7 +22,7 @@ import qualified Data.Map as Map
 import           Data.Set ((\\))
 import qualified Data.Set as Set
 import           Data.Maybe ( fromJust )
-import           Comp ( Comp(..), discharge, Members, LastMember, Member (..), call, weakenProg, weaken, Handler, handle )
+import           Comp ( Comp(..), discharge, Members, LastMember, Member (..), call, weakenProg, weaken, Handler, handleSt )
 import           Env ( ContainsVars(..), Vars, Env )
 import           Trace ( Trace, LPTrace, filterTrace )
 import           LogP ( LogP )
@@ -72,7 +72,7 @@ ssmh' n τ_0  tags = handleProposal tags  . mh n τ_0 exec
        p(X', Y')q(X | X')/p(X, Y)q(X' | X)
 -}
 handleProposal :: Member Sampler fs => [Tag] -> Handler (Proposal LPTrace) fs a a
-handleProposal tags  = handle (Addr "" 0) (const Val) hop
+handleProposal tags  = handleSt (Addr "" 0) (const Val) hop
   where
     hop :: Member Sampler es => Addr -> Proposal LPTrace x -> (Addr -> x -> Comp es b) -> Comp es b
     hop _ (Propose τ) k   = do  α <- randomFrom (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))

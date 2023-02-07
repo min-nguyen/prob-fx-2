@@ -22,7 +22,7 @@ import           Env ( Env )
 import           LogP ( LogP(..), logMeanExp )
 import           Model ( GenModel(runModel), Model )
 import           PrimDist ( mkCategorical, drawWithSampler, logProb )
-import           Comp ( LastMember, Comp(..), Members, Member, call, weakenProg, discharge, prj, handle, Handler )
+import           Comp ( LastMember, Comp(..), Members, Member, call, weakenProg, discharge, prj, handleSt, Handler )
 import qualified Data.Map as Map
 import           Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS
@@ -65,7 +65,7 @@ step w (Op op k) = case discharge op of
 -}
 
 handleResampleMul :: Member Sampler es => Handler (Resample LogP) es b b
-handleResampleMul = handle () (const Val) (const hop) where
+handleResampleMul = handleSt () (const Val) (const hop) where
   hop :: Member Sampler es =>  Resample LogP x -> (() -> x -> Comp es b) -> Comp es b
   hop  (Resample (prts, ws)) k = do
     let n = length ws

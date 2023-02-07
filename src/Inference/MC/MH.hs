@@ -50,7 +50,7 @@ type ModelHandler es p = forall a.  Trace -> Model es a -> Sampler ((a, p), Trac
 {- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.
 -}
 reuseTrace :: Member Sampler es => Trace -> Handler Sample es a (a, Trace)
-reuseTrace τ0 = handle τ0 (\τ x -> Val (x, τ))
+reuseTrace τ0 = handleSt τ0 (\τ x -> Val (x, τ))
   (\τ (Sample d α) k ->
         case Map.lookup α τ of
               Nothing -> do r <- random

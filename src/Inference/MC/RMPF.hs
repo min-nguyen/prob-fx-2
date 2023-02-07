@@ -100,7 +100,7 @@ handleResample :: (Member Sampler fs)
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> Model '[Sampler] a
   -> Handler (Resample PrtState) fs [(a, PrtState)] [(a, PrtState)]
-handleResample mh_steps tags  m = handle () (const Val) (const hop) where
+handleResample mh_steps tags  m = handleSt () (const Val) (const hop) where
   hop :: Member Sampler fs => Resample PrtState x -> (() -> x -> Comp fs a) -> Comp fs a
   hop  (Resample (_, σs) ) k = do
     let (α, ws, τs ) = unpack σs
