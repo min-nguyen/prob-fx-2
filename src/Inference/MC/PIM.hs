@@ -25,7 +25,7 @@ import Inference.MC.SIM as SIM
 import qualified Inference.MC.SSMH as SSMH
 import Inference.MC.MH as MH
 import           Inference.MC.SIS as SIS
-import           Inference.MC.SMC (handleResampleMul, step)
+import           Inference.MC.SMC (handleResampleMul, advance)
 import qualified Inference.MC.SMC as SMC
 import qualified Inference.MC.IM as IM
 
@@ -53,7 +53,7 @@ pim mh_steps n_prts model env_in obs_vars = do
 exec :: Int -> ModelHandler '[Sampler] LogP
 exec n τθ prog   = do
   let exec_prt :: ParticleHandler '[Sampler] LogP
-      exec_prt logp = fmap fst .  handleIO .  reuseTrace τθ . step logp
+      exec_prt logp = fmap fst .  handleIO .  reuseTrace τθ . advance logp
   (as, ρs) <- (fmap unzip . handleIO . handleResampleMul . pfilter n exec_prt 0) prog
   return ((head as, logMeanExp ρs), τθ)
 

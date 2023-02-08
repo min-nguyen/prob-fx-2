@@ -138,8 +138,8 @@ mh' n τ_0 exec prog_0 = do
             τ_0            <- call (Propose τ :: Proposal p Trace)
             ((x', w'), τ') <- call (exec τ_0 prog_0 )
             b              <- call (Accept w w')
-            let mrkchain'   = if b then ((x', w'), τ') : mrkchain else mrkchain
-            loop (i + 1) mrkchain'
+            -- let mrkchain'   =
+            loop (i + 1) (if b then ((x', w'), τ') : mrkchain else ((x, w), τ) : mrkchain)
         | otherwise = return mrkchain
   -- | Perform initial run of mh
   node_0 <- call (exec τ_0 prog_0 )

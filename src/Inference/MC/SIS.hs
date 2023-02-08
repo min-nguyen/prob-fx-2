@@ -26,27 +26,27 @@ import           Data.Bifunctor
 
 {- | The @Resample@ effect for resampling according to collection of particle contexts.
 -}
-data Resample p a where
+data Resample s a where
   Resample
     -- | (particles, contexts)
-    :: ([Model es b], [p])
+    :: ([Model es b], [s])
     -- | (resampled programs, resampled ss)
-    -> Resample p [(Model es b, p)]
+    -> Resample s [(Model es b, s)]
 
 {- | A @ParticleHandler@  runs a particle to the next @Observe@ break point.
 -}
-type ParticleHandler es p = forall a. p -> Model es a -> Sampler (Model es a, p)
+type ParticleHandler es s = forall a. s -> Model es a -> Sampler (Model es a, s)
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
-pfilter :: forall fs es a p. (Members [Resample p, Sampler] fs)
+pfilter :: forall fs es a s. (Members [Resample s, Sampler] fs)
   => Int
-  -> ParticleHandler es p                                 -- ^ handler for running particles
-  -> p
+  -> ParticleHandler es s                                 -- ^ handler for running particles
+  -> s
   -> Model es a                               -- ^ input particles and corresponding contexts
-  -> Comp fs [(a, p)]                          -- ^ final particle results and corresponding contexts
+  -> Comp fs [(a, s)]                          -- ^ final particle results and corresponding contexts
 pfilter n exec w model  = do
-  let pfStep :: [(Model es a, p)] -> Comp fs [(a, p)]
+  let pfStep :: [(Model es a, s)] -> Comp fs [(a, s)]
       pfStep wprts = do
         -- | Run particles to next checkpoint and accumulate their contexts
         wprts' <- call (mapM (\(prt, w) -> exec w prt) wprts)
@@ -63,7 +63,7 @@ pfilter n exec w model  = do
      If at least one program is unfinished, return all programs.
      If all programs have finished, return a single program that returns all results.
 -}
-collapse :: [(Model es a, p)] -> Maybe [(a, p)]
-collapse ((Val v, p) : progs) = collapse progs >>= return . ((v, p):)
+collapse :: [(Model es a, s)] -> Maybe [(a, s)]
+collapse ((Val v, w) : progs) = collapse progs >>= return . ((v, w):)
 collapse []    = Just []
 collapse progs = Nothing

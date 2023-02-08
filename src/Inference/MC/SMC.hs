@@ -53,13 +53,13 @@ mulpfilter n_prts = handleIO . handleResampleMul . pfilter n_prts exec 0
        2. the log probability of the @Observe operation
 -}
 exec :: LogP -> Model '[Sampler] a -> Sampler (Model '[Sampler] a, LogP)
-exec w = handleIO . defaultSample . step w
+exec w = handleIO . defaultSample . advance w
 
-step :: LogP -> Handler Observe es a (Comp (Observe : es) a, LogP)
-step w (Val x)   = Val (Val x, w)
-step w (Op op k) = case discharge op of
+advance :: LogP -> Handler Observe es a (Comp (Observe : es) a, LogP)
+advance w (Val x)   = Val (Val x, w)
+advance w (Op op k) = case discharge op of
   Right (Observe d y α) -> Val (k y, w + logProb d y)
-  Left op'              -> Op op' (step w . k)
+  Left op'              -> Op op' (advance w . k)
 
 {- | A handler for multinomial resampling of particles.
 -}
