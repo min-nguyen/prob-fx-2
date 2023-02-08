@@ -37,36 +37,27 @@ data Resample p a where
 -}
 type ParticleHandler es p = forall a. p -> Model es a -> Sampler (Model es a, p)
 
-{- | A top-level template for sequential importance sampling.
--}
-sis :: (Members [Resample p, Sampler] fs)
-  => Int                                                        -- ^ number of particles
-  -> ParticleHandler es p                                        -- ^ handler for running particles
-  -> p
-  -> Model es a                                                 -- ^ initial probabilistic program
-  -> Comp fs [(a, p)]                        -- ^ (final particle output, final particle context)
-sis n_prts exec ρ_0 prog_0  = do
-  -- | Create an initial population of particles and contexts
-  let population = replicate n_prts (prog_0, ρ_0)
-  -- | Execute the population until termination
-  pfilter exec population
-
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
-pfilter :: (Members [Resample p, Sampler] fs)
-  => ParticleHandler es p                                 -- ^ handler for running particles
-  -> [(Model es a, p)]                               -- ^ input particles and corresponding contexts
+pfilter :: forall fs es a p. (Members [Resample p, Sampler] fs)
+  => Int
+  -> ParticleHandler es p                                 -- ^ handler for running particles
+  -> p
+  -> Model es a                               -- ^ input particles and corresponding contexts
   -> Comp fs [(a, p)]                          -- ^ final particle results and corresponding contexts
-pfilter exec wprts = do
-  -- | Run particles to next checkpoint and accumulate their contexts
-  wprts' <- call (mapM (\(prt, w) -> exec w prt) wprts)
-  -- ρs'   <- call (Accum ρs partialρs)
-  -- | Check termination status of particles
-  case collapse wprts' of
-    -- | If all particles have finished, return their results and contexts
-    Just vals  -> Val vals
-    -- | Otherwise, pick the particles to continue with
-    Nothing    -> call (Resample (unzip wprts')) >>= pfilter exec
+pfilter n exec w model  = do
+  let pfStep :: [(Model es a, p)] -> Comp fs [(a, p)]
+      pfStep wprts = do
+        -- | Run particles to next checkpoint and accumulate their contexts
+        wprts' <- call (mapM (\(prt, w) -> exec w prt) wprts)
+        -- ρs'   <- call (Accum ρs partialρs)
+        -- | Check termination status of particles
+        case collapse wprts' of
+          -- | If all particles have finished, return their results and contexts
+          Just vals  -> Val vals
+          -- | Otherwise, pick the particles to continue with
+          Nothing    -> call (Resample (unzip wprts')) >>= pfStep
+  pfStep (replicate n (model, w))
 
 {- | Check whether a list of programs have all terminated.
      If at least one program is unfinished, return all programs.
