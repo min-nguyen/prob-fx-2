@@ -81,7 +81,7 @@ rmpfilter ::
   -> Sampler [(a, PrtState)]                      -- ^ final particle results and contexts
 rmpfilter n_prts mh_steps tags model = do
   -- let q =  pfilter exec model (prts, ps)
-  (handleIO . handleResample mh_steps tags model . pfilter n_prts exec (PrtState (Addr "" 0) 0 Map.empty)) model
+  (handleIO . handleResample mh_steps tags model . pfilter n_prts (PrtState (Addr "" 0) 0 Map.empty) exec ) model
 
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint

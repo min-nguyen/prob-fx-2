@@ -46,7 +46,7 @@ smc n_prts model env_in = do
 {- | Call SMC on a probabilistic program.
 -}
 mulpfilter :: Int -> Model '[Sampler] a -> Sampler [(a, LogP)]
-mulpfilter n_prts = handleIO . handleResampleMul . pfilter n_prts exec 0
+mulpfilter n_prts = handleIO . handleResampleMul . pfilter n_prts 0 exec
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation
