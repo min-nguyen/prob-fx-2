@@ -63,7 +63,7 @@ bench_LDA args = do
     -- benchRow ("LatDiri-[ ]-PMMH-" ++ show fixed_pmmh_particles
     --           , pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
     benchRow ("LatDiri-[ ]-RMPF-" ++ show fixed_rmsmc_mhsteps
-              , rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) (second (drop 4) row_header) output_file
+              , rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) (second (take 1 . drop 3) row_header) output_file
     -- benchRow ("LatDiri-[ ]-BBVI-" ++ show fixed_bbvi_steps
             --   , bbviLDA fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
 
