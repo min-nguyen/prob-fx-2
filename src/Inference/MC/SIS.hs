@@ -35,13 +35,13 @@ data Resample s a where
 
 {- | A @ParticleHandler@  runs a particle to the next @Observe@ break point.
 -}
-type ParticleHandler es s = forall a. s -> Model es a -> Sampler (Model es a, s)
+type ParticleHandler es s a = s -> Model es a -> Sampler (Model es a, s)
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
 pfilter :: forall fs es a s. (Members [Resample s, Sampler] fs)
   => Int
-  -> ParticleHandler es s                                 -- ^ handler for running particles
+  -> ParticleHandler es s a                                 -- ^ handler for running particles
   -> s
   -> Model es a                               -- ^ input particles and corresponding contexts
   -> Comp fs [(a, s)]                          -- ^ final particle results and corresponding contexts

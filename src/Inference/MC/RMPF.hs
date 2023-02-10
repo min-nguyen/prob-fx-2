@@ -89,7 +89,7 @@ rmpfilter n_prts mh_steps tags model = do
        1. the rest of the computation
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
-exec :: ParticleHandler '[Sampler] PrtState
+exec :: ParticleHandler '[Sampler] PrtState a
 exec (PrtState _ logp τ)  = fmap asPrtTrace . handleIO . reuseTrace τ . suspendα logp where
   asPrtTrace ((prt, α, w), τ) = (prt, PrtState α w τ)
 
