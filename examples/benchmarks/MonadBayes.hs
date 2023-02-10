@@ -33,43 +33,43 @@ bench_LR_MonadBayes :: [Int] -> IO ()
 bench_LR_MonadBayes args = do
     let row_header = ("Num points", args)
     writeRow output_file row_header
-    benchRow ("LinRegr-[ ]-SSMH-" ++ show fixed_mh_steps
-              , liftIO . MonadBayes.mhLinRegr fixed_mh_steps) row_header output_file
-    benchRow ("LinRegr-[ ]-MPF-" ++ show fixed_smc_particles
-              , liftIO . MonadBayes.smcLinRegr fixed_smc_particles)  row_header output_file
-    benchRow ("LinRegr-[ ]-PMMH-" ++ show fixed_pmmh_particles
-              , liftIO . MonadBayes.pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header  output_file
+    -- benchRow ("LinRegr-[ ]-SSMH-" ++ show fixed_mh_steps
+    --           , liftIO . MonadBayes.mhLinRegr fixed_mh_steps) row_header output_file
+    -- benchRow ("LinRegr-[ ]-MPF-" ++ show fixed_smc_particles
+    --           , liftIO . MonadBayes.smcLinRegr fixed_smc_particles)  row_header output_file
+    -- benchRow ("LinRegr-[ ]-PMMH-" ++ show fixed_pmmh_particles
+    --           , liftIO . MonadBayes.pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header  output_file
     benchRow ("LinRegr-[ ]-RMPF-" ++ show fixed_rmsmc_mhsteps
               , liftIO . rmsmcLinRegr fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header output_file
-    dummyRow ("LinRegr-[ ]-BBVI-" ++ show fixed_bbvi_steps ) row_header output_file
+    -- dummyRow ("LinRegr-[ ]-BBVI-" ++ show fixed_bbvi_steps ) row_header output_file
 
 bench_HMM_MonadBayes :: [Int] -> IO ()
 bench_HMM_MonadBayes args = do
     let row_header = ("Num nodes", args)
     writeRow output_file row_header
-    benchRow ("HidMark-[ ]-SSMH-" ++ show fixed_mh_steps
-              , liftIO . MonadBayes.mhHMM fixed_mh_steps) row_header output_file
-    benchRow ("HidMark-[ ]-MPF-" ++ show fixed_mh_steps
-              , liftIO . MonadBayes.smcHMM fixed_smc_particles) row_header output_file
-    benchRow ("HidMark-[ ]-PMMH-" ++ show fixed_pmmh_particles
-              , liftIO . MonadBayes.pmmhHMM fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
+    -- benchRow ("HidMark-[ ]-SSMH-" ++ show fixed_mh_steps
+    --           , liftIO . MonadBayes.mhHMM fixed_mh_steps) row_header output_file
+    -- benchRow ("HidMark-[ ]-MPF-" ++ show fixed_mh_steps
+    --           , liftIO . MonadBayes.smcHMM fixed_smc_particles) row_header output_file
+    -- benchRow ("HidMark-[ ]-PMMH-" ++ show fixed_pmmh_particles
+    --           , liftIO . MonadBayes.pmmhHMM fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
     benchRow ("HidMark-[ ]-RMPF-"  ++ show fixed_rmsmc_mhsteps
-              , liftIO . rmsmcHMM fixed_rmsmc_particles fixed_rmsmc_mhsteps) (second (take 4) row_header) output_file
-    dummyRow ("HidMark-[ ]-BBVI-" ++ show fixed_bbvi_steps) row_header output_file
+              , liftIO . rmsmcHMM fixed_rmsmc_particles fixed_rmsmc_mhsteps) (second (drop 4) row_header) output_file
+    -- dummyRow ("HidMark-[ ]-BBVI-" ++ show fixed_bbvi_steps) row_header output_file
 
 bench_LDA_MonadBayes :: [Int] -> IO ()
 bench_LDA_MonadBayes args = do
     let row_header = ("Num words", args)
     writeRow output_file row_header
-    benchRow ("LatDiri-[ ]-SSMH-" ++ show fixed_mh_steps
-              , liftIO . MonadBayes.mhLDA fixed_mh_steps) row_header output_file
-    benchRow ("LatDiri-[ ]-MPF-" ++ show fixed_mh_steps
-              , liftIO . MonadBayes.smcLDA fixed_smc_particles) row_header output_file
-    benchRow ("LatDiri-[ ]-PMMH-" ++ show fixed_pmmh_particles
-              , liftIO . MonadBayes.pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
+    -- benchRow ("LatDiri-[ ]-SSMH-" ++ show fixed_mh_steps
+    --           , liftIO . MonadBayes.mhLDA fixed_mh_steps) row_header output_file
+    -- benchRow ("LatDiri-[ ]-MPF-" ++ show fixed_mh_steps
+    --           , liftIO . MonadBayes.smcLDA fixed_smc_particles) row_header output_file
+    -- benchRow ("LatDiri-[ ]-PMMH-" ++ show fixed_pmmh_particles
+    --           , liftIO . MonadBayes.pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
     benchRow ("LatDiri-[ ]-RMPF-" ++ show fixed_rmsmc_mhsteps
-              , liftIO . rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) (second (take 2) row_header) output_file
-    dummyRow ("LatDiri-[ ]-BBVI-" ++ show fixed_bbvi_steps) row_header output_file
+              , liftIO . rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) (second (drop 2) row_header) output_file
+    -- dummyRow ("LatDiri-[ ]-BBVI-" ++ show fixed_bbvi_steps) row_header output_file
 
 bench_MH_MonadBayes :: [Int] -> IO ()
 bench_MH_MonadBayes args = do
@@ -108,12 +108,12 @@ bench_RMSMC_MonadBayes :: [Int] -> IO ()
 bench_RMSMC_MonadBayes args = do
     let row_header = ("Num RMPF mh steps", args)
     writeRow output_file row_header
-    benchRow ("RMPF-[ ]-LinRegr-" ++ show fixed_lr
-              , liftIO . flip (rmsmcLinRegr fixed_rmsmc_particles) fixed_lr) row_header output_file
+    -- benchRow ("RMPF-[ ]-LinRegr-" ++ show fixed_lr
+    --           , liftIO . flip (rmsmcLinRegr fixed_rmsmc_particles) fixed_lr) row_header output_file
     benchRow ("RMPF-[ ]-HidMark-" ++ show fixed_hmm
-              , liftIO . flip (rmsmcHMM fixed_rmsmc_particles) fixed_hmm) (second (take 3) row_header) output_file
+              , liftIO . flip (rmsmcHMM fixed_rmsmc_particles) fixed_hmm) (second (drop 3) row_header) output_file
     benchRow ("RMPF-[ ]-LatDiri-" ++ show fixed_lda
-              , liftIO . flip (rmsmcLDA fixed_rmsmc_particles) fixed_lda) (second (take 3) row_header)  output_file
+              , liftIO . flip (rmsmcLDA fixed_rmsmc_particles) fixed_lda) (second (drop 3) row_header)  output_file
 
 bench_BBVI_MonadBayes :: [Int] -> IO ()
 bench_BBVI_MonadBayes args = do
@@ -135,14 +135,14 @@ runBenchmarks = do
   -- | Run benchmark programs on their corresponding parameters
   case args of
         [lr, hmm, lda, mh, smc, rmsmc, pmmh, bbvi] -> do
-            bench_LR_MonadBayes lr
-            bench_HMM_MonadBayes hmm
+            -- bench_LR_MonadBayes lr
+            -- bench_HMM_MonadBayes hmm
             bench_LDA_MonadBayes lda
-            bench_MH_MonadBayes mh
-            bench_SMC_MonadBayes smc
-            bench_PMMH_MonadBayes pmmh
+            -- bench_MH_MonadBayes mh
+            -- bench_SMC_MonadBayes smc
+            -- bench_PMMH_MonadBayes pmmh
             bench_RMSMC_MonadBayes rmsmc
-            bench_BBVI_MonadBayes bbvi
+            -- bench_BBVI_MonadBayes bbvi
         _   -> error "bad input file"
 
 
