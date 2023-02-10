@@ -7,6 +7,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE TupleSections #-}
 
 
 {- Sequential Monte Carlo inference.
@@ -22,7 +23,7 @@ import           Env ( Env )
 import           LogP ( LogP(..), logMeanExp )
 import           Model ( GenModel(runModel), Model )
 import           PrimDist ( mkCategorical, drawWithSampler, logProb )
-import           Comp ( LastMember, Comp(..), Members, Member, call, weakenProg, discharge, prj, handle, Handler )
+import           Comp ( LastMember, Comp(..), Members, Member, call, weakenProg, discharge, prj, handleSt, Handler )
 import qualified Data.Map as Map
 import           Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS
@@ -45,31 +46,30 @@ smc n_prts model env_in = do
 {- | Call SMC on a probabilistic program.
 -}
 mulpfilter :: Int -> Model '[Sampler] a -> Sampler [(a, LogP)]
-mulpfilter n_prts model = (handleIO . handleResampleMul . pfilter exec) wprts
- where wprts = replicate n_prts (model, 0)
+mulpfilter n_prts = handleIO . handleResampleMul . pfilter n_prts exec 0
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation
        2. the log probability of the @Observe operation
 -}
-exec :: Model '[Sampler] a -> LogP -> Sampler (Model '[Sampler] a, LogP)
-exec model w = (handleIO . defaultSample . step w) model
+exec :: LogP -> Model '[Sampler] a -> Sampler (Model '[Sampler] a, LogP)
+exec w = handleIO . defaultSample . advance w
 
-step :: LogP -> Handler Observe es a (Comp (Observe : es) a, LogP)
-step w (Val x)   = Val (Val x, w)
-step w (Op op k) = case discharge op of
+advance :: LogP -> Handler Observe es a (Comp (Observe : es) a, LogP)
+advance w (Val x)   = Val (Val x, w)
+advance w (Op op k) = case discharge op of
   Right (Observe d y α) -> Val (k y, w + logProb d y)
-  Left op'              -> Op op' (step w . k)
+  Left op'              -> Op op' (advance w . k)
 
 {- | A handler for multinomial resampling of particles.
 -}
 
 handleResampleMul :: Member Sampler es => Handler (Resample LogP) es b b
-handleResampleMul = handle () (const Val) (const hop) where
+handleResampleMul = handleSt () (const Val) (const hop) where
   hop :: Member Sampler es =>  Resample LogP x -> (() -> x -> Comp es b) -> Comp es b
   hop  (Resample (prts, ws)) k = do
     let n = length ws
-    idxs <- call (replicateM n (Sampler.sampleCategorical (Vector.fromList (map exp ws))))
+    idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList (map exp ws))
     let prts_res  = map (prts !! ) idxs
         ws_res    = (replicate n . logMeanExp . map (ws  !! )) idxs
 

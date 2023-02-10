@@ -18,7 +18,7 @@ module Effects.State (
   , handleStateM
   , evalState) where
 
-import Comp ( Member(inj), Comp(..), discharge, handle )
+import Comp ( Member(inj), Comp(..), discharge, handleSt )
 import Model ( GenModel(..) )
 
 -- | The state effect

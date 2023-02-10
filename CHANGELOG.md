@@ -31,7 +31,7 @@ Changed:
 Added:
 - `lwInternal`
 
-**Inference.MH**
+**Inference.SSMH**
 Changed:
 - Type signature for `mh`
 - Type signature for `accept`

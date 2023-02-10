@@ -21,7 +21,7 @@ import Effects.Writer ( handleWriterM, tellM, Writer )
 import Effects.Dist (Addr(..))
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
 import Inference.MC.LW as LW ( lw )
-import Inference.MC.MH as MH ( mh )
+import Inference.MC.SSMH as SSMH ( ssmh )
 import Inference.MC.SMC as SMC ( smc )
 import Inference.MC.SIM as SIM ( simulate )
 import Inference.MC.RMPF as RMPF ( rmpf )
@@ -155,7 +155,7 @@ simHMM hmm_length = do
 
 -- | Likelihood Weighting over a HMM
 lwHMM
-  -- | number of MH iterations
+  -- | number of SSMH iterations
   :: Int
   -- | number of HMM nodes
   -> Int
@@ -166,7 +166,7 @@ lwHMM lw_samples hmm_length = do
   ys <- simHMM hmm_length
   -- Specify a model environment containing those observations
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
-  -- Handle the Writer effect and then run MH inference
+  -- Handle the Writer effect and then run SSMH inference
   (env_outs, ws) <- unzip <$> LW.lw lw_samples (hmm hmm_length 0) env_in
   -- Get the trace of sampled transition and observation parameters
   let trans_ps    = concatMap (get #trans_p) env_outs
@@ -175,7 +175,7 @@ lwHMM lw_samples hmm_length = do
 
 -- | Metropolis-Hastings inference over a HMM
 mhHMM
-  -- | number of MH iterations
+  -- | number of SSMH iterations
   :: Int
   -- | number of HMM nodes
   -> Int
@@ -186,8 +186,8 @@ mhHMM mh_samples hmm_length = do
   ys <- simHMM hmm_length
   -- Specify a model environment containing those observations
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
-  -- Handle the Writer effect and then run MH inference
-  env_outs <- MH.mh mh_samples (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
+  -- Handle the Writer effect and then run SSMH inference
+  env_outs <- SSMH.ssmh mh_samples (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
   -- Get the trace of sampled transition and observation parameters
   let trans_ps    = concatMap (get #trans_p) env_outs
       obs_ps      = concatMap (get #obs_p) env_outs
@@ -217,7 +217,7 @@ smcHMM n_particles hmm_length = do
 rmsmcHMM
   -- | number of particles
   :: Int
-  -- | number of MH steps
+  -- | number of SSMH steps
   -> Int
   -- | number of HMM nodes
   -> Int
@@ -234,7 +234,7 @@ rmsmcHMM n_particles n_mhsteps hmm_length = do
 
 -- | PMMH inference over a HMM
 pmmhHMM
-  -- | number of MH steps
+  -- | number of SSMH steps
   :: Int
   -- | number of particles
   -> Int
@@ -255,7 +255,7 @@ pmmhHMM n_mhsteps n_particles  hmm_length = do
 smc2HMM
   -- | number of outer particles
   :: Int
-  -- | number of MH steps
+  -- | number of SSMH steps
   -> Int
   -- | number of inner particles
   -> Int
@@ -372,7 +372,7 @@ lwHMMMB n_samples hmm_length = do
 
 -- | Metropolis-Hastings from the HMM in Monad Bayes.
 mhHMMMB
-  -- | metropolis-hastings iterations
+  -- | mh-hastings iterations
   :: Int
   -- | number of HMM nodes
   -> Int

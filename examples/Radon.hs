@@ -20,7 +20,7 @@ import Env ( Env(..), Observables, Observable, Assign ((:=)), (<:>), enil, (<#>)
 import Sampler ( Sampler )
 import DataSets ( n_counties, logRadon, countyIdx, dataFloorValues )
 import Inference.MC.SIM as SIM ( simulate )
-import Inference.MC.MH as MH ( mh )
+import Inference.MC.SSMH as SSMH ( ssmh )
 import Util ( findIndexes )
 
 -- | Radon model environment
@@ -92,26 +92,26 @@ simRadon = do
       nobasementPoints  = map (bs !!) noBasementIdxs
   return (basementPoints, nobasementPoints)
 
--- | Run MH inference and return posterior for hyperparameter means of intercept and gradient
+-- | Run SSMH inference and return posterior for hyperparameter means of intercept and gradient
 mhRadon :: Int -> Sampler ([Double], [Double])
   -- Specify model environment
 mhRadon n_mhsteps = do
   let env_in = mkRadonEnv ([], [], [], [], [], [], logRadon)
-  -- Run MH inference
-  env_outs <- MH.mh n_mhsteps (radonModel n_counties dataFloorValues countyIdx) env_in
+  -- Run SSMH inference
+  env_outs <- SSMH.ssmh n_mhsteps (radonModel n_counties dataFloorValues countyIdx) env_in
                               (#mu_a <#> #mu_b <#> #sigma_a <#> #sigma_b <#> vnil)
   -- Retrieve sampled values for model hyperparameters mu_a and mu_b
   let mu_a   = concatMap (get #mu_a)  env_outs
       mu_b   = concatMap (get #mu_b)  env_outs
   return (mu_a, mu_b)
 
--- | Run MH inference and return predictive posterior for intercepts and gradients
+-- | Run SSMH inference and return predictive posterior for intercepts and gradients
 mhPredRadon :: Int -> Sampler ([Double], [Double])
 mhPredRadon n_mhsteps = do
   -- Specify model environment
   let env_in = mkRadonEnv ([], [], [], [], [], [], logRadon)
-  -- Run MH inference
-  env_outs <- MH.mh n_mhsteps (radonModel n_counties dataFloorValues countyIdx ) env_in
+  -- Run SSMH inference
+  env_outs <- SSMH.ssmh n_mhsteps (radonModel n_counties dataFloorValues countyIdx ) env_in
                               (#mu_a <#> #mu_b <#> #sigma_a <#> #sigma_b <#> vnil)
   -- Retrieve most recently sampled values for each house's intercept and gradient, a and b
   let env_pred   = head env_outs

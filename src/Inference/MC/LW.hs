@@ -26,7 +26,7 @@ import LogP ( LogP )
 import Inference.MC.SIM as SIM (defaultSample)
 import Model ( handleCore, GenModel, Model )
 import PrimDist ( logProb )
-import Comp ( discharge, Comp(..), Handler, handle )
+import Comp ( discharge, Comp(..), Handler, handleSt )
 import Sampler ( Sampler, handleIO )
 
 -- | Top-level wrapper for Likelihood-Weighting (LW) inference
@@ -53,7 +53,7 @@ runLW = handleIO . SIM.defaultSample . likelihood
 
 -- | Handle each @Observe@ operation by accumulating the log-likelihood P(Y | X)
 likelihood :: Handler Observe es a (a, LogP)
-likelihood  = handle 0 (\lρ x -> Val (x, lρ)) hop
+likelihood  = handleSt 0 (\lρ x -> Val (x, lρ)) hop
   where
   hop :: LogP -> Observe x -> (LogP -> x -> Comp es b) -> Comp es b
   hop lρ (Observe d y α) k = k (lρ + logProb d y) y

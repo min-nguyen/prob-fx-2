@@ -26,7 +26,7 @@ import           Env ( Env, union )
 import           LogP ( LogP(..), normaliseLogPs )
 import           Model
 import           PrimDist
-import           Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handle )
+import           Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handleSt )
 import           Sampler ( Sampler, liftIO, handleIO )
 import           Trace (GradTrace, ParamTrace, Key(..), Some(..))
 import qualified Trace
@@ -54,19 +54,19 @@ bbvi num_timesteps num_samples guide model env  = do
     $ VI.viLoop num_timesteps num_samples guide (execGuide env) model exec λ_0
 
 -- | Compute Q(X; λ)
-execGuide :: es ~ '[Sampler] => Env env -> VIGuide env es a -> ParamTrace -> Sampler (((a, Env env), GradTrace), LogP)
-execGuide env guide params =
-  (handleIO . VI.prior . defaultParam params . handleEnvRW env) guide
+execGuide :: Env env -> ParamTrace -> VIGuide env '[Sampler] a -> Sampler (((a, Env env), GradTrace), LogP)
+execGuide env params =
+  handleIO . VI.prior . defaultParam params . handleEnvRW env
 
 -- | Compute P(X, Y)
-exec :: es ~ '[Sampler] => VIModel env es a -> Env env -> Sampler (a, LogP)
-exec model env  = (handleIO . joint . fmap fst . handleEnvRW env) model where
+exec :: Env env -> VIModel env '[Sampler] a -> Sampler (a, LogP)
+exec env = handleIO . joint . fmap fst . handleEnvRW env where
   joint = fmap (\((x, a), b) -> (x, a + b)) . prior . likelihood
 
 
 -- | Compute and update the guide parameters using a likelihood-ratio-estimate E[δelbo] of the ELBO gradient
 handleLRatio :: forall fs a. Handler GradEst fs a a
-handleLRatio = handle () (const Val) (const hop) where
+handleLRatio = handleSt () (const Val) (const hop) where
   hop :: GradEst x -> (() -> x -> Comp fs a) -> Comp fs a
   hop (UpdateParam ws grads params) k =
     let δelbo = lratio ws grads

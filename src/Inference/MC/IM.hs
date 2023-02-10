@@ -17,7 +17,7 @@ module Inference.MC.IM where
 
 import Control.Monad ( replicateM )
 import qualified Data.Map as Map
-import Comp ( Handler, Comp(..), discharge, handle, LastMember, Member )
+import Comp ( Handler, Comp(..), discharge, handleSt, LastMember, Member )
 import Trace ( Trace, LPTrace, filterTrace )
 import LogP ( LogP (..) )
 import PrimDist
@@ -28,7 +28,7 @@ import Effects.Dist ( Dist, pattern SampPrj, pattern ObsPrj )
 import Sampler ( Sampler, random, handleIO )
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.LW as LW
-import Inference.MC.Metropolis as Metropolis
+import Inference.MC.MH as MH
 import Util
 
 
@@ -43,17 +43,17 @@ im n model env_in   = do
   -- | Handle model to probabilistic program
   let prog_0  = handleCore env_in model
       τ_0     = Map.empty
-  rwm_trace <- (handleIO . handleProposal . Metropolis.metropolis n τ_0 exec) prog_0
+  rwm_trace <- (handleIO . handleProposal . MH.mh n τ_0 exec) prog_0
   pure (map (snd . fst . fst) rwm_trace)
 
 {- | Handler for one iteration of IM.
 -}
 exec :: ModelHandler '[Sampler] LogP
 exec τ   =
-  handleIO . Metropolis.reuseTrace τ . LW.likelihood
+  handleIO . MH.reuseTrace τ . LW.likelihood
 
 handleProposal :: Member Sampler fs => Handler (Proposal LogP) fs a a
-handleProposal = handle () (\_ -> Val) (\_ op k -> hop op k)
+handleProposal = handleSt () (\_ -> Val) (\_ op k -> hop op k)
   where hop :: Member Sampler es => Proposal LogP x -> (() -> x -> Comp es b) -> Comp es b
         hop op k = case op of
           (Propose τ)     -> do τ0 <- mapM (const random) τ

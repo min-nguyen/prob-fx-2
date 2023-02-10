@@ -1,100 +1,148 @@
 
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE PatternSynonyms #-}
 
+
+
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeApplications #-}
-
-
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TupleSections #-}
 
-{- | Single-Site Metropolis-Hastings inference.
+{- | Metropolis inference
 -}
 
 module Inference.MC.MH where
 
-import           Data.Functor ( (<&>) )
-import           Control.Monad ( (>=>), replicateM )
+import Control.Monad ( (>=>) )
 import qualified Data.Map as Map
-import           Data.Set ((\\))
+import Data.Set ((\\))
 import qualified Data.Set as Set
-import           Data.Maybe ( fromJust )
-import           Comp ( Comp(..), discharge, Members, LastMember, Member (..), call, weakenProg, weaken, Handler, handle )
-import           Env ( ContainsVars(..), Vars, Env )
-import           Trace ( Trace, LPTrace, filterTrace )
-import           LogP ( LogP )
-import           PrimDist
-import           Model ( GenModel, handleCore, Model )
-import           Effects.EnvRW ( EnvRW )
-import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), pattern SampPrj, pattern ObsPrj )
-import           Inference.MC.SIM
-import           Inference.MC.Metropolis as Metropolis
-import           Sampler ( Sampler, random, randomFrom, handleIO )
-import           Data.Bifunctor (Bifunctor(..))
-import           Util ( assocR )
-import Effects.State
+import Data.Maybe ( fromJust )
+import Comp
+import Trace ( Trace, LPTrace, filterTrace )
+import LogP ( LogP )
+import PrimDist
+import Model ( GenModel, handleCore, Model )
+import Effects.EnvRW ( EnvRW )
+import Env ( ContainsVars(..), Vars, Env )
+import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr )
+import qualified Inference.MC.SIM as SIM
+import Sampler ( Sampler, random )
 
-{- | Top-level wrapper for MH inference.
+{- | The @Proposal@ effect for proposing samples and accepting/rejecting according a context.
 -}
-mh :: forall env vars a. (env `ContainsVars` vars)
-  => Int                            -- ^ number of MH iterations
-  -> GenModel env [EnvRW env, Dist, Sampler] a  -- ^ model
-  -> Env env                        -- ^ input environment
-  -> Vars vars                      -- ^ optional variable names of interest
-    {- These allow one to specify sample sites of interest; for example, for interest in sampling @#mu@
-     , provide @#mu <#> vnil@ to cause other variables to not be resampled unless necessary. -}
-  -> Sampler [Env env]              -- ^ output model environments
-mh n model env_in obs_vars  = do
-  -- | Handle model to probabilistic program
-  let prog_0 = handleCore env_in model
-      τ_0    = Map.empty
-  -- | Convert observable variables to strings
-  let tags = varsToStrs @env obs_vars
-  mh_trace <- (handleIO . handleProposal tags . metropolis n τ_0 exec) prog_0
-  pure (map (snd . fst . fst) mh_trace)
+data Proposal p a where
+  Propose
+    -- | previous context and sample trace
+    :: Trace
+    -- | proposed *initial* context and sample trace
+    -> Proposal p Trace
+  Accept
+    -- | previous context
+    :: p
+    -- | proposed *final* context
+    -> p
+    -- | whether the proposal is accepted or not
+    -> Proposal p Bool
 
-{- | MH inference on a probabilistic program.
--}
-ssmh :: (Member Sampler fs)
-  => Int                                   -- ^ number of MH iterations
-  -> Trace                                -- ^ initial sample trace
-  -> [Tag]                                 -- ^ tags indicating variables of interest
-  -> Model '[Sampler] a                            -- ^ probabilistic program
-  -> Comp fs [((a, LPTrace), Trace)]
-ssmh n τ_0  tags = handleProposal tags  . metropolis n τ_0 exec
+type ModelHandler es p = forall a.  Trace -> Model es a -> Sampler ((a, p), Trace)
 
-{- | Handler for @Proposal@ for MH.
-    - Propose by drawing a component x_i of latent variable X' ~ p(X)
-    - Proposal using the ratio:
-       p(X', Y')q(X | X')/p(X, Y)q(X' | X)
+{- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.
 -}
-handleProposal :: Member Sampler fs => [Tag] -> Handler (Proposal LPTrace) fs a a
-handleProposal tags  = handle (Addr "" 0) (const Val) hop
-  where
-    hop :: Member Sampler es => Addr -> Proposal LPTrace x -> (Addr -> x -> Comp es b) -> Comp es b
-    hop _ (Propose τ) k   = do  α <- randomFrom (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
-                                r <- random
-                                k α (Map.insert α r τ)
-    hop α (Accept ρ ρ') k = do  let ratio = (exp . sum . Map.elems . Map.delete α) (Map.intersectionWith (-) ρ' ρ)
-                                u <- random
-                                k α (ratio > u)
+reuseTrace :: Member Sampler es => Trace -> Handler Sample es a (a, Trace)
+reuseTrace τ0 = handleSt τ0 (\τ x -> Val (x, τ))
+  (\τ (Sample d α) k ->
+        case Map.lookup α τ of
+              Nothing -> do r <- random
+                            let y = draw d r;
+                            k (Map.insert α r τ) y
+              Just r  -> do let y = draw d r;
+                            k τ y
+  )
 
-{- | Handler for one iteration of MH.
--}
-exec :: Trace
-  -> Model '[Sampler] a                             -- ^ probabilistic program
-  -> Sampler ((a, LPTrace), Trace)  -- ^ proposed address + final log-probability trace + final sample trace
-exec τ0 = handleIO . reuseTrace τ0 . defaultObserve . traceLP Map.empty
+{- Original version, for benchmarking purposes -}
+mh :: (Members [Proposal p, Sampler] fs)
+   => Int                                                                    -- ^ number of iterations
+   -> Trace                                                          -- ^ initial context + sample trace
+   -> ModelHandler es p                                                        -- ^ model handler
+   -> Model es a                                                             -- ^ probabilistic program
+   -> Comp fs [((a, p), Trace)]                            -- ^ trace of accepted outputs
+mh n τ_0 exec prog_0 = do
+  -- | Perform initial run of mh
+  x0 <- call (exec τ_0 prog_0 )
+  -- | A function performing n mhSteps using initial mh_s. The most recent samples are at the front of the trace.
+  foldl1 (>=>) (replicate n (mhStep prog_0 exec)) [x0]
 
-{- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
+mhStep :: forall es fs p a. (Members [Proposal p, Sampler] fs)
+  => Model es a                                                       -- ^ model handler
+  -> ModelHandler es p                                                  -- ^ probabilistic program
+  -> [((a, p), Trace)]                                                   -- ^ previous trace
+  -> Comp fs [((a, p), Trace)]                            -- ^ updated trace
+mhStep prog_0 exec markov_chain = do
+  -- | Get previous iteration output
+  let ((r, p), τ) = head markov_chain
+  -- | Construct an *initial* proposal
+  τ_0            <- call (Propose τ :: Proposal p Trace)
+  -- | Execute the model under the initial proposal to return the *final* proposal
+  ((r', p'), τ') <- call (exec τ_0 prog_0 )
+  -- | Compute acceptance ratio
+  b              <- call (Accept p p')
+  if b then pure (((r', p'), τ'):markov_chain)
+       else pure markov_chain
+{--}
+
+
+
+{- Paper version
+mh :: forall p fs es a. (Members [Proposal p, Sampler] fs)
+   => Int                                                                    -- ^ number of iterations
+   -> Trace                                                          -- ^ initial context + sample trace
+   -> ModelHandler es p                                                        -- ^ model handler
+   -> Model es a                                                             -- ^ probabilistic program
+   -> Comp fs [((a, p), Trace)]                            -- ^ trace of accepted outputs
+mh n τ_0 exec model = do
+  -- | Perform initial run of mh
+  x0 <- call (exec model τ_0)
+  -- | A function performing n mhSteps using initial mh_s. The most recent samples are at the front of the trace.
+  foldl1 (>=>) (replicate n f) [x0]
+  where f :: [((a, p), Trace)] -> Comp fs [((a, p), Trace)]
+        f mchain = metroStep model exec (head mchain) >>= return . (:mchain)
+
+{- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
-traceLP :: Members [Observe, Sample] es
-  => LPTrace -> Comp es a -> Comp es (a, LPTrace)
-traceLP ρ (Val x)   = pure (x, ρ)
-traceLP ρ (Op op k) = case op of
-  ObsPrj d y α   -> Op op (\x -> traceLP (Map.insert α (logProb d x) ρ) $ k x)
-  SampPrj d  α   -> Op op (\x -> traceLP (Map.insert α (logProb d x) ρ) $ k x)
-  _              -> Op op (traceLP ρ . k)
+metroStep :: forall es fs p a. (Members [Proposal p, Sampler] fs)
+  => Model es a                                                       -- ^ model handler
+  -> ModelHandler es p                                                  -- ^ probabilistic program
+  -> ((a, p), Trace)                                                   -- ^ previous trace
+  -> Comp fs ((a, p), Trace)                            -- ^ updated trace
+metroStep prog_0 exec ((r, p), τ) = do
+  -- | Construct an *initial* proposal
+  τ_0            <- call (Propose τ :: Proposal p Trace)
+  -- | Execute the model under the initial proposal to return the *final* proposal
+  ((r', p'), τ') <- call (exec prog_0 τ_0)
+  -- | Compute acceptance ratio
+  b              <- call (Accept p p')
+  if b then pure ((r', p'), τ')
+       else pure ((r, p), τ)
+-}
+
+{- One function version of mh
+mh' :: forall fs es a p. (Members [Proposal p, Sampler] fs)
+   => Int -> Trace -> ModelHandler es p -> Model es a -> Comp fs [((a, p), Trace)]
+mh' n τ_0 exec prog_0 = do
+  -- | A function performing n mhSteps using initial mh_s.
+  let loop :: Int -> [((a, p), Trace)] -> Comp fs [((a, p), Trace)]
+      loop i mrkchain
+        | i < n     = do
+            let ((x, w), τ) = head mrkchain
+            τ_0            <- call (Propose τ :: Proposal p Trace)
+            ((x', w'), τ') <- call (exec τ_0 prog_0 )
+            b              <- call (Accept w w')
+            -- let mrkchain'   =
+            loop (i + 1) (if b then ((x', w'), τ') : mrkchain else ((x, w), τ) : mrkchain)
+        | otherwise = return mrkchain
+  -- | Perform initial run of mh
+  node_0 <- call (exec τ_0 prog_0 )
+  -- | Perform initial run of mh
+  loop 0 [node_0]
+-}

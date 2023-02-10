@@ -20,7 +20,7 @@ import Model ( bernoulli, GenModel, gamma', normal, normal' )
 import Env ( Env(..), Observables, Observable, Assign ((:=)), (<:>), enil, (<#>), vnil, get)
 import Sampler ( Sampler )
 import Inference.MC.SIM as SIM ( simulate )
-import Inference.MC.MH as MH ( mh )
+import Inference.MC.SSMH as SSMH ( ssmh )
 import Inference.MC.LW as LW ( lw )
 
 {- | Logistic regression environment.
@@ -102,11 +102,11 @@ mhLogRegr n_mhsteps n_datapoints = do
   (xs, ys) <- unzip <$> simLogRegr n_datapoints
   let -- Define an environment for inference, providing observed values for the model outputs
       env_in = (#y := ys) <:> (#m := []) <:> (#b := []) <:> enil
-  -- Run MH inference for n_mhsteps iterations
+  -- Run SSMH inference for n_mhsteps iterations
   {- The agument (#m <#> #b <#> vnil) is optional for indicating interest in learning #m and #b in particular,
-     causing other variables to not be resampled (unless necessary) during MH. -}
-  env_outs <- MH.mh n_mhsteps (logRegr xs) env_in (#m <#> #b <#> vnil)
-  -- Retrieve values sampled for #m and #b during MH
+     causing other variables to not be resampled (unless necessary) during SSMH. -}
+  env_outs <- SSMH.ssmh n_mhsteps (logRegr xs) env_in (#m <#> #b <#> vnil)
+  -- Retrieve values sampled for #m and #b during SSMH
   let m_samples = concatMap (get #m) env_outs
       b_samples = concatMap (get #b) env_outs
   pure (m_samples, b_samples)
@@ -146,7 +146,7 @@ mhLogRegrOnce ::  Int -> Int ->  Sampler ([Double], [Double])
 mhLogRegrOnce n_mhsteps n_datapoints = do
   xys <- simLogRegrOnce n_datapoints
   let xys' = [(x, env_in) | (x, y) <- xys, let env_in = (#label := [y]) <:> (#m := []) <:> (#b := []) <:> enil]
-  mhTrace <- concat <$> mapM (\(x, y) -> MH.mh n_mhsteps (logRegrOnce x) y  (#m <#> #b <#> vnil)) xys'
+  mhTrace <- concat <$> mapM (\(x, y) -> SSMH.ssmh n_mhsteps (logRegrOnce x) y  (#m <#> #b <#> vnil)) xys'
   let mus = concatMap (get #m) mhTrace
       bs  = concatMap (get #b) mhTrace
   pure (mus, bs)
