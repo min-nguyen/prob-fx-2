@@ -135,14 +135,14 @@ runBenchmarks = do
   -- | Run benchmark programs on their corresponding parameters
   case args of
         [lr, hmm, lda, mh, smc, rmsmc, pmmh, bbvi] -> do
-            -- bench_LR_MonadBayes lr
-            -- bench_HMM_MonadBayes hmm
-            -- bench_LDA_MonadBayes lda
-            -- bench_MH_MonadBayes mh
-            -- bench_SMC_MonadBayes smc
-            -- bench_PMMH_MonadBayes pmmh
+            bench_LR_MonadBayes lr
+            bench_HMM_MonadBayes hmm
+            bench_LDA_MonadBayes lda
+            bench_MH_MonadBayes mh
+            bench_SMC_MonadBayes smc
+            bench_PMMH_MonadBayes pmmh
             bench_RMSMC_MonadBayes rmsmc
-            -- bench_BBVI_MonadBayes bbvi
+            bench_BBVI_MonadBayes bbvi
         _   -> error "bad input file"
 
 
