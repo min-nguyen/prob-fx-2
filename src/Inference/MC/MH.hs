@@ -45,7 +45,7 @@ data Proposal p a where
     -- | whether the proposal is accepted or not
     -> Proposal p Bool
 
-type ModelHandler es p = forall a.  Trace -> Model es a -> Sampler ((a, p), Trace)
+type ModelHandler es p a = Trace -> Model es a -> Sampler ((a, p), Trace)
 
 {- | Handler for @Sample@ that uses samples from a provided sample trace when possible and otherwise draws new ones.
 -}
@@ -64,7 +64,7 @@ reuseTrace τ0 = handleSt τ0 (\τ x -> Val (x, τ))
 mh :: (Members [Proposal p, Sampler] fs)
    => Int                                                                    -- ^ number of iterations
    -> Trace                                                          -- ^ initial context + sample trace
-   -> ModelHandler es p                                                        -- ^ model handler
+   -> ModelHandler es p a                                                       -- ^ model handler
    -> Model es a                                                             -- ^ probabilistic program
    -> Comp fs [((a, p), Trace)]                            -- ^ trace of accepted outputs
 mh n τ_0 exec prog_0 = do
@@ -75,7 +75,7 @@ mh n τ_0 exec prog_0 = do
 
 mhStep :: forall es fs p a. (Members [Proposal p, Sampler] fs)
   => Model es a                                                       -- ^ model handler
-  -> ModelHandler es p                                                  -- ^ probabilistic program
+  -> ModelHandler es p a                                                 -- ^ probabilistic program
   -> [((a, p), Trace)]                                                   -- ^ previous trace
   -> Comp fs [((a, p), Trace)]                            -- ^ updated trace
 mhStep prog_0 exec markov_chain = do

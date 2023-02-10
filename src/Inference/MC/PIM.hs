@@ -50,7 +50,7 @@ pim mh_steps n_prts model env_in obs_vars = do
 
 {- | Handle probabilistic program using SSMH and compute the average log-probability using SMC.
 -}
-exec :: Int -> ModelHandler '[Sampler] LogP
+exec :: Int -> ModelHandler '[Sampler] LogP a
 exec n τθ prog   = do
   let exec_prt :: ParticleHandler '[Sampler] LogP
       exec_prt logp = fmap fst .  handleIO .  reuseTrace τθ . advance logp

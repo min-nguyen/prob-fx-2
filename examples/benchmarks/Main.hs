@@ -15,5 +15,5 @@ import qualified MonadBayes
 
 main :: IO ()
 main = do
---  ProbFX.runBenchmarks
- MonadBayes.runBenchmarks
+ ProbFX.runBenchmarks
+--  MonadBayes.runBenchmarks

@@ -53,7 +53,7 @@ pmmh' m n τθ model = do
 
 {- | Handle probabilistic program using SSMH and compute the average log-probability using SMC.
 -}
-exec :: Int -> ModelHandler '[Sampler] LogP
+exec :: Int -> ModelHandler '[Sampler] LogP a
 exec n τθ prog   = do
   let execPrt :: ParticleHandler '[Sampler] LogP
       execPrt logp = fmap fst . handleIO . reuseTrace τθ . advance logp

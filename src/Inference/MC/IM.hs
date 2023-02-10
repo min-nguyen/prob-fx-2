@@ -48,7 +48,7 @@ im n model env_in   = do
 
 {- | Handler for one iteration of IM.
 -}
-exec :: ModelHandler '[Sampler] LogP
+exec :: ModelHandler '[Sampler] LogP a
 exec τ   =
   handleIO . MH.reuseTrace τ . LW.likelihood
 

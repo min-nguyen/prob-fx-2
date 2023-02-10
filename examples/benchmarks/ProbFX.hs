@@ -56,16 +56,16 @@ bench_LDA :: [Int] -> IO ()
 bench_LDA args = do
     let row_header = ("Num words", args)
     writeRow output_file row_header
-    benchRow ("LatDiri-[ ]-SSMH-" ++ show fixed_mh_steps
-              , mhLDA fixed_mh_steps) row_header output_file
-    benchRow ("LatDiri-[ ]-MPF-" ++ show fixed_mh_steps
-              , smcLDA fixed_smc_particles) row_header output_file
-    benchRow ("LatDiri-[ ]-PMMH-" ++ show fixed_pmmh_particles
-              , pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
+    -- benchRow ("LatDiri-[ ]-SSMH-" ++ show fixed_mh_steps
+    --           , mhLDA fixed_mh_steps) row_header output_file
+    -- benchRow ("LatDiri-[ ]-MPF-" ++ show fixed_mh_steps
+    --           , smcLDA fixed_smc_particles) row_header output_file
+    -- benchRow ("LatDiri-[ ]-PMMH-" ++ show fixed_pmmh_particles
+    --           , pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
     benchRow ("LatDiri-[ ]-RMPF-" ++ show fixed_rmsmc_mhsteps
-              , rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) (second (take 3) row_header) output_file
-    benchRow ("LatDiri-[ ]-BBVI-" ++ show fixed_bbvi_steps
-              , bbviLDA fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
+              , rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) (second (drop 4) row_header) output_file
+    -- benchRow ("LatDiri-[ ]-BBVI-" ++ show fixed_bbvi_steps
+            --   , bbviLDA fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
 
 {- | Varying over inference parameters
 -}
@@ -139,10 +139,10 @@ runBenchmarks = do
         [lr, hmm, lda, mh, smc, rmpf, pmmh, bbvi] -> do
         --   bench_LR lr
         --   bench_HMM hmm
-        --   bench_LDA lda
+          bench_LDA lda
         --   bench_MH mh
         --   bench_SMC smc
         --   bench_PMMH pmmh
-          bench_RMSMC rmpf
+        --   bench_RMSMC rmpf
         --   bench_BBVI bbvi
         _   -> error "bad input file"
