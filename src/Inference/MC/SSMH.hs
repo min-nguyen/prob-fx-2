@@ -53,18 +53,18 @@ ssmh n model env_in obs_vars  = do
       τ_0    = Map.empty
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
-  mh_trace <- (handleIO . handleProposal tags . mh n τ_0 exec) prog_0
+  mh_trace <- ssmh' n τ_0 tags prog_0
   pure (map (snd . fst . fst) mh_trace)
 
 {- | SSMH inference on a probabilistic program.
 -}
-ssmh' :: (Member Sampler fs)
-  => Int                                   -- ^ number of SSMH iterations
+ssmh' ::
+     Int                                   -- ^ number of SSMH iterations
   -> Trace                                -- ^ initial sample trace
   -> [Tag]                                 -- ^ tags indicating variables of interest
   -> Model '[Sampler] a                            -- ^ probabilistic program
-  -> Comp fs [((a, LPTrace), Trace)]
-ssmh' n τ_0  tags = handleProposal tags  . mh n τ_0 exec
+  -> Sampler [((a, LPTrace), Trace)]
+ssmh' n τ_0  tags = mh n τ_0 (handleProposal tags) exec
 
 {- | Handler for @Proposal@ for SSMH.
     - Propose by drawing a component x_i of latent variable X' ~ p(X)

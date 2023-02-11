@@ -44,12 +44,12 @@ pmmh mh_steps n_prts model env_in obs_vars = do
   -- | Initialise sample trace to include only parameters
   (_, τ)       <- (handleIO . reuseTrace Map.empty . defaultObserve) prog_0
   let τθ       = filterTrace θ τ
-  pmmh_trace <- (handleIO . handleProposal . mh mh_steps τθ (exec n_prts)) prog_0
+  pmmh_trace <- pmmh' mh_steps n_prts τθ prog_0
   pure (map (snd . fst . fst) pmmh_trace)
 
 pmmh' :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
 pmmh' m n τθ model = do
-  (handleIO . handleProposal . mh m τθ (exec n)) model
+  mh m τθ handleProposal (exec n) model
 
 {- | Handle probabilistic program using SSMH and compute the average log-probability using SMC.
 -}

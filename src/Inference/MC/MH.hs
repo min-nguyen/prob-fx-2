@@ -3,6 +3,7 @@
 
 
 
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
@@ -27,7 +28,7 @@ import Effects.EnvRW ( EnvRW )
 import Env ( ContainsVars(..), Vars, Env )
 import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr )
 import qualified Inference.MC.SIM as SIM
-import Sampler ( Sampler, random )
+import Sampler ( Sampler, random, handleIO )
 
 {- | The @Proposal@ effect for proposing samples and accepting/rejecting according a context.
 -}
@@ -61,17 +62,18 @@ reuseTrace τ0 = handleSt τ0 (\τ x -> Val (x, τ))
   )
 
 {- Original version, for benchmarking purposes -}
-mh :: (Members [Proposal p, Sampler] fs)
-   => Int                                                                    -- ^ number of iterations
+mh :: -- (Member Sampler fs)
+      Int                                                                    -- ^ number of iterations
    -> Trace                                                          -- ^ initial context + sample trace
+   -> (forall b. Handler (Proposal p) '[Sampler] b b)
    -> ModelHandler es p a                                                       -- ^ model handler
    -> Model es a                                                             -- ^ probabilistic program
-   -> Comp fs [((a, p), Trace)]                            -- ^ trace of accepted outputs
-mh n τ_0 exec prog_0 = do
+   -> Sampler [((a, p), Trace)]                            -- ^ trace of accepted outputs
+mh n τ_0 hdlProposal exec model = handleIO . hdlProposal $ do
   -- | Perform initial run of mh
-  x0 <- call (exec τ_0 prog_0 )
+  x0 <- call (exec τ_0 model )
   -- | A function performing n mhSteps using initial mh_s. The most recent samples are at the front of the trace.
-  foldl1 (>=>) (replicate n (mhStep prog_0 exec)) [x0]
+  foldl1 (>=>) (replicate n (mhStep model exec)) [x0]
 
 mhStep :: forall es fs p a. (Members [Proposal p, Sampler] fs)
   => Model es a                                                       -- ^ model handler
@@ -126,12 +128,10 @@ metroStep prog_0 exec ((r, p), τ) = do
        else pure ((r, p), τ)
 -}
 
-{- One function version of mh
-mh' :: forall fs es a p. (Members [Proposal p, Sampler] fs)
-   => Int -> Trace -> ModelHandler es p -> Model es a -> Comp fs [((a, p), Trace)]
-mh' n τ_0 exec prog_0 = do
+mh' :: forall es p a. Int -> Trace -> (forall fs b. Handler (Proposal p) fs b b) -> ModelHandler es p a -> Model es a -> Sampler [((a, p), Trace)]
+mh' n τ_0 hdlProposal exec prog_0 = handleIO . hdlProposal $ do
   -- | A function performing n mhSteps using initial mh_s.
-  let loop :: Int -> [((a, p), Trace)] -> Comp fs [((a, p), Trace)]
+  let loop :: Int -> [((a, p), Trace)] -> Comp [Proposal p, Sampler] [((a, p), Trace)]
       loop i mrkchain
         | i < n     = do
             let ((x, w), τ) = head mrkchain
@@ -145,4 +145,7 @@ mh' n τ_0 exec prog_0 = do
   node_0 <- call (exec τ_0 prog_0 )
   -- | Perform initial run of mh
   loop 0 [node_0]
+
+{- One function version of mh
+
 -}
