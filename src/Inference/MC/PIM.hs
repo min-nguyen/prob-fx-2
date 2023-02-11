@@ -54,6 +54,6 @@ handleModel :: Int -> ModelHandler '[Sampler] LogP a
 handleModel n τθ prog   = do
   let exec_prt :: ParticleHandler '[Sampler] LogP a
       exec_prt logp = fmap fst .  handleIO .  reuseTrace τθ . advance logp
-  (as, ρs) <- (fmap unzip . handleIO . handleResampleMul . pfilter n 0 exec_prt ) prog
+  (as, ρs) <- (fmap unzip . pfilter n 0 handleResampleMul exec_prt ) prog
   return ((head as, logMeanExp ρs), τθ)
 

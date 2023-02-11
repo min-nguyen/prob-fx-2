@@ -52,21 +52,21 @@ smc2 n_outer_prts mh_steps n_inner_prts model env obs_vars = do
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
   -- | Run SMC2do
-  smc2_trace <- handleIO (smc2Internal n_outer_prts mh_steps n_inner_prts tags  prog_0)
+  smc2_trace <- smc2Internal n_outer_prts mh_steps n_inner_prts tags prog_0
   -- Return the accepted model environments
   pure (map (snd . fst) smc2_trace)
 
 {- | Perform SMC2 on a probabilistic program.
 -}
-smc2Internal :: (Member Sampler fs)
+smc2Internal :: ()
   => Int                                          -- ^ number of outer SMC particles
   -> Int                                          -- ^ number of PMMH steps
   -> Int                                          -- ^ number of inner SMC particles
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> Model '[Sampler] a                                    -- ^ probabilistic program
-  -> Comp fs [(a, PrtState)]                -- ^ final particle results and contexts
+  -> Sampler [(a, PrtState)]                -- ^ final particle results and contexts
 smc2Internal n_outer_prts mh_steps n_inner_prts tags  m  =
-  (handleResample mh_steps n_inner_prts tags  m . SIS.pfilter n_outer_prts (PrtState (Addr "" 0) 0 Map.empty) RMPF.handleParticle ) m
+  SIS.pfilter n_outer_prts (PrtState (Addr "" 0) 0 Map.empty) (handleResample mh_steps n_inner_prts tags  m) RMPF.handleParticle m
 
 {- | A handler for resampling particles according to their normalized log-likelihoods,
      and then pertrubing their sample traces using PMMH.
@@ -76,8 +76,8 @@ handleResample :: Member Sampler fs
   -> Int                                           -- ^ number of inner SMC particles
   -> [Tag]                                      -- ^ tags indicating variables of interest
   -> Model '[Sampler] a
-  -> Comp (Resample PrtState : fs) [(a, PrtState)]
-  -> Comp fs [(a, PrtState)]
+  -> Comp (Resample PrtState : fs) b
+  -> Comp fs b
 handleResample mh_steps n_inner_prts θ  m = loop  where
   loop  (Val x) = Val x
   loop  (Op op k) = case discharge op of

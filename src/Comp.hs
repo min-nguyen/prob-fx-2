@@ -5,6 +5,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
 
 {-# LANGUAGE TypeFamilyDependencies #-}
 
@@ -29,6 +30,7 @@ module Comp (
   , run
   , call
   , handleSt
+  , handle
   , discharge
   , discharge1
   , weaken
@@ -131,6 +133,11 @@ handleSt s hval hop   (Op op k) = case discharge op of
   Right  op' -> hop s op' k'
   Left   u   -> Op u (k' s)
   where k' s' = handleSt s' hval hop . k
+
+handle ::  (a -> Comp es b)
+ -> (forall x. e x -> (() -> x -> Comp es b) -> Comp es b)
+ -> Handler e es a b
+handle hval hop  =  handleSt () (const hval) (const hop)
 
 -- | Discharge an effect from the front of an effect sum
 discharge :: EffectSum (e ': es) a -> Either (EffectSum es a) (e a)

@@ -25,7 +25,7 @@ import           Effects.EnvRW ( EnvRW )
 import           Env ( Env )
 import           Model ( handleCore, GenModel )
 import           PrimDist ( drawWithSampler )
-import           Comp ( handleSt, discharge, Comp(..), LastMember, discharge1, Handler, Member, call )
+import           Comp ( handleSt, discharge, Comp(..), LastMember, discharge1, Handler, Member, call, handle )
 import           Sampler ( Sampler, liftIO, handleIO )
 import           Unsafe.Coerce (unsafeCoerce)
 
@@ -51,7 +51,7 @@ runSimulate
 
 -- | Handle @Observe@ operations by simply passing forward their observed value, performing no side-effects
 defaultObserve :: Handler Observe es b b
-defaultObserve = handleSt () (const Val) (const hop) where
+defaultObserve = handle ( Val) ( hop) where
   hop :: Observe x -> (() -> x -> Comp es b) -> Comp es b
   hop (Observe d y α) k = k () y
 

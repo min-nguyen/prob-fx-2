@@ -2,6 +2,7 @@
 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
@@ -45,8 +46,9 @@ smc n_prts model env_in = do
 
 {- | Call SMC on a probabilistic program.
 -}
+-- mulpfilter :: Int -> Model '[Sampler] a -> Sampler [(a, LogP)]
 mulpfilter :: Int -> Model '[Sampler] a -> Sampler [(a, LogP)]
-mulpfilter n_prts = handleIO . handleResampleMul . pfilter n_prts 0 handleParticle
+mulpfilter n_prts = pfilter n_prts 0 handleResampleMul handleParticle
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation
@@ -63,10 +65,18 @@ advance w (Op op k) = case discharge op of
 
 {- | A handler for multinomial resampling of particles.
 -}
-
-handleResampleMul :: Member Sampler es => Handler (Resample LogP) es b b
+-- handleProposal :: Member Sampler fs => Handler (Proposal LogP) fs a a
+-- handleProposal = handleSt () (\_ -> Val) (\_ op k -> hop op k)
+--   where hop :: Member Sampler es => Proposal LogP x -> (() -> x -> Comp es b) -> Comp es b
+--         hop op k = case op of
+--           (Propose τ)     -> do τ0 <- mapM (const random) τ
+--                                 k () τ0
+--           (Accept lρ lρ') -> do let ratio = exp (lρ' - lρ)
+--                                 u <- random
+--                                 k () (ratio > u)
+handleResampleMul :: forall fs a. Member Sampler fs => Handler (Resample LogP) fs a a
 handleResampleMul = handleSt () (const Val) (const hop) where
-  hop :: Member Sampler es =>  Resample LogP x -> (() -> x -> Comp es b) -> Comp es b
+  hop :: Resample LogP x -> (() -> x -> Comp fs b) -> Comp fs b
   hop  (Resample (prts, ws)) k = do
     let n = length ws
     idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList (map exp ws))

@@ -16,7 +16,7 @@ import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Effects.Dist ( Addr, Observe (Observe), Sample, pattern ObsPrj )
 import           LogP ( LogP, logMeanExp )
-import           Comp ( Comp (..), weakenProg, Member, discharge, call, weaken, LastMember, Members )
+import           Comp ( Comp (..), weakenProg, Member, discharge, call, weaken, LastMember, Members, Handler )
 import           Sampler
 import           Util ( uncurry3 )
 import           Model
@@ -39,15 +39,14 @@ type ParticleHandler es s a = s -> Model es a -> Sampler (Model es a, s)
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
-pfilter :: forall fs es a s. (Members [Resample s, Sampler] fs)
-  => Int
-  -> s
+pfilter :: forall s es a.
+     Int -> s
+  -> (forall b. Handler (Resample s) '[Sampler] b b)
   -> ParticleHandler es s a                                 -- ^ handler for running particles
   -> Model es a                               -- ^ input particles and corresponding contexts
-  -> Comp fs [(a, s)]                          -- ^ final particle results and corresponding contexts
-pfilter n w exec  model  = do
-  let pfStep :: [(Model es a, s)] -> Comp fs [(a, s)]
-      pfStep wprts = do
+  -> Sampler [(a, s)]                          -- ^ final particle results and corresponding contexts
+pfilter n w hdlResample exec model = handleIO . hdlResample $ do
+  let pfStep wprts = do
         -- | Run particles to next checkpoint and accumulate their contexts
         wprts' <- call (mapM (\(prt, w) -> exec w prt) wprts)
         -- ρs'   <- call (Accum ρs partialρs)

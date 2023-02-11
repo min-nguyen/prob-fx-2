@@ -81,7 +81,7 @@ rmpfilter ::
   -> Sampler [(a, PrtState)]                      -- ^ final particle results and contexts
 rmpfilter n_prts mh_steps tags model = do
   -- let q =  pfilter handleParticle model (prts, ps)
-  (handleIO . handleResample mh_steps tags model . pfilter n_prts (PrtState (Addr "" 0) 0 Map.empty) handleParticle ) model
+  (pfilter n_prts (PrtState (Addr "" 0) 0 Map.empty) (handleResample mh_steps tags model) handleParticle ) model
 
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint
@@ -99,7 +99,7 @@ handleResample :: (Member Sampler fs)
   => Int                                          -- ^ number of SSMH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> Model '[Sampler] a
-  -> Handler (Resample PrtState) fs [(a, PrtState)] [(a, PrtState)]
+  -> Handler (Resample PrtState) fs b b
 handleResample mh_steps tags  m = handleSt () (const Val) (const hop) where
   hop :: Member Sampler fs => Resample PrtState x -> (() -> x -> Comp fs a) -> Comp fs a
   hop  (Resample (_, σs) ) k = do
