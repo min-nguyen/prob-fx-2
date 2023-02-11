@@ -64,7 +64,7 @@ ssmh' ::
   -> [Tag]                                 -- ^ tags indicating variables of interest
   -> Model '[Sampler] a                            -- ^ probabilistic program
   -> Sampler [((a, LPTrace), Trace)]
-ssmh' n τ_0  tags = mh n τ_0 (handleProposal tags) exec
+ssmh' n τ_0  tags = mh n τ_0 (handleProposal tags) handleModel
 
 {- | Handler for @Proposal@ for SSMH.
     - Propose by drawing a component x_i of latent variable X' ~ p(X)
@@ -84,10 +84,10 @@ handleProposal tags  = handleSt (Addr "" 0) (const Val) hop
 
 {- | Handler for one iteration of SSMH.
 -}
-exec :: Trace
+handleModel :: Trace
   -> Model '[Sampler] a                             -- ^ probabilistic program
   -> Sampler ((a, LPTrace), Trace)  -- ^ proposed address + final log-probability trace + final sample trace
-exec τ0 = handleIO . reuseTrace τ0 . defaultObserve . traceLP Map.empty
+handleModel τ0 = handleIO . reuseTrace τ0 . defaultObserve . traceLP Map.empty
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}

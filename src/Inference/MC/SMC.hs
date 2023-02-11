@@ -46,14 +46,14 @@ smc n_prts model env_in = do
 {- | Call SMC on a probabilistic program.
 -}
 mulpfilter :: Int -> Model '[Sampler] a -> Sampler [(a, LogP)]
-mulpfilter n_prts = handleIO . handleResampleMul . pfilter n_prts 0 exec
+mulpfilter n_prts = handleIO . handleResampleMul . pfilter n_prts 0 handleParticle
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation
        2. the log probability of the @Observe operation
 -}
-exec :: LogP -> Model '[Sampler] a -> Sampler (Model '[Sampler] a, LogP)
-exec w = handleIO . defaultSample . advance w
+handleParticle :: LogP -> Model '[Sampler] a -> Sampler (Model '[Sampler] a, LogP)
+handleParticle w = handleIO . defaultSample . advance w
 
 advance :: LogP -> Handler Observe es a (Comp (Observe : es) a, LogP)
 advance w (Val x)   = Val (Val x, w)

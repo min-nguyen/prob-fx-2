@@ -49,15 +49,15 @@ pmmh mh_steps n_prts model env_in obs_vars = do
 
 pmmh' :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
 pmmh' m n τθ model = do
-  mh m τθ handleProposal (exec n) model
+  mh m τθ handleProposal (handleModel n) model
 
 {- | Handle probabilistic program using SSMH and compute the average log-probability using SMC.
 -}
-exec :: Int -> ModelHandler '[Sampler] LogP a
-exec n τθ prog   = do
-  let execPrt :: ParticleHandler '[Sampler] LogP a
-      execPrt logp = fmap fst . handleIO . reuseTrace τθ . advance logp
-  (as, ws) <- (handleIO . handleResampleMul . fmap unzip . pfilter n 0 execPrt ) prog
+handleModel :: Int -> ModelHandler '[Sampler] LogP a
+handleModel n τθ prog   = do
+  let handleParticle :: ParticleHandler '[Sampler] LogP a
+      handleParticle logp = fmap fst . handleIO . reuseTrace τθ . advance logp
+  (as, ws) <- (handleIO . handleResampleMul . fmap unzip . pfilter n 0 handleParticle ) prog
   let a   = head as
       w   = logMeanExp ws
   pure ((a, w), τθ)

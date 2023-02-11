@@ -43,13 +43,13 @@ im n model env_in   = do
   -- | Handle model to probabilistic program
   let prog_0  = handleCore env_in model
       τ_0     = Map.empty
-  rwm_trace <- MH.mh n τ_0 handleProposal exec prog_0
+  rwm_trace <- MH.mh n τ_0 handleProposal handleModel prog_0
   pure (map (snd . fst . fst) rwm_trace)
 
 {- | Handler for one iteration of IM.
 -}
-exec :: ModelHandler '[Sampler] LogP a
-exec τ   =
+handleModel :: ModelHandler '[Sampler] LogP a
+handleModel τ   =
   handleIO . MH.reuseTrace τ . LW.likelihood
 
 handleProposal :: Member Sampler fs => Handler (Proposal LogP) fs a a

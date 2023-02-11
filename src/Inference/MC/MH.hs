@@ -61,9 +61,28 @@ reuseTrace τ0 = handleSt τ0 (\τ x -> Val (x, τ))
                             k τ y
   )
 
+{- Paper version of mh
+-}
+mh' :: forall es p a. Int -> Trace -> (forall fs b. Handler (Proposal p) fs b b) -> ModelHandler es p a -> Model es a -> Sampler [((a, p), Trace)]
+mh' n τ_0 hdlProposal exec prog_0 = handleIO . hdlProposal $ do
+  -- | A function performing n mhSteps using initial mh_s.
+  let loop :: Int -> [((a, p), Trace)] -> Comp [Proposal p, Sampler] [((a, p), Trace)]
+      loop i mrkchain
+        | i < n     = do
+            let ((x, w), τ) = head mrkchain
+            τ_0            <- call (Propose τ :: Proposal p Trace)
+            ((x', w'), τ') <- call (exec τ_0 prog_0 )
+            b              <- call (Accept w w')
+            -- let mrkchain'   =
+            loop (i + 1) (if b then ((x', w'), τ') : mrkchain else ((x, w), τ) : mrkchain)
+        | otherwise = return mrkchain
+  -- | Perform initial run of mh
+  node_0 <- call (exec τ_0 prog_0 )
+  -- | Perform initial run of mh
+  loop 0 [node_0]
+
 {- Original version, for benchmarking purposes -}
-mh :: -- (Member Sampler fs)
-      Int                                                                    -- ^ number of iterations
+mh :: Int                                                                    -- ^ number of iterations
    -> Trace                                                          -- ^ initial context + sample trace
    -> (forall b. Handler (Proposal p) '[Sampler] b b)
    -> ModelHandler es p a                                                       -- ^ model handler
@@ -91,11 +110,8 @@ mhStep prog_0 exec markov_chain = do
   b              <- call (Accept p p')
   if b then pure (((r', p'), τ'):markov_chain)
        else pure markov_chain
-{--}
 
-
-
-{- Paper version
+{- Alternative version
 mh :: forall p fs es a. (Members [Proposal p, Sampler] fs)
    => Int                                                                    -- ^ number of iterations
    -> Trace                                                          -- ^ initial context + sample trace
@@ -110,8 +126,6 @@ mh n τ_0 exec model = do
   where f :: [((a, p), Trace)] -> Comp fs [((a, p), Trace)]
         f mchain = metroStep model exec (head mchain) >>= return . (:mchain)
 
-{- | Propose a new sample, execute the model, and then reject or accept the proposal.
--}
 metroStep :: forall es fs p a. (Members [Proposal p, Sampler] fs)
   => Model es a                                                       -- ^ model handler
   -> ModelHandler es p                                                  -- ^ probabilistic program
@@ -126,26 +140,4 @@ metroStep prog_0 exec ((r, p), τ) = do
   b              <- call (Accept p p')
   if b then pure ((r', p'), τ')
        else pure ((r, p), τ)
--}
-
-mh' :: forall es p a. Int -> Trace -> (forall fs b. Handler (Proposal p) fs b b) -> ModelHandler es p a -> Model es a -> Sampler [((a, p), Trace)]
-mh' n τ_0 hdlProposal exec prog_0 = handleIO . hdlProposal $ do
-  -- | A function performing n mhSteps using initial mh_s.
-  let loop :: Int -> [((a, p), Trace)] -> Comp [Proposal p, Sampler] [((a, p), Trace)]
-      loop i mrkchain
-        | i < n     = do
-            let ((x, w), τ) = head mrkchain
-            τ_0            <- call (Propose τ :: Proposal p Trace)
-            ((x', w'), τ') <- call (exec τ_0 prog_0 )
-            b              <- call (Accept w w')
-            -- let mrkchain'   =
-            loop (i + 1) (if b then ((x', w'), τ') : mrkchain else ((x, w), τ) : mrkchain)
-        | otherwise = return mrkchain
-  -- | Perform initial run of mh
-  node_0 <- call (exec τ_0 prog_0 )
-  -- | Perform initial run of mh
-  loop 0 [node_0]
-
-{- One function version of mh
-
 -}
