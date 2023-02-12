@@ -39,7 +39,7 @@ bench_LR_MonadBayes args = do
               , liftIO . MonadBayes.smcLinRegr fixed_smc_particles)  row_header output_file
     benchRow ("LinRegr-[ ]-PMMH-" ++ show fixed_pmmh_particles
               , liftIO . MonadBayes.pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header  output_file
-    benchRow ("LinRegr-[ ]-RMPF-" ++ show fixed_rmsmc_mhsteps
+    benchRow ("LinRegr-[ ]-RMPF-" ++ show fixed_rmsmc_particles
               , liftIO . rmsmcLinRegr fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header output_file
     dummyRow ("LinRegr-[ ]-BBVI-" ++ show fixed_bbvi_steps ) row_header output_file
 
@@ -53,7 +53,7 @@ bench_HMM_MonadBayes args = do
               , liftIO . MonadBayes.smcHMM fixed_smc_particles) row_header output_file
     benchRow ("HidMark-[ ]-PMMH-" ++ show fixed_pmmh_particles
               , liftIO . MonadBayes.pmmhHMM fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
-    benchRow ("HidMark-[ ]-RMPF-"  ++ show fixed_rmsmc_mhsteps
+    benchRow ("HidMark-[ ]-RMPF-"  ++ show fixed_rmsmc_particles
               , liftIO . rmsmcHMM fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header output_file
     dummyRow ("HidMark-[ ]-BBVI-" ++ show fixed_bbvi_steps) row_header output_file
 
@@ -67,7 +67,7 @@ bench_LDA_MonadBayes args = do
               , liftIO . MonadBayes.smcLDA fixed_smc_particles) row_header output_file
     benchRow ("LatDiri-[ ]-PMMH-" ++ show fixed_pmmh_particles
               , liftIO . MonadBayes.pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
-    benchRow ("LatDiri-[ ]-RMPF-" ++ show fixed_rmsmc_mhsteps
+    benchRow ("LatDiri-[ ]-RMPF-" ++ show fixed_rmsmc_particles
               , liftIO . rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) (second (take 3) row_header) output_file
     dummyRow ("LatDiri-[ ]-BBVI-" ++ show fixed_bbvi_steps) row_header output_file
 

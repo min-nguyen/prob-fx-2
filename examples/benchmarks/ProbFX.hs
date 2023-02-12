@@ -32,7 +32,7 @@ bench_LR args = do
               , smcLinRegr fixed_smc_particles)  row_header output_file
     benchRow ("LinRegr-[ ]-PMMH-" ++ show fixed_pmmh_particles
               , pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
-    benchRow ("LinRegr-[ ]-RMPF-" ++ show fixed_rmsmc_mhsteps
+    benchRow ("LinRegr-[ ]-RMPF-" ++ show fixed_rmsmc_particles
               , rmsmcLinRegr fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header output_file
     benchRow ("LinRegr-[ ]-BBVI-" ++ show fixed_bbvi_steps
               , bbviLinRegr fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
@@ -47,7 +47,7 @@ bench_HMM args = do
               , smcHMM fixed_smc_particles) row_header output_file
     benchRow ("HidMark-[ ]-PMMH-" ++ show fixed_pmmh_particles
               , pmmhHMM fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
-    benchRow ("HidMark-[ ]-RMPF-" ++ show fixed_rmsmc_mhsteps
+    benchRow ("HidMark-[ ]-RMPF-" ++ show fixed_rmsmc_particles
               , rmsmcHMM fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header output_file
     benchRow ("HidMark-[ ]-BBVI-" ++ show fixed_bbvi_steps
               , bbviHMM fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
@@ -62,7 +62,7 @@ bench_LDA args = do
               , smcLDA fixed_smc_particles) row_header output_file
     benchRow ("LatDiri-[ ]-PMMH-" ++ show fixed_pmmh_particles
               , pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
-    benchRow ("LatDiri-[ ]-RMPF-" ++ show fixed_rmsmc_mhsteps
+    benchRow ("LatDiri-[ ]-RMPF-" ++ show fixed_rmsmc_particles
               , rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header output_file
     benchRow ("LatDiri-[ ]-BBVI-" ++ show fixed_bbvi_steps
               , bbviLDA fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
