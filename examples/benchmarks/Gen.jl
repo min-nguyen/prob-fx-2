@@ -232,7 +232,7 @@ function bench_LDA_RMSMC()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("LatDiri-[ ]-RMPF-" * string(fixed_rmsmc_mhsteps), results)
+  parseBenchmark("LatDiri-[ ]-RMPF-" * string(fixed_rmsmc_particles), results)
 end
 
 function bench_LDA_BBVI()
@@ -373,7 +373,7 @@ function bench_HMM_RMSMC()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("HidMark-[ ]-RMPF-" * string(fixed_rmsmc_mhsteps), results)
+  parseBenchmark("HidMark-[ ]-RMPF-" * string(fixed_rmsmc_particles), results)
 end
 
 function bench_HMM_BBVI()
@@ -542,7 +542,7 @@ function bench_LR_RMSMC()
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("LinRegr-[ ]-RMPF-" * string(fixed_rmsmc_mhsteps), results)
+  parseBenchmark("LinRegr-[ ]-RMPF-" * string(fixed_rmsmc_particles), results)
 end
 
 function bench_LR_BBVI()
