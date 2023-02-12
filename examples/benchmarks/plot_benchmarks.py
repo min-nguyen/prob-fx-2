@@ -86,8 +86,8 @@ with open('benchmarks-prob-fx.csv') as benchmarks_pfx, open('benchmarks-monad-ba
   raw_data_pfx                = [row for row in csv.reader(benchmarks_pfx, delimiter=',')]
   (models_pfx, raw_data_pfx)  = groupBenchmarks(raw_data_pfx, n_groups=3, n_rows=5)
   (infs_pfx, _)               = groupBenchmarks(raw_data_pfx, n_groups=5, n_rows=3)
-  models_pfx                  = { "language": "ProbFX", "color": '#7570b3', "data": models_pfx }
-  infs_pfx                    = { "language": "ProbFX", "color": '#7570b3', "data": infs_pfx }
+  models_pfx                  = { "language": "InferFX", "color": '#7570b3', "data": models_pfx }
+  infs_pfx                    = { "language": "InferFX", "color": '#7570b3', "data": infs_pfx }
 
   raw_data_mb                 = [row for row in csv.reader(benchmarks_mb, delimiter=',')]
   (models_mb, raw_data_mb)    = groupBenchmarks(raw_data_mb, n_groups=3, n_rows=5)
