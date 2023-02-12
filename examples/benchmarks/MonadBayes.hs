@@ -31,7 +31,7 @@ output_file = "examples/benchmarks/benchmarks-monad-bayes.csv"
 
 bench_LR_MonadBayes :: [Int] -> IO ()
 bench_LR_MonadBayes args = do
-    let row_header = ("Num points", args)
+    let row_header = ("Num datapoints", args)
     writeRow output_file row_header
     benchRow ("LinRegr-[ ]-SSMH-" ++ show fixed_mh_steps
               , liftIO . MonadBayes.mhLinRegr fixed_mh_steps) row_header output_file

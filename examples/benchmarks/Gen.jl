@@ -700,7 +700,7 @@ end
 ######################################## Top-level benchmarks
 
 function bench_LR()
-  parseBenchmark("Num points", lr_range)
+  parseBenchmark("Num datapoints", lr_range)
   # bench_LR_MH()
   # bench_LR_SMC()
   # bench_LR_PMMH()

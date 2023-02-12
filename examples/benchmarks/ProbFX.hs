@@ -24,7 +24,7 @@ output_file = "examples/benchmarks/benchmarks-prob-fx.csv"
 
 bench_LR :: [Int] -> IO ()
 bench_LR args = do
-    let row_header = ("Num points", args)
+    let row_header = ("Num datapoints", args)
     writeRow output_file row_header
     benchRow ("LinRegr-[ ]-SSMH-" ++ show fixed_mh_steps
               , mhLinRegr fixed_mh_steps) row_header output_file
