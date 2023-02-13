@@ -26,7 +26,7 @@ import           Env ( Env, union )
 import           LogP ( LogP(..), normaliseLogPs )
 import           Model
 import           PrimDist
-import           Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handleSt )
+import           Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handleWith )
 import           Sampler ( Sampler, liftIO, handleIO )
 import           Trace (GradTrace, ParamTrace, Key(..), Some(..))
 import qualified Trace
@@ -66,7 +66,7 @@ exec env = handleIO . joint . fmap fst . handleEnvRW env where
 
 -- | Compute and update the guide parameters using a likelihood-ratio-estimate E[δelbo] of the ELBO gradient
 handleLRatio :: forall fs a. Handler GradEst fs a a
-handleLRatio = handleSt () (const Val) (const hop) where
+handleLRatio = handleWith () (const Val) (const hop) where
   hop :: GradEst x -> (() -> x -> Comp fs a) -> Comp fs a
   hop (UpdateParam ws grads params) k =
     let δelbo = lratio ws grads

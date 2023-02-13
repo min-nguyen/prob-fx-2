@@ -28,7 +28,7 @@ module Comp (
   -- * Auxiliary functions
   , run
   , call
-  , handleSt
+  , handleWith
   , handle
   , discharge
   , discharge1
@@ -123,20 +123,20 @@ call e = Op (inj e) Val
 -- | Handler abstraction
 type Handler e es a b = Comp (e : es) a -> Comp es b
 
-handleSt :: s
+handleWith :: s
        -> (s -> a -> Comp es b)
        -> (forall x. s -> e x -> (s -> x -> Comp es b) -> Comp es b)
        -> Handler e es a b
-handleSt s hval _     (Val a)   = hval s a
-handleSt s hval hop   (Op op k) = case discharge op of
+handleWith s hval _     (Val a)   = hval s a
+handleWith s hval hop   (Op op k) = case discharge op of
   Right  op' -> hop s op' k'
   Left   u   -> Op u (k' s)
-  where k' s' = handleSt s' hval hop . k
+  where k' s' = handleWith s' hval hop . k
 
 handle ::  (a -> Comp es b)
  -> (forall x. e x -> (() -> x -> Comp es b) -> Comp es b)
  -> Handler e es a b
-handle hval hop  =  handleSt () (const hval) (const hop)
+handle hval hop  =  handleWith () (const hval) (const hop)
 
 -- | Discharge an effect from the front of an effect sum
 discharge :: EffectSum (e ': es) a -> Either (EffectSum es a) (e a)

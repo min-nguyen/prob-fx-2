@@ -45,7 +45,7 @@ write :: forall env es x a. (Member (EnvRW env) es, Observable env x a)
 write x v = call (Write @env x v)
 
 {- Handle the @Read@ operations by reading from an input model environment,
-   and handleSt the @Write@ operations by writing to an output model environment  -}
+   and handleWith the @Write@ operations by writing to an output model environment  -}
 handleEnvRW :: forall env es a.
   -- | input model environment
      Env env
