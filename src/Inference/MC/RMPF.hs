@@ -69,20 +69,19 @@ rmpf n_prts mh_steps model env_in obs_vars = do
   let prog_0   = handleCore env_in model
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
-  map (snd . fst) <$> rmpfilter n_prts mh_steps tags prog_0
+  map (snd . fst) <$> rmpf' n_prts mh_steps tags prog_0
 
 {- | Call RMPF on a probabilistic program.
 -}
-rmpfilter ::
+rmpf' ::
      Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of SSMH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> Model '[Sampler] a                                   -- ^ probabilistic program
   -> Sampler [(a, PrtState)]                      -- ^ final particle results and contexts
-rmpfilter n_prts mh_steps tags model = do
+rmpf' n_prts mh_steps tags model = do
   -- let q =  pfilter exec model (prts, ps)
   (handleIO . handleResample mh_steps tags model . pfilter n_prts (PrtState (Addr "" 0) 0 Map.empty) exec ) model
-
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint
      at the first @Observe@ operation, by returning:
@@ -110,14 +109,14 @@ handleResample mh_steps tags  m = handleWith () (const Val) (const hop) where
     -- | Insert break point to perform SSMH up to
         partial_model   = suspendAt α m
     -- | Perform SSMH using each resampled particle's sample trace and get the most recent SSMH iteration.
-    wprts_mov <- mapM (\τ -> do ((prt_mov, lwtrace), τ_mov) <- fmap head (SSMH.ssmh' mh_steps τ tags (unsafeCoerce partial_model))
+    wprts_mov <- mapM (\τ -> do ((prt_mov, lwtrace), τ_mov) <- fmap head (call $ SSMH.ssmh' mh_steps τ tags partial_model)
                                 let w_mov = (sum . Map.elems) lwtrace
                                 return (prt_mov, PrtState α w_mov τ_mov) )
                       τs_res
 
     let (prts_mov, (α, ps_mov, τs_mov)) = (second unpack . unzip) wprts_mov
-        wprts_norm   =  zip prts_mov (pack (α, repeat (logMeanExp ps_mov), τs_mov))
-    k () wprts_norm
+        wprts_norm =  zip prts_mov (pack (α, repeat (logMeanExp ps_mov), τs_mov))
+    k () (unsafeCoerce wprts_norm)
     -- k () wprts_mov
 
 suspendα :: LogP -> Handler Observe es a (Comp (Observe : es) a, Addr, LogP)

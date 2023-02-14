@@ -22,7 +22,7 @@ import Effects.Dist (Addr(..))
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
 import Inference.MC.LW as LW ( lw )
 import Inference.MC.SSMH as SSMH ( ssmh )
-import Inference.MC.SMC as SMC ( smc )
+import Inference.MC.SMC as SMC ( mulpfilter )
 import Inference.MC.SIM as SIM ( simulate )
 import Inference.MC.RMPF as RMPF ( rmpf )
 import Inference.MC.SMC2 as SMC2 ( smc2 )
@@ -207,7 +207,7 @@ smcHMM n_particles hmm_length = do
   -- Specify a model environment containing those observations
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
   -- Handle the Writer effect and then run SMC inference
-  env_outs <- SMC.smc n_particles (hmm hmm_length 0) env_in
+  env_outs <- SMC.mulpfilter n_particles (hmm hmm_length 0) env_in
   -- Get the sampled transition and observation parameters of each particle
   let trans_ps    = concatMap (get #trans_p) env_outs
       obs_ps      = concatMap (get #obs_p) env_outs

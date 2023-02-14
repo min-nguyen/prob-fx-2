@@ -43,8 +43,16 @@ im n model env_in   = do
   -- | Handle model to probabilistic program
   let prog_0  = handleCore env_in model
       τ_0     = Map.empty
-  rwm_trace <- (handleIO . handleProposal . MH.mh n τ_0 exec) prog_0
+  rwm_trace <- im' n prog_0
   pure (map (snd . fst . fst) rwm_trace)
+
+{- | Top-level wrapper for Independence Metropolis
+-}
+im' ::
+     Int                              -- ^ number of iterations
+  -> Model '[Sampler] a  -- ^ model
+  -> Sampler [((a, LogP), Trace)]            -- ^ output model environments
+im' n = handleIO . handleProposal . MH.mh n Map.empty exec
 
 {- | Handler for one iteration of IM.
 -}

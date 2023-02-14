@@ -18,7 +18,7 @@ import Inference.MC.SIM as SIM ( simulate )
 import Inference.MC.LW as LW ( lw )
 import Inference.MC.IM as IM ( im )
 import Inference.MC.SSMH as SSMH ( ssmh )
-import Inference.MC.SMC as SMC ( smc )
+import Inference.MC.SMC as SMC ( mulpfilter )
 import Inference.MC.RMPF as RMPF ( rmpf )
 import Inference.MC.PMMH as PMMH ( pmmh )
 import Inference.MC.SMC2 as SMC2 ( smc2 )
@@ -132,7 +132,7 @@ smcLinRegr n_particles n_datapoints = do
   -- Specify model environment
       env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   -- Run SMC
-  env_outs <- SMC.smc n_particles (linRegr xs) env_in
+  env_outs <- SMC.mulpfilter n_particles (linRegr xs) env_in
   -- Get the sampled values of mu and c for each particle
   let mus = concatMap (get #m) env_outs
       cs = concatMap (get #c) env_outs

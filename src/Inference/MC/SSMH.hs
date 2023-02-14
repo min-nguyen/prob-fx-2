@@ -58,13 +58,12 @@ ssmh n model env_in obs_vars  = do
 
 {- | SSMH inference on a probabilistic program.
 -}
-ssmh' :: (Member Sampler fs)
-  => Int                                   -- ^ number of SSMH iterations
+ssmh' :: Int                                   -- ^ number of SSMH iterations
   -> Trace                                -- ^ initial sample trace
   -> [Tag]                                 -- ^ tags indicating variables of interest
   -> Model '[Sampler] a                            -- ^ probabilistic program
-  -> Comp fs [((a, LPTrace), Trace)]
-ssmh' n τ_0  tags = handleProposal tags  . mh n τ_0 exec
+  -> Sampler [((a, LPTrace), Trace)]
+ssmh' n τ_0  tags = handleIO . handleProposal tags  . mh n τ_0 exec
 
 {- | Handler for @Proposal@ for SSMH.
     - Propose by drawing a component x_i of latent variable X' ~ p(X)

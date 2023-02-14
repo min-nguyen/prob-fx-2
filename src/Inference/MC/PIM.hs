@@ -48,6 +48,9 @@ pim mh_steps n_prts model env_in obs_vars = do
   pmmh_trace <- (handleIO . IM.handleProposal . mh mh_steps τθ_0 (exec n_prts)) prog_0
   pure (map (snd . fst . fst) pmmh_trace)
 
+pim' :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
+pim' mh_steps n_prts τθ = handleIO . IM.handleProposal . mh mh_steps τθ (exec n_prts)
+
 {- | Handle probabilistic program using SSMH and compute the average log-probability using SMC.
 -}
 exec :: Int -> ModelHandler '[Sampler] LogP a
