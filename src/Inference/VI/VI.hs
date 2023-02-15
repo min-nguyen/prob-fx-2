@@ -47,15 +47,15 @@ data GradEst a where
 type GuideHandler env es a = ParamTrace -> VIGuide env es a -> Sampler (((a, Env env), GradTrace), LogP)
 type ModelHandler env es a = Env env    -> VIModel env es a -> Sampler (a, LogP)
 
-viLoop :: (Members [GradEst, Sampler] fs)
+guidedLoop :: (Members [GradEst, Sampler] fs)
   => Int                                     -- ^ number of optimisation steps (T)
   -> Int                                     -- ^ number of samples to estimate the gradient over (L)
   -> VIGuide env es1 a -> GuideHandler env es1 a
   -> VIModel env es2 b -> ModelHandler env es2 b
   -> ParamTrace                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Comp fs ParamTrace      -- ^ final guide parameters λ_T
-viLoop num_timesteps num_samples guide execg model execm guideParams_0 = do
-  foldr (>=>) pure [viStep num_samples execg execm guide model  | t <- [1 .. num_timesteps]] guideParams_0
+guidedLoop num_timesteps num_samples guide execg model execm guideParams_0 = do
+  foldr (>=>) pure [guidedStep num_samples execg execm guide model  | t <- [1 .. num_timesteps]] guideParams_0
 
 {- | 1. For L iterations,
         a) Generate values x from the guide Q(X; λ), accumulating:
@@ -67,12 +67,12 @@ viLoop num_timesteps num_samples guide execg model execm guideParams_0 = do
      3. Update the parameters λ of the guide
 -}
 
-viStep ::  (Members [GradEst, Sampler] fs)
+guidedStep ::  (Members [GradEst, Sampler] fs)
   => Int
   -> GuideHandler env es1 a -> ModelHandler env es2 b -> VIGuide env es1 a -> VIModel env es2 b
   -> ParamTrace                            -- ^ guide parameters λ_t
   -> Comp fs ParamTrace    -- ^ next guide parameters λ_{t+1}
-viStep num_samples execg execm guide model  params = do
+guidedStep num_samples execg execm guide model  params = do
   let exec = do -- | Execute the guide X ~ Q(X; λ)
                 (((_, env), δλ ), guide_w) <- call (execg params guide )
                 -- | Execute the model P(X, Y) under the guide environment X

@@ -46,7 +46,7 @@ mle num_timesteps num_samples guide model env = do
   λ_0 <- collectParams env guide
   -- | Run MLE for T optimisation steps
   (handleIO . handleNormGradDescent) $
-      viLoop num_timesteps num_samples guide (execGuide env) model exec λ_0
+      guidedLoop num_timesteps num_samples guide (execGuide env) model exec λ_0
 
 -- | Return probability of 1
 execGuide :: Env env -> ParamTrace -> VIGuide env '[Sampler] a -> Sampler (((a, Env env), GradTrace), LogP)

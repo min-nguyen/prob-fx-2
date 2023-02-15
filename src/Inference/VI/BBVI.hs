@@ -51,7 +51,7 @@ bbvi num_timesteps num_samples guide model env  = do
   λ_0 <- VI.collectParams env guide
   -- liftIO (print λ_0)
   (handleIO . handleLRatio)
-    $ VI.viLoop num_timesteps num_samples guide (execGuide env) model exec λ_0
+    $ VI.guidedLoop num_timesteps num_samples guide (execGuide env) model exec λ_0
 
 -- | Compute Q(X; λ)
 execGuide :: Env env -> ParamTrace -> VIGuide env '[Sampler] a -> Sampler (((a, Env env), GradTrace), LogP)
