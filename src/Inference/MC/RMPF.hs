@@ -77,11 +77,11 @@ rmpf' ::
      Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of SSMH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> Model '[Sampler] a                                   -- ^ probabilistic program
+  -> Model '[Observe, Sample, Sampler] a                                   -- ^ probabilistic program
   -> Sampler [(a, PrtState)]                      -- ^ final particle results and contexts
-rmpf' n_prts mh_steps tags model = do
+rmpf' n_prts mh_steps tags  model = do
   -- let q =  pfilter exec model (prts, ps)
-  (handleIO . handleResample mh_steps tags model . pfilter n_prts (PrtState (Addr "" 0) 0 Map.empty) exec ) model
+  (handleIO . handleResample mh_steps tags model . pfilter n_prts (PrtState (Addr "" 0) 0 Map.empty) exec) model
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint
      at the first @Observe@ operation, by returning:
@@ -90,7 +90,7 @@ rmpf' n_prts mh_steps tags model = do
 -}
 exec :: ParticleHandler '[Observe, Sample, Sampler] PrtState a
 exec (PrtState _ logp τ) model = (fmap asPrtTrace . handleIO . reuseTrace τ . suspendα logp) (runModel model) where
-  asPrtTrace ((prt, α, w), τ) = (prt, PrtState α w τ)
+  asPrtTrace ((prt, α, w), τ) = (Model prt, PrtState α w τ)
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using SSMH.
 -}
@@ -99,7 +99,7 @@ handleResample :: (Member Sampler fs)
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> Model '[Observe, Sample, Sampler] a
   -> Handler (Resample PrtState) fs [(a, PrtState)] [(a, PrtState)]
-handleResample mh_steps tags  m = handleWith () (const Val) (const hop) where
+handleResample mh_steps tags (Model m) = handleWith () (const Val) (const hop) where
   hop :: Member Sampler fs => Resample PrtState x -> (() -> x -> Comp fs a) -> Comp fs a
   hop  (Resample (_, σs) ) k = do
     let (α, ws, τs ) = unpack σs
@@ -109,9 +109,9 @@ handleResample mh_steps tags  m = handleWith () (const Val) (const hop) where
     -- | Insert break point to perform SSMH up to
         partial_model   = suspendAt α m
     -- | Perform SSMH using each resampled particle's sample trace and get the most recent SSMH iteration.
-    wprts_mov <- mapM (\τ -> do ((prt_mov, lwtrace), τ_mov) <- fmap head (call $ SSMH.ssmh' mh_steps τ tags partial_model)
+    wprts_mov <- mapM (\τ -> do ((prt_mov, lwtrace), τ_mov) <- fmap head (call $ SSMH.ssmh' mh_steps τ tags (Model partial_model))
                                 let w_mov = (sum . Map.elems) lwtrace
-                                return (prt_mov, PrtState α w_mov τ_mov) )
+                                return (Model prt_mov, PrtState α w_mov τ_mov) )
                       τs_res
 
     let (prts_mov, (α, ps_mov, τs_mov)) = (second unpack . unzip) wprts_mov

@@ -36,7 +36,7 @@ data GradEst a where
   UpdateParam :: [LogP] -> [GradTrace] -> ParamTrace -> GradEst ParamTrace
 
 type GuidedModel es a = -- Member Guide es =>
-  Model (Guide : es) a
+  Comp (Observe : Sample : Guide : es) a
 
 type GuidedModelHandler es a = ParamTrace -> GuidedModel es a -> Sampler ((a, GradTrace), LogP)
 

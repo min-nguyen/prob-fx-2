@@ -48,7 +48,7 @@ smc2 :: forall env es a xs. (env `ContainsVars` xs)
   -> Sampler [Env env]                              -- ^ output environments
 smc2 n_outer_prts mh_steps n_inner_prts model env obs_vars = do
   -- | Handle model to probabilistic program
-  let prog_0 = (handleDist . handleEnvRW env) (runGenModel model)
+  let prog_0 = handleCore env model
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
   -- | Run SMC2do
@@ -63,7 +63,7 @@ smc2Internal :: (Member Sampler fs)
   -> Int                                          -- ^ number of PMMH steps
   -> Int                                          -- ^ number of inner SMC particles
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> Model '[Sampler] a                                    -- ^ probabilistic program
+  -> Model '[Observe, Sample, Sampler] a                                    -- ^ probabilistic program
   -> Comp fs [(a, PrtState)]                -- ^ final particle results and contexts
 smc2Internal n_outer_prts mh_steps n_inner_prts tags  m  =
   (handleResample mh_steps n_inner_prts tags  m . SIS.pfilter n_outer_prts (PrtState (Addr "" 0) 0 Map.empty) RMPF.exec ) m
@@ -75,10 +75,10 @@ handleResample :: Member Sampler fs
   => Int                                           -- ^ number of PMMH steps
   -> Int                                           -- ^ number of inner SMC particles
   -> [Tag]                                      -- ^ tags indicating variables of interest
-  -> Model '[Sampler] a
+  -> Model '[Observe, Sample, Sampler] a
   -> Comp (Resample PrtState : fs) [(a, PrtState)]
   -> Comp fs [(a, PrtState)]
-handleResample mh_steps n_inner_prts θ  m = loop  where
+handleResample mh_steps n_inner_prts θ  (Model m) = loop  where
   loop  (Val x) = Val x
   loop  (Op op k) = case discharge op of
     Right  (Resample (prts, σs)) ->
@@ -90,19 +90,17 @@ handleResample mh_steps n_inner_prts θ  m = loop  where
               resampled_τθs     = map (filterTrace θ) resampled_τs
           -- | Insert break point to perform SSMH up to
               partial_model     = suspendAt α m
-          -- | Perform PMMH using each resampled particle's sample trace and get the most recent PMMH iteration.
-          pmmh_trace <- mapM ( fmap head
-                             . call
-                             . flip (PMMH.pmmh' mh_steps n_inner_prts) (unsafeCoerce partial_model)
-                             ) resampled_τθs
+          wprts_mov <- mapM (\τ -> do ((prt_mov, logp), τ_mov) <- fmap head (call $ PMMH.pmmh' mh_steps n_inner_prts τ (Model partial_model))
+                                      let w_mov = logp
+                                      return (Model prt_mov, PrtState α w_mov τ_mov) )
+                  resampled_τθs
+
           {- | Get:
               1) the continuations of each particle from the break point (augmented with the non-det effect)
               2) the total log weights of each particle up until the break point
               3) the sample traces of each particle up until the break point -}
-          let ((rejuv_prts, rejuv_lps), rejuv_traces) = first unzip (unzip pmmh_trace)
-              rejuv_lps_normalised  = map (const (logMeanExp rejuv_lps)) rejuv_lps
+          let (prts_mov, (α, ps_mov, τs_mov)) = (second unpack . unzip) wprts_mov
+              wprts_norm =  zip prts_mov (pack (α, repeat (logMeanExp ps_mov), τs_mov))
 
-              rejuv_ss    = pack (α, rejuv_lps_normalised, rejuv_traces)
-
-          (loop . k) (zip rejuv_prts rejuv_ss)
+          loop (k (unsafeCoerce wprts_norm))
     Left op' -> Op op' (loop  . k)
