@@ -8,7 +8,7 @@
 {- | BBVI inference on a model and guide as separate programs.
 -}
 
-module Inference.Guided.Guided where
+module Inference.GuidedX.Guided where
 
 import Data.Maybe
 import Data.Proxy
@@ -35,7 +35,7 @@ import Util
 data GradEst a where
   UpdateParam :: [LogP] -> [GradTrace] -> ParamTrace -> GradEst ParamTrace
 
-type GuidedModel es a = Model (Guide : es) a
+type GuidedModel es a = Comp (Guide : Observe : Sample : es) a
 
 type GuidedModelHandler es a = ParamTrace -> GuidedModel es a -> Sampler ((a, GradTrace), LogP)
 
@@ -61,7 +61,7 @@ guidedStep n_samples exec model params = do
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
 collectGuide :: GuidedModel '[Sampler] a -> Sampler ParamTrace
-collectGuide = handleIO . defaultGuide . loop Trace.empty . SIM.defaultSample . SIM.defaultObserve
+collectGuide = handleIO . SIM.defaultSample . SIM.defaultObserve . defaultGuide . loop Trace.empty
   where
   loop :: ParamTrace -> Comp (Guide : es) a -> Comp (Guide : es) ParamTrace
   loop params (Val _)   = pure params
@@ -91,15 +91,12 @@ defaultGuide  = handle Val hop where
       x <- call (drawWithSampler q)
       k () x
 
--- | Sample from each @Guide@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
-handleGuide :: forall es a. Member Sampler es => Handler Guide es a ((a, GradTrace), LogP, LogP)
-handleGuide  = handleWith (0, 0, Trace.empty) (\(w_d, w_q, grads) a -> Val ((a, grads), w_d, w_q)) hop where
-  hop :: (LogP, LogP, GradTrace) -> Guide x -> ((LogP, LogP, GradTrace) -> x -> Comp es b) -> Comp es b
-  hop (w_d, w_q, grads) (Guide (d :: d) (q :: q) α) k = do
-      x <- call (drawWithSampler q)
-      let d_prior = logProb d x
-          q_prior = logProb q x
-      k (w_d + d_prior, w_q + q_prior, Trace.insert @q (Key α) (gradLogProb q x) grads) x
+prior :: forall es a. Member Sampler es => Handler Sample es a (a, LogP)
+prior = handleWith 0 (\lρ x -> Val (x, lρ)) hop
+  where
+  hop :: LogP -> Sample x -> (LogP -> x -> Comp es b) -> Comp es b
+  hop lρ (Sample d α) k = do x <- call $ drawWithSampler d
+                             k (lρ + logProb d x) x
 
 gradStep
   :: Double  -- ^ learning rate             η

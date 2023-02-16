@@ -361,7 +361,7 @@ instance DiffDistribution Normal where
           dσ = -1/σ + (xμ**2)/(σ ** 3)
           dx = -dμ
 
-  safeAddGrad (Normal μ σ) (dμ ::: dσ ::: VNil) = Normal μ' σ
+  safeAddGrad (Normal μ σ) (dμ ::: dσ ::: VNil) = Normal μ' σ'
     where μ' = μ + dμ
           σ' = let σ_new = σ + dσ in if σ_new <= 0 then σ else σ_new
 
