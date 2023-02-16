@@ -22,7 +22,7 @@ import Effects.Guide
 import Env ( Env, union )
 import LogP ( LogP(..), normaliseLogPs )
 import PrimDist
-import Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handleWith )
+import Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handleWith, handle )
 import Sampler
 import           Trace (GradTrace, ParamTrace, Key(..), Some(..), ValueTrace)
 import qualified Trace
@@ -31,13 +31,11 @@ import qualified Inference.MC.SIM as SIM
 import qualified Vec
 import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
-import Inference.MC.LW (joint)
-
 
 data GradEst a where
   UpdateParam :: [LogP] -> [GradTrace] -> ParamTrace -> GradEst ParamTrace
 
-type GuidedModel es a = Comp (Guide : Observe : Sample : es) a
+type GuidedModel es a = Model (Guide : es) a
 
 type GuidedModelHandler es a = ParamTrace -> GuidedModel es a -> Sampler ((a, GradTrace), LogP)
 
@@ -63,7 +61,7 @@ guidedStep n_samples exec model params = do
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
 collectGuide :: GuidedModel '[Sampler] a -> Sampler ParamTrace
-collectGuide = (fst . fst <$>) . handleIO . SIM.defaultSample . SIM.defaultObserve . defaultGuide Trace.empty . loop Trace.empty
+collectGuide = handleIO . defaultGuide . loop Trace.empty . SIM.defaultSample . SIM.defaultObserve
   where
   loop :: ParamTrace -> Comp (Guide : es) a -> Comp (Guide : es) ParamTrace
   loop params (Val _)   = pure params
@@ -72,16 +70,36 @@ collectGuide = (fst . fst <$>) . handleIO . SIM.defaultSample . SIM.defaultObser
                                Op op (loop params' . k)
     Nothing -> Op op (loop params . k)
 
+{- | Set the proposal distributions Q(λ) of @Score@ operations.
+-}
+updateGuide :: forall es a. Member Guide es => ParamTrace -> Comp es a -> Comp es a
+updateGuide proposals = loop where
+  loop :: Comp es a -> Comp es a
+  loop (Val a)   = pure a
+  loop (Op op k) = case prj op of
+    Just (Guide d q α) -> do
+      let q' = fromMaybe q (Trace.lookup (Key α) proposals)
+      x <- call (Guide d q' α)
+      (loop . k) x
+    Nothing -> Op op (loop . k)
+
 -- | Sample from each @Guide@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
-defaultGuide :: forall es a. Member Sample es => ParamTrace -> Handler Guide es a ((a, GradTrace), LogP)
-defaultGuide param = handleWith (Trace.empty, 0) (\(grads, w) a -> Val ((a, grads), w)) hop where
-  hop :: (GradTrace, LogP) -> Guide x -> ((GradTrace, LogP) -> x -> Comp es b) -> Comp es b
-  hop (grads, w) (Guide (d :: d) (q :: q) α) k = do
-      let q' = fromMaybe q (Trace.lookup (Key α) param)
-      x <- call (Sample q' α)
-      let d_prior = logProb d  x
-          q_prior = logProb q' x
-      k (Trace.insert @q (Key α) (gradLogProb q' x) grads, w + d_prior - q_prior) x
+handleGuide :: forall es a. Member Sampler es => Handler Guide es a ((a, GradTrace), LogP, LogP)
+handleGuide  = handleWith (0, 0, Trace.empty) (\(w_d, w_q, grads) a -> Val ((a, grads), w_d, w_q)) hop where
+  hop :: (LogP, LogP, GradTrace) -> Guide x -> ((LogP, LogP, GradTrace) -> x -> Comp es b) -> Comp es b
+  hop (w_d, w_q, grads) (Guide (d :: d) (q :: q) α) k = do
+      x <- call (drawWithSampler q)
+      let d_prior = logProb d x
+          q_prior = logProb q x
+      k (w_d + d_prior, w_q + q_prior, Trace.insert @q (Key α) (gradLogProb q x) grads) x
+
+-- | Sample from each @Guide@ distribution
+defaultGuide :: forall es a. Member Sampler es => Handler Guide es a a
+defaultGuide  = handle Val hop where
+  hop :: Guide x -> (() -> x -> Comp es b) -> Comp es b
+  hop (Guide (d :: d) (q :: q) α) k = do
+      x <- call (drawWithSampler q)
+      k () x
 
 prior :: forall es a. Member Sampler es => Handler Sample es a (a, LogP)
 prior = handleWith 0 (\lρ x -> Val (x, lρ)) hop

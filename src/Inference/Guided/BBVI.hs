@@ -24,6 +24,7 @@ import           Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Data.Data (Proxy(..))
 import Comp
 import Inference.MC.SIM
+import Effects.Dist
 
 {- | Top-level wrapper for BBVI inference that takes a separate model and guide.
 -}
@@ -40,8 +41,8 @@ bbvi num_timesteps num_samples model = do
 
 -- | Compute Q(X; λ)
 exec :: ParamTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
-exec params = handleIO . defaultSample . joint . likelihood . defaultGuide params where
-  joint = fmap (\((x, w1), w2) -> (x, w1 + w2))
+exec params = handleIO . joint .  handleGuide  . updateGuide params  . defaultSample . likelihood  where
+  joint = fmap (\(((x, lw), g), wd, wq) -> ((x, g), wd + lw - wq))
 
 -- | Compute and update the guide parameters using a likelihood-ratio-estimate E[δelbo] of the ELBO gradient
 handleLRatio :: forall fs a. Handler GradEst fs a a

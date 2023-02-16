@@ -17,6 +17,8 @@ import Inference.MC.SIM as SIM ( simulate )
 import Inference.MC.SMC2 as SMC2 ( smc2 )
 import Inference.Guided.Guided
 import Inference.Guided.BBVI as BBVI
+import Inference.Guided.MAP as MAP
+import Inference.Guided.MLE as MLE
 import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
 import qualified Trace
 import           Trace (Key(..))
@@ -52,4 +54,20 @@ bbviLinRegr t_steps l_samples n_datapoints = do
   traceQ <- BBVI.bbvi t_steps l_samples (linRegr xys)
   let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
       -- c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
-  pure (m_dist)
+  pure m_dist
+
+mleLinRegr :: Int -> Int -> Int -> Sampler ([Double])
+mleLinRegr t_steps l_samples n_datapoints = do
+  let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
+  traceQ <- MLE.mle t_steps l_samples (linRegr xys)
+  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
+      -- c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
+  pure m_dist
+
+mapLinRegr :: Int -> Int -> Int -> Sampler ([Double])
+mapLinRegr t_steps l_samples n_datapoints = do
+  let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
+  traceQ <- MAP.map t_steps l_samples (linRegr xys)
+  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
+      -- c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
+  pure m_dist
