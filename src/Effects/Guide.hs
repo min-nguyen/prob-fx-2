@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE PolyKinds #-}
 
-module Effects.Score where
+module Effects.Guide where
 
 import Comp
 import PrimDist

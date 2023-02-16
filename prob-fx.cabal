@@ -34,7 +34,7 @@ library
                       Effects.NonDet,
                       Effects.EnvRW,
                       Effects.Observe,
-                      Effects.Score,
+                      Effects.Guide,
                       Effects.State,
                       Effects.Sample,
                       Effects.Param,
