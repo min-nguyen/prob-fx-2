@@ -81,7 +81,7 @@ defaultGuide param = handleWith (Trace.empty, 0) (\(grads, w) a -> Val ((a, grad
       x <- call (Sample q' α)
       let d_prior = logProb d  x
           q_prior = logProb q' x
-      k (Trace.insert @q (Key α) (gradLogProb q' x) grads, d_prior - q_prior) x
+      k (Trace.insert @q (Key α) (gradLogProb q' x) grads, w + d_prior - q_prior) x
 
 prior :: forall es a. Member Sampler es => Handler Sample es a (a, LogP)
 prior = handleWith 0 (\lρ x -> Val (x, lρ)) hop

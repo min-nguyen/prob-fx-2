@@ -11,6 +11,7 @@ import Radon
 import HMM
 import GMM
 import qualified VIExamples
+import qualified GuidedExamples
 import Sampler
 import System.Environment (getArgs)
 
@@ -19,6 +20,8 @@ printThenWrite a = print a >> writeFile "model-output.txt" (show a)
 
 parseArgs :: String -> IO ()
 parseArgs cmd = case cmd of
+  "gbbviLinRegr"   -> sampleIOFixed (GuidedExamples.bbviLinRegr 200 40 8) >>= printThenWrite
+
   "bbviLinRegr"    -> sampleIOFixed (VIExamples.bbviLinRegr 200 40 8) >>= printThenWrite
   "mleLinRegr"     -> sampleIOFixed (VIExamples.mleLinRegr 276 40 8) >>= printThenWrite
   "mapLinRegr"     -> sampleIOFixed (VIExamples.mapLinRegr 276 40 8) >>= printThenWrite
