@@ -54,6 +54,7 @@ library
                       Inference.VI.BBVI,
                       Inference.VI.MLE,
                       Inference.VI.MAP,
+                      Inference.Guided.Guided,
                       -- Inference.MB,
                       Env,
                       LogP,
@@ -123,6 +124,7 @@ executable prob-fx
                       Radon,
                       SIR,
                       SIRNonModular,
+                      GuidedExamples,
                       VIExamples
   build-depends:      base,
                       containers,
@@ -149,6 +151,7 @@ executable benchmarks
   other-modules:      HMM,
                       LDA,
                       LinRegr,
+                      GuidedExamples,
                       VIExamples,
                       BenchmarkUtil,
                       MonadBayes,
@@ -189,6 +192,7 @@ test-suite tests
                       LogRegr,
                       Radon,
                       SIR,
+                      GuidedExamples,
                       VIExamples
   build-depends:      base,
                       containers,

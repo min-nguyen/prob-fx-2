@@ -21,6 +21,7 @@ import Data.Proxy
 import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>), mapAndUnzipM )
 import Effects.Dist
+import Effects.Param
 import Model
 import Effects.EnvRW ( EnvRW, handleEnvRW )
 import Effects.State ( modify, handleState, State )
@@ -96,7 +97,7 @@ guidedStep num_samples execg execm guide model  params = do
  -}
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
-collectParams :: es ~ '[Sampler] => Env env -> VIGuide env es a -> Sampler ParamTrace
+collectParams :: Env env -> VIGuide env '[Sampler] a -> Sampler ParamTrace
 collectParams env = handleIO . SIM.defaultSample . (fst <$>) . defaultParam Trace.empty . loop Trace.empty . handleEnvRW env
   where
   loop :: ParamTrace -> Comp (Param : es) a -> Comp (Param : es) ParamTrace

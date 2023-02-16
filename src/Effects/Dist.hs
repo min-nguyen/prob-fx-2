@@ -17,7 +17,6 @@ module Effects.Dist (
   , handleDist
   , module Effects.Sample
   , module Effects.Observe
-  , module Effects.Param
   ) where
 
 import           Data.Maybe ( fromMaybe )
@@ -28,7 +27,6 @@ import           Comp ( call, discharge, weaken, Member(..), Comp(..), EffectSum
 import           Util
 import           Effects.Sample
 import           Effects.Observe
-import           Effects.Param
 
 -- | The effect @Dist@ for primitive distributions
 data Dist a where

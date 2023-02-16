@@ -50,7 +50,7 @@ module Model (
 import Control.Monad ( ap )
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
 import Data.Type.Nat
-import Effects.Dist ( handleDist, Dist(..), Observe, Sample, Param)
+import Effects.Dist ( handleDist, Dist(..), Observe, Sample)
 import Effects.EnvRW
 import Env
 import PrimDist

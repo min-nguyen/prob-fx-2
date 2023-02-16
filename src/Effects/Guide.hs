@@ -13,7 +13,6 @@ import Trace
 import Effects.Sample
 import Env
 import Effects.EnvRW
-import Effects.Dist (Dist)
 
 -- | The effect @Param@ for distributions with support for gradient log-pdfs
 data Guide a where

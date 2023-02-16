@@ -26,6 +26,7 @@ import Control.Monad ( replicateM, (>=>) )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
 import Effects.Dist
+import Effects.Param
 import PrimDist
 import Data.Type.Nat
 import Data.Maybe
