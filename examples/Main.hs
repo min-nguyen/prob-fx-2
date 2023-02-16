@@ -22,7 +22,11 @@ parseArgs :: String -> IO ()
 parseArgs cmd = case cmd of
   "gbbviLinRegr"   -> sampleIOFixed (GuidedExamples.bbviLinRegr 200 40 8) >>= printThenWrite
   "gmapLinRegr"   -> sampleIOFixed (GuidedExamples.mapLinRegr 276 40 8) >>= printThenWrite
-  "gmleLinRegr"   -> sampleIOFixed (GuidedExamples.mleLinRegr 1400 40 8) >>= printThenWrite
+  "gmleLinRegr"   -> sampleIOFixed (GuidedExamples.mleLinRegr 1400 40 8) >>= printThenWrite -- need to set 'safeAddGrad' to only add mu
+
+  "gbbvixLinRegr"   -> sampleIOFixed (GuidedExamples.bbviXLinRegr 200 40 8) >>= printThenWrite
+  "gmapxLinRegr"   -> sampleIOFixed (GuidedExamples.mapXLinRegr 276 40 8) >>= printThenWrite -- need to set 'safeAddGrad' to only add mu
+  "gmlexLinRegr"   -> sampleIOFixed (GuidedExamples.mleXLinRegr 1400 40 8) >>= printThenWrite -- need to set 'safeAddGrad' to only add mu
 
   "bbviLinRegr"    -> sampleIOFixed (VIExamples.bbviLinRegr 200 40 8) >>= printThenWrite
   "mleLinRegr"     -> sampleIOFixed (VIExamples.mleLinRegr 276 40 8) >>= printThenWrite
