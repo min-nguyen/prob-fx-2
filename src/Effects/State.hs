@@ -68,4 +68,4 @@ evalState s = fmap fst . handleState s
 
 -- | Handle the @State s@ effect in a model
 handleStateM :: s -> GenModel env (State s : es) a -> GenModel env es (a, s)
-handleStateM s m = GenModel $ handleState s $ runModel m
+handleStateM s m = GenModel $ handleState s $ runGenModel m

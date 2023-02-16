@@ -21,7 +21,7 @@ import           Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe 
 import           Effects.EnvRW ( EnvRW, handleEnvRW )
 import           Env ( Env )
 import           LogP ( LogP(..), logMeanExp )
-import           Model ( GenModel(runModel), Model )
+import           Model ( GenModel(runGenModel), Model (..), handleCore )
 import           PrimDist ( mkCategorical, drawWithSampler, logProb )
 import           Comp ( LastMember, Comp(..), Members, Member, call, weakenProg, discharge, prj, handleWith, Handler )
 import qualified Data.Map as Map
@@ -39,26 +39,26 @@ mulpfilter
   -> Sampler [Env env]                  -- ^ output model environments of each particle
 mulpfilter n_prts model env_in = do
   -- | Handle model to probabilistic program
-  let prog_0 = (handleDist . handleEnvRW env_in) (runModel model)
+  let prog_0 = handleCore env_in model
   smc_trace <- mulpfilter' n_prts prog_0
   pure (map (snd . fst) smc_trace)
 
 {- | Call SMC on a probabilistic program.
 -}
-mulpfilter' :: Int -> Model '[Sampler] a -> Sampler [(a, LogP)]
+mulpfilter' :: Int -> Model '[Observe, Sample, Sampler] a -> Sampler [(a, LogP)]
 mulpfilter' n_prts = handleIO . handleResampleMul . pfilter n_prts 0 exec
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation
        2. the log probability of the @Observe operation
 -}
-exec :: LogP -> Model '[Sampler] a -> Sampler (Model '[Sampler] a, LogP)
-exec w = handleIO . defaultSample . advance w
+exec :: LogP -> Model '[Observe, Sample, Sampler] a -> Sampler (Model '[Observe, Sample, Sampler] a, LogP)
+exec w (Model m) = (handleIO . defaultSample . advance w) m
 
-advance :: LogP -> Handler Observe es a (Comp (Observe : es) a, LogP)
-advance w (Val x)   = Val (Val x, w)
+advance :: LogP -> Handler Observe es a (Model (Observe : es) a, LogP)
+advance w (Val x)   = Val (Model (Val x), w)
 advance w (Op op k) = case discharge op of
-  Right (Observe d y α) -> Val (k y, w + logProb d y)
+  Right (Observe d y α) -> Val (Model (k y), w + logProb d y)
   Left op'              -> Op op' (advance w . k)
 
 {- | A handler for multinomial resampling of particles.

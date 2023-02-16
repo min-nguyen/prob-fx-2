@@ -14,7 +14,7 @@
 
 module Model (
     GenModel(..)
-  , Model
+  , Model(..)
   , handleCore
     -- * Distribution smart constructors
     -- $Smart-Constructors
@@ -72,7 +72,7 @@ import Data.Typeable
     and @EnvRW env@ for reading from @env@.
 -}
 newtype GenModel env es a =
-  GenModel { runModel :: ( Member Dist es        -- models can call primitive distributions
+  GenModel { runGenModel :: ( Member Dist es        -- models can call primitive distributions
                       , Member (EnvRW env) es -- models can read observed values from their environment
                       )
                    => Comp es a }
@@ -86,19 +86,22 @@ instance Monad (GenModel env es) where
   return = pure
   GenModel f >>= x = GenModel $ do
     f' <- f
-    runModel $ x f'
-
-{- | Probabilistic programs are those with effects for conditioning and sampling.
--}
-
-type Model es a = Comp (Observe : Sample : es) a
+    runGenModel $ x f'
 
 {- | The initial handler for models, specialising a model under a certain environment
      to produce a probabilistic program consisting of @Sample@ and @Observe@ operations.
 -}
-handleCore :: Env env -> GenModel env (EnvRW env : Dist : es) a
-           -> Comp (Observe : Sample : es) (a, Env env)
-handleCore env_in m = (handleDist . handleEnvRW env_in) (runModel m)
+handleCore :: forall env es a. Env env -> GenModel env (EnvRW env : Dist : es) a
+           -> Model (Observe : Sample : es) (a, Env env)
+handleCore env_in m = Model $ (handleDist . handleEnvRW env_in) (runGenModel m)
+
+{- | Probabilistic programs are those with effects for conditioning and sampling.
+-}
+
+newtype Model es a =
+  Model { runModel :: Members [Observe, Sample] es
+                   => Comp es a
+  }
 
 {- $Smart-Constructors
 

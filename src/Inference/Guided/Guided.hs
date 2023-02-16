@@ -35,7 +35,8 @@ import Util
 data GradEst a where
   UpdateParam :: [LogP] -> [GradTrace] -> ParamTrace -> GradEst ParamTrace
 
-type GuidedModel es a = Model (Guide : es) a
+type GuidedModel es a = -- Member Guide es =>
+  Model (Guide : es) a
 
 type GuidedModelHandler es a = ParamTrace -> GuidedModel es a -> Sampler ((a, GradTrace), LogP)
 
@@ -60,7 +61,7 @@ guidedStep n_samples exec model params = do
   call (UpdateParam ws δλs params)
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
-collectGuide :: GuidedModel '[Sampler] a -> Sampler ParamTrace
+collectGuide :: Comp '[Observe, Sample, Guide, Sampler] a -> Sampler ParamTrace
 collectGuide = handleIO . defaultGuide . loop Trace.empty . SIM.defaultSample . SIM.defaultObserve
   where
   loop :: ParamTrace -> Comp (Guide : es) a -> Comp (Guide : es) ParamTrace

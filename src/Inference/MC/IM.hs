@@ -21,10 +21,10 @@ import Comp ( Handler, Comp(..), discharge, handleWith, LastMember, Member )
 import Trace ( Trace, LPTrace, filterTrace )
 import LogP ( LogP (..) )
 import PrimDist
-import Model ( GenModel, handleCore, Model )
+import Model ( GenModel, handleCore, Model (..) )
 import Effects.EnvRW ( EnvRW )
 import Env ( Env )
-import Effects.Dist ( Dist, pattern SampPrj, pattern ObsPrj )
+import Effects.Dist ( Dist, pattern SampPrj, pattern ObsPrj, Observe, Sample )
 import Sampler ( Sampler, random, handleIO )
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.LW as LW
@@ -39,9 +39,9 @@ im ::
   -> GenModel env [EnvRW env, Dist, Sampler] a  -- ^ model
   -> Env env                        -- ^ input environment
   -> Sampler [Env env]              -- ^ output model environments
-im n model env_in   = do
+im n genmodel env_in   = do
   -- | Handle model to probabilistic program
-  let prog_0  = handleCore env_in model
+  let prog_0  = handleCore env_in genmodel
       τ_0     = Map.empty
   rwm_trace <- im' n prog_0
   pure (map (snd . fst . fst) rwm_trace)
@@ -50,15 +50,15 @@ im n model env_in   = do
 -}
 im' ::
      Int                              -- ^ number of iterations
-  -> Model '[Sampler] a  -- ^ model
+  -> Model '[Observe, Sample, Sampler] a  -- ^ model
   -> Sampler [((a, LogP), Trace)]            -- ^ output model environments
 im' n = handleIO . handleProposal . MH.mh n Map.empty exec
 
 {- | Handler for one iteration of IM.
 -}
-exec :: ModelHandler '[Sampler] LogP a
-exec τ   =
-  handleIO . MH.reuseTrace τ . LW.likelihood
+exec :: ModelHandler '[Observe, Sample, Sampler] LogP a
+exec τ (Model m)  =
+  (handleIO . MH.reuseTrace τ . LW.likelihood) m
 
 handleProposal :: Member Sampler fs => Handler (Proposal LogP) fs a a
 handleProposal = handleWith () (\_ -> Val) (\_ op k -> hop op k)

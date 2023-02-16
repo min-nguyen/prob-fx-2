@@ -24,9 +24,9 @@ import Effects.State ( modify, handleState, State )
 import Env ( Env )
 import LogP ( LogP )
 import Inference.MC.SIM as SIM (defaultSample)
-import Model ( handleCore, GenModel, Model )
+import Model ( handleCore, GenModel, Model(..) )
 import PrimDist ( logProb )
-import Comp ( discharge, Comp(..), Handler, handleWith )
+import Comp ( discharge, Comp(..), Handler, handleWith, Members )
 import Sampler ( Sampler, handleIO )
 
 -- | Top-level wrapper for Likelihood-Weighting (LW) inference
@@ -46,10 +46,10 @@ lw n model env_in = do
 
 -- | Handler for one iteration of LW
 runLW
-  :: Comp [Observe, Sample, Sampler] a
+  :: Model [Observe, Sample, Sampler] a
   -- | ((model output, sample trace), likelihood-weighting)
   -> Sampler (a, LogP)
-runLW = handleIO . SIM.defaultSample . likelihood
+runLW m = (handleIO . SIM.defaultSample . likelihood) (runModel m)
 
 -- | Handle each @Observe@ operation by accumulating the log-likelihood P(Y | X)
 likelihood :: Handler Observe es a (a, LogP)
@@ -60,7 +60,7 @@ likelihood  = handleWith 0 (\lρ x -> Val (x, lρ)) hop
 
 {- | Record the joint log-probability P(Y, X)
 -}
-joint :: LogP -> Model es a -> Model es (a, LogP)
+joint :: Members [Observe, Sample] es => LogP -> Comp es a -> Comp es (a, LogP)
 joint lρ (Val x)   = pure (x, lρ)
 joint lρ (Op op k) = case op of
   ObsPrj d y α   -> Op op (\x -> joint (lρ + logProb d x) $ k x)

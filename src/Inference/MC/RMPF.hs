@@ -88,8 +88,8 @@ rmpf' n_prts mh_steps tags model = do
        1. the rest of the computation
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
-exec :: ParticleHandler '[Sampler] PrtState a
-exec (PrtState _ logp τ)  = fmap asPrtTrace . handleIO . reuseTrace τ . suspendα logp where
+exec :: ParticleHandler '[Observe, Sample, Sampler] PrtState a
+exec (PrtState _ logp τ) model = (fmap asPrtTrace . handleIO . reuseTrace τ . suspendα logp) (runModel model) where
   asPrtTrace ((prt, α, w), τ) = (prt, PrtState α w τ)
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using SSMH.
@@ -97,7 +97,7 @@ exec (PrtState _ logp τ)  = fmap asPrtTrace . handleIO . reuseTrace τ . suspen
 handleResample :: (Member Sampler fs)
   => Int                                          -- ^ number of SSMH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> Model '[Sampler] a
+  -> Model '[Observe, Sample, Sampler] a
   -> Handler (Resample PrtState) fs [(a, PrtState)] [(a, PrtState)]
 handleResample mh_steps tags  m = handleWith () (const Val) (const hop) where
   hop :: Member Sampler fs => Resample PrtState x -> (() -> x -> Comp fs a) -> Comp fs a

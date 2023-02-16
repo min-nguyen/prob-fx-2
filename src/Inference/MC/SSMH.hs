@@ -27,7 +27,7 @@ import           Env ( ContainsVars(..), Vars, Env )
 import           Trace ( Trace, LPTrace, filterTrace )
 import           LogP ( LogP )
 import           PrimDist
-import           Model ( GenModel, handleCore, Model )
+import           Model ( GenModel, handleCore, Model(..) )
 import           Effects.EnvRW ( EnvRW )
 import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), pattern SampPrj, pattern ObsPrj )
 import           Inference.MC.SIM
@@ -61,7 +61,7 @@ ssmh n model env_in obs_vars  = do
 ssmh' :: Int                                   -- ^ number of SSMH iterations
   -> Trace                                -- ^ initial sample trace
   -> [Tag]                                 -- ^ tags indicating variables of interest
-  -> Model '[Sampler] a                            -- ^ probabilistic program
+  -> Model '[Observe, Sample, Sampler] a                            -- ^ probabilistic program
   -> Sampler [((a, LPTrace), Trace)]
 ssmh' n τ_0  tags = handleIO . handleProposal tags  . mh n τ_0 exec
 
@@ -84,9 +84,9 @@ handleProposal tags  = handleWith (Addr "" 0) (const Val) hop
 {- | Handler for one iteration of SSMH.
 -}
 exec :: Trace
-  -> Model '[Sampler] a                             -- ^ probabilistic program
+  -> Model '[Observe, Sample, Sampler] a                             -- ^ probabilistic program
   -> Sampler ((a, LPTrace), Trace)  -- ^ proposed address + final log-probability trace + final sample trace
-exec τ0 = handleIO . reuseTrace τ0 . defaultObserve . traceLP Map.empty
+exec τ0 (Model m) = (handleIO . reuseTrace τ0 . defaultObserve . traceLP Map.empty) m
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}

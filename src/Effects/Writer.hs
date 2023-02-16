@@ -49,4 +49,4 @@ handleWriterM :: Monoid w
   => GenModel env (Writer w : es) a
   -- | (output, final stream)
   -> GenModel env es (a, w)
-handleWriterM m = GenModel $ handleWriter $ runModel m
+handleWriterM m = GenModel $ handleWriter $ runGenModel m

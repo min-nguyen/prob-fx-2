@@ -48,7 +48,7 @@ smc2 :: forall env es a xs. (env `ContainsVars` xs)
   -> Sampler [Env env]                              -- ^ output environments
 smc2 n_outer_prts mh_steps n_inner_prts model env obs_vars = do
   -- | Handle model to probabilistic program
-  let prog_0 = (handleDist . handleEnvRW env) (runModel model)
+  let prog_0 = (handleDist . handleEnvRW env) (runGenModel model)
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
   -- | Run SMC2do

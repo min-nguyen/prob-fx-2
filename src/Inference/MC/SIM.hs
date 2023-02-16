@@ -23,7 +23,7 @@ module Inference.MC.SIM
 import           Effects.Dist ( Sample(..), Observe(..), Dist )
 import           Effects.EnvRW ( EnvRW )
 import           Env ( Env )
-import           Model ( handleCore, GenModel )
+import           Model ( handleCore, GenModel, Model (runModel) )
 import           PrimDist ( drawWithSampler )
 import           Comp ( handleWith, discharge, Comp(..), LastMember, discharge1, Handler, Member, call )
 import           Sampler ( Sampler, liftIO, handleIO )
@@ -39,7 +39,7 @@ simulate
   -> Sampler (a, Env env)
 simulate model env_in = do
   let prog = handleCore env_in model
-  runSimulate prog
+  runSimulate (runModel prog)
 
 -- | Handler for simulating once from a probabilistic program
 runSimulate
