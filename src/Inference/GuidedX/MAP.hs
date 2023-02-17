@@ -12,6 +12,7 @@ module Inference.GuidedX.MAP
 
 import Inference.GuidedX.Guided
 import qualified Inference.GuidedX.MLE as MLE
+import qualified Inference.GuidedX.BBVI as BBVI
 import Effects.Guide
 import Data.Maybe
 import LogP
@@ -42,21 +43,5 @@ map num_timesteps num_samples model = do
 
 -- | Compute Q(X; λ)
 exec :: ParamTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
-exec params = handleIO . defaultSample . joint . handleGuide . updateGuide params
+exec params = handleIO . defaultSample . joint . BBVI.handleGuide . updateGuide params
   where joint = likelihood
-
-prior :: forall es a. Member Sampler es => Handler Sample es a (a, LogP)
-prior = handleWith 0 (\lρ x -> Val (x, lρ)) hop
-  where
-  hop :: LogP -> Sample x -> (LogP -> x -> Comp es b) -> Comp es b
-  hop lρ (Sample d α) k = do x <- call $ drawWithSampler d
-                             k (lρ + logProb d x) x
-
--- | Sample from each @Guide@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
-handleGuide :: forall es a. Members [Sample, Observe] es => Handler Guide es a (a, GradTrace)
-handleGuide  = handleWith Trace.empty (\grads a -> Val (a, grads)) hop where
-  hop :: GradTrace -> Guide x -> (GradTrace -> x -> Comp es b) -> Comp es b
-  hop grads (Guide (d :: d) (q :: q) α) k = do
-      x <- call (Sample q α)
-      call (Observe d x α)
-      k (Trace.insert @q (Key α) (gradLogProb q x) grads) x

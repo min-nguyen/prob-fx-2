@@ -44,13 +44,12 @@ exec :: ParamTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
 exec params = handleIO . defaultSample . likelihood . handleGuide . updateGuide params
 
 -- | Sample from each @Guide@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
-handleGuide :: forall es a. Members [Sample, Observe] es => Handler Guide es a (a, GradTrace)
-handleGuide  = handleWith Trace.empty (\grads a -> Val (a, grads)) hop where
-  hop :: GradTrace -> Guide x -> (GradTrace -> x -> Comp es b) -> Comp es b
-  hop grads (Guide (d :: d) (q :: q) α) k = do
+handleGuide :: forall es a. Members [Sample, Observe] es => Handler Guide es a a
+handleGuide  = handle Val hop where
+  hop :: Guide x -> (() -> x -> Comp es b) -> Comp es b
+  hop (Guide (d :: d) (q :: q) α) k = do
       x <- call (Sample q α)
-      -- call (Observe d x α)
-      k (Trace.insert @q (Key α) (gradLogProb q x) grads) x
+      k () x
 
 -- | Compute and update the guide parameters using a self-normalised importance weighted gradient estimate
 handleNormGradDescent :: Comp (GradEst : fs) a -> Comp fs a

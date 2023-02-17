@@ -65,13 +65,16 @@ collectGuide = handleIO . SIM.defaultSample . SIM.defaultObserve . defaultGuide 
 
 {- | Set the proposal distributions Q(λ) of @Score@ operations.
 -}
-updateGuide :: forall es a. Member Guide es => ParamTrace -> Comp es a -> Comp es a
-updateGuide proposals = loop where
-  loop :: Comp es a -> Comp es a
-  loop (Val a)   = pure a
-  loop (Op op k) = case prj op of
-    Just (Guide d q α) -> call (Guide d q' α) >>= (loop . k) where q' = Trace.lookupWithDefault q (Key α) proposals
-    Nothing -> Op op (loop . k)
+updateGuide :: forall es a. Member Guide es => ParamTrace -> Comp es a -> Comp es (a, GradTrace)
+updateGuide proposals = loop Trace.empty where
+  loop :: GradTrace -> Comp es a -> Comp es (a, GradTrace)
+  loop grads (Val a)   = pure (a, grads)
+  loop grads (Op op k) = case prj op of
+    Just (Guide d (q :: q) α) -> do let q' = Trace.lookupWithDefault q (Key α) proposals
+                                    x <- call (Guide d q' α)
+                                    let gs = Trace.insert @q (Key α) (gradLogProb q' x) grads
+                                    loop gs (k x)
+    Nothing -> Op op (loop grads . k)
 
 -- | Sample from each @Guide@ distribution
 defaultGuide :: forall es a. Member Sampler es => Handler Guide es a a
