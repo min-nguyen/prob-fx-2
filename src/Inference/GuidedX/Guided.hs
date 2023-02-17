@@ -46,11 +46,11 @@ guidedLoop :: (Members [GradEst, Sampler] fs)
   -> ParamTrace                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Comp fs ParamTrace      -- ^ final guide parameters λ_T
 guidedLoop n_timesteps n_samples exec model params_0 = do
-  let guidedStep t φ = do
+  let guidedStep φ = do
         rs <- replicateM n_samples (call $ exec φ model)
         let wgrads = map (\((_, grad), w) -> (w, grad)) rs
         call (UpdateParam wgrads φ)
-  foldr (>=>) pure [guidedStep t | t <- [1 .. n_timesteps]] params_0
+  foldr1 (>=>) (replicate n_timesteps guidedStep) params_0
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
 collectGuide :: GuidedModel '[Sampler] a -> Sampler ParamTrace
@@ -70,10 +70,7 @@ updateGuide proposals = loop where
   loop :: Comp es a -> Comp es a
   loop (Val a)   = pure a
   loop (Op op k) = case prj op of
-    Just (Guide d q α) -> do
-      let q' = fromMaybe q (Trace.lookup (Key α) proposals)
-      x <- call (Guide d q' α)
-      (loop . k) x
+    Just (Guide d q α) -> call (Guide d q' α) >>= (loop . k) where q' = Trace.lookupWithDefault q (Key α) proposals
     Nothing -> Op op (loop . k)
 
 -- | Sample from each @Guide@ distribution

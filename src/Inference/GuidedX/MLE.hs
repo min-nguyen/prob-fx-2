@@ -52,10 +52,6 @@ handleGuide  = handleWith Trace.empty (\grads a -> Val (a, grads)) hop where
       -- call (Observe d x α)
       k (Trace.insert @q (Key α) (gradLogProb q x) grads) x
 
-
-
-
-
 -- | Compute and update the guide parameters using a self-normalised importance weighted gradient estimate
 handleNormGradDescent :: Comp (GradEst : fs) a -> Comp fs a
 handleNormGradDescent = handleWith 0 (const Val) hop where

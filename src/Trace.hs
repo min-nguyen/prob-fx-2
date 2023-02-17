@@ -43,6 +43,7 @@ module Trace (
   , insert
   , lookup
   , lookupBy
+  , lookupWithDefault
   , map
   -- , dlookupOrInsert
   , intersectLeftWith
@@ -244,6 +245,10 @@ lookup kx = go where
       of TrueEQ HRefl -> Just y
          TrueLT       -> go l
          TrueGT       -> go r
+
+-- | Lookup an entry
+lookupWithDefault :: Typeable a => Assoc c a -> Key a -> DistTrace c -> Assoc c a
+lookupWithDefault q k = fromMaybe q . lookup k
 
 -- | Lookup an entry
 lookupBy :: forall a c. Typeable a => (Addr -> Bool) -> DistTrace c -> Maybe (Assoc c a)
