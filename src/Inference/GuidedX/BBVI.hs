@@ -54,21 +54,18 @@ handleGuide  = handleWith Trace.empty (\grads a -> Val (a, grads)) hop where
       k (Trace.insert @q (Key α) (gradLogProb q x) grads) x
 
 
-
-
-
 -- | Compute and update the guide parameters using a likelihood-ratio-estimate E[δelbo] of the ELBO gradient
 handleLRatio :: forall fs a. Handler GradEst fs a a
-handleLRatio = handleWith () (const Val) (const hop) where
-  hop :: GradEst x -> (() -> x -> Comp fs a) -> Comp fs a
-  hop (UpdateParam ws grads params) k =
-    let δelbo = lratio ws grads
-    in  k () (Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (1 *| δλ)) params δelbo)
+handleLRatio = handleWith 1 (const Val) hop where
+  hop :: Int -> GradEst x -> (Int -> x -> Comp fs a) -> Comp fs a
+  hop t (UpdateParam wgrads params) k =
+    let δelbo = lratio (unzip wgrads)
+    in  k (t + 1) (Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (1 *| δλ)) params δelbo)
 
 -- | Where logWs = logP(X, Y) - logQ(X; λ)
 --         δGs   = δ_λ logQ(X;λ)
-lratio :: [LogP] -> [GradTrace] -> GradTrace
-lratio logWs δGs = foldr (\(Some v) -> Trace.insert v (estδELBO v)) Trace.empty vars
+lratio :: ([LogP], [GradTrace]) -> GradTrace
+lratio (logWs, δGs) = foldr (\(Some v) -> Trace.insert v (estδELBO v)) Trace.empty vars
   where
     norm_c :: Double
     norm_c = 1/fromIntegral (length logWs)

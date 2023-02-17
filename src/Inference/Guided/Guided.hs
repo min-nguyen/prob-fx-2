@@ -37,12 +37,12 @@ data GradEst a where
 
 type GuidedModel es a = Model (Guide : es) a
 
-type GuidedModelHandler es a = ParamTrace -> GuidedModel es a -> Sampler ((a, GradTrace), LogP)
+type GuidedExec es a = ParamTrace -> GuidedModel es a -> Sampler ((a, GradTrace), LogP)
 
 guidedLoop :: (Members [GradEst, Sampler] fs)
   => Int                                     -- ^ number of optimisation steps (T)
   -> Int                                     -- ^ number of samples to estimate the gradient over (L)
-  -> GuidedModelHandler es a -> GuidedModel es a
+  -> GuidedExec es a -> GuidedModel es a
   -> ParamTrace                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Comp fs ParamTrace      -- ^ final guide parameters λ_T
 guidedLoop n_timesteps n_samples exec model params = do
@@ -50,7 +50,7 @@ guidedLoop n_timesteps n_samples exec model params = do
 
 guidedStep ::  (Members [GradEst, Sampler] fs)
   => Int
-  -> GuidedModelHandler es a -> GuidedModel es a
+  -> GuidedExec es a -> GuidedModel es a
   -> ParamTrace                            -- ^ guide parameters λ_t
   -> Comp fs ParamTrace    -- ^ next guide parameters λ_{t+1}
 guidedStep n_samples exec model params = do

@@ -33,31 +33,24 @@ import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
 
 data GradEst a where
-  UpdateParam :: [LogP] -> [GradTrace] -> ParamTrace -> GradEst ParamTrace
+  UpdateParam :: [(LogP, GradTrace)] -> ParamTrace -> GradEst ParamTrace
 
 type GuidedModel es a = Comp (Guide : Observe : Sample : es) a
 
-type GuidedModelHandler es a = ParamTrace -> GuidedModel es a -> Sampler ((a, GradTrace), LogP)
+type GuidedExec es a = ParamTrace -> GuidedModel es a -> Sampler ((a, GradTrace), LogP)
 
 guidedLoop :: (Members [GradEst, Sampler] fs)
   => Int                                     -- ^ number of optimisation steps (T)
   -> Int                                     -- ^ number of samples to estimate the gradient over (L)
-  -> GuidedModelHandler es a -> GuidedModel es a
+  -> GuidedExec es a -> GuidedModel es a
   -> ParamTrace                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Comp fs ParamTrace      -- ^ final guide parameters λ_T
-guidedLoop n_timesteps n_samples exec model params = do
-  foldr (>=>) pure [guidedStep n_samples exec model  | t <- [1 .. n_timesteps]] params
-
-guidedStep ::  (Members [GradEst, Sampler] fs)
-  => Int
-  -> GuidedModelHandler es a -> GuidedModel es a
-  -> ParamTrace                            -- ^ guide parameters λ_t
-  -> Comp fs ParamTrace    -- ^ next guide parameters λ_{t+1}
-guidedStep n_samples exec model params = do
-  -- | Execute for L iterations
-  ((a, δλs), ws) <- first unzip . unzip <$> replicateM n_samples (call $ exec params model)
-  -- | Update the parameters λ of the proposal distributions Q
-  call (UpdateParam ws δλs params)
+guidedLoop n_timesteps n_samples exec model params_0 = do
+  let guidedStep t φ = do
+        rs <- replicateM n_samples (call $ exec φ model)
+        let wgrads = map (\((_, grad), w) -> (w, grad)) rs
+        call (UpdateParam wgrads φ)
+  foldr (>=>) pure [guidedStep t | t <- [1 .. n_timesteps]] params_0
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
 collectGuide :: GuidedModel '[Sampler] a -> Sampler ParamTrace

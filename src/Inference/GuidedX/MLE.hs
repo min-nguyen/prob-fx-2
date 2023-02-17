@@ -58,17 +58,16 @@ handleGuide  = handleWith Trace.empty (\grads a -> Val (a, grads)) hop where
 
 -- | Compute and update the guide parameters using a self-normalised importance weighted gradient estimate
 handleNormGradDescent :: Comp (GradEst : fs) a -> Comp fs a
-handleNormGradDescent (Val a) = pure a
-handleNormGradDescent (Op op k) = case discharge op of
-  Right (UpdateParam logWs δGs params) ->
-    let δelbos  = normalisingEstimator logWs δGs
+handleNormGradDescent = handleWith 0 (const Val) hop where
+  hop :: Int -> GradEst x -> (Int -> x -> Comp fs a) -> Comp fs a
+  hop t (UpdateParam wgrads params) k =
+    let δelbos  = normalisingEstimator (unzip wgrads)
         params' = case δelbos of Just δelbos' -> gradStep 1 params δelbos'
                                  Nothing      -> params
-    in  handleNormGradDescent (k params')
-  Left op' -> Op op' (handleNormGradDescent . k)
+    in  k (t + 1) params'
 
-normalisingEstimator :: [LogP] -> [GradTrace] -> Maybe GradTrace
-normalisingEstimator logWs δGs = δelbos
+normalisingEstimator :: ([LogP], [GradTrace]) -> Maybe GradTrace
+normalisingEstimator (logWs, δGs) = δelbos
   where
     {- | Store the gradient estimates for each variable v. -}
     δelbos :: Maybe GradTrace
