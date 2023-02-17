@@ -15,7 +15,7 @@ import Effects.Guide
 import Data.Maybe
 import LogP
 import Sampler
-import           Trace (GradTrace, ParamTrace, Key(..), Some(..), ValueTrace)
+import           Trace (GradTrace, DistTrace, Key(..), Some(..), ValueTrace)
 import qualified Trace
 import Inference.MC.LW (likelihood)
 import PrimDist
@@ -32,7 +32,7 @@ mle :: forall es a. ()
   => Int                                -- ^ number of optimisation steps (T)
   -> Int                                -- ^ number of samples to estimate the gradient over (L)
   -> GuidedModel '[Sampler] a      -- ^ guide Q(X; λ)
-  -> Sampler ParamTrace                 -- ^ final guide parameters λ_T
+  -> Sampler DistTrace                 -- ^ final guide parameters λ_T
 mle num_timesteps num_samples model = do
   λ_0 <- collectGuide model
   -- liftIO (print λ_0)
@@ -40,13 +40,13 @@ mle num_timesteps num_samples model = do
     $ guidedLoop num_timesteps num_samples exec model λ_0
 
 -- | Compute Q(X; λ)
-exec :: ParamTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
+exec :: DistTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
 exec params = handleIO . defaultSample . likelihood . handleGuide . updateGuide params
 
 -- | Sample from each @Guide@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
-handleGuide :: forall es a. Members [Sample, Observe] es => Handler Guide es a a
+handleGuide :: forall es a. Member Sample es => Handler Guide es a a
 handleGuide  = handle Val hop where
-  hop :: Guide x -> (() -> x -> Comp es b) -> Comp es b
+  hop :: Guide x -> (() -> x -> Comp es a) -> Comp es a
   hop (Guide (d :: d) (q :: q) α) k = do
       x <- call (Sample q α)
       k () x
@@ -61,8 +61,8 @@ handleNormGradDescent = handleWith 0 (const Val) hop where
                                  Nothing      -> params
     in  k (t + 1) params'
 
-normalisingEstimator :: ([LogP], [GradTrace]) -> Maybe GradTrace
-normalisingEstimator (logWs, δGs) = δelbos
+normalisingEstimator :: ([GradTrace], [LogP]) -> Maybe GradTrace
+normalisingEstimator (δGs, ws) = δelbos
   where
     {- | Store the gradient estimates for each variable v. -}
     δelbos :: Maybe GradTrace
@@ -71,13 +71,13 @@ normalisingEstimator (logWs, δGs) = δelbos
               else Just (foldr (\(Some v) -> estimateGrad v) Trace.empty vars)
     {- | Normalising constant -}
     norm_c :: Double
-    norm_c = 1 / (fromIntegral (length logWs) * sum (map exp logWs))
+    norm_c = 1 / (fromIntegral (length ws) * sum (map exp ws))
     {- | Optimisable variables -}
     vars :: [Some DiffDistribution Key]
     vars = (Trace.keys . head) δGs
     {- | Uniformly scale each iteration's gradient trace G^l by its corresponding unnormalised importance weight W_norm^l -}
     δFs :: [GradTrace]
-    δFs = zipWith (\logW -> Trace.map (\_ δ -> exp logW *| δ)) logWs δGs
+    δFs = zipWith (\logW -> Trace.map (\_ δ -> exp logW *| δ)) ws δGs
     {- | Compute the mean gradient estimate for a random variable v's associated parameters -}
     estimateGrad :: forall d. (DiffDistribution d) => Key d -> GradTrace -> GradTrace
     estimateGrad v = let δFv      = map (fromJust . Trace.lookup v) δFs

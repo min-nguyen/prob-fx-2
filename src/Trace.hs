@@ -35,7 +35,7 @@ module Trace (
   -- * Gradient trace
   , GradTrace
   -- * Dist trace
-  , ParamTrace
+  , DistTrace
   , Key(..)
   , keys
   , Some(..)
@@ -142,14 +142,14 @@ instance (FindElem a as) => VMember a as where
 type LPTrace = Map Addr LogP
 
 {- | Dependent map. -}
-data DistTrace c where
-  Leaf  :: DistTrace c
+data DepMap c where
+  Leaf  :: DepMap c
   Node  :: (DiffDistribution a)
         => Key a        -- key
         -> Assoc c a    -- distribution
-        -> DistTrace c  -- left
-        -> DistTrace c  -- right
-        -> DistTrace c
+        -> DepMap c  -- left
+        -> DepMap c  -- right
+        -> DepMap c
 
 -- | A workaround for passing type families/functional dependencies as type parameters
 class Id d
@@ -159,14 +159,14 @@ type family Assoc (c :: * -> Constraint) (a :: *) = (b :: *) where
   Assoc Grad d = Vec (Arity d) Double
 
 -- | The type of differentiable distribution traces
-type ParamTrace = DistTrace Id
+type DistTrace = DepMap Id
 
-instance {-# OVERLAPPING #-} Show [ParamTrace] where
+instance {-# OVERLAPPING #-} Show [DistTrace] where
   show (x:xs) = show x ++ "\n" ++ show xs
   show []     = ""
 
-instance Show ParamTrace where
-  show :: ParamTrace -> String
+instance Show DistTrace where
+  show :: DistTrace -> String
   show Leaf = ""
   show (Node (Key var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ") "
                                  ++ show l
@@ -175,7 +175,7 @@ instance Show ParamTrace where
           showNewline node  = "\n" ++ show node
 
 -- | The type of gradient traces
-type GradTrace = DistTrace Grad
+type GradTrace = DepMap Grad
 
 instance Show GradTrace where
   show :: GradTrace -> String
@@ -222,23 +222,23 @@ data Some c k where
   Some :: c d => k d -> Some c k
 
 -- | Fetch the keys
-keys :: DistTrace c -> [Some DiffDistribution Key]
+keys :: DepMap c -> [Some DiffDistribution Key]
 keys = go
   where
-    go :: DistTrace c -> [Some DiffDistribution Key]
+    go :: DepMap c -> [Some DiffDistribution Key]
     go Leaf = []
     go (Node ky y l r) = Some ky : go l ++ go r
 
 -- | Construct an empty trace
-empty :: DistTrace c
+empty :: DepMap c
 empty = Leaf
 
 -- | Construct a single node
-singleton :: (DiffDistribution a) => Key a -> Assoc c a -> DistTrace c
+singleton :: (DiffDistribution a) => Key a -> Assoc c a -> DepMap c
 singleton k x = Node k x Leaf Leaf
 
 -- | Lookup an entry
-lookup :: Typeable a => Key a -> DistTrace c -> Maybe (Assoc c a)
+lookup :: Typeable a => Key a -> DepMap c -> Maybe (Assoc c a)
 lookup kx = go where
   go Leaf = Nothing
   go (Node ky y l r) = case trueCompare kx ky
@@ -247,11 +247,11 @@ lookup kx = go where
          TrueGT       -> go r
 
 -- | Lookup an entry
-lookupWithDefault :: Typeable a => Assoc c a -> Key a -> DistTrace c -> Assoc c a
+lookupWithDefault :: Typeable a => Assoc c a -> Key a -> DepMap c -> Assoc c a
 lookupWithDefault q k = fromMaybe q . lookup k
 
 -- | Lookup an entry
-lookupBy :: forall a c. Typeable a => (Addr -> Bool) -> DistTrace c -> Maybe (Assoc c a)
+lookupBy :: forall a c. Typeable a => (Addr -> Bool) -> DepMap c -> Maybe (Assoc c a)
 lookupBy f = go where
   go Leaf = Nothing
   go (Node ((Key ky) :: Key b) y l r)
@@ -260,7 +260,7 @@ lookupBy f = go where
     | otherwise = go l <|> go r
 
 -- | Insert a new entry
-insert :: DiffDistribution a => Key a -> Assoc c a -> DistTrace c -> DistTrace c
+insert :: DiffDistribution a => Key a -> Assoc c a -> DepMap c -> DepMap c
 insert kx d = go where
   go Leaf = singleton kx d
   go (Node ky y l r) = case trueCompare kx ky
@@ -269,14 +269,14 @@ insert kx d = go where
           TrueGT       -> Node ky y l (go r)
 
 -- | Map over a tree
-map ::  (forall a. Key a -> Assoc c a -> Assoc c a) -> DistTrace c -> DistTrace c
+map ::  (forall a. Key a -> Assoc c a -> Assoc c a) -> DepMap c -> DepMap c
 map f = go where
   go Leaf            = Leaf
   go (Node kx x l r) = Node kx (f kx x) (go l) (go r)
 
 -- | Combine the entries of two traces with an operation when their keys match,
 --   returning elements of the left trace that do not exist in the second trace.
-intersectLeftWith :: (forall d. DiffDistribution d => d -> Vec (Arity d) Double -> d) -> ParamTrace -> GradTrace -> ParamTrace
+intersectLeftWith :: (forall d. DiffDistribution d => d -> Vec (Arity d) Double -> d) -> DistTrace -> GradTrace -> DistTrace
 intersectLeftWith _ t1 Leaf  = t1
 intersectLeftWith _ Leaf t2  = Leaf
 intersectLeftWith f (Node k1 x1 l1 r1) t2 =
@@ -296,7 +296,7 @@ intersectLeftWith f (Node k1 x1 l1 r1) t2 =
               TrueEQ HRefl -> (l, Just x, r)
 
 -- -- | Apply a function to an entry if it exists
--- dupdate :: forall c a b. (c a b, Typeable a, Typeable b) => Key a -> (b -> b) -> DistTrace c -> DistTrace c
+-- dupdate :: forall c a b. (c a b, Typeable a, Typeable b) => Key a -> (b -> b) -> DepMap c -> DepMap c
 -- dupdate kx f = go where
 --   go Leaf = Leaf
 --   go (Node ky y l r) = case (trueCompare kx ky, tyEq (Proxy @b) (asProxy y))
@@ -306,9 +306,9 @@ intersectLeftWith f (Node k1 x1 l1 r1) t2 =
 --          (TrueGT, _)       -> Node ky y l (go r)
 
 -- -- | Return the entry if it exists, otherwise insert a new entry
--- dlookupOrInsert :: forall c a b. (c a b, Typeable a, Typeable b) => Key a -> b -> DistTrace c  -> (b, DistTrace c )
+-- dlookupOrInsert :: forall c a b. (c a b, Typeable a, Typeable b) => Key a -> b -> DepMap c  -> (b, DepMap c )
 -- dlookupOrInsert kx dx = go where
---   go :: DistTrace c  -> (b, DistTrace c )
+--   go :: DepMap c  -> (b, DepMap c )
 --   go Leaf             = (dx, dsingleton kx dx)
 --   go (Node ky dy l r) =
 --     case (trueCompare kx ky, tyEq (Proxy @b) (asProxy dy)) of
@@ -318,7 +318,7 @@ intersectLeftWith f (Node k1 x1 l1 r1) t2 =
 --       (TrueGT, _)       -> let (d, r') = go r in (d, Node ky dy l r')
 
 -- -- | Fold over a tree
--- dfoldr :: (forall a b r. c a b => Key a -> b -> r -> r) -> r -> DistTrace c -> r
+-- dfoldr :: (forall a b r. c a b => Key a -> b -> r -> r) -> r -> DepMap c -> r
 -- dfoldr f = go where
 --   go z Leaf             = z
 --   go z (Node  kx x l r) = go (f kx x (go z r)) l

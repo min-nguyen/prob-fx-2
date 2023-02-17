@@ -28,7 +28,7 @@ import           Model
 import           PrimDist
 import           Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handleWith )
 import           Sampler ( Sampler, liftIO, handleIO )
-import           Trace (GradTrace, ParamTrace, Key(..), Some(..))
+import           Trace (GradTrace, DistTrace, Key(..), Some(..))
 import qualified Trace
 import           Inference.MC.SIM as SIM
 import           Inference.VI.VI as VI
@@ -46,7 +46,7 @@ bbvi :: forall env es a b. es ~ '[Sampler]
   -> VIGuide env es b      -- ^ guide Q(X; λ)
   -> VIModel env es a      -- ^ model P(X, Y)
   -> Env env                            -- ^ empty environment
-  -> Sampler ParamTrace                 -- ^ final guide parameters λ_T
+  -> Sampler DistTrace                 -- ^ final guide parameters λ_T
 bbvi num_timesteps num_samples guide model env  = do
   λ_0 <- VI.collectParams env guide
   -- liftIO (print λ_0)
@@ -54,7 +54,7 @@ bbvi num_timesteps num_samples guide model env  = do
     $ VI.guidedLoop num_timesteps num_samples guide (execGuide env) model exec λ_0
 
 -- | Compute Q(X; λ)
-execGuide :: Env env -> ParamTrace -> VIGuide env '[Sampler] a -> Sampler (((a, Env env), GradTrace), LogP)
+execGuide :: Env env -> DistTrace -> VIGuide env '[Sampler] a -> Sampler (((a, Env env), GradTrace), LogP)
 execGuide env params =
   handleIO . VI.prior . defaultParam params . handleEnvRW env
 

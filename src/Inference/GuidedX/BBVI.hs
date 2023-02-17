@@ -15,7 +15,7 @@ import Effects.Guide
 import Data.Maybe
 import LogP
 import Sampler
-import           Trace (GradTrace, ParamTrace, Key(..), Some(..), ValueTrace)
+import           Trace (GradTrace, DistTrace, Key(..), Some(..), ValueTrace)
 import qualified Trace
 import Inference.MC.LW (likelihood)
 import PrimDist
@@ -32,7 +32,7 @@ bbvi :: forall es a. ()
   => Int                                -- ^ number of optimisation steps (T)
   -> Int                                -- ^ number of samples to estimate the gradient over (L)
   -> GuidedModel '[Sampler] a      -- ^ guide Q(X; λ)
-  -> Sampler ParamTrace                 -- ^ final guide parameters λ_T
+  -> Sampler DistTrace                 -- ^ final guide parameters λ_T
 bbvi num_timesteps num_samples model = do
   λ_0 <- collectGuide model
   -- liftIO (print λ_0)
@@ -40,7 +40,7 @@ bbvi num_timesteps num_samples model = do
     $ guidedLoop num_timesteps num_samples exec model λ_0
 
 -- | Compute Q(X; λ)
-exec :: ParamTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
+exec :: DistTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
 exec params = handleIO . merge . prior . likelihood .  handleGuide . updateGuide params  where
   merge = fmap (\((x, w_joint), w_q) -> (x, w_joint - w_q))
 
@@ -62,13 +62,13 @@ handleLRatio = handleWith 1 (const Val) hop where
     let δelbo = lratio (unzip wgrads)
     in  k (t + 1) (Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (1 *| δλ)) params δelbo)
 
--- | Where logWs = logP(X, Y) - logQ(X; λ)
+-- | Where ws = logP(X, Y) - logQ(X; λ)
 --         δGs   = δ_λ logQ(X;λ)
-lratio :: ([LogP], [GradTrace]) -> GradTrace
-lratio (logWs, δGs) = foldr (\(Some v) -> Trace.insert v (estδELBO v)) Trace.empty vars
+lratio :: ([GradTrace], [LogP]) -> GradTrace
+lratio (δGs, ws) = foldr (\(Some v) -> Trace.insert v (estδELBO v)) Trace.empty vars
   where
     norm_c :: Double
-    norm_c = 1/fromIntegral (length logWs)
+    norm_c = 1/fromIntegral (length ws)
 
     vars :: [Some DiffDistribution Key]
     vars = (Trace.keys . head) δGs
@@ -77,7 +77,7 @@ lratio (logWs, δGs) = foldr (\(Some v) -> Trace.insert v (estδELBO v)) Trace.e
         where the normalised importance weight is defined via:
             log(W_norm^l) = log(W^l) + max(log(W^{1:L})) -}
     δFs :: [GradTrace]
-    δFs = zipWith (\logW -> Trace.map (\_ δ -> exp logW *| δ)) (normaliseLogPs logWs) δGs
+    δFs = zipWith (\logW -> Trace.map (\_ δ -> exp logW *| δ)) (normaliseLogPs ws) δGs
     {- | Compute the ELBO gradient estimate for a random variable v's associated parameters:
             E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
         where the baseline is:

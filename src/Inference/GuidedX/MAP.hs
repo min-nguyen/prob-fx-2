@@ -17,7 +17,7 @@ import Effects.Guide
 import Data.Maybe
 import LogP
 import Sampler
-import           Trace (GradTrace, ParamTrace, Key(..), Some(..), ValueTrace)
+import           Trace (GradTrace, DistTrace, Key(..), Some(..), ValueTrace)
 import qualified Trace
 import Inference.MC.LW (likelihood)
 import PrimDist
@@ -34,7 +34,7 @@ map :: forall es a. ()
   => Int                                -- ^ number of optimisation steps (T)
   -> Int                                -- ^ number of samples to estimate the gradient over (L)
   -> GuidedModel '[Sampler] a      -- ^ guide Q(X; λ)
-  -> Sampler ParamTrace                 -- ^ final guide parameters λ_T
+  -> Sampler DistTrace                 -- ^ final guide parameters λ_T
 map num_timesteps num_samples model = do
   λ_0 <- collectGuide model
   -- liftIO (print λ_0)
@@ -42,6 +42,6 @@ map num_timesteps num_samples model = do
     $ guidedLoop num_timesteps num_samples exec model λ_0
 
 -- | Compute Q(X; λ)
-exec :: ParamTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
+exec :: DistTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
 exec params = handleIO . defaultSample . joint . BBVI.handleGuide . updateGuide params
   where joint = likelihood
