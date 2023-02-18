@@ -35,7 +35,7 @@ import Util
 data GradUpd a where
   UpdateParam :: [(GradTrace, LogP)] -> DistTrace -> GradUpd DistTrace
 
-type GuidedModel es a = Comp (Guide : Observe : Sample : es) a
+type GuidedModel es a = Model (Guide : es) a
 
 type GuidedExec es a = DistTrace -> GuidedModel es a -> Sampler ((a, GradTrace), LogP)
 
@@ -54,7 +54,7 @@ guidedLoop n_timesteps n_samples exec model params_0 = do
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
 collectGuide :: GuidedModel '[Sampler] a -> Sampler DistTrace
-collectGuide = handleIO . SIM.defaultSample . SIM.defaultObserve . defaultGuide . loop Trace.empty
+collectGuide = handleIO . defaultGuide . loop Trace.empty .  SIM.defaultSample . SIM.defaultObserve
   where
   loop :: DistTrace -> Comp (Guide : es) a -> Comp (Guide : es) DistTrace
   loop params (Val _)   = pure params
@@ -75,6 +75,19 @@ setGuide proposals = loop Trace.empty where
                                     let gs = Trace.insert @q (Key α) (gradLogProb q' x) grads
                                     loop gs (k x)
     Nothing -> Op op (loop grads . k)
+
+{- | Reuse the proposal distributions Q(λ) of @Score@ operations.
+reuseGuide :: forall es a. Member Guide es => DistTrace -> Comp es a -> Comp es (a, DistTrace, GradTrace)
+reuseGuide dists = loop (dists, Trace.empty) where
+  loop :: (DistTrace, GradTrace) -> Comp es a -> Comp es (a, DistTrace, GradTrace)
+  loop (dists, grads) (Val a)   = pure (a, dists, grads)
+  loop (dists, grads) (Op op k) = case prj op of
+    Just (Guide d (q :: q) α) -> do let (q', dists') = Trace.lookupOrInsert (Key α) q dists
+                                    x <- call (Guide d q' α)
+                                    let grads' = Trace.insert @q (Key α) (gradLogProb q' x) grads
+                                    loop (dists', grads') (k x)
+    Nothing -> Op op (loop grads . k)
+-}
 
 -- | Sample from each @Guide@ distribution
 defaultGuide :: forall es a. Member Sampler es => Handler Guide es a a

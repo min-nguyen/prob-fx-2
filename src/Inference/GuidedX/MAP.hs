@@ -27,6 +27,7 @@ import Data.Data (Proxy(..))
 import Comp
 import Inference.MC.SIM
 import Effects.Dist
+import qualified Inference.MC.LW as LW
 
 {- | Top-level wrapper for BBVI inference that takes a separate model and guide.
 -}
@@ -41,7 +42,17 @@ map num_timesteps num_samples model = do
   (handleIO . MLE.handleNormGradDescent)
     $ guidedLoop num_timesteps num_samples exec model λ_0
 
+-- | Sample from each @Guide@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
+handleGuide :: forall es a. Members '[Sampler] es => Handler Guide es a (a, LogP)
+handleGuide  = handleWith 0 (\s a -> Val (a, s)) hop where
+  hop :: LogP -> Guide x -> (LogP -> x -> Comp es b) -> Comp es b
+  hop w (Guide (d :: d) (q :: q) α) k = do
+        r <- random
+        let x = draw q r
+        k (w + logProb d x) x
+
+
 -- | Compute Q(X; λ)
 exec :: DistTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
-exec params = handleIO . defaultSample . joint . BBVI.handleGuide . setGuide params
-  where joint = likelihood
+exec params = handleIO . mergeWeights . handleGuide . defaultSample . defaultObserve . LW.joint 0 . setGuide params where
+  mergeWeights = fmap (\((x, w_lat), w_obs) -> (x, w_lat + w_obs))

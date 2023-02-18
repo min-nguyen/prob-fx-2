@@ -41,15 +41,7 @@ mle num_timesteps num_samples model = do
 
 -- | Compute Q(X; λ)
 exec :: DistTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
-exec params = handleIO . defaultSample . likelihood . handleGuide . setGuide params
-
--- | Sample from each @Guide@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
-handleGuide :: forall es a. Member Sample es => Handler Guide es a a
-handleGuide  = handle Val hop where
-  hop :: Guide x -> (() -> x -> Comp es a) -> Comp es a
-  hop (Guide (d :: d) (q :: q) α) k = do
-      x <- call (Sample q α)
-      k () x
+exec params = handleIO . defaultGuide . defaultSample . likelihood . setGuide params
 
 -- | Compute and update the guide parameters using a self-normalised importance weighted gradient estimate
 handleNormGradDescent :: Comp (GradUpd : fs) a -> Comp fs a

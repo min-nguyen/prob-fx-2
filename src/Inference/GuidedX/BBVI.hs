@@ -41,17 +41,17 @@ bbvi num_timesteps num_samples model = do
 
 -- | Compute Q(X; λ)
 exec :: DistTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
-exec params = handleIO . merge . prior . likelihood .  handleGuide . setGuide params  where
-  merge = fmap (\((x, w_joint), w_q) -> (x, w_joint - w_q))
+exec params = handleIO . mergeWeights . priorDiff . defaultSample . likelihood .  setGuide params  where
+  mergeWeights = fmap (\((x, w_lat), w_obs) -> (x, w_lat + w_obs))
 
 -- | Sample from each @Guide@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
-handleGuide :: forall es a. Members [Sample, Observe] es => Handler Guide es a a
-handleGuide  = handle Val hop where
-  hop :: Guide x -> (() -> x -> Comp es b) -> Comp es b
-  hop (Guide (d :: d) (q :: q) α) k = do
-      x <- call (Sample q α)   -- using
-      call (Observe d x α)
-      k () x
+priorDiff :: forall es a. Members '[Sampler] es => Handler Guide es a (a, LogP)
+priorDiff  = handleWith 0 (\s a -> Val (a, s)) hop where
+  hop :: LogP -> Guide x -> (LogP -> x -> Comp es b) -> Comp es b
+  hop w (Guide (d :: d) (q :: q) α) k = do
+        r <- random
+        let x = draw q r
+        k (w + logProb d x - logProb q x) x
 
 
 -- | Compute and update the guide parameters using a likelihood-ratio-estimate E[δelbo] of the ELBO gradient

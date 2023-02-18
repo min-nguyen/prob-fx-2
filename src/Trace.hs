@@ -44,6 +44,7 @@ module Trace (
   , lookup
   , lookupBy
   , lookupWithDefault
+  , lookupOrInsert
   , map
   -- , dlookupOrInsert
   , intersectLeftWith
@@ -249,6 +250,15 @@ lookup kx = go where
 -- | Lookup an entry
 lookupWithDefault :: Typeable a => Assoc c a -> Key a -> DepMap c -> Assoc c a
 lookupWithDefault q k = fromMaybe q . lookup k
+
+-- | Lookup an entry
+lookupOrInsert :: DiffDistribution a => Key a -> Assoc c a -> DepMap c -> (Assoc c a, DepMap c)
+lookupOrInsert kx q m = go m where
+  go Leaf = (q, insert kx q m)
+  go (Node ky q' l r) = case trueCompare kx ky
+      of TrueEQ HRefl -> (q', m)
+         TrueLT       -> go l
+         TrueGT       -> go r
 
 -- | Lookup an entry
 lookupBy :: forall a c. Typeable a => (Addr -> Bool) -> DepMap c -> Maybe (Assoc c a)
