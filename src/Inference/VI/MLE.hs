@@ -59,7 +59,7 @@ exec env =
   handleIO . SIM.defaultSample . likelihood . fmap fst . handleEnvRW env
 
 -- | Compute and update the guide parameters using a self-normalised importance weighted gradient estimate
-handleNormGradDescent :: Comp (GradEst : fs) a -> Comp fs a
+handleNormGradDescent :: Comp (GradUpd : fs) a -> Comp fs a
 handleNormGradDescent (Val a) = pure a
 handleNormGradDescent (Op op k) = case discharge op of
   Right (UpdateParam logWs δGs params) ->

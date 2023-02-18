@@ -43,5 +43,5 @@ map num_timesteps num_samples model = do
 
 -- | Compute Q(X; λ)
 exec :: DistTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
-exec params = handleIO . defaultSample . joint . BBVI.handleGuide . updateGuide params
+exec params = handleIO . defaultSample . joint . BBVI.handleGuide . setGuide params
   where joint = likelihood

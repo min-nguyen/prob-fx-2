@@ -42,7 +42,7 @@ map num_timesteps num_samples model = do
 
 -- | Compute Q(X; λ)
 exec :: DistTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
-exec params = handleIO . joint . handleGuide . updateGuide params . prior . likelihood where
+exec params = handleIO . joint . handleGuide . setGuide params . prior . likelihood where
   joint = fmap (\((((x, w_like), w_prior), g), wd, _) -> ((x, g), w_prior + wd + w_like))
 
 prior :: forall es a. Member Sampler es => Handler Sample es a (a, LogP)

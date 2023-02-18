@@ -65,9 +65,9 @@ exec env = handleIO . joint . fmap fst . handleEnvRW env where
 
 
 -- | Compute and update the guide parameters using a likelihood-ratio-estimate E[δelbo] of the ELBO gradient
-handleLRatio :: forall fs a. Handler GradEst fs a a
+handleLRatio :: forall fs a. Handler GradUpd fs a a
 handleLRatio = handleWith () (const Val) (const hop) where
-  hop :: GradEst x -> (() -> x -> Comp fs a) -> Comp fs a
+  hop :: GradUpd x -> (() -> x -> Comp fs a) -> Comp fs a
   hop (UpdateParam ws grads params) k =
     let δelbo = lratio ws grads
     in  k () (Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (1 *| δλ)) params δelbo)

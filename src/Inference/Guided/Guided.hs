@@ -32,14 +32,14 @@ import qualified Vec
 import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
 
-data GradEst a where
-  UpdateParam :: [LogP] -> [GradTrace] -> DistTrace -> GradEst DistTrace
+data GradUpd a where
+  UpdateParam :: [LogP] -> [GradTrace] -> DistTrace -> GradUpd DistTrace
 
 type GuidedModel es a = Model (Guide : es) a
 
 type GuidedExec es a = DistTrace -> GuidedModel es a -> Sampler ((a, GradTrace), LogP)
 
-guidedLoop :: (Members [GradEst, Sampler] fs)
+guidedLoop :: (Members [GradUpd, Sampler] fs)
   => Int                                     -- ^ number of optimisation steps (T)
   -> Int                                     -- ^ number of samples to estimate the gradient over (L)
   -> GuidedExec es a -> GuidedModel es a
@@ -48,7 +48,7 @@ guidedLoop :: (Members [GradEst, Sampler] fs)
 guidedLoop n_timesteps n_samples exec model params = do
   foldr (>=>) pure [guidedStep n_samples exec model  | t <- [1 .. n_timesteps]] params
 
-guidedStep ::  (Members [GradEst, Sampler] fs)
+guidedStep ::  (Members [GradUpd, Sampler] fs)
   => Int
   -> GuidedExec es a -> GuidedModel es a
   -> DistTrace                            -- ^ guide parameters λ_t
@@ -72,8 +72,8 @@ collectGuide = handleIO . defaultGuide . loop Trace.empty . SIM.defaultSample . 
 
 {- | Set the proposal distributions Q(λ) of @Score@ operations.
 -}
-updateGuide :: forall es a. Member Guide es => DistTrace -> Comp es a -> Comp es a
-updateGuide proposals = loop where
+setGuide :: forall es a. Member Guide es => DistTrace -> Comp es a -> Comp es a
+setGuide proposals = loop where
   loop :: Comp es a -> Comp es a
   loop (Val a)   = pure a
   loop (Op op k) = case prj op of
