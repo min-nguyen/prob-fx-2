@@ -12,6 +12,7 @@ module Inference.Guided.MAP
 
 import Inference.Guided.Guided
 import qualified Inference.Guided.MLE as MLE
+import qualified Inference.Guided.BBVI as BBVI
 import Effects.Guide
 import Data.Maybe
 import LogP
@@ -26,6 +27,7 @@ import Data.Data (Proxy(..))
 import Comp
 import Inference.MC.SIM
 import Effects.Dist
+import qualified Inference.MC.LW as LW
 
 {- | Top-level wrapper for BBVI inference that takes a separate model and guide.
 -}
@@ -40,14 +42,17 @@ map num_timesteps num_samples model = do
   (handleIO . MLE.handleNormGradDescent)
     $ guidedLoop num_timesteps num_samples exec model λ_0
 
+-- | Sample from each @Guide@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
+handleGuide :: forall es a. Members '[Sampler] es => Handler Guide es a (a, LogP)
+handleGuide  = handleWith 0 (\s a -> Val (a, s)) hop where
+  hop :: LogP -> Guide x -> (LogP -> x -> Comp es b) -> Comp es b
+  hop w (Guide (d :: d) (q :: q) α) k = do
+        r <- random
+        let x = draw q r
+        k (w + logProb d x) x
+
+
 -- | Compute Q(X; λ)
 exec :: DistTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
-exec params = handleIO . joint . handleGuide . setGuide params . prior . likelihood where
-  joint = fmap (\((((x, w_like), w_prior), g), wd, _) -> ((x, g), w_prior + wd + w_like))
-
-prior :: forall es a. Member Sampler es => Handler Sample es a (a, LogP)
-prior = handleWith 0 (\lρ x -> Val (x, lρ)) hop
-  where
-  hop :: LogP -> Sample x -> (LogP -> x -> Comp es b) -> Comp es b
-  hop lρ (Sample d α) k = do x <- call $ drawWithSampler d
-                             k (lρ + logProb d x) x
+exec params = handleIO . mergeWeights . handleGuide . defaultSample . defaultObserve . LW.joint 0 . setGuide params where
+  mergeWeights = fmap (\((x, w_lat), w_obs) -> (x, w_lat + w_obs))

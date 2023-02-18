@@ -17,11 +17,8 @@ import Inference.MC.SIM as SIM ( simulate )
 import Inference.MC.SMC2 as SMC2 ( smc2 )
 import Inference.Guided.Guided
 import Inference.Guided.BBVI as BBVI
-import Inference.GuidedX.BBVI as BBVIX
 import Inference.Guided.MLE as MLE
-import Inference.GuidedX.MLE as MLEX
 import Inference.Guided.MAP as MAP
-import Inference.GuidedX.MAP as MAPX
 import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
 import qualified Trace
 import           Trace (Key(..))
@@ -52,7 +49,7 @@ linRegr xys = do
   mapM_ (\((x, y), idx) -> observe (mkNormal (m * x + c) 1) y (Addr "y" idx)) (zip xys [0 ..])
   return (m, c)
 
-bbviLinRegr :: Int -> Int -> Int -> Sampler ([Double])
+bbviLinRegr :: Int -> Int -> Int -> Sampler [Double]
 bbviLinRegr t_steps l_samples n_datapoints = do
   let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
   traceQ <- BBVI.bbvi t_steps l_samples (linRegr xys)
@@ -60,15 +57,7 @@ bbviLinRegr t_steps l_samples n_datapoints = do
       -- c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
   pure m_dist
 
-bbviXLinRegr :: Int -> Int -> Int -> Sampler ([Double])
-bbviXLinRegr t_steps l_samples n_datapoints = do
-  let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
-  traceQ <- BBVIX.bbvi t_steps l_samples (linRegr xys)
-  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
-      -- c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
-  pure m_dist
-
-mleLinRegr :: Int -> Int -> Int -> Sampler ([Double])
+mleLinRegr :: Int -> Int -> Int -> Sampler [Double]
 mleLinRegr t_steps l_samples n_datapoints = do
   let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
   traceQ <- MLE.mle t_steps l_samples (linRegr xys)
@@ -76,26 +65,10 @@ mleLinRegr t_steps l_samples n_datapoints = do
       -- c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
   pure m_dist
 
-mleXLinRegr :: Int -> Int -> Int -> Sampler ([Double])
-mleXLinRegr t_steps l_samples n_datapoints = do
-  let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
-  traceQ <- MLEX.mle t_steps l_samples (linRegr xys)
-  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
-      -- c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
-  pure m_dist
-
-mapLinRegr :: Int -> Int -> Int -> Sampler ([Double])
+mapLinRegr :: Int -> Int -> Int -> Sampler [Double]
 mapLinRegr t_steps l_samples n_datapoints = do
   let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
   traceQ <- MAP.map t_steps l_samples (linRegr xys)
-  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
-      -- c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
-  pure m_dist
-
-mapXLinRegr :: Int -> Int -> Int -> Sampler ([Double])
-mapXLinRegr t_steps l_samples n_datapoints = do
-  let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
-  traceQ <- MAPX.map t_steps l_samples (linRegr xys)
   let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
       -- c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
   pure m_dist

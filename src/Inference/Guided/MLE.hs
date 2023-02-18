@@ -41,22 +41,20 @@ mle num_timesteps num_samples model = do
 
 -- | Compute Q(X; λ)
 exec :: DistTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
-exec params = handleIO . joint . handleGuide . setGuide params . defaultSample . likelihood  where
-  joint = fmap (\(((x, w_like), g), _, _) -> ((x, g), w_like))
+exec params = handleIO . defaultGuide . defaultSample . likelihood . setGuide params
 
 -- | Compute and update the guide parameters using a self-normalised importance weighted gradient estimate
 handleNormGradDescent :: Comp (GradUpd : fs) a -> Comp fs a
-handleNormGradDescent (Val a) = pure a
-handleNormGradDescent (Op op k) = case discharge op of
-  Right (UpdateParam logWs δGs params) ->
-    let δelbos  = normalisingEstimator logWs δGs
+handleNormGradDescent = handleWith 0 (const Val) hop where
+  hop :: Int -> GradUpd x -> (Int -> x -> Comp fs a) -> Comp fs a
+  hop t (UpdateParam wgrads params) k =
+    let δelbos  = normalisingEstimator (unzip wgrads)
         params' = case δelbos of Just δelbos' -> gradStep 1 params δelbos'
                                  Nothing      -> params
-    in  handleNormGradDescent (k params')
-  Left op' -> Op op' (handleNormGradDescent . k)
+    in  k (t + 1) params'
 
-normalisingEstimator :: [LogP] -> [GradTrace] -> Maybe GradTrace
-normalisingEstimator logWs δGs = δelbos
+normalisingEstimator :: ([GradTrace], [LogP]) -> Maybe GradTrace
+normalisingEstimator (δGs, ws) = δelbos
   where
     {- | Store the gradient estimates for each variable v. -}
     δelbos :: Maybe GradTrace
@@ -65,13 +63,13 @@ normalisingEstimator logWs δGs = δelbos
               else Just (foldr (\(Some v) -> estimateGrad v) Trace.empty vars)
     {- | Normalising constant -}
     norm_c :: Double
-    norm_c = 1 / (fromIntegral (length logWs) * sum (map exp logWs))
+    norm_c = 1 / (fromIntegral (length ws) * sum (map exp ws))
     {- | Optimisable variables -}
     vars :: [Some DiffDistribution Key]
     vars = (Trace.keys . head) δGs
     {- | Uniformly scale each iteration's gradient trace G^l by its corresponding unnormalised importance weight W_norm^l -}
     δFs :: [GradTrace]
-    δFs = zipWith (\logW -> Trace.map (\_ δ -> exp logW *| δ)) logWs δGs
+    δFs = zipWith (\logW -> Trace.map (\_ δ -> exp logW *| δ)) ws δGs
     {- | Compute the mean gradient estimate for a random variable v's associated parameters -}
     estimateGrad :: forall d. (DiffDistribution d) => Key d -> GradTrace -> GradTrace
     estimateGrad v = let δFv      = map (fromJust . Trace.lookup v) δFs
