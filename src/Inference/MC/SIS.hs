@@ -64,6 +64,6 @@ pfilter n w exec  model  = do
      If all programs have finished, return a single program that returns all results.
 -}
 collapse :: [(Model es a, s)] -> Maybe [(a, s)]
-collapse ((Val v, w) : progs) = collapse progs >>= return . ((v, w):)
+collapse ((Val v, w) : progs) = collapse progs >>= Just . ((v, w):)
 collapse []    = Just []
 collapse progs = Nothing

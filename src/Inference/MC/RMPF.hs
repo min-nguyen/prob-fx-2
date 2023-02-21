@@ -102,7 +102,7 @@ handleResample :: (Member Sampler fs)
 handleResample mh_steps tags  m = handleWith () (const Val) (const hop) where
   hop :: Member Sampler fs => Resample PrtState x -> (() -> x -> Comp fs a) -> Comp fs a
   hop  (Resample (_, σs) ) k = do
-    let (α, ws, τs ) = unpack σs
+    let (α, ws, τs) = unpack σs
   -- | Resample the RMPF particles according to the indexes returned by the SMC resampler
     idxs <- call $ SMC.resampleMul ws
     let τs_res    = map (τs !!) idxs
