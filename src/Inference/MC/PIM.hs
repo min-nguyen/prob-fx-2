@@ -53,7 +53,7 @@ pim' mh_steps n_prts τθ = handleIO . IM.handleProposal . mh mh_steps τθ (exe
 
 {- | Handle probabilistic program using SSMH and compute the average log-probability using SMC.
 -}
-exec :: Int -> ModelHandler '[Sampler] LogP a
+exec :: Int -> ModelExec '[Sampler] LogP a
 exec n τθ prog   = do
   let exec_prt :: ModelStep '[Sampler] LogP a
       exec_prt (p, w) = (fmap fst .  handleIO .  reuseTrace τθ . advance w) p

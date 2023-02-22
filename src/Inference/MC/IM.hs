@@ -56,7 +56,7 @@ im' n = handleIO . handleProposal . MH.mh n Map.empty exec
 
 {- | Handler for one iteration of IM.
 -}
-exec :: ModelHandler '[Sampler] LogP a
+exec :: ModelExec '[Sampler] LogP a
 exec τ   =
   handleIO . MH.reuseTrace τ . LW.likelihood
 

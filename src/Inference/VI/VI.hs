@@ -46,13 +46,13 @@ data GradUpd a where
   UpdateParam :: [LogP] -> [GradTrace] -> DistTrace -> GradUpd DistTrace
 
 type GuideHandler env es a = DistTrace -> VIGuide env es a -> Sampler (((a, Env env), GradTrace), LogP)
-type ModelHandler env es a = Env env    -> VIModel env es a -> Sampler (a, LogP)
+type ModelExec env es a = Env env    -> VIModel env es a -> Sampler (a, LogP)
 
 guidedLoop :: (Members [GradUpd, Sampler] fs)
   => Int                                     -- ^ number of optimisation steps (T)
   -> Int                                     -- ^ number of samples to estimate the gradient over (L)
   -> VIGuide env es1 a -> GuideHandler env es1 a
-  -> VIModel env es2 b -> ModelHandler env es2 b
+  -> VIModel env es2 b -> ModelExec env es2 b
   -> DistTrace                             -- ^ guide parameters λ_t, model parameters θ_t
   -> Comp fs DistTrace      -- ^ final guide parameters λ_T
 guidedLoop num_timesteps num_samples guide execg model execm guideParams_0 = do
@@ -70,7 +70,7 @@ guidedLoop num_timesteps num_samples guide execg model execm guideParams_0 = do
 
 guidedStep ::  (Members [GradUpd, Sampler] fs)
   => Int
-  -> GuideHandler env es1 a -> ModelHandler env es2 b -> VIGuide env es1 a -> VIModel env es2 b
+  -> GuideHandler env es1 a -> ModelExec env es2 b -> VIGuide env es1 a -> VIModel env es2 b
   -> DistTrace                            -- ^ guide parameters λ_t
   -> Comp fs DistTrace    -- ^ next guide parameters λ_{t+1}
 guidedStep num_samples execg execm guide model  params = do

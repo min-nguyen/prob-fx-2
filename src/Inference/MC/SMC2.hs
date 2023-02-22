@@ -81,9 +81,9 @@ handleResample :: Member Sampler fs
 handleResample mh_steps n_inner_prts θ  m = loop  where
   loop  (Val x) = Val x
   loop  (Op op k) = case discharge op of
-    Right  (Resample (prts, σs)) ->
+    Right  (Resample pσs) ->
       do  -- | Resample the particles according to the indexes returned by the SMC resampler
-          let (α, ρs, τs ) = unpack σs
+          let (α, ρs, τs ) = unpack (map snd pσs)
           idxs <- call $ SMC.resampleMul ρs
           let resampled_τs      = map (τs !! ) idxs
           -- | Get the parameter sample trace of each resampled particle
