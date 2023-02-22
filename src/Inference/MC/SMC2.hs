@@ -28,7 +28,7 @@ import           Inference.MC.RMPF as RMPF (PrtState(..), exec, suspendAt, unpac
 import qualified Inference.MC.SMC as SMC
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
-import Inference.MC.SIS (Resample(..), ParticleHandler)
+import Inference.MC.SIS (Resample(..), ModelStep)
 import Inference.MC.MH as MH
 import Data.Bifunctor
 import Trace (filterTrace)

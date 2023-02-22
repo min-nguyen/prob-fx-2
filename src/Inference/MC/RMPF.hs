@@ -35,7 +35,7 @@ import qualified Inference.MC.SMC as SMC
 import qualified Inference.MC.SIM as SIM
 import           Inference.MC.MH as MH
 import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
-import           Inference.MC.SIS (Resample(..), ParticleHandler, pfilter)
+import           Inference.MC.SIS (Resample(..), ModelStep, pfilter)
 
 import           PrimDist
 import           Data.Bifunctor
@@ -88,7 +88,7 @@ rmpf' n_prts mh_steps tags model = do
        1. the rest of the computation
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
-exec :: ParticleHandler '[Sampler] PrtState a
+exec :: ModelStep '[Sampler] PrtState a
 exec (p, PrtState _ w τ)  = (fmap asPrtTrace . handleIO . reuseTrace τ . suspendα w) p where
   asPrtTrace ((prt, α, w), τ) = (prt, PrtState α w τ)
 

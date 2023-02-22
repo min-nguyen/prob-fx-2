@@ -27,7 +27,7 @@ import           Comp ( LastMember, Comp(..), Members, Member, call, weakenProg,
 import qualified Data.Map as Map
 import           Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS
-import           Inference.MC.SIS (Resample(..), ParticleHandler, pfilter)
+import           Inference.MC.SIS (Resample(..), ModelStep, pfilter)
 import           Sampler ( Sampler, random, sampleCategorical, handleIO)
 
 {- | Call SMC on a model.
@@ -69,7 +69,7 @@ handleResampleMul = handleWith () (const Val) (const hop) where
   hop :: Member Sampler es =>  Resample LogP x -> (() -> x -> Comp es b) -> Comp es b
   hop  (Resample pws) k = do
     let (ps, ws) = unzip pws; n = length ws
-    idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList (map exp ws))
+    idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList (map (exp . snd) pws))
     let prts_res  = map (ps !! ) idxs
         ws_res    = (replicate n . logMeanExp . map (ws  !! )) idxs
 
