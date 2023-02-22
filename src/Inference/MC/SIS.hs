@@ -29,13 +29,13 @@ import           Data.Bifunctor
 data Resample s a where
   Resample
     -- | (particles, contexts)
-    :: ([Model es b], [s])
+    :: [(Model es b, s)]
     -- | (resampled programs, resampled ss)
     -> Resample s [(Model es b, s)]
 
 {- | A @ParticleHandler@  runs a particle to the next @Observe@ break point.
 -}
-type ParticleHandler es s a = s -> Model es a -> Sampler (Model es a, s)
+type ParticleHandler es s a = (Model es a, s) -> Sampler (Model es a, s)
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
@@ -47,16 +47,16 @@ pfilter :: forall fs es a s. (Members [Resample s, Sampler] fs)
   -> Comp fs [(a, s)]                          -- ^ final particle results and corresponding contexts
 pfilter n w exec  model  = do
   let pfStep :: [(Model es a, s)] -> Comp fs [(a, s)]
-      pfStep wprts = do
+      pfStep prtws = do
         -- | Run particles to next checkpoint and accumulate their contexts
-        wprts' <- call (mapM (\(prt, w) -> exec w prt) wprts)
+        wprts' <- call (mapM exec prtws)
         -- ρs'   <- call (Accum ρs partialρs)
         -- | Check termination status of particles
         case done wprts' of
           -- | If all particles have finished, return their results and contexts
           Just vals  -> Val vals
           -- | Otherwise, pick the particles to continue with
-          Nothing    -> call (Resample (unzip wprts')) >>= pfStep
+          Nothing    -> call (Resample wprts') >>= pfStep
   pfStep (replicate n (model, w))
 
 {- | Check whether a list of programs have all terminated.

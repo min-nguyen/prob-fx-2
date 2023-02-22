@@ -89,7 +89,7 @@ rmpf' n_prts mh_steps tags model = do
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
 exec :: ParticleHandler '[Sampler] PrtState a
-exec (PrtState _ logp τ)  = fmap asPrtTrace . handleIO . reuseTrace τ . suspendα logp where
+exec (p, PrtState _ w τ)  = (fmap asPrtTrace . handleIO . reuseTrace τ . suspendα w) p where
   asPrtTrace ((prt, α, w), τ) = (prt, PrtState α w τ)
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using SSMH.
@@ -101,8 +101,8 @@ handleResample :: (Member Sampler fs)
   -> Handler (Resample PrtState) fs [(a, PrtState)] [(a, PrtState)]
 handleResample mh_steps tags  m = handleWith () (const Val) (const hop) where
   hop :: Member Sampler fs => Resample PrtState x -> (() -> x -> Comp fs a) -> Comp fs a
-  hop  (Resample (_, σs) ) k = do
-    let (α, ws, τs) = unpack σs
+  hop  (Resample pσs) k = do
+    let (α, ws, τs) = (unpack . map snd) pσs
   -- | Resample the RMPF particles according to the indexes returned by the SMC resampler
     idxs <- call $ SMC.resampleMul ws
     let τs_res    = map (τs !!) idxs

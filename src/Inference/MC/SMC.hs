@@ -52,8 +52,8 @@ mulpfilter' n_prts = handleIO . handleResampleMul . pfilter n_prts 0 exec
        1. the rest of the computation
        2. the log probability of the @Observe operation
 -}
-exec :: LogP -> Model '[Sampler] a -> Sampler (Model '[Sampler] a, LogP)
-exec w = handleIO . defaultSample . advance w
+exec :: (Model '[Sampler] a, LogP) -> Sampler (Model '[Sampler] a, LogP)
+exec (p, w) = (handleIO . defaultSample . advance w) p
 
 advance :: LogP -> Handler Observe es a (Comp (Observe : es) a, LogP)
 advance w (Val x)   = Val (Val x, w)
@@ -67,10 +67,10 @@ advance w (Op op k) = case discharge op of
 handleResampleMul :: Member Sampler es => Handler (Resample LogP) es b b
 handleResampleMul = handleWith () (const Val) (const hop) where
   hop :: Member Sampler es =>  Resample LogP x -> (() -> x -> Comp es b) -> Comp es b
-  hop  (Resample (prts, ws)) k = do
-    let n = length ws
+  hop  (Resample pws) k = do
+    let (ps, ws) = unzip pws; n = length ws
     idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList (map exp ws))
-    let prts_res  = map (prts !! ) idxs
+    let prts_res  = map (ps !! ) idxs
         ws_res    = (replicate n . logMeanExp . map (ws  !! )) idxs
 
     k () (zip prts_res ws_res)
@@ -86,9 +86,9 @@ resampleMul ws = do
 handleResampleSys :: Member Sampler fs => Handler (Resample LogP) fs a a
 handleResampleSys (Val x) = Val x
 handleResampleSys (Op op k) = case discharge op of
-  Right (Resample (prts, ws)) -> do
+  Right (Resample pws) -> do
     -- | Get the weights for each particle
-    let ps = map exp ws
+    let (prts, ws) = unzip pws; ps = map exp ws
     -- | Select particles to continue with
     u <- random
     let prob i = ps !! i
