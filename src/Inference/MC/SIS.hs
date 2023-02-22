@@ -52,7 +52,7 @@ pfilter n w exec  model  = do
         wprts' <- call (mapM (\(prt, w) -> exec w prt) wprts)
         -- ρs'   <- call (Accum ρs partialρs)
         -- | Check termination status of particles
-        case collapse wprts' of
+        case done wprts' of
           -- | If all particles have finished, return their results and contexts
           Just vals  -> Val vals
           -- | Otherwise, pick the particles to continue with
@@ -63,7 +63,7 @@ pfilter n w exec  model  = do
      If at least one program is unfinished, return all programs.
      If all programs have finished, return a single program that returns all results.
 -}
-collapse :: [(Model es a, s)] -> Maybe [(a, s)]
-collapse ((Val v, w) : progs) = collapse progs >>= Just . ((v, w):)
-collapse []    = Just []
-collapse progs = Nothing
+done :: [(Model es a, s)] -> Maybe [(a, s)]
+done ((Val v, w) : progs) = done progs >>= Just . ((v, w):)
+done []    = Just []
+done progs = Nothing

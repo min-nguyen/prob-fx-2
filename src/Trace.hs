@@ -145,9 +145,9 @@ type LPTrace = Map Addr LogP
 {- | Dependent map. -}
 data DepMap c where
   Leaf  :: DepMap c
-  Node  :: (DiffDistribution a)
-        => Key a        -- key
-        -> Assoc c a    -- distribution
+  Node  :: (DiffDistribution d)
+        => Key d        -- key
+        -> Assoc c d    -- distribution
         -> DepMap c  -- left
         -> DepMap c  -- right
         -> DepMap c
