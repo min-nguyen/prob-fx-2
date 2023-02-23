@@ -15,7 +15,7 @@ import Effects.Guide
 import Data.Maybe
 import LogP
 import Sampler
-import           Trace (GradTrace, DistTrace, Key(..), Some(..), ValueTrace)
+import           Trace (GradTrace, GuideTrace, Key(..), Some(..), ValueTrace)
 import qualified Trace
 import Inference.MC.LW (likelihood)
 import PrimDist
@@ -32,7 +32,7 @@ bbvi :: forall es a. ()
   => Int                                -- ^ number of optimisation steps (T)
   -> Int                                -- ^ number of samples to estimate the gradient over (L)
   -> GuidedModel '[Sampler] a      -- ^ guide Q(X; λ)
-  -> Sampler DistTrace                 -- ^ final guide parameters λ_T
+  -> Sampler GuideTrace                 -- ^ final guide parameters λ_T
 bbvi num_timesteps num_samples model = do
   λ_0 <- collectGuide model
   -- liftIO (print λ_0)
@@ -40,8 +40,8 @@ bbvi num_timesteps num_samples model = do
     $ guidedLoop num_timesteps num_samples exec model λ_0
 
 -- | Compute Q(X; λ)
-exec :: DistTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
-exec params = handleIO . mergeWeights . priorDiff . defaultSample . likelihood .  setGuide params  where
+exec :: GuideTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
+exec params = handleIO . mergeWeights . priorDiff . defaultSample . likelihood .  reuseGuide params  where
   mergeWeights = fmap (\((x, w_lat), w_obs) -> (x, w_lat + w_obs))
 
 -- | Sample from each @Guide@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).

@@ -27,7 +27,7 @@ import Model
 import PrimDist
 import Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg )
 import Sampler
-import           Trace (GradTrace, DistTrace, Key(..), Some(..))
+import           Trace (GradTrace, GuideTrace, Key(..), Some(..))
 import qualified Trace
 import Debug.Trace
 import Inference.MC.SIM
@@ -42,7 +42,7 @@ map :: forall env es a b. es ~ '[Sampler]
   -> VIGuide env es a                      -- ^ guide Q(X; λ)
   -> VIModel env es b                      -- ^ model P(X, Y)
   -> Env env                            -- ^ model environment (containing only observed data Y)
-  -> Sampler DistTrace                     -- ^ final parameters θ_T
+  -> Sampler GuideTrace                     -- ^ final parameters θ_T
 map num_timesteps num_samples guide model env  = do
   -- | Set up a empty dummy guide Q to return the original input model environment
   λ_0 <- collectParams env guide
@@ -51,7 +51,7 @@ map num_timesteps num_samples guide model env  = do
       VI.guidedLoop num_timesteps num_samples guide (execGuide env) model exec λ_0
 
 -- | Return probability of 1
-execGuide :: Env env -> DistTrace -> VIGuide env '[Sampler] a -> Sampler (((a, Env env), GradTrace), LogP)
+execGuide :: Env env -> GuideTrace -> VIGuide env '[Sampler] a -> Sampler (((a, Env env), GradTrace), LogP)
 execGuide env params  = (second (const 0) <$>) . BBVI.execGuide  env  params
   -- (handleIO . fmap (,0) . defaultSample . defaultParam params . handleEnvRW env) guide
 

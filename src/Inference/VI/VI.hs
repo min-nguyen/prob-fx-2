@@ -30,7 +30,7 @@ import LogP ( LogP(..), normaliseLogPs )
 import PrimDist
 import Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handleWith )
 import Sampler
-import           Trace (GradTrace, DistTrace, Key(..), Some(..), ValueTrace)
+import           Trace (GradTrace, GuideTrace, Key(..), Some(..), ValueTrace)
 import qualified Trace
 import Debug.Trace
 import qualified Inference.MC.SIM as SIM
@@ -43,9 +43,9 @@ type VIGuide env es a  = Comp (EnvRW env : Param : Sample : es) a
 type VIModel env es a  = Comp (EnvRW env : Observe : Sample : es) a
 
 data GradUpd a where
-  UpdateParam :: [LogP] -> [GradTrace] -> DistTrace -> GradUpd DistTrace
+  UpdateParam :: [LogP] -> [GradTrace] -> GuideTrace -> GradUpd GuideTrace
 
-type GuideHandler env es a = DistTrace -> VIGuide env es a -> Sampler (((a, Env env), GradTrace), LogP)
+type GuideHandler env es a = GuideTrace -> VIGuide env es a -> Sampler (((a, Env env), GradTrace), LogP)
 type ModelExec env es a = Env env    -> VIModel env es a -> Sampler (a, LogP)
 
 guidedLoop :: (Members [GradUpd, Sampler] fs)
@@ -53,8 +53,8 @@ guidedLoop :: (Members [GradUpd, Sampler] fs)
   -> Int                                     -- ^ number of samples to estimate the gradient over (L)
   -> VIGuide env es1 a -> GuideHandler env es1 a
   -> VIModel env es2 b -> ModelExec env es2 b
-  -> DistTrace                             -- ^ guide parameters λ_t, model parameters θ_t
-  -> Comp fs DistTrace      -- ^ final guide parameters λ_T
+  -> GuideTrace                             -- ^ guide parameters λ_t, model parameters θ_t
+  -> Comp fs GuideTrace      -- ^ final guide parameters λ_T
 guidedLoop num_timesteps num_samples guide execg model execm guideParams_0 = do
   foldr (>=>) pure [guidedStep num_samples execg execm guide model  | t <- [1 .. num_timesteps]] guideParams_0
 
@@ -71,8 +71,8 @@ guidedLoop num_timesteps num_samples guide execg model execm guideParams_0 = do
 guidedStep ::  (Members [GradUpd, Sampler] fs)
   => Int
   -> GuideHandler env es1 a -> ModelExec env es2 b -> VIGuide env es1 a -> VIModel env es2 b
-  -> DistTrace                            -- ^ guide parameters λ_t
-  -> Comp fs DistTrace    -- ^ next guide parameters λ_{t+1}
+  -> GuideTrace                            -- ^ guide parameters λ_t
+  -> Comp fs GuideTrace    -- ^ next guide parameters λ_{t+1}
 guidedStep num_samples execg execm guide model  params = do
   let exec = do -- | Execute the guide X ~ Q(X; λ)
                 (((_, env), δλ ), guide_w) <- call (execg params guide )
@@ -97,10 +97,10 @@ guidedStep num_samples execg execm guide model  params = do
  -}
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
-collectParams :: Env env -> VIGuide env '[Sampler] a -> Sampler DistTrace
+collectParams :: Env env -> VIGuide env '[Sampler] a -> Sampler GuideTrace
 collectParams env = handleIO . SIM.defaultSample . (fst <$>) . defaultParam Trace.empty . loop Trace.empty . handleEnvRW env
   where
-  loop :: DistTrace -> Comp (Param : es) a -> Comp (Param : es) DistTrace
+  loop :: GuideTrace -> Comp (Param : es) a -> Comp (Param : es) GuideTrace
   loop params (Val _)   = pure params
   loop params (Op op k) = case prj op of
     Just (Param q α)   -> do let params' = Trace.insert (Key α) q params
@@ -108,7 +108,7 @@ collectParams env = handleIO . SIM.defaultSample . (fst <$>) . defaultParam Trac
     Nothing -> Op op (loop params . k)
 
 -- | Sample from each @Param@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
-defaultParam :: forall es a. Member Sample es => DistTrace -> Handler Param es a (a, GradTrace)
+defaultParam :: forall es a. Member Sample es => GuideTrace -> Handler Param es a (a, GradTrace)
 defaultParam param = handleWith Trace.empty (\s a -> Val (a, s)) hop where
   hop :: GradTrace -> Param x -> (GradTrace -> x -> Comp es b) -> Comp es b
   hop grads (Param (q :: d) α) k = do
@@ -129,7 +129,7 @@ prior = handleWith 0 (\lρ x -> Val (x, lρ)) hop
 -}
 gradStep
   :: Double  -- ^ learning rate             η
-  -> DistTrace  -- ^ optimisable distributions Q(λ_t)
+  -> GuideTrace  -- ^ optimisable distributions Q(λ_t)
   -> GradTrace  -- ^ elbo gradient estimates   E[δelbo]
-  -> DistTrace  -- ^ updated distributions     Q(λ_{t+1})
+  -> GuideTrace  -- ^ updated distributions     Q(λ_{t+1})
 gradStep η = Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (η *| δλ))

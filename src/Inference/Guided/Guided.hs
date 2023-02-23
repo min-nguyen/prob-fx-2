@@ -24,7 +24,7 @@ import LogP ( LogP(..), normaliseLogPs )
 import PrimDist
 import Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handleWith, handle )
 import Sampler
-import           Trace (GradTrace, DistTrace, Key(..), Some(..), ValueTrace)
+import           Trace (GradTrace, GuideTrace, Key(..), Some(..), ValueTrace)
 import qualified Trace
 import Debug.Trace
 import qualified Inference.MC.SIM as SIM
@@ -33,18 +33,18 @@ import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
 
 data GradUpd a where
-  UpdateParam :: [(GradTrace, LogP)] -> DistTrace -> GradUpd DistTrace
+  UpdateParam :: [(GradTrace, LogP)] -> GuideTrace -> GradUpd GuideTrace
 
 type GuidedModel es a = Model (Guide : es) a
 
-type GuidedExec es a = DistTrace -> GuidedModel es a -> Sampler ((a, GradTrace), LogP)
+type GuidedExec es a = GuideTrace -> GuidedModel es a -> Sampler ((a, GradTrace), LogP)
 
 guidedLoop :: (Members [GradUpd, Sampler] fs)
   => Int                                     -- ^ number of optimisation steps (T)
   -> Int                                     -- ^ number of samples to estimate the gradient over (L)
   -> GuidedExec es a -> GuidedModel es a
-  -> DistTrace                             -- ^ guide parameters λ_t, model parameters θ_t
-  -> Comp fs DistTrace      -- ^ final guide parameters λ_T
+  -> GuideTrace                             -- ^ guide parameters λ_t, model parameters θ_t
+  -> Comp fs GuideTrace      -- ^ final guide parameters λ_T
 guidedLoop n_timesteps n_samples exec model params_0 = do
   let guidedStep φ = do
         rs <- replicateM n_samples (call $ exec φ model)
@@ -53,10 +53,10 @@ guidedLoop n_timesteps n_samples exec model params_0 = do
   foldr1 (>=>) (replicate n_timesteps guidedStep) params_0
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
-collectGuide :: GuidedModel '[Sampler] a -> Sampler DistTrace
+collectGuide :: GuidedModel '[Sampler] a -> Sampler GuideTrace
 collectGuide = handleIO . defaultGuide . loop Trace.empty .  SIM.defaultSample . SIM.defaultObserve
   where
-  loop :: DistTrace -> Comp (Guide : es) a -> Comp (Guide : es) DistTrace
+  loop :: GuideTrace -> Comp (Guide : es) a -> Comp (Guide : es) GuideTrace
   loop params (Val _)   = pure params
   loop params (Op op k) = case prj op of
     Just (Guide d q α)   -> do let params' = Trace.insert (Key α) q params
@@ -65,8 +65,8 @@ collectGuide = handleIO . defaultGuide . loop Trace.empty .  SIM.defaultSample .
 
 {- | Set the proposal distributions Q(λ) of @Score@ operations.
 -}
-setGuide :: forall es a. Member Guide es => DistTrace -> Comp es a -> Comp es (a, GradTrace)
-setGuide proposals = loop Trace.empty where
+reuseGuide :: forall es a. Member Guide es => GuideTrace -> Comp es a -> Comp es (a, GradTrace)
+reuseGuide proposals = loop Trace.empty where
   loop :: GradTrace -> Comp es a -> Comp es (a, GradTrace)
   loop grads (Val a)   = pure (a, grads)
   loop grads (Op op k) = case prj op of
@@ -77,9 +77,9 @@ setGuide proposals = loop Trace.empty where
     Nothing -> Op op (loop grads . k)
 
 {- | Reuse the proposal distributions Q(λ) of @Score@ operations.
-reuseGuide :: forall es a. Member Guide es => DistTrace -> Comp es a -> Comp es (a, DistTrace, GradTrace)
+reuseGuide :: forall es a. Member Guide es => GuideTrace -> Comp es a -> Comp es (a, GuideTrace, GradTrace)
 reuseGuide dists = loop (dists, Trace.empty) where
-  loop :: (DistTrace, GradTrace) -> Comp es a -> Comp es (a, DistTrace, GradTrace)
+  loop :: (GuideTrace, GradTrace) -> Comp es a -> Comp es (a, GuideTrace, GradTrace)
   loop (dists, grads) (Val a)   = pure (a, dists, grads)
   loop (dists, grads) (Op op k) = case prj op of
     Just (Guide d (q :: q) α) -> do let (q', dists') = Trace.lookupOrInsert (Key α) q dists
@@ -106,7 +106,7 @@ prior = handleWith 0 (\lρ x -> Val (x, lρ)) hop
 
 gradStep
   :: Double  -- ^ learning rate             η
-  -> DistTrace  -- ^ optimisable distributions Q(λ_t)
+  -> GuideTrace  -- ^ optimisable distributions Q(λ_t)
   -> GradTrace  -- ^ elbo gradient estimates   E[δelbo]
-  -> DistTrace  -- ^ updated distributions     Q(λ_{t+1})
+  -> GuideTrace  -- ^ updated distributions     Q(λ_{t+1})
 gradStep η = Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (η *| δλ))

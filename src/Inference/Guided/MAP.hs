@@ -17,7 +17,7 @@ import Effects.Guide
 import Data.Maybe
 import LogP
 import Sampler
-import           Trace (GradTrace, DistTrace, Key(..), Some(..), ValueTrace)
+import           Trace (GradTrace, GuideTrace, Key(..), Some(..), ValueTrace)
 import qualified Trace
 import Inference.MC.LW (likelihood)
 import PrimDist
@@ -35,7 +35,7 @@ map :: forall es a. ()
   => Int                                -- ^ number of optimisation steps (T)
   -> Int                                -- ^ number of samples to estimate the gradient over (L)
   -> GuidedModel '[Sampler] a      -- ^ guide Q(X; λ)
-  -> Sampler DistTrace                 -- ^ final guide parameters λ_T
+  -> Sampler GuideTrace                 -- ^ final guide parameters λ_T
 map num_timesteps num_samples model = do
   λ_0 <- collectGuide model
   -- liftIO (print λ_0)
@@ -53,6 +53,6 @@ handleGuide  = handleWith 0 (\s a -> Val (a, s)) hop where
 
 
 -- | Compute Q(X; λ)
-exec :: DistTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
-exec params = handleIO . mergeWeights . handleGuide . defaultSample . defaultObserve . LW.joint 0 . setGuide params where
+exec :: GuideTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
+exec params = handleIO . mergeWeights . handleGuide . defaultSample . defaultObserve . LW.joint 0 . reuseGuide params where
   mergeWeights = fmap (\((x, w_lat), w_obs) -> (x, w_lat + w_obs))

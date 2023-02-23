@@ -35,7 +35,7 @@ module Trace (
   -- * Gradient trace
   , GradTrace
   -- * Dist trace
-  , DistTrace
+  , GuideTrace
   , Key(..)
   , keys
   , Some(..)
@@ -160,23 +160,23 @@ type family Assoc (c :: * -> Constraint) (a :: *) = (b :: *) where
   Assoc Grad d = Vec (Arity d) Double
 
 -- | The type of differentiable distribution traces
-type DistTrace = DepMap Id
+type GuideTrace = DepMap Id
 
-instance {-# OVERLAPPING #-} Show [DistTrace] where
+-- | The type of gradient traces
+type GradTrace = DepMap Grad
+
+instance {-# OVERLAPPING #-} Show [GuideTrace] where
   show (x:xs) = show x ++ "\n" ++ show xs
   show []     = ""
 
-instance Show DistTrace where
-  show :: DistTrace -> String
+instance Show GuideTrace where
+  show :: GuideTrace -> String
   show Leaf = ""
   show (Node (Key var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ") "
                                  ++ show l
                                  ++ show r
     where showNewline Leaf  = ""
           showNewline node  = "\n" ++ show node
-
--- | The type of gradient traces
-type GradTrace = DepMap Grad
 
 instance Show GradTrace where
   show :: GradTrace -> String
@@ -286,7 +286,7 @@ map f = go where
 
 -- | Combine the entries of two traces with an operation when their keys match,
 --   returning elements of the left trace that do not exist in the second trace.
-intersectLeftWith :: (forall d. DiffDistribution d => d -> Vec (Arity d) Double -> d) -> DistTrace -> GradTrace -> DistTrace
+intersectLeftWith :: (forall d. DiffDistribution d => d -> Vec (Arity d) Double -> d) -> GuideTrace -> GradTrace -> GuideTrace
 intersectLeftWith _ t1 Leaf  = t1
 intersectLeftWith _ Leaf t2  = Leaf
 intersectLeftWith f (Node k1 x1 l1 r1) t2 =
