@@ -17,8 +17,7 @@ import Effects.Guide
 import Data.Maybe
 import LogP
 import Sampler
-import           Trace (GradTrace, GuideTrace, Key(..), Some(..), ValueTrace)
-import qualified Trace
+import           Trace
 import Inference.MC.LW (likelihood)
 import PrimDist
 import qualified Vec

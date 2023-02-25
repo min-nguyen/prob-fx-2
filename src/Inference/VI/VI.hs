@@ -30,8 +30,7 @@ import LogP ( LogP(..), normaliseLogPs )
 import PrimDist
 import Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handleWith )
 import Sampler
-import           Trace (GradTrace, GuideTrace, Key(..), Some(..), ValueTrace)
-import qualified Trace
+import           Trace
 import Debug.Trace
 import qualified Inference.MC.SIM as SIM
 import qualified Vec
@@ -48,73 +47,73 @@ data GradUpd a where
 type GuideHandler env es a = GuideTrace -> VIGuide env es a -> Sampler (((a, Env env), GradTrace), LogP)
 type ModelExec env es a = Env env    -> VIModel env es a -> Sampler (a, LogP)
 
-guidedLoop :: (Members [GradUpd, Sampler] fs)
-  => Int                                     -- ^ number of optimisation steps (T)
-  -> Int                                     -- ^ number of samples to estimate the gradient over (L)
-  -> VIGuide env es1 a -> GuideHandler env es1 a
-  -> VIModel env es2 b -> ModelExec env es2 b
-  -> GuideTrace                             -- ^ guide parameters λ_t, model parameters θ_t
-  -> Comp fs GuideTrace      -- ^ final guide parameters λ_T
-guidedLoop num_timesteps num_samples guide execg model execm guideParams_0 = do
-  foldr (>=>) pure [guidedStep num_samples execg execm guide model  | t <- [1 .. num_timesteps]] guideParams_0
+-- guidedLoop :: (Members [GradUpd, Sampler] fs)
+--   => Int                                     -- ^ number of optimisation steps (T)
+--   -> Int                                     -- ^ number of samples to estimate the gradient over (L)
+--   -> VIGuide env es1 a -> GuideHandler env es1 a
+--   -> VIModel env es2 b -> ModelExec env es2 b
+--   -> GuideTrace                             -- ^ guide parameters λ_t, model parameters θ_t
+--   -> Comp fs GuideTrace      -- ^ final guide parameters λ_T
+-- guidedLoop num_timesteps num_samples guide execg model execm guideParams_0 = do
+--   foldr (>=>) pure [guidedStep num_samples execg execm guide model  | t <- [1 .. num_timesteps]] guideParams_0
 
-{- | 1. For L iterations,
-        a) Generate values x from the guide Q(X; λ), accumulating:
-            - the total guide log-weight:  log(Q(X = x; λ))
-            - the gradient log-pdfs of the guide: δlog(Q(X = x; λ))
-        b) Execute the model P using values x ~ Q(X; λ) and y, accumulating:
-            - the total model log-weight:  log(P(X=x, Y=y))
-     2. Compute an estimate of the ELBO gradient: E[δelbo]
-     3. Update the parameters λ of the guide
--}
+-- {- | 1. For L iterations,
+--         a) Generate values x from the guide Q(X; λ), accumulating:
+--             - the total guide log-weight:  log(Q(X = x; λ))
+--             - the gradient log-pdfs of the guide: δlog(Q(X = x; λ))
+--         b) Execute the model P using values x ~ Q(X; λ) and y, accumulating:
+--             - the total model log-weight:  log(P(X=x, Y=y))
+--      2. Compute an estimate of the ELBO gradient: E[δelbo]
+--      3. Update the parameters λ of the guide
+-- -}
 
-guidedStep ::  (Members [GradUpd, Sampler] fs)
-  => Int
-  -> GuideHandler env es1 a -> ModelExec env es2 b -> VIGuide env es1 a -> VIModel env es2 b
-  -> GuideTrace                            -- ^ guide parameters λ_t
-  -> Comp fs GuideTrace    -- ^ next guide parameters λ_{t+1}
-guidedStep num_samples execg execm guide model  params = do
-  let exec = do -- | Execute the guide X ~ Q(X; λ)
-                (((_, env), δλ ), guide_w) <- call (execg params guide )
-                -- | Execute the model P(X, Y) under the guide environment X
-                (_        , model_w)      <- call (execm env model )
-                -- | Compute total log-importance-weight, log(P(X, Y)) - log(Q(X; λ))
-                let w     =  model_w - guide_w
-                pure (δλ, w)
-  -- | Execute for L iterations
-  (δλs, ws) <- unzip <$> replicateM num_samples exec
-  -- | Update the parameters λ of the proposal distributions Q
-  call (UpdateParam ws δλs params)
+-- guidedStep ::  (Members [GradUpd, Sampler] fs)
+--   => Int
+--   -> GuideHandler env es1 a -> ModelExec env es2 b -> VIGuide env es1 a -> VIModel env es2 b
+--   -> GuideTrace                            -- ^ guide parameters λ_t
+--   -> Comp fs GuideTrace    -- ^ next guide parameters λ_{t+1}
+-- guidedStep num_samples execg execm guide model  params = do
+--   let exec = do -- | Execute the guide X ~ Q(X; λ)
+--                 (((_, env), δλ ), guide_w) <- call (execg params guide )
+--                 -- | Execute the model P(X, Y) under the guide environment X
+--                 (_        , model_w)      <- call (execm env model )
+--                 -- | Compute total log-importance-weight, log(P(X, Y)) - log(Q(X; λ))
+--                 let w     =  model_w - guide_w
+--                 pure (δλ, w)
+--   -- | Execute for L iterations
+--   (δλs, ws) <- unzip <$> replicateM num_samples exec
+--   -- | Update the parameters λ of the proposal distributions Q
+--   call (UpdateParam ws δλs params)
 
-{- | Execute the guide Q under a provided set of proposal distributions Q(λ), producing:
-      1. The output environment of latent variables X=x (given `env` contains X) generated by @Sample@s
-         i.e. fixed non-differentiable dists, and @Param@s, i.e. learnable proposal dists:
-            x ~ Q(X; λ),          where Q can be fixed or learnable
-      2. The total log-weight of latent variables X=x, resulting from @Sample@s and @Param@s:
-            log(Q(X=x; λ)),      where Q can be fixed or learnable
-      3. The gradients of all proposal distributions Q(λ) at X=x:
-            δlog(Q(X=x; λ)),     where Q is learnable
- -}
+-- {- | Execute the guide Q under a provided set of proposal distributions Q(λ), producing:
+--       1. The output environment of latent variables X=x (given `env` contains X) generated by @Sample@s
+--          i.e. fixed non-differentiable dists, and @Param@s, i.e. learnable proposal dists:
+--             x ~ Q(X; λ),          where Q can be fixed or learnable
+--       2. The total log-weight of latent variables X=x, resulting from @Sample@s and @Param@s:
+--             log(Q(X=x; λ)),      where Q can be fixed or learnable
+--       3. The gradients of all proposal distributions Q(λ) at X=x:
+--             δlog(Q(X=x; λ)),     where Q is learnable
+--  -}
 
--- | Collect the parameters λ_0 of the guide's initial proposal distributions.
-collectParams :: Env env -> VIGuide env '[Sampler] a -> Sampler GuideTrace
-collectParams env = handleIO . SIM.defaultSample . (fst <$>) . defaultParam Trace.empty . loop Trace.empty . handleEnvRW env
-  where
-  loop :: GuideTrace -> Comp (Param : es) a -> Comp (Param : es) GuideTrace
-  loop params (Val _)   = pure params
-  loop params (Op op k) = case prj op of
-    Just (Param q α)   -> do let params' = Trace.insert (Key α) q params
-                             Op op (loop params' . k)
-    Nothing -> Op op (loop params . k)
+-- -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
+-- collectParams :: Env env -> VIGuide env '[Sampler] a -> Sampler GuideTrace
+-- collectParams env = handleIO . SIM.defaultSample . (fst <$>) . defaultParam Trace.empty . loop Trace.empty . handleEnvRW env
+--   where
+--   loop :: GuideTrace -> Comp (Param : es) a -> Comp (Param : es) GuideTrace
+--   loop params (Val _)   = pure params
+--   loop params (Op op k) = case prj op of
+--     Just (Param q α)   -> do let params' = Trace.insert (Key α) q params
+--                              Op op (loop params' . k)
+--     Nothing -> Op op (loop params . k)
 
 -- | Sample from each @Param@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
-defaultParam :: forall es a. Member Sample es => GuideTrace -> Handler Param es a (a, GradTrace)
-defaultParam param = handleWith Trace.empty (\s a -> Val (a, s)) hop where
-  hop :: GradTrace -> Param x -> (GradTrace -> x -> Comp es b) -> Comp es b
-  hop grads (Param (q :: d) α) k = do
-      let q' = fromMaybe q (Trace.lookup (Key α) param)
-      x <- call (Sample q' α)
-      k (Trace.insert @d (Key α) (gradLogProb q' x) grads) x
+-- defaultParam :: forall es a. Member Sample es => GuideTrace -> Handler Param es a (a, GradTrace)
+-- defaultParam param = handleWith Trace.empty (\s a -> Val (a, s)) hop where
+--   hop :: GradTrace -> Param x -> (GradTrace -> x -> Comp es b) -> Comp es b
+--   hop grads (Param (q :: d) α) k = do
+--       let q' = fromMaybe q (Trace.lookup (Key α) param)
+--       x <- call (Sample q' α)
+--       k (Trace.insert @d (Key α) (gradLogProb q' x) grads) x
 
 prior :: forall es a. Member Sampler es => Handler Sample es a (a, LogP)
 prior = handleWith 0 (\lρ x -> Val (x, lρ)) hop
@@ -127,9 +126,9 @@ prior = handleWith 0 (\lρ x -> Val (x, lρ)) hop
         λ_{t+1} = λ_t + η_t * E[δelbo(v)]
      where the gradient δelbo(v) is implicitly w.r.t λ
 -}
-gradStep
-  :: Double  -- ^ learning rate             η
-  -> GuideTrace  -- ^ optimisable distributions Q(λ_t)
-  -> GradTrace  -- ^ elbo gradient estimates   E[δelbo]
-  -> GuideTrace  -- ^ updated distributions     Q(λ_{t+1})
-gradStep η = Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (η *| δλ))
+-- gradStep
+--   :: Double  -- ^ learning rate             η
+--   -> GuideTrace  -- ^ optimisable distributions Q(λ_t)
+--   -> GradTrace  -- ^ elbo gradient estimates   E[δelbo]
+--   -> GuideTrace  -- ^ updated distributions     Q(λ_{t+1})
+-- gradStep η = Trace.intersectWithAdd (\q δλ ->  q `safeAddGrad` (η *| δλ))

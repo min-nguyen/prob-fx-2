@@ -27,30 +27,28 @@ module Trace (
   -- * Sample trace
   , Trace(..)
   , filterTrace
-  -- * Value trace
-  , ValueTrace
   -- * Log-probability trace
   , LPTrace
   -- , traceLogProbs
   -- * Gradient trace
   , GradTrace
+  , VecFor(..)
+  , unVecFor
   -- * Dist trace
   , GuideTrace
   , Key(..)
-  , keys
-  , Some(..)
-  , empty
-  , insert
-  , lookup
-  , lookupBy
-  , lookupWithDefault
-  , lookupOrInsert
-  , map
+  -- , lookupBy
+  -- , lookupWithDefault
+  -- , lookupOrInsert
+  -- , map
   -- , dlookupOrInsert
-  , intersectLeftWith
+  , intersectWithAdd
+  , module Data.Dependent.Map
+  , module Data.Functor.Identity
   -- , dmap
   ) where
 
+import           Data.Dependent.Map
 import           Data.Map (Map)
 import           Data.Maybe ( fromJust, fromMaybe )
 import           Data.Proxy ( Proxy(..) )
@@ -66,6 +64,9 @@ import           Data.Kind (Constraint)
 import           Prelude hiding (lookup, map)
 import Control.Applicative ((<|>))
 import Unsafe.Coerce
+import Data.Functor.Identity
+import Data.GADT.Compare
+import Data.Typeable
 
 
 {- $Address
@@ -99,7 +100,6 @@ type Trace = Map Addr Double
 
 {- | The type of value traces, mapping addresses of Sample operations to their actual values
 -}
-type ValueTrace = Map Addr (OpenSum [Double, Int])
 
 data OpenSum (as :: [*]) where
   UnsafeOpenSum :: Int -> a -> OpenSum as
@@ -143,54 +143,16 @@ instance (FindElem a as) => VMember a as where
 type LPTrace = Map Addr LogP
 
 {- | Dependent map. -}
-data DepMap c where
-  Leaf  :: DepMap c
-  Node  :: (DiffDistribution d)
-        => Key d        -- key
-        -> Assoc c d    -- distribution
-        -> DepMap c  -- left
-        -> DepMap c  -- right
-        -> DepMap c
 
--- | A workaround for passing type families/functional dependencies as type parameters
-class Id d
-class Grad d
-type family Assoc (c :: * -> Constraint) (a :: *) = (b :: *) where
-  Assoc Id d   = d
-  Assoc Grad d = Vec (Arity d) Double
+data VecFor q where
+  VecFor :: DiffDist q a => Vec (Arity q) Double -> VecFor q
 
--- | The type of differentiable distribution traces
-type GuideTrace = DepMap Id
+unVecFor :: DiffDist q a => VecFor q -> Vec (Arity q) Double
+unVecFor (VecFor q) = q
 
--- | The type of gradient traces
-type GradTrace = DepMap Grad
-
-instance {-# OVERLAPPING #-} Show [GuideTrace] where
-  show (x:xs) = show x ++ "\n" ++ show xs
-  show []     = ""
-
-instance Show GuideTrace where
-  show :: GuideTrace -> String
-  show Leaf = ""
-  show (Node (Key var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ") "
-                                 ++ show l
-                                 ++ show r
-    where showNewline Leaf  = ""
-          showNewline node  = "\n" ++ show node
-
-instance Show GradTrace where
-  show :: GradTrace -> String
-  show Leaf = ""
-  show (Node (Key var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ") "
-                                 ++ show l
-                                 ++ show r
-    where showNewline Leaf  = ""
-          showNewline node  = "\n" ++ show node
-
-{- Keys -}
-data Key a where
-  Key :: forall a. (Typeable a) => Addr -> Key a
-  deriving (Typeable)
+data Key q where
+  Key :: (DiffDist q a, Typeable q) => Addr -> Key q
+  deriving Typeable
 
 instance Show (Key a) where
   show :: Key a -> String
@@ -204,131 +166,30 @@ instance Ord (Key a) where
   compare :: Key a -> Key a -> Ordering
   compare (Key s1) (Key s2) = compare s1 s2
 
-instance HeteroOrd Key where
-  hCompare :: Key a -> Key b -> Ordering
-  hCompare (Key s1) (Key s2) = compare s1 s2
+instance GEq Key where
+  geq (Key a :: Key q1) (Key b :: Key q2) =
+    if a == b then eqT @q1 @q2 else Nothing
 
-instance (HeteroOrd k, Typeable a, Typeable b) => TrueOrd k (a :: *) b where
-  trueCompare :: k a -> k b -> TrueOrdering a b
-  trueCompare ka kb = case (hCompare ka kb, compare (show (typeRep @a)) (show (typeRep @b))) of
-    (LT, _)  -> TrueLT
-    (GT, _)  -> TrueGT
-    (EQ, EQ) -> case eqTypeRep (typeRep @a) (typeRep @b) of
-                  Just HRefl -> TrueEQ HRefl
-                  Nothing    -> error "Should not happen."
-    (EQ, LT) -> TrueLT
-    (EQ, GT) -> TrueGT
+instance GCompare Key where
+  gcompare k1@(Key a :: Key q1) k2@(Key b :: Key q2) =
+    case (compare a b, compare (show (Type.Reflection.typeRep @q1)) (show (Type.Reflection.typeRep @q2))) of
+      (LT, _) -> GLT
+      (GT, _) -> GGT
+      (_, LT) -> GLT
+      (_, GT) -> GGT
+      (EQ, EQ) -> case geq k1 k2 of Just Refl -> GEQ
+                                    Nothing   -> error "shouldn't happen"
 
-data Some c k where
-  Some :: c d => k d -> Some c k
+type GuideTrace = DMap Key Identity
+type GradTrace  = DMap Key VecFor
 
--- | Fetch the keys
-keys :: DepMap c -> [Some DiffDistribution Key]
-keys = go
-  where
-    go :: DepMap c -> [Some DiffDistribution Key]
-    go Leaf = []
-    go (Node ky y l r) = Some ky : go l ++ go r
+lookupGuide :: DiffDist q a => Key q  -> GuideTrace -> Maybe (Identity q)
+lookupGuide (Key a) guides = lookup (Key a) guides
 
--- | Construct an empty trace
-empty :: DepMap c
-empty = Leaf
+insertGrad :: DiffDist q a => Key q  -> Vec (Arity q) Double -> GradTrace -> GradTrace
+insertGrad k vec grads = insert k (VecFor vec) grads
 
--- | Construct a single node
-singleton :: (DiffDistribution a) => Key a -> Assoc c a -> DepMap c
-singleton k x = Node k x Leaf Leaf
-
--- | Lookup an entry
-lookup :: Typeable a => Key a -> DepMap c -> Maybe (Assoc c a)
-lookup kx = go where
-  go Leaf = Nothing
-  go (Node ky y l r) = case trueCompare kx ky
-      of TrueEQ HRefl -> Just y
-         TrueLT       -> go l
-         TrueGT       -> go r
-
--- | Lookup an entry
-lookupWithDefault :: Typeable a => Assoc c a -> Key a -> DepMap c -> Assoc c a
-lookupWithDefault q k = fromMaybe q . lookup k
-
--- | Lookup an entry
-lookupOrInsert :: DiffDistribution a => Key a -> Assoc c a -> DepMap c -> (Assoc c a, DepMap c)
-lookupOrInsert kx q m = go m where
-  go Leaf = (q, insert kx q m)
-  go (Node ky q' l r) = case trueCompare kx ky
-      of TrueEQ HRefl -> (q', m)
-         TrueLT       -> go l
-         TrueGT       -> go r
-
--- | Lookup an entry
-lookupBy :: forall a c. Typeable a => (Addr -> Bool) -> DepMap c -> Maybe (Assoc c a)
-lookupBy f = go where
-  go Leaf = Nothing
-  go (Node ((Key ky) :: Key b) y l r)
-    | Just HRefl <- eqTypeRep (typeRep @a) (typeRep @b),
-        True <- f ky = Just y
-    | otherwise = go l <|> go r
-
--- | Insert a new entry
-insert :: DiffDistribution a => Key a -> Assoc c a -> DepMap c -> DepMap c
-insert kx d = go where
-  go Leaf = singleton kx d
-  go (Node ky y l r) = case trueCompare kx ky
-      of  TrueEQ HRefl -> Node kx d l r
-          TrueLT       -> Node ky y (go l) r
-          TrueGT       -> Node ky y l (go r)
-
--- | Map over a tree
-map ::  (forall a. Key a -> Assoc c a -> Assoc c a) -> DepMap c -> DepMap c
-map f = go where
-  go Leaf            = Leaf
-  go (Node kx x l r) = Node kx (f kx x) (go l) (go r)
-
--- | Combine the entries of two traces with an operation when their keys match,
---   returning elements of the left trace that do not exist in the second trace.
-intersectLeftWith :: (forall d. DiffDistribution d => d -> Vec (Arity d) Double -> d) -> GuideTrace -> GradTrace -> GuideTrace
-intersectLeftWith _ t1 Leaf  = t1
-intersectLeftWith _ Leaf t2  = Leaf
-intersectLeftWith f (Node k1 x1 l1 r1) t2 =
-  case maybe_x2 of
-      Nothing -> Node k1 x1 l1 r1
-      Just x2 -> Node k1 (f x1 x2) l1l2 r1r2
-    where (l2, maybe_x2, r2) = dsplitLookup k1 t2
-          !l1l2 = intersectLeftWith f l1 l2
-          !r1r2 = intersectLeftWith f r1 r2
-          -- | Split-lookup without rebalancing tree
-          dsplitLookup :: Typeable d => Key d -> GradTrace -> (GradTrace, Maybe (Vec (Arity d) Double), GradTrace)
-          dsplitLookup k = go where
-            go Leaf            = (Leaf, Nothing, Leaf)
-            go (Node kx x l r) = case trueCompare k kx of
-              TrueLT       -> let (lt, z, gt) = go l in (lt, z, Node kx x gt r) -- As we know that `keys of gt` < `keys of r`
-              TrueGT       -> let (lt, z, gt) = go r in (Node kx x l lt, z, gt)
-              TrueEQ HRefl -> (l, Just x, r)
-
--- -- | Apply a function to an entry if it exists
--- dupdate :: forall c a b. (c a b, Typeable a, Typeable b) => Key a -> (b -> b) -> DepMap c -> DepMap c
--- dupdate kx f = go where
---   go Leaf = Leaf
---   go (Node ky y l r) = case (trueCompare kx ky, tyEq (Proxy @b) (asProxy y))
---       of (TrueEQ HRefl, Just HRefl) -> Node kx (f y) l r
---          (TrueEQ HRefl, Nothing)    -> error "Trace.dupdate: Should not happen if 'a implies b' in the constraint 'c a b' "
---          (TrueLT, _)       -> Node ky y (go l) r
---          (TrueGT, _)       -> Node ky y l (go r)
-
--- -- | Return the entry if it exists, otherwise insert a new entry
--- dlookupOrInsert :: forall c a b. (c a b, Typeable a, Typeable b) => Key a -> b -> DepMap c  -> (b, DepMap c )
--- dlookupOrInsert kx dx = go where
---   go :: DepMap c  -> (b, DepMap c )
---   go Leaf             = (dx, dsingleton kx dx)
---   go (Node ky dy l r) =
---     case (trueCompare kx ky, tyEq (Proxy @b) (asProxy dy)) of
---       (TrueEQ HRefl, Just HRefl) -> (dy, Node ky dy l r)
---       (TrueEQ HRefl, Nothing)    -> error "Trace.dlookupOrInsert: Should not happen if 'a implies b' in the constraint 'c a b' "
---       (TrueLT, _)    -> let (d, l') = go l in (d, Node ky dy l' r)
---       (TrueGT, _)       -> let (d, r') = go r in (d, Node ky dy l r')
-
--- -- | Fold over a tree
--- dfoldr :: (forall a b r. c a b => Key a -> b -> r -> r) -> r -> DepMap c -> r
--- dfoldr f = go where
---   go z Leaf             = z
---   go z (Node  kx x l r) = go (f kx x (go z r)) l
+intersectWithAdd :: GuideTrace -> GradTrace -> GuideTrace
+intersectWithAdd guides grads = intersectionWithKey f guides grads
+  where f :: Key q -> Identity q -> VecFor q -> Identity q
+        f _ (Identity q) (VecFor v) = Identity (safeAddGrad q v)

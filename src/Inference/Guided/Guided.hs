@@ -24,8 +24,7 @@ import LogP ( LogP(..), normaliseLogPs )
 import PrimDist
 import Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handleWith, handle )
 import Sampler
-import           Trace (GradTrace, GuideTrace, Key(..), Some(..), ValueTrace)
-import qualified Trace
+import           Trace
 import Debug.Trace
 import qualified Inference.MC.SIM as SIM
 import qualified Vec
@@ -48,7 +47,7 @@ guidedLoop :: (Members [GradUpd, Sampler] fs)
 guidedLoop n_timesteps n_samples exec model params_0 = do
   let guidedStep φ = do
         rs <- replicateM n_samples (call $ exec φ model)
-        let wgrads = map (\((_, grad), w) -> (grad, w)) rs
+        let wgrads = Prelude.map (\((_, grad), w) -> (grad, w)) rs
         call (UpdateParam wgrads φ)
   foldr1 (>=>) (replicate n_timesteps guidedStep) params_0
 
@@ -59,8 +58,9 @@ collectGuide = handleIO . defaultGuide . loop Trace.empty .  SIM.defaultSample .
   loop :: GuideTrace -> Comp (Guide : es) a -> Comp (Guide : es) GuideTrace
   loop params (Val _)   = pure params
   loop params (Op op k) = case prj op of
-    Just (Guide d q α)   -> do let params' = Trace.insert (Key α) q params
-                               Op op (loop params' . k)
+    Just (Guide d (q :: q) α) -> do let kα = (Key α :: Key q)
+                                        params' = Trace.insert kα (Identity q) params
+                                    Op op (loop params' . k)
     Nothing -> Op op (loop params . k)
 
 {- | Set the proposal distributions Q(λ) of @Score@ operations.
@@ -70,9 +70,10 @@ reuseGuide proposals = loop Trace.empty where
   loop :: GradTrace -> Comp es a -> Comp es (a, GradTrace)
   loop grads (Val a)   = pure (a, grads)
   loop grads (Op op k) = case prj op of
-    Just (Guide d (q :: q) α) -> do let q' = Trace.lookupWithDefault q (Key α) proposals
+    Just (Guide d (q :: q) α) -> do let kα = (Key α :: Key q)
+                                        Identity q' = fromMaybe (Identity q) (Trace.lookup kα proposals)
                                     x <- call (Guide d q' α)
-                                    let gs = Trace.insert @q (Key α) (gradLogProb q' x) grads
+                                    let gs = Trace.insert kα (VecFor (gradLogProb q' x)) grads
                                     loop gs (k x)
     Nothing -> Op op (loop grads . k)
 
@@ -109,4 +110,4 @@ gradStep
   -> GuideTrace  -- ^ optimisable distributions Q(λ_t)
   -> GradTrace  -- ^ elbo gradient estimates   E[δelbo]
   -> GuideTrace  -- ^ updated distributions     Q(λ_{t+1})
-gradStep η = Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (η *| δλ))
+gradStep η = undefined -- Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (η *| δλ))

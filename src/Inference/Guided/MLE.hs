@@ -15,8 +15,7 @@ import Effects.Guide
 import Data.Maybe
 import LogP
 import Sampler
-import           Trace (GradTrace, GuideTrace, Key(..), Some(..), ValueTrace)
-import qualified Trace
+import           Trace
 import Inference.MC.LW (likelihood)
 import PrimDist
 import qualified Vec
@@ -25,6 +24,7 @@ import Data.Data (Proxy(..))
 import Comp
 import Inference.MC.SIM
 import Effects.Dist
+import Data.Some
 
 {- | Top-level wrapper for BBVI inference that takes a separate model and guide.
 -}
@@ -60,18 +60,18 @@ normalisingEstimator (δGs, ws) = δelbos
     δelbos :: Maybe GradTrace
     δelbos = if isInfinite norm_c
               then Nothing
-              else Just (foldr (\(Some v) -> estimateGrad v) Trace.empty vars)
+              else Just (foldr (\(Some k@(Key v)) -> estimateGrad k) Trace.empty vars)
     {- | Normalising constant -}
     norm_c :: Double
-    norm_c = 1 / (fromIntegral (length ws) * sum (map exp ws))
+    norm_c = 1 / (fromIntegral (length ws) * sum (Prelude.map exp ws))
     {- | Optimisable variables -}
-    vars :: [Some DiffDistribution Key]
+    vars :: [Some Key]
     vars = (Trace.keys . head) δGs
     {- | Uniformly scale each iteration's gradient trace G^l by its corresponding unnormalised importance weight W_norm^l -}
     δFs :: [GradTrace]
-    δFs = zipWith (\logW -> Trace.map (\_ δ -> exp logW *| δ)) ws δGs
+    δFs = zipWith (\logW -> Trace.map (\(VecFor δ) -> VecFor (exp logW *| δ))) ws δGs
     {- | Compute the mean gradient estimate for a random variable v's associated parameters -}
     estimateGrad :: forall d. (DiffDistribution d) => Key d -> GradTrace -> GradTrace
-    estimateGrad v = let δFv      = map (fromJust . Trace.lookup v) δFs
+    estimateGrad v = let δFv      = Prelude.map (unVecFor . fromJust . Trace.lookup v) δFs
                          norm_δFv = ((*|) norm_c . foldr (|+|) (Vec.zeros (Proxy @(Arity d))) ) δFv
-                     in  Trace.insert v norm_δFv
+                     in  Trace.insert v (VecFor norm_δFv)

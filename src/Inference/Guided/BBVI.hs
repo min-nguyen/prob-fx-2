@@ -15,8 +15,7 @@ import Effects.Guide
 import Data.Maybe
 import LogP
 import Sampler
-import           Trace (GradTrace, GuideTrace, Key(..), Some(..), ValueTrace)
-import qualified Trace
+import           Trace
 import Inference.MC.LW (likelihood)
 import PrimDist
 import qualified Vec
@@ -25,6 +24,7 @@ import Data.Data (Proxy(..))
 import Comp
 import Inference.MC.SIM
 import Effects.Dist
+import Data.Some
 
 {- | Top-level wrapper for BBVI inference that takes a separate model and guide.
 -}
@@ -59,25 +59,28 @@ handleLRatio :: forall fs a. Handler GradUpd fs a a
 handleLRatio = handleWith 1 (const Val) hop where
   hop :: Int -> GradUpd x -> (Int -> x -> Comp fs a) -> Comp fs a
   hop t (UpdateParam wgrads params) k =
-    let δelbo = lratio (unzip wgrads)
-    in  k (t + 1) (Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (1 *| δλ)) params δelbo)
+    let δelbo       :: GradTrace  = lratio (unzip wgrads)
+        scaledGrads :: GradTrace  = Trace.map (\(VecFor δλ) -> VecFor (1.0 *| δλ)) δelbo
+        params'     :: GuideTrace = Trace.intersectWithAdd params scaledGrads
+    in  k (t + 1) params'
 
 -- | Where ws = logP(X, Y) - logQ(X; λ)
 --         δGs   = δ_λ logQ(X;λ)
 lratio :: ([GradTrace], [LogP]) -> GradTrace
-lratio (δGs, ws) = foldr (\(Some v) -> Trace.insert v (estδELBO v)) Trace.empty vars
+-- lratio = undefined
+lratio (δGs, ws) = foldr (\(Some k@(Key α)) -> Trace.insert k (VecFor (estδELBO k))) Trace.empty vars
   where
     norm_c :: Double
     norm_c = 1/fromIntegral (length ws)
 
-    vars :: [Some DiffDistribution Key]
+    vars :: [Some  Key]
     vars = (Trace.keys . head) δGs
     {- | Uniformly scale each iteration's gradient trace G^l by its corresponding (normalised) importance weight W_norm^l.
             F^{1:L} = W_norm^{1:L} * G^{1:L}
         where the normalised importance weight is defined via:
             log(W_norm^l) = log(W^l) + max(log(W^{1:L})) -}
     δFs :: [GradTrace]
-    δFs = zipWith (\logW -> Trace.map (\_ δ -> exp logW *| δ)) (normaliseLogPs ws) δGs
+    δFs = zipWith (\logW -> Trace.map (\(VecFor δ) -> VecFor (exp logW *| δ))) (normaliseLogPs ws) δGs
     {- | Compute the ELBO gradient estimate for a random variable v's associated parameters:
             E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L
         where the baseline is:
@@ -86,8 +89,8 @@ lratio (δGs, ws) = foldr (\(Some v) -> Trace.insert v (estδELBO v)) Trace.empt
       => Key d                -- ^   v
       -> Vec (Arity d) Double -- ^   E[δelbo(v)]
     estδELBO v  =
-      let δGv        = map (fromJust . Trace.lookup v) δGs      -- G_v^{1:L}
-          δFv        = map (fromJust . Trace.lookup v) δFs      -- F_v^{1:L}
+      let δGv        = Prelude.map (unVecFor . fromJust . Trace.lookup v) δGs      -- G_v^{1:L}
+          δFv        = Prelude.map (unVecFor . fromJust . Trace.lookup v) δFs      -- F_v^{1:L}
           baseline_v = Vec.covar δFv δGv |/| Vec.var δGv  -- b_v
           δELBOv     = zipWith (\δgv δfv -> δfv |-| (baseline_v |*| δgv)) δGv δFv
           δestELBOv  = ((*|) norm_c . foldr (|+|) (Vec.zeros (Proxy @(Arity d)))) δELBOv
