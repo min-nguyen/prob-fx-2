@@ -27,8 +27,7 @@ import Model
 import PrimDist
 import Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg )
 import Sampler
-import           Trace (GradTrace, GuideTrace, Key(..), Some(..))
-import qualified Trace
+import           Trace
 import Debug.Trace
 import Inference.MC.SIM
 import Inference.VI.VI as VI

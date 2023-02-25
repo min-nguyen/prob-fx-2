@@ -21,7 +21,7 @@ import Inference.Guided.MLE as MLE
 import Inference.Guided.MAP as MAP
 import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
 import qualified Trace
-import           Trace (Key(..))
+import           Trace (Key(..), runIdentity)
 import Control.Monad ( replicateM, (>=>) )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
@@ -34,7 +34,6 @@ import HMM (simHMM)
 import Comp
 import Model
 import Vec (Vec, TypeableSNatI)
-import qualified Vec as Vec
 import Data.Proxy
 import qualified LDA
 
@@ -53,22 +52,22 @@ bbviLinRegr :: Int -> Int -> Int -> Sampler [Double]
 bbviLinRegr t_steps l_samples n_datapoints = do
   let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
   traceQ <- BBVI.bbvi t_steps l_samples (linRegr xys)
-  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
-      -- c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
+  let m_dist = toList . runIdentity . fromJust $ Trace.lookupByAddr @Normal ((== "m") . tag ) traceQ
+      -- c_dist = toList . fromJust $ Trace.lookupByAddr @Normal ((== "c") . tag ) traceQ
   pure m_dist
 
 mleLinRegr :: Int -> Int -> Int -> Sampler [Double]
 mleLinRegr t_steps l_samples n_datapoints = do
   let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
   traceQ <- MLE.mle t_steps l_samples (linRegr xys)
-  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
-      -- c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
+  let m_dist = toList . runIdentity . fromJust $ Trace.lookupByAddr @Normal ((== "m") . tag ) traceQ
+      -- c_dist = toList . fromJust $ Trace.lookupByAddr @Normal ((== "c") . tag ) traceQ
   pure m_dist
 
 mapLinRegr :: Int -> Int -> Int -> Sampler [Double]
 mapLinRegr t_steps l_samples n_datapoints = do
   let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
   traceQ <- MAP.map t_steps l_samples (linRegr xys)
-  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
-      -- c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
+  let m_dist = toList . runIdentity . fromJust $ Trace.lookupByAddr @Normal ((== "m") . tag ) traceQ
+      -- c_dist = toList . fromJust $ Trace.lookupByAddr @Normal ((== "c") . tag ) traceQ
   pure m_dist

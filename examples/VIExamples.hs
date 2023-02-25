@@ -21,7 +21,7 @@ import qualified Inference.VI.MLE as MLE
 import qualified Inference.VI.MAP as MAP
 import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
 import qualified Trace
-import           Trace (Key(..))
+import           Trace (Key(..), runIdentity)
 import Control.Monad ( replicateM, (>=>) )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
@@ -71,8 +71,8 @@ bbviLinRegr t_steps l_samples n_datapoints = do
   let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
       empty_env    = (#y := []) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- BBVI.bbvi t_steps l_samples linRegrGuide (linRegr xys) empty_env
-  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
-      c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
+  let m_dist = toList . runIdentity . fromJust $ Trace.lookupByAddr @Normal ((== "m") . tag ) traceQ
+      c_dist = toList . runIdentity . fromJust $ Trace.lookupByAddr @Normal ((== "c") . tag ) traceQ
   pure (m_dist, c_dist)
 
 mleLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
@@ -80,8 +80,8 @@ mleLinRegr t_steps l_samples n_datapoints = do
   let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
       empty_env    = (#y := []) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- MLE.mle t_steps l_samples linRegrGuide (linRegr xys) empty_env
-  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
-      c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
+  let m_dist = toList . runIdentity . fromJust $ Trace.lookupByAddr @Normal ((== "m") . tag ) traceQ
+      c_dist = toList . runIdentity . fromJust $ Trace.lookupByAddr @Normal ((== "c") . tag ) traceQ
   pure (m_dist, c_dist)
 
 mapLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
@@ -89,8 +89,8 @@ mapLinRegr t_steps l_samples n_datapoints = do
   let xys          = [ (x, 2 * x) | x <- [1 .. fromIntegral n_datapoints]]
       empty_env    = (#y := []) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   traceQ <- MAP.map t_steps l_samples linRegrGuide (linRegr xys) empty_env
-  let m_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "m") . tag ) traceQ
-      c_dist = toList . fromJust $ Trace.lookupBy @Normal ((== "c") . tag ) traceQ
+  let m_dist = toList . runIdentity . fromJust $ Trace.lookupByAddr @Normal ((== "m") . tag ) traceQ
+      c_dist = toList . runIdentity . fromJust $ Trace.lookupByAddr @Normal ((== "c") . tag ) traceQ
   pure (m_dist, c_dist)
 
 -- | Chain of HMM nodes
@@ -130,8 +130,8 @@ bbviHMM t_steps l_samples hmm_length = do
   let empty_env  = #trans_p := [] <:> #obs_p := [] <:> #x := []  <:> enil
 
   traceQ <- BBVI.bbvi t_steps l_samples (hmmGuide hmm_length 0) (hmm hmm_length 0 ys) empty_env
-  let trans_dist = toList . fromJust $ Trace.lookupBy @Beta  ((== "trans_p") . tag ) traceQ
-      obs_dist   = toList . fromJust $ Trace.lookupBy @Beta  ((== "obs_p") . tag ) traceQ
+  let trans_dist = toList . runIdentity . fromJust $ Trace.lookupByAddr @Beta  ((== "trans_p") . tag ) traceQ
+      obs_dist   = toList . runIdentity . fromJust $ Trace.lookupByAddr @Beta  ((== "obs_p") . tag ) traceQ
   pure (trans_dist, obs_dist)
 
 mleHMM :: Int -> Int -> Int -> Sampler ([Double], [Double])
@@ -141,8 +141,8 @@ mleHMM t_steps l_samples hmm_length = do
   let empty_env  = #trans_p := [] <:> #obs_p := [] <:> #x := []  <:> enil
 
   traceQ <- MLE.mle t_steps l_samples (hmmGuide hmm_length 0) (hmm hmm_length 0 ys) empty_env
-  let trans_dist = toList . fromJust $ Trace.lookupBy @Beta  ((== "trans_p") . tag ) traceQ
-      obs_dist   = toList . fromJust $ Trace.lookupBy @Beta  ((== "obs_p") . tag ) traceQ
+  let trans_dist = toList . runIdentity . fromJust $ Trace.lookupByAddr @Beta  ((== "trans_p") . tag ) traceQ
+      obs_dist   = toList . runIdentity . fromJust $ Trace.lookupByAddr @Beta  ((== "obs_p") . tag ) traceQ
   pure (trans_dist, obs_dist)
 
 mapHMM :: Int -> Int -> Int -> Sampler ([Double], [Double])
@@ -152,8 +152,8 @@ mapHMM t_steps l_samples hmm_length = do
   let empty_env  = #trans_p := [] <:> #obs_p := [] <:> #x := []  <:> enil
 
   traceQ <- MAP.map t_steps l_samples (hmmGuide hmm_length 0) (hmm hmm_length 0 ys) empty_env
-  let trans_dist = toList . fromJust $ Trace.lookupBy @Beta  ((== "trans_p") . tag ) traceQ
-      obs_dist   = toList . fromJust $ Trace.lookupBy @Beta  ((== "obs_p") . tag ) traceQ
+  let trans_dist = toList . runIdentity . fromJust $ Trace.lookupByAddr @Beta  ((== "trans_p") . tag ) traceQ
+      obs_dist   = toList . runIdentity . fromJust $ Trace.lookupByAddr @Beta  ((== "obs_p") . tag ) traceQ
   pure (trans_dist, obs_dist)
 
 
@@ -203,9 +203,9 @@ bbviLDA t_steps l_samples n_words = do
       n_topics   = snat @(FromGHC 2)
       ws         = take n_words LDA.document
   traceQ <- BBVI.bbvi t_steps l_samples (topicGuide vocab n_topics ws) (topicModel vocab n_topics ws) empty_env
-  let θ_dist     = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 2)) ((== "θ") . tag) traceQ
-      φ0_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 0)) traceQ
-      φ1_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 1)) traceQ
+  let θ_dist     = toList . runIdentity . fromJust $ Trace.lookupByAddr @(Dirichlet (FromGHC 2)) ((== "θ") . tag) traceQ
+      φ0_dist    = toList . runIdentity . fromJust $ Trace.lookupByAddr @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 0)) traceQ
+      φ1_dist    = toList . runIdentity . fromJust $ Trace.lookupByAddr @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 1)) traceQ
   pure (θ_dist, φ0_dist, φ1_dist)
 
 mleLDA :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double])
@@ -216,9 +216,9 @@ mleLDA t_steps l_samples n_words = do
       n_topics   = snat @(FromGHC 2)
       ws         = take n_words LDA.document
   traceQ <- MLE.mle t_steps l_samples (topicGuide vocab n_topics ws) (topicModel vocab n_topics ws) empty_env
-  let θ_dist     = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 2)) ((== "θ") . tag) traceQ
-      φ0_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 0)) traceQ
-      φ1_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 1)) traceQ
+  let θ_dist     = toList . runIdentity . fromJust $ Trace.lookupByAddr @(Dirichlet (FromGHC 2)) ((== "θ") . tag) traceQ
+      φ0_dist    = toList . runIdentity . fromJust $ Trace.lookupByAddr @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 0)) traceQ
+      φ1_dist    = toList . runIdentity . fromJust $ Trace.lookupByAddr @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 1)) traceQ
   pure (θ_dist, φ0_dist, φ1_dist)
 
 mapLDA :: Int -> Int -> Int -> Sampler ([Double], [Double], [Double])
@@ -229,7 +229,7 @@ mapLDA t_steps l_samples n_words = do
       n_topics   = snat @(FromGHC 2)
       ws         = take n_words LDA.document
   traceQ <- MAP.map t_steps l_samples (topicGuide vocab n_topics ws) (topicModel vocab n_topics ws) empty_env
-  let θ_dist     = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 2)) ((== "θ") . tag) traceQ
-      φ0_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 0)) traceQ
-      φ1_dist    = toList . fromJust $ Trace.lookupBy @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 1)) traceQ
+  let θ_dist     = toList . runIdentity . fromJust $ Trace.lookupByAddr @(Dirichlet (FromGHC 2)) ((== "θ") . tag) traceQ
+      φ0_dist    = toList . runIdentity . fromJust $ Trace.lookupByAddr @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 0)) traceQ
+      φ1_dist    = toList . runIdentity . fromJust $ Trace.lookupByAddr @(Dirichlet (FromGHC 4)) (\(Addr  t i) -> (t, i) == ("φ", 1)) traceQ
   pure (θ_dist, φ0_dist, φ1_dist)

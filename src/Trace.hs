@@ -29,25 +29,19 @@ module Trace (
   , filterTrace
   -- * Log-probability trace
   , LPTrace
-  -- , traceLogProbs
-  -- * Gradient trace
+  -- * Guide + gradient traces
+  , Key(..)
+  , GuideTrace
   , GradTrace
   , VecFor(..)
-  , unVecFor
-  -- * Dist trace
-  , GuideTrace
-  , Key(..)
-  -- , lookupBy
-  -- , lookupWithDefault
-  -- , lookupOrInsert
-  -- , map
-  -- , dlookupOrInsert
+  -- , unVecFor
+  , lookupByAddr
   , intersectWithAdd
   , module Data.Dependent.Map
   , module Data.Functor.Identity
   -- , dmap
   ) where
-
+import           Data.Dependent.Map.Internal
 import           Data.Dependent.Map
 import           Data.Map (Map)
 import           Data.Maybe ( fromJust, fromMaybe )
@@ -67,7 +61,6 @@ import Unsafe.Coerce
 import Data.Functor.Identity
 import Data.GADT.Compare
 import Data.Typeable
-
 
 {- $Address
    Identifiers for probabilistic operations.
@@ -144,11 +137,8 @@ type LPTrace = Map Addr LogP
 
 {- | Dependent map. -}
 
-data VecFor q where
-  VecFor :: DiffDist q a => Vec (Arity q) Double -> VecFor q
-
-unVecFor :: DiffDist q a => VecFor q -> Vec (Arity q) Double
-unVecFor (VecFor q) = q
+type GuideTrace = DMap Key Identity
+type GradTrace  = DMap Key VecFor
 
 data Key q where
   Key :: (DiffDist q a, Typeable q) => Addr -> Key q
@@ -180,16 +170,32 @@ instance GCompare Key where
       (EQ, EQ) -> case geq k1 k2 of Just Refl -> GEQ
                                     Nothing   -> error "shouldn't happen"
 
-type GuideTrace = DMap Key Identity
-type GradTrace  = DMap Key VecFor
+data VecFor q where
+  VecFor :: forall q a. DiffDist q a => {unVecFor :: Vec (Arity q) Double } -> VecFor q
 
+-- unVecFor :: DiffDist q a => VecFor q -> Vec (Arity q) Double
+-- unVecFor (VecFor q) = q
+
+lookupByAddr :: forall v f. Typeable v => (Addr -> Bool) -> DMap Key f -> Maybe (f v)
+lookupByAddr f = lookupWith (\(Key addr) -> f addr) where
+  lookupWith :: (forall v. Key v -> Bool) -> DMap Key f -> Maybe (f v)
+  lookupWith f = go where
+    go :: DMap Key f -> Maybe (f v)
+    go Tip = Nothing
+    go (Bin _ (kx@(Key xx) :: Key v1) x l r) =
+        case (f kx, eqT @v @v1) of
+            (True, Just Refl) -> Just x
+            _                 -> go l <|> go r
+
+intersectWithAdd :: GuideTrace -> GradTrace -> GuideTrace
+intersectWithAdd guides grads = intersectionWithKey f guides grads
+  where f ::  Key q -> Identity q -> VecFor q -> Identity q
+        f _ (Identity q) (VecFor v) = Identity (safeAddGrad q v)
+
+{-
 lookupGuide :: DiffDist q a => Key q  -> GuideTrace -> Maybe (Identity q)
 lookupGuide (Key a) guides = lookup (Key a) guides
 
 insertGrad :: DiffDist q a => Key q  -> Vec (Arity q) Double -> GradTrace -> GradTrace
 insertGrad k vec grads = insert k (VecFor vec) grads
-
-intersectWithAdd :: GuideTrace -> GradTrace -> GuideTrace
-intersectWithAdd guides grads = intersectionWithKey f guides grads
-  where f :: Key q -> Identity q -> VecFor q -> Identity q
-        f _ (Identity q) (VecFor v) = Identity (safeAddGrad q v)
+-}

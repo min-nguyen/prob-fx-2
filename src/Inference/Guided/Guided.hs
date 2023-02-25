@@ -110,4 +110,6 @@ gradStep
   -> GuideTrace  -- ^ optimisable distributions Q(λ_t)
   -> GradTrace  -- ^ elbo gradient estimates   E[δelbo]
   -> GuideTrace  -- ^ updated distributions     Q(λ_{t+1})
-gradStep η = undefined -- Trace.intersectLeftWith (\q δλ ->  q `safeAddGrad` (η *| δλ))
+gradStep η guides grads =
+  let scaledGrads = Trace.map (\(VecFor δλ) -> VecFor (η *| δλ)) grads
+  in  Trace.intersectWithAdd guides scaledGrads
