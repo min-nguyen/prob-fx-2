@@ -16,6 +16,8 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Eta reduce" #-}
 
 {- | For recording samples and log-probabilities during model execution.
 -}
@@ -38,7 +40,7 @@ import           Prelude hiding (lookup, map)
 import Control.Applicative ((<|>))
 import Unsafe.Coerce
 import Data.Dependent.Map
-import Data.Functor.Identity (Identity)
+import Data.Functor.Identity (Identity(..))
 import Data.GADT.Compare
 
 import Data.Typeable
@@ -52,8 +54,8 @@ type Tag  = String
 data Addr = Addr { tag :: Tag, local :: Int }
   deriving (Eq, Ord, Show)
 
-data GetVec q where
-  GetVec :: DiffDist q a => Vec (Arity q) a -> GetVec q
+data VecFor q where
+  VecFor :: DiffDist q a => Vec (Arity q) Double -> VecFor q
 
 data Key q where
   Key :: Typeable q => Addr -> Key q
@@ -74,7 +76,15 @@ instance GCompare Key where
                                     Nothing   -> error "shouldn't happen"
 
 type GuideTrace = DMap Key Identity
-type GradTrace  = DMap Key GetVec
+type GradTrace  = DMap Key VecFor
 
 lookupGuide :: DiffDist q a => Key q  -> GuideTrace -> Maybe (Identity q)
 lookupGuide (Key a) guides = lookup (Key a) guides
+
+insertGrad :: DiffDist q a => Key q  -> Vec (Arity q) Double -> GradTrace -> GradTrace
+insertGrad k vec grads = insert k (VecFor vec) grads
+
+intersectWithAdd :: GuideTrace -> GradTrace -> GuideTrace
+intersectWithAdd guides grads = intersectionWithKey f guides grads
+  where f :: Key q -> Identity q -> VecFor q -> Identity q
+        f _ (Identity q) (VecFor v) = Identity (safeAddGrad q v)
