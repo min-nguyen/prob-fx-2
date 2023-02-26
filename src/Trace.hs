@@ -140,9 +140,8 @@ type LPTrace = Map Addr LogP
 type GuideTrace = DMap Key Identity
 type GradTrace  = DMap Key VecFor
 
-data Key q where
-  Key :: (DiffDist q a, Typeable q) => Addr -> Key q
-  deriving Typeable
+data Key q    = forall a. (DiffDist q a, Typeable q) => Key Addr deriving Typeable
+data VecFor q = forall a. DiffDist q a => VecFor {unVecFor :: Vec (Arity q) Double }
 
 instance Show (Key a) where
   show :: Key a -> String
@@ -170,11 +169,8 @@ instance GCompare Key where
       (EQ, EQ) -> case geq k1 k2 of Just Refl -> GEQ
                                     Nothing   -> error "shouldn't happen"
 
-data VecFor q where
-  VecFor :: forall q a. DiffDist q a => {unVecFor :: Vec (Arity q) Double } -> VecFor q
-
--- unVecFor :: DiffDist q a => VecFor q -> Vec (Arity q) Double
--- unVecFor (VecFor q) = q
+liftAddGrad ::  Key q -> Identity q -> VecFor q -> Identity q
+liftAddGrad _ (Identity q) (VecFor v) = Identity (safeAddGrad q v)
 
 lookupByAddr :: forall v f. Typeable v => (Addr -> Bool) -> DMap Key f -> Maybe (f v)
 lookupByAddr f = lookupWith (\(Key addr) -> f addr) where
@@ -188,9 +184,7 @@ lookupByAddr f = lookupWith (\(Key addr) -> f addr) where
             _                 -> go l <|> go r
 
 intersectWithAdd :: GuideTrace -> GradTrace -> GuideTrace
-intersectWithAdd guides grads = intersectionWithKey f guides grads
-  where f ::  Key q -> Identity q -> VecFor q -> Identity q
-        f _ (Identity q) (VecFor v) = Identity (safeAddGrad q v)
+intersectWithAdd = intersectionWithKey liftAddGrad
 
 {-
 lookupGuide :: DiffDist q a => Key q  -> GuideTrace -> Maybe (Identity q)
