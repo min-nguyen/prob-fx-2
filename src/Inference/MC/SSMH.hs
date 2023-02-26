@@ -36,6 +36,7 @@ import           Sampler ( Sampler, random, randomFrom, handleIO )
 import           Data.Bifunctor (Bifunctor(..))
 import           Util ( assocR )
 import Effects.State
+import Effects.Observe
 
 {- | Top-level wrapper for SSMH inference.
 -}
@@ -93,7 +94,7 @@ exec τ0 = handleIO . reuseTrace τ0 . defaultObserve . traceLP Map.empty
 traceLP :: Members [Observe, Sample] es
   => LPTrace -> Comp es a -> Comp es (a, LPTrace)
 traceLP ρ (Val x)   = pure (x, ρ)
-traceLP ρ (Op op k) = case op of
-  ObsPrj d y α   -> Op op (\x -> traceLP (Map.insert α (logProb d x) ρ) $ k x)
-  SampPrj d  α   -> Op op (\x -> traceLP (Map.insert α (logProb d x) ρ) $ k x)
-  _              -> Op op (traceLP ρ . k)
+traceLP ρ (Op op k)
+  | Just (Observe d y α) <- prj op = Op op (\x -> traceLP (Map.insert α (logProb d x) ρ) $ k x)
+  | Just (Sample d  α)   <- prj op = Op op (\x -> traceLP (Map.insert α (logProb d x) ρ) $ k x)
+  | otherwise                      = Op op (traceLP ρ . k)

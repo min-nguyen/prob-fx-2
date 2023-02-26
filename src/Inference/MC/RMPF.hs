@@ -46,14 +46,7 @@ import Inference.MC.SMC (advance)
 
 {- | The particle context for an MCMC trace.
 -}
-data PrtState = PrtState Addr LogP Trace
-
-unpack :: [PrtState] -> (Addr, [LogP], [Trace])
-unpack prts = (head αs, ps, τs)
-  where (αs, ps, τs) = foldr (\(PrtState α p τ) (αs, ps, τs) -> (α:αs, p:ps, τ:τs) ) ([],[],[]) prts
-
-pack :: (Addr, [LogP], [Trace]) -> [PrtState]
-pack (α, ps, τs) = zipWith3 PrtState (repeat α) ps τs
+type PrtState =  (LogP, Trace)
 
 {- | Call RMPF on a model.
 -}
@@ -81,7 +74,7 @@ rmpf' ::
   -> Sampler [(a, PrtState)]                      -- ^ final particle results and contexts
 rmpf' n_prts mh_steps tags model = do
   -- let q =  pfilter exec model (prts, ps)
-  (handleIO . handleResample mh_steps tags model . pfilter n_prts (PrtState (Addr "" 0) 0 Map.empty) exec ) model
+  (handleIO . handleResample mh_steps tags model . pfilter n_prts (0, Map.empty) exec ) model
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint
      at the first @Observe@ operation, by returning:
@@ -89,8 +82,8 @@ rmpf' n_prts mh_steps tags model = do
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
 exec :: ModelStep '[Sampler] PrtState a
-exec (p, PrtState _ w τ)  = (fmap asPrtTrace . handleIO . reuseTrace τ . suspendα w) p where
-  asPrtTrace ((prt, α, w), τ) = (prt, PrtState α w τ)
+exec (p, (w, τ))  = (fmap asPrtTrace . handleIO . reuseTrace τ . advance w) p where
+  asPrtTrace ((prt, w), τ) = (prt, (w, τ))
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using SSMH.
 -}
@@ -99,44 +92,36 @@ handleResample :: (Member Sampler fs)
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> Model '[Sampler] a
   -> Handler (Resample PrtState) fs [(a, PrtState)] [(a, PrtState)]
-handleResample mh_steps tags  m = handleWith () (const Val) (const hop) where
-  hop :: Member Sampler fs => Resample PrtState x -> (() -> x -> Comp fs a) -> Comp fs a
-  hop  (Resample pσs) k = do
-    let (α, ws, τs) = (unpack . map snd) pσs
+handleResample mh_steps tags  m = handleWith 0 (const Val) hop where
+  hop :: Member Sampler fs => Int -> Resample PrtState x -> (Int -> x -> Comp fs a) -> Comp fs a
+  hop t (Resample pσs) k = do
+    let (ws, τs) = (unzip . map snd) pσs
   -- | Resample the RMPF particles according to the indexes returned by the SMC resampler
     idxs <- call $ SMC.resampleMul ws
     let τs_res    = map (τs !!) idxs
     -- | Insert break point to perform SSMH up to
-        partial_model   = suspendAt α m
+        partial_model   = suspendAfter t m
     -- | Perform SSMH using each resampled particle's sample trace and get the most recent SSMH iteration.
-    wprts_mov <- mapM (\τ -> do ((prt_mov, lwtrace), τ_mov) <- fmap head (call $ SSMH.ssmh' mh_steps τ tags partial_model)
-                                let w_mov = (sum . Map.elems) lwtrace
-                                return (prt_mov, PrtState α w_mov τ_mov) )
-                      τs_res
-
-    let (prts_mov, (α, ps_mov, τs_mov)) = (second unpack . unzip) wprts_mov
-        wprts_norm =  zip prts_mov (pack (α, repeat (logMeanExp ps_mov), τs_mov))
-    k () (unsafeCoerce wprts_norm)
+    wprts_mov <- forM τs_res (\τ -> do  ((prt_mov, lwtrace), τ_mov) <- fmap head (call $ SSMH.ssmh' mh_steps τ tags partial_model)
+                                        let w_mov = (sum . Map.elems) lwtrace
+                                        return (prt_mov, (w_mov, τ_mov)) )
+    let (prts_mov, (ps_mov, τs_mov)) = (second unzip . unzip) wprts_mov
+        wprts_norm =  zip prts_mov (zip (repeat (logMeanExp ps_mov)) τs_mov)
+    k (t + 1) (unsafeCoerce wprts_norm)
     -- k () wprts_mov
-
-suspendα :: LogP -> Handler Observe es a (Comp (Observe : es) a, Addr, LogP)
-suspendα logp (Val x)   = pure (Val x, Addr "" 0, logp)
-suspendα logp (Op op k) = case discharge op of
-  Right (Observe d y α) -> Val (k y, α, logp + logProb d y)
-  Left op'              -> Op op' (suspendα logp . k)
 
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
      It returns the rest of the computation.
 -}
-suspendAt :: (Member Observe es)
-  => Addr       -- ^ Address of @Observe@ operation to break at
+suspendAfter :: (Member Observe es)
+  => Int       -- ^ Address of @Observe@ operation to break at
   -> Comp es a
   -> Comp es (Comp es a)
-suspendAt α_break (Val x) = pure (Val x)
-suspendAt α_break (Op op k) = case prj op of
+suspendAfter t (Val x)   = pure (Val x)
+suspendAfter t (Op op k) = case prj op of
   Just (Observe d y α) -> do
-    if α_break == α
+    if t <= 0
       then Val (k y)
-      else Op op (suspendAt α_break . k)
-  _ -> Op op (suspendAt α_break . k)
+      else Op op (suspendAfter (t - 1) . k)
+  _ -> Op op (suspendAfter t . k)
 
