@@ -31,14 +31,14 @@ import qualified Vec
 import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
 
-data GradUpd a where
-  UpdateParam :: [(GradTrace, LogP)] -> GuideTrace -> GradUpd GuideTrace
+data GradUpdate a where
+  UpdateParam :: [(GradTrace, LogP)] -> GuideTrace -> GradUpdate GuideTrace
 
 type GuidedModel es a = Model (Guide : es) a
 
 type GuidedExec es a = GuideTrace -> GuidedModel es a -> Sampler ((a, GradTrace), LogP)
 
-guidedLoop :: (Members [GradUpd, Sampler] fs)
+guidedLoop :: (Members [GradUpdate, Sampler] fs)
   => Int                                     -- ^ number of optimisation steps (T)
   -> Int                                     -- ^ number of samples to estimate the gradient over (L)
   -> GuidedExec es a -> GuidedModel es a

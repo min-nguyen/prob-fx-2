@@ -55,9 +55,9 @@ priorDiff  = handleWith 0 (\s a -> Val (a, s)) hop where
 
 
 -- | Compute and update the guide parameters using a likelihood-ratio-estimate E[δelbo] of the ELBO gradient
-handleLRatio :: forall fs a. Handler GradUpd fs a a
+handleLRatio :: forall fs a. Handler GradUpdate fs a a
 handleLRatio = handleWith 1 (const Val) hop where
-  hop :: Int -> GradUpd x -> (Int -> x -> Comp fs a) -> Comp fs a
+  hop :: Int -> GradUpdate x -> (Int -> x -> Comp fs a) -> Comp fs a
   hop t (UpdateParam wgrads params) k =
     let δelbo       :: GradTrace  = lratio (unzip wgrads)
         scaledGrads :: GradTrace  = Trace.map (\(VecFor δλ) -> VecFor (1.0 *| δλ)) δelbo

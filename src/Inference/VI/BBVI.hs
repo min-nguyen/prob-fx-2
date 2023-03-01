@@ -63,9 +63,9 @@ exec :: Env env -> VIModel env '[Sampler] a -> Sampler (a, LogP)
 exec env = handleIO . joint . fmap fst . handleEnvRW env where
   joint = fmap (\((x, a), b) -> (x, a + b)) . prior . likelihood
 
-handleLRatio :: forall fs a. Handler GradUpd fs a a
+handleLRatio :: forall fs a. Handler GradUpdate fs a a
 handleLRatio = handleWith 1 (const Val) hop where
-  hop :: Int -> GradUpd x -> (Int -> x -> Comp fs a) -> Comp fs a
+  hop :: Int -> GradUpdate x -> (Int -> x -> Comp fs a) -> Comp fs a
   hop t (UpdateParam ws δGs params) k =
     let δelbo       :: GradTrace  = lratio (δGs, ws)
         scaledGrads :: GradTrace  = Trace.map (\(VecFor δλ) -> VecFor (1.0 *| δλ)) δelbo

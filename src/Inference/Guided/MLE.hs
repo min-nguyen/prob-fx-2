@@ -44,9 +44,9 @@ exec :: GuideTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
 exec params = handleIO . defaultGuide . defaultSample . likelihood . reuseGuide params
 
 -- | Compute and update the guide parameters using a self-normalised importance weighted gradient estimate
-handleNormGradDescent :: Comp (GradUpd : fs) a -> Comp fs a
+handleNormGradDescent :: Comp (GradUpdate : fs) a -> Comp fs a
 handleNormGradDescent = handleWith 0 (const Val) hop where
-  hop :: Int -> GradUpd x -> (Int -> x -> Comp fs a) -> Comp fs a
+  hop :: Int -> GradUpdate x -> (Int -> x -> Comp fs a) -> Comp fs a
   hop t (UpdateParam wgrads params) k =
     let δelbos  = normalisingEstimator (unzip wgrads)
         params' = case δelbos of Just δelbos' -> gradStep 1 params δelbos'

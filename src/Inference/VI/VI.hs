@@ -41,13 +41,13 @@ import Inference.MC.LW (joint)
 type VIGuide env es a  = Comp (EnvRW env : Param : Sample : es) a
 type VIModel env es a  = Comp (EnvRW env : Observe : Sample : es) a
 
-data GradUpd a where
-  UpdateParam :: [LogP] -> [GradTrace] -> GuideTrace -> GradUpd GuideTrace
+data GradUpdate a where
+  UpdateParam :: [LogP] -> [GradTrace] -> GuideTrace -> GradUpdate GuideTrace
 
 type GuideHandler env es a = GuideTrace -> VIGuide env es a -> Sampler (((a, Env env), GradTrace), LogP)
 type ModelExec env es a = Env env    -> VIModel env es a -> Sampler (a, LogP)
 
-guidedLoop :: (Members [GradUpd, Sampler] fs)
+guidedLoop :: (Members [GradUpdate, Sampler] fs)
   => Int                                     -- ^ number of optimisation steps (T)
   -> Int                                     -- ^ number of samples to estimate the gradient over (L)
   -> VIGuide env es1 a -> GuideHandler env es1 a
@@ -67,7 +67,7 @@ guidedLoop num_timesteps num_samples guide execg model execm guideParams_0 = do
 --      3. Update the parameters λ of the guide
 -- -}
 
-guidedStep ::  (Members [GradUpd, Sampler] fs)
+guidedStep ::  (Members [GradUpdate, Sampler] fs)
   => Int
   -> GuideHandler env es1 a -> ModelExec env es2 b -> VIGuide env es1 a -> VIModel env es2 b
   -> GuideTrace                            -- ^ guide parameters λ_t
