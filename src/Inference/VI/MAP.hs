@@ -41,7 +41,7 @@ map :: forall env es a b. es ~ '[Sampler]
   -> VIGuide env es a                      -- ^ guide Q(X; λ)
   -> VIModel env es b                      -- ^ model P(X, Y)
   -> Env env                            -- ^ model environment (containing only observed data Y)
-  -> Sampler GuideTrace                     -- ^ final parameters θ_T
+  -> Sampler Guides                     -- ^ final parameters θ_T
 map num_timesteps num_samples guide model env  = do
   -- | Set up a empty dummy guide Q to return the original input model environment
   λ_0 <- collectParams env guide
@@ -50,7 +50,7 @@ map num_timesteps num_samples guide model env  = do
       VI.guidedLoop num_timesteps num_samples guide (execGuide env) model exec λ_0
 
 -- | Return probability of 1
-execGuide :: Env env -> GuideTrace -> VIGuide env '[Sampler] a -> Sampler (((a, Env env), GradTrace), LogP)
+execGuide :: Env env -> Guides -> VIGuide env '[Sampler] a -> Sampler (((a, Env env), ΔGuides), LogP)
 execGuide env params  = (second (const 0) <$>) . BBVI.execGuide  env  params
   -- (handleIO . fmap (,0) . defaultSample . defaultParam params . handleEnvRW env) guide
 

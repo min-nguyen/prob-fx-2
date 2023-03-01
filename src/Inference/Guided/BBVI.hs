@@ -32,7 +32,7 @@ bbvi :: forall es a. ()
   => Int                                -- ^ number of optimisation steps (T)
   -> Int                                -- ^ number of samples to estimate the gradient over (L)
   -> GuidedModel '[Sampler] a      -- ^ guide Q(X; λ)
-  -> Sampler GuideTrace                 -- ^ final guide parameters λ_T
+  -> Sampler Guides                 -- ^ final guide parameters λ_T
 bbvi num_timesteps num_samples model = do
   λ_0 <- collectGuide model
   -- liftIO (print λ_0)
@@ -40,7 +40,7 @@ bbvi num_timesteps num_samples model = do
     $ guidedLoop num_timesteps num_samples exec model λ_0
 
 -- | Compute Q(X; λ)
-exec :: GuideTrace -> GuidedModel '[Sampler] a -> Sampler ((a, GradTrace), LogP)
+exec :: Guides -> GuidedModel '[Sampler] a -> Sampler ((a, ΔGuides), LogP)
 exec params = handleIO . mergeWeights . priorDiff . defaultSample . likelihood .  reuseGuide params  where
   mergeWeights = fmap (\((x, w_lat), w_obs) -> (x, w_lat + w_obs))
 
@@ -58,15 +58,15 @@ priorDiff  = handleWith 0 (\s a -> Val (a, s)) hop where
 handleLRatio :: forall fs a. Handler GradUpdate fs a a
 handleLRatio = handleWith 1 (const Val) hop where
   hop :: Int -> GradUpdate x -> (Int -> x -> Comp fs a) -> Comp fs a
-  hop t (UpdateParam wgrads params) k =
-    let δelbo       :: GradTrace  = lratio (unzip wgrads)
-        scaledGrads :: GradTrace  = Trace.map (\(VecFor δλ) -> VecFor (1.0 *| δλ)) δelbo
-        params'     :: GuideTrace = Trace.intersectWithAdd params scaledGrads
+  hop t (GradUpdate wgrads params) k =
+    let δelbo       :: ΔGuides  = lratio (unzip wgrads)
+        scaledGrads :: ΔGuides  = Trace.map (\(VecFor δλ) -> VecFor (1.0 *| δλ)) δelbo
+        params'     :: Guides = Trace.intersectWithAdd params scaledGrads
     in  k (t + 1) params'
 
 -- | Where ws = logP(X, Y) - logQ(X; λ)
 --         δGs   = δ_λ logQ(X;λ)
-lratio :: ([GradTrace], [LogP]) -> GradTrace
+lratio :: ([ΔGuides], [LogP]) -> ΔGuides
 -- lratio = undefined
 lratio (δGs, ws) = foldr (\(Some k@(Key α)) -> Trace.insert k (VecFor (estδELBO k))) Trace.empty vars
   where
@@ -79,7 +79,7 @@ lratio (δGs, ws) = foldr (\(Some k@(Key α)) -> Trace.insert k (VecFor (estδEL
             F^{1:L} = W_norm^{1:L} * G^{1:L}
         where the normalised importance weight is defined via:
             log(W_norm^l) = log(W^l) + max(log(W^{1:L})) -}
-    δFs :: [GradTrace]
+    δFs :: [ΔGuides]
     δFs = zipWith (\logW -> Trace.map (\(VecFor δ) -> VecFor (exp logW *| δ))) (normaliseLogPs ws) δGs
     {- | Compute the ELBO gradient estimate for a random variable v's associated parameters:
             E[δelbo(v)] = sum (F_v^{1:L} - b_v * G_v^{1:L}) / L

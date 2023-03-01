@@ -32,30 +32,30 @@ import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
 
 data GradUpdate a where
-  UpdateParam :: [(GradTrace, LogP)] -> GuideTrace -> GradUpdate GuideTrace
+  GradUpdate :: [(ΔGuides, LogP)] -> Guides -> GradUpdate Guides
 
 type GuidedModel es a = Model (Guide : es) a
 
-type GuidedExec es a = GuideTrace -> GuidedModel es a -> Sampler ((a, GradTrace), LogP)
+type GuidedExec es a = Guides -> GuidedModel es a -> Sampler ((a, ΔGuides), LogP)
 
 guidedLoop :: (Members [GradUpdate, Sampler] fs)
   => Int                                     -- ^ number of optimisation steps (T)
   -> Int                                     -- ^ number of samples to estimate the gradient over (L)
   -> GuidedExec es a -> GuidedModel es a
-  -> GuideTrace                             -- ^ guide parameters λ_t, model parameters θ_t
-  -> Comp fs GuideTrace      -- ^ final guide parameters λ_T
+  -> Guides                             -- ^ guide parameters λ_t, model parameters θ_t
+  -> Comp fs Guides      -- ^ final guide parameters λ_T
 guidedLoop n_timesteps n_samples exec model params_0 = do
   let guidedStep φ = do
         rs <- replicateM n_samples (call $ exec φ model)
         let wgrads = Prelude.map (\((_, grad), w) -> (grad, w)) rs
-        call (UpdateParam wgrads φ)
+        call (GradUpdate wgrads φ)
   foldr1 (>=>) (replicate n_timesteps guidedStep) params_0
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
-collectGuide :: GuidedModel '[Sampler] a -> Sampler GuideTrace
+collectGuide :: GuidedModel '[Sampler] a -> Sampler Guides
 collectGuide = handleIO . defaultGuide . loop Trace.empty .  SIM.defaultSample . SIM.defaultObserve
   where
-  loop :: GuideTrace -> Comp (Guide : es) a -> Comp (Guide : es) GuideTrace
+  loop :: Guides -> Comp (Guide : es) a -> Comp (Guide : es) Guides
   loop params (Val _)   = pure params
   loop params (Op op k) = case prj op of
     Just (Guide d (q :: q) α) -> do let kα = (Key α :: Key q)
@@ -65,9 +65,9 @@ collectGuide = handleIO . defaultGuide . loop Trace.empty .  SIM.defaultSample .
 
 {- | Set the proposal distributions Q(λ) of @Score@ operations.
 -}
-reuseGuide :: forall es a. Member Guide es => GuideTrace -> Comp es a -> Comp es (a, GradTrace)
+reuseGuide :: forall es a. Member Guide es => Guides -> Comp es a -> Comp es (a, ΔGuides)
 reuseGuide proposals = loop Trace.empty where
-  loop :: GradTrace -> Comp es a -> Comp es (a, GradTrace)
+  loop :: ΔGuides -> Comp es a -> Comp es (a, ΔGuides)
   loop grads (Val a)   = pure (a, grads)
   loop grads (Op op k) = case prj op of
     Just (Guide d (q :: q) α) -> do let kα = (Key α :: Key q)
@@ -78,9 +78,9 @@ reuseGuide proposals = loop Trace.empty where
     Nothing -> Op op (loop grads . k)
 
 {- | Reuse the proposal distributions Q(λ) of @Score@ operations.
-reuseGuide :: forall es a. Member Guide es => GuideTrace -> Comp es a -> Comp es (a, GuideTrace, GradTrace)
+reuseGuide :: forall es a. Member Guide es => Guides -> Comp es a -> Comp es (a, Guides, ΔGuides)
 reuseGuide dists = loop (dists, Trace.empty) where
-  loop :: (GuideTrace, GradTrace) -> Comp es a -> Comp es (a, GuideTrace, GradTrace)
+  loop :: (Guides, ΔGuides) -> Comp es a -> Comp es (a, Guides, ΔGuides)
   loop (dists, grads) (Val a)   = pure (a, dists, grads)
   loop (dists, grads) (Op op k) = case prj op of
     Just (Guide d (q :: q) α) -> do let (q', dists') = Trace.lookupOrInsert (Key α) q dists
@@ -107,9 +107,9 @@ prior = handleWith 0 (\lρ x -> Val (x, lρ)) hop
 
 gradStep
   :: Double  -- ^ learning rate             η
-  -> GuideTrace  -- ^ optimisable distributions Q(λ_t)
-  -> GradTrace  -- ^ elbo gradient estimates   E[δelbo]
-  -> GuideTrace  -- ^ updated distributions     Q(λ_{t+1})
+  -> Guides  -- ^ optimisable distributions Q(λ_t)
+  -> ΔGuides  -- ^ elbo gradient estimates   E[δelbo]
+  -> Guides  -- ^ updated distributions     Q(λ_{t+1})
 gradStep η guides grads =
   let scaledGrads = Trace.map (\(VecFor δλ) -> VecFor (η *| δλ)) grads
   in  Trace.intersectWithAdd guides scaledGrads

@@ -33,9 +33,9 @@ module DepMap (
   , LPTrace
   -- , traceLogProbs
   -- * Gradient trace
-  , GradTrace
+  , ΔGuides
   -- * Dist trace
-  , GuideTrace
+  , Guides
   , Key(..)
   , keys
   , Some(..)
@@ -160,17 +160,17 @@ type family Assoc (c :: * -> Constraint) (a :: *) = (b :: *) where
   Assoc Grad d = Vec (Arity d) Double
 
 -- | The type of differentiable distribution traces
-type GuideTrace = DepMap Id
+type Guides = DepMap Id
 
 -- | The type of gradient traces
-type GradTrace = DepMap Grad
+type ΔGuides = DepMap Grad
 
-instance {-# OVERLAPPING #-} Show [GuideTrace] where
+instance {-# OVERLAPPING #-} Show [Guides] where
   show (x:xs) = show x ++ "\n" ++ show xs
   show []     = ""
 
-instance Show GuideTrace where
-  show :: GuideTrace -> String
+instance Show Guides where
+  show :: Guides -> String
   show Leaf = ""
   show (Node (Key var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ") "
                                  ++ show l
@@ -178,8 +178,8 @@ instance Show GuideTrace where
     where showNewline Leaf  = ""
           showNewline node  = "\n" ++ show node
 
-instance Show GradTrace where
-  show :: GradTrace -> String
+instance Show ΔGuides where
+  show :: ΔGuides -> String
   show Leaf = ""
   show (Node (Key var) d l r) = "(" ++ show var ++ ", " ++ show d ++ ") "
                                  ++ show l
@@ -286,7 +286,7 @@ map f = go where
 
 -- | Combine the entries of two traces with an operation when their keys match,
 --   returning elements of the left trace that do not exist in the second trace.
-intersectLeftWith :: (forall d. DiffDistribution d => d -> Vec (Arity d) Double -> d) -> GuideTrace -> GradTrace -> GuideTrace
+intersectLeftWith :: (forall d. DiffDistribution d => d -> Vec (Arity d) Double -> d) -> Guides -> ΔGuides -> Guides
 intersectLeftWith _ t1 Leaf  = t1
 intersectLeftWith _ Leaf t2  = Leaf
 intersectLeftWith f (Node k1 x1 l1 r1) t2 =
@@ -297,7 +297,7 @@ intersectLeftWith f (Node k1 x1 l1 r1) t2 =
           !l1l2 = intersectLeftWith f l1 l2
           !r1r2 = intersectLeftWith f r1 r2
           -- | Split-lookup without rebalancing tree
-          dsplitLookup :: Typeable d => Key d -> GradTrace -> (GradTrace, Maybe (Vec (Arity d) Double), GradTrace)
+          dsplitLookup :: Typeable d => Key d -> ΔGuides -> (ΔGuides, Maybe (Vec (Arity d) Double), ΔGuides)
           dsplitLookup k = go where
             go Leaf            = (Leaf, Nothing, Leaf)
             go (Node kx x l r) = case trueCompare k kx of
