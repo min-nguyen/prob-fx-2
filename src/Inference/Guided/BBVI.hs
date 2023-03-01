@@ -41,7 +41,7 @@ bbvi num_timesteps num_samples model = do
 
 -- | Compute Q(X; λ)
 exec :: Guides -> GuidedModel '[Sampler] a -> Sampler ((a, ΔGuides), LogP)
-exec params = handleIO . mergeWeights . priorDiff . defaultSample . likelihood .  reuseGuide params  where
+exec params = handleIO . mergeWeights . priorDiff . defaultSample . likelihood .  useGuides params  where
   mergeWeights = fmap (\((x, w_lat), w_obs) -> (x, w_lat + w_obs))
 
 -- | Sample from each @Guide@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).

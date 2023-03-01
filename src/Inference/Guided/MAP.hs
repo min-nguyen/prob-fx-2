@@ -53,5 +53,5 @@ handleGuide  = handleWith 0 (\s a -> Val (a, s)) hop where
 
 -- | Compute Q(X; λ)
 exec :: Guides -> GuidedModel '[Sampler] a -> Sampler ((a, ΔGuides), LogP)
-exec params = handleIO . mergeWeights . handleGuide . defaultSample . defaultObserve . LW.joint 0 . reuseGuide params where
+exec params = handleIO . mergeWeights . handleGuide . defaultSample . defaultObserve . LW.joint 0 . useGuides params where
   mergeWeights = fmap (\((x, w_lat), w_obs) -> (x, w_lat + w_obs))

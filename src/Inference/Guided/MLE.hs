@@ -41,7 +41,7 @@ mle num_timesteps num_samples model = do
 
 -- | Compute Q(X; λ)
 exec :: Guides -> GuidedModel '[Sampler] a -> Sampler ((a, ΔGuides), LogP)
-exec params = handleIO . defaultGuide . defaultSample . likelihood . reuseGuide params
+exec params = handleIO . defaultGuide . defaultSample . likelihood . useGuides params
 
 -- | Compute and update the guide parameters using a self-normalised importance weighted gradient estimate
 handleNormGradDescent :: Comp (GradUpdate : fs) a -> Comp fs a

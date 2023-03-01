@@ -65,8 +65,8 @@ collectGuide = handleIO . defaultGuide . loop Trace.empty .  SIM.defaultSample .
 
 {- | Set the proposal distributions Q(λ) of @Score@ operations.
 -}
-reuseGuide :: forall es a. Member Guide es => Guides -> Comp es a -> Comp es (a, ΔGuides)
-reuseGuide proposals = loop Trace.empty where
+useGuides :: forall es a. Member Guide es => Guides -> Comp es a -> Comp es (a, ΔGuides)
+useGuides proposals = loop Trace.empty where
   loop :: ΔGuides -> Comp es a -> Comp es (a, ΔGuides)
   loop grads (Val a)   = pure (a, grads)
   loop grads (Op op k) = case prj op of
@@ -78,8 +78,8 @@ reuseGuide proposals = loop Trace.empty where
     Nothing -> Op op (loop grads . k)
 
 {- | Reuse the proposal distributions Q(λ) of @Score@ operations.
-reuseGuide :: forall es a. Member Guide es => Guides -> Comp es a -> Comp es (a, Guides, ΔGuides)
-reuseGuide dists = loop (dists, Trace.empty) where
+useGuides :: forall es a. Member Guide es => Guides -> Comp es a -> Comp es (a, Guides, ΔGuides)
+useGuides dists = loop (dists, Trace.empty) where
   loop :: (Guides, ΔGuides) -> Comp es a -> Comp es (a, Guides, ΔGuides)
   loop (dists, grads) (Val a)   = pure (a, dists, grads)
   loop (dists, grads) (Op op k) = case prj op of
