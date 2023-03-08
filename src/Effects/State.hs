@@ -49,19 +49,16 @@ modify :: Member (State s) es => (s -> s) -> Comp es ()
 modify f = get >>= put . f
 
 -- | Handle the @State s@ effect
-handleState ::
+handleState :: forall s es a.
   -- | initial state
      s
   -> Comp (State s ': es) a
   -- | (output, final state)
   -> Comp es (a, s)
-handleState s m = loop s m where
-  loop :: s -> Comp (State s ': es) a -> Comp es (a, s)
-  loop s (Val x) = return (x, s)
-  loop s (Op u k) = case discharge u of
-    Right Get      -> loop s (k s)
-    Right (Put s') -> loop s' (k ())
-    Left  u'         -> Op u' (loop s . k)
+handleState s = handleWith s (\s' x -> Val (x, s')) hop where
+  hop :: forall b. s -> State s b -> (s -> b -> Comp es (a, s)) -> Comp es (a, s)
+  hop s Get      k = k s s
+  hop _ (Put s') k = k s' ()
 
 evalState :: s -> Comp (State s : es) a -> Comp es a
 evalState s = fmap fst . handleState s
