@@ -31,8 +31,8 @@ module Trace (
   , LPTrace
   -- * Guide + gradient traces
   , Key(..)
-  , GuideTrace
-  , GradTrace
+  , Guides
+  , ΔGuides
   , VecFor(..)
   -- , unVecFor
   , lookupByAddr
@@ -137,8 +137,8 @@ type LPTrace = Map Addr LogP
 
 {- | Dependent map. -}
 
-type GuideTrace = DMap Key Identity
-type GradTrace  = DMap Key VecFor
+type Guides = DMap Key Identity
+type ΔGuides  = DMap Key VecFor
 
 data Key q    = forall a. (DiffDist q a, Typeable q) => Key Addr deriving Typeable
 data VecFor q = forall a. DiffDist q a => VecFor {unVecFor :: Vec (Arity q) Double }
@@ -183,13 +183,13 @@ lookupByAddr f = lookupWith (\(Key addr) -> f addr) where
             (True, Just Refl) -> Just x
             _                 -> go l <|> go r
 
-intersectWithAdd :: GuideTrace -> GradTrace -> GuideTrace
+intersectWithAdd :: Guides -> ΔGuides -> Guides
 intersectWithAdd = intersectionWithKey liftAddGrad
 
 {-
-lookupGuide :: DiffDist q a => Key q  -> GuideTrace -> Maybe (Identity q)
+lookupGuide :: DiffDist q a => Key q  -> Guides -> Maybe (Identity q)
 lookupGuide (Key a) guides = lookup (Key a) guides
 
-insertGrad :: DiffDist q a => Key q  -> Vec (Arity q) Double -> GradTrace -> GradTrace
+insertGrad :: DiffDist q a => Key q  -> Vec (Arity q) Double -> ΔGuides -> ΔGuides
 insertGrad k vec grads = insert k (VecFor vec) grads
 -}

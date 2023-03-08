@@ -77,7 +77,7 @@ def plotPage(output_file, data_dicts, n_groups, n_rows):
   # fig_a.tight_layout()
 
   ###
-  lgd = fig_a.legend([data_dict["language"] for data_dict in data_dicts], loc="upper center", bbox_to_anchor=(0.5, 1), fontsize=8, ncol=len(data_dicts))
+  lgd = fig_a.legend([data_dict["language"] for data_dict in data_dicts], loc="upper center", bbox_to_anchor=(0.5, 0.97), fontsize=8, ncol=len(data_dicts), frameon=False)
   ### Adjust bounding box for legend in saved figure
   fig_a.savefig(output_file, bbox_extra_artists=(lgd,), bbox_inches='tight')
 

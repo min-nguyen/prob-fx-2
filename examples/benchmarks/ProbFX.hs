@@ -30,9 +30,9 @@ bench_LR args = do
               , mhLinRegr fixed_mh_steps) row_header output_file
     benchRow ("LinRegr-[ ]-MPF-" ++ show fixed_smc_particles
               , smcLinRegr fixed_smc_particles)  row_header output_file
-    benchRow ("LinRegr-[ ]-PMMH-" ++ show fixed_pmmh_particles
+    benchRow ("LinRegr-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps  ++ "-" ++ show fixed_pmmh_particles
               , pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
-    benchRow ("LinRegr-[ ]-RMPF-" ++ show fixed_rmsmc_particles
+    benchRow ("LinRegr-[ ]-RMPF-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
               , rmsmcLinRegr fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header output_file
     benchRow ("LinRegr-[ ]-BBVI-" ++ show fixed_bbvi_steps
               , bbviLinRegr fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
@@ -45,9 +45,9 @@ bench_HMM args = do
               , mhHMM fixed_mh_steps) row_header output_file
     benchRow ("HidMark-[ ]-MPF-" ++ show fixed_mh_steps
               , smcHMM fixed_smc_particles) row_header output_file
-    benchRow ("HidMark-[ ]-PMMH-" ++ show fixed_pmmh_particles
+    benchRow ("HidMark-[ ]-PMMH-"  ++ show fixed_pmmh_mhsteps  ++ "-" ++ show fixed_pmmh_particles
               , pmmhHMM fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
-    benchRow ("HidMark-[ ]-RMPF-" ++ show fixed_rmsmc_particles
+    benchRow ("HidMark-[ ]-RMPF-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
               , rmsmcHMM fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header output_file
     benchRow ("HidMark-[ ]-BBVI-" ++ show fixed_bbvi_steps
               , bbviHMM fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
@@ -60,9 +60,9 @@ bench_LDA args = do
               , mhLDA fixed_mh_steps) row_header output_file
     benchRow ("LatDiri-[ ]-MPF-" ++ show fixed_mh_steps
               , smcLDA fixed_smc_particles) row_header output_file
-    benchRow ("LatDiri-[ ]-PMMH-" ++ show fixed_pmmh_particles
+    benchRow ("LatDiri-[ ]-PMMH-"  ++ show fixed_pmmh_mhsteps  ++ "-" ++ show fixed_pmmh_particles
               , pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
-    benchRow ("LatDiri-[ ]-RMPF-" ++ show fixed_rmsmc_particles
+    benchRow ("LatDiri-[ ]-RMPF-" ++ show fixed_rmsmc_particles ++ "-" ++ show fixed_rmsmc_mhsteps
               , rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header output_file
     benchRow ("LatDiri-[ ]-BBVI-" ++ show fixed_bbvi_steps
               , bbviLDA fixed_bbvi_steps fixed_bbvi_samples) row_header output_file
@@ -92,15 +92,26 @@ bench_SMC args = do
     benchRow ("MPF-[ ]-LatDiri-" ++ show fixed_lda
               , flip smcLinRegr fixed_lda) row_header output_file
 
+bench_RMSMC :: [Int] -> IO ()
+bench_RMSMC args = do
+    let row_header = ("Num RMPF mh steps", args)
+    writeRow output_file row_header
+    benchRow ("RMPF-" ++ show fixed_rmsmc_particles ++ "-[ ]-LinRegr-" ++ show fixed_lr
+              , flip (rmsmcLinRegr fixed_rmsmc_particles) fixed_lr) row_header output_file
+    benchRow ("RMPF-" ++ show fixed_rmsmc_particles ++ "-[ ]-HidMark-" ++ show fixed_hmm
+              , flip (rmsmcHMM fixed_rmsmc_particles) fixed_hmm) row_header output_file
+    benchRow ("RMPF-" ++ show fixed_rmsmc_particles ++ "-[ ]-LatDiri-" ++ show fixed_lda
+              , flip (rmsmcLDA fixed_rmsmc_particles) fixed_lda) row_header output_file
+
 bench_PMMH :: [Int] -> IO ()
 bench_PMMH args = do
     let row_header = ("Num PMMH particles", args)
     writeRow output_file row_header
-    benchRow ("PMMH-[ ]-LinRegr-" ++ show fixed_lr
+    benchRow ("PMMH-" ++ show fixed_pmmh_mhsteps ++ "-[ ]-LinRegr-" ++ show fixed_lr
               , flip (pmmhLinRegr fixed_pmmh_mhsteps) fixed_lr) row_header output_file
-    benchRow ("PMMH-[ ]-HidMark-" ++ show fixed_hmm
+    benchRow ("PMMH-" ++ show fixed_pmmh_mhsteps ++ "-[ ]-HidMark-" ++ show fixed_hmm
               , flip (pmmhHMM fixed_pmmh_mhsteps) fixed_hmm) row_header output_file
-    benchRow ("PMMH-[ ]-LatDiri-" ++ show fixed_lda
+    benchRow ("PMMH-" ++ show fixed_pmmh_mhsteps ++ "-[ ]-LatDiri-" ++ show fixed_lda
               , flip (pmmhLDA fixed_pmmh_mhsteps) fixed_lda) row_header output_file
 
 bench_BBVI :: [Int] -> IO ()
@@ -113,17 +124,6 @@ bench_BBVI args = do
               , flip (bbviHMM fixed_bbvi_samples) fixed_hmm) row_header output_file
     benchRow ("BBVI-[ ]-LatDiri-" ++ show fixed_lda
               , flip (bbviLDA fixed_bbvi_samples) fixed_lda) row_header output_file
-
-bench_RMSMC :: [Int] -> IO ()
-bench_RMSMC args = do
-    let row_header = ("Num RMPF mh steps", args)
-    writeRow output_file row_header
-    benchRow ("RMPF-[ ]-LinRegr-" ++ show fixed_lr
-              , flip (rmsmcLinRegr fixed_rmsmc_particles) fixed_lr) row_header output_file
-    benchRow ("RMPF-[ ]-HidMark-" ++ show fixed_hmm
-              , flip (rmsmcHMM fixed_rmsmc_particles) fixed_hmm) row_header output_file
-    benchRow ("RMPF-[ ]-LatDiri-" ++ show fixed_lda
-              , flip (rmsmcLDA fixed_rmsmc_particles) fixed_lda) row_header output_file
 
 runBenchmarks :: IO ()
 runBenchmarks = do

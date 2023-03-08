@@ -40,7 +40,7 @@ mle :: forall env es a b. es ~ '[Sampler]
   -> VIGuide env es a                      -- ^ guide Q(X; λ)
   -> VIModel env es b                      -- ^ model P(X, Y)
   -> Env env                            -- ^ model environment (containing only observed data Y)
-  -> Sampler GuideTrace                     -- ^ final parameters θ_T
+  -> Sampler Guides                     -- ^ final parameters θ_T
 mle num_timesteps num_samples guide model env = do
   -- | Set up a empty dummy guide Q to return the original input model environment
   λ_0 <- collectParams env guide
@@ -49,7 +49,7 @@ mle num_timesteps num_samples guide model env = do
       guidedLoop num_timesteps num_samples guide (execGuide env) model exec λ_0
 
 -- | Return probability of 1
-execGuide :: Env env -> GuideTrace -> VIGuide env '[Sampler] a -> Sampler (((a, Env env), GradTrace), LogP)
+execGuide :: Env env -> Guides -> VIGuide env '[Sampler] a -> Sampler (((a, Env env), ΔGuides), LogP)
 execGuide env params   =
   handleIO . fmap (,0) . SIM.defaultSample . defaultParam params .  handleEnvRW env
 
@@ -59,20 +59,20 @@ exec env =
   handleIO . SIM.defaultSample . likelihood . fmap fst . handleEnvRW env
 
 -- | Compute and update the guide parameters using a self-normalised importance weighted gradient estimate
-handleNormGradDescent :: Comp (GradUpd : fs) a -> Comp fs a
+handleNormGradDescent :: Comp (GradUpdate : fs) a -> Comp fs a
 handleNormGradDescent = handleWith 0 (const Val) hop where
-  hop :: Int -> GradUpd x -> (Int -> x -> Comp fs a) -> Comp fs a
-  hop t (UpdateParam  ws δGs params) k =
+  hop :: Int -> GradUpdate x -> (Int -> x -> Comp fs a) -> Comp fs a
+  hop t (GradUpdate  ws δGs params) k =
     let δelbos  = normalisingEstimator (δGs, ws)
         params' = case δelbos of Just δelbos' -> gradStep 1 params δelbos'
                                  Nothing      -> params
     in  k (t + 1) params'
 
-normalisingEstimator :: ([GradTrace], [LogP]) -> Maybe GradTrace
+normalisingEstimator :: ([ΔGuides], [LogP]) -> Maybe ΔGuides
 normalisingEstimator (δGs, ws) = δelbos
   where
     {- | Store the gradient estimates for each variable v. -}
-    δelbos :: Maybe GradTrace
+    δelbos :: Maybe ΔGuides
     δelbos = if isInfinite norm_c
               then Nothing
               else Just (foldr (\(Some k@(Key v)) -> estimateGrad k) Trace.empty vars)
@@ -83,10 +83,10 @@ normalisingEstimator (δGs, ws) = δelbos
     vars :: [Some Key]
     vars = (Trace.keys . head) δGs
     {- | Uniformly scale each iteration's gradient trace G^l by its corresponding unnormalised importance weight W_norm^l -}
-    δFs :: [GradTrace]
+    δFs :: [ΔGuides]
     δFs = zipWith (\logW -> Trace.map (\(VecFor δ) -> VecFor (exp logW *| δ))) ws δGs
     {- | Compute the mean gradient estimate for a random variable v's associated parameters -}
-    estimateGrad :: forall d. (DiffDistribution d) => Key d -> GradTrace -> GradTrace
+    estimateGrad :: forall d. (DiffDistribution d) => Key d -> ΔGuides -> ΔGuides
     estimateGrad v = let δFv      = Prelude.map (unVecFor . fromJust . Trace.lookup v) δFs
                          norm_δFv = ((*|) norm_c . foldr (|+|) (Vec.zeros (Proxy @(Arity d))) ) δFv
                      in  Trace.insert v (VecFor norm_δFv)
