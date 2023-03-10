@@ -26,44 +26,44 @@ import           Data.Bifunctor
 
 {- | The @Resample@ effect for resampling according to collection of particle contexts.
 -}
-data Resample s a where
+data Resample w a where
   Resample
     -- | (particles, contexts)
-    :: [(Model es b, s)]
+    :: [(Model es b, w)]
     -- | (resampled programs, resampled ss)
-    -> Resample s [(Model es b, s)]
+    -> Resample w [(Model es b, w)]
 
 {- | A @ModelStep@  runs a particle to the next @Observe@ break point.
 -}
-type ModelStep es s a = (Model es a, s) -> Sampler (Model es a, s)
+type ModelStep es w a = (Model es a, w) -> Sampler (Model es a, w)
 
 {- | Incrementally execute and resample a population of particles through the course of the program.
 -}
-pfilter :: forall fs es a s. (Members [Resample s, Sampler] fs)
+pfilter :: forall fs es a w. (Members [Resample w, Sampler] fs)
   => Int
-  -> s
-  -> ModelStep es s a                                 -- ^ handler for running particles
+  -> w
+  -> ModelStep es w a                                 -- ^ handler for running particles
   -> Model es a                               -- ^ input particles and corresponding contexts
-  -> Comp fs [(a, s)]                          -- ^ final particle results and corresponding contexts
+  -> Comp fs [(a, w)]                          -- ^ final particle results and corresponding contexts
 pfilter n w exec model  = do
-  let pfStep :: [(Model es a, s)] -> Comp fs [(a, s)]
-      pfStep prtws = do
+  let pfStep :: [(Model es a, w)] -> Comp fs [(a, w)]
+      pfStep pws = do
         -- | Run particles to next checkpoint and accumulate their contexts
-        wprts' <- call (mapM exec prtws)
+        pws' <- call (mapM exec pws)
         -- ρs'   <- call (Accum ρs partialρs)
         -- | Check termination status of particles
-        case done wprts' of
+        case done pws' of
           -- | If all particles have finished, return their results and contexts
           Just vals  -> Val vals
           -- | Otherwise, pick the particles to continue with
-          Nothing    -> call (Resample wprts') >>= pfStep
+          Nothing    -> call (Resample pws') >>= pfStep
   pfStep (replicate n (model, w))
 
 {- | Check whether a list of programs have all terminated.
      If at least one program is unfinished, return all programs.
      If all programs have finished, return a single program that returns all results.
 -}
-done :: [(Model es a, s)] -> Maybe [(a, s)]
+done :: [(Model es a, w)] -> Maybe [(a, w)]
 done ((Val v, w) : progs) = done progs >>= Just . ((v, w):)
 done []    = Just []
 done progs = Nothing
