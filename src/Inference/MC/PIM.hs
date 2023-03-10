@@ -38,14 +38,14 @@ pim :: forall env vars a. (env `ContainsVars` vars)
   -> Env env                                        -- ^ input environment
   -> Vars vars                                      -- ^ parameter names
   -> Sampler [Env env]                              -- ^ output environments
-pim mh_steps n_prts model env_in obs_vars = do
+pim mh_steps n_prts gen_model env_in obs_vars = do
   -- | Handle model to probabilistic program
-  let prog_0   = handleCore env_in model
+  let model   = handleCore env_in gen_model
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
   -- | Initialise sample trace to include only parameters
-  τθ_0       <- (fmap (filterTrace tags . snd) . handleIO .  reuseTrace Map.empty . defaultObserve) prog_0
-  pmmh_trace <- (handleIO . IM.handleProposal . mh mh_steps τθ_0 (exec n_prts)) prog_0
+  τθ_0       <- (fmap (filterTrace tags . snd) . handleIO .  reuseTrace Map.empty . defaultObserve) model
+  pmmh_trace <- (handleIO . IM.handleProposal . mh mh_steps τθ_0 (exec n_prts)) model
   pure (map (snd . fst . fst) pmmh_trace)
 
 pim' :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]

@@ -67,24 +67,24 @@ mh :: (Members [Proposal p, Sampler] fs)
    -> ModelExec es p a                                                       -- ^ model handler
    -> Model es a                                                             -- ^ probabilistic program
    -> Comp fs [((a, p), Trace)]                            -- ^ trace of accepted outputs
-mh n τ_0 exec prog_0 = do
+mh n τ_0 exec model = do
   -- | Perform initial run of mh
-  x0 <- call (exec τ_0 prog_0 )
+  x0 <- call (exec τ_0 model )
   -- | A function performing n mhSteps using initial mh_s. The most recent samples are at the front of the trace.
-  foldl1 (>=>) (replicate n (mhStep prog_0 exec)) [x0]
+  foldl1 (>=>) (replicate n (mhStep model exec)) [x0]
 
 mhStep :: forall es fs p a. (Members [Proposal p, Sampler] fs)
   => Model es a                                                       -- ^ model handler
   -> ModelExec es p a                                                 -- ^ probabilistic program
   -> [((a, p), Trace)]                                                   -- ^ previous trace
   -> Comp fs [((a, p), Trace)]                            -- ^ updated trace
-mhStep prog_0 exec markov_chain = do
+mhStep model exec markov_chain = do
   -- | Get previous iteration output
   let ((r, p), τ) = head markov_chain
   -- | Construct an *initial* proposal
   τ_0            <- call (Propose τ :: Proposal p Trace)
   -- | Execute the model under the initial proposal to return the *final* proposal
-  ((r', p'), τ') <- call (exec τ_0 prog_0 )
+  ((r', p'), τ') <- call (exec τ_0 model )
   -- | Compute acceptance ratio
   b              <- call (Accept p p')
   if b then pure (((r', p'), τ'):markov_chain)
@@ -115,11 +115,11 @@ metroStep :: forall es fs p a. (Members [Proposal p, Sampler] fs)
   -> ModelExec es p                                                  -- ^ probabilistic program
   -> ((a, p), Trace)                                                   -- ^ previous trace
   -> Comp fs ((a, p), Trace)                            -- ^ updated trace
-metroStep prog_0 exec ((r, p), τ) = do
+metroStep model exec ((r, p), τ) = do
   -- | Construct an *initial* proposal
   τ_0            <- call (Propose τ :: Proposal p Trace)
   -- | Execute the model under the initial proposal to return the *final* proposal
-  ((r', p'), τ') <- call (exec prog_0 τ_0)
+  ((r', p'), τ') <- call (exec model τ_0)
   -- | Compute acceptance ratio
   b              <- call (Accept p p')
   if b then pure ((r', p'), τ')
@@ -129,20 +129,20 @@ metroStep prog_0 exec ((r, p), τ) = do
 {- One function version of mh
 mh' :: forall fs es a p. (Members [Proposal p, Sampler] fs)
    => Int -> Trace -> ModelExec es p -> Model es a -> Comp fs [((a, p), Trace)]
-mh' n τ_0 exec prog_0 = do
+mh' n τ_0 exec model = do
   -- | A function performing n mhSteps using initial mh_s.
   let loop :: Int -> [((a, p), Trace)] -> Comp fs [((a, p), Trace)]
       loop i mrkchain
         | i < n     = do
             let ((x, w), τ) = head mrkchain
             τ_0            <- call (Propose τ :: Proposal p Trace)
-            ((x', w'), τ') <- call (exec τ_0 prog_0 )
+            ((x', w'), τ') <- call (exec τ_0 model )
             b              <- call (Accept w w')
             -- let mrkchain'   =
             loop (i + 1) (if b then ((x', w'), τ') : mrkchain else ((x, w), τ) : mrkchain)
         | otherwise = return mrkchain
   -- | Perform initial run of mh
-  node_0 <- call (exec τ_0 prog_0 )
+  node_0 <- call (exec τ_0 model )
   -- | Perform initial run of mh
   loop 0 [node_0]
 -}

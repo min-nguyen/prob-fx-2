@@ -39,11 +39,11 @@ im ::
   -> GenModel env [EnvRW env, Dist, Sampler] a  -- ^ model
   -> Env env                        -- ^ input environment
   -> Sampler [Env env]              -- ^ output model environments
-im n model env_in   = do
+im n gen_model env_in   = do
   -- | Handle model to probabilistic program
-  let prog_0  = handleCore env_in model
+  let model  = handleCore env_in gen_model
       τ_0     = Map.empty
-  rwm_trace <- im' n prog_0
+  rwm_trace <- im' n model
   pure (map (snd . fst . fst) rwm_trace)
 
 {- | Top-level wrapper for Independence Metropolis

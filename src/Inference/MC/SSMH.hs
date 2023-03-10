@@ -48,13 +48,13 @@ ssmh :: forall env vars a. (env `ContainsVars` vars)
     {- These allow one to specify sample sites of interest; for example, for interest in sampling @#mu@
      , provide @#mu <#> vnil@ to cause other variables to not be resampled unless necessary. -}
   -> Sampler [Env env]              -- ^ output model environments
-ssmh n model env_in obs_vars  = do
+ssmh n gen_model env_in obs_vars  = do
   -- | Handle model to probabilistic program
-  let prog_0 = handleCore env_in model
+  let model = handleCore env_in gen_model
       τ_0    = Map.empty
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
-  mh_trace <- (handleIO . handleProposal tags . mh n τ_0 exec) prog_0
+  mh_trace <- (handleIO . handleProposal tags . mh n τ_0 exec) model
   pure (map (snd . fst . fst) mh_trace)
 
 {- | SSMH inference on a probabilistic program.

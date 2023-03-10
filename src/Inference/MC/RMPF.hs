@@ -57,12 +57,12 @@ rmpf :: forall env a xs. (env `ContainsVars` xs)
   -> Env env                                      -- ^ input model environment
   -> Vars xs                                      -- ^ optional observable variable names of interest
   -> Sampler [Env env]                            -- ^ output model environments of each particle
-rmpf n_prts mh_steps model env_in obs_vars = do
+rmpf n_prts mh_steps gen_model env_in obs_vars = do
   -- | Handle model to probabilistic program
-  let prog_0   = handleCore env_in model
+  let model   = handleCore env_in gen_model
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
-  map (snd . fst) <$> rmpf' n_prts mh_steps tags prog_0
+  map (snd . fst) <$> rmpf' n_prts mh_steps tags model
 
 {- | Call RMPF on a probabilistic program.
 -}

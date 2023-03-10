@@ -37,11 +37,11 @@ simulate
   -> Env env
   -- | (model output, output environment)
   -> Sampler (a, Env env)
-simulate model env_in = do
-  let prog = handleCore env_in model
-  runSimulate prog
+simulate gen_model env_in = do
+  let model = handleCore env_in gen_model
+  runSimulate model
 
--- | Handler for simulating once from a probabilistic program
+-- | Handler for simulating once from a probabilistic modelram
 runSimulate
   :: Comp [Observe, Sample, Sampler] a
   -- | (model output, sample trace)

@@ -39,9 +39,9 @@ lw
   -> Env env
   -- | [(output model environment, likelihood-weighting)]
   -> Sampler [(Env env, Double)]
-lw n model env_in = do
-  let prog = handleCore env_in model
-  lwTrace <- replicateM n (runLW prog)
+lw n gen_model env_in = do
+  let model = handleCore env_in gen_model
+  lwTrace <- replicateM n (runLW model)
   pure (map (bimap snd exp) lwTrace)
 
 -- | Handler for one iteration of LW

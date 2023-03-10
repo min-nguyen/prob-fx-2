@@ -36,15 +36,15 @@ pmmh :: forall env vars a. (env `ContainsVars` vars)
   -> Env env                                        -- ^ input environment
   -> Vars vars                                      -- ^ parameter names
   -> Sampler [Env env]                              -- ^ output environments
-pmmh mh_steps n_prts model env_in obs_vars = do
+pmmh mh_steps n_prts gen_model env_in obs_vars = do
   -- | Handle model to probabilistic program
-  let prog_0   = handleCore env_in model
+  let model   = handleCore env_in gen_model
   -- | Convert observable variables to strings
   let θ        = varsToStrs @env obs_vars
   -- | Initialise sample trace to include only parameters
-  (_, τ)       <- (handleIO . reuseTrace Map.empty . defaultObserve) prog_0
+  (_, τ)       <- (handleIO . reuseTrace Map.empty . defaultObserve) model
   let τθ       = filterTrace θ τ
-  pmmh_trace <- (handleIO . handleProposal . mh mh_steps τθ (exec n_prts)) prog_0
+  pmmh_trace <- (handleIO . handleProposal . mh mh_steps τθ (exec n_prts)) model
   pure (map (snd . fst . fst) pmmh_trace)
 
 pmmh' :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]

@@ -45,7 +45,7 @@ pfilter :: forall fs es a s. (Members [Resample s, Sampler] fs)
   -> ModelStep es s a                                 -- ^ handler for running particles
   -> Model es a                               -- ^ input particles and corresponding contexts
   -> Comp fs [(a, s)]                          -- ^ final particle results and corresponding contexts
-pfilter n w exec  model  = do
+pfilter n w exec model  = do
   let pfStep :: [(Model es a, s)] -> Comp fs [(a, s)]
       pfStep prtws = do
         -- | Run particles to next checkpoint and accumulate their contexts

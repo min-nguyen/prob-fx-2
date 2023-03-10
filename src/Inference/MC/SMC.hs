@@ -37,10 +37,10 @@ mulpfilter
   -> GenModel env [EnvRW env, Dist, Sampler] a      -- ^ model
   -> Env env                            -- ^ input model environment
   -> Sampler [Env env]                  -- ^ output model environments of each particle
-mulpfilter n_prts model env_in = do
+mulpfilter n_prts gen_model env_in = do
   -- | Handle model to probabilistic program
-  let prog_0 = (handleDist . handleEnvRW env_in) (runModel model)
-  smc_trace <- mulpfilter' n_prts prog_0
+  let model = (handleDist . handleEnvRW env_in) (runModel gen_model)
+  smc_trace <- mulpfilter' n_prts model
   pure (map (snd . fst) smc_trace)
 
 {- | Call SMC on a probabilistic program.
