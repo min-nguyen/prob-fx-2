@@ -23,7 +23,7 @@ import           Env ( Env )
 import           LogP ( LogP(..), logMeanExp )
 import           Model ( GenModel(runModel), Model )
 import           PrimDist ( mkCategorical, drawWithSampler, logProb )
-import           Comp ( LastMember, Comp(..), Members, Member, call, weakenProg, discharge, prj, handleWith, Handler )
+import           Comp ( LastMember, Comp(..), Members, Member, call, weakenProg, discharge, prj, handleWith, Handler, handle )
 import qualified Data.Map as Map
 import           Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS
@@ -65,11 +65,11 @@ advance w (Op op k) = case discharge op of
 -}
 
 handleResampleMul :: Member Sampler es => Handler (Resample LogP) es b b
-handleResampleMul = handleWith () (const Val) (const hop) where
+handleResampleMul = handle Val hop where
   hop :: Member Sampler es =>  Resample LogP x -> (() -> x -> Comp es b) -> Comp es b
   hop  (Resample pws) k = do
     let (ps, ws) = unzip pws; n = length ws
-    idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList (map (exp . snd) pws))
+    idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList ws)
     let prts_res  = map (ps !! ) idxs
         ws_res    = (replicate n . logMeanExp . map (ws  !! )) idxs
 
