@@ -69,7 +69,7 @@ handleResampleMul = handle Val hop where
   hop :: Member Sampler es =>  Resample LogP x -> (() -> x -> Comp es b) -> Comp es b
   hop  (Resample pws) k = do
     let (ps, ws) = unzip pws; n = length ws
-    idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList ws)
+    idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList (map exp ws))
     let prts_res  = map (ps !! ) idxs
         ws_res    = (replicate n . logMeanExp . map (ws  !! )) idxs
 
