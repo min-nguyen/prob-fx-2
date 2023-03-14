@@ -15,9 +15,8 @@ module Effects.EnvRW (
   , write
   , handleEnvRW) where
 
-import Comp ( call, discharge, Member, Comp(..) )
+import Comp ( call, discharge, Member, Comp(..), handleWith, Handler )
 import Env ( Env, Var, Observable(..), empty, reverse )
-import Util ( safeHead, safeTail )
 
 -- | The 'observable read-write' effect for reading from and writing to an environment @env@
 data EnvRW env a where
@@ -46,23 +45,16 @@ write x v = call (EnvWrite @env x v)
 
 {- Handle the @EnvRead@ operations by reading from an input model environment,
    and handleWith the @Write@ operations by writing to an output model environment  -}
-handleEnvRW :: forall env es a.
-  -- | input model environment
-     Env env
-  -> Comp (EnvRW env ': es) a
-  -- | (final result, output model environment)
-  -> Comp es (a, Env env)
-handleEnvRW env_in = loop env_in (Env.empty env_in) where
-  loop :: Env env -> Env env -> Comp (EnvRW env ': es) a -> Comp es (a, Env env)
-  loop env_in env_out (Val x) = return (x, Env.reverse env_out)
-  loop env_in env_out (Op op k) = case discharge op of
-    Right (EnvRead x) ->
-      let vs       = get x env_in
-          maybe_v  = safeHead vs
-          env_in'  = set x (safeTail vs) env_in
-      in  loop env_in' env_out (k maybe_v)
-    Right (EnvWrite x v) ->
-      let vs        = get x env_out
-          env_out'  = set x (v:vs) env_out
-      in  loop env_in env_out' (k ())
-    Left op' -> Op op' (loop env_in env_out . k)
+handleEnvRW :: Env env -> Handler (EnvRW env) es a (a, Env env)
+handleEnvRW env_in = handleWith (env_in, Env.empty env_in) hval hop where
+  hval :: (Env env, Env env) -> a -> Comp es (a, Env env)
+  hval (env_in, env_out) x = Val (x, Env.reverse env_out)
+  hop  :: (Env env, Env env) -> EnvRW env b -> ((Env env, Env env) -> b -> Comp es (a, s)) -> Comp es (a, s)
+  hop (env_in, env_out) (EnvRead x) k
+    = case get x env_in of
+        []      -> k (env_in, env_out) Nothing
+        (v:vs)  -> k (set x vs env_in, env_out) (Just v)
+  hop (env_in, env_out) (EnvWrite x v) k =
+    let vs        = get x env_out
+        env_out'  = set x (v:vs) env_out
+    in  k (env_in, env_out') ()
