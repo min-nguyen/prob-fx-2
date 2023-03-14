@@ -126,9 +126,9 @@ handleCore env_in m = (handleDist . handleEnvRW env_in) (runModel m)
 callDist :: forall env x d a es. (PrimDist d a,  Show a) => Observable env x a => d -> Var x -> GenModel env es a
 callDist d field = GenModel $ do
   let tag =  Just $ varToStr field
-  maybe_y <- call (Read @env field)
+  maybe_y <- call (EnvRead @env field)
   y <- call (Dist d maybe_y tag)
-  call (Write @env field y)
+  call (EnvWrite @env field y)
   pure y
 
 callDist' :: (PrimDist d a) => d -> GenModel env es a

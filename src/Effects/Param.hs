@@ -38,5 +38,5 @@ param' :: forall env es x d a.
 param' d (varx, idx) = do
   let tag = varToStr varx
   y <- param d (Addr tag idx)
-  call (Write @env varx y)
+  call (EnvWrite @env varx y)
   pure y

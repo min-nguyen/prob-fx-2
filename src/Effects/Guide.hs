@@ -38,5 +38,5 @@ guide' :: forall env es x d q a.
 guide' d q (varx, idx) = do
   let tag = varToStr varx
   y <- guide d q (Addr tag idx)
-  call (Write @env varx y)
+  call (EnvWrite @env varx y)
   pure y

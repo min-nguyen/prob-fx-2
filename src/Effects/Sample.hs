@@ -44,9 +44,9 @@ sample' :: forall env es x d a. (Observable env x a, Members [EnvRW env, Sample]
   => d -> (Var x, Int) -> Comp es a
 sample' d (varx, idx) = do
   let tag = varToStr varx
-  maybe_y <- call (Read @env varx)
+  maybe_y <- call (EnvRead @env varx)
   y       <- case maybe_y of
                 Nothing -> sample d (Addr tag idx)
                 Just y  -> sample (Deterministic d y) (Addr tag idx)
-  call (Write @env varx y)
+  call (EnvWrite @env varx y)
   pure y

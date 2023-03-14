@@ -22,11 +22,11 @@ import Util ( safeHead, safeTail )
 -- | The 'observable read-write' effect for reading from and writing to an environment @env@
 data EnvRW env a where
   -- | Given observable variable @x@ is assigned a list of type @[a]@ in @env@, attempt to retrieve a value from the list.
-  Read  :: Observable env x a
+  EnvRead  :: Observable env x a
         => Var x                    -- ^ variable @x@ to read from
         -> EnvRW env (Maybe a)      -- ^ head value from @x@'s list
   -- | Given observable variable @x@ is assigned a list of type @[a]@ in @env@, write a value to the the list.
-  Write :: Observable env x a
+  EnvWrite :: Observable env x a
         => Var x                    -- ^ variable @x@ to write to
         -> a                        -- ^ value to write
         -> EnvRW env ()
@@ -35,16 +35,16 @@ data EnvRW env a where
 read :: forall env es x a. (Member (EnvRW env) es, Observable env x a)
   => Var x
   -> Comp es (Maybe a)
-read x = call (Read @env x)
+read x = call (EnvRead @env x)
 
 -- | Wrapper function for calling @Write@
 write :: forall env es x a. (Member (EnvRW env) es, Observable env x a)
   => Var x
   -> a
   -> Comp es ()
-write x v = call (Write @env x v)
+write x v = call (EnvWrite @env x v)
 
-{- Handle the @Read@ operations by reading from an input model environment,
+{- Handle the @EnvRead@ operations by reading from an input model environment,
    and handleWith the @Write@ operations by writing to an output model environment  -}
 handleEnvRW :: forall env es a.
   -- | input model environment
@@ -56,12 +56,12 @@ handleEnvRW env_in = loop env_in (Env.empty env_in) where
   loop :: Env env -> Env env -> Comp (EnvRW env ': es) a -> Comp es (a, Env env)
   loop env_in env_out (Val x) = return (x, Env.reverse env_out)
   loop env_in env_out (Op op k) = case discharge op of
-    Right (Read x) ->
+    Right (EnvRead x) ->
       let vs       = get x env_in
           maybe_v  = safeHead vs
           env_in'  = set x (safeTail vs) env_in
       in  loop env_in' env_out (k maybe_v)
-    Right (Write x v) ->
+    Right (EnvWrite x v) ->
       let vs        = get x env_out
           env_out'  = set x (v:vs) env_out
       in  loop env_in env_out' (k ())
