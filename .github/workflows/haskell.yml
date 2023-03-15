@@ -14,13 +14,18 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        ghc: [9.0.2, 8.6.5]
+
     steps:
     - uses: actions/checkout@v3
     - uses: actions/setup-haskell@v1
-      with:
-        ghc-version: '8.10.3'
-        cabal-version: '3.2'
-
+    - name: Install cabal
+      run: ghcup install cabal recommended
+    - name: Install GHC
+      run: ghcup install ghc ${{matrix.ghc}}
     - name: Cache
       uses: actions/cache@v3
       env:
@@ -32,12 +37,9 @@ jobs:
           ${{ runner.os }}-build-${{ env.cache-name }}-
           ${{ runner.os }}-build-
           ${{ runner.os }}-
-
     - name: Install dependencies
-      run: |
-        cabal update
-        cabal build --only-dependencies --enable-tests --enable-benchmarks
+      run:  cabal update
     - name: Build
-      run: cabal build --enable-tests --enable-benchmarks all
+      run: cabal build --only-dependencies --enable-tests --enable-benchmarks all
     - name: Run tests
       run: cabal test all

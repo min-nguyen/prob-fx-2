@@ -59,7 +59,7 @@ import           Prelude hiding (lookup, map)
 import Control.Applicative ((<|>))
 import Unsafe.Coerce
 import Data.Functor.Identity
-import Data.GADT.Compare
+import Data.GADT.Compare ( GCompare(..), GOrdering(GEQ, GLT, GGT), GEq(..) )
 import Data.Typeable
 
 {- $Address
@@ -184,7 +184,7 @@ lookupByAddr f = lookupWith (\(Key addr) -> f addr) where
             _                 -> go l <|> go r
 
 intersectWithAdd :: Guides -> ΔGuides -> Guides
-intersectWithAdd = intersectionWithKey liftAddGrad
+intersectWithAdd g q = intersectionWithKey liftAddGrad g q
 
 {-
 lookupGuide :: DiffDist q a => Key q  -> Guides -> Maybe (Identity q)
