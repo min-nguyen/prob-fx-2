@@ -29,7 +29,7 @@ module Env
   , Env(..)
   , enil
   , (<:>)
-  , empty
+  , initEmpty
   , Env.reverse
   , union
   , Observable(..)
@@ -95,9 +95,9 @@ enil :: Env '[]
 enil = ENil
 
 -- | Construct the empty version of a given environment
-empty :: forall env. Env env -> Env env
-empty (ECons _ env) = ECons [] (empty env)
-empty ENil = ENil
+initEmpty :: forall env. Env env -> Env env
+initEmpty (ECons _ env) = ECons [] (initEmpty env)
+initEmpty ENil = ENil
 
 -- | Reverse the traces
 reverse :: Env env -> Env env

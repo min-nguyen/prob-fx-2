@@ -19,7 +19,7 @@ import Control.Monad ( replicateM, (>=>) )
 import Effects.Dist
 import Effects.EnvRW ( EnvRW, handleEnvRW )
 import Effects.State ( modify, handleState, State )
-import Env ( Env, Vars, ContainsVars, union, empty, varsToStrs )
+import Env ( Env, Vars, ContainsVars, union, initEmpty, varsToStrs )
 import LogP ( LogP(..), normaliseLogPs )
 import Model
 import PrimDist
