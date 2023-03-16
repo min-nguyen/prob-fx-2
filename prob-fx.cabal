@@ -30,7 +30,7 @@ library
                       DataKinds,
                       ScopedTypeVariables,
                       TypeOperators
-  exposed-modules:    Effects.Dist,
+  exposed-modules:    Effects.MulDist,
                       Effects.NonDet,
                       Effects.EnvRW,
                       Effects.Observe,

@@ -13,9 +13,9 @@
 -}
 
 module Model (
-    GenModel(..)
+    MulModel(..)
   , Model
-  , handleCore
+  , conditionWith
     -- * Distribution smart constructors
     -- $Smart-Constructors
   , bernoulli
@@ -50,7 +50,7 @@ module Model (
 import Control.Monad ( ap )
 import Control.Monad.Trans.Class ( MonadTrans(lift) )
 import Data.Type.Nat
-import Effects.Dist ( handleDist, Dist(..), Observe, Sample)
+import Effects.MulDist ( handleMulDist, MulDist(..), Observe, Sample)
 import Effects.EnvRW
 import Env
 import PrimDist
@@ -68,23 +68,23 @@ import Data.Typeable
 
     3) an output type @a@ of values that the model generates.
 
-    A model initially consists of (at least) two effects: @Dist@ for calling primitive distributions
+    A model initially consists of (at least) two effects: @MulDist@ for calling primitive distributions
     and @EnvRW env@ for reading from @env@.
 -}
-newtype GenModel env es a =
-  GenModel { runModel :: ( Member Dist es        -- models can call primitive distributions
+newtype MulModel env es a =
+  MulModel { runModel :: ( Member MulDist es        -- models can call primitive distributions
                       , Member (EnvRW env) es -- models can read observed values from their environment
                       )
                    => Comp es a }
   deriving Functor
 
-instance Applicative (GenModel env es) where
-  pure x = GenModel $ pure x
+instance Applicative (MulModel env es) where
+  pure x = MulModel $ pure x
   (<*>) = ap
 
-instance Monad (GenModel env es) where
+instance Monad (MulModel env es) where
   return = pure
-  GenModel f >>= x = GenModel $ do
+  MulModel f >>= x = MulModel $ do
     f' <- f
     runModel $ x f'
 
@@ -96,9 +96,9 @@ type Model es a = Comp (Observe : Sample : es) a
 {- | The initial handler for models, specialising a model under a certain environment
      to produce a probabilistic program consisting of @Sample@ and @Observe@ operations.
 -}
-handleCore :: Env env -> GenModel env (EnvRW env : Dist : es) a
+conditionWith :: Env env -> MulModel env (EnvRW env : MulDist : es) a
            -> Comp (Observe : Sample : es) (a, Env env)
-handleCore env_in m = (handleDist . handleEnvRW env_in) (runModel m)
+conditionWith env_in m = (handleMulDist . handleEnvRW env_in) (runModel m)
 
 {- $Smart-Constructors
 
@@ -110,7 +110,7 @@ handleCore env_in m = (handleDist . handleEnvRW env_in) (runModel m)
     variable to be conditioned against:
 
     @
-    exampleModel :: Observable env "b" Bool => GenModel env es Bool
+    exampleModel :: Observable env "b" Bool => MulModel env es Bool
     exampleModel = bernoulli 0.5 #b
     @
 
@@ -118,64 +118,64 @@ handleCore env_in m = (handleDist . handleEnvRW env_in) (runModel m)
     this will always representing sampling from that distribution:
 
     @
-    exampleModel' :: GenModel env es Bool
+    exampleModel' :: MulModel env es Bool
     exampleModel' = bernoulli' 0.5
     @
 -}
 
-callDist :: forall env x d a es. (PrimDist d a,  Show a) => Observable env x a => d -> Var x -> GenModel env es a
-callDist d field = GenModel $ do
+callDist :: forall env x d a es. (PrimDist d a,  Show a) => Observable env x a => d -> Var x -> MulModel env es a
+callDist d field = MulModel $ do
   let tag =  Just $ varToStr field
   maybe_y <- call (EnvRead @env field)
-  y <- call (Dist d maybe_y tag)
+  y <- call (MulDist d maybe_y tag)
   call (EnvWrite @env field y)
   pure y
 
-callDist' :: (PrimDist d a) => d -> GenModel env es a
-callDist' d = GenModel $ call (Dist d Nothing Nothing)
+callDist' :: (PrimDist d a) => d -> MulModel env es a
+callDist' d = MulModel $ call (MulDist d Nothing Nothing)
 
 dirichlet :: (Observable env x (Vec n Double), TypeableSNatI n) =>
      Vec n Double
   -> Var x
-  -> GenModel env es (Vec n Double)
+  -> MulModel env es (Vec n Double)
 dirichlet xs = callDist (mkDirichlet xs)
 
 dirichlet' :: (TypeableSNatI n) =>
   -- | concentration parameters
      Vec n Double
-  -> GenModel env es (Vec n Double)
+  -> MulModel env es (Vec n Double)
 dirichlet' xs = callDist' (mkDirichlet xs)
 
 discrete :: (Typeable a, Eq a, Show a, Observable env x a) =>
      [(a, Double)]
   -> Var x
-  -> GenModel env es a
+  -> MulModel env es a
 discrete ps = callDist (mkDiscrete ps)
 
 discrete' :: (Typeable a, Eq a, Show a) =>
   -- | primitive values and their probabilities
      [(a, Double)]
-  -> GenModel env es a
+  -> MulModel env es a
 discrete' ps = callDist' (mkDiscrete ps)
 
 categorical :: (Observable env x Int)
   => [Double]
   -> Var x
-  -> GenModel env es Int
+  -> MulModel env es Int
 categorical xs = callDist (mkCategorical xs)
 
 categorical' ::
   -- | list of @n@ probabilities
      [Double]
   -- | integer index from @0@ to @n - 1@
-  -> GenModel env es Int
+  -> MulModel env es Int
 categorical' xs = callDist' (mkCategorical xs)
 
 normal :: Observable env x Double =>
      Double
   -> Double
   -> Var x
-  -> GenModel env es Double
+  -> MulModel env es Double
 normal mu sigma = callDist (mkNormal mu sigma)
 
 normal'
@@ -183,26 +183,26 @@ normal'
   :: Double
   -- | standard deviation
   -> Double
-  -> GenModel env es Double
+  -> MulModel env es Double
 normal' mu sigma = callDist' (mkNormal mu sigma)
 
 halfNormal :: Observable env x Double
   => Double
   -> Var x
-  -> GenModel env es Double
+  -> MulModel env es Double
 halfNormal sigma = callDist (mkHalfNormal sigma)
 
 halfNormal'
   -- | standard deviation
   :: Double
-  -> GenModel env es Double
+  -> MulModel env es Double
 halfNormal' sigma = callDist' (mkHalfNormal sigma)
 
 cauchy :: Observable env x Double =>
      Double
   -> Double
   -> Var x
-  -> GenModel env es Double
+  -> MulModel env es Double
 cauchy mu sigma = callDist (mkCauchy mu sigma)
 
 cauchy'
@@ -210,38 +210,38 @@ cauchy'
   :: Double
   -- | scale
   -> Double
-  -> GenModel env es Double
+  -> MulModel env es Double
 cauchy' mu sigma = callDist' (mkCauchy mu sigma)
 
 halfCauchy :: Observable env x Double =>
      Double
   -> Var x
-  -> GenModel env es Double
+  -> MulModel env es Double
 halfCauchy sigma = callDist (mkHalfCauchy sigma)
 
 halfCauchy' ::
   -- | scale
      Double
-  -> GenModel env es Double
+  -> MulModel env es Double
 halfCauchy' sigma = callDist' (mkHalfCauchy sigma)
 
 bernoulli :: Observable env x Bool =>
      Double
   -> Var x
-  -> GenModel env es Bool
+  -> MulModel env es Bool
 bernoulli p = callDist (mkBernoulli p)
 
 bernoulli' ::
   -- | probability of @True@
      Double
-  -> GenModel env es Bool
+  -> MulModel env es Bool
 bernoulli' p = callDist' (mkBernoulli p)
 
 beta :: Observable env x Double =>
      Double
   -> Double
   -> Var x
-  -> GenModel env es Double
+  -> MulModel env es Double
 beta α β = callDist (mkBeta α β)
 
 beta' ::
@@ -249,14 +249,14 @@ beta' ::
      Double
   -- | shape 2 (β)
   -> Double
-  -> GenModel env es Double
+  -> MulModel env es Double
 beta' α β = callDist' (mkBeta α β)
 
 binomial :: Observable env x Int =>
      Int
   -> Double
   -> Var x
-  -> GenModel env es Int
+  -> MulModel env es Int
 binomial n p = callDist (mkBinomial n p)
 
 binomial' ::
@@ -265,14 +265,14 @@ binomial' ::
   -- | probability of successful trial
   -> Double
   -- | number of successful trials
-  -> GenModel env es Int
+  -> MulModel env es Int
 binomial' n p = callDist' (mkBinomial n p)
 
 gamma :: forall env es x. Observable env x Double =>
      Double
   -> Double
   -> Var x
-  -> GenModel env es Double
+  -> MulModel env es Double
 gamma k θ = callDist (mkGamma k θ)
 
 gamma' ::
@@ -280,14 +280,14 @@ gamma' ::
      Double
   -- | scale (θ)
   -> Double
-  -> GenModel env es Double
+  -> MulModel env es Double
 gamma' k θ = callDist' (mkGamma k θ)
 
 uniform :: Observable env x Double =>
      Double
   -> Double
   -> Var x
-  -> GenModel env es Double
+  -> MulModel env es Double
 uniform min max = callDist (mkUniform min max)
 
 uniform' ::
@@ -295,19 +295,19 @@ uniform' ::
      Double
   -- | upper-bound
   -> Double
-  -> GenModel env es Double
+  -> MulModel env es Double
 uniform' min max = callDist' (mkUniform min max)
 
 poisson :: Observable env x Int =>
      Double
   -> Var x
-  -> GenModel env es Int
+  -> MulModel env es Int
 poisson λ = callDist (mkPoisson λ)
 
 poisson' ::
   -- | rate (λ)
      Double
   -- | number of events
-  -> GenModel env es Int
+  -> MulModel env es Int
 poisson' λ = callDist' (mkPoisson λ)
 

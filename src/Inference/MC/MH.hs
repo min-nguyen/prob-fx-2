@@ -22,10 +22,10 @@ import Comp
 import Trace ( Trace, LPTrace, filterTrace )
 import LogP ( LogP )
 import PrimDist
-import Model ( GenModel, handleCore, Model )
+import Model ( MulModel, conditionWith, Model )
 import Effects.EnvRW ( EnvRW )
 import Env ( ContainsVars(..), Vars, Env )
-import Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr )
+import Effects.MulDist ( Tag, Observe, Sample(..), MulDist, Addr )
 import qualified Inference.MC.SIM as SIM
 import Sampler ( Sampler, random )
 

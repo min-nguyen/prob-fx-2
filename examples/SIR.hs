@@ -10,7 +10,7 @@
 {- | This demonstrates:
       - The [SIR](https://en.wikipedia.org/wiki/Compartmental_models_in_epidemiology) model for modelling
         the transition between Susceptible (S), Infected (I), and Recovered (R) individuals over a number of days
-        during an epidemic. We model this as a Hidden Markov GenModel, where the latent states are the true values
+        during an epidemic. We model this as a Hidden Markov MulModel, where the latent states are the true values
         of S, I, and R, and the observations are the reported number of infections (𝜉).
       - Extending the SIR to the SIRS model where recovered individuals (R) can become susceptible (S) again.
       - Extending the SIRS to the SIRSV model where susceptible individuals (S) can become vaccinated (V).
@@ -26,7 +26,7 @@ import Data.Extensible ( mkField, Record, Lookup, type (>:), (@=), (<:), emptyRe
 import Comp ( Member )
 import Control.Lens ( (&), (^.), (.~) )
 import Effects.Writer ( Writer, tellM, handleWriterM )
-import Model ( GenModel, beta, binomial', gamma, poisson )
+import Model ( MulModel, beta, binomial', gamma, poisson )
 import Control.Monad ( (>=>) )
 import Env ( Env(..), Observables, Observable, Assign ((:=)), (<:>), enil, (<#>), vnil, get)
 import HMM ( ObsModel, TransModel, hmmGen )
@@ -63,7 +63,7 @@ type Reported = Int
 
 -- | Transition prior
 transPriorSIR :: Observables env '["β",  "γ"] Double
-  => GenModel env ts (Double, Double)
+  => MulModel env ts (Double, Double)
 transPriorSIR = do
   pBeta  <- gamma 2 1 #β
   pGamma <- gamma 1 (1/8) #γ
@@ -99,7 +99,7 @@ type ObsParams = Double
 
 -- | Observation prior
 obsPriorSIR :: Observables env '["ρ"] Double
-  => GenModel env ts Double
+  => MulModel env ts Double
 obsPriorSIR = beta 2 7 #ρ
 
 -- | Observation model
@@ -118,7 +118,7 @@ hmmSIR :: (Lookups popl '["s", "i", "r"] Int
   -- | initial population state
   -> Record popl
   -- | (final population state, intermediate population states)
-  -> GenModel env es (Record popl, [Record popl])
+  -> MulModel env es (Record popl, [Record popl])
 hmmSIR n = handleWriterM . hmmGen transPriorSIR obsPriorSIR transSIR obsSIR n
 
 -- | Simulate from the SIR model
@@ -168,7 +168,7 @@ mhSIR n_mhsteps n_days = do
 
 -- | Transition prior
 transPriorSIRS :: Observables env '["β", "η", "γ"] Double
-  => GenModel env ts (Double, Double, Double)
+  => MulModel env ts (Double, Double, Double)
 transPriorSIRS = do
   (pBeta, pGamma)  <- transPriorSIR
   pEta <- gamma 1 (1/8) #η
@@ -196,7 +196,7 @@ hmmSIRS :: (Lookups popl '["s", "i", "r"] Int,
   -- | initial population state
   -> Record popl
   -- | (final population state, intermediate population states)
-  -> GenModel env es (Record popl, [Record popl])
+  -> MulModel env es (Record popl, [Record popl])
 hmmSIRS n = handleWriterM . hmmGen transPriorSIRS obsPriorSIR transSIRS obsSIR n
 
 -- | Simulate from SIRS model: ([(s, i, r)], [𝜉])
@@ -223,7 +223,7 @@ simSIRS n_days = do
 
 -- | Transition prior
 transPriorSIRSV :: Observables env '["β", "γ", "ω", "η"] Double
-  => GenModel env ts (Double, Double, Double, Double)
+  => MulModel env ts (Double, Double, Double, Double)
 transPriorSIRSV  = do
   (pBeta, pGamma, pEta) <- transPriorSIRS
   pOmega <- gamma 1 (1/16) #ω
@@ -252,7 +252,7 @@ hmmSIRSV :: (Lookups popl '["s", "i", "r", "v"] Int,
   -- | initial population state
   -> Record popl
   -- | (final population state, intermediate population states)
-  -> GenModel env es (Record popl, [Record popl])
+  -> MulModel env es (Record popl, [Record popl])
 hmmSIRSV n_days = handleWriterM . hmmGen transPriorSIRSV obsPriorSIR transSIRSV obsSIR n_days
 
 -- | Simulate from SIRSV model

@@ -15,7 +15,7 @@ module Effects.Writer (
   , handleWriterM) where
 
 import Comp ( discharge, Member(inj), Comp(..) )
-import Model ( GenModel(..) )
+import Model ( MulModel(..) )
 
 -- | Writer effect for writing to a strean @w@
 data Writer w a where
@@ -28,9 +28,9 @@ data Writer w a where
 tell :: Member (Writer w) es => w -> Comp es ()
 tell w = Op (inj $ Tell w) Val
 
--- | Wrapper for @Tell@ inside @GenModel@
-tellM :: Member (Writer w) es => w -> GenModel env es ()
-tellM w = GenModel $ tell w
+-- | Wrapper for @Tell@ inside @MulModel@
+tellM :: Member (Writer w) es => w -> MulModel env es ()
+tellM w = MulModel $ tell w
 
 -- | Handle the @Writer@ effect for a stream @w@
 handleWriter :: forall w es a. Monoid w
@@ -44,9 +44,9 @@ handleWriter = loop mempty where
     Right (Tell w') -> loop (w `mappend` w') (k ())
     Left u'         -> Op u' (loop w . k)
 
--- | Handle the @Writer@ effect inside a @GenModel@
+-- | Handle the @Writer@ effect inside a @MulModel@
 handleWriterM :: Monoid w
-  => GenModel env (Writer w : es) a
+  => MulModel env (Writer w : es) a
   -- | (output, final stream)
-  -> GenModel env es (a, w)
-handleWriterM m = GenModel $ handleWriter $ runModel m
+  -> MulModel env es (a, w)
+handleWriterM m = MulModel $ handleWriter $ runModel m

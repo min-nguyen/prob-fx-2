@@ -16,7 +16,7 @@ module GMM where
 import Data.Type.Nat
 import Data.Typeable
 import Data.Proxy
-import Model ( GenModel, dirichlet', discrete, normal )
+import Model ( MulModel, dirichlet', discrete, normal )
 import Inference.MC.SIM as SIM ( simulate )
 import Inference.MC.SSMH as SSMH ( ssmh )
 import Sampler ( Sampler )
@@ -27,7 +27,7 @@ import Data.Maybe ( fromJust )
 import Env ( Observables, Observable(..), Assign(..), vnil, (<#>), enil, (<:>) )
 import qualified Vec
 
-{- | Gaussian Mixture GenModel environment.
+{- | Gaussian Mixture MulModel environment.
 -}
 type GMMEnv = '[
     "mu"   ':= Double,  -- ^ cluster mean (for both x and y)
@@ -36,12 +36,12 @@ type GMMEnv = '[
     "y"    ':= Double   -- ^ y data point
   ]
 
-{- | Gaussian Mixture GenModel.
+{- | Gaussian Mixture MulModel.
 -}
 gmm :: forall env n es. (Observables env '["mu", "mu_k", "x", "y"] Double, SNatI n, Typeable n)
   => SNat n -- ^ num clusters
   -> Int -- ^ num data points
-  -> GenModel env es [((Double, Double), Int)] -- ^ data points and their assigned cluster index
+  -> MulModel env es [((Double, Double), Int)] -- ^ data points and their assigned cluster index
 gmm k n = do
   cluster_ps <- dirichlet' (Vec.replicate k 1)
   mus        <- replicateM (reflectToNum k) (normal 0 8 #mu)

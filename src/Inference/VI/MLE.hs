@@ -16,7 +16,7 @@ module Inference.VI.MLE where
 import Data.Maybe ( fromMaybe, fromJust )
 import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>) )
-import Effects.Dist
+import Effects.MulDist
 import Effects.EnvRW ( EnvRW, handleEnvRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env, Vars, ContainsVars, union, initEmpty, varsToStrs )

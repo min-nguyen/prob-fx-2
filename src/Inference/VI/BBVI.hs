@@ -18,7 +18,7 @@ import           Data.Maybe
 import           Data.Bifunctor ( Bifunctor(..) )
 import           Debug.Trace
 import           Control.Monad ( replicateM, (>=>) )
-import           Effects.Dist
+import           Effects.MulDist
 
 import           Effects.EnvRW ( EnvRW, handleEnvRW )
 import           Effects.State ( modify, handleState, State )

@@ -21,10 +21,10 @@ import Comp ( Handler, Comp(..), discharge, handleWith, LastMember, Member, hand
 import Trace ( Trace, LPTrace, filterTrace )
 import LogP ( LogP (..) )
 import PrimDist
-import Model ( GenModel, handleCore, Model )
+import Model ( MulModel, conditionWith, Model )
 import Effects.EnvRW ( EnvRW )
 import Env ( Env )
-import Effects.Dist ( Dist, pattern SampPrj, pattern ObsPrj )
+import Effects.MulDist ( MulDist, pattern SampPrj, pattern ObsPrj )
 import Sampler ( Sampler, random, handleIO )
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.LW as LW
@@ -36,12 +36,12 @@ import Util
 -}
 im ::
      Int                              -- ^ number of iterations
-  -> GenModel env [EnvRW env, Dist, Sampler] a  -- ^ model
+  -> MulModel env [EnvRW env, MulDist, Sampler] a  -- ^ model
   -> Env env                        -- ^ input environment
   -> Sampler [Env env]              -- ^ output model environments
 im n gen_model env_in   = do
   -- | Handle model to probabilistic program
-  let model  = handleCore env_in gen_model
+  let model  = conditionWith env_in gen_model
       τ_0     = Map.empty
   rwm_trace <- im' n model
   pure (map (snd . fst . fst) rwm_trace)

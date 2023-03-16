@@ -10,7 +10,7 @@
 {-# HLINT ignore "Redundant return" #-}
 {-# HLINT ignore "Use camelCase" #-}
 
-{- | A variety of possible implementations of a [Hidden Markov GenModel (HMM)](https://en.wikipedia.org/wiki/Hidden_Markov_model).
+{- | A variety of possible implementations of a [Hidden Markov MulModel (HMM)](https://en.wikipedia.org/wiki/Hidden_Markov_model).
 -}
 
 module HMM where
@@ -18,7 +18,7 @@ module HMM where
 import Control.Monad ( (<=<), (>=>), replicateM )
 import Data.Kind (Constraint)
 import Effects.Writer ( handleWriterM, tellM, Writer )
-import Effects.Dist (Addr(..))
+import Effects.MulDist (Addr(..))
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
 import Inference.MC.LW as LW ( lw )
 import Inference.MC.SSMH as SSMH ( ssmh )
@@ -28,7 +28,7 @@ import Inference.MC.RMPF as RMPF ( rmpf )
 import Inference.MC.SMC2 as SMC2 ( smc2 )
 import Inference.MC.PMMH as PMMH ( pmmh )
 import Inference.VI.BBVI as BBVI
-import Model ( GenModel (..), bernoulli', binomial, uniform, beta )
+import Model ( MulModel (..), bernoulli', binomial, uniform, beta )
 import Comp ( Member, LastMember )
 import Sampler ( Sampler, liftIO )
 import Util (boolToInt)
@@ -60,7 +60,7 @@ hmmFor :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
   -- | initial HMM latent state
   -> Int
   -- | final HMM latent state
-  -> GenModel env es Int
+  -> MulModel env es Int
 hmmFor n x = do
   -- Draw transition and observation parameters from prior distributions
   trans_p <- beta 2 5 #trans_p
@@ -86,7 +86,7 @@ transModel
   -- | previous latent state
   -> Int
   -- | next latent state
-  -> GenModel env ts Int
+  -> MulModel env ts Int
 transModel transition_p x_prev = do
   dX <- boolToInt <$> bernoulli' transition_p
   return (x_prev + dX)
@@ -98,7 +98,7 @@ obsModel :: (Observable env "y" Int)
   -- | current latent state
   -> Int
   -- | observation
-  -> GenModel env ts Int
+  -> MulModel env ts Int
 obsModel observation_p x = do
   y <- binomial x observation_p #y
   return y
@@ -112,7 +112,7 @@ hmmNode :: (Observable env "y" Int)
   -- | previous latent state
   -> Int
   -- | next latent state
-  -> GenModel env ts Int
+  -> MulModel env ts Int
 hmmNode transition_p observation_p x_prev = do
   x_i <- transModel  transition_p x_prev
   y_i <- obsModel observation_p x_i
@@ -125,14 +125,14 @@ hmm :: (Observable env "y" Int, Observables env '["obs_p", "trans_p"] Double)
   -- | initial latent state
   -> Int
   -- | final latent state
-  -> GenModel env es Int
+  -> MulModel env es Int
 hmm n x = do
   trans_p <- beta 2 2 #trans_p
   obs_p   <- beta 2 2 #obs_p
   foldr (>=>) return (replicate n (hmmNode trans_p obs_p)) x
 
 hmmGuide :: (Observables env '["obs_p", "trans_p"] Double)
-  => Int -> Int -> GenModel env es ()
+  => Int -> Int -> MulModel env es ()
 hmmGuide n x = do
   trans_p <- beta 2 2 #trans_p
   obs_p   <- beta 2 2 #obs_p
@@ -285,7 +285,7 @@ hmmNode_WR :: (Observable env "y" Int
   -- | previous latent state
   -> Int
   -- | next latent state
-  -> GenModel env es Int
+  -> MulModel env es Int
 hmmNode_WR transition_p observation_p x_prev = do
   x_n <- transModel transition_p x_prev
   tellM [x_n] -- write each latent state to a stream [Int]
@@ -300,7 +300,7 @@ hmm_WR :: ( Observable env "y" Int
   -- | initial latent state
   -> Int
   -- | final latent state
-  -> GenModel env es Int
+  -> MulModel env es Int
 hmm_WR n x = do
   trans_p <- beta 2 2 #trans_p
   obs_p   <- beta 2 2 #obs_p
@@ -393,18 +393,18 @@ mhHMMMB n_mhsteps hmm_length = do
 type TransModel env ts params lat
   =  params           -- ^ transition parameter
   -> lat              -- ^ previous latent state
-  -> GenModel env ts lat -- ^ next latent state
+  -> MulModel env ts lat -- ^ next latent state
 
 type ObsModel env ts params lat obs
   =  params           -- ^ observation parameter
   -> lat              -- ^ current latent state
-  -> GenModel env ts obs -- ^ observation
+  -> MulModel env ts obs -- ^ observation
 
 hmmGen
   -- | prior for transition parameter
-  :: GenModel env ts ps1
+  :: MulModel env ts ps1
   -- | prior for observation parameter
-  -> GenModel env ts ps2
+  -> MulModel env ts ps2
   -- | transition sub-model
   -> TransModel env ts ps1 lat
   -- | observation sub-model
@@ -414,7 +414,7 @@ hmmGen
   -- | initial latent state
   -> lat
   -- | final latent state
-  -> GenModel env ts lat
+  -> MulModel env ts lat
 hmmGen transPrior obsPrior transModel obsModel n x_0 = do
   ps1    <- transPrior
   ps2    <- obsPrior

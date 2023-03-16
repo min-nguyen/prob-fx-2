@@ -24,7 +24,7 @@ module Env
   , vnil
   , (<#>)
   , ContainsVars(..)
-    -- * GenModel environment
+    -- * MulModel environment
   , Assign(..)
   , Env(..)
   , enil
@@ -40,7 +40,7 @@ module Env
 import Type.Reflection
 import Data.Kind ( Constraint, Type )
 import Data.Proxy
--- import Effects.Dist ( Tag )
+-- import Effects.MulDist ( Tag )
 import TyCompare ( FindElem(..), Idx(..) )
 import GHC.OverloadedLabels ( IsLabel(..) )
 import GHC.TypeLits ( KnownSymbol, Symbol, symbolVal )
@@ -75,7 +75,7 @@ infixr 5 <#>
 (<#>) :: Var x -> Vars xs -> Vars (x : xs)
 x <#> xs = VCons xs
 
--- * GenModel environment
+-- * MulModel environment
 
 {- | A model environment assigning traces (lists) of observed values to observable
      variables i.e. the type @Env ((x := a) : env)@ indicates @x@ is assigned a value

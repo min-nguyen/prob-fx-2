@@ -34,7 +34,7 @@ module DepMap (
   -- , traceLogProbs
   -- * Gradient trace
   , ΔGuides
-  -- * Dist trace
+  -- * MulDist trace
   , Guides
   , Key(..)
   , keys

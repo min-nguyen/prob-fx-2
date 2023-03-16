@@ -15,7 +15,7 @@ import Comp
 import Sampler
 import LogP
 import Trace (Trace, filterTrace)
-import Effects.Dist
+import Effects.MulDist
 import PrimDist
 import Model
 import Env
@@ -34,13 +34,13 @@ import qualified Inference.MC.IM as IM
 pim :: forall env vars a. (env `ContainsVars` vars)
   => Int                                            -- ^ number of SSMH steps
   -> Int                                            -- ^ number of particles
-  -> GenModel env [EnvRW env, Dist, Sampler] a                  -- ^ model
+  -> MulModel env [EnvRW env, MulDist, Sampler] a                  -- ^ model
   -> Env env                                        -- ^ input environment
   -> Vars vars                                      -- ^ parameter names
   -> Sampler [Env env]                              -- ^ output environments
 pim mh_steps n_prts gen_model env_in obs_vars = do
   -- | Handle model to probabilistic program
-  let model   = handleCore env_in gen_model
+  let model   = conditionWith env_in gen_model
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
   -- | Initialise sample trace to include only parameters

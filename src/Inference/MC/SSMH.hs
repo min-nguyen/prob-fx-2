@@ -27,9 +27,9 @@ import           Env ( ContainsVars(..), Vars, Env )
 import           Trace ( Trace, LPTrace, filterTrace )
 import           LogP ( LogP )
 import           PrimDist
-import           Model ( GenModel, handleCore, Model )
+import           Model ( MulModel, conditionWith, Model )
 import           Effects.EnvRW ( EnvRW )
-import           Effects.Dist ( Tag, Observe, Sample(..), Dist, Addr(..), pattern SampPrj, pattern ObsPrj )
+import           Effects.MulDist ( Tag, Observe, Sample(..), MulDist, Addr(..), pattern SampPrj, pattern ObsPrj )
 import           Inference.MC.SIM
 import           Inference.MC.MH as MH
 import           Sampler ( Sampler, random, randomFrom, handleIO )
@@ -42,7 +42,7 @@ import Effects.Observe
 -}
 ssmh :: forall env vars a. (env `ContainsVars` vars)
   => Int                            -- ^ number of SSMH iterations
-  -> GenModel env [EnvRW env, Dist, Sampler] a  -- ^ model
+  -> MulModel env [EnvRW env, MulDist, Sampler] a  -- ^ model
   -> Env env                        -- ^ input environment
   -> Vars vars                      -- ^ optional variable names of interest
     {- These allow one to specify sample sites of interest; for example, for interest in sampling @#mu@
@@ -50,7 +50,7 @@ ssmh :: forall env vars a. (env `ContainsVars` vars)
   -> Sampler [Env env]              -- ^ output model environments
 ssmh n gen_model env_in obs_vars  = do
   -- | Handle model to probabilistic program
-  let model = handleCore env_in gen_model
+  let model = conditionWith env_in gen_model
       τ_0    = Map.empty
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars

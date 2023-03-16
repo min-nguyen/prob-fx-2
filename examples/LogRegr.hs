@@ -16,7 +16,7 @@
 module LogRegr where
 
 import Control.Monad ( foldM )
-import Model ( bernoulli, GenModel, gamma', normal, normal' )
+import Model ( bernoulli, MulModel, gamma', normal, normal' )
 import Env ( Env(..), Observables, Observable, Assign ((:=)), (<:>), enil, (<#>), vnil, get)
 import Sampler ( Sampler )
 import Inference.MC.SIM as SIM ( simulate )
@@ -40,10 +40,10 @@ sigmoid x = 1 / (1 + exp((-1) * x))
 logRegr
  -- Specify the "observable variables" that may later be provided observed values
  :: (Observable env "y" Bool, Observables env '["m", "b"] Double)
- -- | GenModel inputs
+ -- | MulModel inputs
  => [Double]
  -- | Event occurrences
- -> GenModel env rs [Bool]
+ -> MulModel env rs [Bool]
 logRegr xs = do
   -- Specify model parameter distributions
   {- Annotating with the observable variable #m lets us later provide observed
@@ -115,7 +115,7 @@ mhLogRegr n_mhsteps n_datapoints = do
 -}
 logRegrOnce :: forall rs env.
  (Observable env "label" Bool, Observables env '["m", "b"] Double) =>
- Double -> GenModel env rs Bool
+ Double -> MulModel env rs Bool
 logRegrOnce x = do
   m     <- normal 0 8 #m
   b     <- normal 0 3 #b

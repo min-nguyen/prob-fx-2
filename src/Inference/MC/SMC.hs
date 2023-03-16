@@ -17,11 +17,11 @@ module Inference.MC.SMC where
 
 import           Control.Monad ( replicateM )
 import qualified Data.Vector as Vector
-import           Effects.Dist ( pattern ObsPrj, handleDist, Addr, Dist, Observe (..), Sample )
+import           Effects.MulDist ( pattern ObsPrj, handleMulDist, Addr, MulDist, Observe (..), Sample )
 import           Effects.EnvRW ( EnvRW, handleEnvRW )
 import           Env ( Env )
 import           LogP ( LogP(..), logMeanExp )
-import           Model ( GenModel(runModel), Model )
+import           Model ( MulModel(runModel), Model )
 import           PrimDist ( mkCategorical, drawWithSampler, logProb )
 import           Comp ( LastMember, Comp(..), Members, Member, call, weakenProg, discharge, prj, handleWith, Handler, handle )
 import qualified Data.Map as Map
@@ -34,12 +34,12 @@ import           Sampler ( Sampler, random, sampleCategorical, handleIO)
 -}
 mulpfilter
   :: Int                                -- ^ number of particles
-  -> GenModel env [EnvRW env, Dist, Sampler] a      -- ^ model
+  -> MulModel env [EnvRW env, MulDist, Sampler] a      -- ^ model
   -> Env env                            -- ^ input model environment
   -> Sampler [Env env]                  -- ^ output model environments of each particle
 mulpfilter n_prts gen_model env_in = do
   -- | Handle model to probabilistic program
-  let model = (handleDist . handleEnvRW env_in) (runModel gen_model)
+  let model = (handleMulDist . handleEnvRW env_in) (runModel gen_model)
   smc_trace <- mulpfilter' n_prts model
   pure (map (snd . fst) smc_trace)
 

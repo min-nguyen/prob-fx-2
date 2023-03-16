@@ -5,17 +5,17 @@ Added:
 - `GMM` (gaussian mixture model)
 - `LinRegr`, `HMM`, `LDA`: examples of translating models to programs in `Monad Bayes`
 
-**Effect.Dist**
+**Effect.MulDist**
 Added:
 - pattern synonyms `SampPrj`, `SampDis`, `ObsPrj`, `ObsDis` for discharging/projecting `Sample` and `Observe` effects.
 Changed:
-- `handleDist` now extends the effect signature with `Sample` and `Observe`, rather than assuming they are already part of the signature
+- `handleMulDist` now extends the effect signature with `Sample` and `Observe`, rather than assuming they are already part of the signature
 
 **Effect.Lift**
 Changed:
 - `lift` now requires `m` to be the last member of the effect signature
 Added:
-- `liftM` for lifting `m` into `GenModel`
+- `liftM` for lifting `m` into `MulModel`
 
 **Effect.EnvRW**
 Changed:
@@ -23,7 +23,7 @@ Changed:
 
 **Effect.State**
 Added:
-- `putM`, `getM`, and `handleStateM` for calling and handling `State` in the `GenModel` type
+- `putM`, `getM`, and `handleStateM` for calling and handling `State` in the `MulModel` type
 
 **Inference.MC.LW**
 Changed:
@@ -49,19 +49,19 @@ Changed:
 Added:
 - `vnil`, `(<#>)`, `Vars`, `ContainsVars`, `GetVars`
 
-**GenModel**
+**MulModel**
 - Swapped names for `discrete` and `categorical`
 
 **PrimDist**
 Changed:
 - Swapped names for `Discrete` and `Categorical`
-- Removed the `Dist` suffix on the constructor names of `PrimDist`
+- Removed the `MulDist` suffix on the constructor names of `PrimDist`
 - `DiscrUniform` -> `UniformD`
 
 **PrimDist**
 Changed:
 - Swapped names for `Discrete` and `Categorical`
-- Removed the `Dist` suffix on the constructor names of `PrimDist`
+- Removed the `MulDist` suffix on the constructor names of `PrimDist`
 - `DiscrUniform` -> `UniformD`
 
 **Comp**

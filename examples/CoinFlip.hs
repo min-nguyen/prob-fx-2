@@ -12,9 +12,9 @@ module CoinFlip where
 
 import Comp ( call )
 import Effects.EnvRW ( EnvRW(EnvRead) )
-import Model ( GenModel(GenModel), bernoulli, uniform )
+import Model ( MulModel(MulModel), bernoulli, uniform )
 import PrimDist ( mkBernoulli, mkUniform )
-import Effects.Dist ( Dist(Dist) )
+import Effects.MulDist ( MulDist(MulDist) )
 import Data.Kind (Constraint)
 import Env ( Observables )
 
@@ -24,7 +24,7 @@ import Env ( Observables )
 coinFlip
   :: (Observables env '["p"] Double
     , Observables env '[ "y"] Bool)
-  => GenModel env es Bool
+  => MulModel env es Bool
 coinFlip = do
   p <- uniform 0 1 #p
   y <- bernoulli p #y
@@ -35,10 +35,10 @@ coinFlip = do
 -}
 coinFlip'
   :: forall env es. (Observables env '["p"] Double, Observables env '[ "y"] Bool)
-  => GenModel env es Bool
-coinFlip' = GenModel $ do
+  => MulModel env es Bool
+coinFlip' = MulModel $ do
   maybe_p  <- call (EnvRead @env #p)
-  p        <- call (Dist (mkUniform 0 1) maybe_p (Just "p"))
+  p        <- call (MulDist (mkUniform 0 1) maybe_p (Just "p"))
   maybe_y  <- call (EnvRead @env #y)
-  y        <- call (Dist (mkBernoulli p) maybe_y (Just "p") )
+  y        <- call (MulDist (mkBernoulli p) maybe_y (Just "p") )
   return y

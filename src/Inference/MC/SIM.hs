@@ -20,10 +20,10 @@ module Inference.MC.SIM
   )
   where
 
-import           Effects.Dist ( Sample(..), Observe(..), Dist )
+import           Effects.MulDist ( Sample(..), Observe(..), MulDist )
 import           Effects.EnvRW ( EnvRW )
 import           Env ( Env )
-import           Model ( handleCore, GenModel )
+import           Model ( conditionWith, MulModel )
 import           PrimDist ( drawWithSampler )
 import           Comp ( handleWith, discharge, Comp(..), LastMember, discharge1, Handler, Member, call )
 import           Sampler ( Sampler, liftIO, handleIO )
@@ -32,13 +32,13 @@ import           Unsafe.Coerce (unsafeCoerce)
 -- | Simulate from a model under a given model environment
 simulate
   -- | model
-  :: GenModel env [EnvRW env, Dist, Sampler] a
+  :: MulModel env [EnvRW env, MulDist, Sampler] a
   -- | input model environment
   -> Env env
   -- | (model output, output environment)
   -> Sampler (a, Env env)
 simulate gen_model env_in = do
-  let model = handleCore env_in gen_model
+  let model = conditionWith env_in gen_model
   runSimulate model
 
 -- | Handler for simulating once from a probabilistic modelram

@@ -18,13 +18,13 @@ module Inference.MC.LW
 
 import Data.Bifunctor ( Bifunctor(first), second, bimap )
 import Control.Monad ( replicateM )
-import Effects.Dist ( Sample, Observe(..), Dist, pattern ObsPrj, pattern SampPrj )
+import Effects.MulDist ( Sample, Observe(..), MulDist, pattern ObsPrj, pattern SampPrj )
 import Effects.EnvRW ( EnvRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env )
 import LogP ( LogP )
 import Inference.MC.SIM as SIM (defaultSample)
-import Model ( handleCore, GenModel, Model )
+import Model ( conditionWith, MulModel, Model )
 import PrimDist ( logProb )
 import Comp ( discharge, Comp(..), Handler, handleWith )
 import Sampler ( Sampler, handleIO )
@@ -34,13 +34,13 @@ lw
   -- | number of LW iterations
   :: Int
   -- | model
-  -> GenModel env [EnvRW env, Dist, Sampler] a
+  -> MulModel env [EnvRW env, MulDist, Sampler] a
   -- | input model environment
   -> Env env
   -- | [(output model environment, likelihood-weighting)]
   -> Sampler [(Env env, Double)]
 lw n gen_model env_in = do
-  let model = handleCore env_in gen_model
+  let model = conditionWith env_in gen_model
   lwTrace <- replicateM n (runLW model)
   pure (map (bimap snd exp) lwTrace)
 

@@ -16,10 +16,10 @@ module Inference.MB
   ) where
 
 import Control.Monad.Bayes.Class as MB ( MonadCond(..), MonadInfer, MonadSample )
-import Effects.Dist ( Sample(..), Observe(..), Dist(Dist, getObs, getPrimDist), handleDist )
+import Effects.MulDist ( Sample(..), Observe(..), MulDist(MulDist, getObs, getPrimDist), handleMulDist )
 import Effects.EnvRW ( EnvRW )
 import Env ( Env )
-import Model (GenModel(..), handleCore)
+import Model (MulModel(..), conditionWith)
 import Numeric.Log ( Log(Exp) )
 import LogP ( LogP(LogP) )
 import PrimDist ( logProb, sampleBayes )
@@ -28,13 +28,13 @@ import Comp ( discharge, Comp(..), LastMember )
 -- | Translate a ProbFX model under a given model environment to a MonadBayes program
 handleMBayes :: MonadInfer m
   -- | model
-  => GenModel env [EnvRW env, Dist, Lift m] a
+  => MulModel env [EnvRW env, MulDist, Lift m] a
   -- | input model environment
   -> Env env
   -- | a computation @m@ in MonadBayes that returns a result and an output model environment
   -> m (a, Env env)
 handleMBayes model env_in =
-   (handleIO . handleSamp . handleObs . handleCore env_in) model
+   (handleIO . handleSamp . handleObs . conditionWith env_in) model
 
 -- | Handle @Observe@ operations by computing the log-probability and calling the @score@ method of the @MonadCond@ class
 handleObs :: (MonadCond m, LastMember (Lift m) es)
@@ -61,15 +61,15 @@ handleSamp (Op u k) = case discharge u of
   Left u' -> do
      Op u' (handleSamp  . k)
 
--- | Alternative for handling Dist as the last effect directly into a monad
-handleDistMB :: MonadInfer m => Comp '[Dist] a -> m a
+-- | Alternative for handling MulDist as the last effect directly into a monad
+handleDistMB :: MonadInfer m => Comp '[MulDist] a -> m a
 handleDistMB (Val x)  = pure x
 handleDistMB (Op u k) = case discharge u of
-  Right (Dist d maybe_y _) ->
+  Right (MulDist d maybe_y _) ->
     case maybe_y of
       Just y  -> do let LogP p = logProb d y
                     score (Exp p)
                     handleDistMB (k y)
       Nothing -> do y <- sampleBayes d
                     handleDistMB (k y)
-  Left  u'  -> error "impossible; Dist must be the last effect"
+  Left  u'  -> error "impossible; MulDist must be the last effect"

@@ -7,14 +7,14 @@
 {- | The effects for primitive distributions, sampling, and observing.
 -}
 
-module Effects.Dist (
+module Effects.MulDist (
   -- ** Address
   -- $Address
     Tag
   , Addr(..)
-  -- ** Dist effect
-  , Dist(..)
-  , handleDist
+  -- ** MulDist effect
+  , MulDist(..)
+  , handleMulDist
   , module Effects.Sample
   , module Effects.Observe
   ) where
@@ -28,27 +28,27 @@ import           Util
 import           Effects.Sample
 import           Effects.Observe
 
--- | The effect @Dist@ for primitive distributions
-data Dist a where
-  Dist :: (Distribution d, a ~ Base d)
+-- | The effect @MulDist@ for primitive distributions
+data MulDist a where
+  MulDist :: (Distribution d, a ~ Base d)
         => { getPrimDist :: d         -- ^ primitive distribution
            , getObs :: Maybe a        -- ^ optional observed value
            , getTag :: Maybe Tag      -- ^ optional observable variable name
            }
-        -> Dist a
+        -> MulDist a
 
--- | Handle the @Dist@ effect to a @Sample@ or @Observe@ effect and assign an address
-handleDist :: Comp (Dist : es) a -> Comp (Observe : Sample : es) a
-handleDist = loop "" 0 Map.empty
+-- | Handle the @MulDist@ effect to a @Sample@ or @Observe@ effect and assign an address
+handleMulDist :: Comp (MulDist : es) a -> Comp (Observe : Sample : es) a
+handleMulDist = loop "" 0 Map.empty
   where
-  loop :: String              -- ^ the tag of the previous @Dist@ operation
-       -> Int                 -- ^ a counter for giving tags to unnamed @Dist@ operations
+  loop :: String              -- ^ the tag of the previous @MulDist@ operation
+       -> Int                 -- ^ a counter for giving tags to unnamed @MulDist@ operations
        -> Map.Map Tag Int     -- ^ a mapping from tags to their run-time occurrence
-       -> Comp (Dist : es) a
+       -> Comp (MulDist : es) a
        -> Comp (Observe : Sample : es) a
   loop _ _ _ (Val x) = return x
   loop prevTag counter tagMap (Op u k) = case discharge u of
-    Right (Dist d maybe_y maybe_tag) ->
+    Right (MulDist d maybe_y maybe_tag) ->
          case maybe_y of
               Just y  -> do call (Observe d y α) >>= k'
               Nothing -> do call (Sample d α)    >>= k'

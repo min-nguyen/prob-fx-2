@@ -25,7 +25,7 @@ import           Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Data.Data (Proxy(..))
 import Comp
 import Inference.MC.SIM
-import Effects.Dist
+import Effects.MulDist
 import qualified Inference.MC.LW as LW
 
 {- | Top-level wrapper for BBVI inference that takes a separate model and guide.

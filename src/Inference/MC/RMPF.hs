@@ -27,7 +27,7 @@ import           Trace  (Trace, filterTrace)
 import           LogP
 import           Control.Monad
 import           Control.Applicative
-import           Effects.Dist
+import           Effects.MulDist
 import           Effects.EnvRW
 import           Effects.NonDet
 import qualified Inference.MC.SSMH as SSMH
@@ -53,13 +53,13 @@ type PrtState =  (LogP, Trace)
 rmpf :: forall env a xs. (env `ContainsVars` xs)
   => Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of SSMH (rejuvenation) steps
-  -> GenModel env [EnvRW env, Dist, Sampler] a                -- ^ model
+  -> MulModel env [EnvRW env, MulDist, Sampler] a                -- ^ model
   -> Env env                                      -- ^ input model environment
   -> Vars xs                                      -- ^ optional observable variable names of interest
   -> Sampler [Env env]                            -- ^ output model environments of each particle
 rmpf n_prts mh_steps gen_model env_in obs_vars = do
   -- | Handle model to probabilistic program
-  let model   = handleCore env_in gen_model
+  let model   = conditionWith env_in gen_model
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
   map (snd . fst) <$> rmpf' n_prts mh_steps tags model

@@ -14,7 +14,7 @@ import Data.Maybe
 import Data.Proxy
 import Data.Bifunctor ( Bifunctor(..) )
 import Control.Monad ( replicateM, (>=>), mapAndUnzipM )
-import Effects.Dist
+import Effects.MulDist
 import Model
 import Effects.EnvRW ( EnvRW, handleEnvRW )
 import Effects.State ( modify, handleState, State )

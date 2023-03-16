@@ -43,7 +43,7 @@ import           Data.Functor ( (<&>) )
 import qualified Data.Vector as V
 import           GHC.Word ( Word32 )
 import qualified System.Random.MWC as MWC
-import qualified System.Random.MWC.Distributions as MWC.Dist
+import qualified System.Random.MWC.Distributions as MWC.MulDist
 import qualified System.Random.MWC.Probability as MWC.Probability
 import           Statistics.Distribution ( ContDistr(quantile), ContGen(genContVar), DiscreteDistr(..) )
 import           Statistics.Distribution.Normal ( normalDistr )
@@ -115,7 +115,7 @@ sampleNormal
   :: Double -- ^ mean
   -> Double -- ^ standard deviation
   -> Sampler Double
-sampleNormal μ σ = mkSampler $ MWC.Dist.normal μ σ
+sampleNormal μ σ = mkSampler $ MWC.MulDist.normal μ σ
 
 sampleUniform
   :: Double -- ^ lower-bound
@@ -133,34 +133,34 @@ sampleGamma
   :: Double -- ^ shape k
   -> Double -- ^ scale θ
   -> Sampler Double
-sampleGamma k θ = mkSampler $ MWC.Dist.gamma k θ
+sampleGamma k θ = mkSampler $ MWC.MulDist.gamma k θ
 
 sampleBeta
   :: Double -- ^ shape α
   -> Double -- ^ shape β
   -> Sampler Double
-sampleBeta α β = mkSampler $ MWC.Dist.beta α β
+sampleBeta α β = mkSampler $ MWC.MulDist.beta α β
 
 sampleBernoulli
   :: Double -- ^ probability of @True@
   -> Sampler Bool
-sampleBernoulli p = mkSampler $ MWC.Dist.bernoulli p
+sampleBernoulli p = mkSampler $ MWC.MulDist.bernoulli p
 
 sampleBinomial
   :: Int    -- ^ number of trials
   -> Double -- ^ probability of successful trial
   -> Sampler Int
-sampleBinomial n p = mkSampler $ (length . filter (== True) <$> ) . (replicateM n . MWC.Dist.bernoulli p)
+sampleBinomial n p = mkSampler $ (length . filter (== True) <$> ) . (replicateM n . MWC.MulDist.bernoulli p)
 
 sampleCategorical
   :: V.Vector Double -- ^ probabilities
   -> Sampler Int
-sampleCategorical ps = mkSampler $ MWC.Dist.categorical ps
+sampleCategorical ps = mkSampler $ MWC.MulDist.categorical ps
 
 sampleDiscrete
   :: [(a, Double)] -- ^ probabilities
   -> Sampler a
-sampleDiscrete xps = mkSampler (MWC.Dist.categorical (V.fromList ps)) <&> (xs !!)
+sampleDiscrete xps = mkSampler (MWC.MulDist.categorical (V.fromList ps)) <&> (xs !!)
   where (xs, ps) = unzip xps
 
 samplePoisson
@@ -171,7 +171,7 @@ samplePoisson λ = mkSampler $ MWC.Probability.sample (MWC.Probability.poisson �
 sampleDirichlet
   :: [Double] -- ^ concentrations
   -> Sampler [Double]
-sampleDirichlet xs = mkSampler $ MWC.Dist.dirichlet xs
+sampleDirichlet xs = mkSampler $ MWC.MulDist.dirichlet xs
 
 {- $Inverse-sampling
   Given a random double @r@ between 0 and 1, this is passed to a distribution's inverse

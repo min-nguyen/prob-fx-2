@@ -13,7 +13,7 @@
 
 module LinRegr where
 
-import Model ( GenModel, normal, uniform, handleCore )
+import Model ( MulModel, normal, uniform, conditionWith )
 import Inference.MC.SIM as SIM ( simulate )
 import Inference.MC.LW as LW ( lw )
 import Inference.MC.IM as IM ( im )
@@ -29,7 +29,7 @@ import           Trace (Key(..))
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
-import Effects.Dist
+import Effects.MulDist
 import PrimDist
 import Data.Maybe
 import Comp
@@ -56,7 +56,7 @@ type LinRegrEnv =
 -}
 linRegr :: Observables env '["y", "m", "c", "σ"] Double
   => [Double]               -- ^ x datapoints
-  -> GenModel env es [Double]  -- ^ y datapoints
+  -> MulModel env es [Double]  -- ^ y datapoints
 linRegr xs = do
   -- Draw model parameters from prior
   m <- normal 0 3 #m
@@ -65,7 +65,7 @@ linRegr xs = do
   -- Generate outputs ys
   mapM (\x -> normal (m * x + c) σ #y) xs
 
-linRegrGuide :: Observables env '["m", "c", "σ"] Double => GenModel env es ()
+linRegrGuide :: Observables env '["m", "c", "σ"] Double => MulModel env es ()
 linRegrGuide = do
   m <- normal 0 3 #m
   c <- normal 0 5 #c
@@ -184,7 +184,7 @@ smc2LinRegr n_outer_particles n_mhsteps n_inner_particles  n_datapoints = do
 -}
 linRegrOnce :: Observables env ["y", "m", "c", "σ"] Double
   => Double              -- ^ x datapoint
-  -> GenModel env rs Double -- ^ y datapoint
+  -> MulModel env rs Double -- ^ y datapoint
 linRegrOnce x = do
   -- Draw prior
   m <- normal 0 3 #m
