@@ -16,7 +16,7 @@ import Sampler
 import LogP
 import Trace (Trace, filterTrace)
 import Effects.MulDist
-import PrimDist
+import Dist
 import Model
 import Env
 import Effects.EnvRW

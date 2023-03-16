@@ -16,8 +16,8 @@
     along with their corresponding sampling and density functions.
 -}
 
-module PrimDist
-  (Distribution(..), DiffDistribution(..), PrimDist, DiffDist, Witness(..),
+module Dist
+  (Distribution(..), DiffDistribution(..), Dist, DiffDist, Witness(..),
    Beta, mkBeta, Bernoulli, mkBernoulli, Binomial, mkBinomial, Categorical, mkCategorical, Cauchy, mkCauchy, HalfCauchy, mkHalfCauchy,
    Deterministic(..), mkDeterministic, Discrete, mkDiscrete, Dirichlet, mkDirichlet, Gamma, mkGamma, Normal, mkNormal, HalfNormal, mkHalfNormal,
    Poisson, mkPoisson, Uniform, mkUniform, UniformD, mkUniformD) where
@@ -49,6 +49,9 @@ import           Vec (Vec(..), TypeableSNatI)
 
 {- Distributions that can be sampled from and conditioned against.
 -}
+-- | Shorthand for specifying a distribution @d@ and its type of support @a@
+type Dist d a = (Distribution d, Base d ~ a)
+
 class (Show d, Typeable d, Show (Base d), Typeable (Base d)) => Distribution d where
   type family Base d :: Type
   {- | Given a random double @r@ in (0, 1), this is passed to a distribution's inverse
@@ -69,15 +72,14 @@ class (Show d, Typeable d, Show (Base d), Typeable (Base d)) => Distribution d w
   isDifferentiable :: d -> Maybe (Witness DiffDistribution d)
   isDifferentiable _ = Nothing
 
--- | Shorthand for specifying a distribution @d@ and its type of support @a@
-type PrimDist d a = (Distribution d, Base d ~ a)
-
 -- | Dictionary proof
 data Witness (c :: Type -> Constraint) a where
   Witness :: c a => Witness c a
 
 {- Distributions that can be differentiated with respect to their parameters
 -}
+type DiffDist d a = (DiffDistribution d, Base d ~ a)
+
 class (SNatI (Arity d), Distribution d) => DiffDistribution d where
   type family Arity d :: Nat
   {- | Compute the gradient log-probability. -}
@@ -87,28 +89,21 @@ class (SNatI (Arity d), Distribution d) => DiffDistribution d where
 
   toList :: d -> [Double]
 
-type DiffDist d a = (DiffDistribution d, Base d ~ a)
-
-data Deterministic d = forall a. PrimDist d a => Deterministic d a
-
+data Deterministic d = forall a. Dist d a => Deterministic d a
 -- -- | Deterministic(x)
 -- data Deterministic d  where
---   Deterministic
---     :: forall d a. (PrimDist d a)
---     => d
---     -> a                                  -- ^ value of probability @1@
---     -> Deterministic d
+--   Deterministic :: forall d a. Dist d a  => d -> a -> Deterministic d
 
-mkDeterministic :: (PrimDist d a) => d -> a -> Deterministic d
+mkDeterministic :: (Dist d a) => d -> a -> Deterministic d
 mkDeterministic = Deterministic
 
 instance (Show d) => Show (Deterministic d) where
   show (Deterministic d x) = "Deterministic " ++ show x
 
-instance (PrimDist d a) => Distribution (Deterministic d) where
+instance (Dist d a) => Distribution (Deterministic d) where
   type Base (Deterministic d) = Base d
 
-  draw :: PrimDist d a => Deterministic d -> Double -> Base (Deterministic d)
+  draw :: Dist d a => Deterministic d -> Double -> Base (Deterministic d)
   draw (Deterministic d y) _ = y
 
   logProb :: Deterministic d -> a -> Double
@@ -613,7 +608,7 @@ instance Distribution UniformD where
     | otherwise               = - log (fromIntegral $ max - min + 1)
 
 {- | Draw a value from a primitive distribution using the @MonadSample@ type class from Monad-Bayes
-sampleBayes :: MB.MonadSample m => PrimDist a -> m a
+sampleBayes :: MB.MonadSample m => Dist a -> m a
 sampleBayes d = case d of
   (Uniform a b )    -> MB.uniform a b
   (Categorical as ) -> MB.categorical (Vec.fromList as)

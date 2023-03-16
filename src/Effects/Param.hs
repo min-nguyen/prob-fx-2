@@ -8,7 +8,7 @@
 module Effects.Param where
 
 import Comp
-import PrimDist
+import Dist
 import Trace
 import Effects.Sample
 import Env

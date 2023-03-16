@@ -27,7 +27,7 @@ import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
 import Effects.MulDist
 import Effects.Param
-import PrimDist
+import Dist
 import Data.Type.Nat
 import Data.Maybe
 import HMM (simHMM)

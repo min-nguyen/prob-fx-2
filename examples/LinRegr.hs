@@ -30,7 +30,7 @@ import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
 import Effects.MulDist
-import PrimDist
+import Dist
 import Data.Maybe
 import Comp
 import Effects.EnvRW

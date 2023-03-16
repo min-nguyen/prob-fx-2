@@ -25,7 +25,7 @@ import           Effects.State ( modify, handleState, State )
 import           Env ( Env, union )
 import           LogP ( LogP(..), normaliseLogPs )
 import           Model
-import           PrimDist
+import           Dist
 import           Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handleWith )
 import           Sampler ( Sampler, liftIO, handleIO )
 import           Trace

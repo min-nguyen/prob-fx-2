@@ -22,7 +22,7 @@ import           Effects.EnvRW ( EnvRW, handleEnvRW )
 import           Env ( Env )
 import           LogP ( LogP(..), logMeanExp )
 import           Model ( MulModel(runModel), Model )
-import           PrimDist ( mkCategorical, drawWithSampler, logProb )
+import           Dist ( mkCategorical, drawWithSampler, logProb )
 import           Comp ( LastMember, Comp(..), Members, Member, call, weakenProg, discharge, prj, handleWith, Handler, handle )
 import qualified Data.Map as Map
 import           Inference.MC.SIM as SIM

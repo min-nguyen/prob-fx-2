@@ -22,7 +22,7 @@ import Effects.MulDist (Addr(..))
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>), Vars (VCons) )
 import qualified Trace
 import           Trace (Key(..))
-import PrimDist
+import Dist
 import Vec (Vec(..), TypeableSNatI)
 import qualified Vec
 import Inference.MC.SIM as SIM ( simulate )

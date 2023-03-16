@@ -20,7 +20,7 @@ import qualified Data.Map as Map
 import Comp ( Handler, Comp(..), discharge, handleWith, LastMember, Member, handle )
 import Trace ( Trace, LPTrace, filterTrace )
 import LogP ( LogP (..) )
-import PrimDist
+import Dist
 import Model ( MulModel, conditionWith, Model )
 import Effects.EnvRW ( EnvRW )
 import Env ( Env )

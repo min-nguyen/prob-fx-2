@@ -25,7 +25,7 @@ import Env ( Env )
 import LogP ( LogP )
 import Inference.MC.SIM as SIM (defaultSample)
 import Model ( conditionWith, MulModel, Model )
-import PrimDist ( logProb )
+import Dist ( logProb )
 import Comp ( discharge, Comp(..), Handler, handleWith )
 import Sampler ( Sampler, handleIO )
 

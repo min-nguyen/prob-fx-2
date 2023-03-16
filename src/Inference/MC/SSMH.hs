@@ -26,7 +26,7 @@ import           Comp ( Comp(..), discharge, Members, LastMember, Member (..), c
 import           Env ( ContainsVars(..), Vars, Env )
 import           Trace ( Trace, LPTrace, filterTrace )
 import           LogP ( LogP )
-import           PrimDist
+import           Dist
 import           Model ( MulModel, conditionWith, Model )
 import           Effects.EnvRW ( EnvRW )
 import           Effects.MulDist ( Tag, Observe, Sample(..), MulDist, Addr(..), pattern SampPrj, pattern ObsPrj )

@@ -34,7 +34,7 @@ import Sampler ( Sampler, liftIO )
 import Util (boolToInt)
 import qualified Trace
 import           Trace (Key(..))
-import PrimDist
+import Dist
 import Data.Maybe
 {-
 import Numeric.Log ( Log )

@@ -22,7 +22,7 @@ import Effects.State ( modify, handleState, State )
 import Env ( Env, Vars, ContainsVars, union, initEmpty, varsToStrs )
 import LogP ( LogP(..), normaliseLogPs )
 import Model
-import PrimDist
+import Dist
 import Comp
 import           Sampler ( Sampler, handleIO )
 import           Trace

@@ -52,16 +52,16 @@ Added:
 **MulModel**
 - Swapped names for `discrete` and `categorical`
 
-**PrimDist**
+**Dist**
 Changed:
 - Swapped names for `Discrete` and `Categorical`
-- Removed the `MulDist` suffix on the constructor names of `PrimDist`
+- Removed the `MulDist` suffix on the constructor names of `Dist`
 - `DiscrUniform` -> `UniformD`
 
-**PrimDist**
+**Dist**
 Changed:
 - Swapped names for `Discrete` and `Categorical`
-- Removed the `MulDist` suffix on the constructor names of `PrimDist`
+- Removed the `MulDist` suffix on the constructor names of `Dist`
 - `DiscrUniform` -> `UniformD`
 
 **Comp**

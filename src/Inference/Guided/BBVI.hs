@@ -17,7 +17,7 @@ import LogP
 import Sampler
 import           Trace
 import Inference.MC.LW (likelihood)
-import PrimDist
+import Dist
 import qualified Vec
 import           Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Data.Data (Proxy(..))

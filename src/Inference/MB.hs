@@ -22,7 +22,7 @@ import Env ( Env )
 import Model (MulModel(..), conditionWith)
 import Numeric.Log ( Log(Exp) )
 import LogP ( LogP(LogP) )
-import PrimDist ( logProb, sampleBayes )
+import Dist ( logProb, sampleBayes )
 import Comp ( discharge, Comp(..), LastMember )
 
 -- | Translate a ProbFX model under a given model environment to a MonadBayes program

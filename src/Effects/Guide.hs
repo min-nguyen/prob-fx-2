@@ -8,7 +8,7 @@
 module Effects.Guide where
 
 import Comp
-import PrimDist
+import Dist
 import Trace
 import Effects.Sample
 import Env
@@ -23,17 +23,17 @@ data Guide a where
          -> Guide a        -- ^ sample
 
 -- | For projecting and then successfully pattern matching against @Param@
-pattern GuidePrj :: (Member Guide es) => (PrimDist d a, DiffDist q a) => d -> q -> Addr -> EffectSum es a
+pattern GuidePrj :: (Member Guide es) => (Dist d a, DiffDist q a) => d -> q -> Addr -> EffectSum es a
 pattern GuidePrj d q α <- (prj -> Just (Guide d q α))
 
 -- | For directly calling Param with a known runtime address,
-guide :: (Member Guide es, PrimDist d a, DiffDist q a) => d -> q -> Addr -> Comp es a
+guide :: (Member Guide es, Dist d a, DiffDist q a) => d -> q -> Addr -> Comp es a
 guide d q α = call (Guide d q α)
 
 -- | For directly calling Param for a variable in the model environment.
 --   The value returned is written to the output environment.
 guide' :: forall env es x d q a.
-  (Observable env x a, Members [EnvRW env, Guide] es, PrimDist d a, DiffDist q a)
+  (Observable env x a, Members [EnvRW env, Guide] es, Dist d a, DiffDist q a)
   => d -> q -> (Var x, Int) -> Comp es a
 guide' d q (varx, idx) = do
   let tag = varToStr varx

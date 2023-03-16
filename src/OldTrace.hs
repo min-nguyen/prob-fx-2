@@ -57,7 +57,7 @@ import           Data.Proxy ( Proxy(..) )
 import           GHC.TypeLits ( KnownSymbol )
 import           LogP ( LogP )
 import           Comp ( Member, Comp(..), weaken, install )
-import           PrimDist
+import           Dist
 import           Util
 import           TyCompare
 import           Vec (Vec)

@@ -200,7 +200,7 @@ PMMH-50-LinRegr-50,8.226359620406007e-2,0.1850793440338344,0.29872017398612416,0
 
 -------------------------------
 Updates:
-- Benchmarks after modularising PrimDist into individual data types constrained by the new Distribution type class
+- Benchmarks after modularising Dist into individual data types constrained by the new Distribution type class
 
 Dataset size,100,200,300,400,500
 LinRegr-SIM-1,2.484742825781518e-4,6.56505331131708e-4,1.2042840247319683e-3,1.9387727229665773e-3,2.770189991175972e-3
@@ -238,7 +238,7 @@ PMMH-50-LinRegr-50,8.38178145314081e-2,0.18703726595210055,0.3263399143332511,0.
 
 -------------------------------
 Updates:
-- Benchmarks after directly implementing draw for PrimDist (rather than using MWC.Distributions)
+- Benchmarks after directly implementing draw for Dist (rather than using MWC.Distributions)
 
 Dataset size,100,200,300,400,500
 LinRegr-SIM-1,2.454300435148454e-4,6.801680204381634e-4,1.2610610811632792e-3,1.983979878387912e-3,2.842499255904078e-3

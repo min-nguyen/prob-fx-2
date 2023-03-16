@@ -24,7 +24,7 @@ import Statistics.Distribution.Gamma ( gammaDistr )
 import Statistics.Distribution.Normal ( normalDistr )
 import Statistics.Distribution.Poisson ( poisson )
 import Statistics.Distribution.Uniform ( uniformDistr )
-import PrimDist
+import Dist
 import Debug.Trace
 import Control.Monad (replicateM)
 import Model (bernoulli)

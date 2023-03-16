@@ -53,7 +53,7 @@ import Data.Type.Nat
 import Effects.MulDist ( handleMulDist, MulDist(..), Observe, Sample)
 import Effects.EnvRW
 import Env
-import PrimDist
+import Dist
 import Comp ( call, Member, Comp, Members, LastMember )
 import Vec
 import Debug.Trace
@@ -73,7 +73,7 @@ import Data.Typeable
 -}
 newtype MulModel env es a =
   MulModel { runModel :: ( Member MulDist es        -- models can call primitive distributions
-                      , Member (EnvRW env) es -- models can read observed values from their environment
+                         , Member (EnvRW env) es -- models can read observed values from their environment
                       )
                    => Comp es a }
   deriving Functor
@@ -97,7 +97,7 @@ type Model es a = Comp (Observe : Sample : es) a
      to produce a probabilistic program consisting of @Sample@ and @Observe@ operations.
 -}
 conditionWith :: Env env -> MulModel env (EnvRW env : MulDist : es) a
-           -> Comp (Observe : Sample : es) (a, Env env)
+              -> Comp (Observe : Sample : es) (a, Env env)
 conditionWith env_in m = (handleMulDist . handleEnvRW env_in) (runModel m)
 
 {- $Smart-Constructors
@@ -123,7 +123,7 @@ conditionWith env_in m = (handleMulDist . handleEnvRW env_in) (runModel m)
     @
 -}
 
-callDist :: forall env x d a es. (PrimDist d a,  Show a) => Observable env x a => d -> Var x -> MulModel env es a
+callDist :: forall env x d a es. (Dist d a,  Show a) => Observable env x a => d -> Var x -> MulModel env es a
 callDist d field = MulModel $ do
   let tag =  Just $ varToStr field
   maybe_y <- call (EnvRead @env field)
@@ -131,7 +131,7 @@ callDist d field = MulModel $ do
   call (EnvWrite @env field y)
   pure y
 
-callDist' :: (PrimDist d a) => d -> MulModel env es a
+callDist' :: (Dist d a) => d -> MulModel env es a
 callDist' d = MulModel $ call (MulDist d Nothing Nothing)
 
 dirichlet :: (Observable env x (Vec n Double), TypeableSNatI n) =>

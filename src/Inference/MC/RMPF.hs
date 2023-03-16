@@ -37,7 +37,7 @@ import           Inference.MC.MH as MH
 import qualified Inference.MC.SIS as SIS hiding  (particleLogProb)
 import           Inference.MC.SIS (Resample(..), ModelStep, pfilter)
 
-import           PrimDist
+import           Dist
 import           Data.Bifunctor
 import           Unsafe.Coerce
 import           Util

@@ -62,7 +62,7 @@ library
                       Env,
                       LogP,
                       Model,
-                      PrimDist,
+                      Dist,
                       Comp,
                       Sampler,
                       Trace,

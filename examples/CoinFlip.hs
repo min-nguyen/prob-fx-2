@@ -13,7 +13,7 @@ module CoinFlip where
 import Comp ( call )
 import Effects.EnvRW ( EnvRW(EnvRead) )
 import Model ( MulModel(MulModel), bernoulli, uniform )
-import PrimDist ( mkBernoulli, mkUniform )
+import Dist ( mkBernoulli, mkUniform )
 import Effects.MulDist ( MulDist(MulDist) )
 import Data.Kind (Constraint)
 import Env ( Observables )

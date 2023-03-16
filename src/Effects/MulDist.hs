@@ -21,7 +21,7 @@ module Effects.MulDist (
 
 import           Data.Maybe ( fromMaybe )
 import qualified Data.Map as Map
-import           PrimDist
+import           Dist
 import           Trace
 import           Comp ( call, discharge, weaken, Member(..), Comp(..), EffectSum )
 import           Util

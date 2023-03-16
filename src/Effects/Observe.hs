@@ -6,7 +6,7 @@
 module Effects.Observe where
 
 import Comp
-import PrimDist
+import Dist
 import Trace
 import Env
 import Effects.EnvRW
@@ -19,7 +19,7 @@ data Observe a where
           -> Addr           -- ^ address of @Observe@ operation
           -> Observe a
 
-observe :: (Member Observe es, PrimDist d a)
+observe :: (Member Observe es, Dist d a)
        => d -> a -> Addr -> Comp es a
 observe d y α = call (Observe d y α)
 
