@@ -121,31 +121,18 @@ instance (KnownSymbol x, Show a, Show (Env env)) => Show (Env ((x := a) ': env))
 instance Show (Env '[]) where
   show ENil = "[]"
 
-instance FindElem x ((x := a) : env) where
-  findElem = Idx 0
-instance {-# OVERLAPPABLE #-} FindElem x env => FindElem x ((x' := a) : env) where
-  findElem = Idx $ 1 + unIdx (findElem :: Idx x env)
-
--- | Specifies that an environment @Env env@ has an observable variable @x@ whose observed values are of type @a@
-class (FindElem x env, LookupType x env ~ a)
-  => Observable env x a where
-  -- | Get the trace of observed values for @x@ from @env@
+-- {- Alternative minimal version
+class Observable env x a where
   get  :: Var x -> Env env -> [a]
-  -- | Set the trace of observed values for @x@ from @env@
   set  :: Var x -> [a] -> Env env -> Env env
 
-instance (FindElem x env, LookupType x env ~ a)
-  => Observable env x a where
-  get _ env = f idx env
-    where idx = unIdx $ findElem @x @env
-          f :: Int -> Env env' -> [a]
-          f n (ECons a env) | n == 0    = unsafeCoerce a
-                            | otherwise = f (n - 1) env
-  set _ a' env = f idx env
-    where idx = unIdx $ findElem @x @env
-          f :: Int -> Env env' -> Env env'
-          f n (ECons a env) | n == 0    = ECons (unsafeCoerce a') env
-                            | otherwise = ECons a (f (n - 1) env)
+instance {-# OVERLAPPING #-} (b ~ a) => Observable ((x := b):env) x a where
+  get _ (ECons a env)    = a
+  set _ a' (ECons a env) = ECons a' env
+
+instance {-# OVERLAPPABLE #-} (Observable env x a) => Observable ((y := b):env) x a where
+  get x (ECons a env)    = get x env
+  set x a' (ECons a env) = ECons a (set x a' env)
 
 -- | For each observable variable @x@ in @xs@, construct the constraint @Observable env x a@
 type Observables :: [Assign Symbol Type] -> [Symbol] -> Type -> Constraint
