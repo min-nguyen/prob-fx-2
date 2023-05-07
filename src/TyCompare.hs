@@ -23,7 +23,7 @@ import           Data.Typeable ( Typeable, Proxy(..), type (:~~:) )
 import           GHC.TypeLits ( TypeError, ErrorMessage(Text, (:<>:), (:$$:), ShowType) )
 import           Data.Proxy ( Proxy(..) )
 
-{- | Proof that @x@ is an element of the type-level list @xs@
+{- | Proof that @x@ is an element of the type-level list @xs@.
 -}
 class FindElem x xs where
   findElem :: Idx x xs
