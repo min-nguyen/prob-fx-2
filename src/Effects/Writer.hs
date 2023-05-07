@@ -1,8 +1,14 @@
 
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE RankNTypes #-}
+
+{-# LANGUAGE TypeApplications #-}
 
 
-
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE IncoherentInstances #-}
 
 {- | Writer effect.
 -}
@@ -14,7 +20,7 @@ module Effects.Writer (
   , handleWriter
   , handleWriterM) where
 
-import Comp ( discharge, Member(inj), Comp(..) )
+import Comp ( discharge, Member(inj), Comp(..), Handler )
 import Model ( MulModel(..) )
 
 -- | Writer effect for writing to a strean @w@

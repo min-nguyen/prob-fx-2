@@ -170,7 +170,7 @@ class ContainsVars (env :: [Assign Symbol *]) (xs :: [Symbol])  where
 instance ContainsVars env '[] where
   varsToStrs _    = []
 
-instance (FindElem x (GetVars env), KnownSymbol x, ContainsVars env xs) => ContainsVars env (x : xs)  where
+instance (KnownSymbol x, ContainsVars env xs) => ContainsVars env (x : xs)  where
   varsToStrs (VCons xs)  = varToStr (Var @x) : varsToStrs @env @xs xs
 
 {-

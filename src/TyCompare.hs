@@ -31,10 +31,10 @@ class FindElem x xs where
 -- | The integer index of @x@ in @xs@
 newtype Idx x xs = Idx {unIdx :: Int}
 
-instance FindElem x (x ': xs) where
+instance  {-# OVERLAPPING  #-} FindElem x (x ': xs) where
   findElem = Idx 0
 
-instance {-# OVERLAPPABLE #-} FindElem x xs => FindElem x (x' : xs) where
+instance {-# INCOHERENT #-} FindElem x xs => FindElem x (x' : xs) where
   findElem = Idx $ 1 + unIdx (findElem :: Idx x xs)
 
 instance TypeError ('Text "Cannot unify effect types." ':$$:
