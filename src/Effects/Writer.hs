@@ -1,14 +1,4 @@
-
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE MonoLocalBinds #-}
-{-# LANGUAGE RankNTypes #-}
-
-{-# LANGUAGE TypeApplications #-}
-
-
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE IncoherentInstances #-}
 
 {- | Writer effect.
 -}
