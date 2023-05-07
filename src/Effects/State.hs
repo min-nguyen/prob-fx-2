@@ -18,8 +18,8 @@ module Effects.State (
   , handleStateM
   , evalState) where
 
-import Comp ( Member(inj), Comp(..), discharge, handleWith )
-import Model ( MulModel(..) )
+import Comp ( Member(inj), Comp(..), discharge, handleWith, Handler )
+import Model ( MulModel(..), liftHandler )
 
 -- | The state effect
 data State s a where
@@ -49,12 +49,7 @@ modify :: Member (State s) es => (s -> s) -> Comp es ()
 modify f = get >>= put . f
 
 -- | Handle the @State s@ effect
-handleState :: forall s es a.
-  -- | initial state
-     s
-  -> Comp (State s ': es) a
-  -- | (output, final state)
-  -> Comp es (a, s)
+handleState :: forall s es a. s -> Handler (State s) es a (a, s)
 handleState s = handleWith s (\s' x -> Val (x, s')) hop where
   hop :: forall b. s -> State s b -> (s -> b -> Comp es (a, s)) -> Comp es (a, s)
   hop s Get      k = k s s
@@ -65,4 +60,4 @@ evalState s = fmap fst . handleState s
 
 -- | Handle the @State s@ effect in a model
 handleStateM :: s -> MulModel env (State s : es) a -> MulModel env es (a, s)
-handleStateM s m = MulModel $ handleState s $ runModel m
+handleStateM s = liftHandler (handleState s)

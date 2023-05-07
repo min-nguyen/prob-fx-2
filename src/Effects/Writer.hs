@@ -21,7 +21,7 @@ module Effects.Writer (
   , handleWriterM) where
 
 import Comp ( discharge, Member(inj), Comp(..), Handler )
-import Model ( MulModel(..) )
+import Model ( MulModel(..), liftHandler )
 
 -- | Writer effect for writing to a strean @w@
 data Writer w a where
@@ -40,9 +40,7 @@ tellM w = MulModel $ tell w
 
 -- | Handle the @Writer@ effect for a stream @w@
 handleWriter :: forall w es a. Monoid w
-  => Comp (Writer w ': es) a
-  -- | (output, final stream)
-  -> Comp es (a, w)
+  => Handler (Writer w) es a (a, w)
 handleWriter = loop mempty where
   loop ::  w -> Comp (Writer w ': es) a -> Comp es (a, w)
   loop w (Val x) = return (x, w)
@@ -55,4 +53,4 @@ handleWriterM :: Monoid w
   => MulModel env (Writer w : es) a
   -- | (output, final stream)
   -> MulModel env es (a, w)
-handleWriterM m = MulModel $ handleWriter $ runModel m
+handleWriterM = liftHandler handleWriter

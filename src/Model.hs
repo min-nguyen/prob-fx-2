@@ -18,6 +18,8 @@
 module Model (
     MulModel(..)
   , Model
+  , liftHandler
+  , liftCall
   , conditionWith
     -- * Distribution smart constructors
     -- $Smart-Constructors
@@ -93,6 +95,9 @@ instance Monad (MulModel env es) where
 
 liftHandler :: Handler e es a b -> MulModel env (e:es) a -> MulModel env es b
 liftHandler h (MulModel m) = MulModel (h m)
+
+liftCall :: Member e es => e a -> MulModel env es a
+liftCall op = MulModel (call op)
 
 {- | Probabilistic programs are those with effects for conditioning and sampling.
 -}
