@@ -73,9 +73,9 @@ class (FindElem e es) => Member (e :: * -> *) (es :: [* -> *]) where
   -- | Attempt to project an operation of type @e x@ out from an effect sum
   prj ::  EffectSum es a -> Maybe (e a)
 
-instance {-# INCOHERENT #-} (e ~ e') => Member e '[e'] where
-   inj = EffectSum 0
-   prj (EffectSum _ x) = Just (unsafeCoerce x)
+-- instance {-# OVERLAPPING #-} Member e '[e] where
+--    inj = EffectSum 0
+--    prj (EffectSum _ x) = Just (unsafeCoerce x)
 
 instance (FindElem e es) => Member e es where
   inj = EffectSum (unIdx (findElem :: Idx e es))
@@ -107,9 +107,9 @@ type family UMember (b :: Bool) (e :: * -> *) (es :: [* -> *]) :: Bool where
   UMember 'False e '[]        = 'False
 
 -- | Specifies that @e@ is the last effect in @es@
-class Member e es => LastMember e es | es -> e
+class (FindElem e es) => LastMember e es | es -> e
 instance {-# OVERLAPPABLE #-} LastMember e es => LastMember e (e' ': es)
-instance LastMember e (e ': '[])
+instance {-# INCOHERENT #-} LastMember e (e ': '[])
 
 -- | Run a pure computation
 run :: Comp '[] a -> a

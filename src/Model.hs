@@ -3,11 +3,14 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 
 {-# LANGUAGE TypeApplications #-}
 
 
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE IncoherentInstances #-}
 
 {- | An algebraic effect embedding of probabilistic models.
 -}
@@ -54,7 +57,7 @@ import Effects.MulDist ( handleMulDist, MulDist(..), Observe, Sample)
 import Effects.EnvRW
 import Env
 import Dist
-import Comp ( call, Member, Comp, Members, LastMember )
+import Comp ( call, Member, Comp, Members, LastMember, Handler )
 import Vec
 import Debug.Trace
 import Sampler
@@ -87,6 +90,9 @@ instance Monad (MulModel env es) where
   MulModel f >>= x = MulModel $ do
     f' <- f
     runModel $ x f'
+
+liftHandler :: Handler e es a b -> MulModel env (e:es) a -> MulModel env es b
+liftHandler h (MulModel m) = MulModel (h m)
 
 {- | Probabilistic programs are those with effects for conditioning and sampling.
 -}
