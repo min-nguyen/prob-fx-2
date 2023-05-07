@@ -34,7 +34,8 @@ newtype Idx x xs = Idx {unIdx :: Int}
 instance FindElem x (x ': xs) where
   findElem = Idx 0
 
-instance  {-# INCOHERENT #-} FindElem x xs => FindElem x (x' : xs) where
+-- | Note: This is INCOHERENT rather than OVERLAPPABLE in order to support the `Model.liftHandler` function
+instance {-# INCOHERENT #-} FindElem x xs => FindElem x (x' : xs) where
   findElem = Idx $ 1 + unIdx (findElem :: Idx x xs)
 
 instance TypeError ('Text "Cannot unify effect types." ':$$:
