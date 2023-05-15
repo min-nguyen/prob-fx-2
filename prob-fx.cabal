@@ -39,7 +39,7 @@ library
                       Effects.Sample,
                       Effects.Param,
                       Effects.Writer,
-                      Effects.Example,
+                      Effects.Demo,
                       Inference.MC.LW,
                       Inference.MC.IM,
                       Inference.MC.SSMH,

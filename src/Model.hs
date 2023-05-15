@@ -4,11 +4,7 @@
 {-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
-
 {-# LANGUAGE TypeApplications #-}
-
-
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE IncoherentInstances #-}
 

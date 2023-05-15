@@ -3,10 +3,19 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module Effects.Example where
+module Effects.Demo where
 
 import Comp
+import Env
+import Trace hiding (null)
+import Effects.Observe
+import Effects.Sample
+import Dist
+import Model hiding (Model)
+import qualified Model (Model)
 import Sampler (handleImpure)
+
+type Model a = Model.Model '[IO] a
 
 class Member e es => e ∈ es
 instance Member e es => e ∈ es
@@ -55,3 +64,11 @@ handleError catch = handle Val hop  where
 
 runProgPure :: String -> ((), String)
 runProgPure msg = (handlePure . handleError (\() -> return ((), "ERROR")) . handleConsolePure msg) prog
+
+
+-- -- | Lin Regr
+-- linRegr :: [Double] -> [Double] -> Model [Double]
+-- linRegr xs ys = do
+--   m        <- call $ Sample (mkNormal 0 3) (Addr "m" 0)
+--   c        <- call $ Sample (mkNormal 0 2) (Addr "c" 0)
+--   zipWithM (λ(x, y) → call $ Observe (mkNormal (m * x + c) 1) y ) xs ys
