@@ -25,7 +25,7 @@ import           Effects.EnvRW ( EnvRW )
 import           Env ( Env )
 import           Model ( conditionWith, MulModel )
 import           Dist ( drawWithSampler )
-import           Comp ( handleWith, discharge, Comp(..), LastMember, discharge1, Handler, Member, call )
+import           Comp ( handle, discharge, Comp(..), LastMember, discharge1, Handler, Member, call )
 import           Sampler ( Sampler, liftIO, handleImpure )
 import           Unsafe.Coerce (unsafeCoerce)
 
@@ -51,13 +51,13 @@ runSimulate
 
 -- | Handle @Observe@ operations by simply passing forward their observed value, performing no side-effects
 defaultObserve :: Handler Observe es b b
-defaultObserve = handleWith () (const Val) (const hop) where
+defaultObserve = handle Val hop where
   hop :: Observe x -> (() -> x -> Comp es b) -> Comp es b
   hop (Observe d y α) k = k () y
 
 -- | Handle @Sample@ operations by using the @Sampler@ monad to draw from primitive distributions
 defaultSample ::  Member Sampler es => Handler Sample es a a
-defaultSample = handleWith () (const Val) (const hop) where
+defaultSample = handle Val hop where
   hop :: Member Sampler es => Sample x -> (() -> x -> Comp es b) -> Comp es b
   hop (Sample d α) k = do x <- call $ drawWithSampler d
                           k () x
