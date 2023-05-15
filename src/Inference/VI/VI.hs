@@ -97,7 +97,7 @@ guidedStep num_samples execg execm guide model  params = do
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
 collectParams :: Env env -> VIGuide env '[Sampler] a -> Sampler Guides
-collectParams env = handleIO . SIM.defaultSample . (fst <$>) . defaultParam Trace.empty . loop Trace.empty . handleEnvRW env
+collectParams env = handleImpure . SIM.defaultSample . (fst <$>) . defaultParam Trace.empty . loop Trace.empty . handleEnvRW env
   where
   loop :: Guides -> Comp (Param : es) a -> Comp (Param : es) Guides
   loop params (Val _)   = pure params

@@ -28,7 +28,7 @@ import qualified Data.Map as Map
 import           Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS
 import           Inference.MC.SIS (Resample(..), ModelStep, pfilter)
-import           Sampler ( Sampler, random, sampleCategorical, handleIO)
+import           Sampler ( Sampler, random, sampleCategorical, handleImpure)
 
 {- | Call SMC on a model.
 -}
@@ -46,14 +46,14 @@ mulpfilter n_prts gen_model env_in = do
 {- | Call SMC on a probabilistic program.
 -}
 mulpfilter' :: Int -> Model '[Sampler] a -> Sampler [(a, LogP)]
-mulpfilter' n_prts = handleIO . handleResampleMul . pfilter n_prts 0 exec
+mulpfilter' n_prts = handleImpure . handleResampleMul . pfilter n_prts 0 exec
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation
        2. the log probability of the @Observe operation
 -}
 exec :: (Model '[Sampler] a, LogP) -> Sampler (Model '[Sampler] a, LogP)
-exec (p, w) = (handleIO . defaultSample . advance w) p
+exec (p, w) = (handleImpure . defaultSample . advance w) p
 
 advance :: LogP -> Handler Observe es a (Comp (Observe : es) a, LogP)
 advance w (Val x)   = Val (Val x, w)

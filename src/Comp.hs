@@ -26,7 +26,7 @@ module Comp (
   , LastMember
   , Append
   -- * Auxiliary functions
-  , run
+  , handlePure
   , call
   , handleWith
   , handle
@@ -112,9 +112,9 @@ instance {-# OVERLAPPABLE #-} LastMember e es => LastMember e (e' ': es)
 instance {-# INCOHERENT #-} LastMember e (e ': '[])
 
 -- | Run a pure computation
-run :: Comp '[] a -> a
-run (Val x) = x
-run _ = error "Comp.run isn't defined for non-pure computations"
+handlePure :: Comp '[] a -> a
+handlePure (Val x) = x
+handlePure _ = error "Comp.run isn't defined for non-pure computations"
 
 -- | Call an operation in a computation
 call :: Member e es => e a -> Comp es a

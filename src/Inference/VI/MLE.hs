@@ -24,7 +24,7 @@ import LogP ( LogP(..), normaliseLogPs )
 import Model
 import Dist
 import Comp
-import           Sampler ( Sampler, handleIO )
+import           Sampler ( Sampler, handleImpure )
 import           Trace
 import qualified Inference.MC.SIM as SIM
 import           Inference.VI.VI
@@ -45,18 +45,18 @@ mle num_timesteps num_samples guide model env = do
   -- | Set up a empty dummy guide Q to return the original input model environment
   λ_0 <- collectParams env guide
   -- | Run MLE for T optimisation steps
-  (handleIO . handleNormGradDescent) $
+  (handleImpure . handleNormGradDescent) $
       guidedLoop num_timesteps num_samples guide (execGuide env) model exec λ_0
 
 -- | Return probability of 1
 execGuide :: Env env -> Guides -> VIGuide env '[Sampler] a -> Sampler (((a, Env env), ΔGuides), LogP)
 execGuide env params   =
-  handleIO . fmap (,0) . SIM.defaultSample . defaultParam params .  handleEnvRW env
+  handleImpure . fmap (,0) . SIM.defaultSample . defaultParam params .  handleEnvRW env
 
 -- | Compute P(Y | X; θ)
 exec :: Env env -> VIModel env '[Sampler] a -> Sampler (a, LogP)
 exec env =
-  handleIO . SIM.defaultSample . likelihood . fmap fst . handleEnvRW env
+  handleImpure . SIM.defaultSample . likelihood . fmap fst . handleEnvRW env
 
 -- | Compute and update the guide parameters using a self-normalised importance weighted gradient estimate
 handleNormGradDescent :: Comp (GradUpdate : fs) a -> Comp fs a
