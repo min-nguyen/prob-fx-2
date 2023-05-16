@@ -26,8 +26,8 @@ import           Env ( Env, union )
 import           LogP ( LogP(..), normaliseLogPs )
 import           Model
 import           Dist
-import           Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handleWith )
-import           Sampler ( Sampler, liftIO, handleImpure )
+import           Comp ( discharge, Comp(..), runImpure, call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handleWith )
+import           Sampler ( Sampler, liftIO )
 import           Trace
 import           Inference.MC.SIM as SIM
 import           Inference.VI.VI as VI
@@ -50,17 +50,17 @@ bbvi :: forall env es a b. es ~ '[Sampler]
 bbvi num_timesteps num_samples guide model env  = do
   λ_0 <- VI.collectParams env guide
   -- liftIO (print λ_0)
-  (handleImpure . handleLRatio)
+  (runImpure . handleLRatio)
     $ VI.guidedLoop num_timesteps num_samples guide (execGuide env) model exec λ_0
 
 -- | Compute Q(X; λ)
 execGuide :: Env env -> Guides -> VIGuide env '[Sampler] a -> Sampler (((a, Env env), ΔGuides), LogP)
 execGuide env params =
-  handleImpure . VI.prior . defaultParam params . handleEnvRW env
+  runImpure . VI.prior . defaultParam params . handleEnvRW env
 
 -- | Compute P(X, Y)
 exec :: Env env -> VIModel env '[Sampler] a -> Sampler (a, LogP)
-exec env = handleImpure . joint . fmap fst . handleEnvRW env where
+exec env = runImpure . joint . fmap fst . handleEnvRW env where
   joint = fmap (\((x, a), b) -> (x, a + b)) . prior . likelihood
 
 handleLRatio :: forall fs a. Handler GradUpdate fs a a

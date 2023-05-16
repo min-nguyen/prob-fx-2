@@ -13,7 +13,6 @@ import Effects.Sample
 import Dist
 import Model hiding (Model)
 import qualified Model (Model)
-import Sampler (handleImpure)
 
 type Model a = Model.Model '[IO] a
 
@@ -43,7 +42,7 @@ handleConsole = handle Val hop  where
                             k () s
 
 runProg :: IO ()
-runProg = (handleImpure . handleConsole) prog
+runProg = (runImpure . handleConsole) prog
 
 -- | Pure
 handleConsolePure :: forall es a. Error () ∈ es
@@ -63,7 +62,7 @@ handleError catch = handle Val hop  where
   hop (Error e) k = catch e
 
 runProgPure :: String -> ((), String)
-runProgPure msg = (handlePure . handleError (\() -> return ((), "ERROR")) . handleConsolePure msg) prog
+runProgPure msg = (runPure . handleError (\() -> return ((), "ERROR")) . handleConsolePure msg) prog
 
 
 -- -- | Lin Regr

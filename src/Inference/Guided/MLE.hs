@@ -36,12 +36,12 @@ mle :: forall es a. ()
 mle num_timesteps num_samples model = do
   λ_0 <- collectGuide model
   -- liftIO (print λ_0)
-  (handleImpure . handleNormGradDescent)
+  (runImpure . handleNormGradDescent)
     $ guidedLoop num_timesteps num_samples exec model λ_0
 
 -- | Compute Q(X; λ)
 exec :: Guides -> GuidedModel '[Sampler] a -> Sampler ((a, ΔGuides), LogP)
-exec params = handleImpure . defaultGuide . defaultSample . likelihood . useGuides params
+exec params = runImpure . defaultGuide . defaultSample . likelihood . useGuides params
 
 -- | Compute and update the guide parameters using a self-normalised importance weighted gradient estimate
 handleNormGradDescent :: Comp (GradUpdate : fs) a -> Comp fs a

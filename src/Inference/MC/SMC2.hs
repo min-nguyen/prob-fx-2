@@ -52,7 +52,7 @@ smc2 n_outer_prts mh_steps n_inner_prts gen_model env obs_vars = do
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
   -- | Run SMC2do
-  smc2_trace <- handleImpure (smc2Internal n_outer_prts mh_steps n_inner_prts tags  model)
+  smc2_trace <- runImpure (smc2Internal n_outer_prts mh_steps n_inner_prts tags  model)
   -- Return the accepted model environments
   pure (map (snd . fst) smc2_trace)
 

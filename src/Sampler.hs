@@ -11,7 +11,6 @@ module Sampler (
     Sampler
   , random
   , randomFrom
-  , handleImpure
   , liftIO
   , sampleIO
   , sampleIOFixed
@@ -59,12 +58,6 @@ import           Comp
 -- | Sampler type, for running IO computations alongside a random number generator
 newtype Sampler a = Sampler {runSampler :: ReaderT MWC.GenIO IO a}
   deriving (Functor, Applicative, Monad)
-
-handleImpure :: Monad m => Comp '[m] w -> m w
-handleImpure (Val x) = return x
-handleImpure (Op u q) = case prj u of
-  Just m  -> m >>= handleImpure . q
-  Nothing -> error "Impossible: Nothing cannot occur"
 
 random :: Member Sampler es => Comp es Double
 random = call sampleRandom

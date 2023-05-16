@@ -22,7 +22,7 @@ import Effects.Guide
 import Env ( Env, union )
 import LogP ( LogP(..), normaliseLogPs )
 import Dist
-import Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handleWith, handle )
+import Comp ( Comp(..), runImpure, call, Member (..), Members, Handler, handleWith, handle )
 import Sampler
 import           Trace
 import Debug.Trace
@@ -53,7 +53,7 @@ guidedLoop n_timesteps n_samples exec model params_0 = do
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
 collectGuide :: GuidedModel '[Sampler] a -> Sampler Guides
-collectGuide = handleImpure . defaultGuide . loop Trace.empty .  SIM.defaultSample . SIM.defaultObserve
+collectGuide = runImpure . defaultGuide . loop Trace.empty .  SIM.defaultSample . SIM.defaultObserve
   where
   loop :: Guides -> Comp (Guide : es) a -> Comp (Guide : es) Guides
   loop params (Val _)   = pure params
