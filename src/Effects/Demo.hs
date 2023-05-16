@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use zipWithM_" #-}
+{-# HLINT ignore "Eta reduce" #-}
 
 module Effects.Demo where
 
@@ -32,8 +33,12 @@ type Model a = Model.Model '[Sampler] a
 α :: Addr
 α = Addr "" 0
 
-handleImpure' :: Comp '[Sampler] a -> IO a
-handleImpure' = sampleIO . handleImpure
+runPure :: Comp '[] a -> a
+runPure = handlePure
+runImpure :: Monad m => Comp '[m] w -> m w
+runImpure = handleImpure
+runImpure' :: Comp '[Sampler] a -> IO a
+runImpure' = sampleIO . handleImpure
 
 ----------------------------------
 
@@ -44,47 +49,47 @@ data Console a where
   GetLine   :: Console String
   PutStr    :: String -> Console ()
 
-data Error e a where
-  Error :: e -> Error e a
+data Error a where
+  Error :: Int -> Error a
 
 prog :: Console ∈ es => Comp es ()
 prog = do
   s <- call GetLine
-  call (PutStr s)
+  _ <- call (PutStr (s ++ "!!"))
+  return ()
 
 -- | ## Impure handling
-handleConsole :: forall es a. IO ∈ es
+handleConsoleImpure :: forall es a. IO ∈ es
   => Handler Console es a a
-handleConsole = handle Val hop  where
+handleConsoleImpure = handle hval hop  where
   hop :: Console x -> (() -> x -> Comp es a) -> Comp es a
-  hop (PutStr msg) k = do call (Prelude.putStr msg)
-                          k () ()
   hop GetLine k      = do s <- call Prelude.getLine
                           k () s
+  hop (PutStr msg) k = do call (Prelude.putStr msg)
+                          k () ()
+  hval x             = return x
 
-runProg :: IO ()
-runProg = (handleImpure . handleConsole) prog
+runProgImpure :: IO ()
+runProgImpure = (handleImpure . handleConsoleImpure) prog
 
 -- | ## Pure handling
-handleConsolePure :: forall es a. Error () ∈ es
-  => String -> Handler Console es a (a, String)
-handleConsolePure s = handleWith s hval hop  where
-  hval :: String -> a -> Comp es (a, String)
-  hval s x = Val (x, s)
+handleConsolePure :: forall es a. Error ∈ es
+  => Handler Console es a (a, String)
+handleConsolePure = handleWith "" hval hop  where
   hop :: String ->  Console x -> (String -> x -> Comp es b) -> Comp es b
-  hop s (PutStr msg) k = do k (msg ++ s) ()
-  hop s GetLine k        = if null s
-                              then call (Error ())
-                              else k s s
+  hop s GetLine k      = k s s
+  hop s (PutStr msg) k = if length msg < 2 then k (msg ++ s) ()
+                                           else call (Error 0)
+  hval s x             = return (x, s)
 
-handleError :: forall e es a. (e -> Comp es a) -> Handler (Error e) es a a
+handleError :: forall es a. (Int -> Comp es a) -> Handler Error es a a
 handleError catch = handle Val hop  where
-  hop :: Error e x -> (() -> x -> Comp es a) -> Comp es a
+  hop :: Error x -> (() -> x -> Comp es a) -> Comp es a
   hop (Error e) k = catch e
 
-runProgPure :: String -> ((), String)
-runProgPure msg = (handlePure . handleError (\() -> return ((), "ERROR")) . handleConsolePure msg) prog
-
+runProgPure :: ((), String)
+runProgPure = (handlePure . handleError catch . handleConsolePure) prog
+  where catch errcode = return ((), show errcode)
 
 ----------------------------------
 
@@ -104,6 +109,9 @@ lwLinRegr = do
   let xs      = [0 .. 10]
       ys      = map (*3) xs
   -- Get the sampled m's and their likelihood-weighting
-  mws <- (replicateM 1000 . handleImpure' . defaultSample . likelihood) (linRegr xs ys)
+  mws <- (replicateM 1000 . runImpure' . defaultSample . likelihood) (linRegr xs ys)
   return (mws :: [(Double, LogP)])
 
+{-
+  ./prob-fx.sh lwLinRegrOnce
+-}
