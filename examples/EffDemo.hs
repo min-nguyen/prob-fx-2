@@ -7,7 +7,7 @@
 {-# HLINT ignore "Use zipWithM_" #-}
 {-# HLINT ignore "Eta reduce" #-}
 
-module Effects.Demo where
+module EffDemo where
 
 import Comp
 import Env
@@ -33,12 +33,8 @@ type Model a = Model.Model '[Sampler] a
 α :: Addr
 α = Addr "" 0
 
-runPure :: Comp '[] a -> a
-runPure = handlePure
-runImpure :: Monad m => Comp '[m] w -> m w
-runImpure = handleImpure
 runImpure' :: Comp '[Sampler] a -> IO a
-runImpure' = sampleIO . handleImpure
+runImpure' = sampleIO . runImpure
 
 ----------------------------------
 
@@ -70,7 +66,7 @@ handleConsoleImpure = handle hval hop  where
   hval x             = return x
 
 runProgImpure :: IO ()
-runProgImpure = (handleImpure . handleConsoleImpure) prog
+runProgImpure = (runImpure . handleConsoleImpure) prog
 
 -- | ## Pure handling
 handleConsolePure :: forall es a. Error ∈ es
@@ -88,7 +84,7 @@ handleError catch = handle Val hop  where
   hop (Error e) k = catch e
 
 runProgPure :: ((), String)
-runProgPure = (handlePure . handleError catch . handleConsolePure) prog
+runProgPure = (runPure . handleError catch . handleConsolePure) prog
   where catch errcode = return ((), show errcode)
 
 ----------------------------------

@@ -25,7 +25,7 @@ import Env ( Env, Vars, ContainsVars, union, initEmpty, varsToStrs )
 import LogP ( LogP(..), normaliseLogPs )
 import Model
 import Dist
-import Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg )
+import Comp ( discharge, Comp(..), runImpure, call, weaken, LastMember, Member (..), Members, weakenProg )
 import Sampler
 import           Trace
 import Debug.Trace
@@ -46,15 +46,15 @@ map num_timesteps num_samples guide model env  = do
   -- | Set up a empty dummy guide Q to return the original input model environment
   λ_0 <- collectParams env guide
   -- | Run MAP for T optimisation steps
-  (handleImpure . handleNormGradDescent) $
+  (runImpure . handleNormGradDescent) $
       VI.guidedLoop num_timesteps num_samples guide (execGuide env) model exec λ_0
 
 -- | Return probability of 1
 execGuide :: Env env -> Guides -> VIGuide env '[Sampler] a -> Sampler (((a, Env env), ΔGuides), LogP)
 execGuide env params  = (second (const 0) <$>) . BBVI.execGuide  env  params
-  -- (handleImpure . fmap (,0) . defaultSample . defaultParam params . handleEnvRW env) guide
+  -- (runImpure . fmap (,0) . defaultSample . defaultParam params . handleEnvRW env) guide
 
 -- | Compute P(Y, X)
 exec :: Env env -> VIModel env '[Sampler] a -> Sampler (a, LogP)
 exec  env =
-  handleImpure . defaultSample . defaultObserve . joint 0 . fmap fst . handleEnvRW env
+  runImpure . defaultSample . defaultObserve . joint 0 . fmap fst . handleEnvRW env

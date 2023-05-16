@@ -74,7 +74,7 @@ rmpf' ::
   -> Sampler [(a, PrtState)]                      -- ^ final particle results and contexts
 rmpf' n_prts mh_steps tags model = do
   -- let q =  pfilter exec model (prts, ps)
-  (handleImpure . handleResample mh_steps tags model . pfilter n_prts (0, Map.empty) exec ) model
+  (runImpure . handleResample mh_steps tags model . pfilter n_prts (0, Map.empty) exec ) model
 
 {- | A handler that records the values generated at @Sample@ operations and invokes a breakpoint
      at the first @Observe@ operation, by returning:
@@ -82,7 +82,7 @@ rmpf' n_prts mh_steps tags model = do
        2. the log probability of the @Observe operation, its breakpoint address, and the particle's sample trace
 -}
 exec :: ModelStep '[Sampler] PrtState a
-exec (p, (w, τ))  = (fmap asPrtTrace . handleImpure . reuseTrace τ . advance w) p where
+exec (p, (w, τ))  = (fmap asPrtTrace . runImpure . reuseTrace τ . advance w) p where
   asPrtTrace ((prt, w), τ) = (prt, (w, τ))
 
 {- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using SSMH.
