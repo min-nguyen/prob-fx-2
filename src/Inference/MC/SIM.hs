@@ -25,8 +25,8 @@ import           Effects.EnvRW ( EnvRW )
 import           Env ( Env )
 import           Model ( conditionWith, MulModel )
 import           Dist ( drawWithSampler )
-import           Comp ( handle, discharge, Comp(..), LastMember, discharge1, Handler, Member, call )
-import           Sampler ( Sampler, liftIO, handleImpure )
+import           Comp ( handle, discharge, Comp(..), LastMember, discharge1, Handler, Member, call, runImpure )
+import           Sampler ( Sampler, liftIO )
 import           Unsafe.Coerce (unsafeCoerce)
 
 -- | Simulate from a model under a given model environment
@@ -47,7 +47,7 @@ runSimulate
   -- | (model output, sample trace)
   -> Sampler a
 runSimulate
-  = handleImpure . defaultSample . defaultObserve
+  = runImpure . defaultSample . defaultObserve
 
 -- | Handle @Observe@ operations by simply passing forward their observed value, performing no side-effects
 defaultObserve :: Handler Observe es b b

@@ -28,7 +28,7 @@ import Effects.State ( modify, handleState, State )
 import Env ( Env, union )
 import LogP ( LogP(..), normaliseLogPs )
 import Dist
-import Comp ( discharge, Comp(..), call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handleWith )
+import Comp ( Comp(..), runImpure, call,  Member (..), Members, Handler, handleWith )
 import Sampler
 import           Trace
 import Debug.Trace
@@ -97,7 +97,7 @@ guidedStep num_samples execg execm guide model  params = do
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
 collectParams :: Env env -> VIGuide env '[Sampler] a -> Sampler Guides
-collectParams env = handleImpure . SIM.defaultSample . (fst <$>) . defaultParam Trace.empty . loop Trace.empty . handleEnvRW env
+collectParams env = runImpure . SIM.defaultSample . (fst <$>) . defaultParam Trace.empty . loop Trace.empty . handleEnvRW env
   where
   loop :: Guides -> Comp (Param : es) a -> Comp (Param : es) Guides
   loop params (Val _)   = pure params

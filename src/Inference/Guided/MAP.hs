@@ -38,7 +38,7 @@ map :: forall es a. ()
 map num_timesteps num_samples model = do
   λ_0 <- collectGuide model
   -- liftIO (print λ_0)
-  (handleImpure . MLE.handleNormGradDescent)
+  (runImpure . MLE.handleNormGradDescent)
     $ guidedLoop num_timesteps num_samples exec model λ_0
 
 -- | Sample from each @Guide@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
@@ -53,5 +53,5 @@ handleGuide  = handleWith 0 (\s a -> Val (a, s)) hop where
 
 -- | Compute Q(X; λ)
 exec :: Guides -> GuidedModel '[Sampler] a -> Sampler ((a, ΔGuides), LogP)
-exec params = handleImpure . mergeWeights . handleGuide . defaultSample . defaultObserve . LW.joint 0 . useGuides params where
+exec params = runImpure . mergeWeights . handleGuide . defaultSample . defaultObserve . LW.joint 0 . useGuides params where
   mergeWeights = fmap (\((x, w_lat), w_obs) -> (x, w_lat + w_obs))
