@@ -37,7 +37,7 @@ gradAsc steps model =
   let p = N 0.5 (singleton "m" 1)
       go p@(N x dx) i
              | i > steps = p
-             | otherwise = let N x' dx' = run $ likelihood (model p)
+             | otherwise = let N x' dx' = runPure $ likelihood (model p)
                            in  go (N (x + 0.001 * (dx' ! "m")) dx) (i + 1)
   in  go p 0
 
