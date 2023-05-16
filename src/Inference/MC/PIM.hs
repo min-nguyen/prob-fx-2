@@ -44,19 +44,19 @@ pim mh_steps n_prts gen_model env_in obs_vars = do
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
   -- | Initialise sample trace to include only parameters
-  τθ_0       <- (fmap (filterTrace tags . snd) . handleIO .  reuseTrace Map.empty . defaultObserve) model
-  pmmh_trace <- (handleIO . IM.handleProposal . mh mh_steps τθ_0 (exec n_prts)) model
+  τθ_0       <- (fmap (filterTrace tags . snd) . handleImpure .  reuseTrace Map.empty . defaultObserve) model
+  pmmh_trace <- (handleImpure . IM.handleProposal . mh mh_steps τθ_0 (exec n_prts)) model
   pure (map (snd . fst . fst) pmmh_trace)
 
 pim' :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
-pim' mh_steps n_prts τθ = handleIO . IM.handleProposal . mh mh_steps τθ (exec n_prts)
+pim' mh_steps n_prts τθ = handleImpure . IM.handleProposal . mh mh_steps τθ (exec n_prts)
 
 {- | Handle probabilistic program using SSMH and compute the average log-probability using SMC.
 -}
 exec :: Int -> ModelExec '[Sampler] LogP a
 exec n τθ prog   = do
   let exec_prt :: ModelStep '[Sampler] LogP a
-      exec_prt (p, w) = (fmap fst .  handleIO .  reuseTrace τθ . advance w) p
-  (as, ρs) <- (fmap unzip . handleIO . handleResampleMul . pfilter n 0 exec_prt ) prog
+      exec_prt (p, w) = (fmap fst .  handleImpure .  reuseTrace τθ . advance w) p
+  (as, ρs) <- (fmap unzip . handleImpure . handleResampleMul . pfilter n 0 exec_prt ) prog
   return ((head as, logMeanExp ρs), τθ)
 

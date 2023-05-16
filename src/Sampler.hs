@@ -11,7 +11,7 @@ module Sampler (
     Sampler
   , random
   , randomFrom
-  , handleIO
+  , handleImpure
   , liftIO
   , sampleIO
   , sampleIOFixed
@@ -60,10 +60,10 @@ import           Comp
 newtype Sampler a = Sampler {runSampler :: ReaderT MWC.GenIO IO a}
   deriving (Functor, Applicative, Monad)
 
-handleIO :: Monad m => Comp '[m] w -> m w
-handleIO (Val x) = return x
-handleIO (Op u q) = case prj u of
-  Just m  -> m >>= handleIO . q
+handleImpure :: Monad m => Comp '[m] w -> m w
+handleImpure (Val x) = return x
+handleImpure (Op u q) = case prj u of
+  Just m  -> m >>= handleImpure . q
   Nothing -> error "Impossible: Nothing cannot occur"
 
 random :: Member Sampler es => Comp es Double

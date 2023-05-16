@@ -13,7 +13,7 @@ import Effects.EnvRW
 
 -- | The effect @Observe@ for conditioning against observed values
 data Observe a where
-  Observe :: (Distribution d, a ~ Base d)
+  Observe :: (Dist d a)
           => d              -- ^ distribution to condition with
           -> a              -- ^ observed value
           -> Addr           -- ^ address of @Observe@ operation

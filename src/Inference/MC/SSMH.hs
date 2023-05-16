@@ -32,7 +32,7 @@ import           Effects.EnvRW ( EnvRW )
 import           Effects.MulDist ( Tag, Observe, Sample(..), MulDist, Addr(..), pattern SampPrj, pattern ObsPrj )
 import           Inference.MC.SIM
 import           Inference.MC.MH as MH
-import           Sampler ( Sampler, random, randomFrom, handleIO )
+import           Sampler ( Sampler, random, randomFrom, handleImpure )
 import           Data.Bifunctor (Bifunctor(..))
 import           Util ( assocR )
 import Effects.State
@@ -54,7 +54,7 @@ ssmh n gen_model env_in obs_vars  = do
       τ_0    = Map.empty
   -- | Convert observable variables to strings
   let tags = varsToStrs @env obs_vars
-  mh_trace <- (handleIO . handleProposal tags . mh n τ_0 exec) model
+  mh_trace <- (handleImpure . handleProposal tags . mh n τ_0 exec) model
   pure (map (snd . fst . fst) mh_trace)
 
 {- | SSMH inference on a probabilistic program.
@@ -64,7 +64,7 @@ ssmh' :: Int                                   -- ^ number of SSMH iterations
   -> [Tag]                                 -- ^ tags indicating variables of interest
   -> Model '[Sampler] a                            -- ^ probabilistic program
   -> Sampler [((a, LPTrace), Trace)]
-ssmh' n τ_0  tags = handleIO . handleProposal tags  . mh n τ_0 exec
+ssmh' n τ_0  tags = handleImpure . handleProposal tags  . mh n τ_0 exec
 
 {- | Handler for @Proposal@ for SSMH.
     - Propose by drawing a component x_i of latent variable X' ~ p(X)
@@ -87,7 +87,7 @@ handleProposal tags  = handleWith (Addr "" 0) (const Val) hop
 exec :: Trace
   -> Model '[Sampler] a                             -- ^ probabilistic program
   -> Sampler ((a, LPTrace), Trace)  -- ^ proposed address + final log-probability trace + final sample trace
-exec τ0 = handleIO . reuseTrace τ0 . defaultObserve . traceLP Map.empty
+exec τ0 = handleImpure . reuseTrace τ0 . defaultObserve . traceLP Map.empty
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
 -}

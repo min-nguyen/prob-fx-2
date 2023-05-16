@@ -53,7 +53,7 @@ guidedLoop n_timesteps n_samples exec model params_0 = do
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
 collectGuide :: GuidedModel '[Sampler] a -> Sampler Guides
-collectGuide = handleIO . defaultGuide . loop Trace.empty .  SIM.defaultSample . SIM.defaultObserve
+collectGuide = handleImpure . defaultGuide . loop Trace.empty .  SIM.defaultSample . SIM.defaultObserve
   where
   loop :: Guides -> Comp (Guide : es) a -> Comp (Guide : es) Guides
   loop params (Val _)   = pure params

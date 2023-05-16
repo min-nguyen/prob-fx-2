@@ -36,12 +36,12 @@ bbvi :: forall es a. ()
 bbvi num_timesteps num_samples model = do
   λ_0 <- collectGuide model
   -- liftIO (print λ_0)
-  (handleIO . handleLRatio)
+  (handleImpure . handleLRatio)
     $ guidedLoop num_timesteps num_samples exec model λ_0
 
 -- | Compute Q(X; λ)
 exec :: Guides -> GuidedModel '[Sampler] a -> Sampler ((a, ΔGuides), LogP)
-exec params = handleIO . mergeWeights . priorDiff . defaultSample . likelihood .  useGuides params  where
+exec params = handleImpure . mergeWeights . priorDiff . defaultSample . likelihood .  useGuides params  where
   mergeWeights = fmap (\((x, w_lat), w_obs) -> (x, w_lat + w_obs))
 
 -- | Sample from each @Guide@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).

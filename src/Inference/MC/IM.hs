@@ -25,7 +25,7 @@ import Model ( MulModel, conditionWith, Model )
 import Effects.EnvRW ( EnvRW )
 import Env ( Env )
 import Effects.MulDist ( MulDist, pattern SampPrj, pattern ObsPrj )
-import Sampler ( Sampler, random, handleIO )
+import Sampler ( Sampler, random, handleImpure )
 import qualified Inference.MC.SIM as SIM
 import qualified Inference.MC.LW as LW
 import Inference.MC.MH as MH
@@ -52,13 +52,13 @@ im' ::
      Int                              -- ^ number of iterations
   -> Model '[Sampler] a  -- ^ model
   -> Sampler [((a, LogP), Trace)]            -- ^ output model environments
-im' n = handleIO . handleProposal . MH.mh n Map.empty exec
+im' n = handleImpure . handleProposal . MH.mh n Map.empty exec
 
 {- | Handler for one iteration of IM.
 -}
 exec :: ModelExec '[Sampler] LogP a
 exec τ   =
-  handleIO . MH.reuseTrace τ . LW.likelihood
+  handleImpure . MH.reuseTrace τ . LW.likelihood
 
 handleProposal :: Member Sampler fs => Handler (Proposal LogP) fs a a
 handleProposal = handle Val hop
