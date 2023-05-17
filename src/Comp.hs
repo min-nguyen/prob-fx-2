@@ -141,10 +141,13 @@ handleWith s hval hop   (Op op k) = case discharge op of
   Left   u   -> Op u (k' s)
   where k' s' = handleWith s' hval hop . k
 
-handle ::  (a -> Comp es b)
- -> (forall x. e x -> (() -> x -> Comp es b) -> Comp es b)
+handle :: forall e es a b.
+    (a -> Comp es b)
+ -> (forall x. e x -> (x -> Comp es b) -> Comp es b)
  -> Handler e es a b
-handle hval hop  =  handleWith () (const hval) (const hop)
+handle hval hop  = handleWith () (const hval) (const hop') where
+  hop' :: e x -> (() -> x -> Comp es b) -> Comp es b
+  hop' op k = hop op (k ())
 
 -- | Discharge an effect from the front of an effect sum
 discharge :: EffectSum (e ': es) a -> Either (EffectSum es a) (e a)
