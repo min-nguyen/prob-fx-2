@@ -93,10 +93,10 @@ useGuides dists = loop (dists, Trace.empty) where
 -- | Sample from each @Guide@ distribution
 defaultGuide :: forall es a. Member Sampler es => Handler Guide es a a
 defaultGuide  = handle Val hop where
-  hop :: Guide x -> (() -> x -> Comp es b) -> Comp es b
+  hop :: Guide x -> (x -> Comp es b) -> Comp es b
   hop (Guide (d :: d) (q :: q) α) k = do
       x <- call (drawWithSampler q)
-      k () x
+      k x
 
 prior :: forall es a. Member Sampler es => Handler Sample es a (a, LogP)
 prior = handleWith 0 (\lρ x -> Val (x, lρ)) hop

@@ -58,11 +58,11 @@ prog = do
 handleConsoleImpure :: forall es a. IO ∈ es
   => Handler Console es a a
 handleConsoleImpure = handle hval hop  where
-  hop :: Console x -> (() -> x -> Comp es a) -> Comp es a
+  hop :: Console x -> (x -> Comp es a) -> Comp es a
   hop GetLine k      = do s <- call Prelude.getLine
-                          k () s
+                          k s
   hop (PutStr msg) k = do call (Prelude.putStr msg)
-                          k () ()
+                          k ()
   hval x             = return x
 
 runProgImpure :: IO ()
@@ -80,7 +80,7 @@ handleConsolePure = handleWith "" hval hop  where
 
 handleError :: forall es a. (Int -> Comp es a) -> Handler Error es a a
 handleError catch = handle Val hop  where
-  hop :: Error x -> (() -> x -> Comp es a) -> Comp es a
+  hop :: Error x -> (x -> Comp es a) -> Comp es a
   hop (Error e) k = catch e
 
 runProgPure :: ((), String)

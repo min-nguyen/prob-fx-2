@@ -66,14 +66,14 @@ advance w (Op op k) = case discharge op of
 
 handleResampleMul :: Member Sampler es => Handler (Resample LogP) es b b
 handleResampleMul = handle Val hop where
-  hop :: Member Sampler es =>  Resample LogP x -> (() -> x -> Comp es b) -> Comp es b
+  hop :: Member Sampler es =>  Resample LogP x -> (x -> Comp es b) -> Comp es b
   hop  (Resample pws) k = do
     let (ps, ws) = unzip pws; n = length ws
     idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList (map exp ws))
     let prts_res  = map (ps !! ) idxs
         ws_res    = (replicate n . logMeanExp . map (ws  !! )) idxs
 
-    k () (zip prts_res ws_res)
+    k (zip prts_res ws_res)
 
 resampleMul :: [LogP] -> Sampler [Int]
 resampleMul ws = do
