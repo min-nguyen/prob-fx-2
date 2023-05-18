@@ -46,7 +46,7 @@ data Console a where
   PutStr    :: String -> Console ()
 
 data Error a where
-  Error :: Int -> Error a
+  Throw :: Int -> Error a
 
 prog :: Console ∈ es => Comp es ()
 prog = do
@@ -75,13 +75,13 @@ handleConsolePure = handleWith "" hval hop  where
   hop :: String ->  Console x -> (String -> x -> Comp es b) -> Comp es b
   hop s GetLine k      = k s s
   hop s (PutStr msg) k = if length msg < 2 then k (msg ++ s) ()
-                                           else call (Error 0)
+                                           else call (Throw 0)
   hval s x             = return (x, s)
 
 handleError :: forall es a. (Int -> Comp es a) -> Handler Error es a a
 handleError catch = handle Val hop  where
   hop :: Error x -> (x -> Comp es a) -> Comp es a
-  hop (Error e) k = catch e
+  hop (Throw e) k = catch e
 
 runProgPure :: ((), String)
 runProgPure = (runPure . handleError catch . handleConsolePure) prog
