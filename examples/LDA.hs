@@ -25,12 +25,12 @@ import           Trace (Key(..))
 import Dist
 import Vec (Vec(..), TypeableSNatI)
 import qualified Vec
-import Inference.MC.SIM as SIM ( simulate )
-import Inference.MC.LW as LW ( lw )
-import Inference.MC.SSMH as SSMH ( ssmh )
-import Inference.MC.SMC as SMC ( mulpfilter )
+import Inference.MC.SIM as SIM ( simulateWith )
+import Inference.MC.LW as LW ( lwWith )
+import Inference.MC.SSMH as SSMH ( ssmhWith )
+import Inference.MC.SMC as SMC ( mulpfilterWith )
 import Inference.MC.RMPF as RMPF ( rmpf )
-import Inference.MC.PMMH as PMMH ( pmmh )
+import Inference.MC.PMMH as PMMH ( pmmhWith )
 import Inference.VI.BBVI as BBVI
 import Data.Maybe
 import Data.Typeable
@@ -153,7 +153,7 @@ simLDA n_words = do
                       1.72605174564027e-2:::2.9475900240868515e-2:::9.906011619752661e-2:::0.8542034661052021:::VNil] <:>
                #w := [] <:> enil
   -- Simulate from topic model
-  (words, env_out) <- SIM.simulate (topicModel vocab n_topics n_words) env_in
+  (words, env_out) <- SIM.simulateWith (topicModel vocab n_topics n_words) env_in
   return words
 
 -- | Example document of words to perform inference over
@@ -166,7 +166,7 @@ lwLDA n_lwsteps n_words = do
   -- Do SSMH inference over the topic model using the above data
   let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
-  (env_outs, ws) <- unzip <$> LW.lw n_lwsteps (topicModel vocab n_topics n_words) env_in
+  (env_outs, ws) <- unzip <$> LW.lwWith n_lwsteps (topicModel vocab n_topics n_words) env_in
   -- Draw the most recent sampled parameters
   let env_pred   = head env_outs
       θs         = get #θ env_pred
@@ -178,7 +178,7 @@ mhLDA n_mhsteps n_words = do
   -- Do SSMH inference over the topic model using the above data
   let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document <:> enil
-  env_outs <- SSMH.ssmh n_mhsteps (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
+  env_outs <- SSMH.ssmhWith n_mhsteps (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
   -- Draw the most recent sampled parameters
   let env_pred   = head env_outs
       θs         = get #θ env_pred
@@ -190,7 +190,7 @@ smcLDA :: Int -> Int -> Sampler ([[Double]], [[Double]])
 smcLDA n_particles n_words = do
   let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
-  env_outs <- SMC.mulpfilter n_particles (topicModel vocab n_topics n_words) env_in
+  env_outs <- SMC.mulpfilterWith n_particles (topicModel vocab n_topics n_words) env_in
   -- Draw a random particle's environment
   env_pred_idx <- sampleUniformD 0 (length env_outs - 1)
   let env_pred   = env_outs !! env_pred_idx
@@ -220,7 +220,7 @@ pmmhLDA n_mhsteps n_particles n_words = do
   let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
 
-  env_outs     <- PMMH.pmmh n_mhsteps n_particles  (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
+  env_outs     <- PMMH.pmmhWith n_mhsteps n_particles  (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
   -- Draw the most recent sampled parameters
   let env_pred   = head env_outs
       θs         = get #θ env_pred

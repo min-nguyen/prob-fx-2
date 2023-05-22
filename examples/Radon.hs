@@ -19,8 +19,8 @@ import Model ( MulModel, halfCauchy', halfNormal, normal )
 import Env ( Env(..), Observables, Observable, Assign ((:=)), (<:>), enil, (<#>), vnil, get)
 import Sampler ( Sampler )
 import DataSets ( n_counties, logRadon, countyIdx, dataFloorValues )
-import Inference.MC.SIM as SIM ( simulate )
-import Inference.MC.SSMH as SSMH ( ssmh )
+import Inference.MC.SIM as SIM ( simulateWith )
+import Inference.MC.SSMH as SSMH ( ssmhWith )
 import Util ( findIndexes )
 
 -- | Radon model environment
@@ -84,7 +84,7 @@ simRadon = do
   -- Specify model environment
   let env_in = mkRadonEnv ([1.45], [-0.68], [0.3], [0.2], [], [], [])
   -- Simulate from model
-  (bs, env_out) <- SIM.simulate  (radonModel n_counties dataFloorValues countyIdx) env_in
+  (bs, env_out) <- SIM.simulateWith  (radonModel n_counties dataFloorValues countyIdx) env_in
   -- Retrieve and return the radon-levels for houses with basements and those without basements
   let basementIdxs      = findIndexes dataFloorValues 0
       noBasementIdxs    = findIndexes dataFloorValues 1
@@ -98,7 +98,7 @@ mhRadon :: Int -> Sampler ([Double], [Double])
 mhRadon n_mhsteps = do
   let env_in = mkRadonEnv ([], [], [], [], [], [], logRadon)
   -- Run SSMH inference
-  env_outs <- SSMH.ssmh n_mhsteps (radonModel n_counties dataFloorValues countyIdx) env_in
+  env_outs <- SSMH.ssmhWith n_mhsteps (radonModel n_counties dataFloorValues countyIdx) env_in
                               (#mu_a <#> #mu_b <#> #sigma_a <#> #sigma_b <#> vnil)
   -- Retrieve sampled values for model hyperparameters mu_a and mu_b
   let mu_a   = concatMap (get #mu_a)  env_outs
@@ -111,7 +111,7 @@ mhPredRadon n_mhsteps = do
   -- Specify model environment
   let env_in = mkRadonEnv ([], [], [], [], [], [], logRadon)
   -- Run SSMH inference
-  env_outs <- SSMH.ssmh n_mhsteps (radonModel n_counties dataFloorValues countyIdx ) env_in
+  env_outs <- SSMH.ssmhWith n_mhsteps (radonModel n_counties dataFloorValues countyIdx ) env_in
                               (#mu_a <#> #mu_b <#> #sigma_a <#> #sigma_b <#> vnil)
   -- Retrieve most recently sampled values for each house's intercept and gradient, a and b
   let env_pred   = head env_outs
