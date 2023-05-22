@@ -34,25 +34,25 @@ import Util
 
 {- | Top-level wrapper for Independence Metropolis
 -}
-im ::
+imWith ::
      Int                              -- ^ number of iterations
   -> MulModel env [EnvRW env, MulDist, Sampler] a  -- ^ model
   -> Env env                        -- ^ input environment
   -> Sampler [Env env]              -- ^ output model environments
-im n gen_model env_in   = do
+imWith n gen_model env_in   = do
   -- | Handle model to probabilistic program
   let model  = conditionWith env_in gen_model
       τ_0     = Map.empty
-  rwm_trace <- im' n model
+  rwm_trace <- im n model
   pure (map (snd . fst . fst) rwm_trace)
 
 {- | Top-level wrapper for Independence Metropolis
 -}
-im' ::
+im ::
      Int                              -- ^ number of iterations
   -> Model '[Sampler] a  -- ^ model
   -> Sampler [((a, LogP), Trace)]            -- ^ output model environments
-im' n = runImpure . handleProposal . MH.mh n Map.empty exec
+im n = runImpure . handleProposal . MH.mh n Map.empty exec
 
 {- | Handler for one iteration of IM.
 -}

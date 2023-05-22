@@ -13,7 +13,7 @@
 
 module GuidedExamples where
 
-import Inference.MC.SIM as SIM ( simulate )
+import Inference.MC.SIM as SIM ( simulateWith )
 import Inference.MC.SMC2 as SMC2 ( smc2 )
 import Inference.Guided.Guided
 import Inference.Guided.BBVI as BBVI

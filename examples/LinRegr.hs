@@ -14,13 +14,13 @@
 module LinRegr where
 
 import Model ( MulModel, normal, uniform, conditionWith )
-import Inference.MC.SIM as SIM ( simulate )
-import Inference.MC.LW as LW ( lw )
-import Inference.MC.IM as IM ( im )
-import Inference.MC.SSMH as SSMH ( ssmh )
-import Inference.MC.SMC as SMC ( mulpfilter )
+import Inference.MC.SIM as SIM ( simulateWith )
+import Inference.MC.LW as LW ( lwWith )
+import Inference.MC.IM as IM ( imWith )
+import Inference.MC.SSMH as SSMH ( ssmhWith )
+import Inference.MC.SMC as SMC ( mulpfilterWith )
 import Inference.MC.RMPF as RMPF ( rmpf )
-import Inference.MC.PMMH as PMMH ( pmmh )
+import Inference.MC.PMMH as PMMH ( pmmhWith )
 import Inference.MC.SMC2 as SMC2 ( smc2 )
 import qualified Inference.VI.BBVI as BBVI
 import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
@@ -80,7 +80,7 @@ simLinRegr n_datapoints = do
   -- Specify model environment
       env_in = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> enil
   -- Simulate linear regression for each input x
-  bs :: ([Double], Env LinRegrEnv) <- SIM.simulate (linRegr xs) env_in
+  bs :: ([Double], Env LinRegrEnv) <- SIM.simulateWith (linRegr xs) env_in
   pure $ zip xs (fst bs)
 
 -- | Likelihood weighting over linear regression
@@ -91,7 +91,7 @@ lwLinRegr n_lwsteps n_datapoints = do
   -- Specify model environment
       env_in           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
    -- Get the sampled values of mu and their likelihood-weighting
-  (env_outs, ps) <- unzip <$> LW.lw n_lwsteps (linRegr xs) env_in
+  (env_outs, ps) <- unzip <$> LW.lwWith n_lwsteps (linRegr xs) env_in
   let mus = concatMap (get #m) env_outs
   pure (zip mus ps)
 
@@ -103,7 +103,7 @@ imLinRegr n_mhsteps n_datapoints = do
   -- Specify model environment
       env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   -- Run SSMH
-  env_outs <- IM.im n_mhsteps (linRegr xs) env_in
+  env_outs <- IM.imWith n_mhsteps (linRegr xs) env_in
   -- Get the sampled values of mu and c
   let mus = concatMap (get #m) env_outs
   let cs = concatMap (get #c) env_outs
@@ -117,7 +117,7 @@ mhLinRegr n_mhsteps n_datapoints = do
   -- Specify model environment
       env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   -- Run SSMH
-  env_outs <- SSMH.ssmh n_mhsteps (linRegr xs) env_in (#m <#> #c <#> vnil)
+  env_outs <- SSMH.ssmhWith n_mhsteps (linRegr xs) env_in (#m <#> #c <#> vnil)
   -- Get the sampled values of mu and c
   let mus = concatMap (get #m) env_outs
   let cs = concatMap (get #c) env_outs
@@ -132,7 +132,7 @@ smcLinRegr n_particles n_datapoints = do
   -- Specify model environment
       env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   -- Run SMC
-  env_outs <- SMC.mulpfilter n_particles (linRegr xs) env_in
+  env_outs <- SMC.mulpfilterWith n_particles (linRegr xs) env_in
   -- Get the sampled values of mu and c for each particle
   let mus = concatMap (get #m) env_outs
       cs = concatMap (get #c) env_outs
@@ -160,7 +160,7 @@ pmmhLinRegr n_mhsteps n_particles  n_datapoints = do
   -- Specify model environment
       env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   -- Run SMC
-  env_outs <- PMMH.pmmh n_mhsteps n_particles (linRegr xs) env_in  (#m <#> #c <#> vnil)
+  env_outs <- PMMH.pmmhWith n_mhsteps n_particles (linRegr xs) env_in  (#m <#> #c <#> vnil)
   -- Get the sampled values of mu and c for each particle
   let mus = concatMap (get #m) env_outs
       cs  = concatMap (get #c) env_outs
@@ -201,7 +201,7 @@ simLinRegrOnce n_datapoints = do
   -- Specify model environment
       env_in = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> enil
   -- Simulate linear regression for each input x
-  ys_envs <- mapM (\x -> SIM.simulate (linRegrOnce x) env_in) xs
+  ys_envs <- mapM (\x -> SIM.simulateWith (linRegrOnce x) env_in) xs
   let ys = map fst ys_envs
   pure (zip xs ys)
 
@@ -213,7 +213,7 @@ lwLinRegrOnce n_samples n_datapoints = do
   -- Specify model environments and pair with model input
       xys = [(x, env_in) | x <- xs, let env_in = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x]) <:> enil]
   -- Run LW for n_samples on each pair of model input and environment
-  lwTrace <- mapM (\(x, env_in) -> LW.lw n_samples (linRegrOnce  x) env_in) xys
+  lwTrace <- mapM (\(x, env_in) -> LW.lwWith n_samples (linRegrOnce  x) env_in) xys
   -- Get the sampled values of mu and their likelihood-weighting
   let (env_outs, ps) = unzip $ concat lwTrace
       mus = concatMap (get #m) env_outs
@@ -227,7 +227,7 @@ mhLinRegrOnce n_mhsteps n_datapoints = do
   -- Specify model environments and pair with model input
       xys = [(x, env_in) | x <- xs, let env_in = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x]) <:> enil]
   -- Run SSMH for n_mhsteps iterations on each pair of model input and environment
-  mhTrace <- concat <$> mapM (\(x, y) -> SSMH.ssmh n_mhsteps (linRegrOnce x) y  (#m <#> #c <#> vnil)) xys
+  mhTrace <- concat <$> mapM (\(x, y) -> SSMH.ssmhWith n_mhsteps (linRegrOnce x) y  (#m <#> #c <#> vnil)) xys
   -- Get the sampled values of mu and c
   let mus = concatMap (get #m) mhTrace
       cs  = concatMap (get #c) mhTrace

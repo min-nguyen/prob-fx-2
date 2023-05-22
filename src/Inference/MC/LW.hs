@@ -9,9 +9,9 @@
 
 module Inference.MC.LW
   ( -- * Inference wrapper functions
-    lw
+    lwWith
     -- * Inference effect handlers
-  , runLW
+  , lw
   , likelihood
   , joint
   ) where
@@ -30,7 +30,7 @@ import Comp ( discharge, Comp(..), Handler, handleWith, runImpure )
 import Sampler ( Sampler )
 
 -- | Top-level wrapper for Likelihood-Weighting (LW) inference
-lw
+lwWith
   -- | number of LW iterations
   :: Int
   -- | model
@@ -39,17 +39,17 @@ lw
   -> Env env
   -- | [(output model environment, likelihood-weighting)]
   -> Sampler [(Env env, Double)]
-lw n gen_model env_in = do
+lwWith n gen_model env_in = do
   let model = conditionWith env_in gen_model
-  lwTrace <- replicateM n (runLW model)
+  lwTrace <- replicateM n (lw model)
   pure (map (bimap snd exp) lwTrace)
 
 -- | Handler for one iteration of LW
-runLW
+lw
   :: Comp [Observe, Sample, Sampler] a
   -- | ((model output, sample trace), likelihood-weighting)
   -> Sampler (a, LogP)
-runLW = runImpure . SIM.defaultSample . likelihood
+lw = runImpure . SIM.defaultSample . likelihood
 
 -- | Handle each @Observe@ operation by accumulating the log-likelihood P(Y | X)
 likelihood :: Handler Observe es a (a, LogP)

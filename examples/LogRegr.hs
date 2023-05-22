@@ -19,9 +19,9 @@ import Control.Monad ( foldM )
 import Model ( bernoulli, MulModel, gamma', normal, normal' )
 import Env ( Env(..), Observables, Observable, Assign ((:=)), (<:>), enil, (<#>), vnil, get)
 import Sampler ( Sampler )
-import Inference.MC.SIM as SIM ( simulate )
-import Inference.MC.SSMH as SSMH ( ssmh )
-import Inference.MC.LW as LW ( lw )
+import Inference.MC.SIM as SIM ( simulateWith )
+import Inference.MC.SSMH as SSMH ( ssmhWith )
+import Inference.MC.LW as LW ( lwWith )
 
 {- | Logistic regression environment.
      This type definition is for readability purposes and is not used anywhere.
@@ -68,10 +68,10 @@ simLogRegr :: Int -> Sampler [(Double, Bool)]
 simLogRegr n_datapoints = do
   -- First declare the model inputs
   let xs = map ((/ fromIntegral n_datapoints) . fromIntegral) [(-n_datapoints) .. n_datapoints]
-  -- Define a model environment to simulate from, providing observed values for the model parameters
+  -- Define a model environment to simulateWith from, providing observed values for the model parameters
       env_in = (#y := []) <:> (#m := [8]) <:> (#b := [-3]) <:> enil
-  -- Call simulate on logistic regression
-  (ys, env_outs) <- SIM.simulate (logRegr xs) env_in
+  -- Call simulateWith on logistic regression
+  (ys, env_outs) <- SIM.simulateWith (logRegr xs) env_in
   return (zip xs ys)
 
 -- | Likelihood-weighting over logistic regression
@@ -85,7 +85,7 @@ lwLogRegr n_lwsteps n_datapoints = do
   -- Define environment for inference, providing observed values for the model outputs
   let env_in = (#y := ys) <:> (#m := []) <:> (#b := []) <:> enil
   -- Run LW inference for n_lwsteps iterations
-  lwTrace <- LW.lw n_lwsteps (logRegr xs) env_in
+  lwTrace <- LW.lwWith n_lwsteps (logRegr xs) env_in
   let -- Get output of LW, extract sampled parameters for #m and #b, and pair with likelihood-weighting ps
       (env_outs, ps) = unzip lwTrace
       mus = concatMap (get #m) env_outs
@@ -105,7 +105,7 @@ mhLogRegr n_mhsteps n_datapoints = do
   -- Run SSMH inference for n_mhsteps iterations
   {- The agument (#m <#> #b <#> vnil) is optional for indicating interest in learning #m and #b in particular,
      causing other variables to not be resampled (unless necessary) during SSMH. -}
-  env_outs <- SSMH.ssmh n_mhsteps (logRegr xs) env_in (#m <#> #b <#> vnil)
+  env_outs <- SSMH.ssmhWith n_mhsteps (logRegr xs) env_in (#m <#> #b <#> vnil)
   -- Retrieve values sampled for #m and #b during SSMH
   let m_samples = concatMap (get #m) env_outs
       b_samples = concatMap (get #b) env_outs
@@ -128,7 +128,7 @@ simLogRegrOnce :: Int -> Sampler [(Double, Bool)]
 simLogRegrOnce n_datapoints = do
   let xs = map ((/ fromIntegral n_datapoints) . fromIntegral) [(-n_datapoints) .. n_datapoints]
       env_in = (#label := []) <:> (#m := [8]) <:> (#b := [-3]) <:> enil
-  ys_envs <- mapM (\x -> SIM.simulate (logRegrOnce x) env_in) xs
+  ys_envs <- mapM (\x -> SIM.simulateWith (logRegrOnce x) env_in) xs
   let ys = map fst ys_envs
   pure (zip xs ys)
 
@@ -136,7 +136,7 @@ lwLogRegrOnce :: Int -> Int ->  Sampler [((Double, Double), Double)]
 lwLogRegrOnce n_samples n_datapoints = do
   xys <- simLogRegrOnce n_datapoints
   let xys' = [(x, env_in) | (x, y) <- xys, let env_in = (#label := [y]) <:> (#m := []) <:> (#b := []) <:> enil]
-  lwTrace <- mapM (\(x, env_in) -> LW.lw n_samples (logRegrOnce  x) env_in) xys'
+  lwTrace <- mapM (\(x, env_in) -> LW.lwWith n_samples (logRegrOnce  x) env_in) xys'
   let (env_outs, ps) = unzip $ concat lwTrace
       mus = concatMap (get #m) env_outs
       bs  = concatMap (get #b) env_outs
@@ -146,7 +146,7 @@ mhLogRegrOnce ::  Int -> Int ->  Sampler ([Double], [Double])
 mhLogRegrOnce n_mhsteps n_datapoints = do
   xys <- simLogRegrOnce n_datapoints
   let xys' = [(x, env_in) | (x, y) <- xys, let env_in = (#label := [y]) <:> (#m := []) <:> (#b := []) <:> enil]
-  mhTrace <- concat <$> mapM (\(x, y) -> SSMH.ssmh n_mhsteps (logRegrOnce x) y  (#m <#> #b <#> vnil)) xys'
+  mhTrace <- concat <$> mapM (\(x, y) -> SSMH.ssmhWith n_mhsteps (logRegrOnce x) y  (#m <#> #b <#> vnil)) xys'
   let mus = concatMap (get #m) mhTrace
       bs  = concatMap (get #b) mhTrace
   pure (mus, bs)

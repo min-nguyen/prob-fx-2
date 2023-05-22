@@ -31,8 +31,8 @@ import HMM ( ObsModel, TransModel, hmmGen )
 import GHC.TypeLits ( Symbol )
 import Data.Kind (Constraint)
 import Sampler ( Sampler )
-import Inference.MC.SIM as SIM ( simulate )
-import Inference.MC.SSMH as SSMH ( ssmh )
+import Inference.MC.SIM as SIM ( simulateWith )
+import Inference.MC.SSMH as SSMH ( ssmhWith )
 {-
 import Inference.MB as MB ( handleMBayes )
 import qualified Control.Monad.Bayes.Class as Bayes
@@ -130,7 +130,7 @@ simSIR n_days = do
   -- Specify model environment
       env_in = #β := [0.7] <:> #γ := [0.009] <:> #ρ := [0.3] <:> #𝜉 := [] <:> enil
   -- Simulate an epidemic over 100 days
-  ((_, sir_trace), env_out) <- SIM.simulate (hmmSIR' 100 sir_0) env_in
+  ((_, sir_trace), env_out) <- SIM.simulateWith (hmmSIR' 100 sir_0) env_in
   -- Get the observed infections over 100 days
   let 𝜉s :: [Reported] = get #𝜉 env_out
   -- Get the true SIR values over 100 days
@@ -146,7 +146,7 @@ mhSIR n_mhsteps n_days = do
   -- Specify model environment
       mh_env_in = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> enil
   -- Run SSMH inference over 50000 iterations
-  mhTrace <- SSMH.ssmh 5000 (hmmSIR' 100 sir_0) mh_env_in (#β <#> #ρ <#> vnil)
+  mhTrace <- SSMH.ssmhWith 5000 (hmmSIR' 100 sir_0) mh_env_in (#β <#> #ρ <#> vnil)
   -- Get the sampled values for model parameters ρ and β
   let ρs = concatMap (get #ρ) mhTrace
       βs = concatMap (get #β) mhTrace
@@ -195,7 +195,7 @@ simSIRS = do
   -- Specify model environment
       env_in = #β := [0.7] <:> #γ := [0.009] <:> #η := [0.05] <:> #ρ := [0.3] <:> #𝜉 := [] <:> enil
   -- Simulate an epidemic over 100 days
-  ((_, sir_trace), env_out) <- SIM.simulate (hmmSIRS 100 sir_0) env_in
+  ((_, sir_trace), env_out) <- SIM.simulateWith (hmmSIRS 100 sir_0) env_in
   -- Get the observed infections over 100 days
   let 𝜉s :: [Reported] = get #𝜉 env_out
   -- Get the true SIR values over 100 days
@@ -289,7 +289,7 @@ simSIRSV = do
   -- Specify model environment
       env_in = #β := [0.7] <:> #γ := [0.009] <:> #η := [0.05] <:> #ω := [0.02] <:> #ρ := [0.3] <:> #𝜉 := [] <:> enil
   -- Simulate an epidemic over 100 days
-  ((_, sirv_trace), env_out) <- SIM.simulate (hmmSIRSV 100 sirv_0) env_in
+  ((_, sirv_trace), env_out) <- SIM.simulateWith (hmmSIRSV 100 sirv_0) env_in
   -- Get the observed infections over 100 days
   let 𝜉s :: [Reported] = get #𝜉 env_out
   -- Get the true SIRV values over 100 days

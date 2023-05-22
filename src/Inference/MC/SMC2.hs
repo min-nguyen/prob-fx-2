@@ -93,7 +93,7 @@ handleResample mh_steps n_inner_prts θ  m = loop (0 :: Int) where
           -- | Perform PMMH using each resampled particle's sample trace and get the most recent PMMH iteration.
           pmmh_trace <- mapM ( fmap head
                              . call
-                             . flip (PMMH.pmmh' mh_steps n_inner_prts) (unsafeCoerce partial_model)
+                             . flip (PMMH.pmmh mh_steps n_inner_prts) (unsafeCoerce partial_model)
                              ) resampled_τθs
           {- | Get:
               1) the continuations of each particle from the break point (augmented with the non-det effect)
