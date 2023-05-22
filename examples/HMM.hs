@@ -20,13 +20,13 @@ import Data.Kind (Constraint)
 import Effects.Writer ( handleWriterM, tellM, Writer )
 import Effects.MulDist (Addr(..))
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
-import Inference.MC.LW as LW ( lw )
-import Inference.MC.SSMH as SSMH ( ssmh )
-import Inference.MC.SMC as SMC ( mulpfilter )
-import Inference.MC.SIM as SIM ( simulate )
+import Inference.MC.LW as LW ( lwWith )
+import Inference.MC.SSMH as SSMH ( ssmhWith )
+import Inference.MC.SMC as SMC ( mulpfilterWith )
+import Inference.MC.SIM as SIM ( simulateWith )
 import Inference.MC.RMPF as RMPF ( rmpf )
 import Inference.MC.SMC2 as SMC2 ( smc2 )
-import Inference.MC.PMMH as PMMH ( pmmh )
+import Inference.MC.PMMH as PMMH ( pmmhWith )
 import Inference.VI.BBVI as BBVI
 import Model ( MulModel (..), bernoulli', binomial, uniform, beta )
 import Comp ( Member, LastMember )
@@ -149,7 +149,7 @@ simHMM hmm_length = do
   let x_0 = 0
   -- Specify model environment
       env_in = #trans_p := [0.2] <:> #obs_p := [0.9] <:> #y := [] <:> enil
-  (y, env_out) <- SIM.simulate (hmm hmm_length 0) env_in
+  (y, env_out) <- SIM.simulateWith (hmm hmm_length 0) env_in
   let ys :: [Int] = get #y env_out
   pure ys
 
@@ -167,7 +167,7 @@ lwHMM lw_samples hmm_length = do
   -- Specify a model environment containing those observations
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
   -- Handle the Writer effect and then run SSMH inference
-  (env_outs, ws) <- unzip <$> LW.lw lw_samples (hmm hmm_length 0) env_in
+  (env_outs, ws) <- unzip <$> LW.lwWith lw_samples (hmm hmm_length 0) env_in
   -- Get the trace of sampled transition and observation parameters
   let trans_ps    = concatMap (get #trans_p) env_outs
       obs_ps      = concatMap (get #obs_p) env_outs
@@ -187,7 +187,7 @@ mhHMM mh_samples hmm_length = do
   -- Specify a model environment containing those observations
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
   -- Handle the Writer effect and then run SSMH inference
-  env_outs <- SSMH.ssmh mh_samples (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
+  env_outs <- SSMH.ssmhWith mh_samples (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
   -- Get the trace of sampled transition and observation parameters
   let trans_ps    = concatMap (get #trans_p) env_outs
       obs_ps      = concatMap (get #obs_p) env_outs
@@ -207,7 +207,7 @@ smcHMM n_particles hmm_length = do
   -- Specify a model environment containing those observations
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
   -- Handle the Writer effect and then run SMC inference
-  env_outs <- SMC.mulpfilter n_particles (hmm hmm_length 0) env_in
+  env_outs <- SMC.mulpfilterWith n_particles (hmm hmm_length 0) env_in
   -- Get the sampled transition and observation parameters of each particle
   let trans_ps    = concatMap (get #trans_p) env_outs
       obs_ps      = concatMap (get #obs_p) env_outs
@@ -246,7 +246,7 @@ pmmhHMM n_mhsteps n_particles  hmm_length = do
   ys <- simHMM hmm_length
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
-  env_outs <- PMMH.pmmh n_mhsteps n_particles (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
+  env_outs <- PMMH.pmmhWith n_mhsteps n_particles (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
   let trans_ps    = concatMap (get #trans_p) env_outs
       obs_ps      = concatMap (get #obs_p) env_outs
   pure (trans_ps, obs_ps)
@@ -315,8 +315,8 @@ simHMM_WR
 simHMM_WR hmm_length = do
   -- Specify model environment
   let env_in = #trans_p := [0.2] <:> #obs_p := [0.9] <:> #y := [] <:> enil
-  -- Handle the Writer effect to produce the stream of latent states @xs@, and then simulate
-  ((_, xs), env_out) <- SIM.simulate (handleWriterM $ hmm_WR hmm_length 0) env_in
+  -- Handle the Writer effect to produce the stream of latent states @xs@, and then simulateWith
+  ((_, xs), env_out) <- SIM.simulateWith (handleWriterM $ hmm_WR hmm_length 0) env_in
   -- Get the observations
   let ys :: [Int] = get #y env_out
   pure $ zip xs ys

@@ -32,21 +32,21 @@ import           Sampler ( Sampler, random, sampleCategorical )
 
 {- | Call SMC on a model.
 -}
-mulpfilter
+mulpfilterWith
   :: Int                                -- ^ number of particles
   -> MulModel env [EnvRW env, MulDist, Sampler] a      -- ^ model
   -> Env env                            -- ^ input model environment
   -> Sampler [Env env]                  -- ^ output model environments of each particle
-mulpfilter n_prts gen_model env_in = do
+mulpfilterWith n_prts gen_model env_in = do
   -- | Handle model to probabilistic program
   let model = (handleMulDist . handleEnvRW env_in) (runModel gen_model)
-  smc_trace <- mulpfilter' n_prts model
+  smc_trace <- mulpfilter n_prts model
   pure (map (snd . fst) smc_trace)
 
 {- | Call SMC on a probabilistic program.
 -}
-mulpfilter' :: Int -> Model '[Sampler] a -> Sampler [(a, LogP)]
-mulpfilter' n_prts = runImpure . handleResampleMul . pfilter n_prts 0 exec
+mulpfilter :: Int -> Model '[Sampler] a -> Sampler [(a, LogP)]
+mulpfilter n_prts = runImpure . handleResampleMul . pfilter n_prts 0 exec
 
 {- | A handler that invokes a breakpoint upon matching against the first @Observe@ operation, by returning:
        1. the rest of the computation

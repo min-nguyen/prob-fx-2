@@ -40,7 +40,7 @@ import Effects.Observe
 
 {- | Top-level wrapper for SSMH inference.
 -}
-ssmh :: forall env vars a. (env `ContainsVars` vars)
+ssmhWith :: forall env vars a. (env `ContainsVars` vars)
   => Int                            -- ^ number of SSMH iterations
   -> MulModel env [EnvRW env, MulDist, Sampler] a  -- ^ model
   -> Env env                        -- ^ input environment
@@ -48,7 +48,7 @@ ssmh :: forall env vars a. (env `ContainsVars` vars)
     {- These allow one to specify sample sites of interest; for example, for interest in sampling @#mu@
      , provide @#mu <#> vnil@ to cause other variables to not be resampled unless necessary. -}
   -> Sampler [Env env]              -- ^ output model environments
-ssmh n gen_model env_in obs_vars  = do
+ssmhWith n gen_model env_in obs_vars  = do
   -- | Handle model to probabilistic program
   let model = conditionWith env_in gen_model
       τ_0    = Map.empty
@@ -59,12 +59,12 @@ ssmh n gen_model env_in obs_vars  = do
 
 {- | SSMH inference on a probabilistic program.
 -}
-ssmh' :: Int                                   -- ^ number of SSMH iterations
+ssmh :: Int                                   -- ^ number of SSMH iterations
   -> Trace                                -- ^ initial sample trace
   -> [Tag]                                 -- ^ tags indicating variables of interest
   -> Model '[Sampler] a                            -- ^ probabilistic program
   -> Sampler [((a, LPTrace), Trace)]
-ssmh' n τ_0  tags = runImpure . handleProposal tags  . mh n τ_0 exec
+ssmh n τ_0  tags = runImpure . handleProposal tags  . mh n τ_0 exec
 
 {- | Handler for @Proposal@ for SSMH.
     - Propose by drawing a component x_i of latent variable X' ~ p(X)

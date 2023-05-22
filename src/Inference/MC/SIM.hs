@@ -12,9 +12,9 @@
 
 module Inference.MC.SIM
   (-- * Inference wrapper functions
-    simulate
+    simulateWith
    -- * Inference handlers
-  , runSimulate
+  , simulate
   , defaultObserve
   , defaultSample
   )
@@ -30,23 +30,23 @@ import           Sampler ( Sampler, liftIO )
 import           Unsafe.Coerce (unsafeCoerce)
 
 -- | Simulate from a model under a given model environment
-simulate
+simulateWith
   -- | model
   :: MulModel env [EnvRW env, MulDist, Sampler] a
   -- | input model environment
   -> Env env
   -- | (model output, output environment)
   -> Sampler (a, Env env)
-simulate gen_model env_in = do
+simulateWith gen_model env_in = do
   let model = conditionWith env_in gen_model
-  runSimulate model
+  simulate model
 
 -- | Handler for simulating once from a probabilistic modelram
-runSimulate
+simulate
   :: Comp [Observe, Sample, Sampler] a
   -- | (model output, sample trace)
   -> Sampler a
-runSimulate
+simulate
   = runImpure . defaultSample . defaultObserve
 
 -- | Handle @Observe@ operations by simply passing forward their observed value, performing no side-effects

@@ -17,8 +17,8 @@ import Data.Type.Nat
 import Data.Typeable
 import Data.Proxy
 import Model ( MulModel, dirichlet', discrete, normal )
-import Inference.MC.SIM as SIM ( simulate )
-import Inference.MC.SSMH as SSMH ( ssmh )
+import Inference.MC.SIM as SIM ( simulateWith )
+import Inference.MC.SSMH as SSMH ( ssmhWith )
 import Sampler ( Sampler )
 import Control.Monad ( replicateM )
 import Data.Kind (Constraint)
@@ -60,7 +60,7 @@ simGMM n_datapoints = do
   let n_clusters = snat @(FromGHC 2)
   -- | Specify model environment of two clusters with mean (-2.0, -2.0) and (3.5, 3.5)
       env_in =  #mu := [-4.0, 3.5] <:> #mu_k := [] <:> #x := [] <:> #y := [] <:> enil
-  bs <- SIM.simulate (gmm n_clusters n_datapoints) env_in
+  bs <- SIM.simulateWith (gmm n_clusters n_datapoints) env_in
   pure $ fst bs
 
 mhGMM
@@ -71,6 +71,6 @@ mhGMM n_mhsteps n_datapoints = do
   bs <- simGMM n_datapoints
   let (xs, ys) = unzip (map fst bs)
       env =  #mu := [] <:> #mu_k := [] <:> #x := xs <:> #y := ys <:> enil
-  env_out <- SSMH.ssmh n_mhsteps (gmm (snat @(FromGHC 2)) n_datapoints) env (#mu <#> vnil)
+  env_out <- SSMH.ssmhWith n_mhsteps (gmm (snat @(FromGHC 2)) n_datapoints) env (#mu <#> vnil)
   let mus = map (get #mu) env_out
   pure mus
