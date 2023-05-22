@@ -18,7 +18,7 @@ import Dist
 import Model hiding (Model)
 import qualified Model (Model)
 import Sampler
-import Inference.MC.LW as LW
+import Inference.MC.LW as LW hiding (lw)
 import Inference.MC.SIM as SIM
 import Control.Monad
 import LogP
@@ -54,6 +54,8 @@ prog = do
   _ <- call (PutStr (s ++ "!!"))
   return ()
 
+
+
 -- | ## Impure handling
 handleConsoleImpure :: forall es a. IO ∈ es
   => Handler Console es a a
@@ -68,11 +70,13 @@ handleConsoleImpure = handle hval hop  where
 runProgImpure :: IO ()
 runProgImpure = (runImpure . handleConsoleImpure) prog
 
+
+
 -- | ## Pure handling
 handleConsolePure :: forall es a. Error ∈ es
   => Handler Console es a (a, String)
 handleConsolePure = handleWith "" hval hop  where
-  hop :: String ->  Console x -> (String -> x -> Comp es b) -> Comp es b
+  hop :: String -> Console x -> (String -> x -> Comp es b) -> Comp es b
   hop s GetLine k      = k s s
   hop s (PutStr msg) k = if length msg < 2 then k (msg ++ s) ()
                                            else call (Throw 0)
@@ -84,8 +88,7 @@ handleError catch = handle Val hop  where
   hop (Throw e) k = catch e
 
 runProgPure :: ((), String)
-runProgPure = (runPure . handleError catch . handleConsolePure) prog
-  where catch errcode = return ((), show errcode)
+runProgPure = (runPure . handleError (\err -> Val ((), show err)) . handleConsolePure) prog
 
 ----------------------------------
 
@@ -99,15 +102,38 @@ linRegr xs ys = do
   zipWithM (\x y -> do call (Observe (Normal (m * x + c) 1) y α)) xs ys
   return m
 
+lw :: Int -> Model a -> IO [(a, LogP)]
+lw n = replicateM n . runImpure' . defaultSample . likelihood
+
 -- | ## Likelihood weighting over linear regression
 lwLinRegr :: IO [(Double, LogP)]
 lwLinRegr = do
   let xs      = [0 .. 10]
       ys      = map (*3) xs
-  -- Get the sampled m's and their likelihood-weighting
-  mws <- (replicateM 1000 . runImpure' . defaultSample . likelihood) (linRegr xs ys)
-  return (mws :: [(Double, LogP)])
+  -- Return the sampled m's and their likelihood-weighting
+  lw 1000 (linRegr xs ys)
 
 {-
+  git checkout turing-demo
+  cabal v2-repl test:tests
+  ghci> :l EffDemo
+
+
+  ghci> (runImpure . handleConsoleImpure) prog
+  ghci> (runPure . handleError (\err -> Val ((), show err)) . handleConsolePure) prog
+
+
+  ghci> xs = [0 .. 10]
+  ghci> ys = map (*3) xs
+  ghci> lw 1000 (linRegr xs ys)
   ./prob-fx.sh lwLinRegrOnce
+
+
+  ./prob-fx.sh mhLinRegr
+
+
+  ./prob-fx.sh smcLinRegr
+
+
+  ./prob-fx.sh rmsmcLinRegr
 -}
