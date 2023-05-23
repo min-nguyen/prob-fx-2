@@ -75,13 +75,15 @@ handleProposal :: Member Sampler fs => [Tag] -> Handler (Proposal LPTrace) fs a 
 handleProposal tags  = handleWith (Addr "" 0) (const Val) hop
   where
     hop :: Member Sampler es => Addr -> Proposal LPTrace x -> (Addr -> x -> Comp es b) -> Comp es b
-    hop _ (Propose τ) k   = do  α <- randomFrom (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
-                                r <- random
-                                k α (Map.insert α r τ)
-    hop α (Accept ρ ρ') k = do  let ratio = (exp . sum . Map.elems . Map.delete α)
-                                            (Map.intersectionWith (-) ρ' ρ)
-                                u <- random
-                                k α (ratio > u)
+    hop _ (Propose τ) k   = do
+      α <- randomFrom (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
+      r <- random
+      k α (Map.insert α r τ)
+    hop α (Accept x@((_, w), _) x'@((_, w'), _)) k = do
+      let ratio = (exp . sum . Map.elems . Map.delete α)
+                  (Map.intersectionWith (-) w' w)
+      u <- random
+      k α (if ratio > u then x' else x)
 
 {- | Handler for one iteration of SSMH.
 -}

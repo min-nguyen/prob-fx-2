@@ -73,8 +73,9 @@ handleProposal (Op op k) = case discharge op of
            r <- random
            let τθ' = Map.insert α r τθ
            (handleProposal . k) τθ'
-  Right (Accept w w')
-    ->  do u <- random
-           (handleProposal . k) (exp (w' - w) > u)
+  Right (Accept x@((_, w), _) x'@((_, w'), _))
+    -> do let ratio = exp (w' - w)
+          u <- random
+          (handleProposal . k) (if ratio > u then x' else x)
   Left op'
     -> Op op' (handleProposal . k)

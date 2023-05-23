@@ -28,6 +28,7 @@ import           Inference.MC.SIS as SIS
 import           Inference.MC.SMC (handleResampleMul, advance)
 import qualified Inference.MC.SMC as SMC
 import qualified Inference.MC.IM as IM
+import qualified Data.Vector as Vector
 
 {- | Top-level wrapper for PIM inference.
 -}
@@ -57,6 +58,8 @@ exec :: Int -> ModelExec '[Sampler] LogP a
 exec n τθ prog   = do
   let exec_prt :: ModelStep '[Sampler] LogP a
       exec_prt (p, w) = (fmap fst .  runImpure .  reuseTrace τθ . advance w) p
-  (as, ρs) <- (fmap unzip . runImpure . handleResampleMul . pfilter n 0 exec_prt ) prog
-  return ((head as, logMeanExp ρs), τθ)
+  xws <- (runImpure . handleResampleMul . pfilter n 0 exec_prt ) prog
+  idx <- Sampler.sampleCategorical (Vector.fromList (map (exp . snd) xws))
+  let  (x, w) = xws !! idx
+  return ((x, w), τθ)
 
