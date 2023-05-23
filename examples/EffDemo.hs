@@ -55,10 +55,8 @@ prog = do
   return ()
 
 
-
 -- | ## Impure handling
-handleConsoleImpure :: forall es a. IO ∈ es
-  => Handler Console es a a
+handleConsoleImpure :: forall es a. IO ∈ es => Handler Console es a a
 handleConsoleImpure = handle hval hop  where
   hop :: Console x -> (x -> Comp es a) -> Comp es a
   hop GetLine k      = do s <- call Prelude.getLine
@@ -67,14 +65,9 @@ handleConsoleImpure = handle hval hop  where
                           k ()
   hval x             = return x
 
-runProgImpure :: IO ()
-runProgImpure = (runImpure . handleConsoleImpure) prog
-
-
 
 -- | ## Pure handling
-handleConsolePure :: forall es a. Error ∈ es
-  => Handler Console es a (a, String)
+handleConsolePure :: forall es a. Error ∈ es => Handler Console es a (a, String)
 handleConsolePure = handleWith "" hval hop  where
   hop :: String -> Console x -> (String -> x -> Comp es b) -> Comp es b
   hop s GetLine k      = k s s
@@ -87,8 +80,7 @@ handleError catch = handle Val hop  where
   hop :: Error x -> (x -> Comp es a) -> Comp es a
   hop (Throw e) k = catch e
 
-runProgPure :: ((), String)
-runProgPure = (runPure . handleError (\err -> Val ((), show err)) . handleConsolePure) prog
+
 
 ----------------------------------
 
@@ -105,35 +97,36 @@ linRegr xs ys = do
 lw :: Int -> Model a -> IO [(a, LogP)]
 lw n = replicateM n . runImpure' . defaultSample . likelihood
 
--- | ## Likelihood weighting over linear regression
-lwLinRegr :: IO [(Double, LogP)]
-lwLinRegr = do
-  let xs      = [0 .. 10]
-      ys      = map (*3) xs
-  -- Return the sampled m's and their likelihood-weighting
-  lw 1000 (linRegr xs ys)
+
 
 {-
   git checkout turing-demo
   cabal v2-repl test:tests
   ghci> :l EffDemo
-
+  ghci> :set -XTypeApplications
 
   ghci> (runImpure . handleConsoleImpure) prog
-  ghci> (runPure . handleError (\err -> Val ((), show err)) . handleConsolePure) prog
 
+  ghci> (runPure . handleError (\err -> Val ((), show err)) . handleConsolePure) prog
 
   ghci> xs = [0 .. 10]
   ghci> ys = map (*3) xs
   ghci> lw 1000 (linRegr xs ys)
-  ./prob-fx.sh lwLinRegrOnce
 
+  {-  ## Likelihood weighting over linear regression
+      lwLinRegr :: IO [(Double, LogP)]
+      lwLinRegr = do
+        let xs      = [0 .. 10]
+            ys      = map (*3) xs
+        -- Return the sampled m's and their likelihood-weighting
+        lw 1000 (linRegr xs ys)
+  -}
+
+  ./prob-fx.sh lwLinRegrOnce
 
   ./prob-fx.sh mhLinRegr
 
-
   ./prob-fx.sh smcLinRegr
-
 
   ./prob-fx.sh rmsmcLinRegr
 -}

@@ -118,7 +118,7 @@ runPure (Val x) = x
 runPure _ = error "Comp.runPure isn't defined for non-pure computations"
 
 -- | Run an impure computation
-runImpure :: Monad m => Comp '[m] w -> m w
+runImpure :: Monad m => Comp '[m] a -> m a
 runImpure (Val x) = return x
 runImpure (Op u q) = case prj u of
   Just m  -> m >>= runImpure . q
