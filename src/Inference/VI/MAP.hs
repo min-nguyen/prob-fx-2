@@ -22,7 +22,7 @@ import Effects.MulDist
 import Effects.EnvRW ( EnvRW, handleEnvRW )
 import Effects.State ( modify, handleState, State )
 import Env ( Env, Vars, ContainsVars, union, initEmpty, varsToStrs )
-import LogP ( LogP(..), normaliseLogPs )
+import LogP ( LogP(..) )
 import Model
 import Dist
 import Comp ( discharge, Comp(..), runImpure, call, weaken, LastMember, Member (..), Members, weakenProg )

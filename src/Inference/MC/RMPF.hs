@@ -43,6 +43,7 @@ import           Unsafe.Coerce
 import           Util
 import Inference.MC.SIM (defaultSample)
 import Inference.MC.SMC (advance)
+import qualified Data.Vector as Vector
 
 {- | The particle context for an MCMC trace.
 -}
@@ -96,19 +97,30 @@ handleResample mh_steps tags  m = handleWith 0 (const Val) hop where
   hop :: Member Sampler fs => Int -> Resample PrtState x -> (Int -> x -> Comp fs a) -> Comp fs a
   hop t (Resample pσs) k = do
     let (ws, τs) = (unzip . map snd) pσs
-  -- | Resample the RMPF particles according to the indexes returned by the SMC resampler
-    idxs <- call $ SMC.resampleMul ws
-    let τs_res    = map (τs !!) idxs
-    -- | Insert break point to perform SSMH up to
-        partial_model   = suspendAfter t m
-    -- | Perform SSMH using each resampled particle's sample trace and get the most recent SSMH iteration.
-    wprts_mov <- forM τs_res (\τ -> do  ((prt_mov, lwtrace), τ_mov) <- fmap head (call $ SSMH.ssmh mh_steps τ tags partial_model)
-                                        let w_mov = (sum . Map.elems) lwtrace
-                                        return (prt_mov, (w_mov, τ_mov)) )
-    let (prts_mov, (ps_mov, τs_mov)) = (second unzip . unzip) wprts_mov
-        wprts_norm =  zip prts_mov (zip (repeat (logMeanExp ps_mov)) τs_mov)
-    k (t + 1) (unsafeCoerce wprts_norm)
-    -- k () wprts_mov
+        -- | Compute the sum of all particles' probabilities (in LogP form, i.e. their logSumExp)
+        z        = logSumExp ws
+    if  -- | Require at least some particles' probabilities to be greater than zero
+        not (isInfinite z)
+      then do
+        let -- | Normalise the particle weights (dividing by the total probability)
+            ws_norm  = map (exp . \w -> w - z) ws
+            n        = length ws
+        idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList ws_norm)
+        let -- | Resample the traces.
+            τs_res   = map (τs !!) idxs
+            -- | Insert break point to perform SSMH up to.
+            model_t  = suspendAfter t m
+            -- | Get average particle probability (in LogP form, i.e. their logMeanExp)
+            w_avg    = z - log (fromIntegral n)
+        -- | For each resampled particle's trace
+        wprts_mov <- forM τs_res (\τ ->
+          do  -- | Perform a series of SSMH-updates on the trace and get most recent moved trace.
+              ((prt_mov, _), τ_mov) <- fmap head (call $ SSMH.ssmh mh_steps τ tags model_t)
+              -- | Set all particles to use the supposed pre-SSMH-move weight, following the same procedure as SMC
+              return (prt_mov, (w_avg, τ_mov)))
+        k (t + 1) (unsafeCoerce wprts_mov)
+      else
+        k (t + 1) pσs
 
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
      It returns the rest of the computation.

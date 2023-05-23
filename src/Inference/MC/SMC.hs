@@ -20,7 +20,7 @@ import qualified Data.Vector as Vector
 import           Effects.MulDist ( pattern ObsPrj, handleMulDist, Addr, MulDist, Observe (..), Sample )
 import           Effects.EnvRW ( EnvRW, handleEnvRW )
 import           Env ( Env )
-import           LogP ( LogP(..), logMeanExp )
+import           LogP ( LogP(..), logMeanExp, logSumExp )
 import           Model ( MulModel(runModel), Model )
 import           Dist ( mkCategorical, drawWithSampler, logProb )
 import           Comp ( LastMember, Comp(..), Members, Member, runImpure, call, weakenProg, discharge, prj, handle, handleWith, Handler)
@@ -28,7 +28,7 @@ import qualified Data.Map as Map
 import           Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS
 import           Inference.MC.SIS (Resample(..), ModelStep, pfilter)
-import           Sampler ( Sampler, random, sampleCategorical )
+import           Sampler ( Sampler, random, sampleCategorical, liftIO )
 
 {- | Call SMC on a model.
 -}
@@ -68,41 +68,21 @@ handleResampleMul :: Member Sampler es => Handler (Resample LogP) es b b
 handleResampleMul = handle Val hop where
   hop :: Member Sampler es =>  Resample LogP x -> (x -> Comp es b) -> Comp es b
   hop  (Resample pws) k = do
-    let (ps, ws) = unzip pws; n = length ws
-    idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList (map exp ws))
-    let prts_res  = map (ps !! ) idxs
-        ws_res    = (replicate n . logMeanExp . map (ws  !! )) idxs
-
-    k (zip prts_res ws_res)
-
-resampleMul :: [LogP] -> Sampler [Int]
-resampleMul ws = do
-  let ps = map exp ws
-  -- | Select particles to continue with
-  replicateM (length ps) (Sampler.sampleCategorical (Vector.fromList ps))
-
-{- | A handler for systematic resampling of particles.
--}
-handleResampleSys :: Member Sampler fs => Handler (Resample LogP) fs a a
-handleResampleSys (Val x) = Val x
-handleResampleSys (Op op k) = case discharge op of
-  Right (Resample pws) -> do
-    -- | Get the weights for each particle
-    let (prts, ws) = unzip pws; ps = map exp ws
-    -- | Select particles to continue with
-    u <- random
-    let prob i = ps !! i
-        n      = length ps
-        inc = 1 / fromIntegral n
-        f i _ _ _ acc | i == n = acc
-        f i v j q acc =
-          if v < q
-            then f (i + 1) (v + inc) j q (j - 1 : acc)
-            else f i v (j + 1) (q + prob j) acc
-        idxs     = f 0 (u / fromIntegral n) 0 0 []
-        prts_res = map (prts !! ) idxs
-        ws_res   = map (ws !! ) idxs
-        ws_mean   = map (const (logMeanExp ws_res)) ws_res
-
-    (handleResampleSys . k) (zip prts_res ws_mean)
-  Left op' -> Op op' (handleResampleSys . k)
+    let (ps, ws) = unzip pws;
+        -- | Compute the sum of all particles' probabilities (in LogP form, i.e. their logSumExp)
+        z        = logSumExp ws
+    if  -- | Require at least some particles' probabilities to be greater than zero
+        not (isInfinite z)
+      then do
+        let -- | Normalise the particles' probabilities (by dividing by their total)
+            ws_norm  = map (exp . subtract z) ws
+            n        = length ws
+        idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList ws_norm)
+        let -- | Resample particles
+            ps_res   = map (ps !! ) idxs
+            -- | Get average particle probability (in LogP form, i.e. their logMeanExp)
+            w_avg    = z - log (fromIntegral n)
+        -- | Set the post-resampling weights to be uniform as the average particle weight
+        --   (such that their logSumExp is the same before and after resampling).
+        k (map (, w_avg) ps_res)
+      else  k pws

@@ -8,7 +8,7 @@
 module LogP (
     LogP(..)
   , logMeanExp
-  , normaliseLogPs
+  , logSumExp
   ) where
 
 import Debug.Trace
@@ -21,11 +21,15 @@ type LogP =  Double
 logMeanExp :: [LogP] -> LogP
 logMeanExp logps =
   let c = maximum logps
+      n = length logps
+  in  if isInfinite c
+      then (-1/0)
+      else c + log (sum (map (\logw -> exp (logw - c)) logps)) - log (fromIntegral n)
+
+-- | Take the log-mean-exp of a list of log-probabilities
+logSumExp :: [LogP] -> LogP
+logSumExp logps =
+  let c = maximum logps
   in  if isInfinite c   -- to avoid @-Infinity - (-Infinity)@
       then (-1/0)
-      else c + log ((1.0/fromIntegral (length logps)) * sum (map (\logw -> exp (logw - c)) logps))
-
--- | Scale all log-probabilities by setting the maximum probability to 1
-normaliseLogPs :: [LogP] -> [LogP]
-normaliseLogPs xs = if isInfinite c then map (const (-1/0)) xs else map (\x -> x - c) xs
-  where c = maximum xs
+      else c + log (sum (map (\logw -> exp (logw - c)) logps))

@@ -23,7 +23,7 @@ import           Effects.MulDist
 import           Effects.EnvRW ( EnvRW, handleEnvRW )
 import           Effects.State ( modify, handleState, State )
 import           Env ( Env, union )
-import           LogP ( LogP(..), normaliseLogPs )
+import           LogP ( LogP(..) )
 import           Model
 import           Dist
 import           Comp ( discharge, Comp(..), runImpure, call, weaken, LastMember, Member (..), Members, weakenProg, Handler, handleWith )
@@ -103,3 +103,8 @@ lratio (δGs, ws) = foldr (\(Some k@(Key α)) -> Trace.insert k (VecFor (estδEL
           δELBOv     = zipWith (\δgv δfv -> δfv |-| (baseline_v |*| δgv)) δGv δFv
           δestELBOv  = ((*|) norm_c . foldr (|+|) (Vec.zeros (Proxy @(Arity d)))) δELBOv
       in  δestELBOv
+
+-- | Scale all log-probabilities by setting the maximum probability to 1
+normaliseLogPs :: [LogP] -> [LogP]
+normaliseLogPs xs = if isInfinite c then Prelude.map (const (-1/0)) xs else Prelude.map (\x -> x - c) xs
+  where c = maximum xs

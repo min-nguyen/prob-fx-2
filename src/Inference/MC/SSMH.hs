@@ -78,7 +78,8 @@ handleProposal tags  = handleWith (Addr "" 0) (const Val) hop
     hop _ (Propose τ) k   = do  α <- randomFrom (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
                                 r <- random
                                 k α (Map.insert α r τ)
-    hop α (Accept ρ ρ') k = do  let ratio = (exp . sum . Map.elems . Map.delete α) (Map.intersectionWith (-) ρ' ρ)
+    hop α (Accept ρ ρ') k = do  let ratio = (exp . sum . Map.elems . Map.delete α)
+                                            (Map.intersectionWith (-) ρ' ρ)
                                 u <- random
                                 k α (ratio > u)
 
