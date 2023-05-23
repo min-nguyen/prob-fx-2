@@ -70,10 +70,9 @@ handleResampleMul = handle Val hop where
   hop  (Resample pws) k = do
     let (ps, ws) = unzip pws; n = length ws
     idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList (map exp ws))
-    let prts_res  = map (ps !! ) idxs
-        ws_res    = (replicate n . logMeanExp . map (ws  !! )) idxs
+    let (ps_res, ws_res) = (map (ps !! ) idxs, map (const 0) ws)
 
-    k (zip prts_res ws_res)
+    k (zip ps_res ws_res)
 
 resampleMul :: [LogP] -> Sampler [Int]
 resampleMul ws = do
@@ -102,7 +101,7 @@ handleResampleSys (Op op k) = case discharge op of
         idxs     = f 0 (u / fromIntegral n) 0 0 []
         prts_res = map (prts !! ) idxs
         ws_res   = map (ws !! ) idxs
-        ws_mean   = map (const (logMeanExp ws_res)) ws_res
+        ws_mean   = map (const 0) ws_res
 
     (handleResampleSys . k) (zip prts_res ws_mean)
   Left op' -> Op op' (handleResampleSys . k)
