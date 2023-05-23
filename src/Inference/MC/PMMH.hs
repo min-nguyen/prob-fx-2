@@ -26,6 +26,7 @@ import qualified Inference.MC.SSMH as SSMH
 import Inference.MC.MH as MH
 import           Inference.MC.SIS as SIS
 import           Inference.MC.SMC (handleResampleMul, advance)
+import qualified Data.Vector as Vector
 
 {- | Top-level wrapper for PMMH inference.
 -}
@@ -53,13 +54,13 @@ pmmh m n τθ  = runImpure . handleProposal . mh m τθ (exec n)
 {- | Handle probabilistic program using SSMH and compute the average log-probability using SMC.
 -}
 exec :: Int -> ModelExec '[Sampler] LogP a
-exec n τθ prog   = do
+exec n τθ model   = do
   let execPrt :: ModelStep '[Sampler] LogP a
       execPrt (p, w) = (fmap fst . runImpure . reuseTrace τθ . advance w) p
-  (as, ws) <- (runImpure . handleResampleMul . fmap unzip . pfilter n 0 execPrt ) prog
-  let a   = head as
-      w   = logMeanExp ws
-  pure ((a, w), τθ)
+  xws <- (runImpure . handleResampleMul . pfilter n 0 execPrt) model
+  idx <- Sampler.sampleCategorical (Vector.fromList (map (exp . snd) xws))
+  let  (x, w) = xws !! idx
+  pure ((x, w), τθ)
 
 {- | An acceptance mechanism for PMMH.
 -}
