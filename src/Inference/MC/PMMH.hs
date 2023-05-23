@@ -58,6 +58,7 @@ exec n τθ model   = do
   let execPrt :: ModelStep '[Sampler] LogP a
       execPrt (p, w) = (fmap fst . runImpure . reuseTrace τθ . advance w) p
   xws <- (runImpure . handleResampleMul . pfilter n 0 execPrt) model
+  -- | Select a particle with probability proportional to final weights
   idx <- Sampler.sampleCategorical (Vector.fromList (map (exp . snd) xws))
   let  (x, w) = xws !! idx
   pure ((x, w), τθ)

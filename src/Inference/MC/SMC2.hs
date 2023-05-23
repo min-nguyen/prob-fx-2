@@ -36,6 +36,8 @@ import Trace (filterTrace)
 import LogP
 import Unsafe.Coerce (unsafeCoerce)
 import Inference.MC.SIM (defaultSample)
+import qualified Data.Vector as Vector
+import Control.Monad (replicateM)
 
 {- | Top-level wrapper for SMC2 inference.
 -}
@@ -84,26 +86,35 @@ handleResample mh_steps n_inner_prts θ  m = loop (0 :: Int) where
   loop t (Op op k) = case discharge op of
     Right  (Resample pσs) ->
       do  -- | Resample the particles according to the indexes returned by the SMC resampler
-          let (ws, τs ) = unzip (map snd pσs)
-          idxs <- call $ SMC.resampleMul ws
-          let resampled_τs      = map (τs !! ) idxs
-          -- | Get the parameter sample trace of each resampled particle
-              resampled_τθs     = map (filterTrace θ) resampled_τs
-          -- | Insert break point to perform SSMH up to
-              wavg              = logMeanExp ws
-              partial_model     = suspendAfter t m
-          -- | Perform PMMH using each resampled particle's sample trace and get the most recent PMMH iteration.
-          pmmh_trace <- mapM ( fmap head
-                             . call
-                             . flip (PMMH.pmmh mh_steps n_inner_prts) (unsafeCoerce partial_model)
-                             ) resampled_τθs
-          {- | Get:
-              1) the continuations of each particle from the break point (augmented with the non-det effect)
-              2) the total log weights of each particle up until the break point
-              3) the sample traces of each particle up until the break point -}
-          let ((rejuv_prts, _), rejuv_traces) = first unzip (unzip pmmh_trace)
-
-              rejuv_ss    =  map (wavg, ) rejuv_traces
-
-          (loop (t + 1) . k) (zip rejuv_prts rejuv_ss)
+          let (ws, τs) = (unzip . map snd) pσs
+        -- | Compute the sum of all particles' probabilities (in LogP form, i.e. their logSumExp)
+              z        = logSumExp ws
+          if  -- | Require at least some particles' probabilities to be greater than zero
+              not (isInfinite z)
+          then do
+            let -- | Normalise the particles' probabilities (by dividing by their total)
+                ws_norm  = map (exp . \w -> w - z) ws
+                n        = length ws
+            idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList ws_norm)
+            -- | Get the parameter sample trace of each resampled particle
+            let resampled_τs      = map (τs !! ) idxs
+                resampled_τθs     = map (filterTrace θ) resampled_τs
+            -- | Insert break point to perform SSMH up to
+                partial_model     = suspendAfter t m
+            -- | Perform PMMH using each resampled particle's sample trace and get the most recent PMMH iteration.
+            pmmh_trace <- mapM ( fmap head
+                              . call
+                              . flip (PMMH.pmmh mh_steps n_inner_prts) (unsafeCoerce partial_model)
+                              ) resampled_τθs
+            {- | Get:
+                1) the continuations of each particle from the break point
+                2) the sample traces of each particle up until the break point -}
+            let ((ps_mov, _), τs_mov) = first unzip (unzip pmmh_trace)
+            -- | Get average particle probability (in LogP form, i.e. their logMeanExp)
+                w_avg    = z - log (fromIntegral n)
+            -- | Set all particles to use the supposed pre-SSMH-move weight, following the same procedure as SMC
+                pσs_mov = zip ps_mov (map (w_avg, ) τs_mov)
+            (loop (t + 1) . k) pσs_mov
+          else
+            loop (t + 1) . k $ pσs
     Left op' -> Op op' (loop t . k)

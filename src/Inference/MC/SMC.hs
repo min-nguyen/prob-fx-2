@@ -69,22 +69,20 @@ handleResampleMul = handle Val hop where
   hop :: Member Sampler es =>  Resample LogP x -> (x -> Comp es b) -> Comp es b
   hop  (Resample pws) k = do
     let (ps, ws) = unzip pws;
+        -- | Compute the sum of all particles' probabilities (in LogP form, i.e. their logSumExp)
         z        = logSumExp ws
-    if  isInfinite z
-      then
-        k pws
-      else do
-        let weights  = map (exp . \w -> w - z) ws
+    if  -- | Require at least some particles' probabilities to be greater than zero
+        not (isInfinite z)
+      then do
+        let -- | Normalise the particles' probabilities (by dividing by their total)
+            ws_norm  = map (exp . subtract z) ws
             n        = length ws
-        idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList weights)
-        let ps_res = map (ps !! ) idxs
-        k (map (, z - log (fromIntegral n)) ps_res)
-
-resampleMul :: [LogP] -> Sampler [Int]
-resampleMul ws = do
-  let z = logSumExp ws;
-      n = length ws;
-  -- | Select particles to continue with
-  if  isInfinite z
-    then return [0 .. length ws - 1]
-    else (replicateM n . Sampler.sampleCategorical) (Vector.fromList (map (exp . \w -> w - z) ws))
+        idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList ws_norm)
+        let -- | Resample particles
+            ps_res   = map (ps !! ) idxs
+            -- | Get average particle probability (in LogP form, i.e. their logMeanExp)
+            w_avg    = z - log (fromIntegral n)
+        -- | Set the post-resampling weights to be uniform as the average particle weight
+        --   (such that their logSumExp is the same before and after resampling).
+        k (map (, w_avg) ps_res)
+      else  k pws
