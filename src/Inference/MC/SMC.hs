@@ -20,7 +20,7 @@ import qualified Data.Vector as Vector
 import           Effects.MulDist ( pattern ObsPrj, handleMulDist, Addr, MulDist, Observe (..), Sample )
 import           Effects.EnvRW ( EnvRW, handleEnvRW )
 import           Env ( Env )
-import           LogP ( LogP(..), logMeanExp )
+import           LogP ( LogP(..), logMeanExp, logSumExp )
 import           Model ( MulModel(runModel), Model )
 import           Dist ( mkCategorical, drawWithSampler, logProb )
 import           Comp ( LastMember, Comp(..), Members, Member, runImpure, call, weakenProg, discharge, prj, handle, handleWith, Handler)
@@ -28,7 +28,7 @@ import qualified Data.Map as Map
 import           Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS
 import           Inference.MC.SIS (Resample(..), ModelStep, pfilter)
-import           Sampler ( Sampler, random, sampleCategorical )
+import           Sampler ( Sampler, random, sampleCategorical, liftIO )
 
 {- | Call SMC on a model.
 -}
@@ -68,40 +68,23 @@ handleResampleMul :: Member Sampler es => Handler (Resample LogP) es b b
 handleResampleMul = handle Val hop where
   hop :: Member Sampler es =>  Resample LogP x -> (x -> Comp es b) -> Comp es b
   hop  (Resample pws) k = do
-    let (ps, ws) = unzip pws; n = length ws
-    idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList (map exp ws))
-    let (ps_res, ws_res) = (map (ps !! ) idxs, map (const 0) ws)
-
-    k (zip ps_res ws_res)
+    let (ps, ws) = unzip pws;
+        z        = logSumExp ws
+    if  isInfinite z
+      then
+        k pws
+      else do
+        let weights  = map (exp . \w -> w - z) ws
+            n        = length ws
+        idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList weights)
+        let ps_res = map (ps !! ) idxs
+        k (map (, z - log (fromIntegral n)) ps_res)
 
 resampleMul :: [LogP] -> Sampler [Int]
 resampleMul ws = do
-  let ps = map exp ws
+  let z = logSumExp ws;
+      n = length ws;
   -- | Select particles to continue with
-  replicateM (length ps) (Sampler.sampleCategorical (Vector.fromList ps))
-
-{- | A handler for systematic resampling of particles.
--}
-handleResampleSys :: Member Sampler fs => Handler (Resample LogP) fs a a
-handleResampleSys (Val x) = Val x
-handleResampleSys (Op op k) = case discharge op of
-  Right (Resample pws) -> do
-    -- | Get the weights for each particle
-    let (prts, ws) = unzip pws; ps = map exp ws
-    -- | Select particles to continue with
-    u <- random
-    let prob i = ps !! i
-        n      = length ps
-        inc = 1 / fromIntegral n
-        f i _ _ _ acc | i == n = acc
-        f i v j q acc =
-          if v < q
-            then f (i + 1) (v + inc) j q (j - 1 : acc)
-            else f i v (j + 1) (q + prob j) acc
-        idxs     = f 0 (u / fromIntegral n) 0 0 []
-        prts_res = map (prts !! ) idxs
-        ws_res   = map (ws !! ) idxs
-        ws_mean   = map (const 0) ws_res
-
-    (handleResampleSys . k) (zip prts_res ws_mean)
-  Left op' -> Op op' (handleResampleSys . k)
+  if  isInfinite z
+    then return [0 .. length ws - 1]
+    else (replicateM n . Sampler.sampleCategorical) (Vector.fromList (map (exp . \w -> w - z) ws))
