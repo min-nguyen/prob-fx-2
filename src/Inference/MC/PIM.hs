@@ -59,7 +59,12 @@ exec n τθ prog   = do
   let exec_prt :: ModelStep '[Sampler] LogP a
       exec_prt (p, w) = (fmap fst .  runImpure .  reuseTrace τθ . advance w) p
   (xs, ws) <- (fmap unzip . runImpure . handleResampleMul . pfilter n 0 exec_prt ) prog
-  idx <- Sampler.sampleCategorical (Vector.fromList (map exp ws))
-  let x = xs !! idx
-  return ((x, logMeanExp ws), τθ)
-
+  let n = fromIntegral (length ws)
+      z = logSumExp ws
+  if not (isInfinite z)
+    then do
+      idx <- Sampler.sampleCategorical (Vector.fromList $ map (exp . (\w -> w - z)) ws)
+      let x = xs !! idx
+      return ((x, z - log n), τθ)
+    else
+      return ((head xs, z - log n), τθ)
