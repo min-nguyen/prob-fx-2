@@ -39,11 +39,11 @@ data Proposal w a where
     -> Proposal w Trace
   Accept
     -- | previous context
-    :: w
+    :: ((a, w), Trace)
     -- | proposed *final* context
-    -> w
+    -> ((a, w), Trace)
     -- | whether the proposal is accepted or not
-    -> Proposal w Bool
+    -> Proposal w ((a, w), Trace)
 
 type ModelExec es w a = Trace -> Model es a -> Sampler ((a, w), Trace)
 
@@ -59,6 +59,18 @@ reuseTrace τ0 = handleWith τ0 (\τ x -> Val (x, τ))
               Just r  -> do let y = draw d r;
                             k τ y
   )
+
+-- reuseTrace' :: Member Sampler es => Trace -> Handler Sample es a (a, Trace)
+-- reuseTrace' τ0 = handleWith Map.empty
+--   (\τ x -> Val (x, τ))
+--   (\τ (Sample d α) k ->
+--         case Map.lookup α τ0 of
+--               Nothing -> do r <- random
+--                             let y = draw d r;
+--                             k (Map.insert α r τ) y
+--               Just r  -> do let y = draw d r;
+--                             k (Map.insert α r τ) y
+--   )
 
 {- Original version, for benchmarking purposes -}
 mh :: (Members [Proposal w, Sampler] fs)
@@ -86,9 +98,8 @@ mhStep model exec markov_chain = do
   -- | Execute the model under the initial proposal to return the *final* proposal
   ((r', w'), τ') <- call (exec τ_0 model )
   -- | Compute acceptance ratio
-  b              <- call (Accept w w')
-  if b then pure (((r', w'), τ'):markov_chain)
-       else pure markov_chain
+  x              <- call (Accept ((r, w), τ)  ((r', w'), τ'))
+  pure (x : markov_chain)
 
 {- One function version of mh
 mh' :: forall fs es a w. (Members [Proposal w, Sampler] fs)
