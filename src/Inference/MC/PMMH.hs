@@ -46,11 +46,11 @@ pmmhWith mh_steps n_prts gen_model env_in obs_vars = do
   -- | Initialise sample trace to include only parameters
   (_, τ)       <- (runImpure . reuseTrace Map.empty . defaultObserve) model
   let τθ       = filterTrace θ τ
-  pmmh_trace <- (runImpure . handleProposal . mh mh_steps τθ (exec n_prts)) model
+  pmmh_trace <- (runImpure . handleProposal . mh mh_steps τθ (PIM.exec n_prts)) model
   pure (map (snd . fst . fst) pmmh_trace)
 
 pmmh :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
-pmmh m n τθ  = runImpure . handleProposal . mh m τθ (exec n)
+pmmh m n τθ  = runImpure . handleProposal . mh m τθ (PIM.exec n)
 
 {- | An acceptance mechanism for PMMH.
 -}
