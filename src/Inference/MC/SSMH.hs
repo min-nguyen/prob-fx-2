@@ -79,25 +79,33 @@ handleProposal tags  = handleWith (Addr "" 0) (const Val) hop
       α <- randomFrom (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
       r <- random
       k α (Map.insert α r τ)
-    hop α (Accept x@((_, w), _) x'@((_, w'), _)) k = do
+    hop α (Accept ((x, w), τ) ((x', w'),  τ')) k = do
       let ratio = (exp . sum . Map.elems . Map.delete α)
                   (Map.intersectionWith (-) w' w)
       u <- random
-      k α (if ratio > u then x' else x)
+      k α (if ratio > u
+            then
+              -- | Remove stale trace entries not used during model execution
+              ((x', w'), Map.intersection τ' w')
+            else
+              ((x, w), τ))
 
 {- | Handler for one iteration of SSMH.
 -}
 exec :: Trace
   -> Model '[Sampler] a                             -- ^ probabilistic program
   -> Sampler ((a, LPTrace), Trace)  -- ^ proposed address + final log-probability trace + final sample trace
-exec τ0 = runImpure . reuseTrace τ0 . defaultObserve . traceLP Map.empty
+exec τ0 = runImpure . reuseTrace τ0 . defaultObserve . traceLP
 
-{- | Record the log-probabilities at each @Sample@ or @Observe@ operation.
+{- | Record the log-probabilities at each @Sample@ or @Observe@ operation,
+     always starting from an empty map.
 -}
-traceLP :: Members [Observe, Sample] es
-  => LPTrace -> Comp es a -> Comp es (a, LPTrace)
-traceLP ρ (Val x)   = pure (x, ρ)
-traceLP ρ (Op op k)
-  | Just (Observe d y α) <- prj op = Op op (\x -> traceLP (Map.insert α (logProb d x) ρ) $ k x)
-  | Just (Sample d  α)   <- prj op = Op op (\x -> traceLP (Map.insert α (logProb d x) ρ) $ k x)
-  | otherwise                      = Op op (traceLP ρ . k)
+traceLP :: forall es a. Members [Observe, Sample] es
+  => Comp es a -> Comp es (a, LPTrace)
+traceLP  = loop Map.empty where
+  loop :: LPTrace -> Comp es a -> Comp es (a, LPTrace)
+  loop w (Val x) = Val (x, w)
+  loop w (Op op k)
+    | Just (Observe d y α) <- prj op = Op op (\x -> loop (Map.insert α (logProb d x) w) $ k x)
+    | Just (Sample d  α)   <- prj op = Op op (\x -> loop (Map.insert α (logProb d x) w) $ k x)
+    | otherwise                      = Op op (loop w . k)
