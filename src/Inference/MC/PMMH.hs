@@ -21,6 +21,7 @@ import Model
 import Env
 import Effects.EnvRW
 import qualified Data.Map as Map
+import Inference.MC.PIM as PIM
 import Inference.MC.SIM as SIM
 import qualified Inference.MC.SSMH as SSMH
 import Inference.MC.MH as MH
@@ -50,18 +51,6 @@ pmmhWith mh_steps n_prts gen_model env_in obs_vars = do
 
 pmmh :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
 pmmh m n τθ  = runImpure . handleProposal . mh m τθ (exec n)
-
-{- | Handle probabilistic program using SSMH and compute the average log-probability using SMC.
--}
-exec :: Int -> ModelExec '[Sampler] LogP a
-exec n τθ model   = do
-  let execPrt :: ModelStep '[Sampler] LogP a
-      execPrt (p, w) = (fmap fst . runImpure . reuseTrace τθ . advance w) p
-  xws <- (runImpure . handleResampleMul . pfilter n 0 execPrt) model
-  -- | Select a particle with probability proportional to final weights
-  idx <- Sampler.sampleCategorical (Vector.fromList (map (exp . snd) xws))
-  let  (x, w) = xws !! idx
-  pure ((x, w), τθ)
 
 {- | An acceptance mechanism for PMMH.
 -}

@@ -82,14 +82,30 @@ handleProposal tags  = handleWith (Addr "" 0) (const Val) hop
     hop α (Accept ((x, w), τ) ((x', w'),  τ')) k = do
       let domτ  = (log . fromIntegral . Map.size) τ
           domτ' = (log . fromIntegral . Map.size) τ'
-          ratio = (sum . Map.elems . Map.delete α) (Map.intersectionWith (-) w' w) + domτ - domτ'
+          ratio = (exp . sum . Map.elems . Map.delete α) (Map.intersectionWith (-) w' w) + domτ - domτ'
+{-
+    `ratio` is equivalent to Algorithm 2: [https://stuhlmueller.org/papers/lightweight-mcmc-aistats2011.pdf]
+            (ll' - ll + R - F + ll_stale - ll_fresh + log|τ| - log|τ'|
+        =  (ll' \ vars(ll_fresh)) − (ll \ vars(ll_stale)) + log|τ| - log|τ'|
+    where:
+      (1) F and R cancel out (due to using the model prior as a proposal)
+      (2) Program executions with different numbers of observe operations (or differently addressed observe operations) are considered esoteric.
+      (3) We exclude the likelihood of the proposed site α, following Sec 4.2 (Alg 6) [https://arxiv.org/pdf/1809.10756.pdf].
+          I can't seem to find this detail in the Wingate lightweight-mcmc (2011) version.
+
+    A full implementation with (2) would be:
+      ll_samples  = Map.intersection w τ    -- get log-likelihoods of new samples
+      ll_samples' = Map.intersection w' τ'  -- get log-likelihoods of old samples
+      ll_stale = (sum . Map.elems . Map.delete α) (Map.difference ll_samples ll_samples')   -- sum log-likelihoods of stale samples
+      ll_fresh = (sum . Map.elems . Map.delete α) (Map.difference ll_samples' ll_samples)   -- sum log-likelihoods of fresh samples
+      ll       = (sum . Map.elems . Map.delete α) w  -- accounting for all old samples + observes
+      ll'      = (sum . Map.elems . Map.delete α) w' -- accounting for all new samples + observes
+      ratio   = ll' - ll + domτ - domτ' + ll_stale - ll_fresh
+-}
       u <- random
-      k α (if exp ratio > u
-            then
-              -- | Remove stale trace entries not used during model execution
-              ((x', w'), Map.intersection τ' w')
-            else
-              ((x, w), τ))
+      k α (if ratio > u
+            then  ((x', w'), Map.intersection τ' w') -- | Remove stale trace entries not used during model execution
+            else  ((x, w), τ))
 
 {- | Handler for one iteration of SSMH.
 -}
