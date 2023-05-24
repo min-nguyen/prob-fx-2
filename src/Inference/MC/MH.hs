@@ -103,7 +103,7 @@ mhStep model exec markov_chain = do
 
 {- One function version of mh
 mh' :: forall fs es a w. (Members [Proposal w, Sampler] fs)
-   => Int -> Trace -> ModelExec es w -> Model es a -> Comp fs [((a, w), Trace)]
+   => Int -> Trace -> ModelExec es w a -> Model es a -> Comp fs [((a, w), Trace)]
 mh' n τ_0 exec model = do
   -- | A function performing n mhSteps using initial mh_s.
   let mhStep :: Int -> [((a, w), Trace)] -> Comp fs [((a, w), Trace)]
@@ -112,9 +112,9 @@ mh' n τ_0 exec model = do
             let ((x, w), τ) = head mrkchain
             τ_0            <- call (Propose τ :: Proposal w Trace)
             ((x', w'), τ') <- call (exec τ_0 model )
-            b              <- call (Accept w w')
+            b              <- call (Accept ((x, w), τ) ((x', w'), τ'))
             -- let mrkchain'   =
-            mhStep (i + 1) (if b then ((x', w'), τ') : mrkchain else ((x, w), τ) : mrkchain)
+            mhStep (i + 1) (b : mrkchain)
         | otherwise = return mrkchain
   -- | Perform initial run of mh
   node_0 <- call (exec τ_0 model )
