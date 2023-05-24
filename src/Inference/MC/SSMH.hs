@@ -80,10 +80,11 @@ handleProposal tags  = handleWith (Addr "" 0) (const Val) hop
       r <- random
       k α (Map.insert α r τ)
     hop α (Accept ((x, w), τ) ((x', w'),  τ')) k = do
-      let ratio = (exp . sum . Map.elems . Map.delete α)
-                  (Map.intersectionWith (-) w' w)
+      let domτ  = (log . fromIntegral . Map.size) τ
+          domτ' = (log . fromIntegral . Map.size) τ'
+          ratio = (sum . Map.elems . Map.delete α) (Map.intersectionWith (-) w' w) + domτ - domτ'
       u <- random
-      k α (if ratio > u
+      k α (if exp ratio > u
             then
               -- | Remove stale trace entries not used during model execution
               ((x', w'), Map.intersection τ' w')
