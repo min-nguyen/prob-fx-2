@@ -20,7 +20,7 @@ import qualified Data.Vector as Vector
 import           Effects.MulDist ( pattern ObsPrj, handleMulDist, Addr, MulDist, Observe (..), Sample )
 import           Effects.EnvRW ( EnvRW, handleEnvRW )
 import           Env ( Env )
-import           LogP ( LogP(..), logMeanExp, logSumExp )
+import           LogP ( LogP(..), logMeanExp, logSumExp, normalise )
 import           Model ( MulModel(runModel), Model )
 import           Dist ( mkCategorical, drawWithSampler, logProb )
 import           Comp ( LastMember, Comp(..), Members, Member, runImpure, call, weakenProg, discharge, prj, handle, handleWith, Handler)
@@ -69,20 +69,14 @@ handleResampleMul = handle Val hop where
   hop :: Member Sampler es =>  Resample LogP x -> (x -> Comp es b) -> Comp es b
   hop  (Resample pws) k = do
     let (ps, ws) = unzip pws;
-        -- | Compute the sum of all particles' probabilities (in LogP form, i.e. their logSumExp)
-        z        = logSumExp ws
-    if  -- | Require at least some particles' probabilities to be greater than zero
-        not (isInfinite z)
+        -- | Compute the normalised particle weights and their average weights
+        (ws_norm, ws_avg) = normalise ws
+    if  -- | Require at least some particles' weights to be greater than -inf
+        not (isInfinite ws_avg)
       then do
-        let -- | Normalise the particles' probabilities (by dividing by their total)
-            ws_norm  = map (exp . subtract z) ws
-            n        = length ws
-        idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList ws_norm)
-        let -- | Resample particles
-            ps_res   = map (ps !! ) idxs
-            -- | Get average particle probability (in LogP form, i.e. their logMeanExp)
-            w_avg    = z - log (fromIntegral n)
-        -- | Set the post-resampling weights to be uniform as the average particle weight
-        --   (such that their logSumExp is the same before and after resampling).
-        k (map (, w_avg) ps_res)
-      else  k pws
+        idxs <- call $ (replicateM (length ws) . Sampler.sampleCategorical) (Vector.fromList (map exp ws_norm))
+        -- | Resample particles + set the post-resampling weights to be uniform as the average particle weight
+        let pws_res = map ((, ws_avg) . (ps !!)) idxs
+        k pws_res
+      else
+        k pws

@@ -67,9 +67,6 @@ ssmh :: Int                                   -- ^ number of SSMH iterations
 ssmh n τ_0  tags = runImpure . handleProposal tags  . mh n τ_0 exec
 
 {- | Handler for @Proposal@ for SSMH.
-    - Propose by drawing a component x_i of latent variable X' ~ p(X)
-    - Proposal using the ratio:
-       p(X', Y')q(X | X')/p(X, Y)q(X' | X)
 -}
 handleProposal :: Member Sampler fs => [Tag] -> Handler (Proposal LPTrace) fs a a
 handleProposal tags  = handleWith (Addr "" 0) (const Val) hop
@@ -107,11 +104,9 @@ handleProposal tags  = handleWith (Addr "" 0) (const Val) hop
             then  ((x', w'), Map.intersection τ' w') -- | Remove stale trace entries not used during model execution
             else  ((x, w), τ))
 
-{- | Handler for one iteration of SSMH.
+{- | Model execution for one iteration of SSMH.
 -}
-exec :: Trace
-  -> Model '[Sampler] a                             -- ^ probabilistic program
-  -> Sampler ((a, LPTrace), Trace)  -- ^ proposed address + final log-probability trace + final sample trace
+exec :: ModelExec '[Sampler] LPTrace a
 exec τ0 = runImpure . reuseTrace τ0 . defaultObserve . traceLP
 
 {- | Record the log-probabilities at each @Sample@ or @Observe@ operation,

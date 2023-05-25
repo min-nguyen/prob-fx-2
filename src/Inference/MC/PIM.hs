@@ -59,11 +59,12 @@ exec n τθ prog   = do
   let step :: ModelStep '[Sampler] LogP a
       step (p, w) = (fmap fst .  runImpure .  reuseTrace τθ . advance w) p
   (xs, ws) <- (fmap unzip . runImpure . handleResampleMul . pfilter n 0 step) prog
-  let n = fromIntegral (length ws)
-      z = logSumExp ws
-  if not (isInfinite z)
+  -- | Compute the normalised particle weights and their average weights
+  let (ws_norm, ws_avg) = normalise ws
+  -- | Require at least some particles' weights to be greater than -inf
+  if not (isInfinite ws_avg)
     then do
-      idx <- Sampler.sampleCategorical (Vector.fromList $ map (exp . (\w -> w - z)) ws)
-      return ((xs !! idx, z - log n), τθ)
+      idx <- Sampler.sampleCategorical (Vector.fromList $ map exp ws_norm)
+      return ((xs !! idx, ws_avg), τθ)
     else
-      return ((head xs, z - log n), τθ)
+      return ((head xs, ws_avg), τθ)

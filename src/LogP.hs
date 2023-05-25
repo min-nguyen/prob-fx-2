@@ -18,7 +18,7 @@ import Debug.Trace
 --   All numerics work the same as with @Double@.
 type LogP =  Double
 
--- | Take the log-mean-exp of a list of log-probabilities
+-- | Take the log-mean-exp of a list of log-probabilities (which is -infinity if all log weights are -infinity)
 logMeanExp :: [LogP] -> LogP
 logMeanExp logps =
   let c = maximum logps
@@ -27,7 +27,7 @@ logMeanExp logps =
       then (-1/0)
       else c + log (sum (map (\logw -> exp (logw - c)) logps)) - log (fromIntegral n)
 
--- | Take the log-mean-exp of a list of log-probabilities
+-- | Take the log-mean-exp of a list of log-probabilities (which is -infinity if all log weights are -infinity)
 logSumExp :: [LogP] -> LogP
 logSumExp logps =
   let c = maximum logps
@@ -35,7 +35,7 @@ logSumExp logps =
       then (-1/0)
       else c + log (sum (map (\logw -> exp (logw - c)) logps))
 
--- | Normalise log weights and return the log mean
+-- | Normalise log weights and return the log mean (which is -infinity if all log weights are -infinity)
 normalise :: [LogP] -> ([LogP], LogP)
 normalise ws = (map (subtract z) ws, z - log n)
   where n = fromIntegral (length ws)
