@@ -9,6 +9,7 @@ module LogP (
     LogP(..)
   , logMeanExp
   , logSumExp
+  , normalise
   ) where
 
 import Debug.Trace
@@ -33,3 +34,9 @@ logSumExp logps =
   in  if isInfinite c   -- to avoid @-Infinity - (-Infinity)@
       then (-1/0)
       else c + log (sum (map (\logw -> exp (logw - c)) logps))
+
+-- | Normalise log weights and return the log mean
+normalise :: [LogP] -> ([LogP], LogP)
+normalise ws = (map (subtract z) ws, z - log n)
+  where n = fromIntegral (length ws)
+        z = logSumExp ws
