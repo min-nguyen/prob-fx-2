@@ -52,7 +52,7 @@ mulpfilter n_prts = runImpure . handleResampleMul . pfilter n_prts 0 exec
        1. the rest of the computation
        2. the log probability of the @Observe operation
 -}
-exec :: (Model '[Sampler] a, LogP) -> Sampler (Model '[Sampler] a, LogP)
+exec :: ModelStep '[Sampler] LogP a
 exec (p, w) = (runImpure . defaultSample . advance w) p
 
 advance :: LogP -> Handler Observe es a (Comp (Observe : es) a, LogP)

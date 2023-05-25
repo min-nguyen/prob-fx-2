@@ -84,9 +84,9 @@ handleResample :: Member Sampler fs
 handleResample mh_steps n_inner_prts θ  m = loop (0 :: Int) where
   loop t (Val x) = Val x
   loop t (Op op k) = case discharge op of
-    Right  (Resample pσs) ->
+    Right  (Resample pwτs) ->
       do  -- | Resample the particles according to the indexes returned by the SMC resampler
-          let (ws, τs) = (unzip . map snd) pσs
+          let (ws, τs) = (unzip . map snd) pwτs
         -- | Compute the sum of all particles' probabilities (in LogP form, i.e. their logSumExp)
               z        = logSumExp ws
           if  -- | Require at least some particles' probabilities to be greater than zero
@@ -113,8 +113,8 @@ handleResample mh_steps n_inner_prts θ  m = loop (0 :: Int) where
             -- | Get average particle probability (in LogP form, i.e. their logMeanExp)
                 w_avg    = z - log (fromIntegral n)
             -- | Set all particles to use the supposed pre-SSMH-move weight, following the same procedure as SMC
-                pσs_mov = zip ps_mov (map (w_avg, ) τs_mov)
-            (loop (t + 1) . k) pσs_mov
+                pwτs_mov = zip ps_mov (map (w_avg, ) τs_mov)
+            (loop (t + 1) . k) pwτs_mov
           else
-            loop (t + 1) . k $ pσs
+            loop (t + 1) . k $ pwτs
     Left op' -> Op op' (loop t . k)

@@ -56,15 +56,14 @@ pim mh_steps n_prts τθ = runImpure . IM.handleProposal . mh mh_steps τθ (exe
 -}
 exec :: Int -> ModelExec '[Sampler] LogP a
 exec n τθ prog   = do
-  let exec_prt :: ModelStep '[Sampler] LogP a
-      exec_prt (p, w) = (fmap fst .  runImpure .  reuseTrace τθ . advance w) p
-  (xs, ws) <- (fmap unzip . runImpure . handleResampleMul . pfilter n 0 exec_prt ) prog
+  let step :: ModelStep '[Sampler] LogP a
+      step (p, w) = (fmap fst .  runImpure .  reuseTrace τθ . advance w) p
+  (xs, ws) <- (fmap unzip . runImpure . handleResampleMul . pfilter n 0 step) prog
   let n = fromIntegral (length ws)
       z = logSumExp ws
   if not (isInfinite z)
     then do
       idx <- Sampler.sampleCategorical (Vector.fromList $ map (exp . (\w -> w - z)) ws)
-      let x = xs !! idx
-      return ((x, z - log n), τθ)
+      return ((xs !! idx, z - log n), τθ)
     else
       return ((head xs, z - log n), τθ)

@@ -60,18 +60,6 @@ reuseTrace τ0 = handleWith τ0 (\τ x -> Val (x, τ))
                             k τ y
   )
 
--- reuseTrace' :: Member Sampler es => Trace -> Handler Sample es a (a, Trace)
--- reuseTrace' τ0 = handleWith Map.empty
---   (\τ x -> Val (x, τ))
---   (\τ (Sample d α) k ->
---         case Map.lookup α τ0 of
---               Nothing -> do r <- random
---                             let y = draw d r;
---                             k (Map.insert α r τ) y
---               Just r  -> do let y = draw d r;
---                             k (Map.insert α r τ) y
---   )
-
 {- Original version, for benchmarking purposes -}
 mh :: (Members [Proposal w, Sampler] fs)
    => Int                                                                    -- ^ number of iterations
