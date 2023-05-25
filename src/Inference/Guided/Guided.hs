@@ -20,7 +20,7 @@ import Effects.EnvRW ( EnvRW, handleEnvRW )
 import Effects.State ( modify, handleState, State )
 import Effects.Guide
 import Env ( Env, union )
-import LogP ( LogP(..), normaliseLogPs )
+import LogP ( LogP(..) )
 import Dist
 import Comp ( Comp(..), runImpure, call, Member (..), Members, Handler, handleWith, handle )
 import Sampler
