@@ -95,32 +95,27 @@ handleResample :: (Member Sampler fs)
   -> Handler (Resample PrtState) fs [(a, PrtState)] [(a, PrtState)]
 handleResample mh_steps tags  m = handleWith 0 (const Val) hop where
   hop :: Member Sampler fs => Int -> Resample PrtState x -> (Int -> x -> Comp fs a) -> Comp fs a
-  hop t (Resample pσs) k = do
-    let (ws, τs) = (unzip . map snd) pσs
-        -- | Compute the sum of all particles' probabilities (in LogP form, i.e. their logSumExp)
-        z        = logSumExp ws
-    if  -- | Require at least some particles' probabilities to be greater than zero
-        not (isInfinite z)
+  hop t (Resample pwτs) k = do
+    let (ws, τs) = (unzip . map snd) pwτs
+        -- | Compute the normalised particle weights and their average weights
+        (ws_norm, ws_avg) = normalise ws
+    if  -- | Require at least some particles' weights to be greater than -inf
+        not (isInfinite ws_avg)
       then do
-        let -- | Normalise the particle weights (dividing by the total probability)
-            ws_norm  = map (exp . \w -> w - z) ws
-            n        = length ws
-        idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList ws_norm)
+        idxs <- call $ (replicateM (length ws) . Sampler.sampleCategorical) (Vector.fromList (map exp ws_norm))
         let -- | Resample the traces.
             τs_res   = map (τs !!) idxs
             -- | Insert break point to perform SSMH up to.
             model_t  = suspendAfter t m
-            -- | Get average particle probability (in LogP form, i.e. their logMeanExp)
-            w_avg    = z - log (fromIntegral n)
         -- | For each resampled particle's trace
-        wprts_mov <- forM τs_res (\τ ->
+        pwτs_mov <- forM τs_res (\τ ->
           do  -- | Perform a series of SSMH-updates on the trace and get most recent moved trace.
-              ((prt_mov, _), τ_mov) <- fmap head (call $ SSMH.ssmh mh_steps τ tags model_t)
+              ((p_mov, _), τ_mov) <- fmap head (call $ SSMH.ssmh mh_steps τ tags model_t)
               -- | Set all particles to use the supposed pre-SSMH-move weight, following the same procedure as SMC
-              return (prt_mov, (w_avg, τ_mov)))
-        k (t + 1) (unsafeCoerce wprts_mov)
+              return (p_mov, (ws_avg, τ_mov)))
+        k (t + 1) (unsafeCoerce pwτs_mov)
       else
-        k (t + 1) pσs
+        k (t + 1) pwτs
 
 {- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
      It returns the rest of the computation.

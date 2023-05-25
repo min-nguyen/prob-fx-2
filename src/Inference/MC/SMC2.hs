@@ -84,18 +84,15 @@ handleResample :: Member Sampler fs
 handleResample mh_steps n_inner_prts θ  m = loop (0 :: Int) where
   loop t (Val x) = Val x
   loop t (Op op k) = case discharge op of
-    Right  (Resample pσs) ->
+    Right  (Resample pwτs) ->
       do  -- | Resample the particles according to the indexes returned by the SMC resampler
-          let (ws, τs) = (unzip . map snd) pσs
-        -- | Compute the sum of all particles' probabilities (in LogP form, i.e. their logSumExp)
-              z        = logSumExp ws
-          if  -- | Require at least some particles' probabilities to be greater than zero
-              not (isInfinite z)
+          let (ws, τs) = (unzip . map snd) pwτs
+          -- | Compute the normalised particle weights and their average weights
+          let (ws_norm, ws_avg) = normalise ws
+          if  -- | Require at least some particles' weights to be greater than -inf
+              not (isInfinite ws_avg)
           then do
-            let -- | Normalise the particles' probabilities (by dividing by their total)
-                ws_norm  = map (exp . \w -> w - z) ws
-                n        = length ws
-            idxs <- call $ (replicateM n . Sampler.sampleCategorical) (Vector.fromList ws_norm)
+            idxs <- call $ (replicateM (length ws) . Sampler.sampleCategorical) (Vector.fromList (map exp ws_norm))
             -- | Get the parameter sample trace of each resampled particle
             let resampled_τs      = map (τs !! ) idxs
                 resampled_τθs     = map (filterTrace θ) resampled_τs
@@ -110,11 +107,9 @@ handleResample mh_steps n_inner_prts θ  m = loop (0 :: Int) where
                 1) the continuations of each particle from the break point
                 2) the sample traces of each particle up until the break point -}
             let ((ps_mov, _), τs_mov) = first unzip (unzip pmmh_trace)
-            -- | Get average particle probability (in LogP form, i.e. their logMeanExp)
-                w_avg    = z - log (fromIntegral n)
             -- | Set all particles to use the supposed pre-SSMH-move weight, following the same procedure as SMC
-                pσs_mov = zip ps_mov (map (w_avg, ) τs_mov)
-            (loop (t + 1) . k) pσs_mov
+                pwτs_mov = zip ps_mov (map (ws_avg, ) τs_mov)
+            (loop (t + 1) . k) pwτs_mov
           else
-            loop (t + 1) . k $ pσs
+            loop (t + 1) . k $ pwτs
     Left op' -> Op op' (loop t . k)
