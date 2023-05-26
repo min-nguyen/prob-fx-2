@@ -60,7 +60,7 @@ exec n τθ prog   = do
       step (p, w) = (fmap fst .  runImpure .  reuseTrace τθ . advance w) p
   (xs, ws) <- (fmap unzip . runImpure . handleResampleMul . pfilter n 0 step) prog
   -- | Compute the normalised particle weights and their average weights
-  let (ws_norm, ws_avg) = normalise ws
+  let (ws_norm, ws_avg) = normaliseAndLogMean ws
   -- | Require at least some particles' weights to be greater than -inf
   if not (isInfinite ws_avg)
     then do

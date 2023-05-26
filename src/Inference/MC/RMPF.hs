@@ -98,7 +98,7 @@ handleResample mh_steps tags  m = handleWith 0 (const Val) hop where
   hop t (Resample pwτs) k = do
     let (ws, τs) = (unzip . map snd) pwτs
         -- | Compute the normalised particle weights and their average weights
-        (ws_norm, ws_avg) = normalise ws
+        (ws_norm, ws_avg) = normaliseAndLogMean ws
     if  -- | Require at least some particles' weights to be greater than -inf
         not (isInfinite ws_avg)
       then do

@@ -54,7 +54,7 @@ pmmh m n τθ  = runImpure . handleProposal . mh m τθ (PIM.exec n)
 
 {- | An acceptance mechanism for PMMH.
 -}
-handleProposal :: Member Sampler fs => Handler (Proposal LogP) fs a a
+handleProposal :: Member Sampler fs => Handler (Propose LogP) fs a a
 handleProposal (Val x)   = pure x
 handleProposal (Op op k) = case discharge op of
   Right (Propose τθ)
