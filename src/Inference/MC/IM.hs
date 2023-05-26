@@ -60,12 +60,12 @@ exec :: ModelExec '[Sampler] LogP a
 exec τ   =
   runImpure . MH.reuseTrace τ . LW.likelihood
 
-handleProposal :: Member Sampler fs => Handler (Proposal LogP) fs a a
+handleProposal :: Member Sampler fs => Handler (Propose LogP) fs a a
 handleProposal = handle Val hop
-  where hop :: Member Sampler es => Proposal LogP x -> (x -> Comp es b) -> Comp es b
+  where hop :: Member Sampler es => Propose LogP x -> (x -> Comp es b) -> Comp es b
         hop op k = case op of
-          (Propose τ)     -> do τ0 <- mapM (const random) τ
-                                k τ0
-          (Accept lρ lρ') -> do let ratio = exp (lρ' - lρ)
+          (Propose _)     -> do k Map.empty
+          (Accept x@((_, w), _) x'@((_, w'), _))
+                          -> do let ratio = exp (w' - w)
                                 u <- random
-                                k (ratio > u)
+                                k (if ratio > u then x' else x)

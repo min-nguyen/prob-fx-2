@@ -21,11 +21,13 @@ import Model
 import Env
 import Effects.EnvRW
 import qualified Data.Map as Map
+import Inference.MC.PIM as PIM
 import Inference.MC.SIM as SIM
 import qualified Inference.MC.SSMH as SSMH
 import Inference.MC.MH as MH
 import           Inference.MC.SIS as SIS
 import           Inference.MC.SMC (handleResampleMul, advance)
+import qualified Data.Vector as Vector
 
 {- | Top-level wrapper for PMMH inference.
 -}
@@ -44,26 +46,15 @@ pmmhWith mh_steps n_prts gen_model env_in obs_vars = do
   -- | Initialise sample trace to include only parameters
   (_, τ)       <- (runImpure . reuseTrace Map.empty . defaultObserve) model
   let τθ       = filterTrace θ τ
-  pmmh_trace <- (runImpure . handleProposal . mh mh_steps τθ (exec n_prts)) model
+  pmmh_trace <- (runImpure . handleProposal . mh mh_steps τθ (PIM.exec n_prts)) model
   pure (map (snd . fst . fst) pmmh_trace)
 
 pmmh :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
-pmmh m n τθ  = runImpure . handleProposal . mh m τθ (exec n)
-
-{- | Handle probabilistic program using SSMH and compute the average log-probability using SMC.
--}
-exec :: Int -> ModelExec '[Sampler] LogP a
-exec n τθ prog   = do
-  let execPrt :: ModelStep '[Sampler] LogP a
-      execPrt (p, w) = (fmap fst . runImpure . reuseTrace τθ . advance w) p
-  (as, ws) <- (runImpure . handleResampleMul . fmap unzip . pfilter n 0 execPrt ) prog
-  let a   = head as
-      w   = logMeanExp ws
-  pure ((a, w), τθ)
+pmmh m n τθ  = runImpure . handleProposal . mh m τθ (PIM.exec n)
 
 {- | An acceptance mechanism for PMMH.
 -}
-handleProposal :: Member Sampler fs => Handler (Proposal LogP) fs a a
+handleProposal :: Member Sampler fs => Handler (Propose LogP) fs a a
 handleProposal (Val x)   = pure x
 handleProposal (Op op k) = case discharge op of
   Right (Propose τθ)
@@ -71,8 +62,9 @@ handleProposal (Op op k) = case discharge op of
            r <- random
            let τθ' = Map.insert α r τθ
            (handleProposal . k) τθ'
-  Right (Accept w w')
-    ->  do u <- random
-           (handleProposal . k) (exp (w' - w) > u)
+  Right (Accept x@((_, w), _) x'@((_, w'), _))
+    -> do let ratio = exp (w' - w)
+          u <- random
+          (handleProposal . k) (if ratio > u then x' else x)
   Left op'
     -> Op op' (handleProposal . k)

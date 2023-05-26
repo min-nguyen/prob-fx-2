@@ -29,21 +29,21 @@ import Effects.MulDist ( Tag, Observe, Sample(..), MulDist, Addr )
 import qualified Inference.MC.SIM as SIM
 import Sampler ( Sampler, random )
 
-{- | The @Proposal@ effect for proposing samples and accepting/rejecting according a context.
+{- | The @Propose@ effect for proposing samples and accepting/rejecting according a context.
 -}
-data Proposal w a where
+data Propose w a where
   Propose
     -- | previous context and sample trace
     :: Trace
     -- | proposed *initial* context and sample trace
-    -> Proposal w Trace
+    -> Propose w Trace
   Accept
     -- | previous context
-    :: w
+    :: ((a, w), Trace)
     -- | proposed *final* context
-    -> w
+    -> ((a, w), Trace)
     -- | whether the proposal is accepted or not
-    -> Proposal w Bool
+    -> Propose w ((a, w), Trace)
 
 type ModelExec es w a = Trace -> Model es a -> Sampler ((a, w), Trace)
 
@@ -61,7 +61,7 @@ reuseTrace τ0 = handleWith τ0 (\τ x -> Val (x, τ))
   )
 
 {- Original version, for benchmarking purposes -}
-mh :: (Members [Proposal w, Sampler] fs)
+mh :: (Members [Propose w, Sampler] fs)
    => Int                                                                    -- ^ number of iterations
    -> Trace                                                          -- ^ initial context + sample trace
    -> ModelExec es w a                                                       -- ^ model handler
@@ -73,7 +73,7 @@ mh n τ_0 exec model = do
   -- | A function performing n mhSteps using initial mh_s. The most recent samples are at the front of the trace.
   foldl1 (>=>) (replicate n (mhStep model exec)) [x0]
 
-mhStep :: forall es fs w a. (Members [Proposal w, Sampler] fs)
+mhStep :: forall es fs w a. (Members [Propose w, Sampler] fs)
   => Model es a                                                       -- ^ model handler
   -> ModelExec es w a                                                 -- ^ probabilistic program
   -> [((a, w), Trace)]                                                   -- ^ previous trace
@@ -82,28 +82,27 @@ mhStep model exec markov_chain = do
   -- | Get previous iteration output
   let ((r, w), τ) = head markov_chain
   -- | Construct an *initial* proposal
-  τ_0            <- call (Propose τ :: Proposal w Trace)
+  τ_0            <- call (Propose τ :: Propose w Trace)
   -- | Execute the model under the initial proposal to return the *final* proposal
   ((r', w'), τ') <- call (exec τ_0 model )
   -- | Compute acceptance ratio
-  b              <- call (Accept w w')
-  if b then pure (((r', w'), τ'):markov_chain)
-       else pure markov_chain
+  x              <- call (Accept ((r, w), τ)  ((r', w'), τ'))
+  pure (x : markov_chain)
 
 {- One function version of mh
-mh' :: forall fs es a w. (Members [Proposal w, Sampler] fs)
-   => Int -> Trace -> ModelExec es w -> Model es a -> Comp fs [((a, w), Trace)]
+mh' :: forall fs es a w. (Members [Propose w, Sampler] fs)
+   => Int -> Trace -> ModelExec es w a -> Model es a -> Comp fs [((a, w), Trace)]
 mh' n τ_0 exec model = do
   -- | A function performing n mhSteps using initial mh_s.
   let mhStep :: Int -> [((a, w), Trace)] -> Comp fs [((a, w), Trace)]
       mhStep i mrkchain
         | i < n     = do
             let ((x, w), τ) = head mrkchain
-            τ_0            <- call (Propose τ :: Proposal w Trace)
+            τ_0            <- call (Propose τ :: Propose w Trace)
             ((x', w'), τ') <- call (exec τ_0 model )
-            b              <- call (Accept w w')
+            b              <- call (Accept ((x, w), τ) ((x', w'), τ'))
             -- let mrkchain'   =
-            mhStep (i + 1) (if b then ((x', w'), τ') : mrkchain else ((x, w), τ) : mrkchain)
+            mhStep (i + 1) (b : mrkchain)
         | otherwise = return mrkchain
   -- | Perform initial run of mh
   node_0 <- call (exec τ_0 model )
@@ -112,7 +111,7 @@ mh' n τ_0 exec model = do
 -}
 
 {- Paper version
-mh :: forall w fs es a. (Members [Proposal w, Sampler] fs)
+mh :: forall w fs es a. (Members [Propose w, Sampler] fs)
    => Int                                                                    -- ^ number of iterations
    -> Trace                                                          -- ^ initial context + sample trace
    -> ModelExec es w                                                        -- ^ model handler
@@ -128,14 +127,14 @@ mh n τ_0 exec model = do
 
 {- | Propose a new sample, execute the model, and then reject or accept the proposal.
 -}
-metroStep :: forall es fs w a. (Members [Proposal w, Sampler] fs)
+metroStep :: forall es fs w a. (Members [Propose w, Sampler] fs)
   => Model es a                                                       -- ^ model handler
   -> ModelExec es w                                                  -- ^ probabilistic program
   -> ((a, w), Trace)                                                   -- ^ previous trace
   -> Comp fs ((a, w), Trace)                            -- ^ updated trace
 metroStep model exec ((r, w), τ) = do
   -- | Construct an *initial* proposal
-  τ_0            <- call (Propose τ :: Proposal w Trace)
+  τ_0            <- call (Propose τ :: Propose w Trace)
   -- | Execute the model under the initial proposal to return the *final* proposal
   ((r', w'), τ') <- call (exec model τ_0)
   -- | Compute acceptance ratio
