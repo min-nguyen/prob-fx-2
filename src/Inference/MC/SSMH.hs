@@ -66,12 +66,12 @@ ssmh :: Int                                   -- ^ number of SSMH iterations
   -> Sampler [((a, LPTrace), Trace)]
 ssmh n τ_0  tags = runImpure . handleProposal tags  . mh n τ_0 exec
 
-{- | Handler for @Proposal@ for SSMH.
+{- | Handler for @Propose@ for SSMH.
 -}
-handleProposal :: Member Sampler fs => [Tag] -> Handler (Proposal LPTrace) fs a a
+handleProposal :: Member Sampler fs => [Tag] -> Handler (Propose LPTrace) fs a a
 handleProposal tags  = handleWith (Addr "" 0) (const Val) hop
   where
-    hop :: Member Sampler es => Addr -> Proposal LPTrace x -> (Addr -> x -> Comp es b) -> Comp es b
+    hop :: Member Sampler es => Addr -> Propose LPTrace x -> (Addr -> x -> Comp es b) -> Comp es b
     hop _ (Propose τ) k   = do
       α <- randomFrom (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
       r <- random

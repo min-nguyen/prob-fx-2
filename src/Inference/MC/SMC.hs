@@ -20,7 +20,7 @@ import qualified Data.Vector as Vector
 import           Effects.MulDist ( pattern ObsPrj, handleMulDist, Addr, MulDist, Observe (..), Sample )
 import           Effects.EnvRW ( EnvRW, handleEnvRW )
 import           Env ( Env )
-import           LogP ( LogP(..), logMeanExp, logSumExp, normalise )
+import           LogP ( LogP(..), logMeanExp, logSumExp, normaliseAndLogMean )
 import           Model ( MulModel(runModel), Model )
 import           Dist ( mkCategorical, drawWithSampler, logProb )
 import           Comp ( LastMember, Comp(..), Members, Member, runImpure, call, weakenProg, discharge, prj, handle, handleWith, Handler)
@@ -70,7 +70,7 @@ handleResampleMul = handle Val hop where
   hop  (Resample pws) k = do
     let (ps, ws) = unzip pws;
         -- | Compute the normalised particle weights and their average weights
-        (ws_norm, ws_avg) = normalise ws
+        (ws_norm, ws_avg) = normaliseAndLogMean ws
     if  -- | Require at least some particles' weights to be greater than -inf
         not (isInfinite ws_avg)
       then do

@@ -88,7 +88,7 @@ handleResample mh_steps n_inner_prts θ  m = loop (0 :: Int) where
       do  -- | Resample the particles according to the indexes returned by the SMC resampler
           let (ws, τs) = (unzip . map snd) pwτs
           -- | Compute the normalised particle weights and their average weights
-          let (ws_norm, ws_avg) = normalise ws
+          let (ws_norm, ws_avg) = normaliseAndLogMean ws
           if  -- | Require at least some particles' weights to be greater than -inf
               not (isInfinite ws_avg)
           then do
