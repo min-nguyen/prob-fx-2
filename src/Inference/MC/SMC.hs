@@ -28,7 +28,7 @@ import qualified Data.Map as Map
 import           Inference.MC.SIM as SIM
 import qualified Inference.MC.SIS as SIS
 import           Inference.MC.SIS (Resample(..), ModelStep, pfilter)
-import           Sampler ( Sampler, random, sampleCategorical, liftIO )
+import           Sampler ( Sampler, random, categorical, liftIO )
 
 {- | Call SMC on a model.
 -}
@@ -74,7 +74,7 @@ handleResampleMul = handle Val hop where
     if  -- | Require at least some particles' weights to be greater than -inf
         not (isInfinite ws_avg)
       then do
-        idxs <- call $ (replicateM (length ws) . Sampler.sampleCategorical) (Vector.fromList (map exp ws_norm))
+        idxs <- call $ (replicateM (length ws) . Sampler.categorical) (Vector.fromList (map exp ws_norm))
         -- | Resample particles + set the post-resampling weights to be uniform as the average particle weight
         let pws_res = map ((, ws_avg) . (ps !!)) idxs
         k pws_res

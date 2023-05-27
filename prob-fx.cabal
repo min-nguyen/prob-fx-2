@@ -171,6 +171,7 @@ executable benchmarks
                       monad-bayes,
                       statistics,
                       fin,
+                      mtl,
                       vector
   default-language:   Haskell2010
   ghc-options:        -O2 -rtsopts -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math

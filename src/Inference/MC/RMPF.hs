@@ -103,7 +103,7 @@ handleResample mh_steps tags model = handleWith 0 (const Val) hop where
     if  -- | Require at least some particles' weights to be greater than -inf
         not (isInfinite ws_avg)
       then do
-        idxs <- call $ (replicateM (length ws) . Sampler.sampleCategorical) (Vector.fromList (map exp ws_norm))
+        idxs <- call $ (replicateM (length ws) . Sampler.categorical) (Vector.fromList (map exp ws_norm))
         let -- | Resample the traces.
             τs_res   = map (τs !!) idxs
             -- | Insert break point to perform SSMH up to.

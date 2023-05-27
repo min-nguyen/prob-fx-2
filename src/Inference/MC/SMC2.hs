@@ -92,7 +92,7 @@ handleResample mh_steps n_inner_prts θ  m = loop (0 :: Int) where
           if  -- | Require at least some particles' weights to be greater than -inf
               not (isInfinite ws_avg)
           then do
-            idxs <- call $ (replicateM (length ws) . Sampler.sampleCategorical) (Vector.fromList (map exp ws_norm))
+            idxs <- call $ (replicateM (length ws) . Sampler.categorical) (Vector.fromList (map exp ws_norm))
             -- | Get the parameter sample trace of each resampled particle
             let resampled_τs      = map (τs !! ) idxs
                 resampled_τθs     = map (filterTrace θ) resampled_τs

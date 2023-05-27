@@ -20,18 +20,18 @@ module Sampler (
   -- $Raw-sampling
   , random
   , randomFrom
-  , sampleCauchy
-  , sampleNormal
-  , sampleUniform
-  , sampleUniformD
-  , sampleGamma
-  , sampleBeta
-  , sampleBernoulli
-  , sampleBinomial
-  , sampleCategorical
-  , sampleDiscrete
-  , samplePoisson
-  , sampleDirichlet
+  , cauchy
+  , normal
+  , uniform
+  , uniformD
+  , gamma
+  , beta
+  , bernoulli
+  , binomial
+  , categorical
+  , discrete
+  , poisson
+  , dirichlet
   ) where
 
 import           Control.Monad ( replicateM, when, (>=>) )
@@ -47,8 +47,8 @@ import qualified System.Random.MWC.Probability as MWC.Probability
 import           Statistics.Distribution ( ContDistr(quantile), ContGen(genContVar), DiscreteDistr(..) )
 import           Statistics.Distribution.Normal ( normalDistr )
 import           Statistics.Distribution.Uniform ( uniformDistr )
-import           Statistics.Distribution.Binomial ( binomial )
-import           Statistics.Distribution.Poisson ( poisson )
+import qualified Statistics.Distribution.Binomial ( binomial )
+import qualified Statistics.Distribution.Poisson ( poisson )
 import           Statistics.Distribution.Beta ( betaDistr )
 import           Statistics.Distribution.Gamma ( gammaDistr )
 import           Statistics.Distribution.CauchyLorentz ( cauchyDistribution )
@@ -62,7 +62,7 @@ random :: Sampler Double
 random = mkSampler MWC.uniform
 
 randomFrom :: [b] -> Sampler b
-randomFrom xs = sampleUniformD 0 (length xs - 1) >>= pure . (xs !!)
+randomFrom xs = uniformD 0 (length xs - 1) >>= pure . (xs !!)
 
 -- | Lift an @IO@ computation into @Sampler@
 liftIO :: IO a -> Sampler a
@@ -84,73 +84,73 @@ mkSampler f = Sampler $ ask >>= lift . f
   Given their distribution parameters, these functions await a generator and
   then sample a value from the distribution in the @IO@ monad.
 -}
-sampleCauchy
+cauchy
   :: Double -- ^ location
   -> Double -- ^ scale
   -> Sampler Double
-sampleCauchy μ σ = mkSampler $ genContVar (cauchyDistribution μ σ)
+cauchy μ σ = mkSampler $ genContVar (cauchyDistribution μ σ)
 
-sampleNormal
+normal
   :: Double -- ^ mean
   -> Double -- ^ standard deviation
   -> Sampler Double
-sampleNormal μ σ = mkSampler $ MWC.MulDist.normal μ σ
+normal μ σ = mkSampler $ MWC.MulDist.normal μ σ
 
-sampleUniform
+uniform
   :: Double -- ^ lower-bound
   -> Double -- ^ upper-bound
   -> Sampler Double
-sampleUniform min max = mkSampler $ MWC.uniformR (min, max)
+uniform min max = mkSampler $ MWC.uniformR (min, max)
 
-sampleUniformD
+uniformD
   :: Int -- ^ lower-bound
   -> Int -- ^ upper-bound
   -> Sampler Int
-sampleUniformD min max = mkSampler $ MWC.uniformR (min, max)
+uniformD min max = mkSampler $ MWC.uniformR (min, max)
 
-sampleGamma
+gamma
   :: Double -- ^ shape k
   -> Double -- ^ scale θ
   -> Sampler Double
-sampleGamma k θ = mkSampler $ MWC.MulDist.gamma k θ
+gamma k θ = mkSampler $ MWC.MulDist.gamma k θ
 
-sampleBeta
+beta
   :: Double -- ^ shape α
   -> Double -- ^ shape β
   -> Sampler Double
-sampleBeta α β = mkSampler $ MWC.MulDist.beta α β
+beta α β = mkSampler $ MWC.MulDist.beta α β
 
-sampleBernoulli
+bernoulli
   :: Double -- ^ probability of @True@
   -> Sampler Bool
-sampleBernoulli p = mkSampler $ MWC.MulDist.bernoulli p
+bernoulli p = mkSampler $ MWC.MulDist.bernoulli p
 
-sampleBinomial
+binomial
   :: Int    -- ^ number of trials
   -> Double -- ^ probability of successful trial
   -> Sampler Int
-sampleBinomial n p = mkSampler $ (length . filter (== True) <$> ) . (replicateM n . MWC.MulDist.bernoulli p)
+binomial n p = mkSampler $ (length . filter (== True) <$> ) . (replicateM n . MWC.MulDist.bernoulli p)
 
-sampleCategorical
+categorical
   :: V.Vector Double -- ^ probabilities
   -> Sampler Int
-sampleCategorical ps = mkSampler $ MWC.MulDist.categorical ps
+categorical ps = mkSampler $ MWC.MulDist.categorical ps
 
-sampleDiscrete
+discrete
   :: [(a, Double)] -- ^ probabilities
   -> Sampler a
-sampleDiscrete xps = mkSampler (MWC.MulDist.categorical (V.fromList ps)) <&> (xs !!)
+discrete xps = mkSampler (MWC.MulDist.categorical (V.fromList ps)) <&> (xs !!)
   where (xs, ps) = unzip xps
 
-samplePoisson
+poisson
   :: Double   -- ^ rate λ
   -> Sampler Int
-samplePoisson λ = mkSampler $ MWC.Probability.sample (MWC.Probability.poisson λ)
+poisson λ = mkSampler $ MWC.Probability.sample (MWC.Probability.poisson λ)
 
-sampleDirichlet
+dirichlet
   :: [Double] -- ^ concentrations
   -> Sampler [Double]
-sampleDirichlet xs = mkSampler $ MWC.MulDist.dirichlet xs
+dirichlet xs = mkSampler $ MWC.MulDist.dirichlet xs
 
 {- $Inverse-sampling
   Given a random double @r@ between 0 and 1, this is passed to a distribution's inverse

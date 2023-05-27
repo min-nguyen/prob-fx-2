@@ -58,7 +58,6 @@ import Dist
 import Comp ( call, Member, Comp, Members, LastMember, Handler )
 import Vec
 import Debug.Trace
-import Sampler
 import Data.Typeable
 
 {- | Models are parameterised by:
