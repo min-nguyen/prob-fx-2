@@ -136,13 +136,13 @@ runBenchmarks = do
       args = map (map read . splitOn ",") (removeComments (lines content))
   -- | Run benchmark programs on their corresponding parameters
   case args of
-        [lr, hmm, lda, mh, smc, rmpf, pmmh, bbvi] -> do
+        [lr, hmm, lda, mh, smc, rmpfWith, pmmh, bbvi] -> do
           bench_LR lr
           bench_HMM hmm
           bench_LDA lda
           bench_MH mh
           bench_SMC smc
           bench_PMMH pmmh
-          bench_RMSMC rmpf
+          bench_RMSMC rmpfWith
           bench_BBVI bbvi
         _   -> error "bad input file"
