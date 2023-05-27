@@ -111,5 +111,5 @@ handleResample mh_steps n_inner_prts θ  m = loop (0 :: Int) where
                 pwτs_mov = zip ps_mov (map (ws_avg, ) τs_mov)
             (loop (t + 1) . k) pwτs_mov
           else
-            loop (t + 1) . k $ pwτs
+            (loop (t + 1) . k) pwτs
     Left op' -> Op op' (loop t . k)

@@ -51,29 +51,29 @@ type PrtState =  (LogP, Trace)
 
 {- | Call RMPF on a model.
 -}
-rmpf :: forall env a xs. (env `ContainsVars` xs)
+rmpfWith :: forall env a xs. (env `ContainsVars` xs)
   => Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of SSMH (rejuvenation) steps
   -> MulModel env [EnvRW env, MulDist, Sampler] a                -- ^ model
   -> Env env                                      -- ^ input model environment
   -> Vars xs                                      -- ^ optional observable variable names of interest
   -> Sampler [Env env]                            -- ^ output model environments of each particle
-rmpf n_prts mh_steps gen_model env_in obs_vars = do
+rmpfWith n_prts mh_steps gen_model env_in obs_vars = do
   -- | Handle model to probabilistic program
-  let model   = conditionWith env_in gen_model
+  let model = conditionWith env_in gen_model
   -- | Convert observable variables to strings
       tags = varsToStrs @env obs_vars
-  map (snd . fst) <$> rmpf' n_prts mh_steps tags model
+  map (snd . fst) <$> rmpf n_prts mh_steps tags model
 
 {- | Call RMPF on a probabilistic program.
 -}
-rmpf' ::
+rmpf ::
      Int                                          -- ^ number of SMC particles
   -> Int                                          -- ^ number of SSMH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
-  -> Model '[Sampler] a                                   -- ^ probabilistic program
+  -> Model '[Sampler] a                           -- ^ probabilistic program
   -> Sampler [(a, PrtState)]                      -- ^ final particle results and contexts
-rmpf' n_prts mh_steps tags model = do
+rmpf n_prts mh_steps tags model = do
   -- let q =  pfilter exec model (prts, ps)
   (runImpure . handleResample mh_steps tags model . pfilter n_prts (0, Map.empty) exec ) model
 
@@ -86,14 +86,15 @@ exec :: ModelStep '[Sampler] PrtState a
 exec (p, (w, τ))  = (fmap asPrtTrace . runImpure . reuseTrace τ . advance w) p where
   asPrtTrace ((prt, w), τ) = (prt, (w, τ))
 
-{- | A handler for resampling particles according to their normalized log-likelihoods, and then pertrubing their sample traces using SSMH.
+{- | A handler for resampling particles according to their normalized log-likelihoods
+   , and then pertrubing their sample traces using SSMH.
 -}
 handleResample :: (Member Sampler fs)
   => Int                                          -- ^ number of SSMH (rejuvenation) steps
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> Model '[Sampler] a
   -> Handler (Resample PrtState) fs [(a, PrtState)] [(a, PrtState)]
-handleResample mh_steps tags  m = handleWith 0 (const Val) hop where
+handleResample mh_steps tags model = handleWith 0 (const Val) hop where
   hop :: Member Sampler fs => Int -> Resample PrtState x -> (Int -> x -> Comp fs a) -> Comp fs a
   hop t (Resample pwτs) k = do
     let (ws, τs) = (unzip . map snd) pwτs
@@ -106,7 +107,7 @@ handleResample mh_steps tags  m = handleWith 0 (const Val) hop where
         let -- | Resample the traces.
             τs_res   = map (τs !!) idxs
             -- | Insert break point to perform SSMH up to.
-            model_t  = suspendAfter t m
+            model_t  = suspendAfter t model
         -- | For each resampled particle's trace
         pwτs_mov <- forM τs_res (\τ ->
           do  -- | Perform a series of SSMH-updates on the trace and get most recent moved trace.
@@ -117,11 +118,11 @@ handleResample mh_steps tags  m = handleWith 0 (const Val) hop where
       else
         k (t + 1) pwτs
 
-{- | A handler that invokes a breakpoint upon matching against the @Observe@ operation with a specific address.
-     It returns the rest of the computation.
+{- | A handler that invokes a breakpoint after t @Observe@ operations
+   , returning the rest of the program.
 -}
 suspendAfter :: (Member Observe es)
-  => Int       -- ^ Address of @Observe@ operation to break at
+  => Int
   -> Comp es a
   -> Comp es (Comp es a)
 suspendAfter t (Val x)   = pure (Val x)

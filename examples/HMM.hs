@@ -24,7 +24,7 @@ import Inference.MC.LW as LW ( lwWith )
 import Inference.MC.SSMH as SSMH ( ssmhWith )
 import Inference.MC.SMC as SMC ( mulpfilterWith )
 import Inference.MC.SIM as SIM ( simulateWith )
-import Inference.MC.RMPF as RMPF ( rmpf )
+import Inference.MC.RMPF as RMPF ( rmpfWith )
 import Inference.MC.SMC2 as SMC2 ( smc2 )
 import Inference.MC.PMMH as PMMH ( pmmhWith )
 import Inference.VI.BBVI as BBVI
@@ -227,7 +227,7 @@ rmsmcHMM n_particles n_mhsteps hmm_length = do
   ys <- simHMM hmm_length
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
-  env_outs <- RMPF.rmpf n_particles n_mhsteps (hmm hmm_length 0) env_in vnil
+  env_outs <- RMPF.rmpfWith n_particles n_mhsteps (hmm hmm_length 0) env_in vnil
   let trans_ps    = concatMap (get #trans_p) env_outs
       obs_ps      = concatMap (get #obs_p) env_outs
   pure (trans_ps, obs_ps)
