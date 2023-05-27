@@ -53,7 +53,7 @@ reuseTrace :: Member Sampler es => Trace -> Handler Sample es a (a, Trace)
 reuseTrace τ0 = handleWith τ0 (\τ x -> Val (x, τ))
   (\τ (Sample d α) k ->
         case Map.lookup α τ of
-              Nothing -> do r <- random
+              Nothing -> do r <- call random
                             let y = draw d r;
                             k (Map.insert α r τ) y
               Just r  -> do let y = draw d r;
@@ -84,7 +84,7 @@ mhStep model exec markov_chain = do
   -- | Construct an *initial* proposal
   τ_0            <- call (Propose τ :: Propose w Trace)
   -- | Execute the model under the initial proposal to return the *final* proposal
-  ((r', w'), τ') <- call (exec τ_0 model )
+  ((r', w'), τ') <- call (exec τ_0 model)
   -- | Compute acceptance ratio
   node           <- call (Accept ((r, w), τ)  ((r', w'), τ'))
   pure (node : markov_chain)

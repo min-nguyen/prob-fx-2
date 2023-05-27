@@ -73,8 +73,8 @@ handleProposal tags  = handleWith (Addr "" 0) (const Val) hop
   where
     hop :: Member Sampler es => Addr -> Propose LPTrace x -> (Addr -> x -> Comp es b) -> Comp es b
     hop _ (Propose τ) k   = do
-      α <- randomFrom (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
-      r <- random
+      α <- call $ randomFrom (Map.keys (if Prelude.null tags then τ else filterTrace tags τ))
+      r <- call random
       k α (Map.insert α r τ)
     hop α (Accept ((x, w), τ) ((x', w'),  τ')) k = do
       let domτ  = (log . fromIntegral . Map.size) τ
@@ -99,7 +99,7 @@ handleProposal tags  = handleWith (Addr "" 0) (const Val) hop
       ll'      = (sum . Map.elems . Map.delete α) w' -- accounting for all new samples + observes
       ratio   = ll' - ll + domτ - domτ' + ll_stale - ll_fresh
 -}
-      u <- random
+      u <- call random
       k α (if ratio > u
             then  ((x', w'), Map.intersection τ' w') -- | Remove stale trace entries not used during model execution
             else  ((x, w), τ))

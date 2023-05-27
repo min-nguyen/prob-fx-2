@@ -111,7 +111,7 @@ handleResample mh_steps tags model = handleWith 0 (const Val) hop where
         -- | For each resampled particle's trace
         pwτs_mov <- forM τs_res (\τ ->
           do  -- | Perform a series of SSMH-updates on the trace and get most recent moved trace.
-              ((p_mov, _), τ_mov) <- fmap head (call $ SSMH.ssmh mh_steps τ tags model_t)
+              ((p_mov, _), τ_mov) : _ <- call (SSMH.ssmh mh_steps τ tags model_t)
               -- | Set all particles to use the supposed pre-SSMH-move weight, following the same procedure as SMC
               return (p_mov, (ws_avg, τ_mov)))
         k (t + 1) (unsafeCoerce pwτs_mov)

@@ -2,6 +2,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 {- | An IO-based sampling monad.
 -}
@@ -9,8 +11,6 @@
 module Sampler (
   -- * Sampler monad
     Sampler
-  , random
-  , randomFrom
   , liftIO
   , sampleIO
   , sampleIOFixed
@@ -18,8 +18,8 @@ module Sampler (
   -- * Sampling functions
   -- ** Raw sampling
   -- $Raw-sampling
-  , sampleRandom
-  , sampleRandomFrom
+  , random
+  , randomFrom
   , sampleCauchy
   , sampleNormal
   , sampleUniform
@@ -53,30 +53,16 @@ import           Statistics.Distribution.Beta ( betaDistr )
 import           Statistics.Distribution.Gamma ( gammaDistr )
 import           Statistics.Distribution.CauchyLorentz ( cauchyDistribution )
 import           System.Random.MWC ( initialize )
-import           Comp
 
 -- | Sampler type, for running IO computations alongside a random number generator
 newtype Sampler a = Sampler {runSampler :: ReaderT MWC.GenIO IO a}
   deriving (Functor, Applicative, Monad)
 
-random :: Member Sampler es => Comp es Double
-random = call sampleRandom
+random :: Sampler Double
+random = mkSampler MWC.uniform
 
-sampleRandom :: Sampler Double
-sampleRandom = mkSampler MWC.uniform
-
-randomFrom :: Member Sampler es => [a] -> Comp es a
-randomFrom = call . sampleRandomFrom
-
-sampleRandomFrom :: [b] -> Sampler b
-sampleRandomFrom xs = sampleUniformD 0 (length xs - 1) >>= pure . (xs !!)
-
--- | Wrapper function for calling @Lift@ as the last effect
-liftPrint :: Member Sampler es => Show a => a -> Comp es ()
-liftPrint = call . liftIO . print
-
-liftPutStrLn :: Member Sampler es => String -> Comp es ()
-liftPutStrLn = call . liftIO . putStrLn
+randomFrom :: [b] -> Sampler b
+randomFrom xs = sampleUniformD 0 (length xs - 1) >>= pure . (xs !!)
 
 -- | Lift an @IO@ computation into @Sampler@
 liftIO :: IO a -> Sampler a
