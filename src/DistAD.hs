@@ -86,6 +86,6 @@ instance LogProb (Nagata String Double) where
 defaultSample ::  Member Sampler es => Handler (Sample Double) es a a
 defaultSample = handleWith () (const Val) (const hop) where
   hop :: Member Sampler es => Sample Double x -> (() -> x -> Comp es b) -> Comp es b
-  hop (Sample (Normal mu s :: Normal Double ) ) k = do x <- call $ sampleNormal mu s
+  hop (Sample (Normal mu s :: Normal Double ) ) k = do x <- call $ normal mu s
                                                        k () x
 
