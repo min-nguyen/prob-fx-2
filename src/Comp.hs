@@ -1,5 +1,6 @@
 
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FunctionalDependencies #-}
 
 {-# LANGUAGE PatternSynonyms #-}
