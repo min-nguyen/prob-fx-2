@@ -62,7 +62,8 @@ handleProposal :: Member Sampler fs => Handler (Propose LogP) fs a a
 handleProposal = handle Val hop
   where hop :: Member Sampler es => Propose LogP x -> (x -> Comp es b) -> Comp es b
         hop op k = case op of
-          (Propose _)     -> do k Map.empty
+          (Propose τ)     -> do τ' <- mapM (const (call random)) τ
+                                k τ'
           (Accept x@((_, w), _) x'@((_, w'), _))
                           -> do let ratio = exp (w' - w)
                                 u <- call random

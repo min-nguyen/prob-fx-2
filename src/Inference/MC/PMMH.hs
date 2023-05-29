@@ -43,16 +43,20 @@ pmmhWith :: forall env vars a. (env `ContainsVars` vars)
 pmmhWith mh_steps n_prts gen_model env_in obs_vars = do
   -- | Handle model to probabilistic program
   let model   = conditionWith env_in gen_model
-  -- | Convert observable variables to strings
-  let θ       = varsToStrs @env obs_vars
-  -- | Initialise sample trace to include only parameters
-  (_, τ_0)    <- (runImpure . reuseTrace Map.empty . defaultObserve) model
+  -- | Set initial trace to empty + convert
+  let τ_0     = Map.empty
+      θ       = varsToStrs @env obs_vars
+  -- | Initialise sample trace
   map (snd . fst . fst) <$> pmmh mh_steps n_prts τ_0 θ model
 
 pmmh :: Int -> Int -> Trace -> [Tag] -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
-pmmh m n τ θ = do
+pmmh m n τ θ model = do
+  -- The provided trace τ may be empty (if PMMH is called as a top-level function) or may not be empty (if called from SMC2);
+  -- Therefore, we fully populate it using reuseTrace, but retain any existing samples.
+  (_, τ) <- (runImpure . reuseTrace τ . defaultObserve) model
+  -- Initialise τθ to contain only entries in θ, ensuring that exec can only ever return traces with entries in τθ
   let τθ = filterTrace θ τ
-  runImpure . handleProposal . mh m τθ (PIM.exec n)
+  (runImpure . handleProposal . mh m τθ (exec n)) model
 
 {- | An acceptance mechanism for PMMH.
 -}
