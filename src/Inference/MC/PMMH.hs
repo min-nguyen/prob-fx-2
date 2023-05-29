@@ -44,15 +44,15 @@ pmmhWith mh_steps n_prts gen_model env_in obs_vars = do
   -- | Handle model to probabilistic program
   let model   = conditionWith env_in gen_model
   -- | Convert observable variables to strings
-  let θ        = varsToStrs @env obs_vars
+  let θ       = varsToStrs @env obs_vars
   -- | Initialise sample trace to include only parameters
-  (_, τ)       <- (runImpure . reuseTrace Map.empty . defaultObserve) model
-  let τθ       = filterTrace θ τ
-  pmmh_trace <- (runImpure . handleProposal . mh mh_steps τθ (PIM.exec n_prts)) model
-  pure (map (snd . fst . fst) pmmh_trace)
+  (_, τ_0)    <- (runImpure . reuseTrace Map.empty . defaultObserve) model
+  map (snd . fst . fst) <$> pmmh mh_steps n_prts τ_0 θ model
 
-pmmh :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
-pmmh m n τθ  = runImpure . handleProposal . mh m τθ (PIM.exec n)
+pmmh :: Int -> Int -> Trace -> [Tag] -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
+pmmh m n τ θ = do
+  let τθ = filterTrace θ τ
+  runImpure . handleProposal . mh m τθ (PIM.exec n)
 
 {- | An acceptance mechanism for PMMH.
 -}

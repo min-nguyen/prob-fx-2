@@ -92,16 +92,16 @@ handleResample mh_steps n_inner_prts θ model = loop (0 :: Int) where
               not (isInfinite ws_avg)
           then do
             idxs <- call $ (replicateM (length ws) . Sampler.categorical) (Vector.fromList (map exp ws_norm))
-            -- | Resample the particle traces; then to initialise PMMH, keep only the trace entries that are specified in θ.
-            let τθs_res = map ((filterTrace θ) . (τs !!)) idxs
+            -- | Resample the particle traces.
+            let τs_res  = map (τs !!) idxs
             -- | Insert break point to perform SSMH up to
                 model_t = suspendAfter t model
-            -- | Perform PMMH using each resampled particle's sample trace and get the most recent PMMH iteration.
-            pwτθs_mov <- mapM (\τθ -> do ((p_mov, _), τθ_mov) : _ <- call (PMMH.pmmh mh_steps n_inner_prts τθ (unsafeCoerce model_t))
-                                         return (p_mov, (ws_avg, τθ_mov))
-                              ) τθs_res
+            -- | Perform PMMH using each resampled particle's sample trace and get the most recent PMMH iteration (where the traces will contain only values specified in θ).
+            pwτθs_mov <- mapM (\τ -> do ((p_mov, _), τθ_mov) : _ <- call (PMMH.pmmh mh_steps n_inner_prts τ θ (unsafeCoerce model_t))
+                                        return (p_mov, (ws_avg, τθ_mov))
+                              ) τs_res
             (loop (t + 1) . k) pwτθs_mov
           else
-            -- | Retain particles; no need to filter out trace entries in θ.
+            -- | Retain particles.
             (loop (t + 1) . k) pwτs
     Left op' -> Op op' (loop t . k)

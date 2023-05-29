@@ -42,9 +42,7 @@ imWith ::
 imWith n gen_model env_in   = do
   -- | Handle model to probabilistic program
   let model  = conditionWith env_in gen_model
-      τ_0     = Map.empty
-  rwm_trace <- im n model
-  pure (map (snd . fst . fst) rwm_trace)
+  map (snd . fst . fst) <$> im n model
 
 {- | Top-level wrapper for Independence Metropolis
 -}

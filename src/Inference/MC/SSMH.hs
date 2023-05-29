@@ -51,11 +51,10 @@ ssmhWith :: forall env vars a. (env `ContainsVars` vars)
 ssmhWith n gen_model env_in obs_vars  = do
   -- | Handle model to probabilistic program
   let model = conditionWith env_in gen_model
-      τ_0    = Map.empty
+      τ_0   = Map.empty
   -- | Convert observable variables to strings
-  let tags = varsToStrs @env obs_vars
-  mh_trace <- (runImpure . handleProposal tags . mh n τ_0 exec) model
-  pure (map (snd . fst . fst) mh_trace)
+  let θ     = varsToStrs @env obs_vars
+  map (snd . fst . fst) <$> ssmh n τ_0 θ model
 
 {- | SSMH inference on a probabilistic program.
 -}

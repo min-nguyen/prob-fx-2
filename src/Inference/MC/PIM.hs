@@ -43,14 +43,15 @@ pimWith mh_steps n_prts gen_model env_in obs_vars = do
   -- | Handle model to probabilistic program
   let model   = conditionWith env_in gen_model
   -- | Convert observable variables to strings
-  let tags = varsToStrs @env obs_vars
+  let θ       = varsToStrs @env obs_vars
   -- | Initialise sample trace to include only parameters
-  τθ_0       <- (fmap (filterTrace tags . snd) . runImpure .  reuseTrace Map.empty . defaultObserve) model
-  pmmh_trace <- (runImpure . IM.handleProposal . mh mh_steps τθ_0 (exec n_prts)) model
-  pure (map (snd . fst . fst) pmmh_trace)
+  (_, τ_0)    <- (runImpure .  reuseTrace Map.empty . defaultObserve) model
+  map (snd . fst . fst) <$> pim mh_steps n_prts τ_0 θ model
 
-pim :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
-pim mh_steps n_prts τθ = runImpure . IM.handleProposal . mh mh_steps τθ (exec n_prts)
+pim :: Int -> Int -> Trace -> [Tag] -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
+pim mh_steps n_prts τ θ = do
+  let τθ = filterTrace θ τ
+  runImpure . IM.handleProposal . mh mh_steps τθ (exec n_prts)
 
 {- | Handle probabilistic program using SSMH and compute the average log-probability using SMC.
 -}
