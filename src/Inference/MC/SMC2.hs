@@ -81,35 +81,27 @@ handleResample :: Member Sampler fs
   -> Model '[Sampler] a
   -> Comp (Resample PrtState : fs) [(a, PrtState)]
   -> Comp fs [(a, PrtState)]
-handleResample mh_steps n_inner_prts θ  m = loop (0 :: Int) where
+handleResample mh_steps n_inner_prts θ model = loop (0 :: Int) where
   loop t (Val x) = Val x
   loop t (Op op k) = case discharge op of
     Right  (Resample pwτs) ->
-      do  -- | Resample the particles according to the indexes returned by the SMC resampler
-          let (ws, τs) = (unzip . map snd) pwτs
+      do  let (ws, τs) = (unzip . map snd) pwτs
           -- | Compute the normalised particle weights and their average weights
           let (ws_norm, ws_avg) = normaliseAndLogMean ws
           if  -- | Require at least some particles' weights to be greater than -inf
               not (isInfinite ws_avg)
           then do
             idxs <- call $ (replicateM (length ws) . Sampler.categorical) (Vector.fromList (map exp ws_norm))
-            -- | Get the parameter sample trace of each resampled particle
-            let resampled_τs      = map (τs !! ) idxs
-                resampled_τθs     = map (filterTrace θ) resampled_τs
+            -- | Resample the particle traces; then to initialise PMMH, keep only the trace entries that are specified in θ.
+            let τθs_res = map ((filterTrace θ) . (τs !!)) idxs
             -- | Insert break point to perform SSMH up to
-                partial_model     = suspendAfter t m
+                model_t = suspendAfter t model
             -- | Perform PMMH using each resampled particle's sample trace and get the most recent PMMH iteration.
-            pmmh_trace <- mapM ( fmap head
-                              . call
-                              . flip (PMMH.pmmh mh_steps n_inner_prts) (unsafeCoerce partial_model)
-                              ) resampled_τθs
-            {- | Get:
-                1) the continuations of each particle from the break point
-                2) the sample traces of each particle up until the break point -}
-            let ((ps_mov, _), τs_mov) = first unzip (unzip pmmh_trace)
-            -- | Set all particles to use the supposed pre-SSMH-move weight, following the same procedure as SMC
-                pwτs_mov = zip ps_mov (map (ws_avg, ) τs_mov)
-            (loop (t + 1) . k) pwτs_mov
+            pwτθs_mov <- mapM (\τθ -> do ((p_mov, _), τθ_mov) : _ <- call (PMMH.pmmh mh_steps n_inner_prts τθ (unsafeCoerce model_t))
+                                         return (p_mov, (ws_avg, τθ_mov))
+                              ) τθs_res
+            (loop (t + 1) . k) pwτθs_mov
           else
+            -- | Retain particles; no need to filter out trace entries in θ.
             (loop (t + 1) . k) pwτs
     Left op' -> Op op' (loop t . k)

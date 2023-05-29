@@ -42,7 +42,7 @@ def main():
     axs1.scatter(mus, ps)
     axs1.set_title('Linear regression - Likelihood Weighting')
 
-  if arg in ["mhLinRegrOnce", "mhLinRegr", "smcLinRegr", "rmsmcLinRegr", "pmmhLinRegr"]:
+  if arg in ["mhLinRegrOnce", "mhLinRegr", "smcLinRegr", "rmsmcLinRegr", "pmmhLinRegr", "smc2LinRegr"]:
     mus = data[0]
     cs  = data[1]
     fig1, axs1 = plt.subplots(nrows=1)
@@ -216,7 +216,7 @@ def main():
     axs1.set_ylabel('probability')
     axs1.scatter(obs_p, ps_normalised)
     axs1.set_title('HMM - Likelihood Weighting')
-  if arg in ["mhHMM", "smcHMM", "rmsmcHMM", "pmmhHMM"]:
+  if arg in ["mhHMM", "smcHMM", "rmsmcHMM", "pmmhHMM", "smc2HMM"]:
     # Note : this works less well for certain parameters of trans_p and obs_p used for the training data
     trans_ps_unique = data[0]
     obs_ps_unique   = data[1]

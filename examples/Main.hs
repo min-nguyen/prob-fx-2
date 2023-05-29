@@ -61,6 +61,7 @@ parseArgs cmd = case cmd of
   "smcHMM"              -> sampleIOFixed (smcHMM 200 30) >>= printThenWrite
   "rmsmcHMM"            -> sampleIOFixed (rmsmcHMM 50 50 30) >>= printThenWrite
   "pmmhHMM"             -> sampleIOFixed (pmmhHMM 1000 5 20) >>= printThenWrite
+  "smc2HMM"             -> sampleIOFixed (smc2HMM 20 20 20 20) >>= printThenWrite
 
   "simSIR"              -> sampleIOFixed (simSIR 100) >>= printThenWrite
   "simSIRS"             -> sampleIOFixed (simSIRS 100) >>= printThenWrite
