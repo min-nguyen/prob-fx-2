@@ -6,6 +6,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use zipWithM_" #-}
 {-# HLINT ignore "Eta reduce" #-}
+{-# LANGUAGE TypeApplications #-}
 
 module EffDemo where
 
@@ -18,8 +19,6 @@ import Dist
 import Model hiding (Model)
 import qualified Model (Model)
 import Sampler
-import Inference.MC.LW as LW
-import Inference.MC.SIM as SIM
 import Control.Monad
 import LogP
 
@@ -28,25 +27,23 @@ import LogP
 class    Member e es => e ∈ es
 instance Member e es => e ∈ es
 
-type Model a = Model.Model '[Sampler] a
+type IO' = Sampler
+type Model a = Model.Model '[IO'] a
 
 α :: Addr
 α = Addr "" 0
 
-runImpure' :: Comp '[Sampler] a -> IO a
+runImpure' :: Comp '[IO'] a -> IO a
 runImpure' = sampleIO . runImpure
 
 ----------------------------------
 
 {--####  A DETOUR  ####--}
 
--- | ## An effect computation
+-- | ## An effectful computation
 data Console a where
   GetLine   :: Console String
   PutStr    :: String -> Console ()
-
-data Error a where
-  Throw :: Int -> Error a
 
 prog :: Console ∈ es => Comp es ()
 prog = do
@@ -54,9 +51,9 @@ prog = do
   _ <- call (PutStr (s ++ "!!"))
   return ()
 
+
 -- | ## Impure handling
-handleConsoleImpure :: forall es a. IO ∈ es
-  => Handler Console es a a
+handleConsoleImpure :: forall es a. IO ∈ es => Handler Console es a a
 handleConsoleImpure = handle hval hop  where
   hop :: Console x -> (x -> Comp es a) -> Comp es a
   hop GetLine k      = do s <- call Prelude.getLine
@@ -65,14 +62,14 @@ handleConsoleImpure = handle hval hop  where
                           k ()
   hval x             = return x
 
-runProgImpure :: IO ()
-runProgImpure = (runImpure . handleConsoleImpure) prog
 
 -- | ## Pure handling
-handleConsolePure :: forall es a. Error ∈ es
-  => Handler Console es a (a, String)
+data Error a where
+  Throw :: Int -> Error a
+
+handleConsolePure :: forall es a. Error ∈ es => Handler Console es a (a, String)
 handleConsolePure = handleWith "" hval hop  where
-  hop :: String ->  Console x -> (String -> x -> Comp es b) -> Comp es b
+  hop :: String -> Console x -> (String -> x -> Comp es b) -> Comp es b
   hop s GetLine k      = k s s
   hop s (PutStr msg) k = if length msg < 2 then k (msg ++ s) ()
                                            else call (Throw 0)
@@ -83,31 +80,62 @@ handleError catch = handle Val hop  where
   hop :: Error x -> (x -> Comp es a) -> Comp es a
   hop (Throw e) k = catch e
 
-runProgPure :: ((), String)
-runProgPure = (runPure . handleError catch . handleConsolePure) prog
-  where catch errcode = return ((), show errcode)
 
 ----------------------------------
 
 {--####  PROBABILISTIC PROGRAMMING WITH ALGEBRAIC EFFECTS  ####--}
 
 -- | ## Linear regression
-linRegr :: [Double] -> [Double] -> Model Double
+linRegr :: [Double] -> [Double] -> Model (Double, Double)
 linRegr xs ys = do
   m        <- call (Sample (Normal 0 3) α)
   c        <- call (Sample (Normal 0 2) α)
   zipWithM (\x y -> do call (Observe (Normal (m * x + c) 1) y α)) xs ys
-  return m
+  return (m, c)
 
--- | ## Likelihood weighting over linear regression
-lwLinRegr :: IO [(Double, LogP)]
-lwLinRegr = do
-  let xs      = [0 .. 10]
-      ys      = map (*3) xs
-  -- Get the sampled m's and their likelihood-weighting
-  mws <- (replicateM 1000 . runImpure' . defaultSample . likelihood) (linRegr xs ys)
-  return (mws :: [(Double, LogP)])
+likelihood :: Handler Observe es a (a, LogP)
+likelihood  = handleWith 0
+  (\w x                 -> return (x, w))
+  (\w (Observe d y α) k -> k (w + logProb d y) y)
+
+defaultSample :: IO' ∈ es => Handler Sample es a a
+defaultSample = handle
+  (\x                   -> return x)
+  (\(Sample d α) k      -> (k . draw d) =<< call random)
+
+lw :: Int -> Model a -> IO [(a, LogP)]
+lw n = replicateM n . runImpure' . defaultSample . likelihood
+
+
 
 {-
+  git checkout turing-demo
+  cabal v2-repl test:tests
+  ghci> :l EffDemo
+  ghci> :set -XTypeApplications
+
+  ghci> (runImpure . handleConsoleImpure) prog
+
+  ghci> (runPure . handleError (\err -> Val ((), show err)) . handleConsolePure) prog
+
+  ghci> xs = [0 .. 10]
+  ghci> ys = map (*3) xs
+  ghci> lw 1000 (linRegr xs ys)
+
+  {-  ## Likelihood weighting over linear regression
+      lwLinRegr :: IO [(Double, LogP)]
+      lwLinRegr = do
+        let xs      = [0 .. 10]
+            ys      = map (*3) xs
+        -- Return the sampled m's and their likelihood-weighting
+        lw 1000 (linRegr xs ys)
+  -}
+
   ./prob-fx.sh lwLinRegrOnce
+
+  ./prob-fx.sh mhLinRegr
+
+  ./prob-fx.sh smcLinRegr
+
+  ./prob-fx.sh rmsmcLinRegr
 -}
