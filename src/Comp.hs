@@ -7,10 +7,12 @@
 {-# LANGUAGE RankNTypes #-}
 
 {-# LANGUAGE TypeFamilyDependencies #-}
+{-# LANGUAGE IncoherentInstances #-}
 
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE TypeApplications #-}
 
 {- | An encoding for algebraic effects, based on the @freer@ monad.
 -}
@@ -41,6 +43,7 @@ import           Control.Monad ( (>=>) )
 import           Data.Kind (Constraint)
 import           TyCompare ( Idx(unIdx), FindElem(..) )
 import           Unsafe.Coerce ( unsafeCoerce )
+import Sampler (Sampler, liftIO)
 
 {- | A program that returns a value of type @a@ and can call operations that belong to some effect
      @e@ in signature @es@; this represents a syntax tree whose nodes are operations and leaves are pure values.
@@ -63,6 +66,9 @@ instance Monad (Comp es) where
   Val a >>= f   = f a
   Op fx k >>= f = Op fx (k >=> f)
 
+instance Member Sampler es => MonadFail (Comp es) where
+  fail  = call . liftIO . fail @IO
+
 -- | An open sum for an effect signature @es@, containing an operation @e x@ where @e@ is in @es@
 data EffectSum (es :: [* -> *]) (a :: *) :: * where
   EffectSum :: Int -> e a -> EffectSum es a
@@ -74,9 +80,9 @@ class (FindElem e es) => Member (e :: * -> *) (es :: [* -> *]) where
   -- | Attempt to project an operation of type @e x@ out from an effect sum
   prj ::  EffectSum es a -> Maybe (e a)
 
--- instance {-# OVERLAPPING #-} Member e '[e] where
---    inj = EffectSum 0
---    prj (EffectSum _ x) = Just (unsafeCoerce x)
+instance {-# OVERLAPPING #-} Member e '[e] where
+   inj = EffectSum 0
+   prj (EffectSum _ x) = Just (unsafeCoerce x)
 
 instance (FindElem e es) => Member e es where
   inj = EffectSum (unIdx (findElem :: Idx e es))

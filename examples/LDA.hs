@@ -14,7 +14,7 @@
 module LDA where
 
 import Model ( MulModel, dirichlet, discrete, categorical' )
-import Sampler ( Sampler, sampleUniformD, liftIO )
+import Sampler ( Sampler,  liftIO, uniformD )
 import Control.Monad ( replicateM, replicateM_ )
 import Data.Kind (Constraint)
 import Data.Type.Nat
@@ -29,7 +29,7 @@ import Inference.MC.SIM as SIM ( simulateWith )
 import Inference.MC.LW as LW ( lwWith )
 import Inference.MC.SSMH as SSMH ( ssmhWith )
 import Inference.MC.SMC as SMC ( mulpfilterWith )
-import Inference.MC.RMPF as RMPF ( rmpf )
+import Inference.MC.RMPF as RMPF ( rmpfWith )
 import Inference.MC.PMMH as PMMH ( pmmhWith )
 import Inference.VI.BBVI as BBVI
 import Data.Maybe
@@ -192,7 +192,7 @@ smcLDA n_particles n_words = do
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
   env_outs <- SMC.mulpfilterWith n_particles (topicModel vocab n_topics n_words) env_in
   -- Draw a random particle's environment
-  env_pred_idx <- sampleUniformD 0 (length env_outs - 1)
+  env_pred_idx <- uniformD 0 (length env_outs - 1)
   let env_pred   = env_outs !! env_pred_idx
       θs         = get #θ env_pred
       φs         = get #φ env_pred
@@ -205,9 +205,9 @@ rmsmcLDA n_particles n_mhsteps n_words = do
   let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
 
-  env_outs     <- RMPF.rmpf n_particles n_mhsteps (topicModel vocab n_topics n_words) env_in vnil
+  env_outs     <- RMPF.rmpfWith n_particles n_mhsteps (topicModel vocab n_topics n_words) env_in vnil
   -- Draw a random particle's environment
-  env_pred_idx <- sampleUniformD 0 (length env_outs - 1)
+  env_pred_idx <- uniformD 0 (length env_outs - 1)
   let env_pred   = env_outs !! env_pred_idx
       θs         = get #θ env_pred
       φs         = get #φ env_pred

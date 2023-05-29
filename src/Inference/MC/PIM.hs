@@ -64,7 +64,7 @@ exec n τθ prog   = do
   -- | Require at least some particles' weights to be greater than -inf
   if not (isInfinite ws_avg)
     then do
-      idx <- Sampler.sampleCategorical (Vector.fromList $ map exp ws_norm)
+      idx <- Sampler.categorical (Vector.fromList $ map exp ws_norm)
       return ((xs !! idx, ws_avg), τθ)
     else
       return ((head xs, ws_avg), τθ)

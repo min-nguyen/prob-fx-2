@@ -17,7 +17,7 @@ module Inference.MC.IM where
 
 import Control.Monad ( replicateM )
 import qualified Data.Map as Map
-import Comp ( Handler, Comp(..), discharge, handle, handleWith, LastMember, Member, runImpure )
+import Comp ( Handler, Comp(..), discharge, handle, handleWith, LastMember, Member, runImpure, call )
 import Trace ( Trace, LPTrace, filterTrace )
 import LogP ( LogP (..) )
 import Dist
@@ -67,5 +67,5 @@ handleProposal = handle Val hop
           (Propose _)     -> do k Map.empty
           (Accept x@((_, w), _) x'@((_, w'), _))
                           -> do let ratio = exp (w' - w)
-                                u <- random
+                                u <- call random
                                 k (if ratio > u then x' else x)

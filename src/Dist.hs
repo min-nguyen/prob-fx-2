@@ -59,7 +59,7 @@ class (Show d, Typeable d, Show (Base d), Typeable (Base d)) => Distribution d w
   draw   :: d -> Double -> Base d
 
   drawWithSampler :: d -> Sampler (Base d)
-  drawWithSampler d = fmap (draw d) sampleRandom
+  drawWithSampler d = fmap (draw d) random
 
   {- | Compute the log density of a primitive distribution generating an observed value. -}
   logProb  :: d -> Base d -> LogP

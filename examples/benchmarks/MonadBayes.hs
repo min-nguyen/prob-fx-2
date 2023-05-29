@@ -8,7 +8,7 @@ import Control.Monad.Bayes.Class
 import Control.Monad.Bayes.Traced.Basic
 import Control.Monad.Bayes.Sampler.Lazy
 import Control.Monad.Bayes.Weighted
-import Sampler
+import Sampler (liftIO)
 import           Statistics.Distribution        ( logProbability )
 import qualified Statistics.Distribution.Binomial  as SB
 import Control.Monad

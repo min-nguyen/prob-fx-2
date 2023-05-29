@@ -5,6 +5,8 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant $" #-}
 
 {- | Particle Marginal Metropolis-Hastings inference.
 -}
@@ -55,16 +57,14 @@ pmmh m n τθ  = runImpure . handleProposal . mh m τθ (PIM.exec n)
 {- | An acceptance mechanism for PMMH.
 -}
 handleProposal :: Member Sampler fs => Handler (Propose LogP) fs a a
-handleProposal (Val x)   = pure x
-handleProposal (Op op k) = case discharge op of
-  Right (Propose τθ)
-    ->  do α <- randomFrom (Map.keys τθ)
-           r <- random
-           let τθ' = Map.insert α r τθ
-           (handleProposal . k) τθ'
-  Right (Accept x@((_, w), _) x'@((_, w'), _))
-    -> do let ratio = exp (w' - w)
-          u <- random
-          (handleProposal . k) (if ratio > u then x' else x)
-  Left op'
-    -> Op op' (handleProposal . k)
+handleProposal = handle Val hop where
+  hop :: Member Sampler es => Propose LogP x -> (x -> Comp es b) -> Comp es b
+  hop (Propose τθ) k
+    = do  α <- call $ randomFrom (Map.keys τθ)
+          r <- call random
+          let τθ' = Map.insert α r τθ
+          k τθ'
+  hop (Accept r@((_, w), _) r'@((_, w'), _)) k
+    =  do let ratio = exp (w' - w)
+          u <- call random
+          k (if ratio > u then r' else r)

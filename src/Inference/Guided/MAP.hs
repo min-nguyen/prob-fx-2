@@ -46,10 +46,9 @@ handleGuide :: forall es a. Members '[Sampler] es => Handler Guide es a (a, LogP
 handleGuide  = handleWith 0 (\s a -> Val (a, s)) hop where
   hop :: LogP -> Guide x -> (LogP -> x -> Comp es b) -> Comp es b
   hop w (Guide (d :: d) (q :: q) α) k = do
-        r <- random
+        r <- call random
         let x = draw q r
         k (w + logProb d x) x
-
 
 -- | Compute Q(X; λ)
 exec :: Guides -> GuidedModel '[Sampler] a -> Sampler ((a, ΔGuides), LogP)
