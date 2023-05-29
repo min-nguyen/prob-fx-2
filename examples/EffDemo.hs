@@ -6,6 +6,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use zipWithM_" #-}
 {-# HLINT ignore "Eta reduce" #-}
+{-# LANGUAGE TypeApplications #-}
 
 module EffDemo where
 
@@ -18,8 +19,6 @@ import Dist
 import Model hiding (Model)
 import qualified Model (Model)
 import Sampler
-import Inference.MC.LW as LW hiding (lw)
-import Inference.MC.SIM as SIM
 import Control.Monad
 import LogP
 
@@ -28,25 +27,23 @@ import LogP
 class    Member e es => e ∈ es
 instance Member e es => e ∈ es
 
-type Model a = Model.Model '[Sampler] a
+type IO' = Sampler
+type Model a = Model.Model '[IO'] a
 
 α :: Addr
 α = Addr "" 0
 
-runImpure' :: Comp '[Sampler] a -> IO a
+runImpure' :: Comp '[IO'] a -> IO a
 runImpure' = sampleIO . runImpure
 
 ----------------------------------
 
 {--####  A DETOUR  ####--}
 
--- | ## An effect computation
+-- | ## An effectful computation
 data Console a where
   GetLine   :: Console String
   PutStr    :: String -> Console ()
-
-data Error a where
-  Throw :: Int -> Error a
 
 prog :: Console ∈ es => Comp es ()
 prog = do
@@ -67,6 +64,9 @@ handleConsoleImpure = handle hval hop  where
 
 
 -- | ## Pure handling
+data Error a where
+  Throw :: Int -> Error a
+
 handleConsolePure :: forall es a. Error ∈ es => Handler Console es a (a, String)
 handleConsolePure = handleWith "" hval hop  where
   hop :: String -> Console x -> (String -> x -> Comp es b) -> Comp es b
@@ -81,18 +81,27 @@ handleError catch = handle Val hop  where
   hop (Throw e) k = catch e
 
 
-
 ----------------------------------
 
 {--####  PROBABILISTIC PROGRAMMING WITH ALGEBRAIC EFFECTS  ####--}
 
 -- | ## Linear regression
-linRegr :: [Double] -> [Double] -> Model Double
+linRegr :: [Double] -> [Double] -> Model (Double, Double)
 linRegr xs ys = do
   m        <- call (Sample (Normal 0 3) α)
   c        <- call (Sample (Normal 0 2) α)
   zipWithM (\x y -> do call (Observe (Normal (m * x + c) 1) y α)) xs ys
-  return m
+  return (m, c)
+
+likelihood :: Handler Observe es a (a, LogP)
+likelihood  = handleWith 0
+  (\w x                 -> return (x, w))
+  (\w (Observe d y α) k -> k (w + logProb d y) y)
+
+defaultSample :: IO' ∈ es => Handler Sample es a a
+defaultSample = handle
+  (\x                   -> return x)
+  (\(Sample d α) k      -> (k . draw d) =<< call random)
 
 lw :: Int -> Model a -> IO [(a, LogP)]
 lw n = replicateM n . runImpure' . defaultSample . likelihood
