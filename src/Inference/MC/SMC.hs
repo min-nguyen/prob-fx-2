@@ -40,8 +40,7 @@ mulpfilterWith
 mulpfilterWith n_prts gen_model env_in = do
   -- | Handle model to probabilistic program
   let model = (handleMulDist . handleEnvRW env_in) (runModel gen_model)
-  smc_trace <- mulpfilter n_prts model
-  pure (map (snd . fst) smc_trace)
+  map (snd . fst) <$> mulpfilter n_prts model
 
 {- | Call SMC on a probabilistic program.
 -}
