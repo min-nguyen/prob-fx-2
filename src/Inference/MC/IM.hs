@@ -42,9 +42,7 @@ imWith ::
 imWith n gen_model env_in   = do
   -- | Handle model to probabilistic program
   let model  = conditionWith env_in gen_model
-      τ_0     = Map.empty
-  rwm_trace <- im n model
-  pure (map (snd . fst . fst) rwm_trace)
+  map (snd . fst . fst) <$> im n model
 
 {- | Top-level wrapper for Independence Metropolis
 -}
@@ -64,7 +62,8 @@ handleProposal :: Member Sampler fs => Handler (Propose LogP) fs a a
 handleProposal = handle Val hop
   where hop :: Member Sampler es => Propose LogP x -> (x -> Comp es b) -> Comp es b
         hop op k = case op of
-          (Propose _)     -> do k Map.empty
+          (Propose τ)     -> do τ' <- mapM (const (call random)) τ
+                                k τ'
           (Accept x@((_, w), _) x'@((_, w'), _))
                           -> do let ratio = exp (w' - w)
                                 u <- call random

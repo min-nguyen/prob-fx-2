@@ -42,15 +42,19 @@ pimWith :: forall env vars a. (env `ContainsVars` vars)
 pimWith mh_steps n_prts gen_model env_in obs_vars = do
   -- | Handle model to probabilistic program
   let model   = conditionWith env_in gen_model
-  -- | Convert observable variables to strings
-  let tags = varsToStrs @env obs_vars
-  -- | Initialise sample trace to include only parameters
-  τθ_0       <- (fmap (filterTrace tags . snd) . runImpure .  reuseTrace Map.empty . defaultObserve) model
-  pmmh_trace <- (runImpure . IM.handleProposal . mh mh_steps τθ_0 (exec n_prts)) model
-  pure (map (snd . fst . fst) pmmh_trace)
+      τ_0     = Map.empty
+      θ       = varsToStrs @env obs_vars
+  -- | Initialise sample trace
+  map (snd . fst . fst) <$> pim mh_steps n_prts τ_0 θ model
 
-pim :: Int -> Int -> Trace -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
-pim mh_steps n_prts τθ = runImpure . IM.handleProposal . mh mh_steps τθ (exec n_prts)
+pim :: Int -> Int -> Trace -> [Tag] -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
+pim mh_steps n_prts τ θ model = do
+  -- The provided trace τ may be empty (if PMMH is called as a top-level function) or may not be empty (if called from SMC2);
+  -- Therefore, we fully populate it using reuseTrace, but retain any existing samples.
+  (_, τ) <- (runImpure . reuseTrace τ . defaultObserve) model
+  -- Initialise τθ to contain only entries in θ, ensuring that exec can only ever produce traces containing θ
+  let τθ = filterTrace θ τ
+  (runImpure . IM.handleProposal . mh mh_steps τθ (exec n_prts)) model
 
 {- | Handle probabilistic program using SSMH and compute the average log-probability using SMC.
 -}
@@ -65,6 +69,7 @@ exec n τθ prog   = do
   if not (isInfinite ws_avg)
     then do
       idx <- Sampler.categorical (Vector.fromList $ map exp ws_norm)
+      -- Make sure original trace τθ is returned with no extra entries.
       return ((xs !! idx, ws_avg), τθ)
     else
       return ((head xs, ws_avg), τθ)

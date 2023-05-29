@@ -41,8 +41,7 @@ lwWith
   -> Sampler [(Env env, Double)]
 lwWith n gen_model env_in = do
   let model = conditionWith env_in gen_model
-  lwTrace <- replicateM n (lw model)
-  pure (map (bimap snd exp) lwTrace)
+  map (bimap snd exp) <$> replicateM n (lw model)
 
 -- | Handler for one iteration of LW
 lw
