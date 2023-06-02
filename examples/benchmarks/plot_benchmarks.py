@@ -22,9 +22,15 @@ def groupBenchmarks(raw_data, n_groups, n_rows):
       # > Row: fixed_groupSize
   return (grouped_data, rows_rest)
 
-def plotPage(output_file, data_dicts, n_groups, n_rows):
+def plotPage(output_file, data_dicts, n_groups, n_rows, marker_dict=None):
+  # if marker == None then mar
   fig_a, axis_a = plt.subplots(n_rows, n_groups)
   for dict_idx, data_dict in enumerate(data_dicts):
+
+    custom_marker = None
+    if marker_dict != None and data_dict["language"] in marker_dict:
+        custom_marker = marker_dict[data_dict["language"]]
+
     for col_idx, group in enumerate(data_dict["data"]):
       # Get header
       header_row  = group[0]
@@ -56,7 +62,7 @@ def plotPage(output_file, data_dicts, n_groups, n_rows):
         prog_values  = zero_to_nan(list(map(float, prog[1:])))
 
         if (not (0 in prog_values)):
-          axis_a[row_idx][col_idx].plot(x_values, prog_values, color=data_dict["color"], label=data_dict["language"])
+          axis_a[row_idx][col_idx].plot(x_values, prog_values, color=data_dict["color"], label=data_dict["language"], marker = custom_marker)
 
         xmin, xmax, ymin, ymax = axis_a[row_idx][col_idx].axis()
 
@@ -101,13 +107,15 @@ with open('benchmarks-prob-fx.csv') as benchmarks_pfx, open('benchmarks-monad-ba
   models_gen                  = { "language": "Gen", "color": '#1b9e77', "data": models_gen }
   infs_gen                    = { "language": "Gen", "color": '#1b9e77', "data": infs_gen }
 
+  custom_marker_dict = {"InferFX": ".", "Gen": "x", "MonadBayes": "+"}
+
   # benchmarks for varying over dataset size
   # groups_pfx_model  = groups_pfx[0:3]
   models = [models_pfx, models_mb, models_gen]
-  plotPage("plot-model-benchmarks.pdf", models, n_groups=3, n_rows=5)
+  plotPage("plot-model-benchmarks.pdf", models, n_groups=3, n_rows=5, marker_dict= custom_marker_dict)
 
   # # # benchmarks for varying over inference parameters
   # # vary_inf = groups[3:6]
   infs   = [infs_pfx, infs_mb, infs_gen]
-  plotPage("plot-inference-benchmarks.pdf", infs, n_groups=5, n_rows=3)
+  plotPage("plot-inference-benchmarks.pdf", infs, n_groups=5, n_rows=3, marker_dict = custom_marker_dict)
   plt.show()
