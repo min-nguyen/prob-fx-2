@@ -45,16 +45,6 @@ testBbviLinRegr = TestCase $ do
   output <- sampleIOFixed (bbviLinRegr 200 40 8)
   assertEqual "Testing (bbviLinRegr 200 40 8)"  bbviLinRegrExpected output
 
-testMleLinRegr :: Test
-testMleLinRegr = TestCase $ do
-  output <- sampleIOFixed (mleLinRegr 276 40 8)
-  assertEqual "Testing (mleLinRegr 276 40 8)"  mleLinRegrExpected output
-
-testMapLinRegr :: Test
-testMapLinRegr = TestCase $ do
-  output <- sampleIOFixed (mapLinRegr 276 40 8)
-  assertEqual "Testing (mapLinRegr 276 40 8)"  mapLinRegrExpected output
-
 testSimLogRegr :: Test
 testSimLogRegr = TestCase $ do
   output <- sampleIOFixed (simLogRegr 50)
@@ -115,16 +105,6 @@ testBbviHMM = TestCase $ do
   output <- sampleIOFixed (bbviHMM 1000 50 20)
   assertEqual "Testing (bbviHMM 1000 50 20)"  bbviHMMExpected output
 
-testMleHMM :: Test
-testMleHMM = TestCase $ do
-  output <- sampleIOFixed (mleHMM 1000 50 20)
-  assertEqual "Testing (mleHMM 1000 50 20)"  mleHMMExpected output
-
-testMapHMM :: Test
-testMapHMM = TestCase $ do
-  output <- sampleIOFixed (mapHMM 1000 50 20)
-  assertEqual "Testing (mapHMM 1000 50 20)"  mapHMMExpected output
-
 testSimSIR :: Test
 testSimSIR = TestCase $ do
   output <- sampleIOFixed (simSIR 100)
@@ -173,20 +153,6 @@ testBbviLDA = TestCase $ do
       output'          = mapT3 (map (roundPrecision 8)) output
   assertEqual "Testing (bbviLDA 200 20 50)"  bbviLDAExpected' output'
 
-testMleLDA :: Test
-testMleLDA = TestCase $ do
-  output <- sampleIOFixed (mleLDA 200 20 50)
-  let mleLDAExpected' = mapT3 (map (roundPrecision 8)) mleLDAExpected
-      output'          = mapT3 (map (roundPrecision 8)) output
-  assertEqual "Testing (mleLDA 200 20 50)"  mleLDAExpected' output'
-
-testMapLDA :: Test
-testMapLDA = TestCase $ do
-  output <- sampleIOFixed (mapLDA 200 20 50)
-  let mapLDAExpected' = mapT3 (map (roundPrecision 8)) mapLDAExpected
-      output'          = mapT3 (map (roundPrecision 8)) output
-  assertEqual "Testing (mapLDA 200 20 50)"  mapLDAExpected' output'
-
 testMhRadon :: Test
 testMhRadon = TestCase $ do
   output <- sampleIOFixed (mhRadon 1000)
@@ -208,8 +174,6 @@ testInference = TestList
  , testPmmhLinRegr
  , testSmc2LinRegr
  , testBbviLinRegr
- , testMleLinRegr
- , testMapLinRegr
  , testSimLogRegr
  , testLwLogRegr
  , testMhLogRegr
@@ -221,8 +185,6 @@ testInference = TestList
  , testPmmhHMM
  , testSmc2HMM
  , testBbviHMM
- , testMleHMM
- , testMapHMM
  , testSimSIR
  , testMhSIR
  , testSimLDA
@@ -231,8 +193,6 @@ testInference = TestList
  , testRmsmcLDA
  , testPmmhLDA
  , testBbviLDA
- , testMleLDA
- , testMapLDA
  , testMhRadon
  , testMhPredRadon
  ]

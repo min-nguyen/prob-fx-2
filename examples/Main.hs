@@ -21,18 +21,11 @@ printThenWrite a = print a >> writeFile "model-output.txt" (show a)
 parseArgs :: String -> IO ()
 parseArgs cmd = case cmd of
   "gbbviLinRegr"   -> sampleIOFixed (GuidedExamples.bbviLinRegr 200 40 8) >>= printThenWrite
-  "gmapLinRegr"   -> sampleIOFixed (GuidedExamples.mapLinRegr 276 40 8) >>= printThenWrite
   "gmleLinRegr"   -> sampleIOFixed (GuidedExamples.mleLinRegr 1400 40 8) >>= printThenWrite -- need to set 'safeAddGrad' to only add mu
 
   "bbviLinRegr"    -> sampleIOFixed (VIExamples.bbviLinRegr 200 40 8) >>= printThenWrite
-  "mleLinRegr"     -> sampleIOFixed (VIExamples.mleLinRegr 276 40 8) >>= printThenWrite
-  "mapLinRegr"     -> sampleIOFixed (VIExamples.mapLinRegr 276 40 8) >>= printThenWrite
   "bbviHMM"        -> sampleIOFixed (VIExamples.bbviHMM 1000 50 20) >>= printThenWrite
-  "mleHMM"         -> sampleIOFixed (VIExamples.mleHMM 1000 50 20) >>= printThenWrite
-  "mapHMM"         -> sampleIOFixed (VIExamples.mapHMM 1000 50 20) >>= printThenWrite
   "bbviLDA"        -> sampleIOFixed (VIExamples.bbviLDA 200 20 50) >>= printThenWrite
-  "mleLDA"         -> sampleIOFixed (VIExamples.mleLDA 200 20 50) >>= printThenWrite
-  "mapLDA"         -> sampleIOFixed (VIExamples.mapLDA 200 20 50) >>= printThenWrite
 
   "simLinRegrOnce"      -> sampleIOFixed (simLinRegrOnce 50) >>= printThenWrite
   "lwLinRegrOnce"       -> sampleIOFixed (lwLinRegrOnce 10 10) >>= printThenWrite
