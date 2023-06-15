@@ -1,1 +1,1 @@
-### ProbFX-1.5
+ProbFX-2: Extension of prob-fx for programmable inference with effect handlers
