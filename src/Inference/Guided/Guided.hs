@@ -31,12 +31,12 @@ import qualified Vec
 import Vec (Vec, (|+|), (|-|), (|/|), (|*|), (*|))
 import Util
 
-data GradUpdate a where
-  GradUpdate :: [(ΔGuides, LogP)] -> Guides -> GradUpdate Guides
-
 type GuidedModel es a = Model (GuidedSample : es) a
 
-type GuidedExec es a = Guides -> GuidedModel es a -> Sampler ((a, ΔGuides), LogP)
+type GuidedExec es a  = Guides -> GuidedModel es a -> Sampler ((a, ΔGuides), LogP)
+
+data GradUpdate a where
+  GradUpdate :: [(ΔGuides, LogP)] -> Guides -> GradUpdate Guides
 
 guidedLoop :: (Members [GradUpdate, Sampler] fs)
   => Int                                     -- ^ number of optimisation steps (T)
@@ -52,9 +52,8 @@ guidedLoop n_timesteps n_samples exec model params_0 = do
   foldr1 (>=>) (replicate n_timesteps guidedStep) params_0
 
 -- | Collect the parameters λ_0 of the guide's initial proposal distributions.
-collectGuide :: GuidedModel '[Sampler] a -> Sampler Guides
-collectGuide = runImpure . defaultGuide . loop Trace.empty .  SIM.defaultSample . SIM.defaultObserve
-  where
+collectGuides :: GuidedModel '[Sampler] a -> Sampler Guides
+collectGuides = runImpure . defaultGuide . loop Trace.empty .  SIM.defaultSample . SIM.defaultObserve where
   loop :: Guides -> Comp (GuidedSample : es) a -> Comp (GuidedSample : es) Guides
   loop params (Val _)   = pure params
   loop params (Op op k) = case prj op of
@@ -95,7 +94,7 @@ prior = handleWith 0 (\lρ x -> Val (x, lρ)) hop
 gradStep
   :: Double  -- ^ learning rate             η
   -> Guides  -- ^ optimisable distributions Q(λ_t)
-  -> ΔGuides  -- ^ elbo gradient estimates   E[δelbo]
+  -> ΔGuides -- ^ elbo gradient estimates   E[δelbo]
   -> Guides  -- ^ updated distributions     Q(λ_{t+1})
 gradStep η guides grads =
   let scaledGrads = Trace.map (\(VecFor δλ) -> VecFor (η *| δλ)) grads
