@@ -26,7 +26,7 @@ import Control.Monad ( replicateM, (>=>) )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
 import Effects.MulDist
-import Effects.Guide
+import Effects.GuidedSample
 import Dist
 import Data.Type.Nat
 import Data.Maybe
@@ -38,11 +38,11 @@ import Data.Proxy
 import qualified LDA
 
 {- | Linear regression as a probabilistic program for inference -}
-linRegr :: Members [Guide, Observe, Sample] es
+linRegr :: Members [GuidedSample, Observe, Sample] es
   => [(Double, Double)] -> Comp es (Double, Double)  -- ^ y datapoints
 linRegr xys = do
   -- Draw model parameters from prior
-  m <- guide  (mkNormal 0 3) (mkNormal 0 3) (Addr "m" 0)
+  m <- guidedSample  (mkNormal 0 3) (mkNormal 0 3) (Addr "m" 0)
   c <- sample (mkNormal 0 1) (Addr "c" 0)
   -- Generate outputs ys
   mapM_ (\((x, y), idx) -> observe (mkNormal (m * x + c) 1) y (Addr "y" idx)) (zip xys [0 ..])

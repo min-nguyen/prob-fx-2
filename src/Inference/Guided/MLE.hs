@@ -11,7 +11,7 @@ module Inference.Guided.MLE
   where
 
 import Inference.Guided.Guided
-import Effects.Guide
+import Effects.GuidedSample
 import Data.Maybe
 import LogP
 import Sampler

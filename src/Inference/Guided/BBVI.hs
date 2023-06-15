@@ -11,7 +11,7 @@ module Inference.Guided.BBVI
   where
 
 import Inference.Guided.Guided
-import Effects.Guide
+import Effects.GuidedSample
 import Data.Maybe
 import LogP
 import Sampler
@@ -44,11 +44,11 @@ exec :: Guides -> GuidedModel '[Sampler] a -> Sampler ((a, ΔGuides), LogP)
 exec params = runImpure . mergeWeights . priorDiff . defaultSample . likelihood .  useGuides params  where
   mergeWeights = fmap (\((x, w_lat), w_obs) -> (x, w_lat + w_obs))
 
--- | Sample from each @Guide@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
-priorDiff :: forall es a. Members '[Sampler] es => Handler Guide es a (a, LogP)
+-- | Sample from each @GuidedSample@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
+priorDiff :: forall es a. Members '[Sampler] es => Handler GuidedSample es a (a, LogP)
 priorDiff  = handleWith 0 (\s a -> Val (a, s)) hop where
-  hop :: LogP -> Guide x -> (LogP -> x -> Comp es b) -> Comp es b
-  hop w (Guide (d :: d) (q :: q) α) k = do
+  hop :: LogP -> GuidedSample x -> (LogP -> x -> Comp es b) -> Comp es b
+  hop w (GuidedSample (d :: d) (q :: q) α) k = do
         r <- call random
         let x = draw q r
         k (w + logProb d x - logProb q x) x

@@ -18,7 +18,7 @@ import Effects.MulDist
 import Model
 import Effects.EnvRW ( EnvRW, handleEnvRW )
 import Effects.State ( modify, handleState, State )
-import Effects.Guide
+import Effects.GuidedSample
 import Env ( Env, union )
 import LogP ( LogP(..) )
 import Dist
@@ -34,7 +34,7 @@ import Util
 data GradUpdate a where
   GradUpdate :: [(ΔGuides, LogP)] -> Guides -> GradUpdate Guides
 
-type GuidedModel es a = Model (Guide : es) a
+type GuidedModel es a = Model (GuidedSample : es) a
 
 type GuidedExec es a = Guides -> GuidedModel es a -> Sampler ((a, ΔGuides), LogP)
 
@@ -55,33 +55,33 @@ guidedLoop n_timesteps n_samples exec model params_0 = do
 collectGuide :: GuidedModel '[Sampler] a -> Sampler Guides
 collectGuide = runImpure . defaultGuide . loop Trace.empty .  SIM.defaultSample . SIM.defaultObserve
   where
-  loop :: Guides -> Comp (Guide : es) a -> Comp (Guide : es) Guides
+  loop :: Guides -> Comp (GuidedSample : es) a -> Comp (GuidedSample : es) Guides
   loop params (Val _)   = pure params
   loop params (Op op k) = case prj op of
-    Just (Guide d (q :: q) α) -> do let kα = (Key α :: Key q)
-                                        params' = Trace.insert kα (Identity q) params
-                                    Op op (loop params' . k)
+    Just (GuidedSample d (q :: q) α) -> do let kα = (Key α :: Key q)
+                                               params' = Trace.insert kα (Identity q) params
+                                           Op op (loop params' . k)
     Nothing -> Op op (loop params . k)
 
 {- | Set the proposal distributions Q(λ) of @Score@ operations.
 -}
-useGuides :: forall es a. Member Guide es => Guides -> Comp es a -> Comp es (a, ΔGuides)
+useGuides :: forall es a. Member GuidedSample es => Guides -> Comp es a -> Comp es (a, ΔGuides)
 useGuides proposals = loop Trace.empty where
   loop :: ΔGuides -> Comp es a -> Comp es (a, ΔGuides)
   loop grads (Val a)   = pure (a, grads)
   loop grads (Op op k) = case prj op of
-    Just (Guide d (q :: q) α) -> do let kα = (Key α :: Key q)
-                                        Identity q' = fromMaybe (Identity q) (Trace.lookup kα proposals)
-                                    x <- call (Guide d q' α)
-                                    let gs = Trace.insert kα (VecFor (gradLogProb q' x)) grads
-                                    loop gs (k x)
+    Just (GuidedSample d (q :: q) α) -> do let kα = (Key α :: Key q)
+                                               Identity q' = fromMaybe (Identity q) (Trace.lookup kα proposals)
+                                           x <- call (GuidedSample d q' α)
+                                           let gs = Trace.insert kα (VecFor (gradLogProb q' x)) grads
+                                           loop gs (k x)
     Nothing -> Op op (loop grads . k)
 
--- | Sample from each @Guide@ distribution
-defaultGuide :: forall es a. Member Sampler es => Handler Guide es a a
+-- | Sample from each @GuidedSample@ distribution
+defaultGuide :: forall es a. Member Sampler es => Handler GuidedSample es a a
 defaultGuide  = handle Val hop where
-  hop :: Guide x -> (x -> Comp es b) -> Comp es b
-  hop (Guide (d :: d) (q :: q) α) k = do
+  hop :: GuidedSample x -> (x -> Comp es b) -> Comp es b
+  hop (GuidedSample (d :: d) (q :: q) α) k = do
       x <- call (drawWithSampler q)
       k x
 
