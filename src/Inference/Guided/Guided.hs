@@ -77,19 +77,6 @@ useGuides proposals = loop Trace.empty where
                                     loop gs (k x)
     Nothing -> Op op (loop grads . k)
 
-{- | Reuse the proposal distributions Q(λ) of @Score@ operations.
-useGuides :: forall es a. Member Guide es => Guides -> Comp es a -> Comp es (a, Guides, ΔGuides)
-useGuides dists = loop (dists, Trace.empty) where
-  loop :: (Guides, ΔGuides) -> Comp es a -> Comp es (a, Guides, ΔGuides)
-  loop (dists, grads) (Val a)   = pure (a, dists, grads)
-  loop (dists, grads) (Op op k) = case prj op of
-    Just (Guide d (q :: q) α) -> do let (q', dists') = Trace.lookupOrInsert (Key α) q dists
-                                    x <- call (Guide d q' α)
-                                    let grads' = Trace.insert @q (Key α) (gradLogProb q' x) grads
-                                    loop (dists', grads') (k x)
-    Nothing -> Op op (loop grads . k)
--}
-
 -- | Sample from each @Guide@ distribution
 defaultGuide :: forall es a. Member Sampler es => Handler Guide es a a
 defaultGuide  = handle Val hop where
