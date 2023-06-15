@@ -11,7 +11,7 @@ module Inference.Guided.MLE
   where
 
 import Inference.Guided.Guided
-import Effects.Guide
+import Effects.GuidedSample
 import Data.Maybe
 import LogP
 import Sampler
@@ -34,7 +34,7 @@ mle :: forall es a. ()
   -> GuidedModel '[Sampler] a      -- ^ guide Q(X; λ)
   -> Sampler Guides                 -- ^ final guide parameters λ_T
 mle num_timesteps num_samples model = do
-  λ_0 <- collectGuide model
+  λ_0 <- collectGuides model
   -- liftIO (print λ_0)
   (runImpure . handleNormGradDescent)
     $ guidedLoop num_timesteps num_samples exec model λ_0

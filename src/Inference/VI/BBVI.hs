@@ -67,16 +67,16 @@ handleLRatio :: forall fs a. Handler GradUpdate fs a a
 handleLRatio = handleWith 1 (const Val) hop where
   hop :: Int -> GradUpdate x -> (Int -> x -> Comp fs a) -> Comp fs a
   hop t (GradUpdate ws δGs params) k =
-    let δelbo       :: ΔGuides  = lratio (δGs, ws)
+    let δelbo       :: ΔGuides  = lratioEstimator (δGs, ws)
         scaledGrads :: ΔGuides  = Trace.map (\(VecFor δλ) -> VecFor (1.0 *| δλ)) δelbo
-        params'     :: Guides = Trace.intersectWithAdd params scaledGrads
+        params'     :: Guides   = Trace.intersectWithAdd params scaledGrads
     in  k (t + 1) params'
 
 -- | Where ws = logP(X, Y) - logQ(X; λ)
 --         δGs   = δ_λ logQ(X;λ)
-lratio :: ([ΔGuides], [LogP]) -> ΔGuides
--- lratio = undefined
-lratio (δGs, ws) = foldr (\(Some k@(Key α)) -> Trace.insert k (VecFor (estδELBO k))) Trace.empty vars
+lratioEstimator :: ([ΔGuides], [LogP]) -> ΔGuides
+-- lratioEstimator = undefined
+lratioEstimator (δGs, ws) = foldr (\(Some k@(Key α)) -> Trace.insert k (VecFor (estδELBO k))) Trace.empty vars
   where
     norm_c :: Double
     norm_c = 1/fromIntegral (length ws)

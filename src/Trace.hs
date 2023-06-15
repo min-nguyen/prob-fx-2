@@ -137,8 +137,8 @@ type LPTrace = Map Addr LogP
 
 {- | Dependent map. -}
 
-type Guides = DMap Key Identity
-type ΔGuides  = DMap Key VecFor
+type Guides  = DMap Key Identity
+type ΔGuides = DMap Key VecFor
 
 data Key q    = forall a. (DiffDist q a, Typeable q) => Key Addr deriving Typeable
 data VecFor q = forall a. DiffDist q a => VecFor {unVecFor :: Vec (Arity q) Double }

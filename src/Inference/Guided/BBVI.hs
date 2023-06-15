@@ -11,7 +11,7 @@ module Inference.Guided.BBVI
   where
 
 import Inference.Guided.Guided
-import Effects.Guide
+import Effects.GuidedSample
 import Data.Maybe
 import LogP
 import Sampler
@@ -34,7 +34,7 @@ bbvi :: forall es a. ()
   -> GuidedModel '[Sampler] a      -- ^ guide Q(X; λ)
   -> Sampler Guides                 -- ^ final guide parameters λ_T
 bbvi num_timesteps num_samples model = do
-  λ_0 <- collectGuide model
+  λ_0 <- collectGuides model
   -- liftIO (print λ_0)
   (runImpure . handleLRatio)
     $ guidedLoop num_timesteps num_samples exec model λ_0
@@ -44,31 +44,29 @@ exec :: Guides -> GuidedModel '[Sampler] a -> Sampler ((a, ΔGuides), LogP)
 exec params = runImpure . mergeWeights . priorDiff . defaultSample . likelihood .  useGuides params  where
   mergeWeights = fmap (\((x, w_lat), w_obs) -> (x, w_lat + w_obs))
 
--- | Sample from each @Guide@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
-priorDiff :: forall es a. Members '[Sampler] es => Handler Guide es a (a, LogP)
+-- | Sample from each @GuidedSample@ distribution, x ~ Q(X; λ), and record its grad-log-pdf, δlog(Q(X = x; λ)).
+priorDiff :: forall es a. Members '[Sampler] es => Handler GuidedSample es a (a, LogP)
 priorDiff  = handleWith 0 (\s a -> Val (a, s)) hop where
-  hop :: LogP -> Guide x -> (LogP -> x -> Comp es b) -> Comp es b
-  hop w (Guide (d :: d) (q :: q) α) k = do
+  hop :: LogP -> GuidedSample x -> (LogP -> x -> Comp es b) -> Comp es b
+  hop w (GuidedSample (d :: d) (q :: q) α) k = do
         r <- call random
         let x = draw q r
         k (w + logProb d x - logProb q x) x
-
 
 -- | Compute and update the guide parameters using a likelihood-ratio-estimate E[δelbo] of the ELBO gradient
 handleLRatio :: forall fs a. Handler GradUpdate fs a a
 handleLRatio = handleWith 1 (const Val) hop where
   hop :: Int -> GradUpdate x -> (Int -> x -> Comp fs a) -> Comp fs a
   hop t (GradUpdate wgrads params) k =
-    let δelbo       :: ΔGuides  = lratio (unzip wgrads)
-        scaledGrads :: ΔGuides  = Trace.map (\(VecFor δλ) -> VecFor (1.0 *| δλ)) δelbo
-        params'     :: Guides = Trace.intersectWithAdd params scaledGrads
+    let δelbo       :: ΔGuides = lratioEstimator (unzip wgrads)
+        scaledGrads :: ΔGuides = Trace.map (\(VecFor δλ) -> VecFor (1.0 *| δλ)) δelbo
+        params'     :: Guides  = Trace.intersectWithAdd params scaledGrads
     in  k (t + 1) params'
 
 -- | Where ws = logP(X, Y) - logQ(X; λ)
 --         δGs   = δ_λ logQ(X;λ)
-lratio :: ([ΔGuides], [LogP]) -> ΔGuides
--- lratio = undefined
-lratio (δGs, ws) = foldr (\(Some k@(Key α)) -> Trace.insert k (VecFor (estδELBO k))) Trace.empty vars
+lratioEstimator :: ([ΔGuides], [LogP]) -> ΔGuides
+lratioEstimator (δGs, ws) = foldr (\(Some k@(Key α)) -> Trace.insert k (VecFor (estδELBO k))) Trace.empty vars
   where
     norm_c :: Double
     norm_c = 1/fromIntegral (length ws)
