@@ -37,11 +37,10 @@ bench_LR_MonadBayes args = do
               , liftIO . MonadBayes.mhLinRegr fixed_mh_steps) row_header output_file
     benchRow ("LinRegr-[ ]-MPF-" ++ show fixed_smc_particles
               , liftIO . MonadBayes.smcLinRegr fixed_smc_particles)  row_header output_file
-    benchRow ("LinRegr-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
-              , liftIO . MonadBayes.pmmhLinRegr fixed_pmmh_mhsteps fixed_pmmh_particles) row_header  output_file
+    benchRow ("LinRegr-[ ]-PMH-" ++ show fixed_pmh_mhsteps ++ "-" ++ show fixed_pmh_particles
+              , liftIO . MonadBayes.pmmhLinRegr fixed_pmh_mhsteps fixed_pmh_particles) row_header  output_file
     benchRow ("LinRegr-[ ]-RMPF-" ++ show fixed_rmsmc_particles ++ "-"  ++ show fixed_rmsmc_mhsteps
               , liftIO . rmsmcLinRegr fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header output_file
-    dummyRow ("LinRegr-[ ]-BBVI-" ++ show fixed_bbvi_steps ) row_header output_file
 
 bench_HMM_MonadBayes :: [Int] -> IO ()
 bench_HMM_MonadBayes args = do
@@ -51,11 +50,10 @@ bench_HMM_MonadBayes args = do
               , liftIO . MonadBayes.mhHMM fixed_mh_steps) row_header output_file
     benchRow ("HidMark-[ ]-MPF-" ++ show fixed_mh_steps
               , liftIO . MonadBayes.smcHMM fixed_smc_particles) row_header output_file
-    benchRow ("HidMark-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
-              , liftIO . MonadBayes.pmmhHMM fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
+    benchRow ("HidMark-[ ]-PMH-" ++ show fixed_pmh_mhsteps ++ "-" ++ show fixed_pmh_particles
+              , liftIO . MonadBayes.pmmhHMM fixed_pmh_mhsteps fixed_pmh_particles) row_header output_file
     benchRow ("HidMark-[ ]-RMPF" ++ show fixed_rmsmc_particles ++ "-"  ++ show fixed_rmsmc_mhsteps
               , liftIO . rmsmcHMM fixed_rmsmc_particles fixed_rmsmc_mhsteps) row_header output_file
-    dummyRow ("HidMark-[ ]-BBVI-" ++ show fixed_bbvi_steps) row_header output_file
 
 bench_LDA_MonadBayes :: [Int] -> IO ()
 bench_LDA_MonadBayes args = do
@@ -65,11 +63,10 @@ bench_LDA_MonadBayes args = do
               , liftIO . MonadBayes.mhLDA fixed_mh_steps) row_header output_file
     benchRow ("LatDiri-[ ]-MPF-" ++ show fixed_mh_steps
               , liftIO . MonadBayes.smcLDA fixed_smc_particles) row_header output_file
-    benchRow ("LatDiri-[ ]-PMMH-" ++ show fixed_pmmh_mhsteps ++ "-" ++ show fixed_pmmh_particles
-              , liftIO . MonadBayes.pmmhLDA fixed_pmmh_mhsteps fixed_pmmh_particles) row_header output_file
+    benchRow ("LatDiri-[ ]-PMH-" ++ show fixed_pmh_mhsteps ++ "-" ++ show fixed_pmh_particles
+              , liftIO . MonadBayes.pmmhLDA fixed_pmh_mhsteps fixed_pmh_particles) row_header output_file
     benchRow ("LatDiri-[ ]-RMPF-" ++ show fixed_rmsmc_particles ++ "-"  ++ show fixed_rmsmc_mhsteps
               , liftIO . rmsmcLDA fixed_rmsmc_particles fixed_rmsmc_mhsteps) (second (take 3) row_header) output_file
-    dummyRow ("LatDiri-[ ]-BBVI-" ++ show fixed_bbvi_steps) row_header output_file
 
 bench_MH_MonadBayes :: [Int] -> IO ()
 bench_MH_MonadBayes args = do
@@ -95,14 +92,14 @@ bench_SMC_MonadBayes args = do
 
 bench_PMMH_MonadBayes :: [Int] -> IO ()
 bench_PMMH_MonadBayes args = do
-    let row_header = ("Num PMMH particles", args)
+    let row_header = ("Num PMH particles", args)
     writeRow output_file row_header
-    benchRow ("PMMH" ++ show fixed_pmmh_mhsteps ++ "-[ ]-LinRegr-" ++ show fixed_lr
-              , liftIO . flip (MonadBayes.pmmhLinRegr fixed_pmmh_mhsteps) fixed_lr) (second (take 3) row_header) output_file
-    benchRow ("PMMH" ++ show fixed_pmmh_mhsteps ++ "-[ ]-HidMark-" ++ show fixed_hmm
-              , liftIO . flip (MonadBayes.pmmhHMM fixed_pmmh_mhsteps) fixed_hmm) (second (take 3) row_header) output_file
-    benchRow ("PMMH" ++ show fixed_pmmh_mhsteps ++ "-[ ]-LatDiri-" ++ show fixed_lda
-              , liftIO . flip (MonadBayes.pmmhLDA fixed_pmmh_mhsteps) fixed_lda) (second (take 3) row_header) output_file
+    benchRow ("PMH" ++ show fixed_pmh_mhsteps ++ "-[ ]-LinRegr-" ++ show fixed_lr
+              , liftIO . flip (MonadBayes.pmmhLinRegr fixed_pmh_mhsteps) fixed_lr) (second (take 3) row_header) output_file
+    benchRow ("PMH" ++ show fixed_pmh_mhsteps ++ "-[ ]-HidMark-" ++ show fixed_hmm
+              , liftIO . flip (MonadBayes.pmmhHMM fixed_pmh_mhsteps) fixed_hmm) (second (take 3) row_header) output_file
+    benchRow ("PMH" ++ show fixed_pmh_mhsteps ++ "-[ ]-LatDiri-" ++ show fixed_lda
+              , liftIO . flip (MonadBayes.pmmhLDA fixed_pmh_mhsteps) fixed_lda) (second (take 3) row_header) output_file
 
 bench_RMSMC_MonadBayes :: [Int] -> IO ()
 bench_RMSMC_MonadBayes args = do
@@ -115,14 +112,6 @@ bench_RMSMC_MonadBayes args = do
     benchRow ("RMPF" ++ show fixed_rmsmc_particles ++ "-[ ]-LatDiri-" ++ show fixed_lda
               , liftIO . flip (rmsmcLDA fixed_rmsmc_particles) fixed_lda) (second (take 3) row_header)  output_file
 
-bench_BBVI_MonadBayes :: [Int] -> IO ()
-bench_BBVI_MonadBayes args = do
-    let row_header = ("Num BBVI steps", args)
-    writeRow output_file row_header
-    dummyRow ("BBVI-[ ]-LinRegr-" ++ show fixed_lr) row_header output_file
-    dummyRow ("BBVI-[ ]-HidMark-" ++ show fixed_hmm) row_header output_file
-    dummyRow ("BBVI-[ ]-LatDiri-" ++ show fixed_lda) row_header output_file
-
 runBenchmarks :: IO ()
 runBenchmarks = do
   -- | Read input benchmark parameters
@@ -134,7 +123,7 @@ runBenchmarks = do
       args = map (map read . splitOn ",") (removeComments (lines content))
   -- | Run benchmark programs on their corresponding parameters
   case args of
-        [lr, hmm, lda, mh, smc, rmsmc, pmmh, bbvi] -> do
+        [lr, hmm, lda, mh, smc, rmsmc, pmmh] -> do
             bench_LR_MonadBayes lr
             bench_HMM_MonadBayes hmm
             bench_LDA_MonadBayes lda
@@ -142,7 +131,6 @@ runBenchmarks = do
             bench_SMC_MonadBayes smc
             bench_PMMH_MonadBayes pmmh
             bench_RMSMC_MonadBayes rmsmc
-            bench_BBVI_MonadBayes bbvi
         _   -> error "bad input file"
 
 

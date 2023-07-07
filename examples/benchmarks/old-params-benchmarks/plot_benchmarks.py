@@ -83,27 +83,27 @@ def plotPage(output_file, data_dicts, n_groups, n_rows, marker_dict=None):
   # fig_a.tight_layout()
 
   ###
-  lgd = fig_a.legend([data_dict["language"] for data_dict in data_dicts], loc="upper center", bbox_to_anchor=(0.5, 0.97), fontsize=14, ncol=len(data_dicts), frameon=False)
+  lgd = fig_a.legend([data_dict["language"] for data_dict in data_dicts], loc="upper center", bbox_to_anchor=(0.5, 0.97), fontsize=8, ncol=len(data_dicts), frameon=False)
   ### Adjust bounding box for legend in saved figure
   fig_a.savefig(output_file, bbox_extra_artists=(lgd,), bbox_inches='tight')
 
 with open('benchmarks-prob-fx.csv') as benchmarks_pfx, open('benchmarks-monad-bayes.csv') as benchmarks_mb, open('benchmarks-gen.csv') as benchmarks_gen:
 
   raw_data_pfx                = [row for row in csv.reader(benchmarks_pfx, delimiter=',')]
-  (models_pfx, raw_data_pfx)  = groupBenchmarks(raw_data_pfx, n_groups=3, n_rows=4)
-  (infs_pfx, _)               = groupBenchmarks(raw_data_pfx, n_groups=4, n_rows=3)
+  (models_pfx, raw_data_pfx)  = groupBenchmarks(raw_data_pfx, n_groups=3, n_rows=5)
+  (infs_pfx, _)               = groupBenchmarks(raw_data_pfx, n_groups=5, n_rows=3)
   models_pfx                  = { "language": "InferFX", "color": '#7570b3', "data": models_pfx }
   infs_pfx                    = { "language": "InferFX", "color": '#7570b3', "data": infs_pfx }
 
   raw_data_mb                 = [row for row in csv.reader(benchmarks_mb, delimiter=',')]
-  (models_mb, raw_data_mb)    = groupBenchmarks(raw_data_mb, n_groups=3, n_rows=4)
-  (infs_mb, _)                = groupBenchmarks(raw_data_mb, n_groups=4, n_rows=3)
+  (models_mb, raw_data_mb)    = groupBenchmarks(raw_data_mb, n_groups=3, n_rows=5)
+  (infs_mb, _)                = groupBenchmarks(raw_data_mb, n_groups=5, n_rows=3)
   models_mb                   = { "language": "MonadBayes", "color": '#d95f02', "data": models_mb }
   infs_mb                     = { "language": "MonadBayes", "color": '#d95f02', "data": infs_mb }
 
   raw_data_gen                = [row for row in csv.reader(benchmarks_gen, delimiter=',')]
-  (models_gen, raw_data_gen)  = groupBenchmarks(raw_data_gen, n_groups=3, n_rows=4)
-  (infs_gen, _)               = groupBenchmarks(raw_data_gen, n_groups=4, n_rows=3)
+  (models_gen, raw_data_gen)  = groupBenchmarks(raw_data_gen, n_groups=3, n_rows=5)
+  (infs_gen, _)               = groupBenchmarks(raw_data_gen, n_groups=5, n_rows=3)
   models_gen                  = { "language": "Gen", "color": '#1b9e77', "data": models_gen }
   infs_gen                    = { "language": "Gen", "color": '#1b9e77', "data": infs_gen }
 
@@ -112,10 +112,10 @@ with open('benchmarks-prob-fx.csv') as benchmarks_pfx, open('benchmarks-monad-ba
   # benchmarks for varying over dataset size
   # groups_pfx_model  = groups_pfx[0:3]
   models = [models_pfx, models_mb, models_gen]
-  plotPage("plot-model-benchmarks.pdf", models, n_groups=3, n_rows=4, marker_dict= custom_marker_dict)
+  plotPage("plot-model-benchmarks.pdf", models, n_groups=3, n_rows=5, marker_dict= custom_marker_dict)
 
   # # # benchmarks for varying over inference parameters
   # # vary_inf = groups[3:6]
   infs   = [infs_pfx, infs_mb, infs_gen]
-  plotPage("plot-inference-benchmarks.pdf", infs, n_groups=4, n_rows=3, marker_dict = custom_marker_dict)
+  plotPage("plot-inference-benchmarks.pdf", infs, n_groups=5, n_rows=3, marker_dict = custom_marker_dict)
   plt.show()

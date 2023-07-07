@@ -14,15 +14,15 @@ hmm_range = [50,100,150,200,250,300,350,400,450,500]
 lda_range = [100,200,300,400,500,600,700,800,900,1000]
 fixed_mh_steps = 100
 fixed_smc_particles = 100
-fixed_pmmh_mhsteps   = 50
-fixed_pmmh_particles = 10
+fixed_pmh_mhsteps   = 50
+fixed_pmh_particles = 10
 fixed_rmsmc_particles = 10
 fixed_rmsmc_mhsteps   = 1
 fixed_bbvi_steps = 50
 fixed_bbvi_samples = 10
 mh_range=[100,200,300,400,500,600,700,800,900,1000]
 smc_range=[100,200,300,400,500,600,700,800,900,1000]
-pmmh_range=[10,20,30,40,50,60,70,80,90,100]
+pmh_range=[10,20,30,40,50,60,70,80,90,100]
 rmsmc_range=[10,20,30,40,50,60,70,80,90,100]
 bbvi_range=[200,400,600,800,1000]
 fixed_lr_size = 50
@@ -45,7 +45,7 @@ const dirichlet = DistributionsBacked(alpha -> Dirichlet(alpha), (true,), true, 
 #   mh_range = params[4]
 #   smc_range = params[5]
 #   rmsmc_range = params[6]
-#   pmmh_range = params[7]
+#   pmh_range = params[7]
 #   bbvi_range = params[8]
 # end
 
@@ -221,8 +221,8 @@ function bench_LDA_SMC()
   parseBenchmark("LatDiri-[ ]-MPF-" * string(fixed_smc_particles), results)
 end
 
-function bench_LDA_PMMH()
-  parseBenchmark("LatDiri-[ ]-PMMH-" * string(fixed_pmmh_mhsteps) * "-" * string(fixed_pmmh_particles), zeros(length(lda_range)))
+function bench_LDA_PMH()
+  parseBenchmark("LatDiri-[ ]-PMH-" * string(fixed_pmh_mhsteps) * "-" * string(fixed_pmh_particles), zeros(length(lda_range)))
 end
 
 function bench_LDA_RMSMC()
@@ -362,8 +362,8 @@ function bench_HMM_SMC()
   parseBenchmark("HidMark-[ ]-MPF-" * string(fixed_smc_particles), results)
 end
 
-function bench_HMM_PMMH()
-  parseBenchmark("HidMark-[ ]-PMMH-" * string(fixed_pmmh_mhsteps)  * "-" * string(fixed_pmmh_particles), zeros(length(hmm_range)))
+function bench_HMM_PMH()
+  parseBenchmark("HidMark-[ ]-PMH-" * string(fixed_pmh_mhsteps)  * "-" * string(fixed_pmh_particles), zeros(length(hmm_range)))
 end
 
 function bench_HMM_RMSMC()
@@ -531,8 +531,8 @@ function bench_LR_SMC()
   parseBenchmark("LinRegr-[ ]-MPF-" * string(fixed_smc_particles), results)
 end
 
-function bench_LR_PMMH()
-  parseBenchmark("LinRegr-[ ]-PMMH-" * string(fixed_pmmh_mhsteps) * "-" * string(fixed_pmmh_particles), zeros(length(lr_range)))
+function bench_LR_PMH()
+  parseBenchmark("LinRegr-[ ]-PMH-" * string(fixed_pmh_mhsteps) * "-" * string(fixed_pmh_particles), zeros(length(lr_range)))
 end
 
 function bench_LR_RMSMC()
@@ -619,18 +619,18 @@ function bench_SMC_LDA()
   parseBenchmark("MPF-[ ]-LatDiri-" * string(fixed_lda_size), results)
 end
 
-######################################## PMMH
+######################################## PMH
 
-function bench_PMMH_LR()
-  parseBenchmark("PMMH-" * string(fixed_pmmh_mhsteps) * "-[ ]-LinRegr-" * string(fixed_lr_size), zeros(length(pmmh_range)))
+function bench_PMH_LR()
+  parseBenchmark("PMH-" * string(fixed_pmh_mhsteps) * "-[ ]-LinRegr-" * string(fixed_lr_size), zeros(length(pmh_range)))
 end
 
-function bench_PMMH_HMM()
-  parseBenchmark("PMMH-" * string(fixed_pmmh_mhsteps) * "-[ ]-HidMark-" * string(fixed_hmm_size), zeros(length(pmmh_range)))
+function bench_PMH_HMM()
+  parseBenchmark("PMH-" * string(fixed_pmh_mhsteps) * "-[ ]-HidMark-" * string(fixed_hmm_size), zeros(length(pmh_range)))
 end
 
-function bench_PMMH_LDA()
-  parseBenchmark("PMMH-" * string(fixed_pmmh_mhsteps) * "-[ ]-LatDiri-" * string(fixed_lda_size), zeros(length(pmmh_range)))
+function bench_PMH_LDA()
+  parseBenchmark("PMH-" * string(fixed_pmh_mhsteps) * "-[ ]-LatDiri-" * string(fixed_lda_size), zeros(length(pmh_range)))
 end
 
 ######################################## RMPF
@@ -703,25 +703,23 @@ function bench_LR()
   parseBenchmark("Num datapoints", lr_range)
   bench_LR_MH()
   bench_LR_SMC()
-  bench_LR_PMMH()
+  bench_LR_PMH()
   bench_LR_RMSMC()
-  # bench_LR_BBVI()
 end
 
 function bench_HMM()
   parseBenchmark("Num nodes", hmm_range)
   bench_HMM_MH()
   bench_HMM_SMC()
-  bench_HMM_PMMH()
+  bench_HMM_PMH()
   bench_HMM_RMSMC()
-  # bench_HMM_BBVI()
 end
 
 function bench_LDA()
   parseBenchmark("Num words", lda_range)
   bench_LDA_MH()
   bench_LDA_SMC()
-  bench_LDA_PMMH()
+  bench_LDA_PMH()
   bench_LDA_RMSMC()
   # bench_LDA_BBVI()
 end
@@ -740,11 +738,11 @@ function bench_SMC()
   bench_SMC_LDA()
 end
 
-function bench_PMMH()
-  parseBenchmark("Num PMMH particles", pmmh_range)
-  bench_PMMH_LR()
-  bench_PMMH_HMM()
-  bench_PMMH_LDA()
+function bench_PMH()
+  parseBenchmark("Num PMH particles", pmh_range)
+  bench_PMH_LR()
+  bench_PMH_HMM()
+  bench_PMH_LDA()
 end
 
 function bench_RMSMC()
@@ -754,22 +752,14 @@ function bench_RMSMC()
   bench_RMSMC_LDA()
 end
 
-function bench_BBVI()
-  parseBenchmark("Num BBVI steps", bbvi_range)
-  bench_BBVI_LR()
-  bench_BBVI_HMM()
-  bench_BBVI_LDA()
-end
-
 function benchAll()
   bench_LR()
   bench_HMM()
   bench_LDA()
   bench_MH()
   bench_SMC()
-  bench_PMMH()
+  bench_PMH()
   bench_RMSMC()
-  # bench_BBVI()
 end
 
 benchAll()

@@ -18,9 +18,9 @@ fixed_smc_particles = 100
 fixed_rmsmc_particles, fixed_rmsmc_mhsteps :: Int
 fixed_rmsmc_particles = 10
 fixed_rmsmc_mhsteps   = 1
-fixed_pmmh_mhsteps, fixed_pmmh_particles :: Int
-fixed_pmmh_mhsteps   = 50
-fixed_pmmh_particles = 10
+fixed_pmh_mhsteps, fixed_pmh_particles :: Int
+fixed_pmh_mhsteps   = 50
+fixed_pmh_particles = 10
 fixed_bbvi_steps, fixed_bbvi_samples :: Int
 fixed_bbvi_steps = 50
 fixed_bbvi_samples = 10
