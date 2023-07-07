@@ -144,5 +144,5 @@ runBenchmarks = do
           bench_SMC smc
           bench_PMMH pmmh
           bench_RMSMC rmpfWith
-          bench_BBVI bbvi
+        --   bench_BBVI bbvi
         _   -> error "bad input file"
