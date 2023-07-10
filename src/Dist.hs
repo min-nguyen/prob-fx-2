@@ -606,20 +606,3 @@ instance Distribution UniformD where
   logProb (UniformD min max) idx
     | idx < min || idx > max  = m_neg_inf
     | otherwise               = - log (fromIntegral $ max - min + 1)
-
-{- | Draw a value from a primitive distribution using the @MonadSample@ type class from Monad-Bayes
-sampleBayes :: MB.MonadSample m => Dist a -> m a
-sampleBayes d = case d of
-  (Uniform a b )    -> MB.uniform a b
-  (Categorical as ) -> MB.categorical (Vec.fromList as)
-  (Discrete as )    -> MB.categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
-  (Normal mu std )  -> MB.normal mu std
-  (Gamma k t )      -> MB.gamma k t
-  (Beta a b )       -> MB.beta a b
-  (Bernoulli p )    -> MB.bernoulli p
-  (Binomial n p )   -> replicateM n (MB.bernoulli p) >>= (pure . length . filter (== True))
-  (Poisson l )      -> MB.poisson l
-  (Dirichlet as )   -> MB.dirichlet (Vec.fromList as) >>= pure . Vec.toList
-  (Deterministic v) -> pure v
-  _                 -> error ("Sampling from " ++ show d ++ " is not supported")
--}

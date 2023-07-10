@@ -20,9 +20,7 @@ import Inference.MC.IM as IM ( imWith )
 import Inference.MC.SSMH as SSMH ( ssmhWith )
 import Inference.MC.SMC as SMC ( mulpfilterWith )
 import Inference.MC.RMPF as RMPF ( rmpfWith )
-import Inference.MC.PMMH as PMMH ( pmmhWith )
-import Inference.MC.SMC2 as SMC2 ( smc2 )
-import qualified Inference.VI.BBVI as BBVI
+import Inference.MC.PMH as PMH ( pmhWith )
 import Sampler ( Sampler, sampleIO, liftIO, sampleIOFixed )
 import qualified Trace
 import           Trace (Key(..))
@@ -139,8 +137,8 @@ smcLinRegr n_particles n_datapoints = do
   pure (mus, cs)
 
 -- | RMPF over linear regression
-rmsmcLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
-rmsmcLinRegr n_particles n_mhsteps n_datapoints = do
+rmpfLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+rmpfLinRegr n_particles n_mhsteps n_datapoints = do
   -- Specify model inputs
   let xs            = [0 .. fromIntegral n_datapoints]
   -- Specify model environment
@@ -152,29 +150,15 @@ rmsmcLinRegr n_particles n_mhsteps n_datapoints = do
       cs  = concatMap (get #c) env_outs
   pure (mus, cs)
 
--- | PMMH over linear regression
-pmmhLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
-pmmhLinRegr n_mhsteps n_particles  n_datapoints = do
+-- | PMH over linear regression
+pmhLinRegr :: Int -> Int -> Int -> Sampler ([Double], [Double])
+pmhLinRegr n_mhsteps n_particles  n_datapoints = do
   -- Specify model inputs
   let xs            = [0 .. fromIntegral n_datapoints]
   -- Specify model environment
       env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
   -- Run SMC
-  env_outs <- PMMH.pmmhWith n_mhsteps n_particles (linRegr xs) env_in  (#m <#> #c <#> vnil)
-  -- Get the sampled values of mu and c for each particle
-  let mus = concatMap (get #m) env_outs
-      cs  = concatMap (get #c) env_outs
-  pure (mus, cs)
-
--- | SMC2 over linear regression
-smc2LinRegr :: Int -> Int -> Int -> Int -> Sampler ([Double], [Double])
-smc2LinRegr n_outer_particles n_mhsteps n_inner_particles  n_datapoints = do
-  -- Specify model inputs
-  let xs            = [0 .. fromIntegral n_datapoints]
-  -- Specify model environment
-      env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
-  -- Run SMC
-  env_outs <- SMC2.smc2 n_outer_particles n_mhsteps n_inner_particles (linRegr xs) env_in (#m <#> #c <#> vnil)
+  env_outs <- PMH.pmhWith n_mhsteps n_particles (linRegr xs) env_in  (#m <#> #c <#> vnil)
   -- Get the sampled values of mu and c for each particle
   let mus = concatMap (get #m) env_outs
       cs  = concatMap (get #c) env_outs

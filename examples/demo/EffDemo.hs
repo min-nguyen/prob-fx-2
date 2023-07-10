@@ -137,5 +137,5 @@ lw n = replicateM n . runImpure' . defaultSample . likelihood
 
   ./prob-fx.sh smcLinRegr
 
-  ./prob-fx.sh rmsmcLinRegr
+  ./prob-fx.sh rmpfLinRegr
 -}

@@ -24,7 +24,7 @@ import Effects.MulDist
 import Effects.EnvRW
 import Effects.NonDet
 import qualified Inference.MC.SSMH as SSMH
-import qualified Inference.MC.PMMH as PMMH
+import qualified Inference.MC.PMH as PMH
 import           Inference.MC.RMPF as RMPF (PrtState(..), exec, suspendAfter)
 import qualified Inference.MC.SMC as SMC
 import qualified Inference.MC.SIM as SIM
@@ -43,7 +43,7 @@ import Control.Monad (replicateM)
 -}
 smc2 :: forall env es a xs. (env `ContainsVars` xs)
   => Int                                            -- ^ number of outer SMC particles
-  -> Int                                            -- ^ number of PMMH steps
+  -> Int                                            -- ^ number of PMH steps
   -> Int                                            -- ^ number of inner SMC particles
   -> MulModel env [EnvRW env, MulDist, Sampler] a                  -- ^ model
   -> Env env                                        -- ^ input environment
@@ -63,7 +63,7 @@ smc2 n_outer_prts mh_steps n_inner_prts gen_model env obs_vars = do
 -}
 smc2Internal :: (Member Sampler fs)
   => Int                                          -- ^ number of outer SMC particles
-  -> Int                                          -- ^ number of PMMH steps
+  -> Int                                          -- ^ number of PMH steps
   -> Int                                          -- ^ number of inner SMC particles
   -> [Tag]                                        -- ^ tags indicating variables of interest
   -> Model '[Sampler] a                                    -- ^ probabilistic program
@@ -72,10 +72,10 @@ smc2Internal n_outer_prts mh_steps n_inner_prts tags  m  =
   (handleResample mh_steps n_inner_prts tags  m . SIS.pfilter n_outer_prts (0, Map.empty) RMPF.exec ) m
 
 {- | A handler for resampling particles according to their normalized log-likelihoods,
-     and then pertrubing their sample traces using PMMH.
+     and then pertrubing their sample traces using PMH.
 -}
 handleResample :: Member Sampler fs
-  => Int                                           -- ^ number of PMMH steps
+  => Int                                           -- ^ number of PMH steps
   -> Int                                           -- ^ number of inner SMC particles
   -> [Tag]                                      -- ^ tags indicating variables of interest
   -> Model '[Sampler] a
@@ -96,8 +96,8 @@ handleResample mh_steps n_inner_prts θ model = loop (0 :: Int) where
             let τs_res  = map (τs !!) idxs
             -- | Insert break point to perform SSMH up to
                 model_t = suspendAfter t model
-            -- | Perform PMMH using each resampled particle's sample trace and get the most recent PMMH iteration (where the traces will contain only values specified in θ).
-            pwτθs_mov <- mapM (\τ -> do ((p_mov, _), τθ_mov) : _ <- call (PMMH.pmmh mh_steps n_inner_prts τ θ (unsafeCoerce model_t))
+            -- | Perform PMH using each resampled particle's sample trace and get the most recent PMH iteration (where the traces will contain only values specified in θ).
+            pwτθs_mov <- mapM (\τ -> do ((p_mov, _), τθ_mov) : _ <- call (PMH.pmh mh_steps n_inner_prts τ θ (unsafeCoerce model_t))
                                         return (p_mov, (ws_avg, τθ_mov))
                               ) τs_res
             (loop (t + 1) . k) pwτθs_mov

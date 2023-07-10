@@ -47,16 +47,16 @@ def plotPage(output_file, data_dicts, n_groups, n_rows, marker_dict=None):
         if dict_idx == 0:
           if row_idx == 0:
             ### Set top x-title
-            axis_a[0][col_idx].set_title(prefix_label, fontsize=9)
+            axis_a[0][col_idx].set_title(prefix_label, fontsize=17)
             ### Set bottom x-label
-            axis_a[n_rows - 1][col_idx].set_xlabel(x_parameter, fontsize=6.5)
+            axis_a[n_rows - 1][col_idx].set_xlabel(x_parameter, fontsize=14)
           if col_idx == 0:
             ### Set left y-label
-            axis_a[row_idx][0].set_ylabel("Exec time (s)", fontsize=6.5)
+            axis_a[row_idx][0].set_ylabel("Exec time (s)", fontsize=13)
             ### Set right y-label
             twin_axis = axis_a[row_idx][n_groups - 1].twinx()
             twin_axis.set_yticks([])
-            twin_axis.set_ylabel(suffix_label, fontsize=9, rotation='horizontal', va='center', ha='left')
+            twin_axis.set_ylabel(suffix_label, fontsize=14, rotation='horizontal', va='center', ha='left')
 
         ### Get benchmarks, and use 'zero_to_nan' to avoid plotting dummy results
         prog_values  = zero_to_nan(list(map(float, prog[1:])))
@@ -70,52 +70,55 @@ def plotPage(output_file, data_dicts, n_groups, n_rows, marker_dict=None):
         axis_a[row_idx][col_idx].set_xticks([xmin, xmax])
         axis_a[row_idx][col_idx].xaxis.set_major_locator(plt.MaxNLocator(5))
         axis_a[row_idx][col_idx].tick_params(axis='x', which='major', pad=0)
-        plt.setp(axis_a[row_idx][col_idx].get_xticklabels(), rotation=20,  horizontalalignment='center', fontsize=5)
+        plt.setp(axis_a[row_idx][col_idx].get_xticklabels(), rotation=20,  horizontalalignment='center', fontsize=11)
 
         ### Set y ticks
         axis_a[row_idx][col_idx].set_yticks([0, ymax])
         axis_a[row_idx][col_idx].yaxis.set_major_locator(plt.MaxNLocator(4))
         axis_a[row_idx][col_idx].tick_params(axis='y', which='major', pad=0)
-        plt.setp(axis_a[row_idx][col_idx].get_yticklabels(), fontsize=5)
+        plt.setp(axis_a[row_idx][col_idx].get_yticklabels(), fontsize=11)
 
   ### Adjust padding between subplots
   plt.subplots_adjust(hspace=0.39, wspace=0.25)
   # fig_a.tight_layout()
 
-  ###
-  lgd = fig_a.legend([data_dict["language"] for data_dict in data_dicts], loc="upper center", bbox_to_anchor=(0.5, 0.97), fontsize=14, ncol=len(data_dicts), frameon=False)
-  ### Adjust bounding box for legend in saved figure
-  fig_a.savefig(output_file, bbox_extra_artists=(lgd,), bbox_inches='tight')
+  ### Add legend
+  # lgd = fig_a.legend([data_dict["language"] for data_dict in data_dicts], loc="upper center", bbox_to_anchor=(0.5, 0.97), fontsize=10, ncol=len(data_dicts), frameon=False)
+  ### Save figure + adjust bounding box for legend
+  # fig_a.savefig(output_file, bbox_extra_artists=(lgd,), bbox_inches='tight')
 
 with open('benchmarks-prob-fx.csv') as benchmarks_pfx, open('benchmarks-monad-bayes.csv') as benchmarks_mb, open('benchmarks-gen.csv') as benchmarks_gen:
 
+  num_models  = 3
+  num_infalgs = 4
+
   raw_data_pfx                = [row for row in csv.reader(benchmarks_pfx, delimiter=',')]
-  (models_pfx, raw_data_pfx)  = groupBenchmarks(raw_data_pfx, n_groups=3, n_rows=4)
-  (infs_pfx, _)               = groupBenchmarks(raw_data_pfx, n_groups=4, n_rows=3)
-  models_pfx                  = { "language": "InferFX", "color": '#7570b3', "data": models_pfx }
-  infs_pfx                    = { "language": "InferFX", "color": '#7570b3', "data": infs_pfx }
+  (models_pfx, raw_data_pfx)  = groupBenchmarks(raw_data_pfx, n_groups=num_models, n_rows=num_infalgs)
+  (infs_pfx, _)               = groupBenchmarks(raw_data_pfx, n_groups=num_infalgs, n_rows=num_models)
+  models_pfx                  = { "language": "ProbFX", "color": '#7570b3', "data": models_pfx }
+  infs_pfx                    = { "language": "ProbFX", "color": '#7570b3', "data": infs_pfx }
 
   raw_data_mb                 = [row for row in csv.reader(benchmarks_mb, delimiter=',')]
-  (models_mb, raw_data_mb)    = groupBenchmarks(raw_data_mb, n_groups=3, n_rows=4)
-  (infs_mb, _)                = groupBenchmarks(raw_data_mb, n_groups=4, n_rows=3)
+  (models_mb, raw_data_mb)    = groupBenchmarks(raw_data_mb, n_groups=num_models, n_rows=num_infalgs)
+  (infs_mb, _)                = groupBenchmarks(raw_data_mb, n_groups=num_infalgs, n_rows=num_models)
   models_mb                   = { "language": "MonadBayes", "color": '#d95f02', "data": models_mb }
   infs_mb                     = { "language": "MonadBayes", "color": '#d95f02', "data": infs_mb }
 
   raw_data_gen                = [row for row in csv.reader(benchmarks_gen, delimiter=',')]
-  (models_gen, raw_data_gen)  = groupBenchmarks(raw_data_gen, n_groups=3, n_rows=4)
-  (infs_gen, _)               = groupBenchmarks(raw_data_gen, n_groups=4, n_rows=3)
+  (models_gen, raw_data_gen)  = groupBenchmarks(raw_data_gen, n_groups=num_models, n_rows=num_infalgs)
+  (infs_gen, _)               = groupBenchmarks(raw_data_gen, n_groups=num_infalgs, n_rows=num_models)
   models_gen                  = { "language": "Gen", "color": '#1b9e77', "data": models_gen }
   infs_gen                    = { "language": "Gen", "color": '#1b9e77', "data": infs_gen }
 
-  custom_marker_dict = {"InferFX": ".", "Gen": "x", "MonadBayes": "+"}
+  custom_marker_dict = {"ProbFX": ".", "Gen": "x", "MonadBayes": "+"}
 
   # benchmarks for varying over dataset size
   # groups_pfx_model  = groups_pfx[0:3]
   models = [models_pfx, models_mb, models_gen]
-  plotPage("plot-model-benchmarks.pdf", models, n_groups=3, n_rows=4, marker_dict= custom_marker_dict)
+  plotPage("plot-model-benchmarks.pdf", models, n_groups=num_models, n_rows=num_infalgs, marker_dict= custom_marker_dict)
 
   # # # benchmarks for varying over inference parameters
   # # vary_inf = groups[3:6]
   infs   = [infs_pfx, infs_mb, infs_gen]
-  plotPage("plot-inference-benchmarks.pdf", infs, n_groups=4, n_rows=3, marker_dict = custom_marker_dict)
+  plotPage("plot-inference-benchmarks.pdf", infs, n_groups=num_infalgs, n_rows=num_models, marker_dict = custom_marker_dict)
   plt.show()

@@ -7,47 +7,28 @@ using GenDistributions # Requires: https://github.com/probcomp/GenDistributions.
 using Distributions
 using Gen
 
-# input_file  = "params-prob-fx.txt"
+input_file  = "params.txt"
 output_file = "benchmarks-gen.csv"
-lr_range = [50,100,150,200,250,300,350,400,450,500]
-hmm_range = [50,100,150,200,250,300,350,400,450,500]
-lda_range = [100,200,300,400,500,600,700,800,900,1000]
 fixed_mh_steps = 100
 fixed_smc_particles = 100
 fixed_pmh_mhsteps   = 50
 fixed_pmh_particles = 10
-fixed_rmsmc_particles = 10
-fixed_rmsmc_mhsteps   = 1
-fixed_bbvi_steps = 50
-fixed_bbvi_samples = 10
-mh_range=[100,200,300,400,500,600,700,800,900,1000]
-smc_range=[100,200,300,400,500,600,700,800,900,1000]
-pmh_range=[10,20,30,40,50,60,70,80,90,100]
-rmsmc_range=[10,20,30,40,50,60,70,80,90,100]
-bbvi_range=[200,400,600,800,1000]
+fixed_rmpf_particles = 10
+fixed_rmpf_mhsteps   = 1
 fixed_lr_size = 50
 fixed_hmm_size = 50
 fixed_lda_size = 50
 
 const dirichlet = DistributionsBacked(alpha -> Dirichlet(alpha), (true,), true, Vector{Float64})
 
-# function parseParams()
-#   data   = filter(xs -> xs[1] != '#', readlines(input_file))
-#   params = Vector{Vector{Int64}}(undef, length(data))
-#   for (row_idx, row) in enumerate(data)
-#     println(row)
-#     params[row_idx] = [parse(Int, d) for d in split(row, ",")]
-#   end
-#   println(params)
-#   lr_range = params[1]
-#   hmm_range = params[2]
-#   lda_range = params[3]
-#   mh_range = params[4]
-#   smc_range = params[5]
-#   rmsmc_range = params[6]
-#   pmh_range = params[7]
-#   bbvi_range = params[8]
-# end
+function parseParams()
+  data   = filter(xs -> xs[1] != '#', readlines(input_file))
+  params = Vector{Vector{Int64}}(undef, length(data))
+  for (row_idx, row) in enumerate(data)
+    params[row_idx] = [parse(Int, d) for d in split(row, ",")]
+  end
+  return params
+end
 
 function parseBenchmark(label::String, row)
   fileStream = open(output_file,"a")
@@ -59,7 +40,7 @@ function parseBenchmark(label::String, row)
     end
   end
   write(fileStream, "\n")
-  println("Finished benching " * label * ": " * string(row))
+  println(label * ": " * string(row))
   close(fileStream)
 end
 
@@ -166,7 +147,7 @@ function smcLDA(num_particles::Int, n_words::Int)
   return Gen.sample_unweighted_traces(state, num_particles)
 end
 
-function rmsmcLDA(num_particles::Int, num_mhsteps::Int, n_words::Int)
+function rmpfLDA(num_particles::Int, num_mhsteps::Int, n_words::Int)
   word_idxs = ldaData(n_words)
   init_obs = Gen.choicemap(((:word, 1), word_idxs[1]))
   state = Gen.initialize_particle_filter(lda, (0,), init_obs, num_particles)
@@ -225,24 +206,14 @@ function bench_LDA_PMH()
   parseBenchmark("LatDiri-[ ]-PMH-" * string(fixed_pmh_mhsteps) * "-" * string(fixed_pmh_particles), zeros(length(lda_range)))
 end
 
-function bench_LDA_RMSMC()
+function bench_LDA_RMPF()
   results = Array{Any}(undef, length(lda_range))
   for (i, n_words) in enumerate(lda_range)
-    b = @benchmark rmsmcLDA(fixed_rmsmc_particles, fixed_rmsmc_mhsteps, $n_words)
+    b = @benchmark rmpfLDA(fixed_rmpf_particles, fixed_rmpf_mhsteps, $n_words)
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("LatDiri-[ ]-RMPF-" * string(fixed_rmsmc_particles)  * "-" * string(fixed_rmsmc_mhsteps), results)
-end
-
-function bench_LDA_BBVI()
-  results = Array{Any}(undef, length(lda_range))
-  for (i, n_words) in enumerate(lda_range)
-    b = @benchmark bbviLDA(fixed_bbvi_steps, fixed_bbvi_samples, $n_words)
-    t = mean(b.times)/(1000000000)
-    results[i] = mean(b.times)/(1000000000)
-  end
-  parseBenchmark("LatDiri-[ ]-BBVI-" * string(fixed_bbvi_steps) , results)
+  parseBenchmark("LatDiri-[ ]-RMPF-" * string(fixed_rmpf_particles)  * "-" * string(fixed_rmpf_mhsteps), results)
 end
 
 ######################################## HMM
@@ -304,7 +275,7 @@ function smcHMM(num_particles::Int, n_datapoints::Int)
   end
 end
 
-function rmsmcHMM(num_particles::Int, num_mhsteps::Int, n_datapoints::Int)
+function rmpfHMM(num_particles::Int, num_mhsteps::Int, n_datapoints::Int)
   ys = hmmData(n_datapoints)
   init_obs = Gen.choicemap(((:y, 1), ys[1]))
   state = Gen.initialize_particle_filter(hmm, (0,), init_obs, num_particles)
@@ -366,24 +337,14 @@ function bench_HMM_PMH()
   parseBenchmark("HidMark-[ ]-PMH-" * string(fixed_pmh_mhsteps)  * "-" * string(fixed_pmh_particles), zeros(length(hmm_range)))
 end
 
-function bench_HMM_RMSMC()
+function bench_HMM_RMPF()
   results = Array{Any}(undef, length(hmm_range))
   for (i, n_datapoints) in enumerate(hmm_range)
-    b = @benchmark rmsmcHMM(fixed_rmsmc_particles, fixed_rmsmc_mhsteps, $n_datapoints)
+    b = @benchmark rmpfHMM(fixed_rmpf_particles, fixed_rmpf_mhsteps, $n_datapoints)
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("HidMark-[ ]-RMPF-" * string(fixed_rmsmc_particles)  * "-" * string(fixed_rmsmc_mhsteps), results)
-end
-
-function bench_HMM_BBVI()
-  results = Array{Any}(undef, length(hmm_range))
-  for (i, n_datapoints) in enumerate(hmm_range)
-    b = @benchmark bbviHMM(fixed_bbvi_steps, fixed_bbvi_samples, $n_datapoints)
-    t = mean(b.times)/(1000000000)
-    results[i] = mean(b.times)/(1000000000)
-  end
-  parseBenchmark("HidMark-[ ]-BBVI-" * string(fixed_bbvi_steps), results)
+  parseBenchmark("HidMark-[ ]-RMPF-" * string(fixed_rmpf_particles)  * "-" * string(fixed_rmpf_mhsteps), results)
 end
 
 ######################################## LIN REGR
@@ -466,7 +427,7 @@ function smcLinRegr(num_particles::Int, n_datapoints::Int)
   return Gen.sample_unweighted_traces(state, num_samples)
 end
 
-function rmsmcLinRegr(num_particles::Int, num_mhsteps::Int, n_datapoints::Int)
+function rmpfLinRegr(num_particles::Int, num_mhsteps::Int, n_datapoints::Int)
   (xs, ys) = linRegrData(n_datapoints)
   # construct initial observations
   init_obs = Gen.choicemap(((:y, 1), ys[1]))
@@ -511,7 +472,7 @@ function bbviLinRegr(num_iters::Int, n_samples::Int, n_datapoints::Int)
     iters=num_iters, samples_per_iter=n_samples, verbose=true)
 end
 
-function bench_LR_MH()
+function bench_LR_MH(lr_range)
   results = Array{Any}(undef, length(lr_range))
   for (i, n_datapoints) in enumerate(lr_range)
     b = @benchmark mhLinRegr(fixed_mh_steps, $n_datapoints)
@@ -521,7 +482,7 @@ function bench_LR_MH()
   parseBenchmark("LinRegr-[ ]-SSMH-" * string(fixed_mh_steps), results)
 end
 
-function bench_LR_SMC()
+function bench_LR_SMC(lr_range)
   results = Array{Any}(undef, length(lr_range))
   for (i, n_datapoints) in enumerate(lr_range)
     b = @benchmark smcLinRegr(fixed_smc_particles, $n_datapoints)
@@ -531,33 +492,24 @@ function bench_LR_SMC()
   parseBenchmark("LinRegr-[ ]-MPF-" * string(fixed_smc_particles), results)
 end
 
-function bench_LR_PMH()
+function bench_LR_PMH(lr_range)
   parseBenchmark("LinRegr-[ ]-PMH-" * string(fixed_pmh_mhsteps) * "-" * string(fixed_pmh_particles), zeros(length(lr_range)))
 end
 
-function bench_LR_RMSMC()
+function bench_LR_RMPF(lr_range)
   results = Array{Any}(undef, length(lr_range))
   for (i, n_datapoints) in enumerate(lr_range)
-    b = @benchmark rmsmcLinRegr(fixed_rmsmc_particles, fixed_rmsmc_mhsteps, $n_datapoints)
+    b = @benchmark rmpfLinRegr(fixed_rmpf_particles, fixed_rmpf_mhsteps, $n_datapoints)
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("LinRegr-[ ]-RMPF-" * string(fixed_rmsmc_particles) * "-" * string(fixed_rmsmc_mhsteps), results)
+  parseBenchmark("LinRegr-[ ]-RMPF-" * string(fixed_rmpf_particles) * "-" * string(fixed_rmpf_mhsteps), results)
 end
 
-function bench_LR_BBVI()
-  results = Array{Any}(undef, length(lr_range))
-  for (i, n_datapoints) in enumerate(lr_range)
-    b = @benchmark bbviLinRegr(fixed_bbvi_steps, fixed_bbvi_samples, $n_datapoints)
-    t = mean(b.times)/(1000000000)
-    results[i] = mean(b.times)/(1000000000)
-  end
-  parseBenchmark("LinRegr-[ ]-BBVI-" * string(fixed_bbvi_steps), results)
-end
 
 ######################################## SSMH
 
-function bench_MH_LR()
+function bench_MH_LR(mh_range)
   results = Array{Any}(undef, length(mh_range))
   for (i, mh_steps) in enumerate(mh_range)
     b = @benchmark mhLinRegr($mh_steps, fixed_lr_size)
@@ -567,7 +519,7 @@ function bench_MH_LR()
   parseBenchmark("SSMH-[ ]-LinRegr-" * string(fixed_lr_size), results)
 end
 
-function bench_MH_HMM()
+function bench_MH_HMM(mh_range)
   results = Array{Any}(undef, length(mh_range))
   for (i, mh_steps) in enumerate(mh_range)
     b = @benchmark mhHMM($mh_steps, fixed_hmm_size)
@@ -577,7 +529,7 @@ function bench_MH_HMM()
   parseBenchmark("SSMH-[ ]-HidMark-" * string(fixed_hmm_size), results)
 end
 
-function bench_MH_LDA()
+function bench_MH_LDA(mh_range)
   results = Array{Any}(undef, length(mh_range))
   for (i, mh_steps) in enumerate(mh_range)
     b = @benchmark mhLDA($mh_steps, fixed_lda_size)
@@ -589,7 +541,7 @@ end
 
 ######################################## SMC
 
-function bench_SMC_LR()
+function bench_SMC_LR(smc_range)
   results = Array{Any}(undef, length(smc_range))
   for (i, n_particles) in enumerate(smc_range)
     b = @benchmark smcLinRegr($n_particles, fixed_lr_size)
@@ -599,7 +551,7 @@ function bench_SMC_LR()
   parseBenchmark("MPF-[ ]-LinRegr-" * string(fixed_lr_size), results)
 end
 
-function bench_SMC_HMM()
+function bench_SMC_HMM(smc_range)
   results = Array{Any}(undef, length(smc_range))
   for (i, n_particles) in enumerate(smc_range)
     b = @benchmark smcHMM($n_particles, fixed_hmm_size)
@@ -609,7 +561,7 @@ function bench_SMC_HMM()
   parseBenchmark("MPF-[ ]-HidMark-" * string(fixed_hmm_size), results)
 end
 
-function bench_SMC_LDA()
+function bench_SMC_LDA(smc_range)
   results = Array{Any}(undef, length(smc_range))
   for (i, n_particles) in enumerate(smc_range)
     b = @benchmark smcHMM($n_particles, fixed_lda_size)
@@ -621,145 +573,120 @@ end
 
 ######################################## PMH
 
-function bench_PMH_LR()
+function bench_PMH_LR(pmh_range)
   parseBenchmark("PMH-" * string(fixed_pmh_mhsteps) * "-[ ]-LinRegr-" * string(fixed_lr_size), zeros(length(pmh_range)))
 end
 
-function bench_PMH_HMM()
+function bench_PMH_HMM(pmh_range)
   parseBenchmark("PMH-" * string(fixed_pmh_mhsteps) * "-[ ]-HidMark-" * string(fixed_hmm_size), zeros(length(pmh_range)))
 end
 
-function bench_PMH_LDA()
+function bench_PMH_LDA(pmh_range)
   parseBenchmark("PMH-" * string(fixed_pmh_mhsteps) * "-[ ]-LatDiri-" * string(fixed_lda_size), zeros(length(pmh_range)))
 end
 
 ######################################## RMPF
 
-function bench_RMSMC_LR()
-  results = Array{Any}(undef, length(rmsmc_range))
-  for (i, n_mhsteps) in enumerate(rmsmc_range)
-    b = @benchmark rmsmcLinRegr(fixed_rmsmc_particles, $n_mhsteps, fixed_lr_size)
+function bench_RMPF_LR(rmpf_range)
+  results = Array{Any}(undef, length(rmpf_range))
+  for (i, n_mhsteps) in enumerate(rmpf_range)
+    b = @benchmark rmpfLinRegr(fixed_rmpf_particles, $n_mhsteps, fixed_lr_size)
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("RMPF-" * string(fixed_rmsmc_particles) * "-[ ]-LinRegr-" * string(fixed_lr_size), results)
+  parseBenchmark("RMPF-" * string(fixed_rmpf_particles) * "-[ ]-LinRegr-" * string(fixed_lr_size), results)
 end
 
-function bench_RMSMC_HMM()
-  results = Array{Any}(undef, length(rmsmc_range))
-  for (i, n_mhsteps) in enumerate(rmsmc_range)
-    b = @benchmark rmsmcHMM(fixed_rmsmc_particles, $n_mhsteps, fixed_hmm_size)
+function bench_RMPF_HMM(rmpf_range)
+  results = Array{Any}(undef, length(rmpf_range))
+  for (i, n_mhsteps) in enumerate(rmpf_range)
+    b = @benchmark rmpfHMM(fixed_rmpf_particles, $n_mhsteps, fixed_hmm_size)
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("RMPF-" * string(fixed_rmsmc_particles) * "[ ]-HidMark-" * string(fixed_hmm_size), results)
+  parseBenchmark("RMPF-" * string(fixed_rmpf_particles) * "-[ ]-HidMark-" * string(fixed_hmm_size), results)
 end
 
-function bench_RMSMC_LDA()
-  results = Array{Any}(undef, length(rmsmc_range))
-  for (i, n_mhsteps) in enumerate(rmsmc_range)
-    b = @benchmark rmsmcHMM(fixed_rmsmc_particles, $n_mhsteps, fixed_lda_size)
+function bench_RMPF_LDA(rmpf_range)
+  results = Array{Any}(undef, length(rmpf_range))
+  for (i, n_mhsteps) in enumerate(rmpf_range)
+    b = @benchmark rmpfHMM(fixed_rmpf_particles, $n_mhsteps, fixed_lda_size)
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("RMPF-" * string(fixed_rmsmc_particles) * "[ ]-LatDiri-" * string(fixed_lda_size), results)
-end
-
-######################################## BBVI
-
-function bench_BBVI_LR()
-  results = Array{Any}(undef, length(bbvi_range))
-  for (i, bbvi_steps) in enumerate(bbvi_range)
-    b = @benchmark bbviLinRegr($bbvi_steps, fixed_bbvi_samples, fixed_lr_size)
-    t = mean(b.times)/(1000000000)
-    results[i] = mean(b.times)/(1000000000)
-  end
-  parseBenchmark("BBVI-[ ]-" * "-LinRegr-" * string(fixed_lr_size), results)
-end
-
-function bench_BBVI_HMM()
-  results = Array{Any}(undef, length(bbvi_range))
-  for (i, bbvi_steps) in enumerate(bbvi_range)
-    b = @benchmark bbviHMM($bbvi_steps, fixed_bbvi_samples, fixed_hmm_size)
-    t = mean(b.times)/(1000000000)
-    results[i] = mean(b.times)/(1000000000)
-  end
-  parseBenchmark("BBVI-[ ]-" *  "-HidMark-" * string(fixed_hmm_size), results)
-end
-
-function bench_BBVI_LDA()
-  results = Array{Any}(undef, length(bbvi_range))
-  for (i, bbvi_steps) in enumerate(bbvi_range)
-    b = @benchmark bbviLDA($bbvi_steps, fixed_bbvi_samples, fixed_lda_size)
-    t = mean(b.times)/(1000000000)
-    results[i] = mean(b.times)/(1000000000)
-  end
-  parseBenchmark("BBVI-[ ]-" * "-LatDiri-" * string(fixed_lda_size), results)
+  parseBenchmark("RMPF-" * string(fixed_rmpf_particles) * "-[ ]-LatDiri-" * string(fixed_lda_size), results)
 end
 
 ######################################## Top-level benchmarks
 
-function bench_LR()
+function bench_LR(lr_range)
   parseBenchmark("Num datapoints", lr_range)
-  bench_LR_MH()
-  bench_LR_SMC()
-  bench_LR_PMH()
-  bench_LR_RMSMC()
+  bench_LR_MH(lr_range)
+  bench_LR_SMC(lr_range)
+  bench_LR_PMH(lr_range)
+  bench_LR_RMPF(lr_range)
 end
 
-function bench_HMM()
+function bench_HMM(hmm_range)
   parseBenchmark("Num nodes", hmm_range)
-  bench_HMM_MH()
-  bench_HMM_SMC()
-  bench_HMM_PMH()
-  bench_HMM_RMSMC()
+  bench_HMM_MH(hmm_range)
+  bench_HMM_SMC(hmm_range)
+  bench_HMM_PMH(hmm_range)
+  bench_HMM_RMPF(hmm_range)
 end
 
-function bench_LDA()
+function bench_LDA(lda_range)
   parseBenchmark("Num words", lda_range)
-  bench_LDA_MH()
-  bench_LDA_SMC()
-  bench_LDA_PMH()
-  bench_LDA_RMSMC()
-  # bench_LDA_BBVI()
+  bench_LDA_MH(lda_range)
+  bench_LDA_SMC(lda_range)
+  bench_LDA_PMH(lda_range)
+  bench_LDA_RMPF(lda_range)
 end
 
-function bench_MH()
+function bench_MH(mh_range)
   parseBenchmark("Num SSMH steps", mh_range)
-  bench_MH_LR()
-  bench_MH_HMM()
-  bench_MH_LDA()
+  bench_MH_LR(mh_range)
+  bench_MH_HMM(mh_range)
+  bench_MH_LDA(mh_range)
 end
 
-function bench_SMC()
+function bench_SMC(smc_range)
   parseBenchmark("Num MPF particles", smc_range)
-  bench_SMC_LR()
-  bench_SMC_HMM()
-  bench_SMC_LDA()
+  bench_SMC_LR(smc_range)
+  bench_SMC_HMM(smc_range)
+  bench_SMC_LDA(smc_range)
 end
 
-function bench_PMH()
+function bench_PMH(pmh_range)
   parseBenchmark("Num PMH particles", pmh_range)
-  bench_PMH_LR()
-  bench_PMH_HMM()
-  bench_PMH_LDA()
+  bench_PMH_LR(pmh_range)
+  bench_PMH_HMM(pmh_range)
+  bench_PMH_LDA(pmh_range)
 end
 
-function bench_RMSMC()
-  parseBenchmark("Num RMPF mh steps", rmsmc_range)
-  bench_RMSMC_LR()
-  bench_RMSMC_HMM()
-  bench_RMSMC_LDA()
+function bench_RMPF(rmpf_range)
+  parseBenchmark("Num RMPF mh steps", rmpf_range)
+  bench_RMPF_LR(rmpf_range)
+  bench_RMPF_HMM(rmpf_range)
+  bench_RMPF_LDA(rmpf_range)
 end
 
-function benchAll()
-  bench_LR()
-  bench_HMM()
-  bench_LDA()
-  bench_MH()
-  bench_SMC()
-  bench_PMH()
-  bench_RMSMC()
+function runBenchmarks()
+  params = parseParams()
+  lr_range = params[1]
+  hmm_range = params[2]
+  lda_range = params[3]
+  mh_range = params[4]
+  smc_range = params[5]
+  rmpf_range = params[6]
+  pmh_range = params[7]
+  bench_LR(lr_range)
+  bench_HMM(hmm_range)
+  bench_LDA(lda_range)
+  bench_MH(mh_range)
+  bench_SMC(smc_range)
+  bench_PMH(pmh_range)
+  bench_RMPF(rmpf_range)
 end
 
-benchAll()
+runBenchmarks()

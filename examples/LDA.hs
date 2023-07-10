@@ -30,10 +30,7 @@ import Inference.MC.LW as LW ( lwWith )
 import Inference.MC.SSMH as SSMH ( ssmhWith )
 import Inference.MC.SMC as SMC ( mulpfilterWith )
 import Inference.MC.RMPF as RMPF ( rmpfWith )
-import Inference.MC.PMMH as PMMH ( pmmhWith )
-import Inference.VI.BBVI as BBVI
-import Data.Maybe
-import Data.Typeable
+import Inference.MC.PMH as PMH ( pmhWith )
 {-
 import Numeric.Log ( Log )
 import Inference.MB as MB ( handleMBayes )
@@ -199,8 +196,8 @@ smcLDA n_particles n_words = do
   return (map Vec.toList θs, map Vec.toList φs)
 
 -- | RMPF inference on topic model (predictive)
-rmsmcLDA :: Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
-rmsmcLDA n_particles n_mhsteps n_words = do
+rmpfLDA :: Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
+rmpfLDA n_particles n_mhsteps n_words = do
 
   let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
@@ -213,14 +210,14 @@ rmsmcLDA n_particles n_mhsteps n_words = do
       φs         = get #φ env_pred
   return (map Vec.toList θs, map Vec.toList φs)
 
--- | PMMH inference on topic model (predictive)
-pmmhLDA :: Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
-pmmhLDA n_mhsteps n_particles n_words = do
+-- | PMH inference on topic model (predictive)
+pmhLDA :: Int -> Int -> Int -> Sampler ([[Double]], [[Double]])
+pmhLDA n_mhsteps n_particles n_words = do
 
   let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document  <:> enil
 
-  env_outs     <- PMMH.pmmhWith n_mhsteps n_particles  (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
+  env_outs     <- PMH.pmhWith n_mhsteps n_particles  (topicModel vocab n_topics n_words) env_in (#φ <#> #θ <#> vnil)
   -- Draw the most recent sampled parameters
   let env_pred   = head env_outs
       θs         = get #θ env_pred
