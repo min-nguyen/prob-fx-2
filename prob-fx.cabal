@@ -47,11 +47,9 @@ library
                       Inference.MC.SMC,
                       Inference.MC.RMPF,
                       Inference.MC.PIM,
-                      Inference.MC.PMMH,
+                      Inference.MC.PMH,
                       Inference.MC.SMC2,
                       Inference.MC.MH,
-                      Inference.VI.VI,
-                      Inference.VI.BBVI,
                       Inference.Guided.Guided,
                       Inference.Guided.BBVI,
                       Inference.Guided.MLE,
@@ -99,7 +97,7 @@ library
                       reflection                    >= 2.1.6 && < 2.2,
                       vec                           >= 0.4.1 && < 0.5,
                       fin                           >= 0.2.1 && < 0.3,
-                      -- monad-bayes                   >= 1.1.0 && < 1.1.1,
+                      monad-bayes                   >= 1.1.0 && < 1.1.1,
                       split                         >= 0.2.3 && < 0.3
 
   -- Base language which the package is written in.
@@ -115,7 +113,7 @@ executable prob-fx
                       TypeOperators,
                       ScopedTypeVariables
   main-is:            Main.hs
-  other-modules:      CoinFlip,
+  other-modules:      AD,
                       DataSets,
                       HMM,
                       GMM,
@@ -125,11 +123,11 @@ executable prob-fx
                       Radon,
                       SIR,
                       SIRNonModular,
-                      GuidedExamples,
-                      VIExamples
+                      GuidedExamples
   build-depends:      base,
                       containers,
                       extensible,
+                      erf,
                       split,
                       prob-fx,
                       log-domain,
@@ -155,7 +153,6 @@ executable benchmarks
                       LDA,
                       LinRegr,
                       GuidedExamples,
-                      VIExamples,
                       BenchmarkUtil,
                       MonadBayes,
                       ProbFX
@@ -186,8 +183,7 @@ test-suite tests
   main-is:            Main.hs
   other-modules:      Test.Numerics,
                       Test.Inference,
-                      Test.InferenceExpected,
-                      EffDemo,
+                      Test.Expected,
                       Examples,
                       DataSets,
                       HMM,
@@ -197,8 +193,7 @@ test-suite tests
                       LogRegr,
                       Radon,
                       SIR,
-                      GuidedExamples,
-                      VIExamples
+                      GuidedExamples
   build-depends:      base,
                       containers,
                       extensible,

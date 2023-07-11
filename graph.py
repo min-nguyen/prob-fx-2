@@ -42,7 +42,7 @@ def main():
     axs1.scatter(mus, ps)
     axs1.set_title('Linear regression - Likelihood Weighting')
 
-  if arg in ["mhLinRegrOnce", "mhLinRegr", "smcLinRegr", "rmsmcLinRegr", "pmmhLinRegr", "smc2LinRegr"]:
+  if arg in ["mhLinRegrOnce", "mhLinRegr", "smcLinRegr", "rmpfLinRegr", "pmhLinRegr"]:
     mus = data[0]
     cs  = data[1]
     fig1, axs1 = plt.subplots(nrows=1)
@@ -55,7 +55,7 @@ def main():
     axs1.set_ylabel("frequency")
     axs1.hist(cs, bins=25)
     axs1.set_title('Linear regression - Metropolis Hastings')
-  if arg in ["bbviLinRegr", "mleLinRegr", "mapLinRegr"]:
+  if arg in ["bbviLinRegr", "mleLinRegr"]:
     mu_mean = data[0][0]
     mu_std  = data[0][1]
     c_mean  = data[1][0]
@@ -216,7 +216,7 @@ def main():
     axs1.set_ylabel('probability')
     axs1.scatter(obs_p, ps_normalised)
     axs1.set_title('HMM - Likelihood Weighting')
-  if arg in ["mhHMM", "smcHMM", "rmsmcHMM", "pmmhHMM", "smc2HMM"]:
+  if arg in ["mhHMM", "smcHMM", "rmpfHMM", "pmhHMM"]:
     # Note : this works less well for certain parameters of trans_p and obs_p used for the training data
     trans_ps_unique = data[0]
     obs_ps_unique   = data[1]
@@ -231,24 +231,6 @@ def main():
     axs2.hist(obs_ps_unique, bins=50)
     axs2.set_title('HMM - Metropolis Hastings Posterior (Obs Idx)')
     plt.show()
-  if arg in ["bbviHMM", "mleHMM", "mapHMM"]:
-    trans_alpha = data[0][0]
-    trans_beta  = data[0][1]
-    obs_alpha   = data[1][0]
-    obs_beta    = data[1][1]
-    x_trans = np.linspace(beta.ppf(0.01, trans_alpha, trans_beta), beta.ppf(0.99, trans_alpha, trans_beta), 100)
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.plot(x_trans, beta.pdf(x_trans, trans_alpha, trans_beta), 'r-')
-    plt.title('BBVI - Transition Beta Distribution')
-    plt.xlabel('Values of Random Variable X (0, 1)')
-    plt.ylabel('Probability')
-    x_obs = np.linspace(beta.ppf(0.01, obs_alpha, obs_beta), beta.ppf(0.99, obs_alpha, obs_beta), 100)
-    fig2, axs2 = plt.subplots(nrows=1)
-    axs2.plot(x_obs, beta.pdf(x_obs, obs_alpha, obs_beta), 'r-')
-    plt.title('BBVI - Observation Beta Distribution')
-    plt.xlabel('Values of Random Variable X (0, 1)')
-    plt.ylabel('Probability')
-    plt.show()
 
   if arg == "simLDA":
     words = list(np.array(data).ravel())
@@ -256,7 +238,7 @@ def main():
     ws = list(set(words))
     freqs = [ words.count(w)  for w in ws]
     ax.bar(ws, freqs)
-  if arg in ["mhLDA", "smcLDA", "rmsmcLDA", "pmmhLDA"]:
+  if arg in ["mhLDA", "smcLDA", "rmpfLDA", "pmhLDA"]:
     ws       = ['DNA', 'evolution', 'parsing', 'phonology']
     topic_ps = data[0][0]
     topic_0s = data[1][0]
@@ -270,20 +252,6 @@ def main():
     _, ax1 = plt.subplots(nrows=1)
     ax1.bar(ws, topic_1s, 0.8)
     plt.title('Topic-Word Distribution 1')
-  if arg in ["bbviLDA", "mleLDA", "mapLDA"]:
-    ws       = ['DNA', 'evolution', 'parsing', 'phonology']
-    topic_ps = data[0]
-    topic_0s = data[1]
-    topic_1s = data[2]
-    _, ax = plt.subplots(nrows=1)
-    ax.bar(['Topic 0', 'Topic 1'], topic_ps, 0.8)
-    plt.title('Document-Topic Dirichlet Concentrations')
-    _, ax0 = plt.subplots(nrows=1)
-    ax0.bar(ws, topic_0s, 0.8)
-    plt.title('Topic-Word Dirichlet Concentrations 0')
-    _, ax1 = plt.subplots(nrows=1)
-    ax1.bar(ws, topic_1s, 0.8)
-    plt.title('Topic-Word Dirichlet Concentrations 1')
 
   if arg == "simRadon":
     basement_ys   = data[0]

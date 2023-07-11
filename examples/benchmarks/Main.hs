@@ -8,11 +8,6 @@ module Main where
 import qualified ProbFX
 import qualified MonadBayes
 
-{-
-    MonadBayes Benchmarks
--}
-
-
 main :: IO ()
 main = do
  ProbFX.runBenchmarks

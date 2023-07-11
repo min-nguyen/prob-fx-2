@@ -8,10 +8,10 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant $" #-}
 
-{- | Particle Marginal Metropolis-Hastings inference.
+{- | Particle Metropolis-Hastings inference.
 -}
 
-module Inference.MC.PMMH where
+module Inference.MC.PMH where
 
 import Comp
 import Sampler
@@ -33,24 +33,24 @@ import qualified Data.Vector as Vector
 
 {- | Top-level wrapper for PMMH inference.
 -}
-pmmhWith :: forall env vars a. (env `ContainsVars` vars)
+pmhWith :: forall env vars a. (env `ContainsVars` vars)
   => Int                                            -- ^ number of SSMH steps
   -> Int                                            -- ^ number of particles
   -> MulModel env [EnvRW env, MulDist, Sampler] a                  -- ^ model
   -> Env env                                        -- ^ input environment
   -> Vars vars                                      -- ^ parameter names
   -> Sampler [Env env]                              -- ^ output environments
-pmmhWith mh_steps n_prts gen_model env_in obs_vars = do
+pmhWith mh_steps n_prts gen_model env_in obs_vars = do
   -- | Handle model to probabilistic program
   let model   = conditionWith env_in gen_model
   -- | Set initial trace to empty + convert
   let τ_0     = Map.empty
       θ       = varsToStrs @env obs_vars
   -- | Initialise sample trace
-  map (snd . fst . fst) <$> pmmh mh_steps n_prts τ_0 θ model
+  map (snd . fst . fst) <$> pmh mh_steps n_prts τ_0 θ model
 
-pmmh :: Int -> Int -> Trace -> [Tag] -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
-pmmh m n τ θ model = do
+pmh :: Int -> Int -> Trace -> [Tag] -> Model '[Sampler] a -> Sampler [((a, LogP), Trace)]
+pmh m n τ θ model = do
   -- The provided trace τ may be empty (if PMMH is called as a top-level function) or may not be empty (if called from SMC2);
   -- Therefore, we fully populate it using reuseTrace, but retain any existing samples.
   (_, τ) <- (runImpure . reuseTrace τ . defaultObserve) model
