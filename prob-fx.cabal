@@ -121,6 +121,7 @@ executable prob-fx
                       LinRegr,
                       LogRegr,
                       Radon,
+                      School,
                       SIR,
                       SIRNonModular,
                       GuidedExamples
