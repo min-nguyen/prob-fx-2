@@ -11,8 +11,8 @@ import Statistics.Types
 import Control.DeepSeq
 import Criterion (benchmark', benchmarkWith')
 
-fixed_mh_steps :: Int
-fixed_mh_steps = 100
+fixed_ssmh_steps :: Int
+fixed_ssmh_steps = 100
 fixed_smc_particles :: Int
 fixed_smc_particles = 100
 fixed_rmpf_particles, fixed_rmpf_mhsteps :: Int

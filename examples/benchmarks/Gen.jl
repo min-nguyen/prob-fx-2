@@ -9,7 +9,7 @@ using Gen
 
 input_file  = "params.txt"
 output_file = "benchmarks-gen.csv"
-fixed_mh_steps = 100
+fixed_ssmh_steps = 100
 fixed_smc_particles = 100
 fixed_pmh_mhsteps   = 50
 fixed_pmh_particles = 10
@@ -115,7 +115,7 @@ end
   return word_idxs
 end
 
-function mhLDA(num_iters::Int, n_words::Int)
+function ssmhLDA(num_iters::Int, n_words::Int)
   word_idxs = ldaData(n_words)
   constraints = choicemap()
   for (i, word) in enumerate(word_idxs)
@@ -182,17 +182,17 @@ function bbviLDA(num_iters::Int, n_samples::Int, n_words::Int)
     iters=num_iters, samples_per_iter=n_samples, verbose=true)
 end
 
-function bench_LDA_MH()
+function bench_LDA_SSMH(lda_range)
   results = Array{Any}(undef, length(lda_range))
   for (i, n_words) in enumerate(lda_range)
-    b = @benchmark mhLDA(fixed_mh_steps, $n_words)
+    b = @benchmark ssmhLDA(fixed_ssmh_steps, $n_words)
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("LatDiri-[ ]-SSMH-" * string(fixed_mh_steps), results)
+  parseBenchmark("LatDiri-[ ]-SSMH-" * string(fixed_ssmh_steps), results)
 end
 
-function bench_LDA_SMC()
+function bench_LDA_SMC(lda_range)
   results = Array{Any}(undef, length(lda_range))
   for (i, n_words) in enumerate(lda_range)
     b = @benchmark smcLDA(fixed_smc_particles, $n_words)
@@ -202,11 +202,11 @@ function bench_LDA_SMC()
   parseBenchmark("LatDiri-[ ]-MPF-" * string(fixed_smc_particles), results)
 end
 
-function bench_LDA_PMH()
+function bench_LDA_PMH(lda_range)
   parseBenchmark("LatDiri-[ ]-PMH-" * string(fixed_pmh_mhsteps) * "-" * string(fixed_pmh_particles), zeros(length(lda_range)))
 end
 
-function bench_LDA_RMPF()
+function bench_LDA_RMPF(lda_range)
   results = Array{Any}(undef, length(lda_range))
   for (i, n_words) in enumerate(lda_range)
     b = @benchmark rmpfLDA(fixed_rmpf_particles, fixed_rmpf_mhsteps, $n_words)
@@ -244,7 +244,7 @@ end
   return ys
 end
 
-function mhHMM(num_iters::Int, n_datapoints::Int)
+function ssmhHMM(num_iters::Int, n_datapoints::Int)
   ys = hmmData(n_datapoints)
   constraints = choicemap()
   for (i, y) in enumerate(ys)
@@ -313,17 +313,17 @@ function bbviHMM(num_iters::Int, n_samples::Int, n_datapoints::Int)
     iters=num_iters, samples_per_iter=n_samples, verbose=true)
 end
 
-function bench_HMM_MH()
+function bench_HMM_SSMH(hmm_range)
   results = Array{Any}(undef, length(hmm_range))
   for (i, n_datapoints) in enumerate(hmm_range)
-    b = @benchmark mhHMM(fixed_mh_steps, $n_datapoints)
+    b = @benchmark ssmhHMM(fixed_ssmh_steps, $n_datapoints)
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("HidMark-[ ]-SSMH-" * string(fixed_mh_steps), results)
+  parseBenchmark("HidMark-[ ]-SSMH-" * string(fixed_ssmh_steps), results)
 end
 
-function bench_HMM_SMC()
+function bench_HMM_SMC(hmm_range)
   results = Array{Any}(undef, length(hmm_range))
   for (i, n_datapoints) in enumerate(hmm_range)
     b = @benchmark smcHMM(fixed_smc_particles, $n_datapoints)
@@ -333,11 +333,11 @@ function bench_HMM_SMC()
   parseBenchmark("HidMark-[ ]-MPF-" * string(fixed_smc_particles), results)
 end
 
-function bench_HMM_PMH()
+function bench_HMM_PMH(hmm_range)
   parseBenchmark("HidMark-[ ]-PMH-" * string(fixed_pmh_mhsteps)  * "-" * string(fixed_pmh_particles), zeros(length(hmm_range)))
 end
 
-function bench_HMM_RMPF()
+function bench_HMM_RMPF(hmm_range)
   results = Array{Any}(undef, length(hmm_range))
   for (i, n_datapoints) in enumerate(hmm_range)
     b = @benchmark rmpfHMM(fixed_rmpf_particles, fixed_rmpf_mhsteps, $n_datapoints)
@@ -382,7 +382,7 @@ end
   c = @trace(normal(c_mu, exp(c_std)), :c)
 end
 
-function mhLinRegr(num_iters::Int, n_datapoints::Int)
+function ssmhLinRegr(num_iters::Int, n_datapoints::Int)
   # Create a set of constraints fixing the
   # y coordinates to the observed y values
   (xs, ys) = linRegrData(n_datapoints)
@@ -472,14 +472,14 @@ function bbviLinRegr(num_iters::Int, n_samples::Int, n_datapoints::Int)
     iters=num_iters, samples_per_iter=n_samples, verbose=true)
 end
 
-function bench_LR_MH(lr_range)
+function bench_LR_SSMH(lr_range)
   results = Array{Any}(undef, length(lr_range))
   for (i, n_datapoints) in enumerate(lr_range)
-    b = @benchmark mhLinRegr(fixed_mh_steps, $n_datapoints)
+    b = @benchmark ssmhLinRegr(fixed_ssmh_steps, $n_datapoints)
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
-  parseBenchmark("LinRegr-[ ]-SSMH-" * string(fixed_mh_steps), results)
+  parseBenchmark("LinRegr-[ ]-SSMH-" * string(fixed_ssmh_steps), results)
 end
 
 function bench_LR_SMC(lr_range)
@@ -509,30 +509,30 @@ end
 
 ######################################## SSMH
 
-function bench_MH_LR(mh_range)
-  results = Array{Any}(undef, length(mh_range))
-  for (i, mh_steps) in enumerate(mh_range)
-    b = @benchmark mhLinRegr($mh_steps, fixed_lr_size)
+function bench_SSMH_LR(ssmh_range)
+  results = Array{Any}(undef, length(ssmh_range))
+  for (i, ssmh_steps) in enumerate(ssmh_range)
+    b = @benchmark ssmhLinRegr($ssmh_steps, fixed_lr_size)
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
   parseBenchmark("SSMH-[ ]-LinRegr-" * string(fixed_lr_size), results)
 end
 
-function bench_MH_HMM(mh_range)
-  results = Array{Any}(undef, length(mh_range))
-  for (i, mh_steps) in enumerate(mh_range)
-    b = @benchmark mhHMM($mh_steps, fixed_hmm_size)
+function bench_SSMH_HMM(ssmh_range)
+  results = Array{Any}(undef, length(ssmh_range))
+  for (i, ssmh_steps) in enumerate(ssmh_range)
+    b = @benchmark ssmhHMM($ssmh_steps, fixed_hmm_size)
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
   parseBenchmark("SSMH-[ ]-HidMark-" * string(fixed_hmm_size), results)
 end
 
-function bench_MH_LDA(mh_range)
-  results = Array{Any}(undef, length(mh_range))
-  for (i, mh_steps) in enumerate(mh_range)
-    b = @benchmark mhLDA($mh_steps, fixed_lda_size)
+function bench_SSMH_LDA(ssmh_range)
+  results = Array{Any}(undef, length(ssmh_range))
+  for (i, ssmh_steps) in enumerate(ssmh_range)
+    b = @benchmark ssmhLDA($ssmh_steps, fixed_lda_size)
     t = mean(b.times)/(1000000000)
     results[i] = mean(b.times)/(1000000000)
   end
@@ -621,7 +621,7 @@ end
 
 function bench_LR(lr_range)
   parseBenchmark("Num datapoints", lr_range)
-  bench_LR_MH(lr_range)
+  bench_LR_SSMH(lr_range)
   bench_LR_SMC(lr_range)
   bench_LR_PMH(lr_range)
   bench_LR_RMPF(lr_range)
@@ -629,7 +629,7 @@ end
 
 function bench_HMM(hmm_range)
   parseBenchmark("Num nodes", hmm_range)
-  bench_HMM_MH(hmm_range)
+  bench_HMM_SSMH(hmm_range)
   bench_HMM_SMC(hmm_range)
   bench_HMM_PMH(hmm_range)
   bench_HMM_RMPF(hmm_range)
@@ -637,17 +637,17 @@ end
 
 function bench_LDA(lda_range)
   parseBenchmark("Num words", lda_range)
-  bench_LDA_MH(lda_range)
+  bench_LDA_SSMH(lda_range)
   bench_LDA_SMC(lda_range)
   bench_LDA_PMH(lda_range)
   bench_LDA_RMPF(lda_range)
 end
 
-function bench_MH(mh_range)
-  parseBenchmark("Num SSMH steps", mh_range)
-  bench_MH_LR(mh_range)
-  bench_MH_HMM(mh_range)
-  bench_MH_LDA(mh_range)
+function bench_SSMH(ssmh_range)
+  parseBenchmark("Num SSMH steps", ssmh_range)
+  bench_SSMH_LR(ssmh_range)
+  bench_SSMH_HMM(ssmh_range)
+  bench_SSMH_LDA(ssmh_range)
 end
 
 function bench_SMC(smc_range)
@@ -676,14 +676,14 @@ function runBenchmarks()
   lr_range = params[1]
   hmm_range = params[2]
   lda_range = params[3]
-  mh_range = params[4]
+  ssmh_range = params[4]
   smc_range = params[5]
   rmpf_range = params[6]
   pmh_range = params[7]
   bench_LR(lr_range)
   bench_HMM(hmm_range)
   bench_LDA(lda_range)
-  bench_MH(mh_range)
+  bench_SSMH(ssmh_range)
   bench_SMC(smc_range)
   bench_PMH(pmh_range)
   bench_RMPF(rmpf_range)

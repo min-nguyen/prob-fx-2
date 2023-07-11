@@ -141,14 +141,14 @@ simSIR n_days = do
   return (sirs, 𝜉s)
 
 -- | SSMH inference from SIR model:
-mhSIR
+ssmhSIR
   -- | number of SSMH iterations
   :: Int
   -- | number of days
   -> Int
   -- | ([ρ], [β])
   -> Sampler ([Double], [Double])
-mhSIR n_mhsteps n_days = do
+ssmhSIR n_mhsteps n_days = do
   -- Simulate some observed infections
   𝜉s <- snd <$> simSIR n_days
   -- Specify model input of 762 susceptible and 1 infected
@@ -308,14 +308,14 @@ simSIRMB n_days = do
   pure (sirs, 𝜉s)
 
 -- | Metropolis-Hastings from the SIR model in Monad Bayes.
-mhSIRMB
+ssmhSIRMB
   -- | number of SSMH iterations
   :: Int
   -- | number of days
   -> Int
   -- | ([ρ], [β])
   -> IO ([Double], [Double])
-mhSIRMB n_mhsteps n_days = do
+ssmhSIRMB n_mhsteps n_days = do
   𝜉s <- snd <$> simSIRMB n_days
   let sir_0      = #s @= 762 <: #i @= 1 <: #r @= 0 <: emptyRecord
       env = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> enil
