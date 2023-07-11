@@ -19,10 +19,10 @@ testLwLinRegr = TestCase $ do
   output <- sampleIOFixed (lwLinRegr 1000 10)
   assertEqual "Testing (lwLinRegr 1000 10)"  lwLinRegrExpected output
 
-testMhLinRegr :: Test
-testMhLinRegr = TestCase $ do
-  output <- sampleIOFixed (mhLinRegr 10000 50)
-  assertEqual "Testing (mhLinRegr 10000 50)"  mhLinRegrExpected output
+testSsmhLinRegr :: Test
+testSsmhLinRegr = TestCase $ do
+  output <- sampleIOFixed (ssmhLinRegr 10000 50)
+  assertEqual "Testing (ssmhLinRegr 10000 50)"  ssmhLinRegrExpected output
 
 testSmcLinRegr :: Test
 testSmcLinRegr = TestCase $ do
@@ -49,10 +49,10 @@ testLwLogRegr = TestCase $ do
   output <- sampleIOFixed (lwLogRegr 100 10)
   assertEqual "Testing (lwLogRegr 100 10)"  lwLogRegrExpected output
 
-testMhLogRegr :: Test
-testMhLogRegr = TestCase $ do
-  output <- sampleIOFixed (mhLogRegr 500 10)
-  assertEqual "Testing (mhLogRegr 500 10)"  mhLogRegrExpected output
+testSsmhLogRegr :: Test
+testSsmhLogRegr = TestCase $ do
+  output <- sampleIOFixed (ssmhLogRegr 500 10)
+  assertEqual "Testing (ssmhLogRegr 500 10)"  ssmhLogRegrExpected output
 
 testSimHMM_WR :: Test
 testSimHMM_WR = TestCase $ do
@@ -64,10 +64,10 @@ testLwHMM = TestCase $ do
   output <- sampleIOFixed (lwHMM 200 20)
   assertEqual "Testing (lwHMM 200 20)" lwHMMExpected output
 
-testMhHMM :: Test
-testMhHMM = TestCase $ do
-  output <- sampleIOFixed (mhHMM 1000 20)
-  assertEqual "Testing (mhHMM 1000 20)"  mhHMMExpected output
+testSsmhHMM :: Test
+testSsmhHMM = TestCase $ do
+  output <- sampleIOFixed (ssmhHMM 1000 20)
+  assertEqual "Testing (ssmhHMM 1000 20)"  ssmhHMMExpected output
 
 testSmcHMM :: Test
 testSmcHMM = TestCase $ do
@@ -89,22 +89,22 @@ testSimSIR = TestCase $ do
   output <- sampleIOFixed (simSIR 100)
   assertEqual "Testing (simSIR 100)"  simSIRExpected output
 
-testMhSIR :: Test
-testMhSIR = TestCase $ do
-  output <- sampleIOFixed (mhSIR 1000 100)
-  assertEqual "Testing (mhSIR 1000 100)"  mhSIRExpected output
+testSsmhSIR :: Test
+testSsmhSIR = TestCase $ do
+  output <- sampleIOFixed (ssmhSIR 1000 100)
+  assertEqual "Testing (ssmhSIR 1000 100)"  ssmhSIRExpected output
 
 testSimLDA :: Test
 testSimLDA = TestCase $ do
   output <- sampleIOFixed (simLDA 100)
   assertEqual "Testing (simLDA 100)"  simLDAExpected output
 
-testMhLDA :: Test
-testMhLDA = TestCase $ do
-  output <- sampleIOFixed (mhLDA 500 100)
-  let mhLDAExpected' = mapT2 (map (map (roundPrecision 8))) mhLDAExpected
+testSsmhLDA :: Test
+testSsmhLDA = TestCase $ do
+  output <- sampleIOFixed (ssmhLDA 500 100)
+  let ssmhLDAExpected' = mapT2 (map (map (roundPrecision 8))) ssmhLDAExpected
       output'        = mapT2 (map (map (roundPrecision 8))) output
-  assertEqual "Testing (mhLDA 500 100)"  mhLDAExpected' output'
+  assertEqual "Testing (ssmhLDA 500 100)"  ssmhLDAExpected' output'
 
 testSmcLDA :: Test
 testSmcLDA = TestCase $ do
@@ -125,42 +125,42 @@ testPmhLDA = TestCase $ do
       output'           = mapT2 (map (map (roundPrecision 8))) output
   assertEqual "Testing (pmhLDA 100 20 100)" pmhLDAExpected' output'
 
-testMhRadon :: Test
-testMhRadon = TestCase $ do
-  output <- sampleIOFixed (mhRadon 1000)
-  assertEqual "Testing (mhRadon 1000)"  mhRadonExpected output
+testSsmhRadon :: Test
+testSsmhRadon = TestCase $ do
+  output <- sampleIOFixed (ssmhRadon 1000)
+  assertEqual "Testing (ssmhRadon 1000)"  ssmhRadonExpected output
 
-testMhPredRadon :: Test
-testMhPredRadon = TestCase $ do
-  output <- sampleIOFixed (mhPredRadon 1500)
-  assertEqual "Testing (mhPredRadon 1500)"  mhPredRadonExpected output
+testSsmhPredRadon :: Test
+testSsmhPredRadon = TestCase $ do
+  output <- sampleIOFixed (ssmhPredRadon 1500)
+  assertEqual "Testing (ssmhPredRadon 1500)"  ssmhPredRadonExpected output
 
 testInference :: Test
 testInference = TestList
  [
    testSimLinRegr
  , testLwLinRegr
- , testMhLinRegr
+ , testSsmhLinRegr
  , testSmcLinRegr
  , testRmpfLinRegr
  , testPmhLinRegr
  , testSimLogRegr
  , testLwLogRegr
- , testMhLogRegr
+ , testSsmhLogRegr
  , testSimHMM_WR
  , testLwHMM
- , testMhHMM
+ , testSsmhHMM
  , testSmcHMM
  , testRmpfHMM
  , testPmhHMM
  , testSimSIR
- , testMhSIR
+ , testSsmhSIR
  , testSimLDA
- , testMhLDA
+ , testSsmhLDA
  , testSmcLDA
  , testRmpfLDA
  , testPmhLDA
- , testMhRadon
- , testMhPredRadon
+ , testSsmhRadon
+ , testSsmhPredRadon
  ]
 

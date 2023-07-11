@@ -78,8 +78,8 @@ simLinRegr n_datapoints = do
   -- Specify model environment
       env_in = (#m := [3.0]) <:> (#c := [0]) <:> (#σ := [1]) <:> (#y := []) <:> enil
   -- Simulate linear regression for each input x
-  bs :: ([Double], Env LinRegrEnv) <- SIM.simulateWith (linRegr xs) env_in
-  pure $ zip xs (fst bs)
+  (ys, env_out) :: ([Double], Env LinRegrEnv) <- SIM.simulateWith (linRegr xs) env_in
+  pure $ zip xs ys
 
 -- | Likelihood weighting over linear regression
 lwLinRegr ::  Int -> Int ->  Sampler [(Double, Double)]
@@ -87,7 +87,7 @@ lwLinRegr n_lwsteps n_datapoints = do
   -- Specify model inputs
   let xs            = [0 .. fromIntegral n_datapoints]
   -- Specify model environment
-      env_in           = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+      env_in        = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> enil
    -- Get the sampled values of mu and their likelihood-weighting
   (env_outs, ps) <- unzip <$> LW.lwWith n_lwsteps (linRegr xs) env_in
   let mus = concatMap (get #m) env_outs
@@ -99,7 +99,7 @@ imLinRegr n_mhsteps n_datapoints = do
   -- Specify model inputs
   let xs            = [0 .. fromIntegral n_datapoints]
   -- Specify model environment
-      env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+      env_in        = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> enil
   -- Run SSMH
   env_outs <- IM.imWith n_mhsteps (linRegr xs) env_in
   -- Get the sampled values of mu and c
@@ -108,12 +108,12 @@ imLinRegr n_mhsteps n_datapoints = do
   pure (mus, cs)
 
 -- | Metropolis-Hastings over linear regression
-mhLinRegr ::  Int -> Int ->  Sampler ([Double], [Double])
-mhLinRegr n_mhsteps n_datapoints = do
+ssmhLinRegr ::  Int -> Int ->  Sampler ([Double], [Double])
+ssmhLinRegr n_mhsteps n_datapoints = do
   -- Specify model inputs
   let xs            = [0 .. fromIntegral n_datapoints]
   -- Specify model environment
-      env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+      env_in        = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> enil
   -- Run SSMH
   env_outs <- SSMH.ssmhWith n_mhsteps (linRegr xs) env_in (#m <#> #c <#> vnil)
   -- Get the sampled values of mu and c
@@ -128,7 +128,7 @@ smcLinRegr n_particles n_datapoints = do
   -- Specify model inputs
   let xs            = [0 .. fromIntegral n_datapoints]
   -- Specify model environment
-      env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+      env_in        = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> enil
   -- Run SMC
   env_outs <- SMC.mulpfilterWith n_particles (linRegr xs) env_in
   -- Get the sampled values of mu and c for each particle
@@ -142,7 +142,7 @@ rmpfLinRegr n_particles n_mhsteps n_datapoints = do
   -- Specify model inputs
   let xs            = [0 .. fromIntegral n_datapoints]
   -- Specify model environment
-      env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+      env_in        = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> enil
   -- Run SMC
   env_outs <- RMPF.rmpfWith n_particles n_mhsteps (linRegr xs) env_in vnil
   -- Get the sampled values of mu and c for each particle
@@ -156,7 +156,7 @@ pmhLinRegr n_mhsteps n_particles  n_datapoints = do
   -- Specify model inputs
   let xs            = [0 .. fromIntegral n_datapoints]
   -- Specify model environment
-      env_in        = (#y := [3*x | x <- xs]) <:> (#m := []) <:> (#c := []) <:> (#σ := []) <:>  enil
+      env_in        = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> enil
   -- Run SMC
   env_outs <- PMH.pmhWith n_mhsteps n_particles (linRegr xs) env_in  (#m <#> #c <#> vnil)
   -- Get the sampled values of mu and c for each particle
@@ -204,8 +204,8 @@ lwLinRegrOnce n_samples n_datapoints = do
   pure $ zip mus ps
 
 -- | Metropolis-Hastings over linear regression
-mhLinRegrOnce :: Int -> Int -> Sampler ([Double], [Double])
-mhLinRegrOnce n_mhsteps n_datapoints = do
+ssmhLinRegrOnce :: Int -> Int -> Sampler ([Double], [Double])
+ssmhLinRegrOnce n_mhsteps n_datapoints = do
   -- Specify model inputs
   let xs  = [0 .. fromIntegral n_datapoints]
   -- Specify model environments and pair with model input
@@ -236,8 +236,8 @@ lwLinRegrMB n_datapoints n_samples = do
       env_in           = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> enil
   Bayes.sampleIO $ replicateM n_samples (Bayes.runWeighted $ mbayesLinRegr xs env_in)
 
-mhLinRegrMB :: Int -> Int -> IO [([Double], Env LinRegrEnv)]
-mhLinRegrMB n_samples n_datapoints = do
+ssmhLinRegrMB :: Int -> Int -> IO [([Double], Env LinRegrEnv)]
+ssmhLinRegrMB n_samples n_datapoints = do
   let n_datapoints' = fromIntegral n_datapoints
       xs            = [0 .. n_datapoints']
       env_in           = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> enil

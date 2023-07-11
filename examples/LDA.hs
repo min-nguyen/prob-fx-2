@@ -170,8 +170,8 @@ lwLDA n_lwsteps n_words = do
   return (map Vec.toList θs, ws)
 
 -- | SSMH inference on topic model (predictive)
-mhLDA :: Int -> Int -> Sampler ([[Double]], [[Double]])
-mhLDA n_mhsteps n_words = do
+ssmhLDA :: Int -> Int -> Sampler ([[Double]], [[Double]])
+ssmhLDA n_mhsteps n_words = do
   -- Do SSMH inference over the topic model using the above data
   let n_topics  = snat @(FromGHC 2)
       env_in = #θ := [] <:>  #φ := [] <:> #w := take n_words document <:> enil
@@ -243,8 +243,8 @@ lwLDAMB n_samples n_words  = do
   let env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
   Bayes.sampleIO $ replicateM n_samples (Bayes.runWeighted $ mbayesLDA vocab 2 n_words env_in)
 
-mhLDAMB :: Int -> Int -> IO [([String], Env TopicEnv)]
-mhLDAMB n_mhsteps n_words  = do
+ssmhLDAMB :: Int -> Int -> IO [([String], Env TopicEnv)]
+ssmhLDAMB n_mhsteps n_words  = do
   let env_in = #θ := [] <:>  #φ := [] <:> #w := document <:> enil
   Bayes.sampleIO $ Bayes.unweighted $ Bayes.mh n_mhsteps (mbayesLDA vocab 2 n_words env_in)
 -}
