@@ -93,9 +93,9 @@ simRadon = do
   return (basementPoints, nobasementPoints)
 
 -- | Run SSMH inference and return posterior for hyperparameter means of intercept and gradient
-mhRadon :: Int -> Sampler ([Double], [Double])
+ssmhRadon :: Int -> Sampler ([Double], [Double])
   -- Specify model environment
-mhRadon n_mhsteps = do
+ssmhRadon n_mhsteps = do
   let env_in = mkRadonEnv ([], [], [], [], [], [], logRadon)
   -- Run SSMH inference
   env_outs <- SSMH.ssmhWith n_mhsteps (radonModel n_counties dataFloorValues countyIdx) env_in
@@ -106,8 +106,8 @@ mhRadon n_mhsteps = do
   return (mu_a, mu_b)
 
 -- | Run SSMH inference and return predictive posterior for intercepts and gradients
-mhPredRadon :: Int -> Sampler ([Double], [Double])
-mhPredRadon n_mhsteps = do
+ssmhPredRadon :: Int -> Sampler ([Double], [Double])
+ssmhPredRadon n_mhsteps = do
   -- Specify model environment
   let env_in = mkRadonEnv ([], [], [], [], [], [], logRadon)
   -- Run SSMH inference

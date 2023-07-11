@@ -63,11 +63,11 @@ simGMM n_datapoints = do
   bs <- SIM.simulateWith (gmm n_clusters n_datapoints) env_in
   pure $ fst bs
 
-mhGMM
+ssmhGMM
   :: Int -- ^ num SSMH iterations
   -> Int -- ^ num data points
   -> Sampler [[Double]]
-mhGMM n_mhsteps n_datapoints = do
+ssmhGMM n_mhsteps n_datapoints = do
   bs <- simGMM n_datapoints
   let (xs, ys) = unzip (map fst bs)
       env =  #mu := [] <:> #mu_k := [] <:> #x := xs <:> #y := ys <:> enil

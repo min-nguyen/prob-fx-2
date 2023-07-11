@@ -36,17 +36,3 @@ pattern SampDis d α <- (discharge -> Right (Sample d α))
 sample :: forall d a es. (Member Sample es, Dist d a)
        => d -> Addr -> Comp es a
 sample d α = call (Sample d α)
-
--- | For directly calling Sample for a variable in the model environment.
---   The attempts to first use an existing sampled value in the input environment.
---   The sampled value is written to an output environment.
-sample' :: forall env es x d a. (Observable env x a, Members [EnvRW env, Sample] es,  Dist d a)
-  => d -> (Var x, Int) -> Comp es a
-sample' d (varx, idx) = do
-  let tag = varToStr varx
-  maybe_y <- call (EnvRead @env varx)
-  y       <- case maybe_y of
-                Nothing -> sample d (Addr tag idx)
-                Just y  -> sample (Deterministic d y) (Addr tag idx)
-  call (EnvWrite @env varx y)
-  pure y

@@ -31,6 +31,8 @@ module Model (
   , cauchy'
   , halfCauchy
   , halfCauchy'
+  , deterministic
+  , deterministic'
   , dirichlet
   , dirichlet'
   , discrete
@@ -218,6 +220,14 @@ cauchy'
   -> Double
   -> MulModel env es Double
 cauchy' mu sigma = callDist' (mkCauchy mu sigma)
+
+deterministic :: (Typeable a, Eq a, Show a, Observable env x a)
+  => a -> Var x -> MulModel env es a
+deterministic x = callDist (mkDeterministic x)
+
+deterministic' :: (Typeable a, Eq a, Show a)
+  => a -> MulModel env es a
+deterministic' x = callDist' (mkDeterministic x)
 
 halfCauchy :: Observable env x Double =>
      Double

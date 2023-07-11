@@ -15,15 +15,32 @@ module Inference.MB
   , handleSamp
   ) where
 
-import Control.Monad.Bayes.Class as MB ( MonadCond(..), MonadInfer, MonadSample )
+import Control.Monad.Bayes.Class as MB ( MonadFactor(..), MonadInfer, MonadDistribution )
 import Effects.MulDist ( Sample(..), Observe(..), MulDist(MulDist, getObs, getPrimDist), handleMulDist )
 import Effects.EnvRW ( EnvRW )
 import Env ( Env )
 import Model (MulModel(..), conditionWith)
 import Numeric.Log ( Log(Exp) )
-import LogP ( LogP(LogP) )
+-- import LogP ( LogP(LogP) )
 import Dist ( logProb, sampleBayes )
 import Comp ( discharge, Comp(..), LastMember )
+
+{- | Draw a value from a primitive distribution using the @MonadSample@ type class from Monad-Bayes
+
+sampleBayes :: MB.MonadSample m => Dist a -> m a
+sampleBayes d = case d of
+  (Uniform a b )    -> MB.uniform a b
+  (Categorical as ) -> MB.categorical (Vec.fromList as)
+  (Discrete as )    -> MB.categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
+  (Normal mu std )  -> MB.normal mu std
+  (Gamma k t )      -> MB.gamma k t
+  (Beta a b )       -> MB.beta a b
+  (Bernoulli p )    -> MB.bernoulli p
+  (Binomial n p )   -> replicateM n (MB.bernoulli p) >>= (pure . length . filter (== True))
+  (Poisson l )      -> MB.poisson l
+  (Dirichlet as )   -> MB.dirichlet (Vec.fromList as) >>= pure . Vec.toList
+  (Deterministic v) -> pure v
+  _                 -> error ("Sampling from " ++ show d ++ " is not supported")
 
 -- | Translate a ProbFX model under a given model environment to a MonadBayes program
 handleMBayes :: MonadInfer m
@@ -49,8 +66,8 @@ handleObs (Op u k) = case discharge u of
   Left u' -> do
      Op u' (handleObs . k)
 
--- | Handle @Sample@ operations by calling the sampling methods of the @MonadSample@ class
-handleSamp :: (MonadSample m, LastMember (Lift m) es)
+-- | Handle @Sample@ operations by calling the sampling methods of the @MonadDistribution@ class
+handleSamp :: (MonadDistribution m, LastMember (Lift m) es)
  => Comp (Sample : es) a
  -> Comp es a
 handleSamp (Val x) = pure x
@@ -73,3 +90,4 @@ handleDistMB (Op u k) = case discharge u of
       Nothing -> do y <- sampleBayes d
                     handleDistMB (k y)
   Left  u'  -> error "impossible; MulDist must be the last effect"
+-}

@@ -14,7 +14,6 @@
 module GuidedExamples where
 
 import Inference.MC.SIM as SIM ( simulateWith )
-import Inference.MC.SMC2 as SMC2 ( smc2 )
 import Inference.Guided.Guided
 import Inference.Guided.BBVI as BBVI
 import Inference.Guided.MLE as MLE
@@ -25,6 +24,7 @@ import Control.Monad ( replicateM, (>=>) )
 import Data.Kind (Constraint)
 import Env ( Observables, Observable(..), Assign((:=)), Env, enil, (<:>), vnil, (<#>) )
 import Effects.MulDist
+    ( Addr(Addr, tag), observe, Observe, sample, Sample )
 import Effects.GuidedSample
 import Dist
 import Data.Type.Nat

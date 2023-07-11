@@ -25,9 +25,7 @@ import Inference.MC.SSMH as SSMH ( ssmhWith )
 import Inference.MC.SMC as SMC ( mulpfilterWith )
 import Inference.MC.SIM as SIM ( simulateWith )
 import Inference.MC.RMPF as RMPF ( rmpfWith )
-import Inference.MC.SMC2 as SMC2 ( smc2 )
-import Inference.MC.PMMH as PMMH ( pmmhWith )
-import Inference.VI.BBVI as BBVI
+import Inference.MC.PMH as PMH ( pmhWith )
 import Model ( MulModel (..), bernoulli', binomial, uniform, beta )
 import Comp ( Member, LastMember )
 import Sampler ( Sampler, liftIO )
@@ -174,14 +172,14 @@ lwHMM lw_samples hmm_length = do
   pure (trans_ps, obs_ps, ws)
 
 -- | Metropolis-Hastings inference over a HMM
-mhHMM
+ssmhHMM
   -- | number of SSMH iterations
   :: Int
   -- | number of HMM nodes
   -> Int
   -- | [(transition parameter, observation parameter)]
   -> Sampler ([Double], [Double])
-mhHMM mh_samples hmm_length = do
+ssmhHMM mh_samples hmm_length = do
   -- Simulate a trace of observations from the HMM
   ys <- simHMM hmm_length
   -- Specify a model environment containing those observations
@@ -214,7 +212,7 @@ smcHMM n_particles hmm_length = do
   pure (trans_ps, obs_ps)
 
 -- | RMPF inference over a HMM
-rmsmcHMM
+rmpfHMM
   -- | number of particles
   :: Int
   -- | number of SSMH steps
@@ -223,7 +221,7 @@ rmsmcHMM
   -> Int
   -- | [(transition parameter, observation parameter)]
   -> Sampler ([Double], [Double])
-rmsmcHMM n_particles n_mhsteps hmm_length = do
+rmpfHMM n_particles n_mhsteps hmm_length = do
   ys <- simHMM hmm_length
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
@@ -232,8 +230,8 @@ rmsmcHMM n_particles n_mhsteps hmm_length = do
       obs_ps      = concatMap (get #obs_p) env_outs
   pure (trans_ps, obs_ps)
 
--- | PMMH inference over a HMM
-pmmhHMM
+-- | PMH inference over a HMM
+pmhHMM
   -- | number of SSMH steps
   :: Int
   -- | number of particles
@@ -242,32 +240,11 @@ pmmhHMM
   -> Int
   -- | [(transition parameter, observation parameter)]
   -> Sampler ([Double], [Double])
-pmmhHMM n_mhsteps n_particles  hmm_length = do
+pmhHMM n_mhsteps n_particles  hmm_length = do
   ys <- simHMM hmm_length
   let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
 
-  env_outs <- PMMH.pmmhWith n_mhsteps n_particles (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
-  let trans_ps    = concatMap (get #trans_p) env_outs
-      obs_ps      = concatMap (get #obs_p) env_outs
-  pure (trans_ps, obs_ps)
-
--- | SMC2 inference over a HMM
-smc2HMM
-  -- | number of outer particles
-  :: Int
-  -- | number of SSMH steps
-  -> Int
-  -- | number of inner particles
-  -> Int
-  -- | number of HMM nodes
-  -> Int
-  -- | [(transition parameter, observation parameter)]
-  -> Sampler ([Double], [Double])
-smc2HMM n_outer_particles n_mhsteps n_inner_particles  hmm_length = do
-  ys <- simHMM hmm_length
-  let env_in  = #trans_p := [] <:> #obs_p := [] <:> #y := ys <:> enil
-
-  env_outs <- SMC2.smc2 n_outer_particles n_mhsteps n_inner_particles (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
+  env_outs <- PMH.pmhWith n_mhsteps n_particles (hmm hmm_length 0) env_in (#trans_p <#> #obs_p <#> vnil)
   let trans_ps    = concatMap (get #trans_p) env_outs
       obs_ps      = concatMap (get #obs_p) env_outs
   pure (trans_ps, obs_ps)
@@ -371,14 +348,14 @@ lwHMMMB n_samples hmm_length = do
   Bayes.sampleIO $ replicateM n_samples $ Bayes.runWeighted $ mbayesHMM hmm_length 0 env_in
 
 -- | Metropolis-Hastings from the HMM in Monad Bayes.
-mhHMMMB
+ssmhHMMMB
   -- | mh-hastings iterations
   :: Int
   -- | number of HMM nodes
   -> Int
   -- | [ (((final latent state, intermediate latent states), output model environment)) ]
   -> IO [((Int, [Int]), Env HMMEnv)]
-mhHMMMB n_mhsteps hmm_length = do
+ssmhHMMMB n_mhsteps hmm_length = do
   -- Simulate a trace of observations from the HMM
   ys <- map snd <$> simHMMMB hmm_length
   -- Specify a model environment containing those observations

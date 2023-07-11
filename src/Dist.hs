@@ -11,6 +11,8 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ConstrainedClassMethods #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use newtype instead of data" #-}
 
 {- | A GADT encoding of (a selection of) primitive distributions
     along with their corresponding sampling and density functions.
@@ -19,7 +21,8 @@
 module Dist
   (Distribution(..), DiffDistribution(..), Dist, DiffDist, Witness(..),
    Beta, mkBeta, Bernoulli, mkBernoulli, Binomial, mkBinomial, Categorical, mkCategorical, Cauchy, mkCauchy, HalfCauchy, mkHalfCauchy,
-   Deterministic(..), mkDeterministic, Discrete, mkDiscrete, Dirichlet, mkDirichlet, Gamma, mkGamma, Normal(..), mkNormal, HalfNormal, mkHalfNormal,
+   Deterministic, mkDeterministic,
+   ProxyDist(..), mkProxyDist, Discrete, mkDiscrete, Dirichlet, mkDirichlet, Gamma, mkGamma, Normal(..), mkNormal, HalfNormal, mkHalfNormal,
    Poisson, mkPoisson, Uniform, mkUniform, UniformD, mkUniformD) where
 
 import           Debug.Trace ( trace )
@@ -89,25 +92,34 @@ class (SNatI (Arity d), Distribution d) => DiffDistribution d where
 
   toList :: d -> [Double]
 
-data Deterministic d = forall a. Dist d a => Deterministic d a
--- -- | Deterministic(x)
--- data Deterministic d  where
---   Deterministic :: forall d a. Dist d a  => d -> a -> Deterministic d
+-- | For deterministic values that do not affect inference
+data Deterministic a = Deterministic a deriving (Show, Eq)
 
-mkDeterministic :: (Dist d a) => d -> a -> Deterministic d
+mkDeterministic :: (Show a, Eq a) => a -> Deterministic a
 mkDeterministic = Deterministic
 
-instance (Show d) => Show (Deterministic d) where
-  show (Deterministic d x) = "Deterministic " ++ show x
+instance (Typeable a, Show a) => Distribution (Deterministic a) where
+  type Base (Deterministic a) = a
+  draw (Deterministic a) _ = a
+  logProb _ _ = 0
 
-instance (Dist d a) => Distribution (Deterministic d) where
-  type Base (Deterministic d) = Base d
+-- | For storing a pair of distribution and observed value
+data ProxyDist d = forall a. Dist d a => ProxyDist d a
 
-  draw :: Dist d a => Deterministic d -> Double -> Base (Deterministic d)
-  draw (Deterministic d y) _ = y
+mkProxyDist :: (Dist d a) => d -> a -> ProxyDist d
+mkProxyDist = ProxyDist
 
-  logProb :: Deterministic d -> a -> Double
-  logProb (Deterministic d y) _ = logProb d y
+instance (Show d) => Show (ProxyDist d) where
+  show (ProxyDist d x) = "ProxyDist " ++ show x
+
+instance (Dist d a) => Distribution (ProxyDist d) where
+  type Base (ProxyDist d) = Base d
+
+  draw :: Dist d a => ProxyDist d -> Double -> Base (ProxyDist d)
+  draw (ProxyDist d y) _ = y
+
+  logProb :: ProxyDist d -> a -> Double
+  logProb (ProxyDist d y) _ = logProb d y
 
 -- | Beta(α, β)
 data Beta = Beta Double Double
@@ -606,20 +618,3 @@ instance Distribution UniformD where
   logProb (UniformD min max) idx
     | idx < min || idx > max  = m_neg_inf
     | otherwise               = - log (fromIntegral $ max - min + 1)
-
-{- | Draw a value from a primitive distribution using the @MonadSample@ type class from Monad-Bayes
-sampleBayes :: MB.MonadSample m => Dist a -> m a
-sampleBayes d = case d of
-  (Uniform a b )    -> MB.uniform a b
-  (Categorical as ) -> MB.categorical (Vec.fromList as)
-  (Discrete as )    -> MB.categorical (Vec.fromList (map snd as)) >>= (pure . fst . (as !!))
-  (Normal mu std )  -> MB.normal mu std
-  (Gamma k t )      -> MB.gamma k t
-  (Beta a b )       -> MB.beta a b
-  (Bernoulli p )    -> MB.bernoulli p
-  (Binomial n p )   -> replicateM n (MB.bernoulli p) >>= (pure . length . filter (== True))
-  (Poisson l )      -> MB.poisson l
-  (Dirichlet as )   -> MB.dirichlet (Vec.fromList as) >>= pure . Vec.toList
-  (Deterministic v) -> pure v
-  _                 -> error ("Sampling from " ++ show d ++ " is not supported")
--}
