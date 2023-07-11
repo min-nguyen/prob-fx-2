@@ -25,8 +25,8 @@ bench_LR :: [Int] -> IO ()
 bench_LR lr_range = do
     let row_header = ("Num datapoints", lr_range)
     writeRow output_file row_header
-    benchRow ("LinRegr-[ ]-SSMH-" ++ show fixed_mh_steps
-              , mhLinRegr fixed_mh_steps) row_header output_file
+    benchRow ("LinRegr-[ ]-SSMH-" ++ show fixed_ssmh_steps
+              , ssmhLinRegr fixed_ssmh_steps) row_header output_file
     benchRow ("LinRegr-[ ]-MPF-" ++ show fixed_smc_particles
               , smcLinRegr fixed_smc_particles)  row_header output_file
     benchRow ("LinRegr-[ ]-PMH-" ++ show fixed_pmh_mhsteps  ++ "-" ++ show fixed_pmh_particles
@@ -38,9 +38,9 @@ bench_HMM :: [Int] -> IO ()
 bench_HMM hmm_range = do
     let row_header = ("Num nodes", hmm_range)
     writeRow output_file row_header
-    benchRow ("HidMark-[ ]-SSMH-" ++ show fixed_mh_steps
-              , mhHMM fixed_mh_steps) row_header output_file
-    benchRow ("HidMark-[ ]-MPF-" ++ show fixed_mh_steps
+    benchRow ("HidMark-[ ]-SSMH-" ++ show fixed_ssmh_steps
+              , ssmhHMM fixed_ssmh_steps) row_header output_file
+    benchRow ("HidMark-[ ]-MPF-" ++ show fixed_smc_particles
               , smcHMM fixed_smc_particles) row_header output_file
     benchRow ("HidMark-[ ]-PMH-"  ++ show fixed_pmh_mhsteps  ++ "-" ++ show fixed_pmh_particles
               , pmhHMM fixed_pmh_mhsteps fixed_pmh_particles) row_header output_file
@@ -51,9 +51,9 @@ bench_LDA :: [Int] -> IO ()
 bench_LDA lda_range = do
     let row_header = ("Num words", lda_range)
     writeRow output_file row_header
-    benchRow ("LatDiri-[ ]-SSMH-" ++ show fixed_mh_steps
-              , mhLDA fixed_mh_steps) row_header output_file
-    benchRow ("LatDiri-[ ]-MPF-" ++ show fixed_mh_steps
+    benchRow ("LatDiri-[ ]-SSMH-" ++ show fixed_ssmh_steps
+              , ssmhLDA fixed_ssmh_steps) row_header output_file
+    benchRow ("LatDiri-[ ]-MPF-" ++ show fixed_smc_particles
               , smcLDA fixed_smc_particles) row_header output_file
     benchRow ("LatDiri-[ ]-PMH-"  ++ show fixed_pmh_mhsteps  ++ "-" ++ show fixed_pmh_particles
               , pmhLDA fixed_pmh_mhsteps fixed_pmh_particles) row_header output_file
@@ -63,16 +63,16 @@ bench_LDA lda_range = do
 {- | Varying over inference parameters
 -}
 
-bench_MH :: [Int] -> IO ()
-bench_MH mh_range = do
+bench_SSMH :: [Int] -> IO ()
+bench_SSMH mh_range = do
     let row_header = ("Num SSMH steps", mh_range)
     writeRow output_file row_header
     benchRow ("SSMH-[ ]-LinRegr-" ++ show fixed_lr
-              , flip mhLinRegr fixed_lr) row_header output_file
+              , flip ssmhLinRegr fixed_lr) row_header output_file
     benchRow ("SSMH-[ ]-HidMark-" ++ show fixed_hmm
-              , flip mhHMM fixed_hmm) row_header output_file
+              , flip ssmhHMM fixed_hmm) row_header output_file
     benchRow ("SSMH-[ ]-LatDiri-" ++ show fixed_lda
-              , flip mhLDA fixed_lda) row_header output_file
+              , flip ssmhLDA fixed_lda) row_header output_file
 
 bench_SMC :: [Int] -> IO ()
 bench_SMC smc_range = do
@@ -118,11 +118,11 @@ runBenchmarks = do
       args = map (map read . splitOn ",") (removeComments (lines content))
   -- | Run benchmark programs on their corresponding parameters
   case args of
-        (lr_range : hmm_range : lda_range : mh_range : smc_range : pmh_range : rmpf_range : _) -> do
+        (lr_range : hmm_range : lda_range : ssmh_range : smc_range : pmh_range : rmpf_range : _) -> do
           bench_LR lr_range
           bench_HMM hmm_range
           bench_LDA lda_range
-          bench_MH mh_range
+          bench_SSMH ssmh_range
           bench_SMC smc_range
           bench_PMH pmh_range
           bench_RMPF rmpf_range

@@ -24,7 +24,7 @@ def main():
 
   data = ast.literal_eval(f.read().replace('-Infinity', '-2e308')) #
   color_map = plt.cm.get_cmap('Blues')
-  if arg in ["simLinRegrOnce", "simLinRegr"]:
+  if arg in ["simLinRegr"]:
     xys =  [[ i for i, j in data ],
             [ j for i, j in data ]]
     xs = xys[0]
@@ -33,7 +33,7 @@ def main():
     plt.xlabel('x data points')
     plt.ylabel('y data points')
     plt.title('Linear regression')
-  if arg in ["lwLinRegrOnce", "lwLinRegr"]:
+  if arg in ["lwLinRegr"]:
     mus = [d[0] for d in data]
     ps  = [d[1] for d in data]
     fig1, axs1 = plt.subplots(nrows=1)
@@ -42,7 +42,7 @@ def main():
     axs1.scatter(mus, ps)
     axs1.set_title('Linear regression - Likelihood Weighting')
 
-  if arg in ["mhLinRegrOnce", "mhLinRegr", "smcLinRegr", "rmpfLinRegr", "pmhLinRegr"]:
+  if arg in ["ssmhLinRegr", "smcLinRegr", "rmpfLinRegr", "pmhLinRegr"]:
     mus = data[0]
     cs  = data[1]
     fig1, axs1 = plt.subplots(nrows=1)
@@ -139,7 +139,7 @@ def main():
     plt.xlim([0,100])
     plt.ylim([0,800])
     plt.legend()
-  if arg == "mhSIR":
+  if arg == "ssmhSIR":
     rhos_unique   = data[0]
     betas_unique  = data[1]
     fig1, axs1 = plt.subplots(nrows=1)
@@ -153,7 +153,7 @@ def main():
     axs2.hist(betas_unique, bins=55)
     axs2.set_title('HMM - Metropolis Hastings Posterior (Beta)')
 
-  if arg in ["simLogRegrOnce", "simLogRegr"]:
+  if arg in ["simLogRegr"]:
     xys = np.array(data)
     xs =  np.array([xy[0] for xy in xys])
     ys =  np.array([xy[1] for xy in xys])
@@ -164,7 +164,7 @@ def main():
     plt.xlabel('x - axis')
     plt.ylabel('y - axis')
     plt.title('Logistic regression simulation')
-  if arg in ["lwLogRegrOnce", "lwLogRegr"]:
+  if arg in ["lwLogRegr"]:
     mus = [d[0][0] for d in data]
     bs  = [d[0][1] for d in data]
     ps  = [d[1] for d in data]
@@ -177,7 +177,7 @@ def main():
     axs2.set_ylabel('probability')
     axs2.scatter(bs, ps)
     axs2.set_title('Logistic regression - Likelihood Weighting')
-  if arg in ["mhLogRegrOnce", "mhLogRegr"]:
+  if arg in ["ssmhLogRegr"]:
     mu_samples = data[0]
     b_samples  = data[1]
     _, axs1 = plt.subplots(nrows=1)
@@ -216,7 +216,7 @@ def main():
     axs1.set_ylabel('probability')
     axs1.scatter(obs_p, ps_normalised)
     axs1.set_title('HMM - Likelihood Weighting')
-  if arg in ["mhHMM", "smcHMM", "rmpfHMM", "pmhHMM"]:
+  if arg in ["ssmhHMM", "smcHMM", "rmpfHMM", "pmhHMM"]:
     # Note : this works less well for certain parameters of trans_p and obs_p used for the training data
     trans_ps_unique = data[0]
     obs_ps_unique   = data[1]
@@ -238,7 +238,7 @@ def main():
     ws = list(set(words))
     freqs = [ words.count(w)  for w in ws]
     ax.bar(ws, freqs)
-  if arg in ["mhLDA", "smcLDA", "rmpfLDA", "pmhLDA"]:
+  if arg in ["ssmhLDA", "smcLDA", "rmpfLDA", "pmhLDA"]:
     ws       = ['DNA', 'evolution', 'parsing', 'phonology']
     topic_ps = data[0][0]
     topic_0s = data[1][0]
@@ -262,7 +262,7 @@ def main():
     plt.scatter(nobasement_xs, nobasement_ys, color='b')
     plt.ylabel('Log radon level')
     plt.xticks([0, 1], ["basement", "no basement"])
-  if arg == "mhRadon":
+  if arg == "ssmhRadon":
     mu_a       = data[0]
     mu_b       = data[1]
     fig1, axs1 = plt.subplots(nrows=1)
@@ -275,7 +275,7 @@ def main():
     axs2.set_ylabel("frequency")
     axs2.hist(mu_b, bins=50)
     axs2.set_title('HLR - Metropolis Hastings Posterior (mu_b)')
-  if arg == "mhPredRadon":
+  if arg == "ssmhPredRadon":
     intercepts = data[0]
     gradients  = data[1]
     plt.xticks([0, 1], ["basement", "no basement"])
@@ -285,7 +285,7 @@ def main():
       y = m * x + c
       plt.plot(x, y)
 
-  if arg == "mhSchool":
+  if arg == "ssmhSchool":
     mu_samples_unique   = data[0]
     thetas              = data[1]
     thetas_             = [[d[i] for d in thetas] for i in range(len(thetas[0]))]
@@ -309,7 +309,7 @@ def main():
     plt.xlabel('x - axis')
     plt.ylabel('y - axis')
     plt.title('Gaussian Mixture MulModel')
-  if arg == "mhGMM":
+  if arg == "ssmhGMM":
     mu_0s = [d[0] for d in data]
     mu_1s = [d[1] for d in data]
     fig1, axs1 = plt.subplots(nrows=1)
