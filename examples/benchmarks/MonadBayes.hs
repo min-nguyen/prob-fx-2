@@ -40,11 +40,11 @@ runBenchmarks = do
       args = map (map read . splitOn ",") (removeComments (lines content))
   -- | Run benchmark programs on their corresponding parameters
   case args of
-        (lr_range : hmm_range : lda_range : mh_range : smc_range : pmh_range : rmpf_range : _) -> do
+        (lr_range : hmm_range : lda_range : ssmh_range : smc_range : pmh_range : rmpf_range : _) -> do
             bench_LR_MonadBayes lr_range
             bench_HMM_MonadBayes hmm_range
             bench_LDA_MonadBayes lda_range
-            bench_MH_MonadBayes mh_range
+            bench_SSMH_MonadBayes ssmh_range
             bench_SMC_MonadBayes smc_range
             bench_PMH_MonadBayes pmh_range
             bench_RMPF_MonadBayes rmpf_range
@@ -54,8 +54,8 @@ bench_LR_MonadBayes :: [Int] -> IO ()
 bench_LR_MonadBayes lr_range = do
     let row_header = ("Num datapoints", lr_range)
     writeRow output_file row_header
-    benchRow ("LinRegr-[ ]-SSMH-" ++ show fixed_mh_steps
-              , liftIO . MonadBayes.mhLinRegr fixed_mh_steps) row_header output_file
+    benchRow ("LinRegr-[ ]-SSMH-" ++ show fixed_ssmh_steps
+              , liftIO . MonadBayes.ssmhLinRegr fixed_ssmh_steps) row_header output_file
     benchRow ("LinRegr-[ ]-MPF-" ++ show fixed_smc_particles
               , liftIO . MonadBayes.smcLinRegr fixed_smc_particles)  row_header output_file
     benchRow ("LinRegr-[ ]-PMH-" ++ show fixed_pmh_mhsteps ++ "-" ++ show fixed_pmh_particles
@@ -67,9 +67,9 @@ bench_HMM_MonadBayes :: [Int] -> IO ()
 bench_HMM_MonadBayes hmm_range = do
     let row_header = ("Num nodes", hmm_range)
     writeRow output_file row_header
-    benchRow ("HidMark-[ ]-SSMH-" ++ show fixed_mh_steps
-              , liftIO . MonadBayes.mhHMM fixed_mh_steps) row_header output_file
-    benchRow ("HidMark-[ ]-MPF-" ++ show fixed_mh_steps
+    benchRow ("HidMark-[ ]-SSMH-" ++ show fixed_ssmh_steps
+              , liftIO . MonadBayes.ssmhHMM fixed_ssmh_steps) row_header output_file
+    benchRow ("HidMark-[ ]-MPF-" ++ show fixed_smc_particles
               , liftIO . MonadBayes.smcHMM fixed_smc_particles) row_header output_file
     benchRow ("HidMark-[ ]-PMH-" ++ show fixed_pmh_mhsteps ++ "-" ++ show fixed_pmh_particles
               , liftIO . MonadBayes.pmhHMM fixed_pmh_mhsteps fixed_pmh_particles) row_header output_file
@@ -82,25 +82,25 @@ bench_LDA_MonadBayes lda_range = do
     writeRow output_file row_header
     -- | Set upper bound on executed args (to avoid early terminated benchmarks)
     let (lda_smc_bound, lda_pmh_bound, lda_rmpf_bound) = (5, 6, 4)
-    benchRow ("LatDiri-[ ]-SSMH-" ++ show fixed_mh_steps
-              , liftIO . MonadBayes.mhLDA fixed_mh_steps) row_header output_file
-    benchRow ("LatDiri-[ ]-MPF-" ++ show fixed_mh_steps
+    benchRow ("LatDiri-[ ]-SSMH-" ++ show fixed_ssmh_steps
+              , liftIO . MonadBayes.ssmhLDA fixed_ssmh_steps) row_header output_file
+    benchRow ("LatDiri-[ ]-MPF-" ++ show fixed_smc_particles
               , liftIO . MonadBayes.smcLDA fixed_smc_particles)  (second (take lda_smc_bound) row_header) output_file
     benchRow ("LatDiri-[ ]-PMH-" ++ show fixed_pmh_mhsteps ++ "-" ++ show fixed_pmh_particles
               , liftIO . MonadBayes.pmhLDA fixed_pmh_mhsteps fixed_pmh_particles)  (second (take lda_pmh_bound) row_header) output_file
     benchRow ("LatDiri-[ ]-RMPF-" ++ show fixed_rmpf_particles ++ "-"  ++ show fixed_rmpf_mhsteps
               , liftIO . rmpfLDA fixed_rmpf_particles fixed_rmpf_mhsteps)  (second (take lda_rmpf_bound) row_header) output_file
 
-bench_MH_MonadBayes :: [Int] -> IO ()
-bench_MH_MonadBayes mh_range = do
+bench_SSMH_MonadBayes :: [Int] -> IO ()
+bench_SSMH_MonadBayes mh_range = do
     let row_header = ("Num SSMH steps", mh_range)
     writeRow output_file row_header
     benchRow ("SSMH-[ ]-LinRegr-" ++ show fixed_lr
-              , liftIO . flip MonadBayes.mhLinRegr fixed_lr) row_header output_file
+              , liftIO . flip MonadBayes.ssmhLinRegr fixed_lr) row_header output_file
     benchRow ("SSMH-[ ]-HidMark-" ++ show fixed_hmm
-              , liftIO . flip MonadBayes.mhHMM fixed_hmm) row_header output_file
+              , liftIO . flip MonadBayes.ssmhHMM fixed_hmm) row_header output_file
     benchRow ("SSMH-[ ]-LatDiri-" ++ show fixed_lda
-              , liftIO . flip MonadBayes.mhLDA fixed_lda) row_header output_file
+              , liftIO . flip MonadBayes.ssmhLDA fixed_lda) row_header output_file
 
 bench_SMC_MonadBayes :: [Int] -> IO ()
 bench_SMC_MonadBayes smc_range = do
@@ -167,9 +167,9 @@ linRegrData :: Int -> [(Double, Double)]
 linRegrData n_datapoints = zip [0 .. (fromIntegral n_datapoints)] (map (*3) [0 .. (fromIntegral n_datapoints)])
 
 -- Execute log regression
-mhLinRegr :: Int -> Int -> IO [(Double, Double, Double)]
-mhLinRegr mh_steps n_datapoints = do
-  x <- sampler . unweighted $ mh mh_steps $ linRegrPrior >>= linRegr (linRegrData n_datapoints)
+ssmhLinRegr :: Int -> Int -> IO [(Double, Double, Double)]
+ssmhLinRegr ssmh_steps n_datapoints = do
+  x <- sampler . unweighted $ mh ssmh_steps $ linRegrPrior >>= linRegr (linRegrData n_datapoints)
   return (map fromLinRegrParams x)
 
 smcLinRegr :: Int -> Int -> IO [(Double, Double, Double)]
@@ -180,17 +180,17 @@ smcLinRegr n_particles n_datapoints = do
   return  (map (fromLinRegrParams . fst) x)
 
 pmhLinRegr :: Int -> Int -> Int -> IO [(Double, Double, Double)]
-pmhLinRegr mh_steps n_particles n_datapoints = do
+pmhLinRegr ssmh_steps n_particles n_datapoints = do
   let n_timesteps = n_datapoints
-  let mcmc_config  = MCMCConfig { proposal = SingleSiteMH, numMCMCSteps = mh_steps, numBurnIn = 0 }
+  let mcmc_config  = MCMCConfig { proposal = SingleSiteMH, numMCMCSteps = ssmh_steps, numBurnIn = 0 }
       smc_config   = SMCConfig { resampler = resampleMultinomial, numSteps = n_timesteps, numParticles = n_particles }
   x <- sampler $ pmmh mcmc_config smc_config linRegrPrior (linRegr (linRegrData n_datapoints))
   return (map (fromLinRegrParams . fst) (concat x))
 
 rmpfLinRegr :: Int -> Int -> Int -> IO [(Double, Double, Double)]
-rmpfLinRegr n_particles mh_steps  n_datapoints = do
+rmpfLinRegr n_particles ssmh_steps  n_datapoints = do
   let n_timesteps = n_datapoints
-  let mcmc_config  = MCMCConfig { proposal = SingleSiteMH, numMCMCSteps = mh_steps, numBurnIn = 0 }
+  let mcmc_config  = MCMCConfig { proposal = SingleSiteMH, numMCMCSteps = ssmh_steps, numBurnIn = 0 }
       smc_config   = SMCConfig { resampler = resampleMultinomial, numSteps = n_timesteps, numParticles = n_particles }
   x <- sampler . runPopulation $ rmsmc mcmc_config smc_config (linRegrPrior >>= linRegr (linRegrData n_datapoints))
   return (map (fromLinRegrParams . fst) x)
@@ -266,10 +266,10 @@ hmm x_0 ys params = do
 simHMM :: Int -> IO [Int]
 simHMM  n_steps = sampler $ simulateHmmNsteps initialParams 0 n_steps
 
-mhHMM :: Int -> Int -> IO [(Double, Double)]
-mhHMM mh_steps n_datapoints = do
+ssmhHMM :: Int -> Int -> IO [(Double, Double)]
+ssmhHMM ssmh_steps n_datapoints = do
   ys <- simHMM  n_datapoints
-  x <- sampler . unweighted . mh mh_steps $ (hmmPrior >>= hmm 0 ( ys))
+  x <- sampler . unweighted . mh ssmh_steps $ (hmmPrior >>= hmm 0 ( ys))
   return (map fromHMMParams x)
 
 smcHMM :: Int -> Int -> IO [(Double, Double)]
@@ -281,18 +281,18 @@ smcHMM n_particles n_datapoints = do
   return  (map (fromHMMParams . fst) x)
 
 pmhHMM :: Int -> Int -> Int -> IO [(Double, Double)]
-pmhHMM mh_steps n_particles n_datapoints = do
+pmhHMM ssmh_steps n_particles n_datapoints = do
   let n_timesteps = n_datapoints
-      mcmc_config  = MCMCConfig { proposal = SingleSiteMH, numMCMCSteps = mh_steps, numBurnIn = 0 }
+      mcmc_config  = MCMCConfig { proposal = SingleSiteMH, numMCMCSteps = ssmh_steps, numBurnIn = 0 }
       smc_config   = SMCConfig { resampler = resampleMultinomial, numSteps = n_timesteps, numParticles = n_particles }
   ys <- simHMM  n_datapoints
   x <- sampler $ pmmh mcmc_config smc_config hmmPrior (hmm 0 ( ys))
   return  (map (fromHMMParams . fst) (concat x))
 
 rmpfHMM :: Int -> Int -> Int -> IO [(Double, Double)]
-rmpfHMM n_particles mh_steps  n_datapoints = do
+rmpfHMM n_particles ssmh_steps  n_datapoints = do
   let n_timesteps = n_datapoints
-      mcmc_config  = MCMCConfig { proposal = SingleSiteMH, numMCMCSteps = mh_steps, numBurnIn = 0 }
+      mcmc_config  = MCMCConfig { proposal = SingleSiteMH, numMCMCSteps = ssmh_steps, numBurnIn = 0 }
       smc_config   = SMCConfig { resampler = resampleMultinomial, numSteps = n_timesteps, numParticles = n_particles }
   ys <- simHMM  n_datapoints
   x <- sampler . runPopulation $ rmsmc mcmc_config smc_config  (hmmPrior >>= hmm 0 ( ys))
@@ -364,9 +364,9 @@ simLDA :: Int -> Int -> IO [[String]]
 simLDA n_samples n_words = do
   sampler $ replicateM n_samples (documentDistSim initialLDAParams vocabulary 2 n_words)
 
-mhLDA :: Int -> Int -> IO [([Double], [[Double]])]
-mhLDA mh_steps n_words = do
-  x <- sampler . unweighted . mh mh_steps  $ (ldaPrior 2 vocabulary >>= lda 2 vocabulary (take n_words document))
+ssmhLDA :: Int -> Int -> IO [([Double], [[Double]])]
+ssmhLDA ssmh_steps n_words = do
+  x <- sampler . unweighted . mh ssmh_steps  $ (ldaPrior 2 vocabulary >>= lda 2 vocabulary (take n_words document))
   return (map fromLDAParams x)
 
 smcLDA :: Int -> Int -> IO [([Double], [[Double]])]
@@ -377,17 +377,17 @@ smcLDA n_particles n_words = do
   return (map (fromLDAParams . fst) x)
 
 pmhLDA :: Int -> Int -> Int -> IO [([Double], [[Double]])]
-pmhLDA mh_steps n_particles n_words = do
+pmhLDA ssmh_steps n_particles n_words = do
   let n_timesteps = n_words
-      mcmc_config  = MCMCConfig { proposal = SingleSiteMH, numMCMCSteps = mh_steps, numBurnIn = 0 }
+      mcmc_config  = MCMCConfig { proposal = SingleSiteMH, numMCMCSteps = ssmh_steps, numBurnIn = 0 }
       smc_config   = SMCConfig { resampler = resampleMultinomial, numSteps = n_timesteps, numParticles = n_particles }
   x <- sampler $ pmmh mcmc_config smc_config (ldaPrior 2 vocabulary) (lda 2 vocabulary  (take n_words document))
   return (map (fromLDAParams . fst ) (concat x))
 
 rmpfLDA :: Int -> Int -> Int -> IO [([Double], [[Double]])]
-rmpfLDA n_particles mh_steps  n_words = do
+rmpfLDA n_particles ssmh_steps  n_words = do
   let n_timesteps = n_words
-      mcmc_config  = MCMCConfig { proposal = SingleSiteMH, numMCMCSteps = mh_steps, numBurnIn = 0 }
+      mcmc_config  = MCMCConfig { proposal = SingleSiteMH, numMCMCSteps = ssmh_steps, numBurnIn = 0 }
       smc_config   = SMCConfig { resampler = resampleMultinomial, numSteps = n_timesteps, numParticles = n_particles }
   x <- sampler . runPopulation $ rmsmc mcmc_config smc_config (ldaPrior 2 vocabulary >>= lda 2 vocabulary  (take n_words document))
   return (map (fromLDAParams . fst) x)

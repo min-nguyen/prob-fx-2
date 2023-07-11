@@ -138,8 +138,8 @@ simSIR n_days = do
   return (sirs, 𝜉s)
 
 -- | SSMH inference from SIR model: ([ρ], [β])
-mhSIR :: Int -> Int -> Sampler ([Double], [Double])
-mhSIR n_mhsteps n_days = do
+ssmhSIR :: Int -> Int -> Sampler ([Double], [Double])
+ssmhSIR n_mhsteps n_days = do
   𝜉s <- snd <$> simSIR n_days
   -- Specify model input of 762 susceptible and 1 infected
   let sir_0           = Popl {s = 762, i = 1, r = 0}
@@ -313,8 +313,8 @@ simSIRMB n_days = do
       sirs = map (\(Popl s i recov) -> (s, i, recov)) sir_trace
   pure (sirs, 𝜉s)
 
-mhSIRMB :: Int -> IO ([Double], [Double]) -- [(Popl, Env SIRenv)]
-mhSIRMB n_days = do
+ssmhSIRMB :: Int -> IO ([Double], [Double]) -- [(Popl, Env SIRenv)]
+ssmhSIRMB n_days = do
   𝜉s <- snd <$> simSIRMB n_days
   let sir_0      = Popl {s = 762, i = 1, r = 0}
       env_in = #β := [] <:> #γ := [0.0085] <:> #ρ := [] <:> #𝜉 := 𝜉s <:> enil

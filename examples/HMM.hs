@@ -172,14 +172,14 @@ lwHMM lw_samples hmm_length = do
   pure (trans_ps, obs_ps, ws)
 
 -- | Metropolis-Hastings inference over a HMM
-mhHMM
+ssmhHMM
   -- | number of SSMH iterations
   :: Int
   -- | number of HMM nodes
   -> Int
   -- | [(transition parameter, observation parameter)]
   -> Sampler ([Double], [Double])
-mhHMM mh_samples hmm_length = do
+ssmhHMM mh_samples hmm_length = do
   -- Simulate a trace of observations from the HMM
   ys <- simHMM hmm_length
   -- Specify a model environment containing those observations
@@ -348,14 +348,14 @@ lwHMMMB n_samples hmm_length = do
   Bayes.sampleIO $ replicateM n_samples $ Bayes.runWeighted $ mbayesHMM hmm_length 0 env_in
 
 -- | Metropolis-Hastings from the HMM in Monad Bayes.
-mhHMMMB
+ssmhHMMMB
   -- | mh-hastings iterations
   :: Int
   -- | number of HMM nodes
   -> Int
   -- | [ (((final latent state, intermediate latent states), output model environment)) ]
   -> IO [((Int, [Int]), Env HMMEnv)]
-mhHMMMB n_mhsteps hmm_length = do
+ssmhHMMMB n_mhsteps hmm_length = do
   -- Simulate a trace of observations from the HMM
   ys <- map snd <$> simHMMMB hmm_length
   -- Specify a model environment containing those observations

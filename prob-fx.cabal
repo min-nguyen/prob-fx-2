@@ -190,6 +190,7 @@ test-suite tests
                       LinRegr,
                       LogRegr,
                       Radon,
+                      School,
                       SIR,
                       GuidedExamples
   build-depends:      base,
