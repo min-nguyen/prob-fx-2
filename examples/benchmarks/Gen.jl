@@ -678,8 +678,8 @@ function runBenchmarks()
   lda_range = params[3]
   ssmh_range = params[4]
   smc_range = params[5]
-  rmpf_range = params[6]
-  pmh_range = params[7]
+  pmh_range = params[6]
+  rmpf_range = params[7]
   bench_LR(lr_range)
   bench_HMM(hmm_range)
   bench_LDA(lda_range)
