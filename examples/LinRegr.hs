@@ -63,13 +63,6 @@ linRegr xs = do
   -- Generate outputs ys
   mapM (\x -> normal (m * x + c) σ #y) xs
 
-linRegrGuide :: Observables env '["m", "c", "σ"] Double => MulModel env es ()
-linRegrGuide = do
-  m <- normal 0 3 #m
-  c <- normal 0 5 #c
-  σ <- uniform 1 3 #σ
-  pure ()
-
 -- | Simulate from linear regression
 simLinRegr :: Int -> Sampler [(Double, Double)]
 simLinRegr n_datapoints = do
