@@ -46,7 +46,7 @@ def main():
     axs1.set_xlabel("c values", fontsize=12)
     axs1.set_ylabel("frequency")
     axs1.scatter(cs, ps)
-  if arg in ["ssmhLinRegr", "smcLinRegr", "rmpfLinRegr", "pmhLinRegr"]:
+  if arg in ["imLinRegr", "ssmhLinRegr", "smcLinRegr", "rmpfLinRegr", "pmhLinRegr"]:
     ms = data[0]
     cs  = data[1]
     fig1, axs1 = plt.subplots(nrows=1)
