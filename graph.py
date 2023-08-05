@@ -36,29 +36,30 @@ def main():
   if arg in ["lwLinRegr"]:
     ms = [d[0] for d in data]
     cs = [d[1] for d in data]
-    ps  = [d[2] for d in data]
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel('m value')
-    axs1.set_ylabel('probability')
-    axs1.scatter(ms, ps)
-    axs1.set_title('Linear regression - Likelihood Weighting')
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("c values", fontsize=12)
-    axs1.set_ylabel("frequency")
-    axs1.scatter(cs, ps)
+    ps = [d[2] for d in data]
+    fig, axs = plt.subplots(nrows=2)
+    plt.subplots_adjust(hspace=0.3)
+    fig.set_size_inches(8, 6)
+    axs[0].set_xlabel('m value')
+    axs[0].set_ylabel('probability')
+    axs[0].scatter(ms, ps)
+    axs[1].set_xlabel("c values", fontsize=12)
+    axs[1].set_ylabel("frequency")
+    axs[1].scatter(cs, ps)
+    fig.suptitle("Linear regression - Likelihood Weighting")
   if arg in ["imLinRegr", "ssmhLinRegr", "smcLinRegr", "rmpfLinRegr", "pmhLinRegr"]:
     ms = data[0]
-    cs  = data[1]
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("m values", fontsize=12)
-    axs1.set_ylabel("frequency")
-    axs1.hist(ms, bins=25)
-    axs1.set_title('Linear regression - Metropolis Hastings')
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("c values", fontsize=12)
-    axs1.set_ylabel("frequency")
-    axs1.hist(cs, bins=25)
-    axs1.set_title('Linear regression - Metropolis Hastings')
+    cs = data[1]
+    fig, axs = plt.subplots(nrows=2)
+    plt.subplots_adjust(hspace=0.3)
+    fig.set_size_inches(9, 6)
+    axs[0].set_xlabel("m values", fontsize=12)
+    axs[0].set_ylabel("frequency")
+    axs[0].hist(ms, bins=50)
+    axs[1].set_xlabel("c values", fontsize=12)
+    axs[1].set_ylabel("frequency")
+    axs[1].hist(cs, bins=50)
+    fig.suptitle("Linear regression - Metropolis Hastings")
   if arg in ["bbviLinRegr", "mleLinRegr"]:
     mu_mean = data[0][0]
     mu_std  = data[0][1]
