@@ -34,21 +34,25 @@ def main():
     plt.ylabel('y data points')
     plt.title('Linear regression')
   if arg in ["lwLinRegr"]:
-    mus = [d[0] for d in data]
-    ps  = [d[1] for d in data]
+    ms = [d[0] for d in data]
+    cs = [d[1] for d in data]
+    ps  = [d[2] for d in data]
     fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel('mu value')
+    axs1.set_xlabel('m value')
     axs1.set_ylabel('probability')
-    axs1.scatter(mus, ps)
+    axs1.scatter(ms, ps)
     axs1.set_title('Linear regression - Likelihood Weighting')
-
+    fig1, axs1 = plt.subplots(nrows=1)
+    axs1.set_xlabel("c values", fontsize=12)
+    axs1.set_ylabel("frequency")
+    axs1.scatter(cs, ps)
   if arg in ["ssmhLinRegr", "smcLinRegr", "rmpfLinRegr", "pmhLinRegr"]:
-    mus = data[0]
+    ms = data[0]
     cs  = data[1]
     fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("mu values", fontsize=12)
+    axs1.set_xlabel("m values", fontsize=12)
     axs1.set_ylabel("frequency")
-    axs1.hist(mus, bins=25)
+    axs1.hist(ms, bins=25)
     axs1.set_title('Linear regression - Metropolis Hastings')
     fig1, axs1 = plt.subplots(nrows=1)
     axs1.set_xlabel("c values", fontsize=12)
