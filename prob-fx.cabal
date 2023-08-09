@@ -173,6 +173,7 @@ test-suite tests
   type:               exitcode-stdio-1.0
 
   hs-source-dirs:     examples/tests,
+                      examples/demo,
                       examples
   default-extensions: GADTs,
                       DataKinds,
@@ -193,7 +194,8 @@ test-suite tests
                       Radon,
                       School,
                       SIR,
-                      GuidedExamples
+                      GuidedExamples,
+                      Demo
   build-depends:      base,
                       containers,
                       extensible,
