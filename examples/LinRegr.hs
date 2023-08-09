@@ -63,13 +63,6 @@ linRegr xs = do
   -- Generate outputs ys
   mapM (\x -> normal (m * x + c) σ #y) xs
 
-linRegrGuide :: Observables env '["m", "c", "σ"] Double => MulModel env es ()
-linRegrGuide = do
-  m <- normal 0 3 #m
-  c <- normal 0 5 #c
-  σ <- uniform 1 3 #σ
-  pure ()
-
 -- | Simulate from linear regression
 simLinRegr :: Int -> Sampler [(Double, Double)]
 simLinRegr n_datapoints = do
@@ -82,7 +75,7 @@ simLinRegr n_datapoints = do
   pure $ zip xs ys
 
 -- | Likelihood weighting over linear regression
-lwLinRegr ::  Int -> Int ->  Sampler [(Double, Double)]
+lwLinRegr ::  Int -> Int ->  Sampler [(Double, Double, Double)]
 lwLinRegr n_lwsteps n_datapoints = do
   -- Specify model inputs
   let xs            = [0 .. fromIntegral n_datapoints]
@@ -90,8 +83,9 @@ lwLinRegr n_lwsteps n_datapoints = do
       env_in        = (#m := []) <:> (#c := []) <:> (#σ := []) <:> (#y := [3*x | x <- xs]) <:> enil
    -- Get the sampled values of mu and their likelihood-weighting
   (env_outs, ps) <- unzip <$> LW.lwWith n_lwsteps (linRegr xs) env_in
-  let mus = concatMap (get #m) env_outs
-  pure (zip mus ps)
+  let ms = concatMap (get #m) env_outs
+      cs = concatMap (get #c) env_outs
+  pure (zip3 ms cs ps)
 
 -- | Random Walk Metropolis over linear regression
 imLinRegr ::  Int -> Int ->  Sampler ([Double], [Double])

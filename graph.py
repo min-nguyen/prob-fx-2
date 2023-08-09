@@ -18,60 +18,68 @@ def save_multi_image(filename):
       fig.savefig(pp, format='pdf')
    pp.close()
 
+alg_dict = dict([("lw", "Likelihood Weighting"),("im", "Independence Metropolis"), ("ssmh", "Single-Site Metropolis-Hastings"), ("smc", "Multinomial Particle Filter"), ("rmpf", "Resample-Move Particle Filter"), ("pmh", "Particle Metropolis-Hastings"), ("bbvi", "Black Box Variational Inference")])
+
 def main():
   arg  = sys.argv[1]
   f    = open("model-output.txt", "r")
 
   data = ast.literal_eval(f.read().replace('-Infinity', '-2e308')) #
   color_map = plt.cm.get_cmap('Blues')
-  if arg in ["simLinRegr"]:
-    xys =  [[ i for i, j in data ],
-            [ j for i, j in data ]]
-    xs = xys[0]
-    ys = xys[1]
-    plt.scatter(xs, ys)
-    plt.xlabel('x data points')
-    plt.ylabel('y data points')
-    plt.title('Linear regression')
-  if arg in ["lwLinRegr"]:
-    mus = [d[0] for d in data]
-    ps  = [d[1] for d in data]
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel('mu value')
-    axs1.set_ylabel('probability')
-    axs1.scatter(mus, ps)
-    axs1.set_title('Linear regression - Likelihood Weighting')
 
-  if arg in ["ssmhLinRegr", "smcLinRegr", "rmpfLinRegr", "pmhLinRegr"]:
-    mus = data[0]
-    cs  = data[1]
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("mu values", fontsize=12)
-    axs1.set_ylabel("frequency")
-    axs1.hist(mus, bins=25)
-    axs1.set_title('Linear regression - Metropolis Hastings')
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.set_xlabel("c values", fontsize=12)
-    axs1.set_ylabel("frequency")
-    axs1.hist(cs, bins=25)
-    axs1.set_title('Linear regression - Metropolis Hastings')
-  if arg in ["bbviLinRegr", "mleLinRegr"]:
-    mu_mean = data[0][0]
-    mu_std  = data[0][1]
-    c_mean  = data[1][0]
-    c_std   = data[1][1]
-
-    x_mu = np.linspace(mu_mean - 3*mu_std, mu_mean + 3*mu_std, 100)
-    fig1, axs1 = plt.subplots(nrows=1)
-    axs1.plot(x_mu, norm.pdf(x_mu, mu_mean, mu_std))
-    axs1.set_title('Linear regression BBVI - Mu distribution')
-
-    x_c = np.linspace(c_mean - 3*c_std, c_mean + 3*c_std, 100)
-    fig2, axs2 = plt.subplots(nrows=1)
-    axs2.plot(x_c, norm.pdf(x_c, c_mean, c_std))
-    axs2.set_title('Linear regression BBVI - C distribution')
-
-    plt.show()
+  if arg.endswith("LinRegr"):
+    alg = arg[:-(len("LinRegr"))]
+    if alg in ["sim"]:
+      xys =  [[ i for i, j in data ],
+              [ j for i, j in data ]]
+      xs = xys[0]
+      ys = xys[1]
+      plt.scatter(xs, ys)
+      plt.xlabel('x data points')
+      plt.ylabel('y data points')
+      plt.title('Linear regression - ' + alg_dict[alg])
+    if alg in ["lw"]:
+      ms = [d[0] for d in data]
+      cs = [d[1] for d in data]
+      ps = [d[2] for d in data]
+      fig, axs = plt.subplots(nrows=2)
+      plt.subplots_adjust(hspace=0.3)
+      fig.set_size_inches(8, 6)
+      axs[0].set_xlabel('m value')
+      axs[0].set_ylabel('probability')
+      axs[0].scatter(ms, ps)
+      axs[1].set_xlabel("c values", fontsize=12)
+      axs[1].set_ylabel("probability")
+      axs[1].scatter(cs, ps)
+      fig.suptitle("Linear regression - " + alg_dict[alg])
+    if alg in ["im", "ssmh", "smc", "rmpf", "pmh"]:
+      ms = data[0]
+      cs = data[1]
+      fig, axs = plt.subplots(nrows=2)
+      plt.subplots_adjust(hspace=0.3)
+      fig.set_size_inches(9, 6)
+      # axs[0].set_xlim([-2, 4])
+      axs[0].set_xlabel("m values", fontsize=12)
+      axs[0].set_ylabel("frequency")
+      axs[0].hist(ms, bins=50)
+      # axs[1].set_xlim([-2, 4])
+      axs[1].set_xlabel("c values", fontsize=12)
+      axs[1].set_ylabel("frequency")
+      axs[1].hist(cs, bins=50)
+      fig.suptitle("Linear regression - " + alg_dict[alg])
+    if alg in ["bbvi"]:
+      mu_mean = data[0][0]
+      mu_std  = data[0][1]
+      c_mean  = data[1][0]
+      c_std   = data[1][1]
+      fig, axs = plt.subplots(nrows=2)
+      x_mu = np.linspace(mu_mean - 3*mu_std, mu_mean + 3*mu_std, 100)
+      axs[0].plot(x_mu, norm.pdf(x_mu, mu_mean, mu_std))
+      axs[0].set_title('M distribution')
+      x_c = np.linspace(c_mean - 3*c_std, c_mean + 3*c_std, 100)
+      axs[1].plot(x_c, norm.pdf(x_c, c_mean, c_std))
+      axs[1].set_title('C distribution')
+      fig.suptitle("Linear regression - " + alg_dict[alg])
 
   if arg in ["simSIR", "simSIRS"]:
     # y axis

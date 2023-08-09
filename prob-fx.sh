@@ -6,7 +6,7 @@ function exists_in_list() {
     [[ "$LIST" =~ ($DELIMITER|^)$VALUE($DELIMITER|$) ]]
 }
 
-possible_arguments="simLinRegr, lwLinRegr, ssmhLinRegr, smcLinRegr, rmpfLinRegr, pmhLinRegr, simSIR, simSIRS, simSIRSV, ssmhSIR, simLogRegr, lwLogRegr, ssmhLogRegr, simHMM, lwHMM, ssmhHMM, smcHMM, rmpfHMM, pmhHMM, simLDA, ssmhLDA, smcLDA, rmpfLDA, pmhLDA, simRadon, ssmhRadon, ssmhPredRadon, ssmhSchool, simGMM, ssmhGMM"
+possible_arguments="simLinRegr, lwLinRegr, imLinRegr, ssmhLinRegr, smcLinRegr, rmpfLinRegr, pmhLinRegr, simSIR, simSIRS, simSIRSV, ssmhSIR, simLogRegr, lwLogRegr, ssmhLogRegr, simHMM, lwHMM, ssmhHMM, smcHMM, rmpfHMM, pmhHMM, simLDA, ssmhLDA, smcLDA, rmpfLDA, pmhLDA, simRadon, ssmhRadon, ssmhPredRadon, ssmhSchool, simGMM, ssmhGMM"
 
 if [[ $# -eq 0 ]] || [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
   echo "Usage: ./`basename $0` <arg>"

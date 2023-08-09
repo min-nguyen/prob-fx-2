@@ -8,7 +8,7 @@
 {-# HLINT ignore "Eta reduce" #-}
 {-# LANGUAGE TypeApplications #-}
 
-module EffDemo where
+module Demo where
 
 import Comp
 import Env
