@@ -24,7 +24,7 @@ parseArgs cmd = case cmd of
   "gmleLinRegr"    -> sampleIOFixed (GuidedExamples.mleLinRegr 1400 40 8) >>= printThenWrite -- need to set 'safeAddGrad' to only add mu
 
   "simLinRegr"          -> sampleIOFixed (simLinRegr 100) >>= printThenWrite
-  "lwLinRegr"           -> sampleIOFixed (lwLinRegr 1000 10)>>= printThenWrite
+  "lwLinRegr"           -> sampleIOFixed (lwLinRegr 1000 5)>>= printThenWrite
   "imLinRegr"           -> sampleIOFixed (imLinRegr 5000 50) >>= printThenWrite
   "ssmhLinRegr"         -> sampleIOFixed (ssmhLinRegr 5000 50) >>= printThenWrite
   "smcLinRegr"          -> sampleIOFixed (smcLinRegr 100 50) >>= printThenWrite

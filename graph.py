@@ -48,9 +48,11 @@ def main():
       axs[0].set_xlabel('m value')
       axs[0].set_ylabel('probability')
       axs[0].scatter(ms, ps)
+      axs[0].set_ylim(0, max(ps))
       axs[1].set_xlabel("c values", fontsize=12)
       axs[1].set_ylabel("probability")
       axs[1].scatter(cs, ps)
+      axs[1].set_ylim(0, max(ps))
       fig.suptitle("Linear regression - " + alg_dict[alg])
     if alg in ["im", "ssmh", "smc", "rmpf", "pmh"]:
       ms = data[0]
