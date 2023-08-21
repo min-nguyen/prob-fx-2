@@ -18,7 +18,7 @@ def save_multi_image(filename):
       fig.savefig(pp, format='pdf')
    pp.close()
 
-alg_dict = dict([("lw", "Likelihood Weighting"),("im", "Independence Metropolis"), ("ssmh", "Single-Site Metropolis-Hastings"), ("smc", "Multinomial Particle Filter"), ("rmpf", "Resample-Move Particle Filter"), ("pmh", "Particle Metropolis-Hastings"), ("bbvi", "Black Box Variational Inference")])
+alg_dict = dict([("sim", "Simulation"),("lw", "Likelihood Weighting"),("im", "Independence Metropolis"), ("ssmh", "Single-Site Metropolis-Hastings"), ("smc", "Multinomial Particle Filter"), ("rmpf", "Resample-Move Particle Filter"), ("pmh", "Particle Metropolis-Hastings"), ("bbvi", "Black Box Variational Inference")])
 
 def main():
   arg  = sys.argv[1]
@@ -34,6 +34,9 @@ def main():
               [ j for i, j in data ]]
       xs = xys[0]
       ys = xys[1]
+      plt.figure(figsize=(6,8))
+      plt.yticks([0, 100, 200, 300], fontsize=14)
+      plt.xticks([0, 50, 100], fontsize=14)
       plt.scatter(xs, ys)
       plt.xlabel('x data points')
       plt.ylabel('y data points')
