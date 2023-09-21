@@ -184,9 +184,12 @@ transRS eta popl = do
                 & s .~ (s_0 + dN_RS)
 
 -- | Transition model from S to I, I to R, and R to S
-transSIRS :: Lookups popl '["s", "i", "r"] Int
+transSIRS :: (Member (Writer [Record popl]) es, Lookups popl '["s", "i", "r"] Int)
   => TransModel env es (Double, Double, Double) (Record popl)
-transSIRS (beta, gamma, eta) = transSI beta >=> transIR gamma >=> transRS eta
+transSIRS (beta, gamma, eta) popl = do
+    popl' <- (transSI beta >=> transIR gamma >=> transRS eta) popl
+    tellM [popl']
+    pure popl'
 
 -- | SIRS as HMM
 hmmSIRS :: (Lookups popl '["s", "i", "r"] Int,
@@ -239,10 +242,12 @@ transSV omega popl  = do
                 & v .~ (v_0 + dN_SV)
 
 -- | Transition model from S to I, I to R, R to S, and S to V
-transSIRSV :: Lookups popl '["s", "i", "r", "v"] Int
-  => TransModel env ts (Double, Double, Double, Double) (Record popl)
-transSIRSV (beta, gamma, eta, omega) =
-  transSI beta >=> transIR gamma >=> transRS eta >=> transSV omega
+transSIRSV :: (Member (Writer [Record popl]) es, Lookups popl '["s", "i", "r", "v"] Int)
+  => TransModel env es (Double, Double, Double, Double) (Record popl)
+transSIRSV (beta, gamma, eta, omega) popl = do
+  popl' <- (transSI beta >=> transIR gamma >=> transRS eta >=> transSV omega) popl
+  tellM [popl']
+  pure popl'
 
 -- | SIRSV as HMM
 hmmSIRSV :: (Lookups popl '["s", "i", "r", "v"] Int,
